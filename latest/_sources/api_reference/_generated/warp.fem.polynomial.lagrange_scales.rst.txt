@@ -3,5 +3,4 @@
 
 .. currentmodule:: warp.fem.polynomial
 
-
 .. autofunction:: lagrange_scales

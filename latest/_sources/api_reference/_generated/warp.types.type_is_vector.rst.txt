@@ -3,5 +3,4 @@
 
 .. currentmodule:: warp.types
 
-
 .. autofunction:: type_is_vector

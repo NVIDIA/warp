@@ -3,5 +3,4 @@
 
 .. currentmodule:: warp
 
-
 .. autodata:: quat_between_vectors

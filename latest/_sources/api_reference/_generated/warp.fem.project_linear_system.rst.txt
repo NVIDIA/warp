@@ -3,5 +3,4 @@
 
 .. currentmodule:: warp.fem
 
-
 .. autofunction:: project_linear_system

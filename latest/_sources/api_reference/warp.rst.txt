@@ -254,6 +254,7 @@ Runtime
    :nosignatures:
    :toctree: _generated
 
+   LaunchVerificationMode
    clear_kernel_cache
    clear_lto_cache
    init
@@ -320,6 +321,7 @@ Device Management
 
    Device
    ScopedDevice
+   can_access
    get_cuda_device
    get_cuda_device_count
    get_cuda_devices

@@ -214,6 +214,9 @@ In either case, mapping the custom CUDA context allows us to target the context 
         a = wp.zeros(n)
         wp.launch(kernel, dim=a.size, inputs=[a])
 
+For advanced systems where CPU and GPU memory may be directly accessible across
+device boundaries, see :doc:`../deep_dive/memory_access`.
+
 
 .. _peer_access:
 
@@ -263,4 +266,3 @@ It's possible to temporarily enable or disable peer access using a scoped manage
 
     Peer access does not accelerate memory transfers between arrays allocated using the :ref:`stream-ordered memory pool allocators<mempool_allocators>` introduced in Warp 0.14.0.
     To accelerate memory pool transfers, :ref:`memory pool access<mempool_access>` should be enabled instead.
-

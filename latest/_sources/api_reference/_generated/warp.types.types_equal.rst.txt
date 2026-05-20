@@ -3,5 +3,4 @@
 
 .. currentmodule:: warp.types
 
-
 .. autofunction:: types_equal

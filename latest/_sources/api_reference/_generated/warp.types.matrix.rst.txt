@@ -3,5 +3,4 @@
 
 .. currentmodule:: warp.types
 
-
 .. autofunction:: matrix

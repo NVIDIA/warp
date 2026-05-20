@@ -3,5 +3,4 @@
 
 .. currentmodule:: warp
 
-
 .. autofunction:: stream_from_torch

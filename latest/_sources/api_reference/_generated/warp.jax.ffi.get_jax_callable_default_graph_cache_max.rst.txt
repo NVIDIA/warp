@@ -3,5 +3,4 @@
 
 .. currentmodule:: warp.jax.ffi
 
-
 .. autofunction:: get_jax_callable_default_graph_cache_max

@@ -3,5 +3,4 @@
 
 .. currentmodule:: warp.fem
 
-
 .. autofunction:: set_default_temporary_store

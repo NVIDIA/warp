@@ -3,5 +3,4 @@
 
 .. currentmodule:: warp
 
-
 .. autofunction:: dtype_from_paddle

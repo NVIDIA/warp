@@ -3,5 +3,4 @@
 
 .. currentmodule:: warp.fem
 
-
 .. autodata:: div_outer

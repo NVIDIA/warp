@@ -3,5 +3,4 @@
 
 .. currentmodule:: warp
 
-
 .. autofunction:: get_mempool_used_mem_high

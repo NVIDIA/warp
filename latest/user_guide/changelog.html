@@ -399,6 +399,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/codegen.html">Code Generation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/allocators.html">Allocators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/memory_access.html">CPU/GPU cross-device memory access</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/concurrency.html">Concurrency</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/profiling.html">Profiling</a></li>
 </ul>
@@ -602,6 +603,10 @@ dimension checks while preserving existing launch-dimension aliasing behavior
 <li><p>Remove placeholder adjoints for built-ins that are not mathematically differentiable. No
 user-visible behavior change for code that respects the <code class="docutils literal notranslate"><span class="pre">is_differentiable=False</span></code> contract
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/988">GH-988</a>).</p></li>
+<li><p>Allow GPU kernels to receive CPU arrays on systems where the GPU reports direct pageable CPU memory access,
+enabling zero-copy launches on HMM and ATS systems. Add <code class="docutils literal notranslate"><span class="pre">warp.config.launch_verification_mode</span></code> with relaxed, strict,
+and checked modes for pre-launch accessibility diagnostics on mixed-device array launches
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1461">GH-1461</a>).</p></li>
 </ul>
 </section>
 <section id="fixed">

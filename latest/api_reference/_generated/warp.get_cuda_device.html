@@ -63,7 +63,7 @@
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="warp.get_cuda_device_count" href="warp.get_cuda_device_count.html" />
-    <link rel="prev" title="warp.ScopedDevice" href="warp.ScopedDevice.html" />
+    <link rel="prev" title="warp.can_access" href="warp.can_access.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -399,6 +399,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../../deep_dive/codegen.html">Code Generation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../deep_dive/allocators.html">Allocators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../deep_dive/memory_access.html">CPU/GPU cross-device memory access</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../deep_dive/concurrency.html">Concurrency</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../deep_dive/profiling.html">Profiling</a></li>
 </ul>
@@ -495,7 +496,7 @@
 <h1>warp.get_cuda_device<a class="headerlink" href="#warp-get-cuda-device" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.get_cuda_device">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">get_cuda_device</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ordinal</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L6570-L6579"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.get_cuda_device" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">get_cuda_device</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ordinal</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L6637-L6646"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.get_cuda_device" title="Link to this definition">#</a></dt>
 <dd><p>Return the CUDA device with the given ordinal or the current CUDA device if ordinal is <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -520,12 +521,12 @@
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.ScopedDevice.html"
+       href="warp.can_access.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.ScopedDevice</p>
+        <p class="prev-next-title">warp.can_access</p>
       </div>
     </a>
     <a class="right-next"

@@ -3,5 +3,4 @@
 
 .. currentmodule:: warp.fem
 
-
 .. autofunction:: make_element_based_space_topology

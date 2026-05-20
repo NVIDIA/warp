@@ -3,5 +3,4 @@
 
 .. currentmodule:: warp.fem
 
-
 .. autofunction:: make_element_shape_function

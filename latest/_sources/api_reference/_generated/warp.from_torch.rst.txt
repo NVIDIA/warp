@@ -3,5 +3,4 @@
 
 .. currentmodule:: warp
 
-
 .. autofunction:: from_torch

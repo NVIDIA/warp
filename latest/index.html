@@ -398,6 +398,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="deep_dive/codegen.html">Code Generation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="deep_dive/allocators.html">Allocators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deep_dive/memory_access.html">CPU/GPU cross-device memory access</a></li>
 <li class="toctree-l1"><a class="reference internal" href="deep_dive/concurrency.html">Concurrency</a></li>
 <li class="toctree-l1"><a class="reference internal" href="deep_dive/profiling.html">Profiling</a></li>
 </ul>
@@ -878,6 +879,19 @@ tile-based GPU programming. Install the optional dependencies with
 <li class="toctree-l1"><a class="reference internal" href="deep_dive/allocators.html">Allocators</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="deep_dive/allocators.html#stream-ordered-memory-pool-allocators">Stream-Ordered Memory Pool Allocators</a></li>
 <li class="toctree-l2"><a class="reference internal" href="deep_dive/allocators.html#custom-allocators">Custom Allocators</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="deep_dive/memory_access.html">CPU/GPU cross-device memory access</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="deep_dive/memory_access.html#launching-with-arrays-on-the-same-device">Launching with arrays on the same device</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deep_dive/memory_access.html#device-capability-properties">Device capability properties</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deep_dive/memory_access.html#common-cpu-gpu-memory-models">Common CPU/GPU memory models</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deep_dive/memory_access.html#launching-gpu-kernels-with-cpu-arrays">Launching GPU kernels with CPU arrays</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deep_dive/memory_access.html#accessing-gpu-data-from-cpu-code">Accessing GPU data from CPU code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deep_dive/memory_access.html#checking-access-for-a-specific-array-with-wp-can-access">Checking access for a specific array with <code class="docutils literal notranslate"><span class="pre">wp.can_access()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="deep_dive/memory_access.html#checking-coarse-device-access-with-device-can-access">Checking coarse device access with <code class="docutils literal notranslate"><span class="pre">Device.can_access()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="deep_dive/memory_access.html#checking-array-access-before-launch">Checking array access before launch</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deep_dive/memory_access.html#checking-cpu-gpu-atomic-support">Checking CPU/GPU atomic support</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deep_dive/memory_access.html#choosing-a-memory-access-pattern">Choosing a memory access pattern</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="deep_dive/concurrency.html">Concurrency</a><ul>

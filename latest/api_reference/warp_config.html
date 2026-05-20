@@ -62,7 +62,7 @@
 
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="warp.config.cache_kernels" href="_generated/warp.config.cache_kernels.html" />
+    <link rel="next" title="warp.config.LaunchVerificationMode" href="_generated/warp.config.LaunchVerificationMode.html" />
     <link rel="prev" title="warp.autograd.jacobian_plot" href="_generated/warp.autograd.jacobian_plot.html" />
 
 
@@ -399,6 +399,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/codegen.html">Code Generation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/allocators.html">Allocators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/memory_access.html">CPU/GPU cross-device memory access</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/concurrency.html">Concurrency</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/profiling.html">Profiling</a></li>
 </ul>
@@ -502,47 +503,53 @@ setting documentation for details.</p>
 <h2>API<a class="headerlink" href="#api" title="Link to this heading">#</a></h2>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.config.cache_kernels.html#warp.config.cache_kernels" title="warp.config.cache_kernels"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cache_kernels</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.LaunchVerificationMode.html#warp.LaunchVerificationMode" title="warp.config.LaunchVerificationMode"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LaunchVerificationMode</span></code></a></p></td>
+<td><p>Array-access verification modes for kernel launches.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.config.cache_kernels.html#warp.config.cache_kernels" title="warp.config.cache_kernels"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cache_kernels</span></code></a></p></td>
 <td><p>Enable kernel caching between application launches.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.config.compile_time_trace.html#warp.config.compile_time_trace" title="warp.config.compile_time_trace"><code class="xref py py-obj docutils literal notranslate"><span class="pre">compile_time_trace</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.config.compile_time_trace.html#warp.config.compile_time_trace" title="warp.config.compile_time_trace"><code class="xref py py-obj docutils literal notranslate"><span class="pre">compile_time_trace</span></code></a></p></td>
 <td><p>Enable the generation of Trace Event Format files for runtime module compilation.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.config.cpu_compiler_flags.html#warp.config.cpu_compiler_flags" title="warp.config.cpu_compiler_flags"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cpu_compiler_flags</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.config.cpu_compiler_flags.html#warp.config.cpu_compiler_flags" title="warp.config.cpu_compiler_flags"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cpu_compiler_flags</span></code></a></p></td>
 <td><p>Flags controlling CPU kernel compilation.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.config.cuda_arch_suffix.html#warp.config.cuda_arch_suffix" title="warp.config.cuda_arch_suffix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cuda_arch_suffix</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.config.cuda_arch_suffix.html#warp.config.cuda_arch_suffix" title="warp.config.cuda_arch_suffix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cuda_arch_suffix</span></code></a></p></td>
 <td><p>CUDA architecture suffix for kernel compilation.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.config.cuda_output.html#warp.config.cuda_output" title="warp.config.cuda_output"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cuda_output</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.config.cuda_output.html#warp.config.cuda_output" title="warp.config.cuda_output"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cuda_output</span></code></a></p></td>
 <td><p>Preferred CUDA output format for kernel compilation.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.config.enable_backward.html#warp.config.enable_backward" title="warp.config.enable_backward"><code class="xref py py-obj docutils literal notranslate"><span class="pre">enable_backward</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.config.enable_backward.html#warp.config.enable_backward" title="warp.config.enable_backward"><code class="xref py py-obj docutils literal notranslate"><span class="pre">enable_backward</span></code></a></p></td>
 <td><p>Enable compilation of kernel backward passes.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.config.enable_graph_capture_module_load_by_default.html#warp.config.enable_graph_capture_module_load_by_default" title="warp.config.enable_graph_capture_module_load_by_default"><code class="xref py py-obj docutils literal notranslate"><span class="pre">enable_graph_capture_module_load_by_default</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.config.enable_graph_capture_module_load_by_default.html#warp.config.enable_graph_capture_module_load_by_default" title="warp.config.enable_graph_capture_module_load_by_default"><code class="xref py py-obj docutils literal notranslate"><span class="pre">enable_graph_capture_module_load_by_default</span></code></a></p></td>
 <td><p>Enable automatic module loading before graph capture.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.config.enable_mathdx_fft.html#warp.config.enable_mathdx_fft" title="warp.config.enable_mathdx_fft"><code class="xref py py-obj docutils literal notranslate"><span class="pre">enable_mathdx_fft</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.config.enable_mathdx_fft.html#warp.config.enable_mathdx_fft" title="warp.config.enable_mathdx_fft"><code class="xref py py-obj docutils literal notranslate"><span class="pre">enable_mathdx_fft</span></code></a></p></td>
 <td><p>Use libmathdx (cuFFTDx) for <a class="reference internal" href="../language_reference/_generated/warp.tile_fft.html#warp._src.lang.tile_fft" title="warp._src.lang.tile_fft"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_fft</span></code></a> and <a class="reference internal" href="../language_reference/_generated/warp.tile_ifft.html#warp._src.lang.tile_ifft" title="warp._src.lang.tile_ifft"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_ifft</span></code></a> on GPU when available.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.config.enable_mathdx_gemm.html#warp.config.enable_mathdx_gemm" title="warp.config.enable_mathdx_gemm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">enable_mathdx_gemm</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.config.enable_mathdx_gemm.html#warp.config.enable_mathdx_gemm" title="warp.config.enable_mathdx_gemm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">enable_mathdx_gemm</span></code></a></p></td>
 <td><p>Use libmathdx (cuBLASDx) for tile_matmul on GPU when available.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.config.enable_mathdx_solver.html#warp.config.enable_mathdx_solver" title="warp.config.enable_mathdx_solver"><code class="xref py py-obj docutils literal notranslate"><span class="pre">enable_mathdx_solver</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.config.enable_mathdx_solver.html#warp.config.enable_mathdx_solver" title="warp.config.enable_mathdx_solver"><code class="xref py py-obj docutils literal notranslate"><span class="pre">enable_mathdx_solver</span></code></a></p></td>
 <td><p>Use libmathdx (cuSolverDx) for tile solver ops on GPU when available.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.config.enable_mempools_at_init.html#warp.config.enable_mempools_at_init" title="warp.config.enable_mempools_at_init"><code class="xref py py-obj docutils literal notranslate"><span class="pre">enable_mempools_at_init</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.config.enable_mempools_at_init.html#warp.config.enable_mempools_at_init" title="warp.config.enable_mempools_at_init"><code class="xref py py-obj docutils literal notranslate"><span class="pre">enable_mempools_at_init</span></code></a></p></td>
 <td><p>Enable CUDA memory pools during device initialization when supported.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.config.enable_tiles_in_stack_memory.html#warp.config.enable_tiles_in_stack_memory" title="warp.config.enable_tiles_in_stack_memory"><code class="xref py py-obj docutils literal notranslate"><span class="pre">enable_tiles_in_stack_memory</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.config.enable_tiles_in_stack_memory.html#warp.config.enable_tiles_in_stack_memory" title="warp.config.enable_tiles_in_stack_memory"><code class="xref py py-obj docutils literal notranslate"><span class="pre">enable_tiles_in_stack_memory</span></code></a></p></td>
 <td><p>Use stack memory instead of static memory for tile allocations on the CPU.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.config.enable_vector_component_overwrites.html#warp.config.enable_vector_component_overwrites" title="warp.config.enable_vector_component_overwrites"><code class="xref py py-obj docutils literal notranslate"><span class="pre">enable_vector_component_overwrites</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.config.enable_vector_component_overwrites.html#warp.config.enable_vector_component_overwrites" title="warp.config.enable_vector_component_overwrites"><code class="xref py py-obj docutils literal notranslate"><span class="pre">enable_vector_component_overwrites</span></code></a></p></td>
 <td><p>Allow multiple writes to vector/matrix/quaternion components.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.config.kernel_cache_dir.html#warp.config.kernel_cache_dir" title="warp.config.kernel_cache_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">kernel_cache_dir</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.config.kernel_cache_dir.html#warp.config.kernel_cache_dir" title="warp.config.kernel_cache_dir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">kernel_cache_dir</span></code></a></p></td>
 <td><p>Directory path for storing compiled kernel cache.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.config.launch_verification_mode.html#warp.config.launch_verification_mode" title="warp.config.launch_verification_mode"><code class="xref py py-obj docutils literal notranslate"><span class="pre">launch_verification_mode</span></code></a></p></td>
+<td><p>Kernel launch array access verification mode.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.config.legacy_cpu_linker.html#warp.config.legacy_cpu_linker" title="warp.config.legacy_cpu_linker"><code class="xref py py-obj docutils literal notranslate"><span class="pre">legacy_cpu_linker</span></code></a></p></td>
 <td><p>Use the legacy RTDyld linker instead of JITLink for CPU kernel loading.</p></td>
@@ -633,11 +640,11 @@ setting documentation for details.</p>
       </div>
     </a>
     <a class="right-next"
-       href="_generated/warp.config.cache_kernels.html"
+       href="_generated/warp.config.LaunchVerificationMode.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.config.cache_kernels</p>
+        <p class="prev-next-title">warp.config.LaunchVerificationMode</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>

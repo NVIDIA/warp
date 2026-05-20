@@ -3,5 +3,4 @@
 
 .. currentmodule:: warp.sparse
 
-
 .. autofunction:: bsr_assign

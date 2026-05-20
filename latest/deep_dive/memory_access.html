@@ -1,0 +1,1007 @@
+
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>CPU/GPU cross-device memory access &#8212; Warp 1.14.0.dev0</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=3d681599" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+
+
+    <script src="../_static/documentation_options.js?v=b37a29d0"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=fd10adb8"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'deep_dive/memory_access';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'latest';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+
+    <link rel="icon" href="../_static/favicon.png"/>
+
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Concurrency" href="concurrency.html" />
+    <link rel="prev" title="Allocators" href="allocators.html" />
+
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="1.14.0.dev0" />
+
+
+  </head>
+
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0.dev0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0.dev0 - Home"/>
+  
+  
+    <p class="title logo__title">Warp 1.14.0.dev0</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0.dev0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0.dev0 - Home"/>
+  
+  
+    <p class="title logo__title">Warp 1.14.0.dev0</p>
+  
+</a>
+
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+
+
+<nav class="bd-docs-nav bd-links"
+     aria-label="Table of Contents">
+  <p class="bd-links__title" role="heading" aria-level="1">Table of Contents</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/basics.html">Basics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/runtime.html">Runtime</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/devices.html">Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/differentiability.html">Differentiability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/generics.html">Generics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/tiles.html">Tiles</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../user_guide/interoperability.html">Interoperability</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../user_guide/interoperability_pytorch.html">PyTorch Interoperability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../user_guide/interoperability_jax.html">JAX Interoperability</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/limitations.html">Limitations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/contribution_guide.html">Contribution Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/publications.html">Publications using Warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/compatibility.html">Compatibility &amp; Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/faq.html">FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/changelog.html">Changelog</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Deep Dive</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="codegen.html">Code Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="allocators.html">Allocators</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">CPU/GPU cross-device memory access</a></li>
+<li class="toctree-l1"><a class="reference internal" href="concurrency.html">Concurrency</a></li>
+<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Domain Modules</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../domain_modules/sparse.html">Sparse Matrices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../domain_modules/fem.html">FEM Toolkit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../domain_modules/render.html">Rendering</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp.html">warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_autograd.html">warp.autograd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_config.html">warp.config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_fem.html">warp.fem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_jax.html">warp.jax</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_optim.html">warp.optim</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_render.html">warp.render</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_sparse.html">warp.sparse</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_types.html">warp.types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_utils.html">warp.utils</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Language Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../language_reference/builtins.html">Built-Ins</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">CPU/GPU cross-device memory access</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="d-flex justify-content-end w-100">
+  <a href="../_sources/deep_dive/memory_access.rst.txt">
+    <i class="fa-solid fa-file-code"></i> View page source
+  </a>
+</div>
+</div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="cpu-gpu-cross-device-memory-access">
+<h1>CPU/GPU cross-device memory access<a class="headerlink" href="#cpu-gpu-cross-device-memory-access" title="Link to this heading">#</a></h1>
+<p>Warp arrays are associated with an allocation <a class="reference internal" href="../api_reference/_generated/warp.Device.html#warp.Device" title="warp.Device"><code class="xref py py-class docutils literal notranslate"><span class="pre">Device</span></code></a> such as
+<code class="docutils literal notranslate"><span class="pre">&quot;cpu&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;cuda:0&quot;</span></code>, and kernels run on a launch device. The portable
+default is to launch kernels on the same device as their array arguments. On
+systems with hardware-supported CPU/GPU memory access, some cross-device
+patterns can also be valid: a GPU may be able to read or write unpinned CPU
+memory directly, and some systems can let CPU code directly access GPU-resident
+CUDA managed memory.</p>
+<p>This page describes how Warp exposes those hardware capabilities and how to use
+them when writing mixed CPU/GPU code.</p>
+<section id="launching-with-arrays-on-the-same-device">
+<h2>Launching with arrays on the same device<a class="headerlink" href="#launching-with-arrays-on-the-same-device" title="Link to this heading">#</a></h2>
+<p>The launch device determines where a kernel runs, and the array device describes
+where the array allocation lives:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">cpu_array</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1024</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+<span class="n">gpu_array</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1024</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">cpu_array</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">cpu_array</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">gpu_array</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">gpu_array</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The same-device pattern works on all supported systems. Passing an array from
+one device to a kernel running on another device depends on the capabilities of
+the device that performs the access.</p>
+</section>
+<section id="device-capability-properties">
+<h2>Device capability properties<a class="headerlink" href="#device-capability-properties" title="Link to this heading">#</a></h2>
+<p>Each device exposes three CPU/GPU memory access properties:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.Device.html#warp.Device.is_cpu_memory_access_from_gpu_supported" title="warp.Device.is_cpu_memory_access_from_gpu_supported"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Device.is_cpu_memory_access_from_gpu_supported</span></code></a></p></li>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.Device.html#warp.Device.is_gpu_memory_access_from_cpu_supported" title="warp.Device.is_gpu_memory_access_from_cpu_supported"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Device.is_gpu_memory_access_from_cpu_supported</span></code></a></p></li>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.Device.html#warp.Device.is_cpu_gpu_atomic_supported" title="warp.Device.is_cpu_gpu_atomic_supported"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Device.is_cpu_gpu_atomic_supported</span></code></a></p></li>
+</ul>
+<p>This deep dive focuses on how those capabilities affect cross-device launches,
+managed memory, atomics, and diagnostics.</p>
+<p>On CPU devices, these properties are always <code class="docutils literal notranslate"><span class="pre">False</span></code>. On GPU devices, each
+property describes a specific access path or operation; support for one does not
+imply support for another. For example, a system can allow GPU access to CPU
+memory without allowing CPU access to GPU-resident managed memory.</p>
+</section>
+<section id="common-cpu-gpu-memory-models">
+<h2>Common CPU/GPU memory models<a class="headerlink" href="#common-cpu-gpu-memory-models" title="Link to this heading">#</a></h2>
+<p>The exact values are reported by the CUDA driver and may vary by platform,
+driver, kernel, and GPU generation. The following table summarizes the models
+advanced users commonly need to reason about:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<colgroup>
+<col style="width: 24.0%" />
+<col style="width: 25.0%" />
+<col style="width: 25.0%" />
+<col style="width: 26.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>System model</p></th>
+<th class="head"><p>GPU access to CPU arrays</p></th>
+<th class="head"><p>CPU access to GPU-resident managed memory</p></th>
+<th class="head"><p>CPU/GPU atomics</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Discrete GPU without HMM</p></td>
+<td><p>Usually no</p></td>
+<td><p>Usually no</p></td>
+<td><p>Usually no</p></td>
+</tr>
+<tr class="row-odd"><td><p>Discrete GPU with Linux HMM</p></td>
+<td><p>Yes</p></td>
+<td><p>Usually no</p></td>
+<td><p>Usually no</p></td>
+</tr>
+<tr class="row-even"><td><p>Jetson Thor-style ATS</p></td>
+<td><p>Yes</p></td>
+<td><p>Platform-dependent for managed memory</p></td>
+<td><p>Yes, when reported by the driver</p></td>
+</tr>
+<tr class="row-odd"><td><p>Host-page-table ATS with distinct CPU/GPU physical memory</p></td>
+<td><p>Yes</p></td>
+<td><p>Only when reported by the driver</p></td>
+<td><p>Yes, when reported by the driver</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>HMM stands for Heterogeneous Memory Management; for background, see NVIDIA’s
+<a class="reference external" href="https://developer.nvidia.com/blog/simplifying-gpu-application-development-with-heterogeneous-memory-management/">HMM overview</a>.
+ATS stands for Address Translation Services. Warp does not require users to
+classify the platform manually. Query the <a class="reference internal" href="../api_reference/_generated/warp.Device.html#warp.Device" title="warp.Device"><code class="xref py py-class docutils literal notranslate"><span class="pre">Device</span></code></a> properties and branch
+on the behavior your program needs.</p>
+<p>For the CUDA-level model behind these categories, see the CUDA Programming
+Guide’s <a class="reference external" href="https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/understanding-memory.html">Unified and System Memory chapter</a>,
+especially its <a class="reference external" href="https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/understanding-memory.html#table-unified-memory-levels">Unified Memory paradigms table</a>.</p>
+<p>Do not infer CPU access to GPU-resident CUDA managed memory from ATS, C2C, or a
+product family name. For example, a DGX Spark-class GB10 system can report ATS
+and GPU access to CPU memory while
+<code class="docutils literal notranslate"><span class="pre">device.is_gpu_memory_access_from_cpu_supported</span></code> is <code class="docutils literal notranslate"><span class="pre">False</span></code>. Query the
+property directly before CPU code reads or writes GPU-resident managed memory.</p>
+</section>
+<section id="launching-gpu-kernels-with-cpu-arrays">
+<h2>Launching GPU kernels with CPU arrays<a class="headerlink" href="#launching-gpu-kernels-with-cpu-arrays" title="Link to this heading">#</a></h2>
+<p>When <code class="docutils literal notranslate"><span class="pre">device.is_cpu_memory_access_from_gpu_supported</span></code> is true, a GPU kernel can
+directly read or write a CPU array:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">device</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_device</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1024</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">device</span><span class="o">.</span><span class="n">is_cpu_memory_access_from_gpu_supported</span><span class="p">:</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">a_gpu</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a_gpu</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a_gpu</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This can avoid explicit copies on HMM and coherent CPU/GPU systems. If the
+capability is false and the kernel actually dereferences the CPU pointer, CUDA
+will report a runtime error such as an illegal memory access.</p>
+</section>
+<section id="accessing-gpu-data-from-cpu-code">
+<h2>Accessing GPU data from CPU code<a class="headerlink" href="#accessing-gpu-data-from-cpu-code" title="Link to this heading">#</a></h2>
+<p>CPU access to GPU-resident managed memory is a separate capability:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">device</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_device</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">device</span><span class="o">.</span><span class="n">is_gpu_memory_access_from_cpu_supported</span><span class="p">:</span>
+    <span class="o">...</span>
+</pre></div>
+</div>
+<div class="admonition important">
+<p class="admonition-title">Important</p>
+<p><code class="docutils literal notranslate"><span class="pre">device.is_gpu_memory_access_from_cpu_supported</span></code> reports a hardware
+capability for CUDA managed memory. Warp exposes the property today, but
+standard Warp CUDA arrays are not managed-memory allocations. Until Warp
+provides managed-memory allocation APIs, copy CUDA arrays to <code class="docutils literal notranslate"><span class="pre">&quot;cpu&quot;</span></code> before
+CPU code reads or writes them.</p>
+</div>
+<p>CUDA arrays created by standard Warp array constructors, such as
+<a class="reference internal" href="../api_reference/_generated/warp.zeros.html#warp.zeros" title="warp.zeros"><code class="xref py py-func docutils literal notranslate"><span class="pre">zeros()</span></code></a>, <a class="reference internal" href="../api_reference/_generated/warp.empty.html#warp.empty" title="warp.empty"><code class="xref py py-func docutils literal notranslate"><span class="pre">empty()</span></code></a>, and <a class="reference internal" href="../api_reference/_generated/warp.ones.html#warp.ones" title="warp.ones"><code class="xref py py-func docutils literal notranslate"><span class="pre">ones()</span></code></a>, are not CUDA managed-memory
+allocations. This is true whether the array comes from Warp’s <a class="reference internal" href="allocators.html#mempool-allocators"><span class="std std-ref">mempool
+allocator</span></a> or the built-in default CUDA allocator. For
+those arrays, use an explicit copy before CPU code reads or writes the data:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1024</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+<span class="n">a_cpu</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">cpu_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a_cpu</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a_cpu</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Do not assume that GPU access to CPU memory implies CPU access to GPU-resident
+memory. Some systems support the former but not the latter.</p>
+</section>
+<section id="checking-access-for-a-specific-array-with-wp-can-access">
+<h2>Checking access for a specific array with <code class="docutils literal notranslate"><span class="pre">wp.can_access()</span></code><a class="headerlink" href="#checking-access-for-a-specific-array-with-wp-can-access" title="Link to this heading">#</a></h2>
+<p>The function <a class="reference internal" href="../api_reference/_generated/warp.can_access.html#warp.can_access" title="warp.can_access"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.can_access()</span></code></a> answers whether code running on one device
+can directly access a specific Warp array:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">launch_device</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_device</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">1024</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">wp</span><span class="o">.</span><span class="n">can_access</span><span class="p">(</span><span class="n">launch_device</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+    <span class="o">...</span>
+</pre></div>
+</div>
+<p>For CPU arrays passed to CUDA kernels, pinned CPU arrays are accepted on CUDA
+devices with unified virtual addressing, and unpinned CPU arrays require
+<code class="docutils literal notranslate"><span class="pre">is_cpu_memory_access_from_gpu_supported</span></code>. For CUDA arrays, default CUDA
+allocations use CUDA peer-access state, while memory pool allocations use
+memory-pool access state. See <a class="reference internal" href="allocators.html#mempool-access"><span class="std std-ref">Memory Pool Access</span></a> for the distinction between
+peer access for default CUDA allocations and memory-pool access for mempool
+allocations.</p>
+<p><code class="docutils literal notranslate"><span class="pre">wp.can_access(device,</span> <span class="pre">array)</span></code> returns <code class="docutils literal notranslate"><span class="pre">False</span></code> when Warp cannot verify that
+the array is directly accessible. This includes cross-device arrays backed by
+custom allocators or externally wrapped allocations whose allocation kind is not
+known to Warp. A <code class="docutils literal notranslate"><span class="pre">False</span></code> result means “not verified accessible”; it does not
+prove that the hardware could never access the pointer.</p>
+<p><code class="docutils literal notranslate"><span class="pre">wp.can_access()</span></code> is a resource-oriented API. In this release, the second
+argument must be a concrete Warp array instance. Annotation-only arrays such as
+<code class="docutils literal notranslate"><span class="pre">wp.array(dtype=float)</span></code> or <code class="docutils literal notranslate"><span class="pre">wp.array[float]</span></code> and device objects are not
+supported.</p>
+</section>
+<section id="checking-coarse-device-access-with-device-can-access">
+<h2>Checking coarse device access with <code class="docutils literal notranslate"><span class="pre">Device.can_access()</span></code><a class="headerlink" href="#checking-coarse-device-access-with-device-can-access" title="Link to this heading">#</a></h2>
+<p>The method <a class="reference internal" href="../api_reference/_generated/warp.Device.html#warp.Device.can_access" title="warp.Device.can_access"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Device.can_access()</span></code></a> is a coarse device-level query for cases
+where no concrete array is available:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">launch_device</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_device</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">array_device</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_device</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">launch_device</span><span class="o">.</span><span class="n">can_access</span><span class="p">(</span><span class="n">array_device</span><span class="p">):</span>
+    <span class="o">...</span>
+</pre></div>
+</div>
+<p>For GPU kernels accessing CPU arrays, this method uses
+<code class="docutils literal notranslate"><span class="pre">is_cpu_memory_access_from_gpu_supported</span></code> because standard Warp CPU arrays use
+unpinned CPU memory. For CPU code accessing CUDA arrays, it returns <code class="docutils literal notranslate"><span class="pre">False</span></code> for
+Warp CUDA arrays because the built-in CUDA allocators do not create CUDA
+managed-memory allocations. For GPU/GPU pairs, it reflects the target device’s
+current built-in allocator mode: memory-pool access when memory pools are
+enabled on the target device, and peer access otherwise.</p>
+<p><code class="docutils literal notranslate"><span class="pre">Device.can_access()</span></code> is not authoritative for existing arrays. An array may
+have been allocated before memory-pool settings changed, may use a custom
+allocator, or may wrap external memory. Code that has an actual array should use
+<code class="docutils literal notranslate"><span class="pre">wp.can_access(device,</span> <span class="pre">array)</span></code> instead.</p>
+</section>
+<section id="checking-array-access-before-launch">
+<span id="launch-verification"></span><h2>Checking array access before launch<a class="headerlink" href="#checking-array-access-before-launch" title="Link to this heading">#</a></h2>
+<p>By default, Warp launches kernels after type, dtype, and dimension validation
+without checking array accessibility. This keeps the launch path lightweight and
+allows hardware-supported mixed CPU/GPU launches to work.</p>
+<p>If you want a clear Python error before the kernel runs, set
+<a class="reference internal" href="../api_reference/_generated/warp.config.launch_verification_mode.html#warp.config.launch_verification_mode" title="warp.config.launch_verification_mode"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.launch_verification_mode</span></code></a>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">launch_verification_mode</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">LaunchVerificationMode</span><span class="o">.</span><span class="n">CHECKED</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">LaunchVerificationMode.RELAXED</span></code> is the default and performs no pre-launch
+array access checks beyond type, dtype, and dimension validation.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">LaunchVerificationMode.STRICT</span></code> restores Warp’s original same-device rule
+and requires every Warp array argument to be allocated on the launch device.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">LaunchVerificationMode.CHECKED</span></code> raises an error before launch when Warp can
+determine that a cross-device Warp array argument is not accessible from the
+launch device. This is useful when debugging mixed-device launches on systems
+that do not support direct CPU/GPU memory access or on multi-GPU systems where
+peer and memory-pool access are configured separately.</p></li>
+</ul>
+<p>Arrays backed by custom or externally wrapped allocators are a limitation of this
+diagnostic. Warp does not know the allocation kind for those arrays, so
+<code class="docutils literal notranslate"><span class="pre">LaunchVerificationMode.CHECKED</span></code> emits a <code class="docutils literal notranslate"><span class="pre">UserWarning</span></code> once per
+<code class="docutils literal notranslate"><span class="pre">(kernel,</span> <span class="pre">argument</span> <span class="pre">name,</span> <span class="pre">source</span> <span class="pre">device,</span> <span class="pre">launch</span> <span class="pre">device)</span></code> pattern and allows the
+launch to proceed. Use <code class="docutils literal notranslate"><span class="pre">LaunchVerificationMode.STRICT</span></code> if unknown allocation
+provenance should be rejected, or <code class="docutils literal notranslate"><span class="pre">LaunchVerificationMode.RELAXED</span></code> to suppress
+the diagnostic.</p>
+<p>Objects exposing <code class="docutils literal notranslate"><span class="pre">__array_interface__</span></code> are accepted only for CPU launches.
+Warp treats that protocol as a CPU-addressable pointer and does not infer CUDA
+allocation provenance from it, so <code class="docutils literal notranslate"><span class="pre">LaunchVerificationMode.CHECKED</span></code> has no
+cross-device access decision to make for that protocol.</p>
+<p>Directly passing an object that exposes <code class="docutils literal notranslate"><span class="pre">__cuda_array_interface__</span></code> is
+different from passing a Warp array. The protocol lets Warp construct the kernel
+argument at launch time, but it does not identify the allocation device or
+allocation kind. In this phase, <code class="docutils literal notranslate"><span class="pre">LaunchVerificationMode.CHECKED</span></code> does not fully
+verify directly passed objects exposing this protocol. Advanced users who know
+such an allocation is valid are responsible for ensuring that the launch device
+can legally access the pointer.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">launch_verification_mode</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">LaunchVerificationMode</span><span class="o">.</span><span class="n">CHECKED</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><a class="reference internal" href="../api_reference/_generated/warp.config.launch_verification_mode.html#warp.config.launch_verification_mode" title="warp.config.launch_verification_mode"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.launch_verification_mode</span></code></a> can add launch overhead in
+<code class="docutils literal notranslate"><span class="pre">LaunchVerificationMode.STRICT</span></code> and <code class="docutils literal notranslate"><span class="pre">LaunchVerificationMode.CHECKED</span></code> modes.
+Use <code class="docutils literal notranslate"><span class="pre">LaunchVerificationMode.RELAXED</span></code> in performance-sensitive code that has
+already validated its launch accessibility assumptions.</p>
+<p>Unlike <a class="reference internal" href="../api_reference/_generated/warp.config.verify_cuda.html#warp.config.verify_cuda" title="warp.config.verify_cuda"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.verify_cuda</span></code></a>,
+<a class="reference internal" href="../api_reference/_generated/warp.config.launch_verification_mode.html#warp.config.launch_verification_mode" title="warp.config.launch_verification_mode"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.launch_verification_mode</span></code></a> can be used during CUDA graph
+capture because <code class="docutils literal notranslate"><span class="pre">LaunchVerificationMode.CHECKED</span></code> checks run before each launch
+is recorded. For cross-GPU graph capture, enable peer access or memory-pool
+access with Warp APIs before capture begins so verification can use the recorded
+access state during capture. When a CUDA graph captures a launch with CPU array
+arguments, replay uses the same captured CPU pointers. If the arrays remain
+alive, CPU updates made between replays are visible to kernels on devices that
+can access CPU memory.</p>
+</section>
+<section id="checking-cpu-gpu-atomic-support">
+<h2>Checking CPU/GPU atomic support<a class="headerlink" href="#checking-cpu-gpu-atomic-support" title="Link to this heading">#</a></h2>
+<p>Direct loads and stores do not imply atomic safety. Code that uses atomics from
+both CPU and GPU code paths on the same allocation should also check
+<a class="reference internal" href="../api_reference/_generated/warp.Device.html#warp.Device.is_cpu_gpu_atomic_supported" title="warp.Device.is_cpu_gpu_atomic_supported"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Device.is_cpu_gpu_atomic_supported</span></code></a>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">device</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_device</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="ow">not</span> <span class="n">device</span><span class="o">.</span><span class="n">is_cpu_gpu_atomic_supported</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;This algorithm requires CPU/GPU atomic support&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><a class="reference internal" href="../api_reference/_generated/warp.Device.html#warp.Device.is_cpu_gpu_atomic_supported" title="warp.Device.is_cpu_gpu_atomic_supported"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Device.is_cpu_gpu_atomic_supported</span></code></a>
+answers only whether CPU/GPU atomic operations are supported for an otherwise
+accessible allocation. The allocation must still be accessible from both the CPU
+and GPU, and the program must provide any required synchronization.</p>
+<p>For example, GPU atomics into a CPU allocation require both GPU access to CPU
+memory and CPU/GPU atomic support:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">device</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_device</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">counters</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="p">(</span>
+    <span class="n">device</span><span class="o">.</span><span class="n">is_cpu_memory_access_from_gpu_supported</span>
+    <span class="ow">and</span> <span class="n">device</span><span class="o">.</span><span class="n">is_cpu_gpu_atomic_supported</span>
+<span class="p">):</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">update_counters</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">counters</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">synchronize_device</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">counters</span><span class="o">.</span><span class="n">numpy</span><span class="p">()[</span><span class="mi">0</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>The same requirements apply when CPU and GPU work overlap. If a CPU kernel and a
+GPU kernel both write the same allocation concurrently, all conflicting accesses
+must use atomic operations, and the device must report CPU/GPU atomic support.
+Atomicity prevents lost updates, but it does not provide a deterministic
+ordering for non-commutative operations or floating-point accumulation:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Assume both kernels call wp.atomic_add(counters, 0, 1) once per thread.</span>
+<span class="n">counters</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="p">(</span>
+    <span class="n">device</span><span class="o">.</span><span class="n">is_cpu_memory_access_from_gpu_supported</span>
+    <span class="ow">and</span> <span class="n">device</span><span class="o">.</span><span class="n">is_cpu_gpu_atomic_supported</span>
+<span class="p">):</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">gpu_increment</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">num_gpu_threads</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">counters</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">cpu_increment</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">num_cpu_threads</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">counters</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+
+    <span class="n">wp</span><span class="o">.</span><span class="n">synchronize_device</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">counters</span><span class="o">.</span><span class="n">numpy</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">num_gpu_threads</span> <span class="o">+</span> <span class="n">num_cpu_threads</span>
+</pre></div>
+</div>
+<p>If <a class="reference internal" href="../api_reference/_generated/warp.Device.html#warp.Device.is_cpu_gpu_atomic_supported" title="warp.Device.is_cpu_gpu_atomic_supported"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Device.is_cpu_gpu_atomic_supported</span></code></a>
+is <code class="docutils literal notranslate"><span class="pre">False</span></code>, do not rely on concurrent CPU/GPU atomics, even on systems where
+the GPU can directly load and store CPU memory.</p>
+<p>That does not make non-managed CUDA allocations CPU-accessible. CPU code should
+still copy arrays backed by those allocations before reading or writing them:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">values</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1024</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+<span class="n">values_cpu</span> <span class="o">=</span> <span class="n">values</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="choosing-a-memory-access-pattern">
+<h2>Choosing a memory access pattern<a class="headerlink" href="#choosing-a-memory-access-pattern" title="Link to this heading">#</a></h2>
+<p>Use the same-device pattern unless you need zero-copy CPU/GPU access. When you
+already have an array, use <a class="reference internal" href="../api_reference/_generated/warp.can_access.html#warp.can_access" title="warp.can_access"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.can_access(device,</span> <span class="pre">array)</span></code></a>
+to decide whether a specific launch device can directly access that allocation.
+Capability flags are most useful before allocation, when deciding what kind of
+allocation or access pattern to create:</p>
+<ul class="simple">
+<li><p>GPU kernel reads or writes unpinned CPU arrays: check
+<code class="docutils literal notranslate"><span class="pre">device.is_cpu_memory_access_from_gpu_supported</span></code>.</p></li>
+<li><p>GPU kernel reads or writes pinned CPU arrays: use <code class="docutils literal notranslate"><span class="pre">pinned=True</span></code> and check
+<code class="docutils literal notranslate"><span class="pre">device.is_uva</span></code>.</p></li>
+<li><p>CPU code reads or writes arrays backed by non-managed CUDA allocations: copy
+the data to <code class="docutils literal notranslate"><span class="pre">&quot;cpu&quot;</span></code> first.</p></li>
+<li><p>CPU code accesses externally provided GPU-resident CUDA managed memory: check
+<code class="docutils literal notranslate"><span class="pre">device.is_gpu_memory_access_from_cpu_supported</span></code>.</p></li>
+<li><p>CPU and GPU both use atomics on the same allocation: make sure the allocation
+is accessible from both the CPU and GPU, and check
+<code class="docutils literal notranslate"><span class="pre">device.is_cpu_gpu_atomic_supported</span></code>.</p></li>
+<li><p>GPU kernels use arrays from another GPU: enable peer access for default CUDA
+allocations, or <a class="reference internal" href="allocators.html#mempool-access"><span class="std std-ref">memory-pool access</span></a> for CUDA
+memory-pool allocations, then check the concrete array with
+<a class="reference internal" href="../api_reference/_generated/warp.can_access.html#warp.can_access" title="warp.can_access"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.can_access(device,</span> <span class="pre">array)</span></code></a>.</p></li>
+<li><p>Debugging mixed-device launch failures: temporarily set
+<a class="reference internal" href="../api_reference/_generated/warp.config.launch_verification_mode.html#warp.config.launch_verification_mode" title="warp.config.launch_verification_mode"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.launch_verification_mode</span></code></a> to
+<code class="docutils literal notranslate"><span class="pre">wp.LaunchVerificationMode.CHECKED</span></code>.</p></li>
+</ul>
+<p>Prefer capability checks over platform-name checks. They make code portable
+across discrete GPUs, HMM-enabled systems, Jetson, Grace, and future coherent
+CPU/GPU platforms.</p>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="allocators.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Allocators</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="concurrency.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Concurrency</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+
+
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#launching-with-arrays-on-the-same-device">Launching with arrays on the same device</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#device-capability-properties">Device capability properties</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#common-cpu-gpu-memory-models">Common CPU/GPU memory models</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#launching-gpu-kernels-with-cpu-arrays">Launching GPU kernels with CPU arrays</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#accessing-gpu-data-from-cpu-code">Accessing GPU data from CPU code</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#checking-access-for-a-specific-array-with-wp-can-access">Checking access for a specific array with <code class="docutils literal notranslate"><span class="pre">wp.can_access()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#checking-coarse-device-access-with-device-can-access">Checking coarse device access with <code class="docutils literal notranslate"><span class="pre">Device.can_access()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#checking-array-access-before-launch">Checking array access before launch</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#checking-cpu-gpu-atomic-support">Checking CPU/GPU atomic support</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#choosing-a-memory-access-pattern">Choosing a memory access pattern</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+
+  
+  <div class="tocsection editthispage">
+    <a href="https://github.com/NVIDIA/warp/edit/main/docs/deep_dive/memory_access.rst">
+      <i class="fa-solid fa-pencil"></i>
+      
+      
+        
+          Edit on GitHub
+        
+      
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+<a class="footer-brand logo" href="https://www.nvidia.com">
+  <img src="../_static/nvidia-logo-horiz-rgb-1c-blk-for-screen.svg" class="logo__image only-light" alt="NVIDIA"/>
+  <img src="../_static/nvidia-logo-horiz-rgb-1c-wht-for-screen.svg" class="logo__image only-dark" alt="NVIDIA"/>
+</a></div>
+      
+        <div class="footer-item">
+
+<div class="footer-links">
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/privacy-policy/">Privacy Policy</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/privacy-center/">Your Privacy Choices</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/terms-of-service/">Terms of Service</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/accessibility/">Accessibility</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/company-policies/">Corporate Policies</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/product-security/">Product Security</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/contact/">Contact</a>
+  
+  
+  
+</div>
+</div>
+      
+        <div class="footer-item">
+
+
+
+
+  <p class="copyright">
+    
+      Copyright © 2022-2026 NVIDIA Corporation.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+</div>
+
+  </footer>
+  </body>
+</html>

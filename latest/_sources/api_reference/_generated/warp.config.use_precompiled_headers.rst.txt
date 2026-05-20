@@ -3,5 +3,4 @@
 
 .. currentmodule:: warp.config
 
-
 .. autodata:: use_precompiled_headers

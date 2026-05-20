@@ -3,5 +3,4 @@
 
 .. currentmodule:: warp.jax
 
-
 .. autofunction:: device_to_jax

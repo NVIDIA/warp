@@ -400,6 +400,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/codegen.html">Code Generation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/allocators.html">Allocators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/memory_access.html">CPU/GPU cross-device memory access</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/concurrency.html">Concurrency</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/profiling.html">Profiling</a></li>
 </ul>
@@ -547,6 +548,14 @@ able to process one Warp-grid element per CUDA thread.</p>
 <li><p>Each dimension of a Warp array cannot be greater than the maximum value representable by a 32-bit signed integer,
 <span class="math notranslate nohighlight">\(2^{31}-1\)</span>.</p></li>
 <li><p>There are currently no data types that support complex numbers.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">wp.config.launch_verification_mode</span> <span class="pre">=</span> <span class="pre">wp.LaunchVerificationMode.CHECKED</span></code>
+only fully verifies cross-device <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.array</span></code></a> arguments when
+Warp can determine the allocation kind. Arrays backed by custom or externally
+wrapped allocators warn and proceed in checked mode; use
+<code class="docutils literal notranslate"><span class="pre">wp.LaunchVerificationMode.STRICT</span></code> to reject cross-device launches before
+checking allocator provenance. Directly passed <code class="docutils literal notranslate"><span class="pre">__array_interface__</span></code> or
+<code class="docutils literal notranslate"><span class="pre">__cuda_array_interface__</span></code> objects are not fully allocation-verified. See
+<a class="reference internal" href="../deep_dive/memory_access.html#launch-verification"><span class="std std-ref">Checking array access before launch</span></a> for details.</p></li>
 </ul>
 </section>
 <section id="structs">

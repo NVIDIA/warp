@@ -3,5 +3,4 @@
 
 .. currentmodule:: warp.sparse
 
-
 .. autodata:: bsr_row_index

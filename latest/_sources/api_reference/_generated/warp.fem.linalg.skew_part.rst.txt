@@ -3,5 +3,4 @@
 
 .. currentmodule:: warp.fem.linalg
 
-
 .. autodata:: skew_part

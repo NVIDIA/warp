@@ -399,6 +399,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../../deep_dive/codegen.html">Code Generation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../deep_dive/allocators.html">Allocators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../deep_dive/memory_access.html">CPU/GPU cross-device memory access</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../deep_dive/concurrency.html">Concurrency</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../deep_dive/profiling.html">Profiling</a></li>
 </ul>
@@ -495,7 +496,7 @@
 <h1>warp.Graph<a class="headerlink" href="#warp-graph" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.Graph">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Graph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">capture_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L4303-L4511"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Graph" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Graph</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">capture_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L4351-L4559"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Graph" title="Link to this definition">#</a></dt>
 <dd><p>A handle to a captured graph of Warp operations.</p>
 <p>Instances are returned by <a class="reference internal" href="warp.capture_end.html#warp.capture_end" title="warp.capture_end"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.capture_end()</span></code></a> (after recording with
 <a class="reference internal" href="warp.capture_begin.html#warp.capture_begin" title="warp.capture_begin"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.capture_begin()</span></code></a> or via <a class="reference internal" href="warp.ScopedCapture.html#warp.ScopedCapture" title="warp.ScopedCapture"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.ScopedCapture</span></code></a>) or by
@@ -517,7 +518,7 @@ the two cases at runtime.</p>
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Graph.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">capture_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L4319-L4334"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Graph.__init__" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">capture_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L4367-L4382"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Graph.__init__" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -560,7 +561,7 @@ the two cases at runtime.</p>
 </div>
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Graph.set_param">
-<span class="sig-name descname"><span class="pre">set_param</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arr</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L4392-L4429"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Graph.set_param" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">set_param</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arr</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L4440-L4477"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Graph.set_param" title="Link to this definition">#</a></dt>
 <dd><p>Copy array data into a named parameter region of a loaded APIC graph.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -598,7 +599,7 @@ array’s underlying memory is copied into the parameter region.</p></li>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Graph.get_param">
-<span class="sig-name descname"><span class="pre">get_param</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arr</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L4430-L4465"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Graph.get_param" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_param</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arr</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L4478-L4513"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Graph.get_param" title="Link to this definition">#</a></dt>
 <dd><p>Copy data from a named parameter region of a loaded APIC graph into an array.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -634,7 +635,7 @@ parameter region is copied into the array’s underlying memory.</p></li>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Graph.get_param_ptr">
-<span class="sig-name descname"><span class="pre">get_param_ptr</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L4466-L4488"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Graph.get_param_ptr" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_param_ptr</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L4514-L4536"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Graph.get_param_ptr" title="Link to this definition">#</a></dt>
 <dd><p>Return the device pointer of a named parameter region in a loaded APIC graph.</p>
 <p>The returned pointer is owned by the graph and remains valid until the
 graph is destroyed. Useful for zero-copy interop with other libraries
@@ -657,7 +658,7 @@ or <code class="docutils literal notranslate"><span class="pre">None</span></cod
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.Graph.params">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">params</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L4489-L4501"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Graph.params" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">params</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><span class="pre">dict</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L4537-L4549"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Graph.params" title="Link to this definition">#</a></dt>
 <dd><p>Mapping of parameter name to binding metadata for a loaded APIC graph.</p>
 <p>Each value is a dict with a single <code class="docutils literal notranslate"><span class="pre">&quot;size&quot;</span></code> key giving the parameter
 region’s size in bytes. Empty for graphs that were not loaded from a
@@ -671,7 +672,7 @@ region’s size in bytes. Empty for graphs that were not loaded from a
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.Graph.is_loaded">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_loaded</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L4502-L4511"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Graph.is_loaded" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_loaded</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L4550-L4559"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Graph.is_loaded" title="Link to this definition">#</a></dt>
 <dd><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if this graph was loaded from a <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> file.</p>
 <p>Use this to distinguish graphs returned by <a class="reference internal" href="warp.capture_load.html#warp.capture_load" title="warp.capture_load"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.capture_load()</span></code></a> (which
 support <a class="reference internal" href="#warp.Graph.set_param" title="warp.Graph.set_param"><code class="xref py py-meth docutils literal notranslate"><span class="pre">set_param()</span></code></a>, <a class="reference internal" href="#warp.Graph.get_param" title="warp.Graph.get_param"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_param()</span></code></a>, and <a class="reference internal" href="#warp.Graph.get_param_ptr" title="warp.Graph.get_param_ptr"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_param_ptr()</span></code></a>)

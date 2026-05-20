@@ -399,6 +399,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/codegen.html">Code Generation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/allocators.html">Allocators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/memory_access.html">CPU/GPU cross-device memory access</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/concurrency.html">Concurrency</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/profiling.html">Profiling</a></li>
 </ul>
@@ -1003,25 +1004,28 @@ element methods, and <a class="reference internal" href="warp_sparse.html#module
 <h2>Runtime<a class="headerlink" href="#runtime" title="Link to this heading">#</a></h2>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.clear_kernel_cache.html#warp.clear_kernel_cache" title="warp.clear_kernel_cache"><code class="xref py py-obj docutils literal notranslate"><span class="pre">clear_kernel_cache</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.LaunchVerificationMode.html#warp.LaunchVerificationMode" title="warp.LaunchVerificationMode"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LaunchVerificationMode</span></code></a></p></td>
+<td><p>Array-access verification modes for kernel launches.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.clear_kernel_cache.html#warp.clear_kernel_cache" title="warp.clear_kernel_cache"><code class="xref py py-obj docutils literal notranslate"><span class="pre">clear_kernel_cache</span></code></a></p></td>
 <td><p>Clear the kernel cache directory of previously generated source code and compiler artifacts.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.clear_lto_cache.html#warp.clear_lto_cache" title="warp.clear_lto_cache"><code class="xref py py-obj docutils literal notranslate"><span class="pre">clear_lto_cache</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.clear_lto_cache.html#warp.clear_lto_cache" title="warp.clear_lto_cache"><code class="xref py py-obj docutils literal notranslate"><span class="pre">clear_lto_cache</span></code></a></p></td>
 <td><p>Clear the LTO cache directory of previously generated LTO code.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.init.html#warp.init" title="warp.init"><code class="xref py py-obj docutils literal notranslate"><span class="pre">init</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.init.html#warp.init" title="warp.init"><code class="xref py py-obj docutils literal notranslate"><span class="pre">init</span></code></a></p></td>
 <td><p>Initialize the Warp runtime.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.is_cpu_available.html#warp.is_cpu_available" title="warp.is_cpu_available"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_cpu_available</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.is_cpu_available.html#warp.is_cpu_available" title="warp.is_cpu_available"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_cpu_available</span></code></a></p></td>
 <td><p>Check whether CPU execution is available.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.is_cubql_available.html#warp.is_cubql_available" title="warp.is_cubql_available"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_cubql_available</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.is_cubql_available.html#warp.is_cubql_available" title="warp.is_cubql_available"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_cubql_available</span></code></a></p></td>
 <td><p>Check whether the cuBQL BVH backend is available.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.is_cuda_available.html#warp.is_cuda_available" title="warp.is_cuda_available"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_cuda_available</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.is_cuda_available.html#warp.is_cuda_available" title="warp.is_cuda_available"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_cuda_available</span></code></a></p></td>
 <td><p>Check whether CUDA execution is available.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.print_diagnostics.html#warp.print_diagnostics" title="warp.print_diagnostics"><code class="xref py py-obj docutils literal notranslate"><span class="pre">print_diagnostics</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.print_diagnostics.html#warp.print_diagnostics" title="warp.print_diagnostics"><code class="xref py py-obj docutils literal notranslate"><span class="pre">print_diagnostics</span></code></a></p></td>
 <td><p>Print a comprehensive snapshot of the Warp build and runtime environment.</p></td>
 </tr>
 </tbody>
@@ -1137,46 +1141,49 @@ element methods, and <a class="reference internal" href="warp_sparse.html#module
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.ScopedDevice.html#warp.ScopedDevice" title="warp.ScopedDevice"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ScopedDevice</span></code></a></p></td>
 <td><p>A context manager to temporarily change the current default device.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.get_cuda_device.html#warp.get_cuda_device" title="warp.get_cuda_device"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_cuda_device</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.can_access.html#warp.can_access" title="warp.can_access"><code class="xref py py-obj docutils literal notranslate"><span class="pre">can_access</span></code></a></p></td>
+<td><p>Return whether <code class="docutils literal notranslate"><span class="pre">device</span></code> can directly access <code class="docutils literal notranslate"><span class="pre">resource</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.get_cuda_device.html#warp.get_cuda_device" title="warp.get_cuda_device"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_cuda_device</span></code></a></p></td>
 <td><p>Return the CUDA device with the given ordinal or the current CUDA device if ordinal is <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.get_cuda_device_count.html#warp.get_cuda_device_count" title="warp.get_cuda_device_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_cuda_device_count</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.get_cuda_device_count.html#warp.get_cuda_device_count" title="warp.get_cuda_device_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_cuda_device_count</span></code></a></p></td>
 <td><p>Return the number of CUDA devices supported in this environment.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.get_cuda_devices.html#warp.get_cuda_devices" title="warp.get_cuda_devices"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_cuda_devices</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.get_cuda_devices.html#warp.get_cuda_devices" title="warp.get_cuda_devices"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_cuda_devices</span></code></a></p></td>
 <td><p>Return a list of CUDA devices supported in this environment.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.get_cuda_driver_version.html#warp.get_cuda_driver_version" title="warp.get_cuda_driver_version"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_cuda_driver_version</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.get_cuda_driver_version.html#warp.get_cuda_driver_version" title="warp.get_cuda_driver_version"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_cuda_driver_version</span></code></a></p></td>
 <td><p>Return the CUDA driver version installed on the system.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.get_cuda_supported_archs.html#warp.get_cuda_supported_archs" title="warp.get_cuda_supported_archs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_cuda_supported_archs</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.get_cuda_supported_archs.html#warp.get_cuda_supported_archs" title="warp.get_cuda_supported_archs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_cuda_supported_archs</span></code></a></p></td>
 <td><p>Return a sorted list of CUDA compute architectures that can be used as compilation targets.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.get_cuda_toolkit_version.html#warp.get_cuda_toolkit_version" title="warp.get_cuda_toolkit_version"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_cuda_toolkit_version</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.get_cuda_toolkit_version.html#warp.get_cuda_toolkit_version" title="warp.get_cuda_toolkit_version"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_cuda_toolkit_version</span></code></a></p></td>
 <td><p>Return the CUDA Toolkit version used to build the Warp native library.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.get_device.html#warp.get_device" title="warp.get_device"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_device</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.get_device.html#warp.get_device" title="warp.get_device"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_device</span></code></a></p></td>
 <td><p>Return the device identified by the argument.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.get_devices.html#warp.get_devices" title="warp.get_devices"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_devices</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.get_devices.html#warp.get_devices" title="warp.get_devices"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_devices</span></code></a></p></td>
 <td><p>Return a list of devices supported in this environment.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.get_preferred_device.html#warp.get_preferred_device" title="warp.get_preferred_device"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_preferred_device</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.get_preferred_device.html#warp.get_preferred_device" title="warp.get_preferred_device"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_preferred_device</span></code></a></p></td>
 <td><p>Return the preferred compute device, <code class="docutils literal notranslate"><span class="pre">cuda:0</span></code> if available and <code class="docutils literal notranslate"><span class="pre">cpu</span></code> otherwise.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.is_device_available.html#warp.is_device_available" title="warp.is_device_available"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_device_available</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.is_device_available.html#warp.is_device_available" title="warp.is_device_available"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_device_available</span></code></a></p></td>
 <td><p>Check whether a device is available in the current environment.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.map_cuda_device.html#warp.map_cuda_device" title="warp.map_cuda_device"><code class="xref py py-obj docutils literal notranslate"><span class="pre">map_cuda_device</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.map_cuda_device.html#warp.map_cuda_device" title="warp.map_cuda_device"><code class="xref py py-obj docutils literal notranslate"><span class="pre">map_cuda_device</span></code></a></p></td>
 <td><p>Assign a device alias to a CUDA context.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.set_device.html#warp.set_device" title="warp.set_device"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_device</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.set_device.html#warp.set_device" title="warp.set_device"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_device</span></code></a></p></td>
 <td><p>Set the default device identified by the argument.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.synchronize_device.html#warp.synchronize_device" title="warp.synchronize_device"><code class="xref py py-obj docutils literal notranslate"><span class="pre">synchronize_device</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.synchronize_device.html#warp.synchronize_device" title="warp.synchronize_device"><code class="xref py py-obj docutils literal notranslate"><span class="pre">synchronize_device</span></code></a></p></td>
 <td><p>Synchronize the calling CPU thread with any outstanding CUDA work on the specified device</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.unmap_cuda_device.html#warp.unmap_cuda_device" title="warp.unmap_cuda_device"><code class="xref py py-obj docutils literal notranslate"><span class="pre">unmap_cuda_device</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.unmap_cuda_device.html#warp.unmap_cuda_device" title="warp.unmap_cuda_device"><code class="xref py py-obj docutils literal notranslate"><span class="pre">unmap_cuda_device</span></code></a></p></td>
 <td><p>Remove a CUDA device with the given alias.</p></td>
 </tr>
 </tbody>

@@ -3,5 +3,4 @@
 
 .. currentmodule:: warp.utils
 
-
 .. autofunction:: array_sum

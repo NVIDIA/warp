@@ -399,6 +399,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/codegen.html">Code Generation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/allocators.html">Allocators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/memory_access.html">CPU/GPU cross-device memory access</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/concurrency.html">Concurrency</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/profiling.html">Profiling</a></li>
 </ul>
@@ -681,6 +682,8 @@ If the <code class="docutils literal notranslate"><span class="pre">CUcontext</s
     <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
 </pre></div>
 </div>
+<p>For advanced systems where CPU and GPU memory may be directly accessible across
+device boundaries, see <a class="reference internal" href="../deep_dive/memory_access.html"><span class="doc">CPU/GPU cross-device memory access</span></a>.</p>
 </section>
 <section id="cuda-peer-access">
 <span id="peer-access"></span><h2>CUDA Peer Access<a class="headerlink" href="#cuda-peer-access" title="Link to this heading">#</a></h2>

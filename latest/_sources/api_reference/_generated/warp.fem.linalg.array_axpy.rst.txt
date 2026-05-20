@@ -3,5 +3,4 @@
 
 .. currentmodule:: warp.fem.linalg
 
-
 .. autofunction:: array_axpy

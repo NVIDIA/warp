@@ -3,5 +3,4 @@
 
 .. currentmodule:: warp.fem
 
-
 .. autodata:: grad_outer

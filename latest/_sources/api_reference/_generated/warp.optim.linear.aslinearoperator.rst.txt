@@ -3,5 +3,4 @@
 
 .. currentmodule:: warp.optim.linear
 
-
 .. autofunction:: aslinearoperator

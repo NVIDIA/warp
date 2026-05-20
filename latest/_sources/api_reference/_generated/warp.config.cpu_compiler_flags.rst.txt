@@ -3,5 +3,4 @@
 
 .. currentmodule:: warp.config
 
-
 .. autodata:: cpu_compiler_flags

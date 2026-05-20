@@ -392,6 +392,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="deep_dive/codegen.html">Code Generation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="deep_dive/allocators.html">Allocators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deep_dive/memory_access.html">CPU/GPU cross-device memory access</a></li>
 <li class="toctree-l1"><a class="reference internal" href="deep_dive/concurrency.html">Concurrency</a></li>
 <li class="toctree-l1"><a class="reference internal" href="deep_dive/profiling.html">Profiling</a></li>
 </ul>
@@ -502,6 +503,8 @@
         <li><a href="api_reference/_generated/warp.BvhQueryTiled.html#warp.BvhQueryTiled.__init__">(warp.BvhQueryTiled method)</a>
 </li>
         <li><a href="api_reference/_generated/warp.CaptureMode.html#warp.CaptureMode.__init__">(warp.CaptureMode method)</a>
+</li>
+        <li><a href="api_reference/_generated/warp.config.LaunchVerificationMode.html#warp.config.LaunchVerificationMode.__init__">(warp.config.LaunchVerificationMode method)</a>
 </li>
         <li><a href="api_reference/_generated/warp.Device.html#warp.Device.__init__">(warp.Device method)</a>
 </li>
@@ -716,6 +719,8 @@
         <li><a href="api_reference/_generated/warp.Kernel.html#warp.Kernel.__init__">(warp.Kernel method)</a>
 </li>
         <li><a href="api_reference/_generated/warp.Launch.html#warp.Launch.__init__">(warp.Launch method)</a>
+</li>
+        <li><a href="api_reference/_generated/warp.LaunchVerificationMode.html#warp.LaunchVerificationMode.__init__">(warp.LaunchVerificationMode method)</a>
 </li>
         <li><a href="api_reference/_generated/warp.Logger.html#warp.Logger.__init__">(warp.Logger method)</a>
 </li>
@@ -1837,8 +1842,12 @@
 </li>
       <li><a href="api_reference/_generated/warp.render.OpenGLRenderer.html#warp.render.OpenGLRenderer.camera_up">camera_up (warp.render.OpenGLRenderer property)</a>
 </li>
-      <li><a href="api_reference/_generated/warp.Device.html#warp.Device.can_access">can_access() (warp.Device method)</a>
+      <li><a href="api_reference/_generated/warp.can_access.html#warp.can_access">can_access() (in module warp)</a>
+
+      <ul>
+        <li><a href="api_reference/_generated/warp.Device.html#warp.Device.can_access">(warp.Device method)</a>
 </li>
+      </ul></li>
       <li><a href="api_reference/_generated/warp.array.html#warp.array.capacity">capacity (warp.array attribute)</a>
 
       <ul>
@@ -2097,6 +2106,12 @@
 </li>
       <li><a href="api_reference/_generated/warp.optim.linear.cg_function.html#warp.optim.linear.cg">cg() (in module warp.optim.linear)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.config.LaunchVerificationMode.html#warp.config.LaunchVerificationMode.CHECKED">CHECKED (warp.config.LaunchVerificationMode attribute)</a>
+
+      <ul>
+        <li><a href="api_reference/_generated/warp.LaunchVerificationMode.html#warp.LaunchVerificationMode.CHECKED">(warp.LaunchVerificationMode attribute)</a>
+</li>
+      </ul></li>
       <li><a href="api_reference/_generated/warp.tile.html#warp.tile.cinit">cinit() (warp.tile method)</a>
 
       <ul>
@@ -3501,12 +3516,12 @@
         <li><a href="api_reference/_generated/warp.Event.html#warp.Event.ipc_handle">(warp.Event method)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.types.is_array.html#warp.types.is_array">is_array() (in module warp.types)</a>
 </li>
       <li><a href="api_reference/_generated/warp.Function.html#warp.Function.is_builtin">is_builtin() (warp.Function method)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.Device.html#warp.Device.is_capturing">is_capturing (warp.Device property)</a>
 
       <ul>
@@ -3529,6 +3544,10 @@
 </li>
       <li><a href="api_reference/_generated/warp.is_cpu_available.html#warp.is_cpu_available">is_cpu_available() (in module warp)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.Device.html#warp.Device.is_cpu_gpu_atomic_supported">is_cpu_gpu_atomic_supported (warp.Device attribute)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.Device.html#warp.Device.is_cpu_memory_access_from_gpu_supported">is_cpu_memory_access_from_gpu_supported (warp.Device attribute)</a>
+</li>
       <li><a href="api_reference/_generated/warp.Device.html#warp.Device.is_cubin_supported">is_cubin_supported (warp.Device attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.is_cubql_available.html#warp.is_cubql_available">is_cubql_available() (in module warp)</a>
@@ -3544,6 +3563,8 @@
       <li><a href="api_reference/_generated/warp.fem.Grid2D.html#warp.fem.Grid2D.is_flipped">is_flipped (warp.fem.Grid2D attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.types.is_float.html#warp.types.is_float">is_float() (in module warp.types)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.Device.html#warp.Device.is_gpu_memory_access_from_cpu_supported">is_gpu_memory_access_from_cpu_supported (warp.Device attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.is_index">is_index (warp.Volume property)</a>
 </li>
@@ -3657,6 +3678,14 @@
       </ul></li>
       <li><a href="api_reference/_generated/warp.launch_tiled.html#warp.launch_tiled">launch_tiled() (in module warp)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.config.launch_verification_mode.html#warp.config.launch_verification_mode">launch_verification_mode (in module warp.config)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.LaunchVerificationMode.html#warp.LaunchVerificationMode">LaunchVerificationMode (class in warp)</a>
+
+      <ul>
+        <li><a href="api_reference/_generated/warp.config.LaunchVerificationMode.html#warp.config.LaunchVerificationMode">(class in warp.config)</a>
+</li>
+      </ul></li>
       <li><a href="api_reference/_generated/warp.tile.html#warp.tile.layout">layout (warp.tile attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.config.legacy_cpu_linker.html#warp.config.legacy_cpu_linker">legacy_cpu_linker (in module warp.config)</a>
@@ -3697,12 +3726,12 @@
 </li>
       <li><a href="api_reference/_generated/warp.load_aot_module.html#warp.load_aot_module">load_aot_module() (in module warp)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.load_from_address">load_from_address() (warp.Volume class method)</a>
 </li>
       <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.load_from_numpy">load_from_numpy() (warp.Volume class method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.load_from_nvdb">load_from_nvdb() (warp.Volume class method)</a>
 </li>
       <li><a href="api_reference/_generated/warp.load_module.html#warp.load_module">load_module() (in module warp)</a>
@@ -4781,7 +4810,13 @@
       <li><a href="api_reference/_generated/warp.fem.RegularQuadrature.html#warp.fem.RegularQuadrature.CachedFormula">RegularQuadrature.CachedFormula (class in warp.fem)</a>
 </li>
       <li><a href="api_reference/_generated/warp.CaptureMode.html#warp.CaptureMode.RELAXED">RELAXED (warp.CaptureMode attribute)</a>
+
+      <ul>
+        <li><a href="api_reference/_generated/warp.config.LaunchVerificationMode.html#warp.config.LaunchVerificationMode.RELAXED">(warp.config.LaunchVerificationMode attribute)</a>
 </li>
+        <li><a href="api_reference/_generated/warp.LaunchVerificationMode.html#warp.LaunchVerificationMode.RELAXED">(warp.LaunchVerificationMode attribute)</a>
+</li>
+      </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.render.OpenGLRenderer.html#warp.render.OpenGLRenderer.remove_shape_instance">remove_shape_instance() (warp.render.OpenGLRenderer method)</a>
@@ -5482,6 +5517,12 @@
 </li>
       <li><a href="api_reference/_generated/warp.stream_to_torch.html#warp.stream_to_torch">stream_to_torch() (in module warp)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.config.LaunchVerificationMode.html#warp.config.LaunchVerificationMode.STRICT">STRICT (warp.config.LaunchVerificationMode attribute)</a>
+
+      <ul>
+        <li><a href="api_reference/_generated/warp.LaunchVerificationMode.html#warp.LaunchVerificationMode.STRICT">(warp.LaunchVerificationMode attribute)</a>
+</li>
+      </ul></li>
       <li><a href="api_reference/_generated/warp.array.html#warp.array.strides">strides (warp.array attribute)</a>
 
       <ul>

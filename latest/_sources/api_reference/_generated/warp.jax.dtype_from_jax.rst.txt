@@ -3,5 +3,4 @@
 
 .. currentmodule:: warp.jax
 
-
 .. autofunction:: dtype_from_jax
