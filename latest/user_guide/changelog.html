@@ -832,6 +832,9 @@ instead of modifying the original when called with values from <code class="docu
 <li><p>Fix <code class="docutils literal notranslate"><span class="pre">wp.constant(wp.int32(IntEnum_value))</span></code> emitting the symbolic enum name instead of the
 integer value in generated C++/CUDA code on Python 3.10, causing compilation failures
 (<a class="reference external" href="https://github.com/newton-physics/newton/issues/2363">newton#2363</a>).</p></li>
+<li><p>Fix <code class="docutils literal notranslate"><span class="pre">wp.array.fill_()</span></code> performing temporary device allocations for common fill values,
+which broke CUDA graph composability. Oversized fill values still fall back to the
+previous staging path.</p></li>
 </ul>
 </section>
 <section id="id7">
