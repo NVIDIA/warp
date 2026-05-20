@@ -2282,20 +2282,6 @@ class ModuleHasher:
 
         ch = hashlib.sha256()
 
-        resolved_options = self.options | kernel.options
-
-        # Deterministic launches need ``adj.det_meta`` at runtime even when the
-        # module is loaded from a cache hit and code generation is skipped.
-        # Build the adjoint once during hashing so the launch path has the same
-        # metadata it would have received on a fresh compile.
-        from warp._src.deterministic import is_deterministic_mode_enabled  # noqa: PLC0415
-
-        if is_deterministic_mode_enabled(resolved_options.get("deterministic")):
-            kernel.adj.build(None, resolved_options | {"output_arch": None})
-        else:
-            kernel.adj.det_meta = None
-            kernel.adj.det_registry = None
-
         ch.update(bytes(kernel.key, "utf-8"))
         if kernel.options:
             for key in sorted(kernel.options):
@@ -3127,6 +3113,23 @@ class Module:
 
         return self.hashers[block_dim].get_hash()
 
+    def _refresh_deterministic_launch_metadata(self, block_dim: int, options: dict, output_arch: int | None) -> None:
+        """Populate deterministic launch metadata when code generation is skipped."""
+        from warp._src.deterministic import is_deterministic_mode_enabled  # noqa: PLC0415
+
+        hasher = self.hashers.get(block_dim)
+        if hasher is None:
+            return
+
+        builder_options = options | {"output_arch": output_arch}
+        if is_deterministic_mode_enabled(options.get("deterministic")):
+            for kernel in hasher.get_unique_kernels():
+                kernel.adj.build(None, builder_options)
+        else:
+            for kernel in hasher.get_unique_kernels():
+                kernel.adj.det_meta = None
+                kernel.adj.det_registry = None
+
     def _use_ptx(self, device) -> bool:
         return device.get_cuda_output_format(self.options.get("cuda_output")) == "ptx"
 
@@ -3526,6 +3529,7 @@ class Module:
             # -----------------------------------------------------------
             # Determine binary path and build if necessary
 
+            compiled = False
             if binary_path:
                 # We will never re-codegen or re-compile in this situation
                 # The expected files must already exist
@@ -3556,6 +3560,9 @@ class Module:
                     raise e
 
                 module_load_timer.extra_msg = " (compiled)" if compiled else " (cached)"
+
+            if device.is_cuda and not compiled:
+                self._refresh_deterministic_launch_metadata(active_block_dim, options, output_arch)
 
             # -----------------------------------------------------------
             # Load CPU or CUDA binary

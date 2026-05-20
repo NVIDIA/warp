@@ -18,7 +18,6 @@ from typing import Any
 import numpy as np
 
 import warp as wp
-from warp._src.context import ModuleHasher
 from warp.tests.unittest_utils import *
 
 
@@ -208,8 +207,11 @@ class TestUniqueModule(unittest.TestCase):
         np.testing.assert_allclose(out_normal.numpy(), [10.0])
         np.testing.assert_allclose(out_deterministic.numpy(), [10.0])
 
-    def test_deterministic_hashing_populates_launch_metadata(self):
-        """Hashing deterministic kernels must populate metadata used on cache hits."""
+    def test_deterministic_load_populates_launch_metadata(self):
+        """Loading deterministic kernels must populate metadata used on cache hits."""
+        cuda_devices = get_cuda_test_devices()
+        if not cuda_devices:
+            self.skipTest("No CUDA devices available")
 
         @wp.kernel(
             module="unique",
@@ -221,15 +223,19 @@ class TestUniqueModule(unittest.TestCase):
             tid = wp.tid()
             wp.atomic_add(out, indices[tid], values[tid])
 
-        self.assertTrue(hasattr(_scatter_deterministic.adj, "det_meta"))
+        device = cuda_devices[0]
+        _scatter_deterministic.module.load(device)
+
         delattr(_scatter_deterministic.adj, "det_meta")
+        _scatter_deterministic.module.unload()
         self.assertFalse(hasattr(_scatter_deterministic.adj, "det_meta"))
 
-        resolved_options = _scatter_deterministic.module.resolve_options(wp.config)
-        ModuleHasher([_scatter_deterministic], resolved_options)
+        _scatter_deterministic.module.load(device)
 
         self.assertTrue(hasattr(_scatter_deterministic.adj, "det_meta"))
         self.assertTrue(_scatter_deterministic.adj.det_meta.needs_deterministic)
+        self.assertEqual(_scatter_deterministic.adj.det_meta.determinism_mode, "run_to_run")
+        self.assertEqual(_scatter_deterministic.adj.det_meta.max_records, 1)
 
     def test_global_deterministic_captured_at_module_creation(self):
         """Global deterministic config changes do not rehash existing modules."""
