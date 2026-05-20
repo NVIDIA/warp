@@ -564,6 +564,32 @@ def local_scratch_counter_kernel(
             output[slot] = tid * 2 + i
 
 
+@wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
+def counter_with_atomic_xor_kernel(
+    counter: wp.array(dtype=wp.int32),
+    flag: wp.array(dtype=wp.int32),
+    output: wp.array(dtype=wp.int32),
+):
+    """Counter kernel with an unintercepted ``atomic_xor`` side effect."""
+    tid = wp.tid()
+    wp.atomic_xor(flag, 0, 1)
+    slot = wp.atomic_add(counter, 0, 1)
+    output[slot] = tid
+
+
+@wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
+def counter_with_component_store_kernel(
+    counter: wp.array(dtype=wp.int32),
+    values: wp.array(dtype=wp.vec3),
+    output: wp.array(dtype=wp.int32),
+):
+    """Counter kernel that writes through the array-slot fast path."""
+    tid = wp.tid()
+    values[0].x = values[0].x + 1.0
+    slot = wp.atomic_add(counter, 0, 1)
+    output[slot] = tid
+
+
 @wp.func
 def _det_custom_replay_counter(counter: wp.array(dtype=wp.int32), tids: wp.array(dtype=wp.int32), tid: int):
     slot = wp.atomic_add(counter, 0, 1)
@@ -1685,6 +1711,38 @@ def test_counter_phase0_preserves_local_scratch_writes(test, device):
 
     test.assertEqual(int(counter.numpy()[0]), 2 * n)
     np.testing.assert_array_equal(output.numpy(), np.arange(2 * n, dtype=np.int32))
+
+
+def test_counter_phase0_skips_unintercepted_atomic_xor(test, device):
+    """Verify ``atomic_xor`` in a counter kernel fires once, not twice."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    counter = wp.zeros(1, dtype=wp.int32, device=device)
+    flag = wp.zeros(1, dtype=wp.int32, device=device)
+    output = wp.full(1, value=-1, dtype=wp.int32, device=device)
+
+    wp.launch(counter_with_atomic_xor_kernel, dim=1, inputs=[counter, flag], outputs=[output], device=device)
+
+    test.assertEqual(int(flag.numpy()[0]), 1)
+    test.assertEqual(int(counter.numpy()[0]), 1)
+    test.assertEqual(int(output.numpy()[0]), 0)
+
+
+def test_counter_phase0_suppresses_component_stores(test, device):
+    """Verify component-level array stores do not double-execute in counter mode."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    counter = wp.zeros(1, dtype=wp.int32, device=device)
+    values = wp.zeros(1, dtype=wp.vec3, device=device)
+    output = wp.full(1, value=-1, dtype=wp.int32, device=device)
+
+    wp.launch(counter_with_component_store_kernel, dim=1, inputs=[counter, values], outputs=[output], device=device)
+
+    np.testing.assert_array_equal(values.numpy(), np.array([[1.0, 0.0, 0.0]], dtype=np.float32))
+    test.assertEqual(int(counter.numpy()[0]), 1)
+    test.assertEqual(int(output.numpy()[0]), 0)
 
 
 def test_counter_correctness(test, device):
@@ -3260,6 +3318,18 @@ add_function_test(
     TestDeterministic,
     "test_counter_phase0_preserves_local_scratch_writes",
     test_counter_phase0_preserves_local_scratch_writes,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic,
+    "test_counter_phase0_skips_unintercepted_atomic_xor",
+    test_counter_phase0_skips_unintercepted_atomic_xor,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic,
+    "test_counter_phase0_suppresses_component_stores",
+    test_counter_phase0_suppresses_component_stores,
     devices=cuda_devices,
 )
 add_function_test(TestDeterministic, "test_counter_correctness", test_counter_correctness, devices=all_devices)

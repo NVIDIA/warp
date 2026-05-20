@@ -42,6 +42,39 @@ _DET_INTERCEPTABLE_ATOMICS = frozenset(
     }
 )
 
+# Atomic builtins that deterministic mode does not intercept, but which still
+# mutate user state and must not double-execute under two-pass counter replay.
+_DET_UNINTERCEPTED_SIDE_EFFECT_ATOMICS = frozenset(
+    {
+        "atomic_xor",
+        "atomic_and",
+        "atomic_or",
+    }
+)
+
+
+def _det_needs_store_guard(adj) -> bool:
+    """Return whether stores in this body must be phase-gated."""
+    if adj.det_meta is None:
+        return False
+    return adj.det_meta.has_counter or adj._det_has_consumed_atomic or adj._det_has_side_effect_store
+
+
+def _det_wrap_slot_store(adj, slot_lvalue: str, value_expr: str) -> str:
+    """Return the forward C++ statement for ``slot_lvalue = value_expr``."""
+    if _det_needs_store_guard(adj):
+        adj.det_meta.needs_context = True
+        return f"WP_DET_SLOT_STORE_IF_ACTIVE(det_ctx, {slot_lvalue}, {value_expr});"
+    return f"{slot_lvalue} = {value_expr};"
+
+
+def _det_wrap_side_effect_call(adj, statement: str) -> str:
+    """Return the forward C++ statement for a non-counter atomic side effect."""
+    if _det_needs_store_guard(adj):
+        adj.det_meta.needs_context = True
+        return f"WP_DET_SIDE_EFFECT_IF_ACTIVE(det_ctx, {statement});"
+    return statement
+
 
 def _escape_line_directive_filename(filename: str) -> str:
     """Return ``filename`` escaped for the quoted filename field of a C/CUDA ``#line`` directive."""
@@ -2134,6 +2167,12 @@ class Adjoint:
             forward_call = f"{func.namespace}{func_name}({adj.format_forward_call_args(fwd_args + det_args + output, use_initializer_list)});"
             replay_call = forward_call
 
+        # In two-pass counter kernels, atomics that deterministic mode does
+        # not intercept would otherwise fire in both phase 0 and phase 1.
+        if func.is_builtin() and func.key in _DET_UNINTERCEPTED_SIDE_EFFECT_ATOMICS:
+            forward_call = _det_wrap_side_effect_call(adj, forward_call)
+            replay_call = _det_wrap_side_effect_call(adj, replay_call)
+
         if func.skip_replay:
             adj.add_forward(forward_call, replay="// " + replay_call)
         else:
@@ -4110,7 +4149,8 @@ class Adjoint:
         array_indices_cpp = ", ".join(v.emit() for v in array_index_vars)
 
         # Forward: one slot store.
-        adj.add_forward(f"wp::index({arr_cpp}, {array_indices_cpp}){access_cpp} = {rhs_cpp};")
+        slot_lvalue = f"wp::index({arr_cpp}, {array_indices_cpp}){access_cpp}"
+        adj.add_forward(_det_wrap_slot_store(adj, slot_lvalue, rhs_cpp))
 
         # Reverse: single call to the slot-level adj_array_store variant,
         # with the composite-component access encoded as a short lambda.
@@ -4295,10 +4335,7 @@ class Adjoint:
         if is_array(target_type):
             # Deterministic two-pass mode must suppress normal array writes in
             # phase 0 so the counting pass does not introduce side effects.
-            needs_guarded_store = adj.det_meta is not None and (
-                adj.det_meta.has_counter or adj._det_has_consumed_atomic or adj._det_has_side_effect_store
-            )
-            if needs_guarded_store:
+            if _det_needs_store_guard(adj):
                 adj.det_meta.needs_context = True
                 _add_deterministic_array_store(adj, target, indices, rhs)
             else:
