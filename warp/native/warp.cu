@@ -1267,6 +1267,26 @@ bool wp_memset_device(void* context, void* dest, int value, size_t n, void* stre
     return result;
 }
 
+// POD value buffer passed by value to fill kernels so they don't need to read the
+// fill bytes from a device pointer (which would otherwise require host->device
+// staging through capturable_tmp_alloc + pause/resume capture, which breaks under
+// forked-stream and shared-graph captures). The bucket sizes trade off kernel
+// instantiation count against support for reasonable user-defined struct dtypes.
+constexpr size_t WP_FILL_VALUE_INLINE_BYTES_0 = 256;
+constexpr size_t WP_FILL_VALUE_INLINE_BYTES_1 = 1024;
+constexpr size_t WP_FILL_VALUE_INLINE_BYTES_2 = 3968;
+
+template <size_t N> struct FillValue {
+    uint8_t bytes[N];
+};
+
+template <size_t N> static FillValue<N> make_fill_value(const void* src, size_t srcsize)
+{
+    FillValue<N> value = {};
+    memcpy(value.bytes, src, srcsize);
+    return value;
+}
+
 // fill memory buffer with a value: generic memtile kernel using memcpy for each element
 __global__ void memtile_kernel(void* dst, const void* src, size_t srcsize, size_t n)
 {
@@ -1274,6 +1294,37 @@ __global__ void memtile_kernel(void* dst, const void* src, size_t srcsize, size_
     if (tid < n) {
         memcpy((int8_t*)dst + srcsize * tid, src, srcsize);
     }
+}
+
+template <size_t N> __global__ void memtile_kernel_by_value(void* dst, FillValue<N> value, size_t srcsize, size_t n)
+{
+    size_t tid = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
+    if (tid < n) {
+        memcpy((int8_t*)dst + srcsize * tid, value.bytes, srcsize);
+    }
+}
+
+template <size_t N> static void launch_memtile_kernel_by_value(void* dst, const void* src, size_t srcsize, size_t n)
+{
+    FillValue<N> value = make_fill_value<N>(src, srcsize);
+    wp_launch_device(WP_CURRENT_CONTEXT, (memtile_kernel_by_value<N>), n, (dst, value, srcsize, n));
+}
+
+static bool launch_memtile_kernel_by_value(void* dst, const void* src, size_t srcsize, size_t n)
+{
+    if (srcsize <= WP_FILL_VALUE_INLINE_BYTES_0) {
+        launch_memtile_kernel_by_value<WP_FILL_VALUE_INLINE_BYTES_0>(dst, src, srcsize, n);
+        return true;
+    }
+    if (srcsize <= WP_FILL_VALUE_INLINE_BYTES_1) {
+        launch_memtile_kernel_by_value<WP_FILL_VALUE_INLINE_BYTES_1>(dst, src, srcsize, n);
+        return true;
+    }
+    if (srcsize <= WP_FILL_VALUE_INLINE_BYTES_2) {
+        launch_memtile_kernel_by_value<WP_FILL_VALUE_INLINE_BYTES_2>(dst, src, srcsize, n);
+        return true;
+    }
+    return false;
 }
 
 // this should be faster than memtile_kernel, but requires proper alignment of dst
@@ -1307,12 +1358,11 @@ void wp_memtile_device(void* context, void* dst, const void* src, size_t srcsize
         wp_launch_device(WP_CURRENT_CONTEXT, memtile_value_kernel, n, (p, value, n));
     } else if (srcsize == 1) {
         check_cuda(cudaMemset(dst, *reinterpret_cast<const int8_t*>(src), n));
-    } else {
-        // generic version
+    } else if (!launch_memtile_kernel_by_value(dst, src, srcsize, n)) {
+        // generic fallback for values too large to pass through kernel args
         void* value_devptr = NULL;  // fill value in device memory
         bool free_devptr = true;  // whether we need to free the memory
 
-        // prepare the fill value in a graph-friendly way
         if (!capturable_tmp_alloc(WP_CURRENT_CONTEXT, src, srcsize, &value_devptr, &free_devptr)) {
             fprintf(stderr, "Warp fill error: failed to copy value to device memory\n");
             return;
@@ -1811,6 +1861,231 @@ WP_API bool wp_array_copy_device(void* context, void* dst, void* src, int dst_ty
 }
 
 
+// "by_value" variants take the fill bytes inline through the kernel-arg buffer
+// using a bucketed ``FillValue<N>`` POD. They are graph-capturable on any stream
+// (no host->device staging). The ``const void*`` originals below are kept for the
+// fallback case when the fill value is too large for kernel args.
+template <size_t N>
+static __global__ void array_fill_1d_kernel_by_value(
+    void* data, size_t n, size_t stride, const int* indices, FillValue<N> value, size_t value_size
+)
+{
+    size_t i = size_t(blockIdx.x) * size_t(blockDim.x) + size_t(threadIdx.x);
+    if (i < n) {
+        size_t idx = indices ? indices[i] : i;
+        char* p = (char*)data + idx * stride;
+        memcpy(p, value.bytes, value_size);
+    }
+}
+
+template <size_t N>
+static __global__ void array_fill_2d_kernel_by_value(
+    void* data,
+    wp::vec_t<2, size_t> shape,
+    wp::vec_t<2, size_t> strides,
+    wp::vec_t<2, const int*> indices,
+    FillValue<N> value,
+    size_t value_size
+)
+{
+    size_t tid = size_t(blockIdx.x) * size_t(blockDim.x) + size_t(threadIdx.x);
+    size_t n = shape[1];
+    size_t i = tid / n;
+    size_t j = tid % n;
+    if (i < shape[0] /*&& j < shape[1]*/) {
+        size_t idx0 = indices[0] ? indices[0][i] : i;
+        size_t idx1 = indices[1] ? indices[1][j] : j;
+        char* p = (char*)data + idx0 * strides[0] + idx1 * strides[1];
+        memcpy(p, value.bytes, value_size);
+    }
+}
+
+template <size_t N>
+static __global__ void array_fill_3d_kernel_by_value(
+    void* data,
+    wp::vec_t<3, size_t> shape,
+    wp::vec_t<3, size_t> strides,
+    wp::vec_t<3, const int*> indices,
+    FillValue<N> value,
+    size_t value_size
+)
+{
+    size_t tid = size_t(blockIdx.x) * size_t(blockDim.x) + size_t(threadIdx.x);
+    size_t n = shape[1];
+    size_t o = shape[2];
+    size_t i = tid / (n * o);
+    size_t j = tid % (n * o) / o;
+    size_t k = tid % o;
+    if (i < shape[0] && j < shape[1] /*&& k < shape[2]*/) {
+        size_t idx0 = indices[0] ? indices[0][i] : i;
+        size_t idx1 = indices[1] ? indices[1][j] : j;
+        size_t idx2 = indices[2] ? indices[2][k] : k;
+        char* p = (char*)data + idx0 * strides[0] + idx1 * strides[1] + idx2 * strides[2];
+        memcpy(p, value.bytes, value_size);
+    }
+}
+
+template <size_t N>
+static __global__ void array_fill_4d_kernel_by_value(
+    void* data,
+    wp::vec_t<4, size_t> shape,
+    wp::vec_t<4, size_t> strides,
+    wp::vec_t<4, const int*> indices,
+    FillValue<N> value,
+    size_t value_size
+)
+{
+    size_t tid = size_t(blockIdx.x) * size_t(blockDim.x) + size_t(threadIdx.x);
+    size_t n = shape[1];
+    size_t o = shape[2];
+    size_t p = shape[3];
+    size_t i = tid / (n * o * p);
+    size_t j = tid % (n * o * p) / (o * p);
+    size_t k = tid % (o * p) / p;
+    size_t l = tid % p;
+    if (i < shape[0] && j < shape[1] && k < shape[2] /*&& l < shape[3]*/) {
+        size_t idx0 = indices[0] ? indices[0][i] : i;
+        size_t idx1 = indices[1] ? indices[1][j] : j;
+        size_t idx2 = indices[2] ? indices[2][k] : k;
+        size_t idx3 = indices[3] ? indices[3][l] : l;
+        char* p = (char*)data + idx0 * strides[0] + idx1 * strides[1] + idx2 * strides[2] + idx3 * strides[3];
+        memcpy(p, value.bytes, value_size);
+    }
+}
+
+template <size_t N>
+static __global__ void
+array_fill_fabric_kernel_by_value(wp::fabricarray_t<void> fa, FillValue<N> value, size_t value_size)
+{
+    size_t tid = size_t(blockIdx.x) * size_t(blockDim.x) + size_t(threadIdx.x);
+    if (tid < fa.size) {
+        void* dst_ptr = fabricarray_element_ptr(fa, tid, value_size);
+        memcpy(dst_ptr, value.bytes, value_size);
+    }
+}
+
+template <size_t N>
+static __global__ void
+array_fill_fabric_indexed_kernel_by_value(wp::indexedfabricarray_t<void> ifa, FillValue<N> value, size_t value_size)
+{
+    size_t tid = size_t(blockIdx.x) * size_t(blockDim.x) + size_t(threadIdx.x);
+    if (tid < ifa.size) {
+        size_t idx = size_t(ifa.indices[tid]);
+        if (idx < ifa.fa.size) {
+            void* dst_ptr = fabricarray_element_ptr(ifa.fa, idx, value_size);
+            memcpy(dst_ptr, value.bytes, value_size);
+        }
+    }
+}
+
+template <size_t N>
+static void launch_array_fill_by_value(
+    void* data,
+    int ndim,
+    const int* shape,
+    const int* strides,
+    const int* const* indices,
+    wp::fabricarray_t<void>* fa,
+    wp::indexedfabricarray_t<void>* ifa,
+    size_t n,
+    const void* value_ptr,
+    size_t value_size
+)
+{
+    FillValue<N> value = make_fill_value<N>(value_ptr, value_size);
+
+    if (fa) {
+        wp_launch_device(WP_CURRENT_CONTEXT, (array_fill_fabric_kernel_by_value<N>), n, (*fa, value, value_size));
+    } else if (ifa) {
+        wp_launch_device(
+            WP_CURRENT_CONTEXT, (array_fill_fabric_indexed_kernel_by_value<N>), n, (*ifa, value, value_size)
+        );
+    } else {
+        switch (ndim) {
+        case 1: {
+            wp_launch_device(
+                WP_CURRENT_CONTEXT, (array_fill_1d_kernel_by_value<N>), n,
+                (data, shape[0], strides[0], indices[0], value, value_size)
+            );
+            break;
+        }
+        case 2: {
+            wp::vec_t<2, size_t> shape_v(shape[0], shape[1]);
+            wp::vec_t<2, size_t> strides_v(strides[0], strides[1]);
+            wp::vec_t<2, const int*> indices_v(indices[0], indices[1]);
+            wp_launch_device(
+                WP_CURRENT_CONTEXT, (array_fill_2d_kernel_by_value<N>), n,
+                (data, shape_v, strides_v, indices_v, value, value_size)
+            );
+            break;
+        }
+        case 3: {
+            wp::vec_t<3, size_t> shape_v(shape[0], shape[1], shape[2]);
+            wp::vec_t<3, size_t> strides_v(strides[0], strides[1], strides[2]);
+            wp::vec_t<3, const int*> indices_v(indices[0], indices[1], indices[2]);
+            wp_launch_device(
+                WP_CURRENT_CONTEXT, (array_fill_3d_kernel_by_value<N>), n,
+                (data, shape_v, strides_v, indices_v, value, value_size)
+            );
+            break;
+        }
+        case 4: {
+            wp::vec_t<4, size_t> shape_v(shape[0], shape[1], shape[2], shape[3]);
+            wp::vec_t<4, size_t> strides_v(strides[0], strides[1], strides[2], strides[3]);
+            wp::vec_t<4, const int*> indices_v(indices[0], indices[1], indices[2], indices[3]);
+            wp_launch_device(
+                WP_CURRENT_CONTEXT, (array_fill_4d_kernel_by_value<N>), n,
+                (data, shape_v, strides_v, indices_v, value, value_size)
+            );
+            break;
+        }
+        default:
+            fprintf(stderr, "Warp fill error: invalid array dimensionality (%d)\n", ndim);
+            break;
+        }
+    }
+}
+
+static bool launch_array_fill_by_value(
+    void* data,
+    int ndim,
+    const int* shape,
+    const int* strides,
+    const int* const* indices,
+    wp::fabricarray_t<void>* fa,
+    wp::indexedfabricarray_t<void>* ifa,
+    size_t n,
+    const void* value_ptr,
+    size_t value_size
+)
+{
+    if (value_size <= WP_FILL_VALUE_INLINE_BYTES_0) {
+        launch_array_fill_by_value<WP_FILL_VALUE_INLINE_BYTES_0>(
+            data, ndim, shape, strides, indices, fa, ifa, n, value_ptr, value_size
+        );
+        return true;
+    }
+    if (value_size <= WP_FILL_VALUE_INLINE_BYTES_1) {
+        launch_array_fill_by_value<WP_FILL_VALUE_INLINE_BYTES_1>(
+            data, ndim, shape, strides, indices, fa, ifa, n, value_ptr, value_size
+        );
+        return true;
+    }
+    if (value_size <= WP_FILL_VALUE_INLINE_BYTES_2) {
+        launch_array_fill_by_value<WP_FILL_VALUE_INLINE_BYTES_2>(
+            data, ndim, shape, strides, indices, fa, ifa, n, value_ptr, value_size
+        );
+        return true;
+    }
+    return false;
+}
+
+
+// Original ``const void*`` kernels: read the fill bytes from a device pointer
+// staged via ``capturable_tmp_alloc``. Used as a fallback for fill values too
+// large to fit in the inline kernel-arg buffers.
+// This path is graph-capturable only on the begin stream of a capture.
+
 static __global__ void
 array_fill_1d_kernel(void* data, size_t n, size_t stride, const int* indices, const void* value, size_t value_size)
 {
@@ -1894,7 +2169,6 @@ static __global__ void array_fill_4d_kernel(
     }
 }
 
-
 static __global__ void array_fill_fabric_kernel(wp::fabricarray_t<void> fa, const void* value, size_t value_size)
 {
     size_t tid = size_t(blockIdx.x) * size_t(blockDim.x) + size_t(threadIdx.x);
@@ -1903,7 +2177,6 @@ static __global__ void array_fill_fabric_kernel(wp::fabricarray_t<void> fa, cons
         memcpy(dst_ptr, value, value_size);
     }
 }
-
 
 static __global__ void
 array_fill_fabric_indexed_kernel(wp::indexedfabricarray_t<void> ifa, const void* value, size_t value_size)
@@ -1964,10 +2237,17 @@ WP_API void wp_array_fill_device(void* context, void* arr_ptr, int arr_type, con
 
     ContextGuard guard(context);
 
-    void* value_devptr = NULL;  // fill value in device memory
-    bool free_devptr = true;  // whether we need to free the memory
+    void* value_devptr = NULL;
+    bool free_devptr = true;
 
-    // prepare the fill value in a graph-friendly way
+    // Prefer inline-by-value kernels so graph capture does not need temporary
+    // device storage. Oversized values fall back to the staged pointer kernels.
+    if (launch_array_fill_by_value(
+            data, ndim, shape, strides, indices, fa, ifa, n, value_ptr, static_cast<size_t>(value_size)
+        )) {
+        return;
+    }
+
     if (!capturable_tmp_alloc(WP_CURRENT_CONTEXT, value_ptr, value_size, &value_devptr, &free_devptr)) {
         fprintf(stderr, "Warp fill error: failed to copy value to device memory\n");
         return;

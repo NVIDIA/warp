@@ -317,6 +317,9 @@
 - Fix `wp.constant(wp.int32(IntEnum_value))` emitting the symbolic enum name instead of the
   integer value in generated C++/CUDA code on Python 3.10, causing compilation failures
   ([newton#2363](https://github.com/newton-physics/newton/issues/2363)).
+- Fix `wp.array.fill_()` performing temporary device allocations for common fill values,
+  which broke CUDA graph composability. Oversized fill values still fall back to the
+  previous staging path.
 
 ### Documentation
 

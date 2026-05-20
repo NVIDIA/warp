@@ -85,6 +85,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
 
     Intended to be modified to create additional test suites
     """
+    from warp.tests.cuda.test_array_fill_capture import TestArrayFillCapture
     from warp.tests.cuda.test_async import TestAsync
     from warp.tests.cuda.test_capture_mode import TestCaptureMode
     from warp.tests.cuda.test_clang_cuda import TestClangCUDA
@@ -250,6 +251,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestApicMesh,
         TestArithmetic,
         TestArray,
+        TestArrayFillCapture,
         TestArrayReduce,
         TestAsync,
         TestAtomic,
