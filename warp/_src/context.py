@@ -1427,7 +1427,6 @@ def kernel(
             tid = wp.tid()
             b[tid] = a[tid] + 1.0
 
-
     Args:
         f: The function to be registered as a kernel.
         enable_backward: If False, the backward pass will not be
@@ -1446,8 +1445,8 @@ def kernel(
             inferred from the function's module.
         module_options: A dict of module-level compilation options
             (e.g. ``fast_math``, ``mode``, ``max_unroll``,
-            ``deterministic``, ``deterministic_max_records``) that are applied to the kernel's
-            module. Requires
+            ``deterministic``, ``deterministic_max_records``) that are
+            applied to the kernel's module. Requires
             ``module="unique"``; raises ``ValueError`` otherwise.
             For shared modules, use :func:`warp.set_module_options`
             instead. See :func:`warp.set_module_options` for the full
@@ -1492,17 +1491,15 @@ def kernel(
                     f"@wp.kernel for '{f.__name__}': module_options requires module=\"unique\". "
                     "Use wp.set_module_options() to set module-level options for a shared module."
                 )
-            normalized_module_options = dict(module_options)
-
-            if normalized_module_options:
-                unknown = sorted(set(normalized_module_options) - set(m.options))
+            if module_options:
+                unknown = sorted(set(module_options) - set(m.options))
                 if unknown:
                     raise ValueError(
                         f"@wp.kernel for '{f.__name__}': unknown module_options: "
                         f"{', '.join(repr(k) for k in unknown)}. "
                         f"Valid options are: {', '.join(repr(k) for k in sorted(m.options))}."
                     )
-                m.options.update(normalized_module_options)
+                m.options.update(module_options)
 
         # Create the kernel object and register it with the module
         k = Kernel(
@@ -2215,7 +2212,6 @@ class ModuleHasher:
     def __init__(self, kernels, options):
         # cache function hashes to avoid hashing multiple times
         self.function_hashes = {}  # (function: hash)
-        self.options = options
 
         # avoid recursive spiral of doom (e.g., function calling an overload of itself)
         self.functions_in_progress = set()
@@ -2283,10 +2279,6 @@ class ModuleHasher:
         ch = hashlib.sha256()
 
         ch.update(bytes(kernel.key, "utf-8"))
-        if kernel.options:
-            for key in sorted(kernel.options):
-                ch.update(bytes(key, "utf-8"))
-                ch.update(bytes(repr(kernel.options[key]), "utf-8"))
         ch.update(self.hash_adjoint(kernel.adj))
 
         h = ch.digest()
@@ -2830,8 +2822,8 @@ class Module:
     def resolve_options(self, config, block_dim: int | None = None) -> dict:
         """Return a fully-resolved copy of the module options.
 
-        Resolves supported ``None`` sentinels by falling back to ``config``
-        values and hardcoded defaults. Also includes global config flags that affect
+        Resolves ``None`` sentinels by falling back to ``config`` values and
+        hardcoded defaults. Also includes global config flags that affect
         compilation, so downstream consumers never need to read config directly.
 
         When ``block_dim`` is supplied, it overrides ``self.options["block_dim"]``
@@ -8817,6 +8809,7 @@ class Launch:
                         # For primitive types in adjoint mode, initialize with 0
                         params.append(pack_arg(kernel, a.type, a.label, 0, device, True))
 
+            # Create array of parameter addresses
             params_addr = _build_cuda_kernel_params(params)
 
         self.kernel = kernel
@@ -8953,6 +8946,8 @@ class Launch:
             if stream is None:
                 stream = self.device.stream
 
+            # If the stream is capturing, we retain the CUDA module so that it doesn't get unloaded
+            # before the captured graph is released.
             if len(runtime.captures) > 0 and runtime.core.wp_cuda_stream_is_capturing(stream.cuda_stream):
                 capture_id = runtime.core.wp_cuda_stream_get_capture_id(stream.cuda_stream)
                 graph = runtime.captures.get(capture_id)
@@ -9821,6 +9816,8 @@ def launch(
             if stream is None:
                 stream = device.stream
 
+            # If the stream is capturing, we retain the CUDA module so that it doesn't get unloaded
+            # before the captured graph is released.
             if len(runtime.captures) > 0 and runtime.core.wp_cuda_stream_is_capturing(stream.cuda_stream):
                 capture_id = runtime.core.wp_cuda_stream_get_capture_id(stream.cuda_stream)
                 graph = runtime.captures.get(capture_id)
@@ -10679,6 +10676,7 @@ def set_module_options(options: dict[str, Any], module: Any = None):
 
         options: Set of key-value option pairs
     """
+
     if module is None:
         module_name = _get_caller_module_name(stack_level=2)
     else:

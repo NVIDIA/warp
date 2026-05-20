@@ -34,17 +34,18 @@ DTYPE_MAP = {
 
 NUM_ELEMENTS = 32 * 1024 * 1024
 DETERMINISTIC_BENCHMARK_SIZES = [64 * 1024, 256 * 1024, 1024 * 1024]
-DETERMINISM_SUPPORTED = "deterministic" in inspect.signature(wp.kernel).parameters
+DETERMINISM_SUPPORTED = "module_options" in inspect.signature(wp.kernel).parameters
 DETERMINISTIC_BENCHMARK_MODES = ("normal", "deterministic")
 DETERMINISTIC_KERNEL_OPTIONS = {"enable_backward": False}
 if DETERMINISM_SUPPORTED:
-    DETERMINISTIC_KERNEL_OPTIONS.update(
-        {
-            "deterministic": True,
+    DETERMINISTIC_KERNEL_OPTIONS = {
+        "enable_backward": False,
+        "module": "unique",
+        "module_options": {
+            "deterministic": "run_to_run",
             "deterministic_max_records": 1,
-            "module": "unique",
-        }
-    )
+        },
+    }
 
 
 @wp.kernel(enable_backward=False)
