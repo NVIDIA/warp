@@ -85,7 +85,6 @@ linux-aarch64 build:
 linux-x86_64 build:
   stage: build
   image: $WARP_BUILDER_IMAGE_CU12
-  timeout: 24h
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
@@ -101,6 +100,8 @@ linux-x86_64 build:
 
 windows-x86_64 build:
   stage: build
+  variables:
+    IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
     - .save_warp_bin_artifact
     - .runner-build-windows-x86_64
@@ -131,7 +132,6 @@ mac-aarch64 build:
 linux-x86_64 cuda 13 build:
   stage: build
   image: $WARP_BUILDER_IMAGE_CU13
-  timeout: 24h
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
@@ -146,7 +146,6 @@ linux-x86_64 cuda 13 build:
 linux-x86_64 debug build:
   stage: build
   image: $WARP_BUILDER_IMAGE_CU12
-  timeout: 24h
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
@@ -172,7 +171,6 @@ pre-commit checks:
   stage: quality
   image: $UV_TRIXIE_IMAGE
   needs: []
-  timeout: 24h
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
@@ -184,7 +182,6 @@ type-check stubs:
   stage: quality
   image: $UV_TRIXIE_IMAGE
   needs: []
-  timeout: 24h
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "900"
     GIT_LFS_SKIP_SMUDGE: "1"
@@ -200,7 +197,6 @@ doctest:
   stage: quality
   image: $UV_TRIXIE_IMAGE
   needs: [linux-x86_64 build]
-  timeout: 24h
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
@@ -217,6 +213,8 @@ doctest:
 windows-x86_64 docs:
   stage: quality
   needs: [windows-x86_64 build]
+  variables:
+    IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
     - .runner-utility-windows-x86_64
   artifacts:
@@ -239,7 +237,6 @@ check un-namespaced symbols linux-x86_64:
   stage: quality
   image: python:3.12-bullseye
   needs: [linux-x86_64 build]
-  timeout: 24h
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
@@ -277,7 +274,6 @@ cppcheck:
   stage: quality
   image: $MINIFORGE_IMAGE
   needs: []
-  timeout: 24h
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
@@ -433,7 +429,6 @@ linux-aarch64 test dgx spark:
 linux-x86_64 test:
   needs: [linux-x86_64 build]
   image: $UV_TRIXIE_IMAGE
-  timeout: 24h
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
@@ -468,7 +463,6 @@ linux-x86_64 test debug mode:
   stage: test
   needs: [linux-x86_64 build]
   image: $UV_TRIXIE_SLIM_IMAGE
-  timeout: 24h
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "2700"
   extends:
@@ -485,7 +479,8 @@ linux-x86_64 test debug mode:
 windows-x86_64 test:
   stage: test
   needs: [windows-x86_64 build]
-  timeout: 75m
+  variables:
+    IPP_RUNNER_EXECUTION_DURATION: "4500"
   extends:
     - .runner-test-windows-x86_64-gpu
     - .test_common_with_coverage
@@ -504,9 +499,10 @@ windows-x86_64 test:
 windows-x86_64 test mgpu:
   stage: test
   needs: [windows-x86_64 build]
+  variables:
+    IPP_RUNNER_EXECUTION_DURATION: "4500"
   extends:
     - .save_test_report_artifact
-  timeout: 75m
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_COMMIT_TAG
@@ -531,7 +527,6 @@ linux-x86_64 test warp-init:
   stage: test
   image: $UV_TRIXIE_SLIM_IMAGE
   needs: [linux-x86_64 build]
-  timeout: 24h
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "900"
   extends:
@@ -549,7 +544,6 @@ linux-x86_64 test mujoco warp:
   stage: test
   needs: [linux-x86_64 build]
   image: $UV_TRIXIE_IMAGE
-  timeout: 24h
   extends:
     - .ipp_lnx_x86_64_gpu
     - .save_test_report_artifact
@@ -592,7 +586,6 @@ linux-x86_64 test mujoco warp serial:
   stage: test
   needs: [linux-x86_64 build]
   image: $UV_TRIXIE_IMAGE
-  timeout: 24h
   extends:
     - .ipp_lnx_x86_64_gpu
     - .save_test_report_artifact
@@ -621,7 +614,6 @@ linux-x86_64 test newton:
   stage: test
   needs: [linux-x86_64 build]
   image: $UV_TRIXIE_IMAGE
-  timeout: 24h
   extends:
     - .ipp_lnx_x86_64_gpu
     - .save_test_report_artifact
@@ -647,7 +639,6 @@ linux-x86_64 python matrix test:
   stage: test
   image: $UV_TRIXIE_SLIM_IMAGE
   needs: [linux-x86_64 build]
-  timeout: 24h
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
@@ -674,7 +665,6 @@ linux-x86_64 cpp examples test:
   stage: test
   image: ${CI_REGISTRY_IMAGE}/warp-cpp-test-env:12.9.1-ubuntu24.04
   needs: [linux-x86_64 build]
-  timeout: 24h
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
@@ -701,7 +691,6 @@ linux-x86_64 cpp examples test:
 trigger debug build and test pipeline:
   stage: test
   image: busybox
-  timeout: 24h
   extends:
     - .ipp_lnx_x86_64_cpu_micro
   needs: [linux-x86_64 debug build]
@@ -731,7 +720,6 @@ debug build and test:
 trigger cuda 13 pipeline:
   stage: test
   image: busybox
-  timeout: 24h
   extends:
     - .ipp_lnx_x86_64_cpu_micro
   needs: [linux-x86_64 cuda 13 build]
@@ -816,7 +804,6 @@ create pypi wheels:
     - linux-x86_64 build
     - windows-x86_64 build
     - mac-aarch64 build
-  timeout: 24h
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
@@ -867,7 +854,6 @@ create dev wheels:
     - linux-x86_64 build
     - windows-x86_64 build
     - mac-aarch64 build
-  timeout: 24h
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
@@ -904,7 +890,6 @@ publish wheels to testpypi registry:
   stage: deploy
   image: $UV_TRIXIE_SLIM_IMAGE
   needs: ["create pypi wheels"]
-  timeout: 24h
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
@@ -923,7 +908,6 @@ publish wheels to pypi registry:
   stage: deploy
   image: $UV_TRIXIE_SLIM_IMAGE
   needs: ["create pypi wheels"]
-  timeout: 24h
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
@@ -942,7 +926,6 @@ publish wheels to gitlab pypi registry:
   stage: deploy
   image: $UV_TRIXIE_IMAGE
   needs: ["create pypi wheels"]
-  timeout: 24h
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
@@ -960,7 +943,6 @@ publish wheels to gitlab package registry:
   stage: deploy
   needs: ["create pypi wheels"]
   image: $UV_TRIXIE_IMAGE
-  timeout: 24h
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
@@ -987,7 +969,6 @@ publish wheels to github release:
   stage: deploy
   image: $MINIFORGE_IMAGE
   needs: ["create pypi wheels"]
-  timeout: 24h
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
@@ -1003,7 +984,6 @@ publish wheels to github release:
   stage: deploy
   image: $UV_TRIXIE_IMAGE
   needs: [linux-x86_64 build]
-  timeout: 24h
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "1200"
   extends:
@@ -1047,7 +1027,6 @@ check generated docs:
   needs:
     - job: merge request docs
       optional: true
-  timeout: 24h
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "900"
   extends:

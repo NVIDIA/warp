@@ -44,6 +44,8 @@ stages:
 
 windows-x86_64 build:
   stage: build
+  variables:
+    IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
     - .save_warp_bin_artifact
     - .runner-build-windows-x86_64
@@ -89,7 +91,6 @@ linux-x86_64 test:
   needs:
     - pipeline: $PARENT_PIPELINE_ID
       job: linux-x86_64 debug build
-  timeout: 24h
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
@@ -104,7 +105,8 @@ linux-x86_64 test:
 windows-x86_64 test:
   stage: test
   needs: [windows-x86_64 build]
-  timeout: 75m
+  variables:
+    IPP_RUNNER_EXECUTION_DURATION: "4500"
   extends:
     - .runner-test-windows-x86_64-gpu
     - .save_test_report_artifact
@@ -135,7 +137,6 @@ create pypi wheels:
     - pipeline: $PARENT_PIPELINE_ID
       job: linux-x86_64 debug build
     - windows-x86_64 build
-  timeout: 24h
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:

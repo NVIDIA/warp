@@ -41,7 +41,6 @@ linux-x86_64 asv build:
   stage: build
   needs: []
   image: $WARP_BUILDER_IMAGE_CU12
-  timeout: 24h
   extends:
     - .ipp_lnx_x86_64_cpu_medium
   variables:

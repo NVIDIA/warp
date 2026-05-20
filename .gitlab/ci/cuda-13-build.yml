@@ -49,6 +49,8 @@ linux-aarch64 build:
 
 windows-x86_64 build:
   stage: build
+  variables:
+    IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
     - .save_warp_bin_artifact
     - .runner-build-windows-x86_64
@@ -78,7 +80,6 @@ check un-namespaced symbols linux-x86_64:
   needs:
     - pipeline: $PARENT_PIPELINE_ID
       job: linux-x86_64 cuda 13 build
-  timeout: 24h
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
@@ -125,7 +126,6 @@ create pypi wheels:
     - windows-x86_64 build
     - pipeline: $PARENT_PIPELINE_ID
       job: linux-x86_64 cuda 13 build
-  timeout: 24h
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
@@ -160,7 +160,6 @@ publish wheels to gitlab pypi registry:
   stage: deploy
   image: $UV_TRIXIE_IMAGE
   needs: ["create pypi wheels"]
-  timeout: 24h
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
@@ -178,7 +177,6 @@ publish wheels to gitlab package registry:
   stage: deploy
   image: $UV_TRIXIE_IMAGE
   needs: ["create pypi wheels"]
-  timeout: 24h
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
@@ -205,7 +203,6 @@ publish wheels to github release:
   stage: deploy
   image: $MINIFORGE_IMAGE
   needs: ["create pypi wheels"]
-  timeout: 24h
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
