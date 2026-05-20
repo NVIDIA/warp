@@ -65,9 +65,11 @@ Arrays
 * ``wp.config.launch_verification_mode = wp.LaunchVerificationMode.CHECKED``
   only fully verifies cross-device :class:`wp.array <warp.array>` arguments when
   Warp can determine the allocation kind. Arrays backed by custom or externally
-  wrapped allocators fail closed in checked mode, and directly passed
-  ``__array_interface__`` or ``__cuda_array_interface__`` objects are not fully
-  allocation-verified. See :ref:`launch_verification` for details.
+  wrapped allocators warn and proceed in checked mode; use
+  ``wp.LaunchVerificationMode.STRICT`` to reject cross-device launches before
+  checking allocator provenance. Directly passed ``__array_interface__`` or
+  ``__cuda_array_interface__`` objects are not fully allocation-verified. See
+  :ref:`launch_verification` for details.
 
 Structs
 -------

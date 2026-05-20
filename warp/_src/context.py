@@ -7827,26 +7827,27 @@ def _get_array_allocator(value: warp.array) -> Allocator | None:
 def can_access(device: DeviceLike, resource) -> bool:
     """Return whether ``device`` can directly access ``resource``.
 
-    In this release, ``resource`` must be a Warp array. The query is allocation-aware for built-in Warp
+    In this release, ``resource`` must be a concrete Warp array. The query is allocation-aware for built-in Warp
     allocators and returns ``False`` for cross-device allocations whose access rules cannot be verified.
 
     Args:
         device: The device that needs to access ``resource``.
-        resource: The resource to query. :class:`warp.array` is currently supported.
+        resource: The resource to query. Concrete Warp array instances such as :class:`warp.array` and
+            :class:`warp.indexedarray` are currently supported.
 
     Returns:
         ``True`` if Warp can verify that ``device`` can directly access ``resource``, otherwise ``False``.
 
     Raises:
-        TypeError: If ``resource`` is not a Warp array.
+        TypeError: If ``resource`` is not a concrete Warp array.
     """
 
     device = runtime.get_device(device)
 
-    if warp._src.types.is_array(resource):
-        return _is_array_accessible_from_device(resource, device)
+    if not warp._src.types.is_array(resource) or getattr(resource, "device", None) is None:
+        raise TypeError("wp.can_access() only supports concrete Warp arrays in this release")
 
-    raise TypeError("wp.can_access() only supports Warp arrays in this release")
+    return _is_array_accessible_from_device(resource, device)
 
 
 def _is_array_accessible_from_device(value: warp.array, device: Device) -> bool:
@@ -7857,6 +7858,33 @@ def _is_array_accessible_from_device(value: warp.array, device: Device) -> bool:
 
 def _classify_array_access_from_device(value: warp.array, device: Device) -> _ArrayAccessStatus:
     """Classify whether ``device`` can directly access ``value`` as a kernel argument."""
+
+    access_status = _ArrayAccessStatus.ACCESSIBLE
+    for backing_array in _iter_array_access_backing_arrays(value):
+        backing_access_status = _classify_single_array_access_from_device(backing_array, device)
+        if backing_access_status == _ArrayAccessStatus.INACCESSIBLE:
+            return _ArrayAccessStatus.INACCESSIBLE
+        if backing_access_status == _ArrayAccessStatus.UNKNOWN:
+            access_status = _ArrayAccessStatus.UNKNOWN
+
+    return access_status
+
+
+def _iter_array_access_backing_arrays(value: warp.array):
+    """Yield every concrete array pointer that backs ``value`` as a kernel argument."""
+
+    if isinstance(value, warp.indexedarray) and value.data is not None:
+        yield value.data
+        for index_array in value.indices:
+            if index_array is not None:
+                yield index_array
+        return
+
+    yield value
+
+
+def _classify_single_array_access_from_device(value: warp.array, device: Device) -> _ArrayAccessStatus:
+    """Classify whether ``device`` can directly access one concrete array allocation."""
 
     device = runtime.get_device(device)
     value_device = value.device

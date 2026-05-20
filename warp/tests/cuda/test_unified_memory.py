@@ -35,6 +35,21 @@ def launch_verification_mode(mode: wp.LaunchVerificationMode):
         wp.config.launch_verification_mode = old_value
 
 
+@contextlib.contextmanager
+def emulate_non_coherent_uva_cuda_device(device):
+    """Temporarily emulate a CUDA device that can access pinned but not pageable CPU memory."""
+
+    old_is_uva = device.is_uva
+    old_cpu_memory_access = device.is_cpu_memory_access_from_gpu_supported
+    device.is_uva = True
+    device.is_cpu_memory_access_from_gpu_supported = False
+    try:
+        yield
+    finally:
+        device.is_uva = old_is_uva
+        device.is_cpu_memory_access_from_gpu_supported = old_cpu_memory_access
+
+
 class DelegatingAllocator:
     """Allocator that delegates to the built-in default CUDA allocator."""
 
@@ -50,6 +65,12 @@ class DelegatingAllocator:
 
 @wp.kernel
 def read_cpu_write_gpu(src: wp.array[wp.float32], dst: wp.array[wp.float32]):
+    i = wp.tid()
+    dst[i] = src[i] * 2.0
+
+
+@wp.kernel
+def read_indexed_cpu_write_gpu(src: wp.indexedarray[wp.float32], dst: wp.array[wp.float32]):
     i = wp.tid()
     dst[i] = src[i] * 2.0
 
@@ -119,6 +140,17 @@ def test_unified_memory_can_access(test, device):
     with test.assertRaisesRegex(TypeError, "Warp arrays"):
         wp.can_access(cpu, cpu)
 
+    annotation_only_resources = (
+        wp.array(dtype=wp.float32),
+        wp.array[wp.float32],
+        wp.indexedarray(dtype=wp.float32),
+        wp.indexedarray[wp.float32],
+    )
+    for resource in annotation_only_resources:
+        with test.subTest(resource=resource):
+            with test.assertRaisesRegex(TypeError, "concrete Warp array"):
+                wp.can_access(cpu, resource)
+
     if device.is_cuda:
         cuda_array = wp.empty(4, dtype=wp.float32, device=device)
 
@@ -139,6 +171,24 @@ def test_unified_memory_can_access(test, device):
                     test.assertEqual(device.can_access(other), wp.is_mempool_access_enabled(other, device))
                 else:
                     test.assertEqual(device.can_access(other), wp.is_peer_access_enabled(other, device))
+
+
+def test_unified_memory_checked_rejects_indexedarray_with_inaccessible_indices(test, device):
+    """Indexed array launch verification must validate both data and index arrays."""
+
+    data = wp.array(np.arange(4, dtype=np.float32), dtype=wp.float32, device="cpu", pinned=True)
+    indices = wp.array(np.array([0, 1, 2, 3], dtype=np.int32), dtype=wp.int32, device="cpu")
+    src = wp.indexedarray1d(data, [indices])
+    dst = wp.empty(src.size, dtype=wp.float32, device=device)
+
+    test.assertTrue(data.pinned)
+    test.assertFalse(indices.pinned)
+
+    with emulate_non_coherent_uva_cuda_device(device):
+        test.assertFalse(wp.can_access(device, src))
+        with launch_verification_mode(wp.LaunchVerificationMode.CHECKED):
+            with test.assertRaisesRegex(RuntimeError, "array allocation is not accessible or cannot be verified"):
+                wp.launch(read_indexed_cpu_write_gpu, dim=src.size, inputs=[src], outputs=[dst], device=device)
 
 
 def test_unified_memory_record_cmd_skips_default_access_check(test, device):
@@ -638,6 +688,12 @@ add_function_test(
     "test_unified_memory_can_access",
     test_unified_memory_can_access,
     devices=devices,
+)
+add_function_test(
+    TestUnifiedMemory,
+    "test_unified_memory_checked_rejects_indexedarray_with_inaccessible_indices",
+    test_unified_memory_checked_rejects_indexedarray_with_inaccessible_indices,
+    devices=cuda_devices,
 )
 add_function_test(
     TestUnifiedMemory,

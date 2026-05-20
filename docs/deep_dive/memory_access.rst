@@ -189,8 +189,9 @@ known to Warp. A ``False`` result means "not verified accessible"; it does not
 prove that the hardware could never access the pointer.
 
 ``wp.can_access()`` is a resource-oriented API. In this release, the second
-argument must be a Warp array. Passing another device as the second argument is
-not supported.
+argument must be a concrete Warp array instance. Annotation-only arrays such as
+``wp.array(dtype=float)`` or ``wp.array[float]`` and device objects are not
+supported.
 
 
 Checking coarse device access with ``Device.can_access()``
