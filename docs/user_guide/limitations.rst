@@ -62,6 +62,14 @@ Arrays
 * Each dimension of a Warp array cannot be greater than the maximum value representable by a 32-bit signed integer,
   :math:`2^{31}-1`.
 * There are currently no data types that support complex numbers.
+* ``wp.config.launch_verification_mode = wp.LaunchVerificationMode.CHECKED``
+  only fully verifies cross-device :class:`wp.array <warp.array>` arguments when
+  Warp can determine the allocation kind. Arrays backed by custom or externally
+  wrapped allocators warn and proceed in checked mode; use
+  ``wp.LaunchVerificationMode.STRICT`` to reject cross-device launches before
+  checking allocator provenance. Directly passed ``__array_interface__`` or
+  ``__cuda_array_interface__`` objects are not fully allocation-verified. See
+  :ref:`launch_verification` for details.
 
 Structs
 -------

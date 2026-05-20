@@ -16,6 +16,7 @@ For information on module-level and kernel-level settings, see :doc:`/user_guide
 
 import sys as _sys
 import types as _types
+from enum import IntEnum as _IntEnum
 
 from warp._src.logger import LOG_INFO as _LOG_INFO
 from warp._src.logger import log_warning as _log_warning
@@ -74,11 +75,48 @@ class _ConfigModule(_types.ModuleType):
     def __setattr__(self, name, value):
         if name in ("verbose", "quiet"):
             _warn_deprecated_config_access(name)
+        if name == "launch_verification_mode" and not isinstance(value, LaunchVerificationMode):
+            raise ValueError(
+                f"warp.config.launch_verification_mode must be a warp.LaunchVerificationMode value, got {value!r}"
+            )
         super().__setattr__(name, value)
 
 
 def _install_config_module_hooks() -> None:
     _sys.modules[__name__].__class__ = _ConfigModule
+
+
+class LaunchVerificationMode(_IntEnum):
+    """Array-access verification modes for kernel launches."""
+
+    RELAXED = 0
+    """Perform no launch array access checks before launching kernels."""
+
+    CHECKED = 1
+    """Detect cross-device Warp array access issues before launching kernels where possible."""
+
+    STRICT = 2
+    """Require every Warp array argument to be allocated on the launch device."""
+
+
+launch_verification_mode: LaunchVerificationMode = LaunchVerificationMode.RELAXED
+"""Kernel launch array access verification mode.
+
+``LaunchVerificationMode.RELAXED`` performs no launch array access checks and is
+the default. ``LaunchVerificationMode.STRICT`` requires every Warp array argument
+to be allocated on the launch device, matching Warp's original behavior.
+``LaunchVerificationMode.CHECKED`` raises an error before launch when Warp can
+determine that a cross-device Warp array argument is not accessible from the
+launch device. When Warp cannot verify access because an array uses an unknown
+custom allocator or externally wrapped allocation, checked mode emits a warning
+once for the launch pattern and allows the launch to proceed.
+
+Unlike ``verify_cuda``, this setting can be used during CUDA graph capture
+because checks run before each launch is recorded. For cross-GPU graph capture,
+enable peer or memory-pool access with Warp APIs before capture begins.
+
+Note: Strict and checked modes impact performance.
+"""
 
 
 version: str = "1.14.0.dev0"

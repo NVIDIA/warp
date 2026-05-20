@@ -125,6 +125,36 @@ def get_cuda_test_devices(mode=None):
     return [d for d in devices if d.is_cuda]
 
 
+def get_cuda_device_pair_with_peer_access_support(devices=None):
+    """Return the first CUDA pair where ``peer_device`` can access ``target_device`` allocations."""
+
+    if devices is None:
+        devices = wp.get_cuda_devices()
+
+    cuda_devices = [device for device in devices if device.is_cuda]
+    for target_device in cuda_devices:
+        for peer_device in cuda_devices:
+            if target_device != peer_device and wp.is_peer_access_supported(target_device, peer_device):
+                return target_device, peer_device
+
+    return None
+
+
+def get_cuda_device_pair_with_mempool_access_support(devices=None):
+    """Return the first CUDA pair where ``peer_device`` can access ``target_device`` memory pools."""
+
+    if devices is None:
+        devices = wp.get_cuda_devices()
+
+    cuda_devices = [device for device in devices if device.is_cuda]
+    for target_device in cuda_devices:
+        for peer_device in cuda_devices:
+            if target_device != peer_device and wp.is_mempool_access_supported(target_device, peer_device):
+                return target_device, peer_device
+
+    return None
+
+
 def get_test_devices_with_mempool(mode: str | None = None):
     """Like :func:`get_test_devices`, but drops CUDA devices without memory pool support.
 

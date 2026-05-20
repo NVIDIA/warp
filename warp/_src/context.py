@@ -3337,6 +3337,16 @@ class Allocator(Protocol):
         ...
 
 
+class _ArrayAccessStatus(enum.Enum):
+    ACCESSIBLE = enum.auto()
+    INACCESSIBLE = enum.auto()
+    UNKNOWN = enum.auto()
+
+
+_LAUNCH_ARRAY_ACCESS_WARNING_CACHE_SIZE = 1024
+_launch_array_access_warnings_seen: collections.OrderedDict[tuple[str, str, str, str], None] = collections.OrderedDict()
+
+
 def _validate_allocator(allocator):
     if allocator is None:
         return
@@ -3814,6 +3824,14 @@ class Device:
             in bytes (opt-in maximum via ``cuFuncSetAttribute``). ``0`` for CPU devices.
         is_uva (bool): Indicates whether the device supports unified addressing.
             ``False`` for CPU devices.
+        is_cpu_memory_access_from_gpu_supported (bool): Indicates whether GPU kernels on this device can directly
+            access CPU memory. ``False`` for CPU devices.
+        is_gpu_memory_access_from_cpu_supported (bool): Indicates whether CPU code can directly access CUDA managed
+            memory physically resident on this device without migration. This does not imply that Warp arrays
+            allocated on CUDA devices are CPU-accessible: Warp's built-in CUDA allocators do not create CUDA
+            managed-memory allocations. ``False`` for CPU devices.
+        is_cpu_gpu_atomic_supported (bool): Indicates whether native atomic operations between CPU and GPU memory
+            are supported on this device. ``False`` for CPU devices.
         is_cubin_supported (bool): Indicates whether Warp's version of NVRTC can directly
             generate CUDA binary files (cubin) for this device's architecture. ``False`` for CPU devices.
         is_mempool_supported (bool): Indicates whether the device supports using the ``cuMemAllocAsync`` and
@@ -3860,6 +3878,9 @@ class Device:
             self.sm_count = 0
             self.max_shared_memory_per_block = 0
             self.is_uva = False
+            self.is_cpu_memory_access_from_gpu_supported = False
+            self.is_gpu_memory_access_from_cpu_supported = False
+            self.is_cpu_gpu_atomic_supported = False
             self.is_mempool_supported = False
             self.is_mempool_enabled = False
             self.is_ipc_supported = False  # TODO: Support IPC for CPU arrays
@@ -3881,6 +3902,13 @@ class Device:
             self.sm_count = runtime.core.wp_cuda_device_get_sm_count(ordinal)
             self.max_shared_memory_per_block = runtime.core.wp_cuda_device_get_max_shared_memory(ordinal)
             self.is_uva = runtime.core.wp_cuda_device_is_uva(ordinal) > 0
+            self.is_cpu_memory_access_from_gpu_supported = (
+                runtime.core.wp_cuda_device_get_pageable_memory_access(ordinal) > 0
+            )
+            self.is_gpu_memory_access_from_cpu_supported = (
+                runtime.core.wp_cuda_device_get_direct_managed_mem_access_from_host(ordinal) > 0
+            )
+            self.is_cpu_gpu_atomic_supported = runtime.core.wp_cuda_device_get_host_native_atomic_supported(ordinal) > 0
             self.is_mempool_supported = runtime.core.wp_cuda_device_is_mempool_supported(ordinal) > 0
             if platform.system() == "Linux":
                 # Use None when IPC support cannot be determined
@@ -4134,16 +4162,36 @@ class Device:
             self.runtime.core.wp_cuda_context_set_current(self.context)
 
     def can_access(self, other):
+        """Return whether this device can access the current built-in allocator for another device.
+
+        This is a coarse device-level query. It does not inspect a specific allocation, so it does not answer
+        whether an existing array can be accessed. Use :func:`warp.can_access` when allocation-specific Warp array
+        logic is needed, such as for pinned CPU arrays or CUDA memory-pool allocations.
+        """
+
         # TODO: this function should be redesigned in terms of (device, resource).
         # - a device can access any resource on the same device
-        # - a CUDA device can access pinned memory on the host
-        # - a CUDA device can access regular allocations on a peer device if peer access is enabled
-        # - a CUDA device can access mempool allocations on a peer device if mempool access is enabled
+        # - a CUDA device can access CPU memory when the device supports it
+        # - a CUDA device can access another CUDA device's current built-in allocator when its
+        #   corresponding access mode is enabled
         other = self.runtime.get_device(other)
+
         if self.context == other.context:
             return True
-        else:
+
+        if self.is_cuda and other.is_cpu:
+            return self.is_cpu_memory_access_from_gpu_supported
+
+        if self.is_cpu and other.is_cuda:
+            # Warp's built-in CUDA allocators do not create managed-memory allocations.
             return False
+
+        if self.is_cuda and other.is_cuda:
+            if other.is_mempool_enabled:
+                return is_mempool_access_enabled(other, self)
+            return is_peer_access_enabled(other, self)
+
+        return False
 
     def get_cuda_output_format(self, preferred_cuda_output: str | None = None) -> str | None:
         """Determine the CUDA output format to use for this device.
@@ -5426,6 +5474,12 @@ class Runtime:
             self.core.wp_cuda_device_get_max_shared_memory.restype = ctypes.c_int
             self.core.wp_cuda_device_is_uva.argtypes = [ctypes.c_int]
             self.core.wp_cuda_device_is_uva.restype = ctypes.c_int
+            self.core.wp_cuda_device_get_pageable_memory_access.argtypes = [ctypes.c_int]
+            self.core.wp_cuda_device_get_pageable_memory_access.restype = ctypes.c_int
+            self.core.wp_cuda_device_get_direct_managed_mem_access_from_host.argtypes = [ctypes.c_int]
+            self.core.wp_cuda_device_get_direct_managed_mem_access_from_host.restype = ctypes.c_int
+            self.core.wp_cuda_device_get_host_native_atomic_supported.argtypes = [ctypes.c_int]
+            self.core.wp_cuda_device_get_host_native_atomic_supported.restype = ctypes.c_int
             self.core.wp_cuda_device_is_mempool_supported.argtypes = [ctypes.c_int]
             self.core.wp_cuda_device_is_mempool_supported.restype = ctypes.c_int
             self.core.wp_cuda_device_is_ipc_supported.argtypes = [ctypes.c_int]
@@ -5939,6 +5993,8 @@ class Runtime:
 
         self.cuda_devices = []
         self.cuda_primary_devices = []
+        self.cuda_peer_access_enabled = {}
+        self.cuda_mempool_access_enabled = {}
         self.nvrtc_supported_archs = set()
 
         cuda_device_count = 0
@@ -6439,9 +6495,20 @@ class Runtime:
         if device is None or not device.is_cuda:
             raise RuntimeError(f"Invalid CUDA device alias '{alias}'")
 
+        target_context = device.context
+        target_ordinal = device.ordinal
+
         del self.device_map[alias]
-        del self.context_map[device.context]
+        del self.context_map[target_context]
         self.cuda_devices.remove(device)
+
+        for key in list(self.cuda_peer_access_enabled):
+            if target_context in key:
+                del self.cuda_peer_access_enabled[key]
+
+        for key in list(self.cuda_mempool_access_enabled):
+            if target_ordinal in key:
+                del self.cuda_mempool_access_enabled[key]
 
     def verify_cuda_device(self, device: DeviceLike = None) -> None:
         if warp.config.verify_cuda:
@@ -6920,6 +6987,14 @@ def is_peer_access_supported(target_device: DeviceLike, peer_device: DeviceLike)
     return bool(runtime.core.wp_cuda_is_peer_access_supported(target_device.ordinal, peer_device.ordinal))
 
 
+def _peer_access_cache_key(target_device: Device, peer_device: Device):
+    return target_device.context, peer_device.context
+
+
+def _mempool_access_cache_key(target_device: Device, peer_device: Device):
+    return target_device.ordinal, peer_device.ordinal
+
+
 def is_peer_access_enabled(target_device: DeviceLike, peer_device: DeviceLike) -> bool:
     """Check if ``peer_device`` can currently access the memory of ``target_device``.
 
@@ -6938,7 +7013,22 @@ def is_peer_access_enabled(target_device: DeviceLike, peer_device: DeviceLike) -
     if not target_device.is_cuda or not peer_device.is_cuda:
         return False
 
-    return bool(runtime.core.wp_cuda_is_peer_access_enabled(target_device.context, peer_device.context))
+    if target_device.context == peer_device.context:
+        return True
+
+    key = _peer_access_cache_key(target_device, peer_device)
+    if peer_device.is_capturing:
+        return runtime.cuda_peer_access_enabled.get(key, False)
+
+    enabled = bool(runtime.core.wp_cuda_is_peer_access_enabled(target_device.context, peer_device.context))
+    runtime.cuda_peer_access_enabled[key] = enabled
+
+    return enabled
+
+
+def _set_cached_peer_access_enabled(target_device: Device, peer_device: Device, enable: bool) -> None:
+    if target_device.is_cuda and peer_device.is_cuda and target_device.context != peer_device.context:
+        runtime.cuda_peer_access_enabled[_peer_access_cache_key(target_device, peer_device)] = enable
 
 
 def set_peer_access_enabled(target_device: DeviceLike, peer_device: DeviceLike, enable: bool) -> None:
@@ -6957,12 +7047,14 @@ def set_peer_access_enabled(target_device: DeviceLike, peer_device: DeviceLike, 
     peer_device = runtime.get_device(peer_device)
 
     if not target_device.is_cuda or not peer_device.is_cuda:
+        _set_cached_peer_access_enabled(target_device, peer_device, False)
         if enable:
             raise ValueError("Peer access is only supported between CUDA devices")
         else:
             return
 
     if not is_peer_access_supported(target_device, peer_device):
+        _set_cached_peer_access_enabled(target_device, peer_device, False)
         if enable:
             raise RuntimeError(f"Device {peer_device} cannot access device {target_device}")
         else:
@@ -6971,6 +7063,8 @@ def set_peer_access_enabled(target_device: DeviceLike, peer_device: DeviceLike, 
     if not runtime.core.wp_cuda_set_peer_access_enabled(target_device.context, peer_device.context, int(enable)):
         action = "enable" if enable else "disable"
         raise RuntimeError(f"Failed to {action} peer access from device {peer_device} to device {target_device}")
+
+    _set_cached_peer_access_enabled(target_device, peer_device, enable)
 
 
 def is_mempool_access_supported(target_device: DeviceLike, peer_device: DeviceLike) -> bool:
@@ -7009,7 +7103,22 @@ def is_mempool_access_enabled(target_device: DeviceLike, peer_device: DeviceLike
     if not peer_device.is_cuda or not target_device.is_cuda or not target_device.is_mempool_supported:
         return False
 
-    return bool(runtime.core.wp_cuda_is_mempool_access_enabled(target_device.ordinal, peer_device.ordinal))
+    if target_device == peer_device:
+        return True
+
+    key = _mempool_access_cache_key(target_device, peer_device)
+    if peer_device.is_capturing:
+        return runtime.cuda_mempool_access_enabled.get(key, False)
+
+    enabled = bool(runtime.core.wp_cuda_is_mempool_access_enabled(target_device.ordinal, peer_device.ordinal))
+    runtime.cuda_mempool_access_enabled[key] = enabled
+
+    return enabled
+
+
+def _set_cached_mempool_access_enabled(target_device: Device, peer_device: Device, enable: bool) -> None:
+    if target_device.is_cuda and peer_device.is_cuda and target_device != peer_device:
+        runtime.cuda_mempool_access_enabled[_mempool_access_cache_key(target_device, peer_device)] = enable
 
 
 def set_mempool_access_enabled(target_device: DeviceLike, peer_device: DeviceLike, enable: bool) -> None:
@@ -7025,18 +7134,21 @@ def set_mempool_access_enabled(target_device: DeviceLike, peer_device: DeviceLik
     peer_device = runtime.get_device(peer_device)
 
     if not target_device.is_cuda or not peer_device.is_cuda:
+        _set_cached_mempool_access_enabled(target_device, peer_device, False)
         if enable:
             raise ValueError("Memory pool access is only supported between CUDA devices")
         else:
             return
 
     if not target_device.is_mempool_supported:
+        _set_cached_mempool_access_enabled(target_device, peer_device, False)
         if enable:
             raise RuntimeError(f"Device {target_device} does not support memory pools")
         else:
             return
 
     if not is_peer_access_supported(target_device, peer_device):
+        _set_cached_mempool_access_enabled(target_device, peer_device, False)
         if enable:
             raise RuntimeError(f"Device {peer_device} cannot access device {target_device}")
         else:
@@ -7045,6 +7157,8 @@ def set_mempool_access_enabled(target_device: DeviceLike, peer_device: DeviceLik
     if not runtime.core.wp_cuda_set_mempool_access_enabled(target_device.ordinal, peer_device.ordinal, int(enable)):
         action = "enable" if enable else "disable"
         raise RuntimeError(f"Failed to {action} memory pool access from device {peer_device} to device {target_device}")
+
+    _set_cached_mempool_access_enabled(target_device, peer_device, enable)
 
 
 def get_stream(device: DeviceLike = None) -> Stream:
@@ -7698,6 +7812,174 @@ def from_numpy(
     )
 
 
+def _get_array_allocator(value: warp.array) -> Allocator | None:
+    """Return the allocator backing ``value``, following Warp array views to their owner."""
+
+    while warp._src.types.is_array(value):
+        allocator = getattr(value, "_allocator", None)
+        if allocator is not None:
+            return allocator
+        value = getattr(value, "_ref", None)
+
+    return None
+
+
+def can_access(device: DeviceLike, resource) -> bool:
+    """Return whether ``device`` can directly access ``resource``.
+
+    In this release, ``resource`` must be a concrete Warp array. The query is allocation-aware for built-in Warp
+    allocators and returns ``False`` for cross-device allocations whose access rules cannot be verified.
+
+    Args:
+        device: The device that needs to access ``resource``.
+        resource: The resource to query. Concrete Warp array instances such as :class:`warp.array` and
+            :class:`warp.indexedarray` are currently supported.
+
+    Returns:
+        ``True`` if Warp can verify that ``device`` can directly access ``resource``, otherwise ``False``.
+
+    Raises:
+        TypeError: If ``resource`` is not a concrete Warp array.
+    """
+
+    device = runtime.get_device(device)
+
+    if not warp._src.types.is_array(resource) or getattr(resource, "device", None) is None:
+        raise TypeError("wp.can_access() only supports concrete Warp arrays in this release")
+
+    return _is_array_accessible_from_device(resource, device)
+
+
+def _is_array_accessible_from_device(value: warp.array, device: Device) -> bool:
+    """Return whether ``device`` can directly access ``value`` as a kernel argument."""
+
+    return _classify_array_access_from_device(value, device) == _ArrayAccessStatus.ACCESSIBLE
+
+
+def _classify_array_access_from_device(value: warp.array, device: Device) -> _ArrayAccessStatus:
+    """Classify whether ``device`` can directly access ``value`` as a kernel argument."""
+
+    access_status = _ArrayAccessStatus.ACCESSIBLE
+    for backing_array in _iter_array_access_backing_arrays(value):
+        backing_access_status = _classify_single_array_access_from_device(backing_array, device)
+        if backing_access_status == _ArrayAccessStatus.INACCESSIBLE:
+            return _ArrayAccessStatus.INACCESSIBLE
+        if backing_access_status == _ArrayAccessStatus.UNKNOWN:
+            access_status = _ArrayAccessStatus.UNKNOWN
+
+    return access_status
+
+
+def _iter_array_access_backing_arrays(value: warp.array):
+    """Yield every concrete array pointer that backs ``value`` as a kernel argument."""
+
+    if isinstance(value, warp.indexedarray) and value.data is not None:
+        yield value.data
+        for index_array in value.indices:
+            if index_array is not None:
+                yield index_array
+        return
+
+    yield value
+
+
+def _classify_single_array_access_from_device(value: warp.array, device: Device) -> _ArrayAccessStatus:
+    """Classify whether ``device`` can directly access one concrete array allocation."""
+
+    device = runtime.get_device(device)
+    value_device = value.device
+
+    if device.context == value_device.context:
+        return _ArrayAccessStatus.ACCESSIBLE
+
+    allocator = _get_array_allocator(value)
+
+    if device.is_cuda and value_device.is_cpu:
+        if value.pinned and device.is_uva:
+            return _ArrayAccessStatus.ACCESSIBLE
+        if device.is_cpu_memory_access_from_gpu_supported:
+            return _ArrayAccessStatus.ACCESSIBLE
+        return _ArrayAccessStatus.INACCESSIBLE
+
+    if device.is_cpu and value_device.is_cuda:
+        if isinstance(allocator, CudaDefaultAllocator | CudaMempoolAllocator):
+            # Warp's CUDA arrays are not CUDA managed-memory allocations.
+            return _ArrayAccessStatus.INACCESSIBLE
+
+        # Custom and externally wrapped CUDA allocations may use allocation
+        # kinds that Warp cannot classify yet.
+        return _ArrayAccessStatus.UNKNOWN
+
+    if device.is_cuda and value_device.is_cuda:
+        if isinstance(allocator, CudaMempoolAllocator):
+            if is_mempool_access_enabled(value_device, device):
+                return _ArrayAccessStatus.ACCESSIBLE
+            return _ArrayAccessStatus.INACCESSIBLE
+        if isinstance(allocator, CudaDefaultAllocator):
+            if is_peer_access_enabled(value_device, device):
+                return _ArrayAccessStatus.ACCESSIBLE
+            return _ArrayAccessStatus.INACCESSIBLE
+
+        # Custom and externally wrapped allocations do not expose enough
+        # information for launch verification to choose the correct access API.
+        return _ArrayAccessStatus.UNKNOWN
+
+    return _ArrayAccessStatus.INACCESSIBLE
+
+
+def _raise_launch_array_access_error(kernel, arg_name: str, value: warp.array, device: Device) -> None:
+    raise RuntimeError(
+        f"Error launching kernel '{kernel.key}', trying to launch on device='{device}', "
+        f"but input array for argument '{arg_name}' is on device={value.device}, "
+        f"whose array allocation is not accessible or cannot be verified as accessible from "
+        f"'{device}'. Move the array to '{device}', enable the required peer/coherent access, "
+        f"or set warp.config.launch_verification_mode = warp.LaunchVerificationMode.RELAXED "
+        f"only if this launch is valid for the hardware and allocation type."
+    )
+
+
+def _warn_unknown_launch_array_access(kernel, arg_name: str, value: warp.array, device: Device) -> None:
+    key = (kernel.key, arg_name, value.device.alias, device.alias)
+    if key in _launch_array_access_warnings_seen:
+        _launch_array_access_warnings_seen.move_to_end(key)
+        return
+
+    _launch_array_access_warnings_seen[key] = None
+    if len(_launch_array_access_warnings_seen) > _LAUNCH_ARRAY_ACCESS_WARNING_CACHE_SIZE:
+        _launch_array_access_warnings_seen.popitem(last=False)
+
+    log_warning(
+        f"LaunchVerificationMode.CHECKED cannot verify cross-device access for kernel '{kernel.key}' "
+        f"argument '{arg_name}' from device={value.device} to launch device='{device}': the array uses "
+        "an unknown allocator or externally wrapped allocation. The launch will proceed but may result "
+        "in errors. Use LaunchVerificationMode.STRICT to reject this launch, or "
+        "LaunchVerificationMode.RELAXED to suppress this diagnostic.",
+        category=UserWarning,
+        stacklevel=3,
+    )
+
+
+def _validate_launch_array_access(kernel, arg_name: str, value: warp.array, device: Device) -> None:
+    mode = warp.config.launch_verification_mode
+
+    if value.device == device:
+        return
+
+    if mode == warp.config.LaunchVerificationMode.STRICT:
+        _raise_launch_array_access_error(kernel, arg_name, value, device)
+    elif mode == warp.config.LaunchVerificationMode.CHECKED:
+        access_status = _classify_array_access_from_device(value, device)
+        if access_status == _ArrayAccessStatus.INACCESSIBLE:
+            _raise_launch_array_access_error(kernel, arg_name, value, device)
+        elif access_status == _ArrayAccessStatus.UNKNOWN:
+            _warn_unknown_launch_array_access(kernel, arg_name, value, device)
+        return
+    else:
+        raise ValueError(
+            f"warp.config.launch_verification_mode must be a warp.LaunchVerificationMode value, got {mode!r}"
+        )
+
+
 def event_from_ipc_handle(handle, device: DeviceLike = None) -> Event:
     """Create an event from an IPC handle.
 
@@ -7735,6 +8017,8 @@ def event_from_ipc_handle(handle, device: DeviceLike = None) -> Event:
 # given a kernel destination argument type and a value convert
 #  to a c-type that can be passed to a kernel
 def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
+    device = runtime.get_device(device)
+
     if warp._src.types.is_array(arg_type):
         if value is None:
             # allow for NULL arrays
@@ -7805,11 +8089,10 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
                     f"Error launching kernel '{kernel.key}', {adj}argument '{arg_name}' expects an array with {arg_type.ndim} dimension(s) but the passed array has {value.ndim} dimension(s)."
                 )
 
-            # check device
-            if value.device != device:
-                raise RuntimeError(
-                    f"Error launching kernel '{kernel.key}', trying to launch on device='{device}', but input array for argument '{arg_name}' is on device={value.device}."
-                )
+            # Optional diagnostic check for mixed-device launches. By default, array pointers are passed
+            # through and the hardware access rules determine whether the launch is valid.
+            if warp.config.launch_verification_mode != warp.LaunchVerificationMode.RELAXED:
+                _validate_launch_array_access(kernel, arg_name, value, device)
 
             return value.__ctype__()
 
@@ -11793,6 +12076,9 @@ def print_diagnostics() -> dict:
                 "sm_count": cuda_device.sm_count,
                 "memory_gb": round(cuda_device.total_memory / (1024**3), 1),
                 "mempool_enabled": cuda_device.is_mempool_enabled if cuda_device.is_mempool_supported else False,
+                "is_cpu_memory_access_from_gpu_supported": cuda_device.is_cpu_memory_access_from_gpu_supported,
+                "is_gpu_memory_access_from_cpu_supported": cuda_device.is_gpu_memory_access_from_cpu_supported,
+                "is_cpu_gpu_atomic_supported": cuda_device.is_cpu_gpu_atomic_supported,
                 "pci_bus_id": cuda_device.pci_bus_id,
             }
         )
@@ -11867,6 +12153,9 @@ def print_diagnostics() -> dict:
             _field("SMs:", dev["sm_count"], indent=4)
             _field("PCI:", dev["pci_bus_id"], indent=4)
             _field("Mempool:", "enabled" if dev["mempool_enabled"] else "disabled", indent=4)
+            _field("GPU->CPU mem:", dev["is_cpu_memory_access_from_gpu_supported"], indent=4)
+            _field("CPU->GPU mem:", dev["is_gpu_memory_access_from_cpu_supported"], indent=4)
+            _field("CPU/GPU atomics:", dev["is_cpu_gpu_atomic_supported"], indent=4)
     lines.append("")
 
     print("\n".join(lines))

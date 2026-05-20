@@ -148,6 +148,9 @@ struct DeviceInfo {
     char name[kNameLen] = "";
     int arch = 0;
     int is_uva = 0;
+    int pageable_memory_access = 0;
+    int direct_managed_mem_access_from_host = 0;
+    int host_native_atomic_supported = 0;
     int is_mempool_supported = 0;
     int sm_count = 0;
     int is_ipc_supported = -1;
@@ -288,6 +291,16 @@ int cuda_init()
                     cuDeviceGetAttribute_f(&g_devices[i].pci_device_id, CU_DEVICE_ATTRIBUTE_PCI_DEVICE_ID, device)
                 );
                 check_cu(cuDeviceGetAttribute_f(&g_devices[i].is_uva, CU_DEVICE_ATTRIBUTE_UNIFIED_ADDRESSING, device));
+                check_cu(cuDeviceGetAttribute_f(
+                    &g_devices[i].pageable_memory_access, CU_DEVICE_ATTRIBUTE_PAGEABLE_MEMORY_ACCESS, device
+                ));
+                check_cu(cuDeviceGetAttribute_f(
+                    &g_devices[i].direct_managed_mem_access_from_host,
+                    CU_DEVICE_ATTRIBUTE_DIRECT_MANAGED_MEM_ACCESS_FROM_HOST, device
+                ));
+                check_cu(cuDeviceGetAttribute_f(
+                    &g_devices[i].host_native_atomic_supported, CU_DEVICE_ATTRIBUTE_HOST_NATIVE_ATOMIC_SUPPORTED, device
+                ));
                 check_cu(cuDeviceGetAttribute_f(
                     &g_devices[i].is_mempool_supported, CU_DEVICE_ATTRIBUTE_MEMORY_POOLS_SUPPORTED, device
                 ));
@@ -2154,6 +2167,27 @@ int wp_cuda_device_is_uva(int ordinal)
 {
     if (ordinal >= 0 && ordinal < int(g_devices.size()))
         return g_devices[ordinal].is_uva;
+    return 0;
+}
+
+int wp_cuda_device_get_pageable_memory_access(int ordinal)
+{
+    if (ordinal >= 0 && ordinal < int(g_devices.size()))
+        return g_devices[ordinal].pageable_memory_access;
+    return 0;
+}
+
+int wp_cuda_device_get_direct_managed_mem_access_from_host(int ordinal)
+{
+    if (ordinal >= 0 && ordinal < int(g_devices.size()))
+        return g_devices[ordinal].direct_managed_mem_access_from_host;
+    return 0;
+}
+
+int wp_cuda_device_get_host_native_atomic_supported(int ordinal)
+{
+    if (ordinal >= 0 && ordinal < int(g_devices.size()))
+        return g_devices[ordinal].host_native_atomic_supported;
     return 0;
 }
 

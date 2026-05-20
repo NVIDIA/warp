@@ -102,6 +102,10 @@
 - Remove placeholder adjoints for built-ins that are not mathematically differentiable. No
   user-visible behavior change for code that respects the `is_differentiable=False` contract
   ([GH-988](https://github.com/NVIDIA/warp/issues/988)).
+- Allow GPU kernels to receive CPU arrays on systems where the GPU reports direct pageable CPU memory access,
+  enabling zero-copy launches on HMM and ATS systems. Add `warp.config.launch_verification_mode` with relaxed, strict,
+  and checked modes for pre-launch accessibility diagnostics on mixed-device array launches
+  ([GH-1461](https://github.com/NVIDIA/warp/issues/1461)).
 
 ### Fixed
 
