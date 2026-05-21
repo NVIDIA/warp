@@ -57,7 +57,7 @@ def _det_needs_store_guard(adj) -> bool:
     """Return whether stores in this body must be phase-gated."""
     if adj.det_meta is None:
         return False
-    return adj.det_meta.has_counter or adj._det_has_consumed_atomic or adj._det_has_side_effect_store
+    return adj.det_meta.has_counter or adj.det_meta.has_consumed_atomic or adj.det_meta.has_side_effect_store
 
 
 def _det_wrap_slot_store(adj, slot_lvalue: str, value_expr: str) -> str:
@@ -1359,6 +1359,11 @@ class Adjoint:
         # for unit testing errors being spit out from kernels.
         adj.skip_build = False
 
+        # Deterministic-mode state, populated by ``build()`` when enabled.
+        adj.det_meta = None
+        adj.det_registry = None
+        adj._det_atomic_return_discarded = False
+
     # allocate extra space for a function call that requires its
     # own shared memory space, we treat shared memory as a stack
     # where each function pushes and pops space off, the extra
@@ -1545,16 +1550,13 @@ class Adjoint:
             adj.det_meta = DeterministicMeta(
                 determinism_mode=deterministic_mode,
                 max_records=adj.builder_options.get("deterministic_max_records", 0),
+                has_consumed_atomic=_deterministic_has_consumed_atomic_impl(adj.tree, adj, seen=None),
+                has_side_effect_store=adj.is_user_function and _deterministic_has_potential_array_store(adj.tree),
             )
             adj.det_registry = DeterministicRegistry()
-            adj._det_has_consumed_atomic = _deterministic_has_consumed_atomic_impl(adj.tree, adj, seen=None)
-            adj._det_has_side_effect_store = adj.is_user_function and _deterministic_has_potential_array_store(adj.tree)
         else:
             adj.det_meta = None
             adj.det_registry = None
-            adj._det_has_consumed_atomic = False
-            adj._det_has_side_effect_store = False
-        adj._det_atomic_return_discarded = False
 
         adj.symbols = {}  # map from symbols to adjoint variables
         adj.variables = []  # list of local variables (in order)
@@ -2330,7 +2332,7 @@ class Adjoint:
         # during phase 0.  The pre-scan handles atomics that appear before the
         # counter atomic in source order.
         if not is_float_type(scalar_dtype) and not return_is_consumed:
-            if getattr(adj, "_det_has_consumed_atomic", False):
+            if adj.det_meta.has_consumed_atomic:
                 adj.add_forward(f"WP_DET_SIDE_EFFECT_IF_ACTIVE(det_ctx, {cpu_call});")
                 return output
             return None  # fall through to normal codegen

@@ -224,6 +224,9 @@ class DeterministicMeta:
     scatter_records_per_thread: dict[ScatterTarget, int] = field(default_factory=dict)
     counter_records_per_thread: dict[CounterTarget, int] = field(default_factory=dict)
     needs_context: bool = False
+    # Set by Adjoint.build() once the body has been pre-scanned.
+    has_consumed_atomic: bool = False
+    has_side_effect_store: bool = False
 
     def add_scatter_target(self, target: ScatterTarget, records_per_thread: int = 1):
         """Record a scatter target requirement for this function or kernel."""

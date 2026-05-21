@@ -3105,22 +3105,20 @@ class Module:
 
         return self.hashers[block_dim].get_hash()
 
-    def _refresh_deterministic_launch_metadata(self, block_dim: int, options: dict, output_arch: int | None) -> None:
-        """Populate deterministic launch metadata when code generation is skipped."""
+    def _refresh_deterministic_launch_metadata(self, block_dim: int, options: dict) -> None:
+        """Repopulate ``det_meta`` after a cache hit without firing tile LTO compilation."""
         from warp._src.deterministic import is_deterministic_mode_enabled  # noqa: PLC0415
+
+        if not is_deterministic_mode_enabled(options.get("deterministic")):
+            return
 
         hasher = self.hashers.get(block_dim)
         if hasher is None:
             return
 
-        builder_options = options | {"output_arch": output_arch}
-        if is_deterministic_mode_enabled(options.get("deterministic")):
-            for kernel in hasher.get_unique_kernels():
-                kernel.adj.build(None, builder_options)
-        else:
-            for kernel in hasher.get_unique_kernels():
-                kernel.adj.det_meta = None
-                kernel.adj.det_registry = None
+        builder_options = options | {"output_arch": None}
+        for kernel in hasher.get_unique_kernels():
+            kernel.adj.build(None, builder_options)
 
     def _use_ptx(self, device) -> bool:
         return device.get_cuda_output_format(self.options.get("cuda_output")) == "ptx"
@@ -3554,7 +3552,7 @@ class Module:
                 module_load_timer.extra_msg = " (compiled)" if compiled else " (cached)"
 
             if device.is_cuda and not compiled:
-                self._refresh_deterministic_launch_metadata(active_block_dim, options, output_arch)
+                self._refresh_deterministic_launch_metadata(active_block_dim, options)
 
             # -----------------------------------------------------------
             # Load CPU or CUDA binary
