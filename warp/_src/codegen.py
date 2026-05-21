@@ -2179,8 +2179,7 @@ class Adjoint:
         if func.is_builtin() and func.key in _DET_UNINTERCEPTED_SIDE_EFFECT_ATOMICS:
             if _det_needs_store_guard(adj) and not adj._det_atomic_return_discarded:
                 raise WarpCodegenError(
-                    f"Deterministic mode does not support consuming the return of "
-                    f"wp.{func.key} in two-pass kernels."
+                    f"Deterministic mode does not support consuming the return of wp.{func.key} in two-pass kernels."
                 )
             forward_call = _det_wrap_side_effect_call(adj, forward_call)
             replay_call = _det_wrap_side_effect_call(adj, replay_call)
