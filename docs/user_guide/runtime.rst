@@ -1350,6 +1350,20 @@ ensure that :func:`wp.capture_end <warp.capture_end>` is called regardless of ex
 
     wp.capture_launch(capture.graph)
 
+CUDA graph capture also accepts a ``capture_mode`` argument, which controls how strictly CUDA rejects capture-unsafe
+runtime API calls while capture is active. Warp defaults to ``wp.CaptureMode.THREAD_LOCAL``, matching its historical
+behavior. When composing with libraries that may perform lazy CUDA runtime calls during capture, such as context or
+allocator initialization, use ``wp.CaptureMode.RELAXED``:
+
+.. code:: python
+
+    with wp.ScopedCapture(device="cuda", capture_mode=wp.CaptureMode.RELAXED) as capture:
+        # record launches
+        for i in range(100):
+            wp.launch(kernel=compute1, inputs=[a, b], device="cuda")
+
+The ``capture_mode`` argument applies only to CUDA graph capture and is ignored for CPU graph recording.
+
 Note that only launch calls are recorded in the graph; any Python executed outside of the kernel code will not be recorded.
 Typically it is only beneficial to use CUDA graphs when the graph will be reused or launched multiple times, as
 there is a graph-creation overhead.
