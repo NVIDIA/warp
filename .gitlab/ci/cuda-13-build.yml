@@ -2,11 +2,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # ==============================================================================
-# Warp+CUDA 13 Build and Testing Child Pipeline
+# Warp+CUDA 13 Packaging and Publishing Child Pipeline
 #
-# This child pipeline is used to build Warp when the library is built with the
-# CUDA 13 Toolkit (release mode). No testing until GitLab runners have CUDA 13
-# drivers.
+# This child pipeline is used to package and publish Warp when the library is
+# built with the CUDA 13 Toolkit (release mode). Linux builds and DGX Spark
+# testing are defined in the parent pipeline.
 #
 # This pipeline can be triggered from the main GitLab pipeline under specific
 # circumstances. See the child pipelines defined in /.gitlab-ci.yml for the
@@ -32,20 +32,6 @@ stages:
 # ==============================================================================
 # Build Jobs
 # ==============================================================================
-
-linux-aarch64 build:
-  stage: build
-  image: $WARP_BUILDER_IMAGE_CU13
-  extends:
-    - .lnx-aarch64-cpu-medium
-    - .save_warp_bin_artifact
-  before_script:
-    - gcc --version
-  script:
-    - uv run build_lib.py --cuda-path=/usr/local/cuda
-    - mkdir -p warp/bin/linux-aarch64
-    - mv warp/bin/warp.so warp/bin/linux-aarch64
-    - mv warp/bin/warp-clang.so warp/bin/linux-aarch64
 
 windows-x86_64 build:
   stage: build
@@ -122,8 +108,9 @@ create pypi wheels:
   stage: package
   image: $UV_TRIXIE_SLIM_IMAGE
   needs:
-    - linux-aarch64 build
     - windows-x86_64 build
+    - pipeline: $PARENT_PIPELINE_ID
+      job: linux-aarch64 cuda 13 build
     - pipeline: $PARENT_PIPELINE_ID
       job: linux-x86_64 cuda 13 build
   variables:
