@@ -149,6 +149,8 @@
   placeholder adjoints, so unsupported gradients no longer appear to be implemented for APIs
   such as vector `wp.sign()`, `wp.volume_sample_i()`, and the 4-D `wp.atomic_exch()` overload
   ([GH-1466](https://github.com/NVIDIA/warp/issues/1466)).
+- Fix tile byte-offset overflow for arrays larger than 2 GiB
+  ([GH-1422](https://github.com/NVIDIA/warp/issues/1422)).
 
 ### Documentation
 

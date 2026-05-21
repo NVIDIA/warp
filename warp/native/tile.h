@@ -437,7 +437,7 @@ template <typename T, typename Shape> struct tile_vectorized_check_t {
     // Returns true only if ALL conditions are met for safe vectorized loads/stores.
     // Uses a single accumulated predicate (no early returns) for simpler control
     // flow and more predictable codegen.
-    template <typename Global> static CUDA_CALLABLE bool tile_can_vectorize(const Global& global)
+    template <typename Global> static CUDA_CALLABLE bool tile_can_vectorize(const Global& global, int64_t& base_bytes)
     {
         constexpr int lastdim = Shape::N - 1;
 
@@ -446,7 +446,9 @@ template <typename T, typename Shape> struct tile_vectorized_check_t {
 
         // 2. Global address aligned
         tile_coord_t<Shape::N> zero_coord {};
-        const float4* global128 = (const float4*)&global.data.data[global.index_from_coord(zero_coord)];
+        base_bytes = global.byte_offset_from_coord(zero_coord);
+        const char* global_bytes = reinterpret_cast<const char*>(global.data.data) + base_bytes;
+        const float4* global128 = reinterpret_cast<const float4*>(global_bytes);
         ok = ok && (reinterpret_cast<uint64_t>(global128) % sizeof(float4) == 0);
 
         // 3. All dimensions fit within bounds
@@ -486,10 +488,11 @@ template <typename T, typename Shape> struct tile_vectorized_check_t {
     // Runtime validation for aligned=True.
     // Address alignment is always checked (negligible cost, prevents silent UB).
     // Bounds and contiguity checks are debug-only.
-    template <typename Global> static CUDA_CALLABLE void validate_aligned_runtime(const Global& global)
+    template <typename Global>
+    static CUDA_CALLABLE void validate_aligned_runtime(const Global& global, int64_t base_bytes)
     {
-        tile_coord_t<Shape::N> zero_coord {};
-        const float4* global128 = (const float4*)&global.data.data[global.index_from_coord(zero_coord)];
+        const char* global_bytes = reinterpret_cast<const char*>(global.data.data) + base_bytes;
+        const float4* global128 = reinterpret_cast<const float4*>(global_bytes);
 
         // Always check address alignment — misaligned 128-bit loads are undefined behavior.
         // Debug: assert fires with a diagnostic message.
@@ -621,8 +624,8 @@ template <typename Shape> struct tile_coord_iter_t {
     static constexpr int lastdim = N - 1;
 
     tile_coord_t<N> coord;
-    int strides[N];  // byte strides from the global array
-    int byte_offset;  // running byte offset into the data buffer
+    int strides[N];  // byte strides; bounded by array_t::strides[] int32 ABI
+    int64_t byte_offset;  // cumulative bytes; can exceed 2 GiB for large arrays
 
     // initialize from a starting coordinate and the global array byte strides/offsets
     inline CUDA_CALLABLE void init(const tile_coord_t<N>& c, const int* byte_strides, const int* tile_offset)
@@ -633,28 +636,24 @@ template <typename Shape> struct tile_coord_iter_t {
         WP_PRAGMA_UNROLL
         for (int d = 0; d < N; ++d) {
             strides[d] = byte_strides[d];
-            byte_offset += strides[d] * (tile_offset[d] + c[d]);
+            byte_offset += int64_t(strides[d]) * (tile_offset[d] + c[d]);
         }
     }
 
     inline CUDA_CALLABLE void advance(int step)
     {
         coord[lastdim] += step;
-        byte_offset += step * strides[lastdim];
+        byte_offset += step * int64_t(strides[lastdim]);
 
         WP_PRAGMA_UNROLL
         for (int d = lastdim; d > 0; --d) {
             int dim_size = Shape::dim(d);
-            if (coord[d] >= dim_size) {
-                int carry = coord[d] / dim_size;
-                int new_cd = coord[d] - carry * dim_size;
-                // carry_delta = strides[d-1] - dim(d) * strides[d]
-                // this is 0 when the tile spans the full extent of dimension d in a
-                // contiguous array, so byte_offset needs no gap adjustment
-                byte_offset += carry * (strides[d - 1] - dim_size * strides[d]);
-                coord[d] = new_cd;
-                coord[d - 1] += carry;
-            }
+            int carry = coord[d] / dim_size;
+            int new_cd = coord[d] - carry * dim_size;
+            const int64_t gap = int64_t(strides[d - 1]) - int64_t(dim_size) * strides[d];
+            byte_offset += carry * gap;
+            coord[d] = new_cd;
+            coord[d - 1] += carry;
         }
     }
 };
@@ -681,26 +680,26 @@ template <typename T, typename Shape_, bool BoundsCheck = true, bool Aligned = f
     {
     }
 
-    inline CUDA_CALLABLE int index_from_coord(const Coord& coord) const
+    inline CUDA_CALLABLE int64_t byte_offset_from_coord(const Coord& coord) const
     {
-        // element index
-        int index = 0;
-
+        int64_t byte_index = 0;
         WP_PRAGMA_UNROLL
         for (int i = 0; i < Shape::N; ++i) {
-            // global = offset + coord
-            int c = offset[i] + coord[i];
-            index += data.strides[i] * c;
+            byte_index += int64_t(data.strides[i]) * (offset[i] + coord[i]);
         }
-
-        return index / sizeof(T);
+        return byte_index;
     }
 
-    inline CUDA_CALLABLE bool index(const Coord& coord, int& out) const
+    inline CUDA_CALLABLE int64_t index_from_coord(const Coord& coord) const
+    {
+        return byte_offset_from_coord(coord) / sizeof(T);
+    }
+
+    inline CUDA_CALLABLE bool index(const Coord& coord, int64_t& out) const
     {
         if constexpr (BoundsCheck) {
-            // element index
-            int index = 0;
+            // Byte total can exceed 2 GiB; accumulate in 64-bit.
+            int64_t byte_index = 0;
 
             WP_PRAGMA_UNROLL
             for (int i = 0; i < Shape::N; ++i) {
@@ -711,11 +710,11 @@ template <typename T, typename Shape_, bool BoundsCheck = true, bool Aligned = f
                 if (c >= data.shape[i])
                     return false;
                 else
-                    index += data.strides[i] * c;
+                    byte_index += int64_t(data.strides[i]) * c;
             }
 
             // array strides are in bytes so we convert to elements
-            out = index / sizeof(T);
+            out = byte_index / sizeof(T);
             return true;
         } else {
             out = index_from_coord(coord);
@@ -725,7 +724,7 @@ template <typename T, typename Shape_, bool BoundsCheck = true, bool Aligned = f
 
     inline CUDA_CALLABLE T load(const Coord& coord) const
     {
-        int i;
+        int64_t i;
         if (index(coord, i))
             return data.data[i];
         else
@@ -734,7 +733,7 @@ template <typename T, typename Shape_, bool BoundsCheck = true, bool Aligned = f
 
     inline CUDA_CALLABLE T load_grad(const Coord& coord) const
     {
-        int i;
+        int64_t i;
         if (index(coord, i))
             return data.grad[i];
         else
@@ -743,14 +742,14 @@ template <typename T, typename Shape_, bool BoundsCheck = true, bool Aligned = f
 
     inline CUDA_CALLABLE void store(const Coord& coord, const T& x) const
     {
-        int i;
+        int64_t i;
         if (index(coord, i))
             data.data[i] = x;
     }
 
     inline CUDA_CALLABLE T atomic_add(const Coord& coord, const T& value) const
     {
-        int i;
+        int64_t i;
         if (index(coord, i))
             return wp::atomic_add(&data.data[i], value);
         else
@@ -759,7 +758,7 @@ template <typename T, typename Shape_, bool BoundsCheck = true, bool Aligned = f
 
     inline CUDA_CALLABLE T atomic_add_grad(const Coord& coord, const T& grad) const
     {
-        int i;
+        int64_t i;
         if (index(coord, i))
             return wp::atomic_add(&data.grad[i], grad);
         else
@@ -1001,7 +1000,7 @@ template <typename T, typename L> struct tile_register_t {
     template <typename Global> inline CUDA_CALLABLE void grad_zero_global(const Global& global)
     {
         apply([&](int reg, auto c) {
-            int i;
+            int64_t i;
             if (global.index(c, i))
                 global.data.grad[i] = T();
         });
@@ -1732,7 +1731,7 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
         WP_PRAGMA_UNROLL
         for (int i = WP_TILE_THREAD_IDX; i < Layout::Size; i += WP_TILE_BLOCK_DIM) {
             auto c = Layout::coord_from_linear(i);
-            int idx;
+            int64_t idx;
             if (global.index(c, idx))
                 global.data.grad[idx] = T();
         }
@@ -1794,15 +1793,21 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
             }
 
             if constexpr (Check::size_aligned && Layout::Dense) {
-                bool do_vectorized = Global::is_aligned || Check::tile_can_vectorize(dest);
+                int64_t base_bytes = 0;
+                bool do_vectorized = false;
 
                 if constexpr (Global::is_aligned) {
-                    Check::validate_aligned_runtime(dest);
+                    tile_coord_t<Layout::Shape::N> zero_coord {};
+                    base_bytes = dest.byte_offset_from_coord(zero_coord);
+                    Check::validate_aligned_runtime(dest, base_bytes);
+                    do_vectorized = true;
+                } else {
+                    do_vectorized = Check::tile_can_vectorize(dest, base_bytes);
                 }
 
                 if (do_vectorized) {
-                    tile_coord_t<Layout::Shape::N> zero_coord {};
-                    float4* dest128 = (float4*)&dest.data.data[dest.index_from_coord(zero_coord)];
+                    char* dest_bytes = reinterpret_cast<char*>(dest.data.data) + base_bytes;
+                    float4* dest128 = reinterpret_cast<float4*>(dest_bytes);
                     assert(((uint64_t)data.ptr) % sizeof(float4) == 0 && "shared tile pointer not 16-byte aligned");
                     const float4* src128 = (const float4*)data.ptr;
 
@@ -1841,9 +1846,9 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
             constexpr int num_floats = total_bytes / (int)sizeof(float);
 
             if (tile_can_coalesce<T, typename Layout::Shape>(dest)) {
-                int base_bytes = 0;
+                int64_t base_bytes = 0;
                 for (int d = 0; d < Layout::Shape::N; ++d)
-                    base_bytes += dest.offset[d] * dest.data.strides[d];
+                    base_bytes += int64_t(dest.offset[d]) * dest.data.strides[d];
 
                 float* dst = reinterpret_cast<float*>(reinterpret_cast<char*>(dest.data.data) + base_bytes);
                 const float* src = reinterpret_cast<const float*>(data.ptr);
@@ -1864,7 +1869,7 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
 
             if constexpr (Shape::N == 1) {
                 const int byte_stride = dest.data.strides[0];
-                const int base_bytes = dest.offset[0] * byte_stride;
+                const int64_t base_bytes = int64_t(dest.offset[0]) * byte_stride;
 
                 WP_PRAGMA_UNROLL
                 for (int i = WP_TILE_THREAD_IDX; i < Layout::Size; i += WP_TILE_BLOCK_DIM) {
@@ -1875,8 +1880,9 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
                     }
 
                     if (valid)
-                        *reinterpret_cast<T*>(reinterpret_cast<char*>(dest.data.data) + base_bytes + i * byte_stride)
-                            = data(i);
+                        *reinterpret_cast<T*>(
+                            reinterpret_cast<char*>(dest.data.data) + base_bytes + i * int64_t(byte_stride)
+                        ) = data(i);
                 }
             } else {
                 using Iter = tile_coord_iter_t<Shape>;
@@ -1946,15 +1952,21 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
             }
 
             if constexpr (Check::size_aligned && Layout::Dense) {
-                bool do_vectorized = Global::is_aligned || Check::tile_can_vectorize(src);
+                int64_t base_bytes = 0;
+                bool do_vectorized = false;
 
                 if constexpr (Global::is_aligned) {
-                    Check::validate_aligned_runtime(src);
+                    tile_coord_t<Layout::Shape::N> zero_coord {};
+                    base_bytes = src.byte_offset_from_coord(zero_coord);
+                    Check::validate_aligned_runtime(src, base_bytes);
+                    do_vectorized = true;
+                } else {
+                    do_vectorized = Check::tile_can_vectorize(src, base_bytes);
                 }
 
                 if (do_vectorized) {
-                    tile_coord_t<Layout::Shape::N> zero_coord {};
-                    const float4* src128 = (const float4*)&src.data.data[src.index_from_coord(zero_coord)];
+                    const char* src_bytes = reinterpret_cast<const char*>(src.data.data) + base_bytes;
+                    const float4* src128 = reinterpret_cast<const float4*>(src_bytes);
                     assert(((uint64_t)data.ptr) % sizeof(float4) == 0 && "shared tile pointer not 16-byte aligned");
                     float4* dest128 = (float4*)data.ptr;
 
@@ -1994,9 +2006,9 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
             constexpr int num_floats = total_bytes / (int)sizeof(float);
 
             if (tile_can_coalesce<T, typename Layout::Shape>(src)) {
-                int base_bytes = 0;
+                int64_t base_bytes = 0;
                 for (int d = 0; d < Layout::Shape::N; ++d)
-                    base_bytes += src.offset[d] * src.data.strides[d];
+                    base_bytes += int64_t(src.offset[d]) * src.data.strides[d];
 
                 const float* gsrc
                     = reinterpret_cast<const float*>(reinterpret_cast<const char*>(src.data.data) + base_bytes);
@@ -2020,7 +2032,7 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
 
             if constexpr (Shape::N == 1) {
                 const int byte_stride = src.data.strides[0];
-                const int base_bytes = src.offset[0] * byte_stride;
+                const int64_t base_bytes = int64_t(src.offset[0]) * byte_stride;
 
                 WP_PRAGMA_UNROLL
                 for (int i = WP_TILE_THREAD_IDX; i < Layout::Size; i += WP_TILE_BLOCK_DIM) {
@@ -2030,10 +2042,11 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
                             valid = false;
                     }
 
-                    data(i) = valid ? *reinterpret_cast<const T*>(
-                                          reinterpret_cast<const char*>(src.data.data) + base_bytes + i * byte_stride
-                                      )
-                                    : T {};
+                    data(i) = valid
+                        ? *reinterpret_cast<const T*>(
+                              reinterpret_cast<const char*>(src.data.data) + base_bytes + i * int64_t(byte_stride)
+                          )
+                        : T {};
                 }
             } else {
                 using Iter = tile_coord_iter_t<Shape>;
@@ -2682,9 +2695,10 @@ inline CUDA_CALLABLE auto tile_load(array_t<T>& src, Offset... offset)
 // used for indexed loads and stores
 template <typename T, typename IndicesTile, typename Coord>
 inline CUDA_CALLABLE bool
-compute_index(array_t<T>& src, IndicesTile& indices, int axis, Coord offset, Coord c, int& out)
+compute_index(array_t<T>& src, IndicesTile& indices, int axis, Coord offset, Coord c, int64_t& out)
 {
-    int index = 0;
+    // Byte total can exceed 2 GiB; accumulate in 64-bit.
+    int64_t byte_index = 0;
 
     WP_PRAGMA_UNROLL
     for (int i = 0; i < Coord::size(); ++i) {
@@ -2696,7 +2710,7 @@ compute_index(array_t<T>& src, IndicesTile& indices, int axis, Coord offset, Coo
             if (index_along_axis >= src.shape[i])
                 return false;
             else
-                index += src.strides[i] * index_along_axis;
+                byte_index += int64_t(src.strides[i]) * index_along_axis;
         } else {
             // global = offset_coord + coord
             int g = offset[i] + c[i];
@@ -2705,12 +2719,12 @@ compute_index(array_t<T>& src, IndicesTile& indices, int axis, Coord offset, Coo
             if (g >= src.shape[i])
                 return false;
             else
-                index += src.strides[i] * g;
+                byte_index += int64_t(src.strides[i]) * g;
         }
     }
 
     // array strides are in bytes so we convert to elements
-    out = index / sizeof(T);
+    out = byte_index / sizeof(T);
     return true;
 }
 
@@ -2722,7 +2736,7 @@ inline CUDA_CALLABLE auto tile_load_indexed(array_t<T>& src, IndicesTile& indice
     auto offset_coord = tile_coord(offset...);
 
     out.apply([&](int reg, auto c) {
-        int i;
+        int64_t i;
         if (compute_index(src, indices, axis, offset_coord, c, i))
             out.data[reg] = src.data[i];
         else
@@ -2769,7 +2783,7 @@ inline CUDA_CALLABLE void tile_store_indexed(
     auto src_reg = src.copy_to_register();
 
     src_reg.apply([&](int reg, auto c) {
-        int i;
+        int64_t i;
         if (compute_index(dest, indices, axis, offset, c, i))
             dest.data[i] = src_reg.data[reg];
     });
@@ -2863,7 +2877,7 @@ inline CUDA_CALLABLE auto tile_atomic_add_indexed(
     auto ret_reg = tile_register_like<Tile>();
 
     src_reg.apply([&](int reg, auto c) {
-        int i;
+        int64_t i;
         if (compute_index(dest, indices, axis, offset, c, i))
             ret_reg.data[reg] = wp::atomic_add(&dest.data[i], src_reg.data[reg]);
         else
@@ -2996,7 +3010,7 @@ inline CUDA_CALLABLE void adj_tile_load_indexed(
     auto adj_ret_reg = adj_ret.grad_to_register();
 
     adj_ret_reg.apply([&](int reg, auto c) {
-        int i;
+        int64_t i;
         if (compute_index(src, indices, axis, offset, c, i))
             wp::atomic_add(&src.grad[i], adj_ret_reg.data[reg]);
     });
@@ -3169,7 +3183,7 @@ inline CUDA_CALLABLE void adj_tile_store_indexed(
     auto adj_t_reg = tile_register_like<Tile>();
 
     adj_t_reg.apply([&](int reg, auto c) {
-        int i;
+        int64_t i;
         if (compute_index(dest, indices, axis, offset, c, i)) {
             adj_t_reg.data[reg] += dest.grad[i];
             dest.grad[i] = T();
@@ -3355,7 +3369,7 @@ inline CUDA_CALLABLE void adj_tile_atomic_add_indexed(
     auto adj_t_reg = tile_register_like<Tile>();
 
     adj_t_reg.apply([&](int reg, auto c) {
-        int i;
+        int64_t i;
         if (compute_index(dest, indices, axis, offset, c, i))
             adj_t_reg.data[reg] += dest.grad[i];
     });
