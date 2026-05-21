@@ -1,0 +1,6 @@
+﻿warp.fem.make\_free\_sample
+===========================
+
+.. currentmodule:: warp.fem
+
+.. autodata:: make_free_sample

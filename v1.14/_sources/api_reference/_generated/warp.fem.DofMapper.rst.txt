@@ -1,0 +1,32 @@
+﻿warp.fem.DofMapper
+==================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: DofMapper
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~DofMapper.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~DofMapper.dof_to_value
+      ~DofMapper.value_to_dof
+      ~DofMapper.value_dtype
+      ~DofMapper.dof_dtype
+      ~DofMapper.DOF_SIZE
+   
+   

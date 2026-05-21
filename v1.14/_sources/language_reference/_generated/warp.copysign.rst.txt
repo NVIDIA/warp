@@ -1,0 +1,17 @@
+﻿warp.copysign
+=============
+
+.. function:: warp._src.lang.copysign(x: Float, y: Float) -> Float
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Return a value with the magnitude of ``x`` and the sign of ``y``.
+   
+   For example, ``wp.copysign(3.0, -1.0)`` returns ``-3.0`` and
+   ``wp.copysign(-3.0, 1.0)`` returns ``3.0``. Useful for forcing a
+   specific sign on a result whose signed-zero behavior is otherwise
+   implementation-defined (e.g. ``wp.min(-0.0, +0.0)``).

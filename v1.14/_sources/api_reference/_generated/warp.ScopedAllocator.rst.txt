@@ -1,0 +1,22 @@
+﻿warp.ScopedAllocator
+====================
+
+.. currentmodule:: warp
+
+.. autoclass:: ScopedAllocator
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~ScopedAllocator.__init__
+   
+   
+
+   
+   
+   

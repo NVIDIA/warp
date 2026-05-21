@@ -1,0 +1,50 @@
+﻿warp.tile\_stack\_pop
+=====================
+
+.. function:: warp._src.lang.tile_stack_pop(s: Any) -> tuple[Any, int]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Pop a value from a tile stack (cooperative).
+   
+   All threads in the block must call this function. Each calling thread
+   races for a slot.
+   
+   :param s: The tile stack
+   
+   :returns: A tuple ``(value, slot)`` where ``value`` is the popped element
+             (or the default value if the stack was empty) and ``slot`` is the
+             index of the popped element (the slot it previously occupied), or
+             ``-1`` if the stack was empty. When non-negative, ``slot`` lies in
+             ``[0, capacity-1]``. Consistent with :func:`tile_stack_push`
+             which also uses ``-1`` to indicate failure.
+   
+   .. rubric:: Example
+   
+   .. code-block:: python
+   
+       CAP = wp.constant(8)
+   
+       @wp.kernel
+       def pop_kernel(out: wp.array[int]):
+           _i, j = wp.tid()
+           s = wp.tile_stack(capacity=CAP, dtype=int)
+           wp.tile_stack_push(s, j * 10, j < 4)
+   
+           val, slot = wp.tile_stack_pop(s)
+           if slot != -1:
+               out[slot] = val
+   
+       out = wp.full(8, -1, dtype=int)
+       wp.launch_tiled(pop_kernel, dim=[1], inputs=[out], block_dim=8)
+   
+       vals = out.numpy()
+       print(sorted(vals[vals >= 0].tolist()))
+   
+   .. code-block:: text
+   
+       [0, 10, 20, 30]
+   

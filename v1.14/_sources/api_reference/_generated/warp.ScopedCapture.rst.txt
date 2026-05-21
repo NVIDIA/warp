@@ -1,0 +1,22 @@
+﻿warp.ScopedCapture
+==================
+
+.. currentmodule:: warp
+
+.. autoclass:: ScopedCapture
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~ScopedCapture.__init__
+   
+   
+
+   
+   
+   

@@ -1,0 +1,22 @@
+﻿warp.MeshQueryAABBTiled
+=======================
+
+.. currentmodule:: warp
+
+.. autoclass:: MeshQueryAABBTiled
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~MeshQueryAABBTiled.__init__
+   
+   
+
+   
+   
+   

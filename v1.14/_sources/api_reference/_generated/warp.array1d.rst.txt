@@ -1,0 +1,22 @@
+﻿warp.array1d
+============
+
+.. currentmodule:: warp
+
+.. autoclass:: array1d
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~array1d.__init__
+   
+   
+
+   
+   
+   

@@ -1,0 +1,22 @@
+﻿warp.handle
+===========
+
+.. currentmodule:: warp
+
+.. autoclass:: handle
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~handle.__init__
+   
+   
+
+   
+   
+   

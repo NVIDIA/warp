@@ -1,0 +1,6 @@
+﻿warp.get\_preferred\_device
+===========================
+
+.. currentmodule:: warp
+
+.. autofunction:: get_preferred_device
