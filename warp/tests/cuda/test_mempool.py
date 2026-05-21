@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import gc
 import unittest
 
 import warp as wp
@@ -53,6 +54,9 @@ def test_mempool_usage_queries(test, device):
     """Check API to query mempool memory usage."""
 
     device = wp.get_device(device)
+    gc.collect()
+    wp.synchronize_device(device)
+
     pre_alloc_mempool_usage_curr = wp.get_mempool_used_mem_current(device)
     pre_alloc_mempool_usage_high = wp.get_mempool_used_mem_high(device)
 
@@ -67,10 +71,16 @@ def test_mempool_usage_queries(test, device):
     test.assertEqual(
         post_alloc_mempool_usage_curr, pre_alloc_mempool_usage_curr + 1048576, "Memory usage did not increase by 1 MiB"
     )
-    test.assertGreaterEqual(post_alloc_mempool_usage_high, 1048576, "High-water mark is not at least 1 MiB")
+    expected_post_alloc_mempool_usage_high = max(pre_alloc_mempool_usage_high, post_alloc_mempool_usage_curr)
+    test.assertGreaterEqual(
+        post_alloc_mempool_usage_high,
+        expected_post_alloc_mempool_usage_high,
+        "High-water mark did not cover the post-allocation memory usage.",
+    )
 
     # Free the allocation
     del test_data
+    gc.collect()
     wp.synchronize_device(device)
 
     # Query memory usage

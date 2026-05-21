@@ -644,34 +644,49 @@ class TestUnifiedMemory(unittest.TestCase):
 
         Default CUDA allocations and CUDA mempool allocations have different
         cross-device access switches. A mempool-backed source array should be
-        rejected in checked mode when mempool access is disabled, even if normal
-        peer access between the devices is enabled.
+        rejected in checked mode when Warp observes mempool access as disabled,
+        even if normal peer access between the devices is enabled.
+
+        The mempool access predicate is mocked instead of toggling the actual
+        CUDA pool access state because CUDA recommends keeping pool
+        accessibility stable over the lifetime of the pool.
         """
 
         target_device, peer_device = get_cuda_device_pair_with_mempool_access_support()
         n = 8
 
         peer_access_saved = wp.is_peer_access_enabled(target_device, peer_device)
-        mempool_access_saved = wp.is_mempool_access_enabled(target_device, peer_device)
         try:
             wp.set_peer_access_enabled(target_device, peer_device, True)
-            wp.set_mempool_access_enabled(target_device, peer_device, False)
 
             with wp.ScopedMempool(target_device, True):
                 src = wp.array(np.arange(n, dtype=np.float32), dtype=wp.float32, device=target_device)
             dst = wp.empty(n, dtype=wp.float32, device=peer_device)
 
             self.assertEqual(type(src._allocator).__name__, "CudaMempoolAllocator")
-            self.assertFalse(wp.can_access(peer_device, src))
 
-            with launch_verification_mode(wp.LaunchVerificationMode.CHECKED):
-                with self.assertRaisesRegex(RuntimeError, "array allocation is not accessible or cannot be verified"):
-                    wp.launch(
-                        read_cpu_write_gpu, dim=n, inputs=[src], outputs=[dst], device=peer_device, record_cmd=True
-                    )
+            # Do not toggle the real CUDA default pool access here. CUDA recommends keeping pool accessibility
+            # stable, and toggling it in this rejection test can make later real peer-read tests flaky on some drivers.
+            with patch.object(warp_context, "is_mempool_access_enabled", return_value=False) as mock_access:
+                self.assertFalse(wp.can_access(peer_device, src))
+                mock_access.assert_called_with(target_device, peer_device)
+
+                with launch_verification_mode(wp.LaunchVerificationMode.CHECKED):
+                    mock_access.reset_mock()
+                    with self.assertRaisesRegex(
+                        RuntimeError, "array allocation is not accessible or cannot be verified"
+                    ):
+                        wp.launch(
+                            read_cpu_write_gpu,
+                            dim=n,
+                            inputs=[src],
+                            outputs=[dst],
+                            device=peer_device,
+                            record_cmd=True,
+                        )
+                    mock_access.assert_called_with(target_device, peer_device)
         finally:
             wp.set_peer_access_enabled(target_device, peer_device, peer_access_saved)
-            wp.set_mempool_access_enabled(target_device, peer_device, mempool_access_saved)
 
 
 add_function_test(
