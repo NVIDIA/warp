@@ -88,9 +88,10 @@ Operators that are not supported by deterministic mode:
 - ``atomic_exch``
 - Tile atomics such as ``tile_atomic_add``
 
-Bitwise integer atomics (``atomic_and``, ``atomic_or``, ``atomic_xor``) are not
-transformed because their final results are already deterministic for the
-unused-return case.
+Bitwise integer atomics (``atomic_and``, ``atomic_or``, ``atomic_xor``) are
+supported only as bare statements (discarded return). Consuming the return
+value inside a two-pass body (counter kernel or any ``@wp.func`` reachable
+from one) is rejected at compile time.
 
 ## Design
 

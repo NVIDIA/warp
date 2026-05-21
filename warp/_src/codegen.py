@@ -121,16 +121,17 @@ def _deterministic_contains_subscript_target(node):
     return False
 
 
-def _deterministic_has_potential_array_store(tree):
+def _deterministic_has_propagating_side_effect(tree):
+    """Return whether ``tree`` contains an array store or unintercepted bitwise atomic."""
     for node in ast.walk(tree):
         if isinstance(node, ast.Assign):
             if any(_deterministic_contains_subscript_target(target) for target in node.targets):
                 return True
-        elif isinstance(node, ast.AnnAssign):
+        elif isinstance(node, (ast.AnnAssign, ast.AugAssign)):
             if _deterministic_contains_subscript_target(node.target):
                 return True
-        elif isinstance(node, ast.AugAssign):
-            if _deterministic_contains_subscript_target(node.target):
+        elif isinstance(node, ast.Call):
+            if _deterministic_call_name(node.func) in _DET_UNINTERCEPTED_SIDE_EFFECT_ATOMICS:
                 return True
 
     return False
@@ -1551,7 +1552,7 @@ class Adjoint:
                 determinism_mode=deterministic_mode,
                 max_records=adj.builder_options.get("deterministic_max_records", 0),
                 has_consumed_atomic=_deterministic_has_consumed_atomic_impl(adj.tree, adj, seen=None),
-                has_side_effect_store=adj.is_user_function and _deterministic_has_potential_array_store(adj.tree),
+                has_side_effect_store=adj.is_user_function and _deterministic_has_propagating_side_effect(adj.tree),
             )
             adj.det_registry = DeterministicRegistry()
         else:
@@ -2176,6 +2177,11 @@ class Adjoint:
         # In two-pass counter kernels, atomics that deterministic mode does
         # not intercept would otherwise fire in both phase 0 and phase 1.
         if func.is_builtin() and func.key in _DET_UNINTERCEPTED_SIDE_EFFECT_ATOMICS:
+            if _det_needs_store_guard(adj) and not adj._det_atomic_return_discarded:
+                raise WarpCodegenError(
+                    f"Deterministic mode does not support consuming the return of "
+                    f"wp.{func.key} in two-pass kernels."
+                )
             forward_call = _det_wrap_side_effect_call(adj, forward_call)
             replay_call = _det_wrap_side_effect_call(adj, replay_call)
 
@@ -3435,7 +3441,8 @@ class Adjoint:
         if (
             adj.det_meta is not None
             and isinstance(node.value, ast.Call)
-            and _deterministic_call_name(node.value.func) in _DET_INTERCEPTABLE_ATOMICS
+            and _deterministic_call_name(node.value.func)
+            in (_DET_INTERCEPTABLE_ATOMICS | _DET_UNINTERCEPTED_SIDE_EFFECT_ATOMICS)
         ):
             node.value._det_atomic_return_discarded = True
             try:

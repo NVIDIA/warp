@@ -577,6 +577,38 @@ def counter_with_atomic_xor_kernel(
     output[slot] = tid
 
 
+@wp.func
+def _det_set_flag(flag: wp.array(dtype=wp.int32), mask: wp.int32):
+    wp.atomic_xor(flag, 0, mask)
+
+
+@wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
+def counter_with_helper_atomic_xor_kernel(
+    counter: wp.array(dtype=wp.int32),
+    flag: wp.array(dtype=wp.int32),
+    output: wp.array(dtype=wp.int32),
+):
+    """Counter kernel that delegates the bitwise atomic to a ``@wp.func`` helper."""
+    tid = wp.tid()
+    _det_set_flag(flag, 1)
+    slot = wp.atomic_add(counter, 0, 1)
+    output[slot] = tid
+
+
+@wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
+def counter_with_consumed_atomic_xor_kernel(
+    flag: wp.array(dtype=wp.int32),
+    counter: wp.array(dtype=wp.int32),
+    output: wp.array(dtype=wp.int32),
+):
+    """Counter kernel whose control flow consumes a wrapped bitwise atomic's return."""
+    tid = wp.tid()
+    f = wp.atomic_xor(flag, 0, 1)
+    if f != 0:
+        slot = wp.atomic_add(counter, 0, 1)
+        output[slot] = tid
+
+
 @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
 def counter_with_component_store_kernel(
     counter: wp.array(dtype=wp.int32),
@@ -1727,6 +1759,41 @@ def test_counter_phase0_skips_unintercepted_atomic_xor(test, device):
     test.assertEqual(int(flag.numpy()[0]), 1)
     test.assertEqual(int(counter.numpy()[0]), 1)
     test.assertEqual(int(output.numpy()[0]), 0)
+
+
+def test_counter_phase0_skips_atomic_xor_in_helper_func(test, device):
+    """Verify ``atomic_xor`` in a @wp.func called from a counter kernel fires once."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    counter = wp.zeros(1, dtype=wp.int32, device=device)
+    flag = wp.zeros(1, dtype=wp.int32, device=device)
+    output = wp.full(1, value=-1, dtype=wp.int32, device=device)
+
+    wp.launch(counter_with_helper_atomic_xor_kernel, dim=1, inputs=[counter, flag], outputs=[output], device=device)
+
+    test.assertEqual(int(flag.numpy()[0]), 1)
+    test.assertEqual(int(counter.numpy()[0]), 1)
+    test.assertEqual(int(output.numpy()[0]), 0)
+
+
+def test_counter_consumed_bitwise_atomic_rejected(test, device):
+    """Consuming a bitwise atomic return inside a two-pass body must be rejected."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+
+    flag = wp.full(1, value=1, dtype=wp.int32, device=device)
+    counter = wp.zeros(1, dtype=wp.int32, device=device)
+    output = wp.full(1, value=-1, dtype=wp.int32, device=device)
+
+    with test.assertRaisesRegex(Exception, r"wp\.atomic_xor"):
+        wp.launch(
+            counter_with_consumed_atomic_xor_kernel,
+            dim=1,
+            inputs=[flag, counter],
+            outputs=[output],
+            device=device,
+        )
 
 
 def test_counter_phase0_suppresses_component_stores(test, device):
@@ -3324,6 +3391,18 @@ add_function_test(
     TestDeterministic,
     "test_counter_phase0_skips_unintercepted_atomic_xor",
     test_counter_phase0_skips_unintercepted_atomic_xor,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic,
+    "test_counter_phase0_skips_atomic_xor_in_helper_func",
+    test_counter_phase0_skips_atomic_xor_in_helper_func,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic,
+    "test_counter_consumed_bitwise_atomic_rejected",
+    test_counter_consumed_bitwise_atomic_rejected,
     devices=cuda_devices,
 )
 add_function_test(
