@@ -3859,7 +3859,7 @@ def test_graph_fill_vecmat(test, device):
         captures = []
         for i, arr in enumerate(arrays):
             scalar_value = i + 1
-            with wp.ScopedCapture() as capture:
+            with wp.ScopedCapture(force_module_load=False) as capture:
                 _fill_vecmat(arr, scalar_value)
             captures.append(capture)
 

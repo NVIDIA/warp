@@ -646,7 +646,7 @@ def test_cuda_graph_topo_alloc_sequential(test, device):
     #   node2
 
     with wp.ScopedDevice(device):
-        with wp.ScopedCapture() as capture:
+        with wp.ScopedCapture(force_module_load=False) as capture:
             alloc1 = _insert_alloc()
             node1 = _insert_node()
             alloc2 = _insert_alloc()
@@ -679,7 +679,7 @@ def test_cuda_graph_topo_alloc_sequential_free(test, device):
     #   node3
 
     with wp.ScopedDevice(device):
-        with wp.ScopedCapture() as capture:
+        with wp.ScopedCapture(force_module_load=False) as capture:
             alloc1 = _insert_alloc()
             node1 = _insert_node()
             free1 = _insert_free(alloc1)
@@ -711,7 +711,7 @@ def test_cuda_graph_topo_alloc_side_stream_independent(test, device):
     #   node2
 
     with wp.ScopedDevice(device):
-        with wp.ScopedCapture() as capture:
+        with wp.ScopedCapture(force_module_load=False) as capture:
             node1 = _insert_node()
             with wp.ScopedStream(wp.Stream()):
                 alloc = _insert_alloc()
@@ -740,7 +740,7 @@ def test_cuda_graph_topo_alloc_side_stream_independent_free(test, device):
 
     with wp.ScopedDevice(device):
         stream1 = wp.Stream()
-        with wp.ScopedCapture() as capture:
+        with wp.ScopedCapture(force_module_load=False) as capture:
             node1 = _insert_node()
             with wp.ScopedStream(stream1):
                 alloc = _insert_alloc()
@@ -772,7 +772,7 @@ def test_cuda_graph_topo_alloc_side_stream_joined(test, device):
     with wp.ScopedDevice(device) as device:
         stream0 = device.stream
         stream1 = wp.Stream()
-        with wp.ScopedCapture() as capture:
+        with wp.ScopedCapture(force_module_load=False) as capture:
             node1 = _insert_node()
             with wp.ScopedStream(stream1):
                 alloc = _insert_alloc()
@@ -803,7 +803,7 @@ def test_cuda_graph_topo_alloc_fork(test, device):
 
     with wp.ScopedDevice(device):
         stream1 = wp.Stream()
-        with wp.ScopedCapture() as capture:
+        with wp.ScopedCapture(force_module_load=False) as capture:
             alloc1 = _insert_alloc()
             node1 = _insert_node()
             # fork
@@ -844,7 +844,7 @@ def test_cuda_graph_topo_alloc_fork_free_on_main(test, device):
 
     with wp.ScopedDevice(device):
         stream1 = wp.Stream()
-        with wp.ScopedCapture() as capture:
+        with wp.ScopedCapture(force_module_load=False) as capture:
             alloc1 = _insert_alloc()
             node1 = _insert_node()
             # fork
@@ -892,7 +892,7 @@ def test_cuda_graph_topo_alloc_fork_free_on_side(test, device):
 
     with wp.ScopedDevice(device):
         stream1 = wp.Stream()
-        with wp.ScopedCapture() as capture:
+        with wp.ScopedCapture(force_module_load=False) as capture:
             alloc1 = _insert_alloc()
             node1 = _insert_node()
             # fork
@@ -931,7 +931,7 @@ def test_cuda_graph_topo_alloc_parallel_streams(test, device):
     with wp.ScopedDevice(device):
         stream1 = wp.Stream()
         stream2 = wp.Stream()
-        with wp.ScopedCapture() as capture:
+        with wp.ScopedCapture(force_module_load=False) as capture:
             with wp.ScopedStream(stream1):
                 alloc1 = _insert_alloc()
                 node1 = _insert_node()
@@ -962,7 +962,7 @@ def test_cuda_graph_topo_alloc_parallel_streams_free_on_sides(test, device):
     with wp.ScopedDevice(device):
         stream1 = wp.Stream()
         stream2 = wp.Stream()
-        with wp.ScopedCapture() as capture:
+        with wp.ScopedCapture(force_module_load=False) as capture:
             with wp.ScopedStream(stream1):
                 alloc1 = _insert_alloc()
                 node1 = _insert_node()
@@ -997,7 +997,7 @@ def test_cuda_graph_topo_alloc_parallel_streams_free_on_main(test, device):
     with wp.ScopedDevice(device):
         stream1 = wp.Stream()
         stream2 = wp.Stream()
-        with wp.ScopedCapture() as capture:
+        with wp.ScopedCapture(force_module_load=False) as capture:
             with wp.ScopedStream(stream1):
                 alloc1 = _insert_alloc()
                 node1 = _insert_node()
@@ -1033,7 +1033,7 @@ def test_cuda_graph_topo_alloc_parallel_streams_free_on_other(test, device):
         stream1 = wp.Stream()
         stream2 = wp.Stream()
         stream3 = wp.Stream()
-        with wp.ScopedCapture() as capture:
+        with wp.ScopedCapture(force_module_load=False) as capture:
             with wp.ScopedStream(stream1):
                 alloc1 = _insert_alloc()
                 node1 = _insert_node()
@@ -1079,7 +1079,7 @@ def test_cuda_graph_topo_alloc_parallel_streams_joined(test, device):
         stream0 = device.stream
         stream1 = wp.Stream()
         stream2 = wp.Stream()
-        with wp.ScopedCapture() as capture:
+        with wp.ScopedCapture(force_module_load=False) as capture:
             with wp.ScopedStream(stream1):
                 alloc1 = _insert_alloc()
                 node1 = _insert_node()
@@ -1131,7 +1131,7 @@ def test_cuda_graph_topo_alloc_nested_streams_chain(test, device):
     with wp.ScopedDevice(device):
         stream1 = wp.Stream()
         stream2 = wp.Stream()
-        with wp.ScopedCapture() as capture:
+        with wp.ScopedCapture(force_module_load=False) as capture:
             alloc1 = _insert_alloc()
             node1 = _insert_node()
             with wp.ScopedStream(stream1):
@@ -1176,7 +1176,7 @@ def test_cuda_graph_topo_alloc_nested_streams_chain_free(test, device):
     with wp.ScopedDevice(device):
         stream1 = wp.Stream()
         stream2 = wp.Stream()
-        with wp.ScopedCapture() as capture:
+        with wp.ScopedCapture(force_module_load=False) as capture:
             alloc1 = _insert_alloc()
             node1 = _insert_node()
             with wp.ScopedStream(stream1):
@@ -1220,7 +1220,7 @@ def test_cuda_graph_topo_alloc_free_serializes_dependent_streams_only(test, devi
         stream2 = wp.Stream()
         stream3 = wp.Stream()
         stream4 = wp.Stream()
-        with wp.ScopedCapture() as capture:
+        with wp.ScopedCapture(force_module_load=False) as capture:
             # stream1 and stream2 are independent of the alloc
             with wp.ScopedStream(stream1):
                 node1 = _insert_node()
