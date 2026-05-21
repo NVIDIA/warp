@@ -19,9 +19,11 @@ import warp as wp
 class HalfFloatConversion:
     """Benchmark half-float conversion via METH_FASTCALL and ctypes paths."""
 
-    # The fastcall path is short enough that a ~2 ms sample can hide scheduler
-    # noise. Keep those samples near 0.05-0.10 ms and compensate with more ASV
-    # repeats. The ctypes path is slower, so keep its sampling unchanged.
+    # Short fastcall loops can hide scheduler noise in millisecond-scale
+    # samples. Keep those samples near 0.05-0.10 ms and compensate with more
+    # ASV repeats. The single-conversion ctypes benchmarks still use larger
+    # inner loops; only the round-trip ctypes benchmark uses a shorter loop
+    # because it performs two ctypes calls per iteration.
     repeat = 300
     number = 1
     warmup_time = 0.1
@@ -63,10 +65,11 @@ class HalfFloatConversion:
     def time_round_trip_ctypes(self):
         to_half = self.ctypes.wp_float_to_half_bits
         to_float = self.ctypes.wp_half_bits_to_float
-        for _ in range(5_000):
+        for _ in range(100):
             to_float(to_half(1.0))
 
 
 HalfFloatConversion.time_float_to_half_bits_fastcall.repeat = 2_000
 HalfFloatConversion.time_half_bits_to_float_fastcall.repeat = 2_000
 HalfFloatConversion.time_round_trip_fastcall.repeat = 2_000
+HalfFloatConversion.time_round_trip_ctypes.repeat = 20_000
