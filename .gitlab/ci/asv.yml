@@ -33,7 +33,7 @@ stages:
   - build
   - test
 
-# Build Warp wheels for COMPARE_REF and CI_COMMIT_SHA on a CPU runner so
+# Build Warp wheels for COMPARE_REF_SHA and CI_COMMIT_SHA on a CPU runner so
 # the GPU-bound asv bench jobs don't spend L40 booking time compiling.
 # Wheels are written to asv's native build cache; the bench jobs skip
 # build_command and go straight to install_command using the cached wheels.
@@ -57,12 +57,26 @@ linux-x86_64 asv build:
     - export PATH="$CI_PROJECT_DIR/_uv/bin:$PATH"
     - uv python install $UV_PYTHON
     - COMPARE_REF="${CI_MERGE_REQUEST_TARGET_BRANCH_SHA:-${CI_MERGE_REQUEST_TARGET_BRANCH_NAME:-main}}"
-    - 'echo "COMPARE_REF value: ${COMPARE_REF}"'
+    - COMPARE_REF_SOURCE="$COMPARE_REF"
+    - 'echo "COMPARE_REF_SOURCE value: ${COMPARE_REF_SOURCE}"'
     - git config --global --add safe.directory $CI_PROJECT_DIR
-    # Make sure the comparison ref can be checked out by asv
-    - git fetch origin $COMPARE_REF
-    - git checkout -f $COMPARE_REF
-    - git checkout -f $CI_COMMIT_SHA
+    # Freeze mutable refs like `main` before building wheels. Retry jobs must
+    # compare against the same commit that populated the wheel artifact.
+    - |
+      fetch_compare_ref() {
+        if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
+          git fetch --unshallow origin "$1" || git fetch origin "$1"
+        else
+          git fetch origin "$1"
+        fi
+      }
+
+      fetch_compare_ref "$COMPARE_REF_SOURCE"
+      COMPARE_REF_SHA="$(git rev-parse "FETCH_HEAD^{commit}")"
+      git rev-parse --verify "${COMPARE_REF_SHA}^{commit}" >/dev/null
+    - 'echo "COMPARE_REF_SHA value: ${COMPARE_REF_SHA}"'
+    - git checkout -f "$COMPARE_REF_SHA" || { git checkout -f "$CI_COMMIT_SHA"; exit 1; }
+    - git checkout -f "$CI_COMMIT_SHA"
     - !reference [.snippets, section-end-install-deps]
   script:
     - uvx asv machine --machine asv-build --yes
@@ -71,7 +85,7 @@ linux-x86_64 asv build:
     # sanity benchmark. rc==1 means "regression detected" (asv's normal exit
     # for continuous), so only fail on rc>1 which signals a real error.
     - 'date -u +"asv continuous --quick start: %FT%TZ"'
-    - rc=0; uvx asv continuous -v --quick -b PythonBuiltins $COMPARE_REF $CI_COMMIT_SHA || rc=$?; if [ $rc -gt 1 ]; then exit $rc; fi
+    - rc=0; uvx asv continuous -v --quick -b PythonBuiltins "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" || rc=$?; if [ $rc -gt 1 ]; then exit $rc; fi
     - 'date -u +"asv continuous --quick end:   %FT%TZ"'
     # Relocate built wheels to a flat `_wheels/` path for the bench job. asv's
     # own cache lives inside the env directory, which Environment.create()
@@ -81,6 +95,9 @@ linux-x86_64 asv build:
     # creates a working env, sidestepping the rmtree.
     - mkdir -p _wheels
     - cp -r asv/env/*/asv-build-cache/* _wheels/
+    - printf "%s\n" "$COMPARE_REF_SOURCE" > _wheels/compare_ref.source
+    - printf "%s\n" "$COMPARE_REF_SHA" > _wheels/compare_ref.sha
+    - printf "%s\n" "$CI_COMMIT_SHA" > _wheels/target_ref.sha
     - ls -la _wheels/
   artifacts:
     paths:
@@ -112,12 +129,29 @@ linux-x86_64 asv build:
     - curl -LsSf https://astral.sh/uv/install.sh | sh
     - export PATH="$HOME/.local/bin:$PATH"
     - uv python install $UV_PYTHON
-    - COMPARE_REF="${CI_MERGE_REQUEST_TARGET_BRANCH_SHA:-${CI_MERGE_REQUEST_TARGET_BRANCH_NAME:-main}}"
-    - 'echo "COMPARE_REF value: ${COMPARE_REF}"'
+    - test -s _wheels/compare_ref.source || { echo "missing compare ref source from asv build artifact"; exit 1; }
+    - test -s _wheels/compare_ref.sha || { echo "missing compare ref SHA from asv build artifact"; exit 1; }
+    - test -s _wheels/target_ref.sha || { echo "missing target ref SHA from asv build artifact"; exit 1; }
+    - COMPARE_REF_SOURCE="$(cat _wheels/compare_ref.source)"
+    - COMPARE_REF_SHA="$(cat _wheels/compare_ref.sha)"
+    - TARGET_REF_SHA="$(cat _wheels/target_ref.sha)"
+    - 'echo "COMPARE_REF_SOURCE value: ${COMPARE_REF_SOURCE}"'
+    - 'echo "COMPARE_REF_SHA value: ${COMPARE_REF_SHA}"'
+    - 'test "$TARGET_REF_SHA" = "$CI_COMMIT_SHA" || { echo "asv build artifact target SHA $TARGET_REF_SHA does not match job SHA $CI_COMMIT_SHA"; exit 1; }'
     - git config --global --add safe.directory $CI_PROJECT_DIR
-    - git fetch origin $COMPARE_REF
-    - git checkout -f $COMPARE_REF
-    - git checkout -f $CI_COMMIT_SHA
+    - |
+      fetch_compare_ref() {
+        if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
+          git fetch --unshallow origin "$1" || git fetch origin "$1"
+        else
+          git fetch origin "$1"
+        fi
+      }
+
+      git rev-parse --verify --quiet "${COMPARE_REF_SHA}^{commit}" >/dev/null || fetch_compare_ref "$COMPARE_REF_SOURCE"
+      git rev-parse --verify "${COMPARE_REF_SHA}^{commit}" >/dev/null
+    - git checkout -f "$COMPARE_REF_SHA" || { git checkout -f "$CI_COMMIT_SHA"; exit 1; }
+    - git checkout -f "$CI_COMMIT_SHA"
     - !reference [.snippets, section-end-install-deps]
   script:
     - uvx asv machine --machine "$ASV_MACHINE_NAME" --yes
@@ -136,11 +170,31 @@ linux-x86_64 asv build:
     - ENV_HASH=$(ls asv/env)
     - 'test -n "$ENV_HASH" -a "$(echo "$ENV_HASH" | wc -l)" -eq 1 || { echo "expected exactly one env under asv/env/, got: $ENV_HASH"; exit 1; }'
     - 'echo "asv env hash: $ENV_HASH"'
-    - mkdir -p asv/env/$ENV_HASH/asv-build-cache
-    - cp -r _wheels/* asv/env/$ENV_HASH/asv-build-cache/
-    - ls -la asv/env/$ENV_HASH/asv-build-cache/
+    - 'test -f "_wheels/$COMPARE_REF_SHA.timestamp" || { echo "missing cached compare wheel timestamp for $COMPARE_REF_SHA"; exit 1; }'
+    - 'test -n "$(find "_wheels/$COMPARE_REF_SHA" -maxdepth 1 -name "*.whl" -print -quit)" || { echo "missing cached compare wheel for $COMPARE_REF_SHA"; exit 1; }'
+    - 'test -f "_wheels/$CI_COMMIT_SHA.timestamp" || { echo "missing cached target wheel timestamp for $CI_COMMIT_SHA"; exit 1; }'
+    - 'test -n "$(find "_wheels/$CI_COMMIT_SHA" -maxdepth 1 -name "*.whl" -print -quit)" || { echo "missing cached target wheel for $CI_COMMIT_SHA"; exit 1; }'
+    - mkdir -p "asv/env/$ENV_HASH/asv-build-cache"
+    - cp -r "_wheels/$COMPARE_REF_SHA" "_wheels/$COMPARE_REF_SHA.timestamp" "_wheels/$CI_COMMIT_SHA" "_wheels/$CI_COMMIT_SHA.timestamp" "asv/env/$ENV_HASH/asv-build-cache/"
+    - ls -la "asv/env/$ENV_HASH/asv-build-cache/"
     - 'date -u +"asv continuous start: %FT%TZ"'
-    - uvx asv continuous -v -e --interleave-rounds --append-samples --no-only-changed -f 1.10 --bench "$ASV_BENCH_FILTER" $COMPARE_REF $CI_COMMIT_SHA 2>&1 || (uvx asv compare -v --split $COMPARE_REF $CI_COMMIT_SHA 2>&1 && exit 2)
+    - |
+      rc=0
+      uvx asv continuous -v -e --interleave-rounds --append-samples --no-only-changed -f 1.10 --bench "$ASV_BENCH_FILTER" "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>&1 || rc=$?
+      if [ "$rc" -eq 1 ]; then
+        # asv continuous returns 1 for detected regressions; print the
+        # comparison, then keep the original regression exit status unless the
+        # compare command itself fails.
+        compare_rc=0
+        uvx asv compare -v --split "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>&1 || compare_rc=$?
+        if [ "$compare_rc" -ne 0 ]; then
+          exit "$compare_rc"
+        fi
+        exit "${rc:-1}"
+      fi
+      if [ "$rc" -gt 1 ]; then
+        exit "$rc"
+      fi
     - 'date -u +"asv continuous end:   %FT%TZ"'
   artifacts:
     paths:
