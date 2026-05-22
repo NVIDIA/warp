@@ -69,6 +69,8 @@ class HalfFloatConversion:
             to_float(to_half(1.0))
 
 
+# Longer samples make this short benchmark less sensitive to CPU state shifts.
+HalfFloatConversion.time_float_to_half_bits_fastcall.number = 10
 HalfFloatConversion.time_float_to_half_bits_fastcall.repeat = 2_000
 HalfFloatConversion.time_half_bits_to_float_fastcall.repeat = 2_000
 HalfFloatConversion.time_round_trip_fastcall.repeat = 2_000
