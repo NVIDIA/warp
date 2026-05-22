@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,15 +19,13 @@ Compares the normal atomic path against the deterministic scatter-sort-reduce
 (accumulation) and two-pass counter (allocator) paths using CUDA graph replay.
 """
 
-import inspect
-
 import numpy as np
 
 import warp as wp
 
 DETERMINISTIC_BENCHMARK_SIZES = [64 * 1024, 256 * 1024, 1024 * 1024]
-DETERMINISM_SUPPORTED = "module_options" in inspect.signature(wp.kernel).parameters
-DETERMINISTIC_BENCHMARK_MODES = ("normal", "deterministic")
+DETERMINISM_SUPPORTED = hasattr(wp.config, "deterministic")
+DETERMINISTIC_BENCHMARK_MODES = ("normal", "deterministic") if DETERMINISM_SUPPORTED else ("normal",)
 DETERMINISTIC_KERNEL_OPTIONS = {"enable_backward": False}
 if DETERMINISM_SUPPORTED:
     DETERMINISTIC_KERNEL_OPTIONS = {
