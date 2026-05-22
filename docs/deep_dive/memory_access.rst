@@ -222,7 +222,7 @@ allocator, or may wrap external memory. Code that has an actual array should use
 ``wp.can_access(device, array)`` instead.
 
 
-.. _launch_verification:
+.. _launch_array_access_checks:
 
 Checking array access before launch
 -----------------------------------
@@ -232,17 +232,17 @@ without checking array accessibility. This keeps the launch path lightweight and
 allows hardware-supported mixed CPU/GPU launches to work.
 
 If you want a clear Python error before the kernel runs, set
-:attr:`warp.config.launch_verification_mode`:
+:attr:`warp.config.launch_array_access_mode`:
 
 .. code:: python
 
-    wp.config.launch_verification_mode = wp.LaunchVerificationMode.CHECKED
+    wp.config.launch_array_access_mode = wp.config.LaunchArrayAccessMode.CHECKED
 
-- ``LaunchVerificationMode.RELAXED`` is the default and performs no pre-launch
+- ``wp.config.LaunchArrayAccessMode.RELAXED`` is the default and performs no pre-launch
   array access checks beyond type, dtype, and dimension validation.
-- ``LaunchVerificationMode.STRICT`` restores Warp's original same-device rule
+- ``wp.config.LaunchArrayAccessMode.STRICT`` restores Warp's original same-device rule
   and requires every Warp array argument to be allocated on the launch device.
-- ``LaunchVerificationMode.CHECKED`` raises an error before launch when Warp can
+- ``wp.config.LaunchArrayAccessMode.CHECKED`` raises an error before launch when Warp can
   determine that a cross-device Warp array argument is not accessible from the
   launch device. This is useful when debugging mixed-device launches on systems
   that do not support direct CPU/GPU memory access or on multi-GPU systems where
@@ -250,38 +250,38 @@ If you want a clear Python error before the kernel runs, set
 
 Arrays backed by custom or externally wrapped allocators are a limitation of this
 diagnostic. Warp does not know the allocation kind for those arrays, so
-``LaunchVerificationMode.CHECKED`` emits a ``UserWarning`` once per
+``wp.config.LaunchArrayAccessMode.CHECKED`` emits a ``UserWarning`` once per
 ``(kernel, argument name, source device, launch device)`` pattern and allows the
-launch to proceed. Use ``LaunchVerificationMode.STRICT`` if unknown allocation
-provenance should be rejected, or ``LaunchVerificationMode.RELAXED`` to suppress
+launch to proceed. Use ``wp.config.LaunchArrayAccessMode.STRICT`` if unknown allocation
+provenance should be rejected, or ``wp.config.LaunchArrayAccessMode.RELAXED`` to suppress
 the diagnostic.
 
 Objects exposing ``__array_interface__`` are accepted only for CPU launches.
 Warp treats that protocol as a CPU-addressable pointer and does not infer CUDA
-allocation provenance from it, so ``LaunchVerificationMode.CHECKED`` has no
+allocation provenance from it, so ``wp.config.LaunchArrayAccessMode.CHECKED`` has no
 cross-device access decision to make for that protocol.
 
 Directly passing an object that exposes ``__cuda_array_interface__`` is
 different from passing a Warp array. The protocol lets Warp construct the kernel
 argument at launch time, but it does not identify the allocation device or
-allocation kind. In this phase, ``LaunchVerificationMode.CHECKED`` does not fully
+allocation kind. In this phase, ``wp.config.LaunchArrayAccessMode.CHECKED`` does not fully
 verify directly passed objects exposing this protocol. Advanced users who know
 such an allocation is valid are responsible for ensuring that the launch device
 can legally access the pointer.
 
 .. code:: python
 
-    wp.config.launch_verification_mode = wp.LaunchVerificationMode.CHECKED
+    wp.config.launch_array_access_mode = wp.config.LaunchArrayAccessMode.CHECKED
     wp.launch(kernel, dim=a.size, inputs=[a], device="cuda:0")
 
-:attr:`warp.config.launch_verification_mode` can add launch overhead in
-``LaunchVerificationMode.STRICT`` and ``LaunchVerificationMode.CHECKED`` modes.
-Use ``LaunchVerificationMode.RELAXED`` in performance-sensitive code that has
+:attr:`warp.config.launch_array_access_mode` can add launch overhead in
+``wp.config.LaunchArrayAccessMode.STRICT`` and ``wp.config.LaunchArrayAccessMode.CHECKED`` modes.
+Use ``wp.config.LaunchArrayAccessMode.RELAXED`` in performance-sensitive code that has
 already validated its launch accessibility assumptions.
 
 Unlike :attr:`warp.config.verify_cuda`,
-:attr:`warp.config.launch_verification_mode` can be used during CUDA graph
-capture because ``LaunchVerificationMode.CHECKED`` checks run before each launch
+:attr:`warp.config.launch_array_access_mode` can be used during CUDA graph
+capture because ``wp.config.LaunchArrayAccessMode.CHECKED`` checks run before each launch
 is recorded. For cross-GPU graph capture, enable peer access or memory-pool
 access with Warp APIs before capture begins so verification can use the recorded
 access state during capture. When a CUDA graph captures a launch with CPU array
@@ -384,8 +384,8 @@ allocation or access pattern to create:
   memory-pool allocations, then check the concrete array with
   :func:`wp.can_access(device, array) <warp.can_access>`.
 - Debugging mixed-device launch failures: temporarily set
-  :attr:`warp.config.launch_verification_mode` to
-  ``wp.LaunchVerificationMode.CHECKED``.
+  :attr:`warp.config.launch_array_access_mode` to
+  ``wp.config.LaunchArrayAccessMode.CHECKED``.
 
 Prefer capability checks over platform-name checks. They make code portable
 across discrete GPUs, HMM-enabled systems, Jetson, Grace, and future coherent

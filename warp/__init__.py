@@ -200,8 +200,6 @@ from warp._src.texture import TextureAddressMode as TextureAddressMode
 
 # category: Runtime
 
-from warp.config import LaunchVerificationMode as LaunchVerificationMode
-
 from warp._src.context import init as init
 
 from warp._src.context import is_cpu_available as is_cpu_available

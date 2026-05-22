@@ -254,7 +254,6 @@ Runtime
    :nosignatures:
    :toctree: _generated
 
-   LaunchVerificationMode
    clear_kernel_cache
    clear_lto_cache
    init
