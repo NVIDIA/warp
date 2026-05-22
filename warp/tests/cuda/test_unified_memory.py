@@ -20,6 +20,7 @@ import numpy as np
 
 import warp as wp
 import warp._src.context as warp_context
+from warp._src.utils import check_p2p
 from warp.tests.unittest_utils import *
 
 
@@ -561,6 +562,7 @@ class TestUnifiedMemory(unittest.TestCase):
     @unittest.skipUnless(
         get_cuda_device_pair_with_mempool_access_support(), "Requires devices with mempool access support"
     )
+    @unittest.skipUnless(check_p2p(), "Peer-to-Peer transfers not supported")
     def test_unified_memory_verify_uses_mempool_access_for_cuda_mempool_allocations(self):
         """CUDA mempool allocations use mempool-access state for cross-GPU verification.
 
@@ -601,6 +603,7 @@ class TestUnifiedMemory(unittest.TestCase):
     @unittest.skipUnless(
         get_cuda_device_pair_with_mempool_access_support(), "Requires devices with mempool access support"
     )
+    @unittest.skipUnless(check_p2p(), "Peer-to-Peer transfers not supported")
     def test_unified_memory_verify_uses_parent_allocator_for_cuda_mempool_slices(self):
         """Slices of CUDA mempool allocations should follow the base array's allocator.
 
