@@ -686,21 +686,21 @@ allocator, or may wrap external memory. Code that has an actual array should use
 <code class="docutils literal notranslate"><span class="pre">wp.can_access(device,</span> <span class="pre">array)</span></code> instead.</p>
 </section>
 <section id="checking-array-access-before-launch">
-<span id="launch-verification"></span><h2>Checking array access before launch<a class="headerlink" href="#checking-array-access-before-launch" title="Link to this heading">#</a></h2>
+<span id="launch-array-access-checks"></span><h2>Checking array access before launch<a class="headerlink" href="#checking-array-access-before-launch" title="Link to this heading">#</a></h2>
 <p>By default, Warp launches kernels after type, dtype, and dimension validation
 without checking array accessibility. This keeps the launch path lightweight and
 allows hardware-supported mixed CPU/GPU launches to work.</p>
 <p>If you want a clear Python error before the kernel runs, set
-<a class="reference internal" href="../api_reference/_generated/warp.config.launch_verification_mode.html#warp.config.launch_verification_mode" title="warp.config.launch_verification_mode"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.launch_verification_mode</span></code></a>:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">launch_verification_mode</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">LaunchVerificationMode</span><span class="o">.</span><span class="n">CHECKED</span>
+<a class="reference internal" href="../api_reference/_generated/warp.config.launch_array_access_mode.html#warp.config.launch_array_access_mode" title="warp.config.launch_array_access_mode"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.launch_array_access_mode</span></code></a>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">launch_array_access_mode</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">LaunchArrayAccessMode</span><span class="o">.</span><span class="n">CHECKED</span>
 </pre></div>
 </div>
 <ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">LaunchVerificationMode.RELAXED</span></code> is the default and performs no pre-launch
+<li><p><code class="docutils literal notranslate"><span class="pre">wp.config.LaunchArrayAccessMode.RELAXED</span></code> is the default and performs no pre-launch
 array access checks beyond type, dtype, and dimension validation.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">LaunchVerificationMode.STRICT</span></code> restores Warp’s original same-device rule
+<li><p><code class="docutils literal notranslate"><span class="pre">wp.config.LaunchArrayAccessMode.STRICT</span></code> restores Warp’s original same-device rule
 and requires every Warp array argument to be allocated on the launch device.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">LaunchVerificationMode.CHECKED</span></code> raises an error before launch when Warp can
+<li><p><code class="docutils literal notranslate"><span class="pre">wp.config.LaunchArrayAccessMode.CHECKED</span></code> raises an error before launch when Warp can
 determine that a cross-device Warp array argument is not accessible from the
 launch device. This is useful when debugging mixed-device launches on systems
 that do not support direct CPU/GPU memory access or on multi-GPU systems where
@@ -708,33 +708,33 @@ peer and memory-pool access are configured separately.</p></li>
 </ul>
 <p>Arrays backed by custom or externally wrapped allocators are a limitation of this
 diagnostic. Warp does not know the allocation kind for those arrays, so
-<code class="docutils literal notranslate"><span class="pre">LaunchVerificationMode.CHECKED</span></code> emits a <code class="docutils literal notranslate"><span class="pre">UserWarning</span></code> once per
+<code class="docutils literal notranslate"><span class="pre">wp.config.LaunchArrayAccessMode.CHECKED</span></code> emits a <code class="docutils literal notranslate"><span class="pre">UserWarning</span></code> once per
 <code class="docutils literal notranslate"><span class="pre">(kernel,</span> <span class="pre">argument</span> <span class="pre">name,</span> <span class="pre">source</span> <span class="pre">device,</span> <span class="pre">launch</span> <span class="pre">device)</span></code> pattern and allows the
-launch to proceed. Use <code class="docutils literal notranslate"><span class="pre">LaunchVerificationMode.STRICT</span></code> if unknown allocation
-provenance should be rejected, or <code class="docutils literal notranslate"><span class="pre">LaunchVerificationMode.RELAXED</span></code> to suppress
+launch to proceed. Use <code class="docutils literal notranslate"><span class="pre">wp.config.LaunchArrayAccessMode.STRICT</span></code> if unknown allocation
+provenance should be rejected, or <code class="docutils literal notranslate"><span class="pre">wp.config.LaunchArrayAccessMode.RELAXED</span></code> to suppress
 the diagnostic.</p>
 <p>Objects exposing <code class="docutils literal notranslate"><span class="pre">__array_interface__</span></code> are accepted only for CPU launches.
 Warp treats that protocol as a CPU-addressable pointer and does not infer CUDA
-allocation provenance from it, so <code class="docutils literal notranslate"><span class="pre">LaunchVerificationMode.CHECKED</span></code> has no
+allocation provenance from it, so <code class="docutils literal notranslate"><span class="pre">wp.config.LaunchArrayAccessMode.CHECKED</span></code> has no
 cross-device access decision to make for that protocol.</p>
 <p>Directly passing an object that exposes <code class="docutils literal notranslate"><span class="pre">__cuda_array_interface__</span></code> is
 different from passing a Warp array. The protocol lets Warp construct the kernel
 argument at launch time, but it does not identify the allocation device or
-allocation kind. In this phase, <code class="docutils literal notranslate"><span class="pre">LaunchVerificationMode.CHECKED</span></code> does not fully
+allocation kind. In this phase, <code class="docutils literal notranslate"><span class="pre">wp.config.LaunchArrayAccessMode.CHECKED</span></code> does not fully
 verify directly passed objects exposing this protocol. Advanced users who know
 such an allocation is valid are responsible for ensuring that the launch device
 can legally access the pointer.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">launch_verification_mode</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">LaunchVerificationMode</span><span class="o">.</span><span class="n">CHECKED</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">launch_array_access_mode</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">LaunchArrayAccessMode</span><span class="o">.</span><span class="n">CHECKED</span>
 <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p><a class="reference internal" href="../api_reference/_generated/warp.config.launch_verification_mode.html#warp.config.launch_verification_mode" title="warp.config.launch_verification_mode"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.launch_verification_mode</span></code></a> can add launch overhead in
-<code class="docutils literal notranslate"><span class="pre">LaunchVerificationMode.STRICT</span></code> and <code class="docutils literal notranslate"><span class="pre">LaunchVerificationMode.CHECKED</span></code> modes.
-Use <code class="docutils literal notranslate"><span class="pre">LaunchVerificationMode.RELAXED</span></code> in performance-sensitive code that has
+<p><a class="reference internal" href="../api_reference/_generated/warp.config.launch_array_access_mode.html#warp.config.launch_array_access_mode" title="warp.config.launch_array_access_mode"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.launch_array_access_mode</span></code></a> can add launch overhead in
+<code class="docutils literal notranslate"><span class="pre">wp.config.LaunchArrayAccessMode.STRICT</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.config.LaunchArrayAccessMode.CHECKED</span></code> modes.
+Use <code class="docutils literal notranslate"><span class="pre">wp.config.LaunchArrayAccessMode.RELAXED</span></code> in performance-sensitive code that has
 already validated its launch accessibility assumptions.</p>
 <p>Unlike <a class="reference internal" href="../api_reference/_generated/warp.config.verify_cuda.html#warp.config.verify_cuda" title="warp.config.verify_cuda"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.verify_cuda</span></code></a>,
-<a class="reference internal" href="../api_reference/_generated/warp.config.launch_verification_mode.html#warp.config.launch_verification_mode" title="warp.config.launch_verification_mode"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.launch_verification_mode</span></code></a> can be used during CUDA graph
-capture because <code class="docutils literal notranslate"><span class="pre">LaunchVerificationMode.CHECKED</span></code> checks run before each launch
+<a class="reference internal" href="../api_reference/_generated/warp.config.launch_array_access_mode.html#warp.config.launch_array_access_mode" title="warp.config.launch_array_access_mode"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.launch_array_access_mode</span></code></a> can be used during CUDA graph
+capture because <code class="docutils literal notranslate"><span class="pre">wp.config.LaunchArrayAccessMode.CHECKED</span></code> checks run before each launch
 is recorded. For cross-GPU graph capture, enable peer access or memory-pool
 access with Warp APIs before capture begins so verification can use the recorded
 access state during capture. When a CUDA graph captures a launch with CPU array
@@ -824,8 +824,8 @@ allocations, or <a class="reference internal" href="allocators.html#mempool-acce
 memory-pool allocations, then check the concrete array with
 <a class="reference internal" href="../api_reference/_generated/warp.can_access.html#warp.can_access" title="warp.can_access"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.can_access(device,</span> <span class="pre">array)</span></code></a>.</p></li>
 <li><p>Debugging mixed-device launch failures: temporarily set
-<a class="reference internal" href="../api_reference/_generated/warp.config.launch_verification_mode.html#warp.config.launch_verification_mode" title="warp.config.launch_verification_mode"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.launch_verification_mode</span></code></a> to
-<code class="docutils literal notranslate"><span class="pre">wp.LaunchVerificationMode.CHECKED</span></code>.</p></li>
+<a class="reference internal" href="../api_reference/_generated/warp.config.launch_array_access_mode.html#warp.config.launch_array_access_mode" title="warp.config.launch_array_access_mode"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.launch_array_access_mode</span></code></a> to
+<code class="docutils literal notranslate"><span class="pre">wp.config.LaunchArrayAccessMode.CHECKED</span></code>.</p></li>
 </ul>
 <p>Prefer capability checks over platform-name checks. They make code portable
 across discrete GPUs, HMM-enabled systems, Jetson, Grace, and future coherent
