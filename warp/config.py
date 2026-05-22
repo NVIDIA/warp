@@ -75,9 +75,9 @@ class _ConfigModule(_types.ModuleType):
     def __setattr__(self, name, value):
         if name in ("verbose", "quiet"):
             _warn_deprecated_config_access(name)
-        if name == "launch_verification_mode" and not isinstance(value, LaunchVerificationMode):
+        if name == "launch_array_access_mode" and not isinstance(value, LaunchArrayAccessMode):
             raise ValueError(
-                f"warp.config.launch_verification_mode must be a warp.LaunchVerificationMode value, got {value!r}"
+                f"warp.config.launch_array_access_mode must be a warp.config.LaunchArrayAccessMode value, got {value!r}"
             )
         super().__setattr__(name, value)
 
@@ -86,7 +86,7 @@ def _install_config_module_hooks() -> None:
     _sys.modules[__name__].__class__ = _ConfigModule
 
 
-class LaunchVerificationMode(_IntEnum):
+class LaunchArrayAccessMode(_IntEnum):
     """Array-access verification modes for kernel launches."""
 
     RELAXED = 0
@@ -99,13 +99,13 @@ class LaunchVerificationMode(_IntEnum):
     """Require every Warp array argument to be allocated on the launch device."""
 
 
-launch_verification_mode: LaunchVerificationMode = LaunchVerificationMode.RELAXED
+launch_array_access_mode: LaunchArrayAccessMode = LaunchArrayAccessMode.RELAXED
 """Kernel launch array access verification mode.
 
-``LaunchVerificationMode.RELAXED`` performs no launch array access checks and is
-the default. ``LaunchVerificationMode.STRICT`` requires every Warp array argument
+``LaunchArrayAccessMode.RELAXED`` performs no launch array access checks and is
+the default. ``LaunchArrayAccessMode.STRICT`` requires every Warp array argument
 to be allocated on the launch device, matching Warp's original behavior.
-``LaunchVerificationMode.CHECKED`` raises an error before launch when Warp can
+``LaunchArrayAccessMode.CHECKED`` raises an error before launch when Warp can
 determine that a cross-device Warp array argument is not accessible from the
 launch device. When Warp cannot verify access because an array uses an unknown
 custom allocator or externally wrapped allocation, checked mode emits a warning

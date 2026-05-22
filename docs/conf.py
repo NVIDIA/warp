@@ -276,7 +276,9 @@ autosummary_filename_map = {
 }
 
 AUTOSUMMARY_ANNOTATION_OVERRIDES = {
-    "warp.config.launch_verification_mode": ": LaunchVerificationMode = warp.LaunchVerificationMode.RELAXED",
+    "warp.config.launch_array_access_mode": (
+        ": warp.config.LaunchArrayAccessMode = warp.config.LaunchArrayAccessMode.RELAXED"
+    ),
     "warp.config.log_level": ": int = warp.LOG_INFO",
 }
 

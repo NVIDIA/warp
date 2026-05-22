@@ -215,20 +215,20 @@ internals into the allocator surface.
 #### Launch Verification Interaction
 
 Current limitation: `wp.can_access(device, array)` and
-`warp.config.launch_verification_mode = wp.LaunchVerificationMode.CHECKED`
+`warp.config.launch_array_access_mode = wp.config.LaunchArrayAccessMode.CHECKED`
 remain conservative for arrays allocated through custom allocators.
 Same-device launches are accepted, but cross-device launches require Warp to
 know whether the allocation uses default CUDA memory, CUDA memory pools,
 pinned host memory, managed memory, or another memory type. The current custom
 allocator protocol only returns a pointer, so cross-device arrays backed by
 custom or externally wrapped allocators warn once per launch pattern in checked
-mode and then proceed. Using `wp.LaunchVerificationMode.RELAXED` leaves access
-legality to the hardware without the diagnostic, matching the default launch
-path.
+mode and then proceed. Using `wp.config.LaunchArrayAccessMode.RELAXED` leaves
+access legality to the hardware without the diagnostic, matching the default
+launch path.
 
 Future solutions must provide enough allocation provenance for
-`wp.can_access(device, array)` and `wp.LaunchVerificationMode.CHECKED` to make
-the same conservative decisions they make for Warp-owned allocations. At a
+`wp.can_access(device, array)` and `wp.config.LaunchArrayAccessMode.CHECKED` to
+make the same conservative decisions they make for Warp-owned allocations. At a
 minimum, Warp needs to distinguish the owning device and memory class for
 allocations that participate in cross-device launch verification, including
 default CUDA device memory, CUDA memory pools, managed memory, pinned host

@@ -104,7 +104,7 @@ JAX_CALLABLE_INTEROP_SYMBOLS = (
     "set_jax_callable_default_graph_cache_max",
 )
 
-ROOT_REEXPORTS_DOCUMENTED_IN_ROOT = ("LaunchVerificationMode",)
+ROOT_REEXPORTS_DOCUMENTED_IN_ROOT = ()
 
 
 # Mock Dependencies

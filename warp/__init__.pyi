@@ -84,7 +84,6 @@ from warp._src.texture import TextureResourceFlags as TextureResourceFlags
 from warp._src.texture import GLTextureResource as GLTextureResource
 from warp._src.texture import TextureFilterMode as TextureFilterMode
 from warp._src.texture import TextureAddressMode as TextureAddressMode
-from warp.config import LaunchVerificationMode as LaunchVerificationMode
 from warp._src.context import init as init
 from warp._src.context import is_cpu_available as is_cpu_available
 from warp._src.context import is_cubql_available as is_cubql_available

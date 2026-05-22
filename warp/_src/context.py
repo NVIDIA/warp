@@ -7921,7 +7921,7 @@ def _classify_single_array_access_from_device(value: warp.array, device: Device)
             return _ArrayAccessStatus.INACCESSIBLE
 
         # Custom and externally wrapped allocations do not expose enough
-        # information for launch verification to choose the correct access API.
+        # information for launch array access checks to choose the correct access API.
         return _ArrayAccessStatus.UNKNOWN
 
     return _ArrayAccessStatus.INACCESSIBLE
@@ -7933,7 +7933,7 @@ def _raise_launch_array_access_error(kernel, arg_name: str, value: warp.array, d
         f"but input array for argument '{arg_name}' is on device={value.device}, "
         f"whose array allocation is not accessible or cannot be verified as accessible from "
         f"'{device}'. Move the array to '{device}', enable the required peer/coherent access, "
-        f"or set warp.config.launch_verification_mode = warp.LaunchVerificationMode.RELAXED "
+        f"or set warp.config.launch_array_access_mode = warp.config.LaunchArrayAccessMode.RELAXED "
         f"only if this launch is valid for the hardware and allocation type."
     )
 
@@ -7949,25 +7949,25 @@ def _warn_unknown_launch_array_access(kernel, arg_name: str, value: warp.array, 
         _launch_array_access_warnings_seen.popitem(last=False)
 
     log_warning(
-        f"LaunchVerificationMode.CHECKED cannot verify cross-device access for kernel '{kernel.key}' "
+        f"warp.config.LaunchArrayAccessMode.CHECKED cannot verify cross-device access for kernel '{kernel.key}' "
         f"argument '{arg_name}' from device={value.device} to launch device='{device}': the array uses "
         "an unknown allocator or externally wrapped allocation. The launch will proceed but may result "
-        "in errors. Use LaunchVerificationMode.STRICT to reject this launch, or "
-        "LaunchVerificationMode.RELAXED to suppress this diagnostic.",
+        "in errors. Use warp.config.LaunchArrayAccessMode.STRICT to reject this launch, or "
+        "warp.config.LaunchArrayAccessMode.RELAXED to suppress this diagnostic.",
         category=UserWarning,
         stacklevel=3,
     )
 
 
 def _validate_launch_array_access(kernel, arg_name: str, value: warp.array, device: Device) -> None:
-    mode = warp.config.launch_verification_mode
+    mode = warp.config.launch_array_access_mode
 
     if value.device == device:
         return
 
-    if mode == warp.config.LaunchVerificationMode.STRICT:
+    if mode == warp.config.LaunchArrayAccessMode.STRICT:
         _raise_launch_array_access_error(kernel, arg_name, value, device)
-    elif mode == warp.config.LaunchVerificationMode.CHECKED:
+    elif mode == warp.config.LaunchArrayAccessMode.CHECKED:
         access_status = _classify_array_access_from_device(value, device)
         if access_status == _ArrayAccessStatus.INACCESSIBLE:
             _raise_launch_array_access_error(kernel, arg_name, value, device)
@@ -7976,7 +7976,7 @@ def _validate_launch_array_access(kernel, arg_name: str, value: warp.array, devi
         return
     else:
         raise ValueError(
-            f"warp.config.launch_verification_mode must be a warp.LaunchVerificationMode value, got {mode!r}"
+            f"warp.config.launch_array_access_mode must be a warp.config.LaunchArrayAccessMode value, got {mode!r}"
         )
 
 
@@ -8091,7 +8091,7 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
 
             # Optional diagnostic check for mixed-device launches. By default, array pointers are passed
             # through and the hardware access rules determine whether the launch is valid.
-            if warp.config.launch_verification_mode != warp.LaunchVerificationMode.RELAXED:
+            if warp.config.launch_array_access_mode != warp.config.LaunchArrayAccessMode.RELAXED:
                 _validate_launch_array_access(kernel, arg_name, value, device)
 
             return value.__ctype__()
