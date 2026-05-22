@@ -2288,6 +2288,12 @@ class ModuleBuilder:
         if kernel.adj.return_var is not None:
             raise WarpCodegenTypeError(f"'{kernel.key}': Error, kernels can't have return values")
 
+        if kernel.adj.arg_types.get("return") is not None:
+            raise WarpCodegenTypeError(
+                f"'{kernel.key}': Error, kernels can't have return values; "
+                "write results to output arguments and either omit the return annotation or use '-> None'"
+            )
+
     def build_function(self, func):
         if func in self.functions:
             return
