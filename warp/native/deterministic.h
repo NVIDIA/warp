@@ -32,6 +32,8 @@ struct det_counter_buf_t {
     int* count;
     int capacity;
     int records_per_thread;
+    uint64_t target_ptr;
+    int target_size;
 };
 
 struct det_ctx {

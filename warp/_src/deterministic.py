@@ -27,8 +27,6 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-import numpy as np
-
 import warp
 from warp._src import utils as warp_utils
 from warp._src.types import type_size_in_bytes
@@ -526,29 +524,6 @@ def allocate_counter_state_buffers(runtime, counter_arrays, device, stream):
         buffers.append((bases, totals, counter_size_elements))
 
     return buffers
-
-
-def allocate_counter_target_table(counter_arrays, device):
-    """Allocate the device table used to recognize counter stores in phase 0."""
-    target_ptrs = []
-    target_sizes = []
-
-    for counter_arr in counter_arrays:
-        if counter_arr is None:
-            target_ptrs.append(0)
-            target_sizes.append(0)
-            continue
-
-        counter_size_elements = _det_dest_size_elements(counter_arr)
-        target_ptrs.append(counter_arr.ptr if counter_size_elements > 0 else 0)
-        target_sizes.append(counter_size_elements)
-
-    if not target_ptrs or not any(target_ptrs):
-        return None, None, 0
-
-    ptrs = warp.array(np.asarray(target_ptrs, dtype=np.uint64), dtype=warp.uint64, device=device)
-    sizes = warp.array(np.asarray(target_sizes, dtype=np.int32), dtype=warp.int32, device=device)
-    return ptrs, sizes, len(target_ptrs)
 
 
 def allocate_counter_buffers(counter_targets, meta, dim_size, device, max_records=0, initialize_unused=False):

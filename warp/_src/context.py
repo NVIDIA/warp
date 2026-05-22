@@ -158,6 +158,8 @@ class det_counter_buf_t(ctypes.Structure):
         ("count", ctypes.c_void_p),
         ("capacity", ctypes.c_int),
         ("records_per_thread", ctypes.c_int),
+        ("target_ptr", ctypes.c_uint64),
+        ("target_size", ctypes.c_int),
     ]
 
 
@@ -9184,9 +9186,9 @@ def _launch_deterministic(
     counter atomics add a counting pass.
     """
     from warp._src.deterministic import (  # noqa: PLC0415
+        _det_dest_size_elements,
         allocate_counter_buffers,
         allocate_counter_state_buffers,
-        allocate_counter_target_table,
         allocate_scatter_buffers,
         get_counter_record_count,
         get_scatter_record_count,
@@ -9352,9 +9354,7 @@ def _launch_deterministic(
     sort_reduce_workspaces = []
     counter_scan_workspaces = []
     counter_state_buffers = []
-    counter_target_ptrs = None
-    counter_target_sizes = None
-    counter_target_count = 0
+    counter_arr_by_target = {}
 
     # Build the extra deterministic parameters (must match codegen_kernel order).
     def build_det_params(phase, use_scatter):
@@ -9362,14 +9362,14 @@ def _launch_deterministic(
             ctypes.c_int(phase),
             ctypes.c_int(det_debug),
             ctypes.c_void_p(overflow_buf.ptr if overflow_buf is not None else 0),
-            ctypes.c_void_p(counter_target_ptrs.ptr if counter_target_ptrs is not None else 0),
-            ctypes.c_void_p(counter_target_sizes.ptr if counter_target_sizes is not None else 0),
-            ctypes.c_int(counter_target_count),
         ]
         for ct in det_meta.counter_targets:
             counter_buf = counter_bufs_by_target.get(ct)
+            counter_arr = counter_arr_by_target.get(ct)
+            target_ptr = counter_arr.ptr if counter_arr is not None else 0
+            target_size = _det_dest_size_elements(counter_arr) if counter_arr is not None else 0
             if counter_buf is None:
-                det_params.append(det_counter_buf_t(0, 0, 0, 0, 0, 0, 0, 0))
+                det_params.append(det_counter_buf_t(0, 0, 0, 0, 0, 0, 0, 0, target_ptr, target_size))
                 continue
 
             keys, values, prefixes, record_slots, cursors, count, capacity, records_per_thread = counter_buf
@@ -9383,6 +9383,8 @@ def _launch_deterministic(
                     count.ptr,
                     capacity,
                     records_per_thread,
+                    target_ptr,
+                    target_size,
                 )
             )
         for st in det_meta.scatter_targets:
@@ -9428,10 +9430,10 @@ def _launch_deterministic(
                 continue
             counter_arrays.append(counter_arr)
 
+        for ct, counter_arr in zip(active_counter_targets, counter_arrays, strict=True):
+            counter_arr_by_target[ct] = counter_arr
+
         with warp.ScopedStream(stream, sync_enter=False):
-            counter_target_ptrs, counter_target_sizes, counter_target_count = allocate_counter_target_table(
-                counter_arrays, device
-            )
             for counter_buf in counter_bufs:
                 keys, values, _prefixes, record_slots, cursors, count, _capacity, _records_per_thread = counter_buf
                 count.zero_()
@@ -9567,8 +9569,6 @@ def _launch_deterministic(
                 *scatter_bufs,
                 *counter_bufs,
                 overflow_buf,
-                counter_target_ptrs,
-                counter_target_sizes,
                 *sort_reduce_workspaces,
                 *counter_scan_workspaces,
                 *(array for state_buffer in counter_state_buffers for array in state_buffer[:2] if array is not None),

@@ -6107,9 +6107,6 @@ def _deterministic_kernel_args(adj):
         "int _wp_det_phase",
         "int _wp_det_debug",
         "int* _wp_det_overflow",
-        "uint64_t* _wp_det_counter_target_ptrs",
-        "int* _wp_det_counter_target_sizes",
-        "int _wp_det_counter_target_count",
     ]
     for target in adj.det_meta.counter_targets:
         names = kernel_raw_counter_param_names(target)
@@ -6128,10 +6125,24 @@ def _deterministic_kernel_locals(adj, device, *, use_launch_buffers=True):
     from warp._src.deterministic import kernel_raw_counter_param_names, kernel_raw_scatter_param_names  # noqa: PLC0415
 
     if device == "cuda" and use_launch_buffers:
-        decls = [
-            "wp::det_ctx det_ctx{_wp_det_phase, _wp_det_debug, _idx, _wp_det_overflow, "
-            "_wp_det_counter_target_ptrs, _wp_det_counter_target_sizes, _wp_det_counter_target_count};",
-        ]
+        decls = []
+        n_counter_targets = len(adj.det_meta.counter_targets)
+        if n_counter_targets > 0:
+            counter_buf_names = [
+                kernel_raw_counter_param_names(target)["buf"] for target in adj.det_meta.counter_targets
+            ]
+            ptr_inits = ", ".join(f"{name}.target_ptr" for name in counter_buf_names)
+            size_inits = ", ".join(f"{name}.target_size" for name in counter_buf_names)
+            decls.append(f"uint64_t _wp_det_counter_target_ptrs[{n_counter_targets}] = {{{ptr_inits}}};")
+            decls.append(f"int _wp_det_counter_target_sizes[{n_counter_targets}] = {{{size_inits}}};")
+            decls.append(
+                "wp::det_ctx det_ctx{_wp_det_phase, _wp_det_debug, _idx, _wp_det_overflow, "
+                f"_wp_det_counter_target_ptrs, _wp_det_counter_target_sizes, {n_counter_targets}}};"
+            )
+        else:
+            decls.append(
+                "wp::det_ctx det_ctx{_wp_det_phase, _wp_det_debug, _idx, _wp_det_overflow, nullptr, nullptr, 0};"
+            )
         for target in adj.det_meta.counter_targets:
             names = kernel_raw_counter_param_names(target)
             decls.append(f"auto& {target.helper_name} = {names['buf']};")
@@ -6144,7 +6155,7 @@ def _deterministic_kernel_locals(adj, device, *, use_launch_buffers=True):
         ]
         for target in adj.det_meta.counter_targets:
             decls.append(
-                f"wp::det_counter_buf_t {target.helper_name}{{nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0, 0}};"
+                f"wp::det_counter_buf_t {target.helper_name}{{nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0, 0, 0, 0}};"
             )
         for target in adj.det_meta.scatter_targets:
             decls.append(
