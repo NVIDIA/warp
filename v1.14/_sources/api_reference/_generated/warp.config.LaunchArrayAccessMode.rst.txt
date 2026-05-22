@@ -1,0 +1,41 @@
+﻿warp.config.LaunchArrayAccessMode
+=================================
+
+.. currentmodule:: warp.config
+
+.. autoclass:: LaunchArrayAccessMode
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~LaunchArrayAccessMode.conjugate
+      ~LaunchArrayAccessMode.bit_length
+      ~LaunchArrayAccessMode.bit_count
+      ~LaunchArrayAccessMode.to_bytes
+      ~LaunchArrayAccessMode.from_bytes
+      ~LaunchArrayAccessMode.as_integer_ratio
+      ~LaunchArrayAccessMode.is_integer
+      ~LaunchArrayAccessMode.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~LaunchArrayAccessMode.real
+      ~LaunchArrayAccessMode.imag
+      ~LaunchArrayAccessMode.numerator
+      ~LaunchArrayAccessMode.denominator
+      ~LaunchArrayAccessMode.RELAXED
+      ~LaunchArrayAccessMode.CHECKED
+      ~LaunchArrayAccessMode.STRICT
+   
+   

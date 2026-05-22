@@ -1,7 +1,0 @@
-﻿warp.config.launch\_verification\_mode
-======================================
-
-.. currentmodule:: warp.config
-
-.. autodata:: launch_verification_mode
-   :annotation: : LaunchVerificationMode = warp.LaunchVerificationMode.RELAXED
