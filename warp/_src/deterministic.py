@@ -88,6 +88,8 @@ def is_deterministic_mode_enabled(value) -> bool:
     """Return ``True`` if a deterministic mode stronger than default is enabled."""
     if value is None:
         return False
+    if isinstance(value, bool):
+        value = DETERMINISTIC_RUN_TO_RUN if value else DETERMINISTIC_NOT_GUARANTEED
     if value not in _VALID_DETERMINISTIC_MODES:
         valid_modes = ", ".join(repr(mode) for mode in sorted(_VALID_DETERMINISTIC_MODES))
         raise ValueError(f"deterministic must be one of {valid_modes}, got {value!r}")

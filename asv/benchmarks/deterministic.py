@@ -25,7 +25,7 @@ import warp as wp
 
 DETERMINISTIC_BENCHMARK_SIZES = [64 * 1024, 256 * 1024, 1024 * 1024]
 DETERMINISM_SUPPORTED = hasattr(wp.config, "deterministic")
-DETERMINISTIC_BENCHMARK_MODES = ("normal", "deterministic") if DETERMINISM_SUPPORTED else ("normal",)
+DETERMINISTIC_BENCHMARK_MODES = ("normal", "deterministic")
 DETERMINISTIC_KERNEL_OPTIONS = {"enable_backward": False}
 if DETERMINISM_SUPPORTED:
     DETERMINISTIC_KERNEL_OPTIONS = {
