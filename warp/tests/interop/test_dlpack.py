@@ -12,6 +12,11 @@ import numpy as np
 import warp as wp
 from warp.tests.unittest_utils import *
 
+# Configure JAX memory behavior before any module-level JAX version checks.
+os.environ.setdefault("XLA_PYTHON_CLIENT_PREALLOCATE", "false")
+os.environ.setdefault("XLA_PYTHON_CLIENT_MEM_FRACTION", "0.5")
+os.environ.setdefault("XLA_PYTHON_CLIENT_ALLOCATOR", "platform")
+
 N = 1024 * 1024
 
 
@@ -671,10 +676,6 @@ except Exception as e:
 
 # jax interop via dlpack
 try:
-    # prevent Jax from gobbling up GPU memory
-    os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
-    os.environ["XLA_PYTHON_CLIENT_ALLOCATOR"] = "platform"
-
     import jax
     import jax.dlpack
 

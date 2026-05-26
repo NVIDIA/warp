@@ -14,7 +14,7 @@ import jax
 import jax.numpy as jnp
 
 import warp as wp
-from warp.jax import jax_kernel
+from warp import jax_kernel
 
 
 @wp.kernel

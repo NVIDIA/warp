@@ -12,7 +12,7 @@ import jax
 import jax.numpy as jnp
 
 import warp as wp
-from warp.jax import jax_callable, GraphMode
+from warp import JaxCallableGraphMode, jax_callable
 
 
 @wp.kernel
@@ -145,18 +145,18 @@ def bench1(graph_mode, num_elements=10_000, num_iters=1000, reuse_arrays=False, 
 
 
 # run once
-# graph_mode = GraphMode.WARP_STAGED
+# graph_mode = JaxCallableGraphMode.WARP_STAGED
 # example1(graph_mode)
 # print(bench1(graph_mode, use_nvtx=False, reuse_arrays=False))
 
 # run all
-time_0 = bench1(GraphMode.NONE)
-time_1a = bench1(GraphMode.JAX, reuse_arrays=True)
-time_1b = bench1(GraphMode.JAX, reuse_arrays=False)
-time_2a = bench1(GraphMode.WARP, reuse_arrays=True)
-time_2b = bench1(GraphMode.WARP, reuse_arrays=False)
-time_3 = bench1(GraphMode.WARP_STAGED)
-time_4 = bench1(GraphMode.WARP_STAGED_EX)
+time_0 = bench1(JaxCallableGraphMode.NONE)
+time_1a = bench1(JaxCallableGraphMode.JAX, reuse_arrays=True)
+time_1b = bench1(JaxCallableGraphMode.JAX, reuse_arrays=False)
+time_2a = bench1(JaxCallableGraphMode.WARP, reuse_arrays=True)
+time_2b = bench1(JaxCallableGraphMode.WARP, reuse_arrays=False)
+time_3 = bench1(JaxCallableGraphMode.WARP_STAGED)
+time_4 = bench1(JaxCallableGraphMode.WARP_STAGED_EX)
 print(f"{time_0:.4f} ms (NONE)")
 print(f"{time_1a:.4f} ms (JAX, reuse)")
 print(f"{time_1b:.4f} ms (JAX, recapture)")
