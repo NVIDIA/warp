@@ -2804,7 +2804,7 @@ class Module:
             "compile_time_trace": warp.config.compile_time_trace,
             "strip_hash": False,
             "deterministic": warp.config.deterministic,
-            "deterministic_max_records": 0,
+            "deterministic_max_records": warp.config.deterministic_max_records,
         }
 
         # Module dependencies are determined by scanning each function

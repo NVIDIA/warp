@@ -397,7 +397,8 @@ launches enough room without adding another tuning parameter.
 
 If a thread can revisit the same atomic site inside a dynamic loop, Warp may
 not be able to prove the maximum number of records.  In that case, provide a
-per-target, per-thread upper bound:
+per-target, per-thread upper bound.  For one module or kernel, use the module
+option directly:
 
 .. code:: python
 
@@ -414,6 +415,13 @@ per-target, per-thread upper bound:
 
         for i in range(loop_counts[tid]):
             wp.atomic_add(out, 0, values[tid])
+
+To apply the same bound to modules created after the config is set, use the
+global default:
+
+.. code:: python
+
+    wp.config.deterministic_max_records = 8
 
 If the runtime count exceeds the capacity, Warp truncates records and sets an
 overflow flag.  Outside CUDA graph capture, the launch reports this as an

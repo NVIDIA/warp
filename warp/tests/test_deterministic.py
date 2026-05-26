@@ -266,6 +266,12 @@ class _DetNameCollisionStruct:
     b: wp.array(dtype=wp.float32)
 
 
+@wp.struct
+class _DetTileStackEntry:
+    value: wp.int32
+    weight: wp.float32
+
+
 @wp.func
 def _det_struct_counter_write(writer: _DetStructCounterWriter, value: wp.float32):
     slot = wp.atomic_add(writer.counter, 0, 1)
@@ -323,6 +329,19 @@ def struct_field_helper_counter_kernel(
     tid = wp.tid()
     if flags[tid] != 0:
         _det_struct_counter_write(writer, data[tid])
+
+
+@wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
+def struct_tile_stack_kernel(out: wp.array(dtype=wp.int32)):
+    _i, j = wp.tid()
+    stack = wp.tile_stack(capacity=16, dtype=_DetTileStackEntry)
+    entry = _DetTileStackEntry()
+    entry.value = j
+    entry.weight = wp.float32(j) * wp.float32(0.25)
+    wp.tile_stack_push(stack, entry, j < 8)
+    popped, slot = wp.tile_stack_pop(stack)
+    if slot >= 0:
+        out[slot] = popped.value
 
 
 @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
@@ -1631,6 +1650,32 @@ def test_struct_field_helper_counter_atomic(test, device):
     for i in range(1, len(results)):
         np.testing.assert_array_equal(results[0], results[i])
     np.testing.assert_array_equal(results[0].view(np.uint32), expected.view(np.uint32))
+
+
+def test_metadata_refresh_struct_tile_stack(test, device):
+    """Verify deterministic cache metadata refresh handles struct tile-stack dtypes."""
+    del device
+    options = struct_tile_stack_kernel.module.resolve_options(wp.config) | {"output_arch": None}
+    struct_tile_stack_kernel.adj.build(None, options)
+    test.assertIsNotNone(struct_tile_stack_kernel.adj.det_meta)
+
+
+def test_config_deterministic_max_records_default(test, device):
+    """Verify new modules inherit ``wp.config.deterministic_max_records``."""
+    del device
+    old_max_records = wp.config.deterministic_max_records
+    try:
+        wp.config.deterministic_max_records = 7
+
+        @wp.kernel(module="unique")
+        def _config_max_records_kernel(output: wp.array(dtype=wp.float32)):
+            tid = wp.tid()
+            wp.atomic_add(output, tid % 2, 1.0)
+
+        options = _config_max_records_kernel.module.resolve_options(wp.config)
+        test.assertEqual(options["deterministic_max_records"], 7)
+    finally:
+        wp.config.deterministic_max_records = old_max_records
 
 
 def test_helper_name_collision(test, device):
@@ -3353,6 +3398,18 @@ add_function_test(
     "test_struct_field_helper_counter_atomic",
     test_struct_field_helper_counter_atomic,
     devices=cuda_devices,
+)
+add_function_test(
+    TestDeterministic,
+    "test_metadata_refresh_struct_tile_stack",
+    test_metadata_refresh_struct_tile_stack,
+    devices=[wp.get_device("cpu")],
+)
+add_function_test(
+    TestDeterministic,
+    "test_config_deterministic_max_records_default",
+    test_config_deterministic_max_records_default,
+    devices=[wp.get_device("cpu")],
 )
 add_function_test(
     TestDeterministic,

@@ -473,6 +473,17 @@ Set this before module creation/import for it to apply broadly. Existing
 modules can be changed by setting the ``"deterministic"`` module option.
 """
 
+deterministic_max_records: int = 0
+"""Default per-target, per-thread record bound for deterministic atomics.
+
+The default ``0`` uses the code-generated lower bound. Increase this before
+module creation/import when kernels have data-dependent loops or repeated visits
+to the same atomic site that static analysis cannot bound.
+
+Modules can override this by setting the ``"deterministic_max_records"`` module
+option.
+"""
+
 deterministic_debug: bool = False
 """Enable debug diagnostics for deterministic execution mode.
 

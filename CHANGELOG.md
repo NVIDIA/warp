@@ -17,7 +17,8 @@
   accumulation and slot-allocation patterns can produce bit-exact repeated results. Configurable at the global, module,
   and kernel level ([GH-1443](https://github.com/NVIDIA/warp/issues/1443)).
   accumulation and slot-allocation patterns can produce bit-exact repeated results. Configurable at the global and module
-  level ([GH-1443](https://github.com/NVIDIA/warp/issues/1443)).
+  level. Use `wp.config.deterministic_max_records` to raise the default per-thread record bound for deterministic atomics
+  in modules created after the config is set ([GH-1443](https://github.com/NVIDIA/warp/issues/1443)).
 - Add `wp.tile_empty` to allocate a tile of uninitialized items ([GH-1312](https://github.com/NVIDIA/warp/issues/1312)).
 - Expose CUDA graph capture mode via `ScopedCapture` / `capture_begin()`
   ([GH-1410](https://github.com/NVIDIA/warp/issues/1410)).

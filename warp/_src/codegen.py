@@ -2987,7 +2987,8 @@ class Adjoint:
         if isinstance(obj, type):
             return obj
         if isinstance(obj, Struct):
-            adj.builder.build_struct_recursive(obj)
+            if adj.builder is not None:
+                adj.builder.build_struct_recursive(obj)
             return obj
         if isinstance(obj, types.ModuleType):
             return obj
