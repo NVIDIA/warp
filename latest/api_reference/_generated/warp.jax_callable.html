@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.jax.ffi.jax_callable &#8212; Warp 1.15.0.dev0</title>
+    <title>warp.jax_callable &#8212; Warp 1.15.0.dev0</title>
   
   
   
@@ -49,7 +49,7 @@
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.jax.ffi.jax_callable';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.jax_callable';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
@@ -62,8 +62,8 @@
 
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="warp.jax.ffi.jax_kernel" href="warp.jax.ffi.jax_kernel.html" />
-    <link rel="prev" title="warp.jax.ffi.get_jax_callable_default_graph_cache_max" href="warp.jax.ffi.get_jax_callable_default_graph_cache_max.html" />
+    <link rel="next" title="warp.jax_kernel" href="warp.jax_kernel.html" />
+    <link rel="prev" title="warp.from_jax" href="warp.from_jax.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -415,7 +415,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../warp_autograd.html">warp.autograd</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_config.html">warp.config</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_fem.html">warp.fem</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../warp_jax.html">warp.jax</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_optim.html">warp.optim</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_render.html">warp.render</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_sparse.html">warp.sparse</a></li>
@@ -460,12 +459,9 @@
       </a>
     </li>
     
-    <li class="breadcrumb-item"><a href="../warp_jax.html" class="nav-link">warp.jax</a></li>
+    <li class="breadcrumb-item"><a href="../warp.html" class="nav-link">warp</a></li>
     
-    
-    <li class="breadcrumb-item"><a href="../warp_jax_ffi.html" class="nav-link">warp.jax.ffi</a></li>
-    
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.jax.ffi.jax_callable</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.jax_callable</span></li>
   </ul>
 </nav>
 </div>
@@ -478,7 +474,7 @@
         <div class="header-article-item">
 
 <div class="d-flex justify-content-end w-100">
-  <a href="../../_sources/api_reference/_generated/warp.jax.ffi.jax_callable.rst.txt">
+  <a href="../../_sources/api_reference/_generated/warp.jax_callable.rst.txt">
     <i class="fa-solid fa-file-code"></i> View page source
   </a>
 </div>
@@ -495,27 +491,27 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="warp-jax-ffi-jax-callable">
-<h1>warp.jax.ffi.jax_callable<a class="headerlink" href="#warp-jax-ffi-jax-callable" title="Link to this heading">#</a></h1>
+  <section id="warp-jax-callable">
+<h1>warp.jax_callable<a class="headerlink" href="#warp-jax-callable" title="Link to this heading">#</a></h1>
 <dl class="py function">
-<dt class="sig sig-object py" id="warp.jax.ffi.jax_callable">
-<span class="sig-prename descclassname"><span class="pre">warp.jax.ffi.</span></span><span class="sig-name descname"><span class="pre">jax_callable</span></span><span class="sig-paren">(</span>
+<dt class="sig sig-object py" id="warp.jax_callable">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">jax_callable</span></span><span class="sig-paren">(</span>
 
 <dl>
 <dd><em class="sig-param"><span class="n"><span class="pre">func</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">num_outputs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">graph_mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">GraphMode.JAX</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">graph_mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">JaxCallableGraphMode.JAX</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">vmap_method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'broadcast_all'</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">output_dims</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">in_out_argnames</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">stage_in_argnames</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">stage_out_argnames</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">graph_cache_max</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">module_preload_mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">ModulePreloadMode.CURRENT_DEVICE</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">graph_cache_max</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">JAX_CALLABLE_DEFAULT_GRAPH_CACHE_MAX</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">module_preload_mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">JaxModulePreloadMode.CURRENT_DEVICE</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">has_side_effect</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/jax/ffi.py#L1512-L1612"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.jax.ffi.jax_callable" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/jax/ffi.py#L1532-L1629"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.jax_callable" title="Link to this definition">#</a></dt>
 <dd><p>Create a JAX callback from an annotated Python function.</p>
 <p>The Python function arguments must have type annotations like Warp kernels.</p>
 <p>NOTE: This is an experimental feature under development.</p>
@@ -525,11 +521,11 @@
 <li><p><strong>func</strong> (<a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Callable" title="(in Python v3.14)"><em>Callable</em></a>) – The Python function to call.</p></li>
 <li><p><strong>num_outputs</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Specify the number of output arguments if greater than 1.
 This must include the number of <code class="docutils literal notranslate"><span class="pre">in_out_arguments</span></code>.</p></li>
-<li><p><strong>graph_mode</strong> (<a class="reference internal" href="warp.jax.ffi.GraphMode.html#warp.jax.ffi.GraphMode" title="warp._src.jax.ffi.GraphMode"><em>GraphMode</em></a>) – CUDA graph capture mode.
-<code class="docutils literal notranslate"><span class="pre">GraphMode.JAX</span></code> (default): Let JAX capture the graph, which may be used as a subgraph in an enclosing JAX capture.
-<code class="docutils literal notranslate"><span class="pre">GraphMode.WARP</span></code>: Let Warp capture the graph. Use this mode when the callable cannot be used as a subgraph,
+<li><p><strong>graph_mode</strong> (<a class="reference internal" href="warp.JaxCallableGraphMode.html#warp.JaxCallableGraphMode" title="warp._src.jax.ffi.JaxCallableGraphMode"><em>JaxCallableGraphMode</em></a>) – CUDA graph capture mode.
+<code class="docutils literal notranslate"><span class="pre">JaxCallableGraphMode.JAX</span></code> (default): Let JAX capture the graph, which may be used as a subgraph in an enclosing JAX capture.
+<code class="docutils literal notranslate"><span class="pre">JaxCallableGraphMode.WARP</span></code>: Let Warp capture the graph. Use this mode when the callable cannot be used as a subgraph,
 such as when the callable uses conditional graph nodes.
-<code class="docutils literal notranslate"><span class="pre">GraphMode.NONE</span></code>: Disable graph capture. Use when the callable performs operations that are not legal in a graph,
+<code class="docutils literal notranslate"><span class="pre">JaxCallableGraphMode.NONE</span></code>: Disable graph capture. Use when the callable performs operations that are not legal in a graph,
 such as host synchronization.</p></li>
 <li><p><strong>vmap_method</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – String specifying how the callback transforms under <code class="docutils literal notranslate"><span class="pre">vmap()</span></code>.
 This argument can also be specified for individual calls.</p></li>
@@ -539,13 +535,13 @@ This argument can also be specified for individual calls.</p></li>
 <li><p><strong>in_out_argnames</strong> – Names of arguments that are both inputs and outputs (aliased buffers).
 These must be array arguments that appear before any pure output arguments in the
 function signature. The number of in-out arguments is included in <code class="docutils literal notranslate"><span class="pre">num_outputs</span></code>.</p></li>
-<li><p><strong>stage_in_argnames</strong> – Names of input arguments that need to be copied with <code class="docutils literal notranslate"><span class="pre">GraphMode.WARP_STAGED*</span></code>.
+<li><p><strong>stage_in_argnames</strong> – Names of input arguments that need to be copied with <code class="docutils literal notranslate"><span class="pre">JaxCallableGraphMode.WARP_STAGED*</span></code>.
 If <code class="docutils literal notranslate"><span class="pre">None</span></code>, copy all input arguments.</p></li>
-<li><p><strong>stage_out_argnames</strong> – Names of output arguments that need to be copied with <code class="docutils literal notranslate"><span class="pre">GraphMode.WARP_STAGED*</span></code>.
+<li><p><strong>stage_out_argnames</strong> – Names of output arguments that need to be copied with <code class="docutils literal notranslate"><span class="pre">JaxCallableGraphMode.WARP_STAGED*</span></code>.
 If <code class="docutils literal notranslate"><span class="pre">None</span></code>, copy all output arguments.</p></li>
-<li><p><strong>graph_cache_max</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Maximum number of cached graphs captured using <code class="docutils literal notranslate"><span class="pre">GraphMode.WARP</span></code>.
-If <code class="docutils literal notranslate"><span class="pre">None</span></code>, use <code class="docutils literal notranslate"><span class="pre">warp.jax.get_jax_callable_default_graph_cache_max()</span></code>.</p></li>
-<li><p><strong>module_preload_mode</strong> (<em>ModulePreloadMode</em>) – Specify the devices where the module should be preloaded.</p></li>
+<li><p><strong>graph_cache_max</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Maximum number of cached graphs captured using <code class="docutils literal notranslate"><span class="pre">JaxCallableGraphMode.WARP</span></code>.
+If <code class="docutils literal notranslate"><span class="pre">None</span></code>, the graph cache is unlimited.</p></li>
+<li><p><strong>module_preload_mode</strong> (<a class="reference internal" href="warp.JaxModulePreloadMode.html#warp.JaxModulePreloadMode" title="warp._src.jax.ffi.JaxModulePreloadMode"><em>JaxModulePreloadMode</em></a>) – Specify the devices where the module should be preloaded.</p></li>
 <li><p><strong>has_side_effect</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether the custom call has side effects. When True,
 the FFI call will be executed even when the outputs are not used.</p></li>
 </ul>
@@ -576,20 +572,20 @@ the FFI call will be executed even when the outputs are not used.</p></li>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.jax.ffi.get_jax_callable_default_graph_cache_max.html"
+       href="warp.from_jax.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.jax.ffi.get_jax_callable_default_graph_cache_max</p>
+        <p class="prev-next-title">warp.from_jax</p>
       </div>
     </a>
     <a class="right-next"
-       href="warp.jax.ffi.jax_kernel.html"
+       href="warp.jax_kernel.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.jax.ffi.jax_kernel</p>
+        <p class="prev-next-title">warp.jax_kernel</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -614,7 +610,7 @@ the FFI call will be executed even when the outputs are not used.</p></li>
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.jax.ffi.jax_callable"><code class="docutils literal notranslate"><span class="pre">jax_callable()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.jax_callable"><code class="docutils literal notranslate"><span class="pre">jax_callable()</span></code></a></li>
 </ul>
   </nav></div>
 
@@ -622,7 +618,7 @@ the FFI call will be executed even when the outputs are not used.</p></li>
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/_generated/warp.jax.ffi.jax_callable.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/_generated/warp.jax_callable.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

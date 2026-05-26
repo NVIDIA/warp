@@ -408,7 +408,6 @@
 <li class="toctree-l1"><a class="reference internal" href="api_reference/warp_autograd.html">warp.autograd</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api_reference/warp_config.html">warp.config</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api_reference/warp_fem.html">warp.fem</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api_reference/warp_jax.html">warp.jax</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api_reference/warp_optim.html">warp.optim</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api_reference/warp_render.html">warp.render</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api_reference/warp_sparse.html">warp.sparse</a></li>
@@ -714,7 +713,9 @@
 </li>
         <li><a href="api_reference/_generated/warp.int8.html#warp.int8.__init__">(warp.int8 method)</a>
 </li>
-        <li><a href="api_reference/_generated/warp.jax.ffi.GraphMode.html#warp.jax.ffi.GraphMode.__init__">(warp.jax.ffi.GraphMode method)</a>
+        <li><a href="api_reference/_generated/warp.JaxCallableGraphMode.html#warp.JaxCallableGraphMode.__init__">(warp.JaxCallableGraphMode method)</a>
+</li>
+        <li><a href="api_reference/_generated/warp.JaxModulePreloadMode.html#warp.JaxModulePreloadMode.__init__">(warp.JaxModulePreloadMode method)</a>
 </li>
         <li><a href="api_reference/_generated/warp.Kernel.html#warp.Kernel.__init__">(warp.Kernel method)</a>
 </li>
@@ -976,6 +977,8 @@
       <li><a href="api_reference/_generated/warp.tile.html#warp.tile.align">align() (warp.tile method)</a>
 </li>
       <li><a href="api_reference/_generated/warp.tile.html#warp.tile.alignment">alignment (warp.tile attribute)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.JaxModulePreloadMode.html#warp.JaxModulePreloadMode.ALL_DEVICES">ALL_DEVICES (warp.JaxModulePreloadMode attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.Allocator.html#warp.Allocator.allocate">allocate() (warp.Allocator method)</a>
 
@@ -2122,7 +2125,7 @@
         <li><a href="api_reference/_generated/warp.ScopedMemoryTracker.html#warp.ScopedMemoryTracker.clear">(warp.ScopedMemoryTracker method)</a>
 </li>
       </ul></li>
-      <li><a href="api_reference/_generated/warp.jax.ffi.clear_jax_callable_graph_cache.html#warp.jax.ffi.clear_jax_callable_graph_cache">clear_jax_callable_graph_cache() (in module warp.jax.ffi)</a>
+      <li><a href="api_reference/_generated/warp.clear_jax_callable_graph_cache.html#warp.clear_jax_callable_graph_cache">clear_jax_callable_graph_cache() (in module warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.clear_kernel_cache.html#warp.clear_kernel_cache">clear_kernel_cache() (in module warp)</a>
 </li>
@@ -2238,6 +2241,8 @@
 </li>
       <li><a href="api_reference/_generated/warp.fem.curl.html#warp.fem.curl">curl (in module warp.fem)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.JaxModulePreloadMode.html#warp.JaxModulePreloadMode.CURRENT_DEVICE">CURRENT_DEVICE (warp.JaxModulePreloadMode attribute)</a>
+</li>
   </ul></td>
 </tr></table>
 
@@ -2317,21 +2322,13 @@
 </li>
       </ul></li>
       <li><a href="api_reference/_generated/warp.device_from_jax.html#warp.device_from_jax">device_from_jax() (in module warp)</a>
-
-      <ul>
-        <li><a href="api_reference/_generated/warp.jax.device_from_jax.html#warp.jax.device_from_jax">(in module warp.jax)</a>
 </li>
-      </ul></li>
       <li><a href="api_reference/_generated/warp.device_from_paddle.html#warp.device_from_paddle">device_from_paddle() (in module warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.device_from_torch.html#warp.device_from_torch">device_from_torch() (in module warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.device_to_jax.html#warp.device_to_jax">device_to_jax() (in module warp)</a>
-
-      <ul>
-        <li><a href="api_reference/_generated/warp.jax.device_to_jax.html#warp.jax.device_to_jax">(in module warp.jax)</a>
 </li>
-      </ul></li>
       <li><a href="api_reference/_generated/warp.device_to_paddle.html#warp.device_to_paddle">device_to_paddle() (in module warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.device_to_torch.html#warp.device_to_torch">device_to_torch() (in module warp)</a>
@@ -2473,11 +2470,7 @@
 </li>
       </ul></li>
       <li><a href="api_reference/_generated/warp.dtype_from_jax.html#warp.dtype_from_jax">dtype_from_jax() (in module warp)</a>
-
-      <ul>
-        <li><a href="api_reference/_generated/warp.jax.dtype_from_jax.html#warp.jax.dtype_from_jax">(in module warp.jax)</a>
 </li>
-      </ul></li>
       <li><a href="api_reference/_generated/warp.dtype_from_numpy.html#warp.dtype_from_numpy">dtype_from_numpy() (in module warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.dtype_from_paddle.html#warp.dtype_from_paddle">dtype_from_paddle() (in module warp)</a>
@@ -2485,11 +2478,7 @@
       <li><a href="api_reference/_generated/warp.dtype_from_torch.html#warp.dtype_from_torch">dtype_from_torch() (in module warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.dtype_to_jax.html#warp.dtype_to_jax">dtype_to_jax() (in module warp)</a>
-
-      <ul>
-        <li><a href="api_reference/_generated/warp.jax.dtype_to_jax.html#warp.jax.dtype_to_jax">(in module warp.jax)</a>
 </li>
-      </ul></li>
       <li><a href="api_reference/_generated/warp.dtype_to_numpy.html#warp.dtype_to_numpy">dtype_to_numpy() (in module warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.dtype_to_paddle.html#warp.dtype_to_paddle">dtype_to_paddle() (in module warp)</a>
@@ -3097,11 +3086,7 @@
       <li><a href="api_reference/_generated/warp.from_ipc_handle.html#warp.from_ipc_handle">from_ipc_handle() (in module warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.from_jax.html#warp.from_jax">from_jax() (in module warp)</a>
-
-      <ul>
-        <li><a href="api_reference/_generated/warp.jax.from_jax.html#warp.jax.from_jax">(in module warp.jax)</a>
 </li>
-      </ul></li>
       <li><a href="api_reference/_generated/warp.from_numpy.html#warp.from_numpy">from_numpy() (in module warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.from_paddle.html#warp.from_paddle">from_paddle() (in module warp)</a>
@@ -3250,8 +3235,6 @@
 </li>
       <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.get_grid_info">get_grid_info() (warp.Volume method)</a>
 </li>
-      <li><a href="api_reference/_generated/warp.jax.ffi.get_jax_callable_default_graph_cache_max.html#warp.jax.ffi.get_jax_callable_default_graph_cache_max">get_jax_callable_default_graph_cache_max() (in module warp.jax.ffi)</a>
-</li>
       <li><a href="api_reference/_generated/warp.Module.html#warp.Module.get_kernel_hooks">get_kernel_hooks() (warp.Module method)</a>
 </li>
       <li><a href="api_reference/_generated/warp.get_logger.html#warp.get_logger">get_logger() (in module warp)</a>
@@ -3355,8 +3338,6 @@
       <li><a href="api_reference/_generated/warp.utils.graph_coloring_get_groups.html#warp.utils.graph_coloring_get_groups">graph_coloring_get_groups() (in module warp.utils)</a>
 </li>
       <li><a href="api_reference/_generated/warp.utils.GraphColoringAlgorithm.html#warp.utils.GraphColoringAlgorithm">GraphColoringAlgorithm (class in warp.utils)</a>
-</li>
-      <li><a href="api_reference/_generated/warp.jax.ffi.GraphMode.html#warp.jax.ffi.GraphMode">GraphMode (class in warp.jax.ffi)</a>
 </li>
       <li><a href="api_reference/_generated/warp.utils.GraphColoringAlgorithm.html#warp.utils.GraphColoringAlgorithm.GREEDY">GREEDY (warp.utils.GraphColoringAlgorithm attribute)</a>
 </li>
@@ -3620,18 +3601,18 @@
 </li>
       <li><a href="api_reference/_generated/warp.autograd.jacobian_plot.html#warp.autograd.jacobian_plot">jacobian_plot() (in module warp.autograd)</a>
 </li>
-      <li><a href="api_reference/_generated/warp.jax.ffi.GraphMode.html#warp.jax.ffi.GraphMode.JAX">JAX (warp.jax.ffi.GraphMode attribute)</a>
+      <li><a href="api_reference/_generated/warp.JaxCallableGraphMode.html#warp.JaxCallableGraphMode.JAX">JAX (warp.JaxCallableGraphMode attribute)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api_reference/_generated/warp.jax.ffi.jax_callable.html#warp.jax.ffi.jax_callable">jax_callable() (in module warp.jax.ffi)</a>
+      <li><a href="api_reference/_generated/warp.jax_callable.html#warp.jax_callable">jax_callable() (in module warp)</a>
 </li>
-      <li><a href="api_reference/_generated/warp.jax.custom_call.jax_kernel.html#warp.jax.custom_call.jax_kernel">jax_kernel() (in module warp.jax.custom_call)</a>
-
-      <ul>
-        <li><a href="api_reference/_generated/warp.jax.ffi.jax_kernel.html#warp.jax.ffi.jax_kernel">(in module warp.jax.ffi)</a>
+      <li><a href="api_reference/_generated/warp.jax_kernel.html#warp.jax_kernel">jax_kernel() (in module warp)</a>
 </li>
-      </ul></li>
+      <li><a href="api_reference/_generated/warp.JaxCallableGraphMode.html#warp.JaxCallableGraphMode">JaxCallableGraphMode (class in warp)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.JaxModulePreloadMode.html#warp.JaxModulePreloadMode">JaxModulePreloadMode (class in warp)</a>
+</li>
       <li><a href="api_reference/_generated/warp.fem.jump.html#warp.fem.jump">jump (in module warp.fem)</a>
 </li>
   </ul></td>
@@ -4234,12 +4215,6 @@
 </li>
         <li><a href="api_reference/warp_fem_utils.html#module-warp.fem.utils">warp.fem.utils</a>
 </li>
-        <li><a href="api_reference/warp_jax.html#module-warp.jax">warp.jax</a>
-</li>
-        <li><a href="api_reference/warp_jax_custom_call.html#module-warp.jax.custom_call">warp.jax.custom_call</a>
-</li>
-        <li><a href="api_reference/warp_jax_ffi.html#module-warp.jax.ffi">warp.jax.ffi</a>
-</li>
         <li><a href="api_reference/warp_optim.html#module-warp.optim">warp.optim</a>
 </li>
         <li><a href="api_reference/warp_optim_linear.html#module-warp.optim.linear">warp.optim.linear</a>
@@ -4381,10 +4356,10 @@
       </ul></li>
       <li><a href="api_reference/_generated/warp.fem.ElementBasis.html#warp.fem.ElementBasis.NEDELEC_FIRST_KIND">NEDELEC_FIRST_KIND (warp.fem.ElementBasis attribute)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.nnz">nnz (warp.sparse.BsrMatrix attribute)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.nnz_sync">nnz_sync() (warp.sparse.BsrMatrix method)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.NodalQuadrature.html#warp.fem.NodalQuadrature">NodalQuadrature (class in warp.fem)</a>
@@ -4463,9 +4438,11 @@
 </li>
       <li><a href="api_reference/_generated/warp.fem.NonconformingField.html#warp.fem.NonconformingField">NonconformingField (class in warp.fem)</a>
 </li>
-      <li><a href="api_reference/_generated/warp.jax.ffi.GraphMode.html#warp.jax.ffi.GraphMode.NONE">NONE (warp.jax.ffi.GraphMode attribute)</a>
+      <li><a href="api_reference/_generated/warp.JaxCallableGraphMode.html#warp.JaxCallableGraphMode.NONE">NONE (warp.JaxCallableGraphMode attribute)</a>
 
       <ul>
+        <li><a href="api_reference/_generated/warp.JaxModulePreloadMode.html#warp.JaxModulePreloadMode.NONE">(warp.JaxModulePreloadMode attribute)</a>
+</li>
         <li><a href="api_reference/_generated/warp.RegisteredGLBuffer.html#warp.RegisteredGLBuffer.NONE">(warp.RegisteredGLBuffer attribute)</a>
 </li>
         <li><a href="api_reference/_generated/warp.TextureResourceFlags.html#warp.TextureResourceFlags.NONE">(warp.TextureResourceFlags attribute)</a>
@@ -4779,8 +4756,6 @@
         <li><a href="api_reference/_generated/warp.render.UsdRenderer.html#warp.render.UsdRenderer.register_body">(warp.render.UsdRenderer method)</a>
 </li>
       </ul></li>
-      <li><a href="api_reference/_generated/warp.jax.ffi.register_ffi_callback.html#warp.jax.ffi.register_ffi_callback">register_ffi_callback() (in module warp.jax.ffi)</a>
-</li>
       <li><a href="api_reference/_generated/warp.Module.html#warp.Module.register_function">register_function() (warp.Module method)</a>
 </li>
       <li><a href="api_reference/_generated/warp.render.OpenGLRenderer.html#warp.render.OpenGLRenderer.register_input_processor">register_input_processor() (warp.render.OpenGLRenderer method)</a>
@@ -5020,8 +4995,6 @@
       <li><a href="api_reference/_generated/warp.set_device_allocator.html#warp.set_device_allocator">set_device_allocator() (in module warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.Launch.html#warp.Launch.set_dim">set_dim() (warp.Launch method)</a>
-</li>
-      <li><a href="api_reference/_generated/warp.jax.ffi.set_jax_callable_default_graph_cache_max.html#warp.jax.ffi.set_jax_callable_default_graph_cache_max">set_jax_callable_default_graph_cache_max() (in module warp.jax.ffi)</a>
 </li>
       <li><a href="api_reference/_generated/warp.set_logger.html#warp.set_logger">set_logger() (in module warp)</a>
 </li>
@@ -5664,11 +5637,7 @@
       <li><a href="api_reference/_generated/warp.fem.to_inner_cell.html#warp.fem.to_inner_cell">to_inner_cell (in module warp.fem)</a>
 </li>
       <li><a href="api_reference/_generated/warp.to_jax.html#warp.to_jax">to_jax() (in module warp)</a>
-
-      <ul>
-        <li><a href="api_reference/_generated/warp.jax.to_jax.html#warp.jax.to_jax">(in module warp.jax)</a>
 </li>
-      </ul></li>
       <li><a href="api_reference/_generated/warp.fem.to_outer_cell.html#warp.fem.to_outer_cell">to_outer_cell (in module warp.fem)</a>
 </li>
       <li><a href="api_reference/_generated/warp.to_paddle.html#warp.to_paddle">to_paddle() (in module warp)</a>
@@ -6146,7 +6115,7 @@
         <li><a href="api_reference/warp.html#module-warp">module</a>
 </li>
       </ul></li>
-      <li><a href="api_reference/_generated/warp.jax.ffi.GraphMode.html#warp.jax.ffi.GraphMode.WARP">WARP (warp.jax.ffi.GraphMode attribute)</a>
+      <li><a href="api_reference/_generated/warp.JaxCallableGraphMode.html#warp.JaxCallableGraphMode.WARP">WARP (warp.JaxCallableGraphMode attribute)</a>
 </li>
       <li>
     warp._src.lang.abs()
@@ -7247,6 +7216,8 @@
         <li><a href="language_reference/_generated/warp.sample_unit_sphere.html#warp._src.lang.sample_unit_sphere">built-in function</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     warp._src.lang.sample_unit_sphere_surface()
 
@@ -7261,8 +7232,6 @@
         <li><a href="language_reference/_generated/warp.sample_unit_square.html#warp._src.lang.sample_unit_square">built-in function</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     warp._src.lang.select()
 
@@ -8279,27 +8248,6 @@
 </li>
       </ul></li>
       <li>
-    warp.jax
-
-      <ul>
-        <li><a href="api_reference/warp_jax.html#module-warp.jax">module</a>
-</li>
-      </ul></li>
-      <li>
-    warp.jax.custom_call
-
-      <ul>
-        <li><a href="api_reference/warp_jax_custom_call.html#module-warp.jax.custom_call">module</a>
-</li>
-      </ul></li>
-      <li>
-    warp.jax.ffi
-
-      <ul>
-        <li><a href="api_reference/warp_jax_ffi.html#module-warp.jax.ffi">module</a>
-</li>
-      </ul></li>
-      <li>
     warp.optim
 
       <ul>
@@ -8341,9 +8289,9 @@
         <li><a href="api_reference/warp_utils.html#module-warp.utils">module</a>
 </li>
       </ul></li>
-      <li><a href="api_reference/_generated/warp.jax.ffi.GraphMode.html#warp.jax.ffi.GraphMode.WARP_STAGED">WARP_STAGED (warp.jax.ffi.GraphMode attribute)</a>
+      <li><a href="api_reference/_generated/warp.JaxCallableGraphMode.html#warp.JaxCallableGraphMode.WARP_STAGED">WARP_STAGED (warp.JaxCallableGraphMode attribute)</a>
 </li>
-      <li><a href="api_reference/_generated/warp.jax.ffi.GraphMode.html#warp.jax.ffi.GraphMode.WARP_STAGED_EX">WARP_STAGED_EX (warp.jax.ffi.GraphMode attribute)</a>
+      <li><a href="api_reference/_generated/warp.JaxCallableGraphMode.html#warp.JaxCallableGraphMode.WARP_STAGED_EX">WARP_STAGED_EX (warp.JaxCallableGraphMode attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.WarpCodegenAttributeError.html#warp.WarpCodegenAttributeError">WarpCodegenAttributeError</a>
 </li>

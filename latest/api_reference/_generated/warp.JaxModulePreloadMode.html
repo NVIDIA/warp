@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.jax.custom_call.jax_kernel &#8212; Warp 1.15.0.dev0</title>
+    <title>warp.JaxModulePreloadMode &#8212; Warp 1.15.0.dev0</title>
   
   
   
@@ -49,7 +49,7 @@
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.jax.custom_call.jax_kernel';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.JaxModulePreloadMode';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
@@ -62,8 +62,8 @@
 
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="warp.jax.ffi" href="../warp_jax_ffi.html" />
-    <link rel="prev" title="warp.jax.custom_call" href="../warp_jax_custom_call.html" />
+    <link rel="next" title="warp.clear_jax_callable_graph_cache" href="warp.clear_jax_callable_graph_cache.html" />
+    <link rel="prev" title="warp.JaxCallableGraphMode" href="warp.JaxCallableGraphMode.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -415,7 +415,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../warp_autograd.html">warp.autograd</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_config.html">warp.config</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_fem.html">warp.fem</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../warp_jax.html">warp.jax</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_optim.html">warp.optim</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_render.html">warp.render</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_sparse.html">warp.sparse</a></li>
@@ -460,12 +459,9 @@
       </a>
     </li>
     
-    <li class="breadcrumb-item"><a href="../warp_jax.html" class="nav-link">warp.jax</a></li>
+    <li class="breadcrumb-item"><a href="../warp.html" class="nav-link">warp</a></li>
     
-    
-    <li class="breadcrumb-item"><a href="../warp_jax_custom_call.html" class="nav-link">warp.jax.custom_call</a></li>
-    
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.jax.custom_call.jax_kernel</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.JaxModulePreloadMode</span></li>
   </ul>
 </nav>
 </div>
@@ -478,7 +474,7 @@
         <div class="header-article-item">
 
 <div class="d-flex justify-content-end w-100">
-  <a href="../../_sources/api_reference/_generated/warp.jax.custom_call.jax_kernel.rst.txt">
+  <a href="../../_sources/api_reference/_generated/warp.JaxModulePreloadMode.rst.txt">
     <i class="fa-solid fa-file-code"></i> View page source
   </a>
 </div>
@@ -495,42 +491,89 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="warp-jax-custom-call-jax-kernel">
-<h1>warp.jax.custom_call.jax_kernel<a class="headerlink" href="#warp-jax-custom-call-jax-kernel" title="Link to this heading">#</a></h1>
-<dl class="py function">
-<dt class="sig sig-object py" id="warp.jax.custom_call.jax_kernel">
-<span class="sig-prename descclassname"><span class="pre">warp.jax.custom_call.</span></span><span class="sig-name descname"><span class="pre">jax_kernel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">kernel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">launch_dims</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quiet</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/jax/custom_call.py#L23-L86"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.jax.custom_call.jax_kernel" title="Link to this definition">#</a></dt>
-<dd><p>Create a Jax primitive from a Warp kernel.</p>
-<div class="deprecated">
-<p><span class="versionmodified deprecated">Deprecated since version 1.10.0: </span>This version of <code class="docutils literal notranslate"><span class="pre">jax_kernel()</span></code> is deprecated for JAX &gt;= 0.5.0 and is not supported
-with JAX &gt;= 0.8.0. Use <a class="reference internal" href="warp.jax.ffi.jax_kernel.html#warp.jax.ffi.jax_kernel" title="warp.jax.ffi.jax_kernel"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.jax.ffi.jax_kernel()</span></code></a> instead, which
-is the default implementation as of Warp 1.10.</p>
+  <section id="warp-jaxmodulepreloadmode">
+<h1>warp.JaxModulePreloadMode<a class="headerlink" href="#warp-jaxmodulepreloadmode" title="Link to this heading">#</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="warp.JaxModulePreloadMode">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">JaxModulePreloadMode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/jax/ffi.py#L103-L109"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.JaxModulePreloadMode" title="Link to this definition">#</a></dt>
+<dd><p>Module preload modes for JAX interop callables.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.JaxModulePreloadMode.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwds</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/../../../_temp/uv-python-dir/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/enum.py#L1184-L1186"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.JaxModulePreloadMode.__init__" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<p class="rubric">Methods</p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">conjugate</span></code></p></td>
+<td><p>Returns self, the complex conjugate of any int.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">bit_length</span></code>()</p></td>
+<td><p>Number of bits necessary to represent self in binary.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">bit_count</span></code>()</p></td>
+<td><p>Number of ones in the binary representation of the absolute value of self.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_bytes</span></code>([length, byteorder, signed])</p></td>
+<td><p>Return an array of bytes representing an integer.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_bytes</span></code>(bytes[, byteorder, signed])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">as_integer_ratio</span></code>()</p></td>
+<td><p>Return a pair of integers, whose ratio is equal to the original int.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_integer</span></code>()</p></td>
+<td><p>Returns True.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.JaxModulePreloadMode.__init__" title="warp.JaxModulePreloadMode.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(*args, **kwds)</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
 </div>
-<p>This implementation requires JAX version 0.4.25 - 0.7.x. For JAX 0.8.0 and later,
-use the FFI-based implementation at <a class="reference internal" href="warp.jax.ffi.jax_kernel.html#warp.jax.ffi.jax_kernel" title="warp.jax.ffi.jax_kernel"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.jax.ffi.jax_kernel()</span></code></a>.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>kernel</strong> – The Warp kernel to be wrapped.</p></li>
-<li><p><strong>launch_dims</strong> – Specify the kernel launch dimensions. If <code class="docutils literal notranslate"><span class="pre">None</span></code>,
-dimensions are inferred from the shape of the first argument.
-This option when set will specify the output dimensions.</p></li>
-<li><p><strong>quiet</strong> – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, suppress deprecation warnings with newer JAX versions.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Raises<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If JAX version is &lt; 0.4.25 or &gt;= 0.8.0.</p>
-</dd>
-</dl>
-<dl class="simple">
-<dt>Limitations:</dt><dd><ul class="simple">
-<li><p>All kernel arguments must be contiguous arrays.</p></li>
-<li><p>Input arguments are followed by output arguments in the Warp kernel definition.</p></li>
-<li><p>There must be at least one input argument and at least one output argument.</p></li>
-<li><p>Only the CUDA backend is supported.</p></li>
-</ul>
-</dd>
-</dl>
+<p class="rubric">Attributes</p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">real</span></code></p></td>
+<td><p>the real part of a complex number</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">imag</span></code></p></td>
+<td><p>the imaginary part of a complex number</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">numerator</span></code></p></td>
+<td><p>the numerator of a rational number in lowest terms</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">denominator</span></code></p></td>
+<td><p>the denominator of a rational number in lowest terms</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.JaxModulePreloadMode.NONE" title="warp.JaxModulePreloadMode.NONE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NONE</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.JaxModulePreloadMode.CURRENT_DEVICE" title="warp.JaxModulePreloadMode.CURRENT_DEVICE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CURRENT_DEVICE</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.JaxModulePreloadMode.ALL_DEVICES" title="warp.JaxModulePreloadMode.ALL_DEVICES"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ALL_DEVICES</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.JaxModulePreloadMode.NONE">
+<span class="sig-name descname"><span class="pre">NONE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></em><a class="headerlink" href="#warp.JaxModulePreloadMode.NONE" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.JaxModulePreloadMode.CURRENT_DEVICE">
+<span class="sig-name descname"><span class="pre">CURRENT_DEVICE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#warp.JaxModulePreloadMode.CURRENT_DEVICE" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.JaxModulePreloadMode.ALL_DEVICES">
+<span class="sig-name descname"><span class="pre">ALL_DEVICES</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#warp.JaxModulePreloadMode.ALL_DEVICES" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
 </dd></dl>
 
 </section>
@@ -546,20 +589,20 @@ This option when set will specify the output dimensions.</p></li>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="../warp_jax_custom_call.html"
+       href="warp.JaxCallableGraphMode.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.jax.custom_call</p>
+        <p class="prev-next-title">warp.JaxCallableGraphMode</p>
       </div>
     </a>
     <a class="right-next"
-       href="../warp_jax_ffi.html"
+       href="warp.clear_jax_callable_graph_cache.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.jax.ffi</p>
+        <p class="prev-next-title">warp.clear_jax_callable_graph_cache</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -584,7 +627,13 @@ This option when set will specify the output dimensions.</p></li>
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.jax.custom_call.jax_kernel"><code class="docutils literal notranslate"><span class="pre">jax_kernel()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.JaxModulePreloadMode"><code class="docutils literal notranslate"><span class="pre">JaxModulePreloadMode</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.JaxModulePreloadMode.__init__"><code class="docutils literal notranslate"><span class="pre">__init__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.JaxModulePreloadMode.NONE"><code class="docutils literal notranslate"><span class="pre">NONE</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.JaxModulePreloadMode.CURRENT_DEVICE"><code class="docutils literal notranslate"><span class="pre">CURRENT_DEVICE</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.JaxModulePreloadMode.ALL_DEVICES"><code class="docutils literal notranslate"><span class="pre">ALL_DEVICES</span></code></a></li>
+</ul>
+</li>
 </ul>
   </nav></div>
 
@@ -592,7 +641,7 @@ This option when set will specify the output dimensions.</p></li>
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/_generated/warp.jax.custom_call.jax_kernel.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/_generated/warp.JaxModulePreloadMode.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

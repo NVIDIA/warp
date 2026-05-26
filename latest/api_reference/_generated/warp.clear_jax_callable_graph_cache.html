@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.jax.dtype_from_jax &#8212; Warp 1.15.0.dev0</title>
+    <title>warp.clear_jax_callable_graph_cache &#8212; Warp 1.15.0.dev0</title>
   
   
   
@@ -49,7 +49,7 @@
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.jax.dtype_from_jax';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.clear_jax_callable_graph_cache';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
@@ -62,8 +62,8 @@
 
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="warp.jax.dtype_to_jax" href="warp.jax.dtype_to_jax.html" />
-    <link rel="prev" title="warp.jax.device_to_jax" href="warp.jax.device_to_jax.html" />
+    <link rel="next" title="warp.device_from_jax" href="warp.device_from_jax.html" />
+    <link rel="prev" title="warp.JaxModulePreloadMode" href="warp.JaxModulePreloadMode.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -415,7 +415,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../warp_autograd.html">warp.autograd</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_config.html">warp.config</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_fem.html">warp.fem</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../warp_jax.html">warp.jax</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_optim.html">warp.optim</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_render.html">warp.render</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_sparse.html">warp.sparse</a></li>
@@ -460,9 +459,9 @@
       </a>
     </li>
     
-    <li class="breadcrumb-item"><a href="../warp_jax.html" class="nav-link">warp.jax</a></li>
+    <li class="breadcrumb-item"><a href="../warp.html" class="nav-link">warp</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.jax.dtype_from_jax</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.clear_jax_callable_graph_cache</span></li>
   </ul>
 </nav>
 </div>
@@ -475,7 +474,7 @@
         <div class="header-article-item">
 
 <div class="d-flex justify-content-end w-100">
-  <a href="../../_sources/api_reference/_generated/warp.jax.dtype_from_jax.rst.txt">
+  <a href="../../_sources/api_reference/_generated/warp.clear_jax_callable_graph_cache.rst.txt">
     <i class="fa-solid fa-file-code"></i> View page source
   </a>
 </div>
@@ -492,15 +491,15 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="warp-jax-dtype-from-jax">
-<h1>warp.jax.dtype_from_jax<a class="headerlink" href="#warp-jax-dtype-from-jax" title="Link to this heading">#</a></h1>
+  <section id="warp-clear-jax-callable-graph-cache">
+<h1>warp.clear_jax_callable_graph_cache<a class="headerlink" href="#warp-clear-jax-callable-graph-cache" title="Link to this heading">#</a></h1>
 <dl class="py function">
-<dt class="sig sig-object py" id="warp.jax.dtype_from_jax">
-<span class="sig-prename descclassname"><span class="pre">warp.jax.</span></span><span class="sig-name descname"><span class="pre">dtype_from_jax</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">jax_dtype</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/jax/__init__.py#L100-L146"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.jax.dtype_from_jax" title="Link to this definition">#</a></dt>
-<dd><p>Return the Warp dtype corresponding to a Jax dtype.</p>
+<dt class="sig sig-object py" id="warp.clear_jax_callable_graph_cache">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">clear_jax_callable_graph_cache</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">callable</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/jax/ffi.py#L1645-L1655"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.clear_jax_callable_graph_cache" title="Link to this definition">#</a></dt>
+<dd><p>Clear the graph cache of the given callable or all callables if <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Raises<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.14)"><strong>TypeError</strong></a> – Unable to find a corresponding Warp data type.</p>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>callable</strong> (<em>FfiCallable</em><em> | </em><em>None</em>)</p>
 </dd>
 </dl>
 </dd></dl>
@@ -518,20 +517,20 @@
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.jax.device_to_jax.html"
+       href="warp.JaxModulePreloadMode.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.jax.device_to_jax</p>
+        <p class="prev-next-title">warp.JaxModulePreloadMode</p>
       </div>
     </a>
     <a class="right-next"
-       href="warp.jax.dtype_to_jax.html"
+       href="warp.device_from_jax.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.jax.dtype_to_jax</p>
+        <p class="prev-next-title">warp.device_from_jax</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -556,7 +555,7 @@
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.jax.dtype_from_jax"><code class="docutils literal notranslate"><span class="pre">dtype_from_jax()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.clear_jax_callable_graph_cache"><code class="docutils literal notranslate"><span class="pre">clear_jax_callable_graph_cache()</span></code></a></li>
 </ul>
   </nav></div>
 
@@ -564,7 +563,7 @@
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/_generated/warp.jax.dtype_from_jax.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/_generated/warp.clear_jax_callable_graph_cache.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

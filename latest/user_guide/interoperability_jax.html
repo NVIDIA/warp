@@ -415,7 +415,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_autograd.html">warp.autograd</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_config.html">warp.config</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_fem.html">warp.fem</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_jax.html">warp.jax</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_optim.html">warp.optim</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_render.html">warp.render</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_sparse.html">warp.sparse</a></li>
@@ -511,7 +510,7 @@ Internally these use the DLPack protocol to exchange data in a zero-copy way wit
 <span class="kn">import</span><span class="w"> </span><span class="nn">jax</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">jax.numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jnp</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">warp.jax</span><span class="w"> </span><span class="kn">import</span> <span class="n">jax_kernel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="kn">import</span> <span class="n">jax_kernel</span>
 
 <span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">triple_kernel</span><span class="p">(</span><span class="nb">input</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">output</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
@@ -540,7 +539,7 @@ The number of outputs can be specified using the <code class="docutils literal n
 <span class="kn">import</span><span class="w"> </span><span class="nn">jax.numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jnp</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">warp.jax</span><span class="w"> </span><span class="kn">import</span> <span class="n">jax_kernel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="kn">import</span> <span class="n">jax_kernel</span>
 
 <span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">add_kernel</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
@@ -568,7 +567,7 @@ The number of outputs can be specified using the <code class="docutils literal n
 <span class="kn">import</span><span class="w"> </span><span class="nn">jax.numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jnp</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">warp.jax</span><span class="w"> </span><span class="kn">import</span> <span class="n">jax_kernel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="kn">import</span> <span class="n">jax_kernel</span>
 
 <span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">sincos_kernel</span><span class="p">(</span><span class="n">angle</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
@@ -786,7 +785,7 @@ worrying about the extra vector and matrix dimensions required by JAX:</p>
 <span id="jax-vmap"></span><h2>VMAP Support<a class="headerlink" href="#vmap-support" title="Link to this heading">#</a></h2>
 <p>The <code class="docutils literal notranslate"><span class="pre">vmap_method</span></code> argument can be used to specify how the callback transforms under <a class="reference external" href="https://docs.jax.dev/en/latest/_autosummary/jax.vmap.html#jax.vmap" title="(in JAX)"><code class="xref py py-func docutils literal notranslate"><span class="pre">jax.vmap()</span></code></a>.
 The default is <code class="docutils literal notranslate"><span class="pre">&quot;broadcast_all&quot;</span></code>.
-This argument can be passed to <a class="reference internal" href="../api_reference/_generated/warp.jax.ffi.jax_kernel.html#warp.jax.ffi.jax_kernel" title="warp.jax.ffi.jax_kernel"><code class="xref py py-func docutils literal notranslate"><span class="pre">jax_kernel()</span></code></a>,
+This argument can be passed to <a class="reference internal" href="../api_reference/_generated/warp.jax_kernel.html#warp.jax_kernel" title="warp.jax_kernel"><code class="xref py py-func docutils literal notranslate"><span class="pre">jax_kernel()</span></code></a>,
 and it can also be passed to each call:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># set default vmap behavior</span>
 <span class="n">jax_callback</span> <span class="o">=</span> <span class="n">jax_kernel</span><span class="p">(</span><span class="n">my_kernel</span><span class="p">,</span> <span class="n">vmap_method</span><span class="o">=</span><span class="s2">&quot;sequential&quot;</span><span class="p">)</span>
@@ -803,7 +802,7 @@ and it can also be passed to each call:</p>
 <section id="basic-vmap-example">
 <h3>Basic VMAP Example<a class="headerlink" href="#basic-vmap-example" title="Link to this heading">#</a></h3>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">warp.jax</span><span class="w"> </span><span class="kn">import</span> <span class="n">jax_kernel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="kn">import</span> <span class="n">jax_kernel</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">jax</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">jax.numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jnp</span>
@@ -892,13 +891,13 @@ and it can also be passed to each call:</p>
 <section id="automatic-differentiation">
 <span id="jax-autodiff"></span><h2>Automatic Differentiation<a class="headerlink" href="#automatic-differentiation" title="Link to this heading">#</a></h2>
 <p>Warp kernels can be given JAX gradients using a convenience wrapper that wires a custom VJP around a kernel and its adjoint.
-To enable autodiff, pass the <code class="docutils literal notranslate"><span class="pre">enable_backward=True</span></code> argument to <a class="reference internal" href="../api_reference/_generated/warp.jax.ffi.jax_kernel.html#warp.jax.ffi.jax_kernel" title="warp.jax.ffi.jax_kernel"><code class="xref py py-func docutils literal notranslate"><span class="pre">jax_kernel()</span></code></a>.</p>
+To enable autodiff, pass the <code class="docutils literal notranslate"><span class="pre">enable_backward=True</span></code> argument to <a class="reference internal" href="../api_reference/_generated/warp.jax_kernel.html#warp.jax_kernel" title="warp.jax_kernel"><code class="xref py py-func docutils literal notranslate"><span class="pre">jax_kernel()</span></code></a>.</p>
 <p>Basic example (one output):</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">functools</span><span class="w"> </span><span class="kn">import</span> <span class="n">partial</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">jax</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">jax.numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jnp</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">warp.jax</span><span class="w"> </span><span class="kn">import</span> <span class="n">jax_kernel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="kn">import</span> <span class="n">jax_kernel</span>
 
 <span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">scale_sum_square</span><span class="p">(</span>
@@ -933,7 +932,7 @@ To enable autodiff, pass the <code class="docutils literal notranslate"><span cl
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">jax</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">jax.numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jnp</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">warp.jax</span><span class="w"> </span><span class="kn">import</span> <span class="n">jax_kernel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="kn">import</span> <span class="n">jax_kernel</span>
 
 <span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">multi_output</span><span class="p">(</span>
@@ -969,7 +968,7 @@ To enable autodiff, pass the <code class="docutils literal notranslate"><span cl
 <span class="kn">import</span><span class="w"> </span><span class="nn">jax</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">jax.numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jnp</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">warp.jax</span><span class="w"> </span><span class="kn">import</span> <span class="n">jax_kernel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="kn">import</span> <span class="n">jax_kernel</span>
 
 <span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">scale_vec2</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec2</span><span class="p">],</span> <span class="n">s</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec2</span><span class="p">]):</span>
@@ -1009,7 +1008,7 @@ forward launch and the adjoint launch, so gradients computed via
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">jax</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">jax.numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jnp</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">warp.jax</span><span class="w"> </span><span class="kn">import</span> <span class="n">jax_kernel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="kn">import</span> <span class="n">jax_kernel</span>
 
 <span class="n">wp</span><span class="o">.</span><span class="n">init</span><span class="p">()</span>
 
@@ -1050,11 +1049,11 @@ a factor of the outer axis size via <code class="docutils literal notranslate"><
 </section>
 <section id="jax-callable-for-multi-kernel-functions">
 <span id="jax-callable"></span><h2><code class="docutils literal notranslate"><span class="pre">jax_callable</span></code> for Multi-Kernel Functions<a class="headerlink" href="#jax-callable-for-multi-kernel-functions" title="Link to this heading">#</a></h2>
-<p>The <a class="reference internal" href="../api_reference/_generated/warp.jax.ffi.jax_kernel.html#warp.jax.ffi.jax_kernel" title="warp.jax.ffi.jax_kernel"><code class="xref py py-func docutils literal notranslate"><span class="pre">jax_kernel()</span></code></a> mechanism can be used to launch a single Warp kernel
+<p>The <a class="reference internal" href="../api_reference/_generated/warp.jax_kernel.html#warp.jax_kernel" title="warp.jax_kernel"><code class="xref py py-func docutils literal notranslate"><span class="pre">jax_kernel()</span></code></a> mechanism can be used to launch a single Warp kernel
 from JAX, but it’s also possible to call a Python function that launches multiple kernels.
 The target Python function should have argument type annotations as if it were a Warp kernel.
-To call this function from JAX, use <a class="reference internal" href="../api_reference/_generated/warp.jax.ffi.jax_callable.html#warp.jax.ffi.jax_callable" title="warp.jax.ffi.jax_callable"><code class="xref py py-func docutils literal notranslate"><span class="pre">jax_callable()</span></code></a>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">warp.jax</span><span class="w"> </span><span class="kn">import</span> <span class="n">jax_callable</span>
+To call this function from JAX, use <a class="reference internal" href="../api_reference/_generated/warp.jax_callable.html#warp.jax_callable" title="warp.jax_callable"><code class="xref py py-func docutils literal notranslate"><span class="pre">jax_callable()</span></code></a>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="kn">import</span> <span class="n">jax_callable</span>
 
 <span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">scale_kernel</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">s</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">output</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
@@ -1104,109 +1103,26 @@ To call this function from JAX, use <a class="reference internal" href="../api_r
 <span class="nb">print</span><span class="p">(</span><span class="n">r2</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>The input and output semantics of <a class="reference internal" href="../api_reference/_generated/warp.jax.ffi.jax_callable.html#warp.jax.ffi.jax_callable" title="warp.jax.ffi.jax_callable"><code class="xref py py-func docutils literal notranslate"><span class="pre">jax_callable()</span></code></a> are similar to
-<a class="reference internal" href="../api_reference/_generated/warp.jax.ffi.jax_kernel.html#warp.jax.ffi.jax_kernel" title="warp.jax.ffi.jax_kernel"><code class="xref py py-func docutils literal notranslate"><span class="pre">jax_kernel()</span></code></a>, so we won’t recap everything here,
+<p>The input and output semantics of <a class="reference internal" href="../api_reference/_generated/warp.jax_callable.html#warp.jax_callable" title="warp.jax_callable"><code class="xref py py-func docutils literal notranslate"><span class="pre">jax_callable()</span></code></a> are similar to
+<a class="reference internal" href="../api_reference/_generated/warp.jax_kernel.html#warp.jax_kernel" title="warp.jax_kernel"><code class="xref py py-func docutils literal notranslate"><span class="pre">jax_kernel()</span></code></a>, so we won’t recap everything here,
 just focus on the differences:</p>
 <ul class="simple">
-<li><p><a class="reference internal" href="../api_reference/_generated/warp.jax.ffi.jax_callable.html#warp.jax.ffi.jax_callable" title="warp.jax.ffi.jax_callable"><code class="xref py py-func docutils literal notranslate"><span class="pre">jax_callable()</span></code></a> does not take a <code class="docutils literal notranslate"><span class="pre">launch_dims</span></code> argument,
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.jax_callable.html#warp.jax_callable" title="warp.jax_callable"><code class="xref py py-func docutils literal notranslate"><span class="pre">jax_callable()</span></code></a> does not take a <code class="docutils literal notranslate"><span class="pre">launch_dims</span></code> argument,
 since the target function is responsible for launching kernels using appropriate dimensions.</p></li>
-<li><p><a class="reference internal" href="../api_reference/_generated/warp.jax.ffi.jax_callable.html#warp.jax.ffi.jax_callable" title="warp.jax.ffi.jax_callable"><code class="xref py py-func docutils literal notranslate"><span class="pre">jax_callable()</span></code></a> takes an optional <code class="docutils literal notranslate"><span class="pre">graph_mode</span></code> argument, which determines how the callable can be captured in a CUDA graph.
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.jax_callable.html#warp.jax_callable" title="warp.jax_callable"><code class="xref py py-func docutils literal notranslate"><span class="pre">jax_callable()</span></code></a> takes an optional <code class="docutils literal notranslate"><span class="pre">graph_mode</span></code> argument, which determines how the callable can be captured in a CUDA graph.
 Graphs are generally desirable, since they can greatly improve the application performance.
-<code class="docutils literal notranslate"><span class="pre">GraphMode.JAX</span></code> (default) lets JAX capture the graph, which may be used as a subgraph in an enclosing capture for maximal benefit.
-<code class="docutils literal notranslate"><span class="pre">GraphMode.WARP</span></code> lets Warp capture the graph. Use this mode when the callable cannot be used as a subgraph, such as when the callable uses conditional graph nodes.
-<code class="docutils literal notranslate"><span class="pre">GraphMode.NONE</span></code> disables graph capture. Use this mode if the callable performs operations that are not allowed during graph capture, such as host synchronization.</p></li>
+<code class="docutils literal notranslate"><span class="pre">JaxCallableGraphMode.JAX</span></code> (default) lets JAX capture the graph, which may be used as a subgraph in an enclosing capture for maximal benefit.
+<code class="docutils literal notranslate"><span class="pre">JaxCallableGraphMode.WARP</span></code> lets Warp capture the graph. Use this mode when the callable cannot be used as a subgraph, such as when the callable uses conditional graph nodes.
+<code class="docutils literal notranslate"><span class="pre">JaxCallableGraphMode.NONE</span></code> disables graph capture. Use this mode if the callable performs operations that are not allowed during graph capture, such as host synchronization.
+When using <code class="docutils literal notranslate"><span class="pre">JaxCallableGraphMode.WARP</span></code>, captured graphs are cached for reuse. Use <code class="docutils literal notranslate"><span class="pre">graph_cache_max</span></code> to limit the
+number of cached graphs, and call <a class="reference internal" href="../api_reference/_generated/warp.clear_jax_callable_graph_cache.html#warp.clear_jax_callable_graph_cache" title="warp.clear_jax_callable_graph_cache"><code class="xref py py-func docutils literal notranslate"><span class="pre">clear_jax_callable_graph_cache()</span></code></a> to
+release cached graph memory for one callable or all registered JAX callables.</p></li>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.jax_kernel.html#warp.jax_kernel" title="warp.jax_kernel"><code class="xref py py-func docutils literal notranslate"><span class="pre">jax_kernel()</span></code></a> and <a class="reference internal" href="../api_reference/_generated/warp.jax_callable.html#warp.jax_callable" title="warp.jax_callable"><code class="xref py py-func docutils literal notranslate"><span class="pre">jax_callable()</span></code></a> take an optional
+<code class="docutils literal notranslate"><span class="pre">module_preload_mode</span></code> argument. <code class="docutils literal notranslate"><span class="pre">JaxModulePreloadMode.CURRENT_DEVICE</span></code> (default) preloads the module on the
+current JAX device, <code class="docutils literal notranslate"><span class="pre">JaxModulePreloadMode.ALL_DEVICES</span></code> preloads on all local JAX devices that map to CUDA devices,
+and <code class="docutils literal notranslate"><span class="pre">JaxModulePreloadMode.NONE</span></code> disables preloading.</p></li>
 </ul>
 <p>See <a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/examples/interop/example_jax_callable.py">example_jax_callable.py</a> for examples.</p>
-</section>
-<section id="generic-ffi-callbacks">
-<span id="jax-ffi-callbacks"></span><h2>Generic FFI Callbacks<a class="headerlink" href="#generic-ffi-callbacks" title="Link to this heading">#</a></h2>
-<p>Another way to call Python functions is to use
-<a class="reference internal" href="../api_reference/_generated/warp.jax.ffi.register_ffi_callback.html#warp.jax.ffi.register_ffi_callback" title="warp.jax.ffi.register_ffi_callback"><code class="xref py py-func docutils literal notranslate"><span class="pre">register_ffi_callback()</span></code></a>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">warp.jax</span><span class="w"> </span><span class="kn">import</span> <span class="n">register_ffi_callback</span>
-</pre></div>
-</div>
-<p>This allows calling functions that don’t have Warp-style type annotations, but must have the form:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">func</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">outputs</span><span class="p">,</span> <span class="n">attrs</span><span class="p">,</span> <span class="n">ctx</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>where:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">inputs</span></code> is a list of input buffers.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">outputs</span></code> is a list of output buffers.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">attrs</span></code> is a dictionary of attributes.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">ctx</span></code> is the execution context, including the CUDA stream.</p></li>
-</ul>
-<p>The input and output buffers are neither JAX nor Warp arrays.
-They are objects that expose the <code class="docutils literal notranslate"><span class="pre">__cuda_array_interface__</span></code>, which can be passed to Warp kernels directly.
-Here is an example:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">jax</span>
-
-<span class="kn">from</span><span class="w"> </span><span class="nn">warp.jax</span><span class="w"> </span><span class="kn">import</span> <span class="n">register_ffi_callback</span>
-
-<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">scale_kernel</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">s</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">output</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
-    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
-    <span class="n">output</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">*</span> <span class="n">s</span>
-
-<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">scale_vec_kernel</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec2</span><span class="p">],</span> <span class="n">s</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">output</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec2</span><span class="p">]):</span>
-    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
-    <span class="n">output</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">*</span> <span class="n">s</span>
-
-<span class="c1"># the Python function to call</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">warp_func</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">outputs</span><span class="p">,</span> <span class="n">attrs</span><span class="p">,</span> <span class="n">ctx</span><span class="p">):</span>
-    <span class="c1"># input arrays</span>
-    <span class="n">a</span> <span class="o">=</span> <span class="n">inputs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-    <span class="n">b</span> <span class="o">=</span> <span class="n">inputs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-
-    <span class="c1"># scalar attributes</span>
-    <span class="n">s</span> <span class="o">=</span> <span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;scale&quot;</span><span class="p">]</span>
-
-    <span class="c1"># output arrays</span>
-    <span class="n">c</span> <span class="o">=</span> <span class="n">outputs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-    <span class="n">d</span> <span class="o">=</span> <span class="n">outputs</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-
-    <span class="n">device</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">device_from_jax</span><span class="p">(</span><span class="n">jax</span><span class="o">.</span><span class="n">local_devices</span><span class="p">()[</span><span class="mi">0</span><span class="p">])</span>
-    <span class="n">stream</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Stream</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">cuda_stream</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">stream</span><span class="p">)</span>
-
-    <span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedStream</span><span class="p">(</span><span class="n">stream</span><span class="p">):</span>
-        <span class="c1"># launch with arrays of scalars</span>
-        <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">scale_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">s</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">c</span><span class="p">])</span>
-
-        <span class="c1"># launch with arrays of vec2</span>
-        <span class="c1"># NOTE: the input shapes are from JAX arrays, so we need to strip the inner dimension for vec2 arrays</span>
-        <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">scale_vec_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">b</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">b</span><span class="p">,</span> <span class="n">s</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">d</span><span class="p">])</span>
-
-<span class="c1"># register callback</span>
-<span class="n">register_ffi_callback</span><span class="p">(</span><span class="s2">&quot;warp_func&quot;</span><span class="p">,</span> <span class="n">warp_func</span><span class="p">)</span>
-
-<span class="n">n</span> <span class="o">=</span> <span class="mi">10</span>
-
-<span class="c1"># inputs</span>
-<span class="n">a</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">jnp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
-<span class="n">b</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">jnp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">((</span><span class="n">n</span> <span class="o">//</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>  <span class="c1"># array of wp.vec2</span>
-<span class="n">s</span> <span class="o">=</span> <span class="mf">2.0</span>
-
-<span class="c1"># set up the call</span>
-<span class="n">out_types</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="n">jax</span><span class="o">.</span><span class="n">ShapeDtypeStruct</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
-    <span class="n">jax</span><span class="o">.</span><span class="n">ShapeDtypeStruct</span><span class="p">(</span><span class="n">b</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">jnp</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>  <span class="c1"># array of wp.vec2</span>
-<span class="p">]</span>
-<span class="n">call</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">ffi</span><span class="o">.</span><span class="n">ffi_call</span><span class="p">(</span><span class="s2">&quot;warp_func&quot;</span><span class="p">,</span> <span class="n">out_types</span><span class="p">)</span>
-
-<span class="c1"># call it</span>
-<span class="n">c</span><span class="p">,</span> <span class="n">d</span> <span class="o">=</span> <span class="n">call</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="n">s</span><span class="p">)</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>This is a more low-level approach to JAX FFI callbacks.
-A proposal was made to incorporate such a mechanism in JAX, but for now we have a prototype here.
-This approach leaves a lot of work up to the user, such as verifying argument types and shapes,
-but it can be used when other utilities like <a class="reference internal" href="../api_reference/_generated/warp.jax.ffi.jax_kernel.html#warp.jax.ffi.jax_kernel" title="warp.jax.ffi.jax_kernel"><code class="xref py py-func docutils literal notranslate"><span class="pre">jax_kernel()</span></code></a> and
-<a class="reference internal" href="../api_reference/_generated/warp.jax.ffi.jax_callable.html#warp.jax.ffi.jax_callable" title="warp.jax.ffi.jax_callable"><code class="xref py py-func docutils literal notranslate"><span class="pre">jax_callable()</span></code></a> are not sufficient.</p>
-<p>See <a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/examples/interop/example_jax_ffi_callback.py">example_jax_ffi_callback.py</a> for examples.</p>
 </section>
 <section id="distributed-computation-with-shard-map">
 <span id="jax-shard-map"></span><h2>Distributed Computation with <code class="docutils literal notranslate"><span class="pre">shard_map</span></code><a class="headerlink" href="#distributed-computation-with-shard-map" title="Link to this heading">#</a></h2>
@@ -1227,7 +1143,7 @@ for more details):</p>
 <span class="kn">from</span><span class="w"> </span><span class="nn">jax.sharding</span><span class="w"> </span><span class="kn">import</span> <span class="n">PartitionSpec</span> <span class="k">as</span> <span class="n">P</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">jax.experimental.multihost_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">process_allgather</span> <span class="k">as</span> <span class="n">allgather</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">jax.experimental.shard_map</span><span class="w"> </span><span class="kn">import</span> <span class="n">shard_map</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">warp.jax</span><span class="w"> </span><span class="kn">import</span> <span class="n">jax_kernel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="kn">import</span> <span class="n">jax_kernel</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
 <span class="c1"># Initialize JAX distributed environment</span>
@@ -1395,7 +1311,6 @@ Once Open MPI is installed, you can use <code class="docutils literal notranslat
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#jax-callable-for-multi-kernel-functions"><code class="docutils literal notranslate"><span class="pre">jax_callable</span></code> for Multi-Kernel Functions</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#generic-ffi-callbacks">Generic FFI Callbacks</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#distributed-computation-with-shard-map">Distributed Computation with <code class="docutils literal notranslate"><span class="pre">shard_map</span></code></a></li>
 </ul>
   </nav></div>

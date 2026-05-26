@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.jax.to_jax &#8212; Warp 1.15.0.dev0</title>
+    <title>warp.JaxCallableGraphMode &#8212; Warp 1.15.0.dev0</title>
   
   
   
@@ -49,7 +49,7 @@
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.jax.to_jax';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.JaxCallableGraphMode';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
@@ -62,8 +62,8 @@
 
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="warp.jax.custom_call" href="../warp_jax_custom_call.html" />
-    <link rel="prev" title="warp.jax.from_jax" href="warp.jax.from_jax.html" />
+    <link rel="next" title="warp.JaxModulePreloadMode" href="warp.JaxModulePreloadMode.html" />
+    <link rel="prev" title="warp.to_dlpack" href="warp.to_dlpack.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -415,7 +415,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../warp_autograd.html">warp.autograd</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_config.html">warp.config</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_fem.html">warp.fem</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../warp_jax.html">warp.jax</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_optim.html">warp.optim</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_render.html">warp.render</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_sparse.html">warp.sparse</a></li>
@@ -460,9 +459,9 @@
       </a>
     </li>
     
-    <li class="breadcrumb-item"><a href="../warp_jax.html" class="nav-link">warp.jax</a></li>
+    <li class="breadcrumb-item"><a href="../warp.html" class="nav-link">warp</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.jax.to_jax</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.JaxCallableGraphMode</span></li>
   </ul>
 </nav>
 </div>
@@ -475,7 +474,7 @@
         <div class="header-article-item">
 
 <div class="d-flex justify-content-end w-100">
-  <a href="../../_sources/api_reference/_generated/warp.jax.to_jax.rst.txt">
+  <a href="../../_sources/api_reference/_generated/warp.JaxCallableGraphMode.rst.txt">
     <i class="fa-solid fa-file-code"></i> View page source
   </a>
 </div>
@@ -492,23 +491,112 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="warp-jax-to-jax">
-<h1>warp.jax.to_jax<a class="headerlink" href="#warp-jax-to-jax" title="Link to this heading">#</a></h1>
-<dl class="py function">
-<dt class="sig sig-object py" id="warp.jax.to_jax">
-<span class="sig-prename descclassname"><span class="pre">warp.jax.</span></span><span class="sig-name descname"><span class="pre">to_jax</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">warp_array</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/jax/__init__.py#L153-L166"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.jax.to_jax" title="Link to this definition">#</a></dt>
-<dd><p>Convert a Warp array to a Jax array without copying the data.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>warp_array</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>warp.array</em></a>) – The Warp array to convert.</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The converted Jax array.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.jax.dev/en/latest/_autosummary/jax.Array.html#jax.Array" title="(in JAX)">jax.Array</a></p>
-</dd>
-</dl>
+  <section id="warp-jaxcallablegraphmode">
+<h1>warp.JaxCallableGraphMode<a class="headerlink" href="#warp-jaxcallablegraphmode" title="Link to this heading">#</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="warp.JaxCallableGraphMode">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">JaxCallableGraphMode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/jax/ffi.py#L81-L98"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.JaxCallableGraphMode" title="Link to this definition">#</a></dt>
+<dd><p>CUDA graph capture modes for <a class="reference internal" href="warp.jax_callable.html#warp.jax_callable" title="warp.jax_callable"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.jax_callable()</span></code></a>.</p>
+<p>These modes control whether JAX or Warp captures a CUDA graph, and whether
+staging buffers are used when capturing with Warp.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.JaxCallableGraphMode.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwds</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/../../../_temp/uv-python-dir/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/enum.py#L1184-L1186"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.JaxCallableGraphMode.__init__" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<p class="rubric">Methods</p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">conjugate</span></code></p></td>
+<td><p>Returns self, the complex conjugate of any int.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">bit_length</span></code>()</p></td>
+<td><p>Number of bits necessary to represent self in binary.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">bit_count</span></code>()</p></td>
+<td><p>Number of ones in the binary representation of the absolute value of self.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_bytes</span></code>([length, byteorder, signed])</p></td>
+<td><p>Return an array of bytes representing an integer.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_bytes</span></code>(bytes[, byteorder, signed])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">as_integer_ratio</span></code>()</p></td>
+<td><p>Return a pair of integers, whose ratio is equal to the original int.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_integer</span></code>()</p></td>
+<td><p>Returns True.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.JaxCallableGraphMode.__init__" title="warp.JaxCallableGraphMode.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(*args, **kwds)</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p class="rubric">Attributes</p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">real</span></code></p></td>
+<td><p>the real part of a complex number</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">imag</span></code></p></td>
+<td><p>the imaginary part of a complex number</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">numerator</span></code></p></td>
+<td><p>the numerator of a rational number in lowest terms</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">denominator</span></code></p></td>
+<td><p>the denominator of a rational number in lowest terms</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.JaxCallableGraphMode.NONE" title="warp.JaxCallableGraphMode.NONE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NONE</span></code></a></p></td>
+<td><p>Disable graph capture.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.JaxCallableGraphMode.JAX" title="warp.JaxCallableGraphMode.JAX"><code class="xref py py-obj docutils literal notranslate"><span class="pre">JAX</span></code></a></p></td>
+<td><p>Let JAX capture the graph so the callable can be used as a subgraph within a larger JAX capture.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.JaxCallableGraphMode.WARP" title="warp.JaxCallableGraphMode.WARP"><code class="xref py py-obj docutils literal notranslate"><span class="pre">WARP</span></code></a></p></td>
+<td><p>Let Warp capture the graph and replay it for matching buffer addresses.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.JaxCallableGraphMode.WARP_STAGED" title="warp.JaxCallableGraphMode.WARP_STAGED"><code class="xref py py-obj docutils literal notranslate"><span class="pre">WARP_STAGED</span></code></a></p></td>
+<td><p>Capture a Warp graph using staging buffers and insert memcpy nodes inside the graph.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.JaxCallableGraphMode.WARP_STAGED_EX" title="warp.JaxCallableGraphMode.WARP_STAGED_EX"><code class="xref py py-obj docutils literal notranslate"><span class="pre">WARP_STAGED_EX</span></code></a></p></td>
+<td><p>Capture a Warp graph using staging buffers and perform memcpy outside the graph.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.JaxCallableGraphMode.NONE">
+<span class="sig-name descname"><span class="pre">NONE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></em><a class="headerlink" href="#warp.JaxCallableGraphMode.NONE" title="Link to this definition">#</a></dt>
+<dd><p>Disable graph capture. Use when operations are not CUDA-graph compatible (for example, host synchronization).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.JaxCallableGraphMode.JAX">
+<span class="sig-name descname"><span class="pre">JAX</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#warp.JaxCallableGraphMode.JAX" title="Link to this definition">#</a></dt>
+<dd><p>Let JAX capture the graph so the callable can be used as a subgraph within a larger JAX capture.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.JaxCallableGraphMode.WARP">
+<span class="sig-name descname"><span class="pre">WARP</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#warp.JaxCallableGraphMode.WARP" title="Link to this definition">#</a></dt>
+<dd><p>Let Warp capture the graph and replay it for matching buffer addresses.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.JaxCallableGraphMode.WARP_STAGED">
+<span class="sig-name descname"><span class="pre">WARP_STAGED</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">3</span></em><a class="headerlink" href="#warp.JaxCallableGraphMode.WARP_STAGED" title="Link to this definition">#</a></dt>
+<dd><p>Capture a Warp graph using staging buffers and insert memcpy nodes inside the graph.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.JaxCallableGraphMode.WARP_STAGED_EX">
+<span class="sig-name descname"><span class="pre">WARP_STAGED_EX</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">4</span></em><a class="headerlink" href="#warp.JaxCallableGraphMode.WARP_STAGED_EX" title="Link to this definition">#</a></dt>
+<dd><p>Capture a Warp graph using staging buffers and perform memcpy outside the graph.</p>
+</dd></dl>
+
 </dd></dl>
 
 </section>
@@ -524,20 +612,20 @@
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.jax.from_jax.html"
+       href="warp.to_dlpack.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.jax.from_jax</p>
+        <p class="prev-next-title">warp.to_dlpack</p>
       </div>
     </a>
     <a class="right-next"
-       href="../warp_jax_custom_call.html"
+       href="warp.JaxModulePreloadMode.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.jax.custom_call</p>
+        <p class="prev-next-title">warp.JaxModulePreloadMode</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -562,7 +650,15 @@
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.jax.to_jax"><code class="docutils literal notranslate"><span class="pre">to_jax()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.JaxCallableGraphMode"><code class="docutils literal notranslate"><span class="pre">JaxCallableGraphMode</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.JaxCallableGraphMode.__init__"><code class="docutils literal notranslate"><span class="pre">__init__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.JaxCallableGraphMode.NONE"><code class="docutils literal notranslate"><span class="pre">NONE</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.JaxCallableGraphMode.JAX"><code class="docutils literal notranslate"><span class="pre">JAX</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.JaxCallableGraphMode.WARP"><code class="docutils literal notranslate"><span class="pre">WARP</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.JaxCallableGraphMode.WARP_STAGED"><code class="docutils literal notranslate"><span class="pre">WARP_STAGED</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.JaxCallableGraphMode.WARP_STAGED_EX"><code class="docutils literal notranslate"><span class="pre">WARP_STAGED_EX</span></code></a></li>
+</ul>
+</li>
 </ul>
   </nav></div>
 
@@ -570,7 +666,7 @@
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/_generated/warp.jax.to_jax.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/_generated/warp.JaxCallableGraphMode.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

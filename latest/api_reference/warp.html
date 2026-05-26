@@ -415,7 +415,6 @@
 <li class="toctree-l1"><a class="reference internal" href="warp_autograd.html">warp.autograd</a></li>
 <li class="toctree-l1"><a class="reference internal" href="warp_config.html">warp.config</a></li>
 <li class="toctree-l1"><a class="reference internal" href="warp_fem.html">warp.fem</a></li>
-<li class="toctree-l1"><a class="reference internal" href="warp_jax.html">warp.jax</a></li>
 <li class="toctree-l1"><a class="reference internal" href="warp_optim.html">warp.optim</a></li>
 <li class="toctree-l1"><a class="reference internal" href="warp_render.html">warp.render</a></li>
 <li class="toctree-l1"><a class="reference internal" href="warp_sparse.html">warp.sparse</a></li>
@@ -516,7 +515,6 @@ element methods, and <a class="reference internal" href="warp_sparse.html#module
 <ul class="simple">
 <li><p><a class="reference internal" href="warp_autograd.html#module-warp.autograd" title="warp.autograd"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warp.autograd</span></code></a></p></li>
 <li><p><a class="reference internal" href="warp_fem.html#module-warp.fem" title="warp.fem"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warp.fem</span></code></a></p></li>
-<li><p><a class="reference internal" href="warp_jax.html#module-warp.jax" title="warp.jax"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warp.jax</span></code></a></p></li>
 <li><p><a class="reference internal" href="warp_optim.html#module-warp.optim" title="warp.optim"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warp.optim</span></code></a></p></li>
 <li><p><a class="reference internal" href="warp_render.html#module-warp.render" title="warp.render"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warp.render</span></code></a></p></li>
 <li><p><a class="reference internal" href="warp_sparse.html#module-warp.sparse" title="warp.sparse"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warp.sparse</span></code></a></p></li>
@@ -1519,22 +1517,37 @@ element methods, and <a class="reference internal" href="warp_sparse.html#module
 <h2>JAX Interop<a class="headerlink" href="#jax-interop" title="Link to this heading">#</a></h2>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.device_from_jax.html#warp.device_from_jax" title="warp.device_from_jax"><code class="xref py py-obj docutils literal notranslate"><span class="pre">device_from_jax</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.JaxCallableGraphMode.html#warp.JaxCallableGraphMode" title="warp.JaxCallableGraphMode"><code class="xref py py-obj docutils literal notranslate"><span class="pre">JaxCallableGraphMode</span></code></a></p></td>
+<td><p>CUDA graph capture modes for <a class="reference internal" href="_generated/warp.jax_callable.html#warp.jax_callable" title="warp.jax_callable"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.jax_callable()</span></code></a>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.JaxModulePreloadMode.html#warp.JaxModulePreloadMode" title="warp.JaxModulePreloadMode"><code class="xref py py-obj docutils literal notranslate"><span class="pre">JaxModulePreloadMode</span></code></a></p></td>
+<td><p>Module preload modes for JAX interop callables.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.clear_jax_callable_graph_cache.html#warp.clear_jax_callable_graph_cache" title="warp.clear_jax_callable_graph_cache"><code class="xref py py-obj docutils literal notranslate"><span class="pre">clear_jax_callable_graph_cache</span></code></a></p></td>
+<td><p>Clear the graph cache of the given callable or all callables if <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.device_from_jax.html#warp.device_from_jax" title="warp.device_from_jax"><code class="xref py py-obj docutils literal notranslate"><span class="pre">device_from_jax</span></code></a></p></td>
 <td><p>Return the Warp device corresponding to a Jax device.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.device_to_jax.html#warp.device_to_jax" title="warp.device_to_jax"><code class="xref py py-obj docutils literal notranslate"><span class="pre">device_to_jax</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.device_to_jax.html#warp.device_to_jax" title="warp.device_to_jax"><code class="xref py py-obj docutils literal notranslate"><span class="pre">device_to_jax</span></code></a></p></td>
 <td><p>Return the Jax device corresponding to a Warp device.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.dtype_from_jax.html#warp.dtype_from_jax" title="warp.dtype_from_jax"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dtype_from_jax</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.dtype_from_jax.html#warp.dtype_from_jax" title="warp.dtype_from_jax"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dtype_from_jax</span></code></a></p></td>
 <td><p>Return the Warp dtype corresponding to a Jax dtype.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.dtype_to_jax.html#warp.dtype_to_jax" title="warp.dtype_to_jax"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dtype_to_jax</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.dtype_to_jax.html#warp.dtype_to_jax" title="warp.dtype_to_jax"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dtype_to_jax</span></code></a></p></td>
 <td><p>Return the Jax dtype corresponding to a Warp dtype.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.from_jax.html#warp.from_jax" title="warp.from_jax"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_jax</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.from_jax.html#warp.from_jax" title="warp.from_jax"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_jax</span></code></a></p></td>
 <td><p>Convert a Jax array to a Warp array without copying the data.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.to_jax.html#warp.to_jax" title="warp.to_jax"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_jax</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.jax_callable.html#warp.jax_callable" title="warp.jax_callable"><code class="xref py py-obj docutils literal notranslate"><span class="pre">jax_callable</span></code></a></p></td>
+<td><p>Create a JAX callback from an annotated Python function.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.jax_kernel.html#warp.jax_kernel" title="warp.jax_kernel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">jax_kernel</span></code></a></p></td>
+<td><p>Create a JAX callback from a Warp kernel.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.to_jax.html#warp.to_jax" title="warp.to_jax"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_jax</span></code></a></p></td>
 <td><p>Convert a Warp array to a Jax array without copying the data.</p></td>
 </tr>
 </tbody>
