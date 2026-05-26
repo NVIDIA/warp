@@ -2,14 +2,14 @@
 # SPDX-License-Identifier: Apache-2.0
 # ruff: noqa: E402
 
-"""Deprecated alias for :mod:`warp.jax.custom_call`.
+"""Deprecated compatibility namespace for custom-call JAX integration.
 
 .. deprecated:: 1.14.0
-    Use :mod:`warp.jax.custom_call` instead. This namespace will be removed in Warp 1.16.
+    Use :func:`warp.jax_kernel` instead. This namespace will be removed in Warp 1.16.
 """
 
 from ._deprecation import warn_deprecated_jax_experimental_namespace as _warn_deprecated_jax_experimental_namespace
 
-_warn_deprecated_jax_experimental_namespace("warp.jax_experimental.custom_call", "warp.jax.custom_call")
+_warn_deprecated_jax_experimental_namespace("warp.jax_experimental.custom_call", "`warp.jax_kernel()`")
 
-from warp.jax.custom_call import jax_kernel as jax_kernel
+from warp._src.jax.custom_call import jax_kernel as jax_kernel

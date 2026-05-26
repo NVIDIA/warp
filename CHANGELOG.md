@@ -57,8 +57,17 @@
 
 - `warp.fem`: Defer the scheduled removal of the deprecated `quadrature` and `domain` arguments of `interpolate()`,
   and the `space` argument of `make_space_restriction` and `make_space_partition`, to Warp 1.15.
-- Deprecate `warp.jax_experimental` in favor of the stable public `warp.jax` API. Migrate by updating
-  import statements from `warp.jax_experimental` to `warp.jax`. No API changes are required.
+- Deprecate `warp.jax_experimental` in favor of top-level `warp` JAX APIs. Migrate
+  `warp.jax_experimental.jax_kernel()` to `warp.jax_kernel()`,
+  `warp.jax_experimental.jax_callable()` to `warp.jax_callable()`, and
+  `warp.jax_experimental.GraphMode` to `warp.JaxCallableGraphMode`.
+  `warp.jax_experimental.ModulePreloadMode` is also available as
+  `warp.JaxModulePreloadMode`. The
+  `get_jax_callable_default_graph_cache_max()` and
+  `set_jax_callable_default_graph_cache_max()` helpers are also deprecated; pass
+  `graph_cache_max` to `warp.jax_callable()` or update the returned callable's
+  `graph_cache_max` attribute instead. `warp.jax_callable()` defaults to
+  `graph_cache_max=32`; pass `graph_cache_max=None` for an unlimited graph cache.
   `warp.jax_experimental` will be removed in Warp 1.16.
   ([GH-1370](https://github.com/NVIDIA/warp/issues/1370))
 - Deprecate `warp.config.verbose` and `warp.config.quiet` in favor of `warp.config.log_level`. Reading or setting
