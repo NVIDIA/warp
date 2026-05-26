@@ -151,6 +151,7 @@
   ([GH-1466](https://github.com/NVIDIA/warp/issues/1466)).
 - Fix tile byte-offset overflow for arrays larger than 2 GiB
   ([GH-1422](https://github.com/NVIDIA/warp/issues/1422)).
+- Raise an error when a kernel is defined with a non-`None` return annotation ([GH-1471](https://github.com/NVIDIA/warp/issues/1471)).
 
 ### Documentation
 
