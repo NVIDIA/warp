@@ -794,11 +794,17 @@ def test_torch_graph_warp_stream(test, device):
 
     g = torch.cuda.CUDAGraph()
 
-    # make torch use the warp stream from the given device
-    torch_stream = wp.stream_to_torch(device)
+    # PyTorch 2.12 rejects CUDA graph capture on blocking streams because its
+    # capture bookkeeping touches the legacy stream. Warp's own streams are
+    # currently created with CU_STREAM_DEFAULT (blocking), so we route capture
+    # through a PyTorch-created non-blocking stream wrapped as a Warp stream.
+    # Revisit if Warp gains an API for creating non-blocking streams.
+    base_torch_stream = torch.cuda.Stream(device=torch_device)
+    warp_stream = wp.stream_from_torch(base_torch_stream)
+    torch_stream = wp.stream_to_torch(warp_stream)
 
     # capture graph
-    with wp.ScopedDevice(device), torch.cuda.graph(g, stream=torch_stream):
+    with wp.ScopedStream(warp_stream), torch.cuda.graph(g, stream=torch_stream):
         wp.capture_begin(force_module_load=False, external=True)
         try:
             t += 1.0
