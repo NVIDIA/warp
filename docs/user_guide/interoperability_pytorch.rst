@@ -22,6 +22,19 @@ These helper functions allow the conversion of Warp arrays to/from PyTorch tenso
 At the same time, if available, gradient arrays and tensors are converted to/from PyTorch autograd tensors, allowing the use of Warp arrays
 in PyTorch autograd computations.
 
+Warp also provides helper functions for mapping devices and dtypes between Warp and PyTorch:
+
+.. code:: python
+
+    import torch
+
+    torch_device = wp.device_to_torch("cpu")
+    torch_dtype = wp.dtype_to_torch(wp.float32)
+    t = torch.ones(3, device=torch_device, dtype=torch_dtype)
+
+    warp_dtype = wp.dtype_from_torch(t.dtype)
+    warp_device = wp.device_from_torch(t.device)
+
 Stream Conversion
 -----------------
 

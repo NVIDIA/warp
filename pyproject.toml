@@ -87,7 +87,6 @@ cache-dir = ".cache/ruff"
 line-length = 120
 indent-width = 4
 extend-exclude = [
-    "notebooks",
     "warp/_src/thirdparty/appdirs.py",
     "warp/_src/thirdparty/dlpack.py",
     "tools",
