@@ -69,26 +69,13 @@ For nightly builds, conda, CUDA 13 builds, building from source, and CUDA driver
 
 ## Tutorial Notebooks
 
-The [NVIDIA Accelerated Computing Hub](https://github.com/NVIDIA/accelerated-computing-hub) contains the current,
-actively maintained set of Warp tutorials:
+The [NVIDIA Accelerated Computing Hub](https://github.com/NVIDIA/accelerated-computing-hub) also hosts Warp
+tutorial notebooks that can be opened in Colab:
 
 | Notebook | Colab Link |
 |----------|------------|
 | [Introduction to NVIDIA Warp](https://github.com/NVIDIA/accelerated-computing-hub/blob/32fe3d5a448446fd52c14a6726e1b867cbfed2d9/Accelerated_Python_User_Guide/notebooks/Chapter_12_Intro_to_NVIDIA_Warp.ipynb) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVIDIA/accelerated-computing-hub/blob/32fe3d5a448446fd52c14a6726e1b867cbfed2d9/Accelerated_Python_User_Guide/notebooks/Chapter_12_Intro_to_NVIDIA_Warp.ipynb) |
 | [GPU-Accelerated Ising Model Simulation in NVIDIA Warp](https://github.com/NVIDIA/accelerated-computing-hub/blob/32fe3d5a448446fd52c14a6726e1b867cbfed2d9/Accelerated_Python_User_Guide/notebooks/Chapter_12.1_IsingModel_In_Warp.ipynb) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVIDIA/accelerated-computing-hub/blob/32fe3d5a448446fd52c14a6726e1b867cbfed2d9/Accelerated_Python_User_Guide/notebooks/Chapter_12.1_IsingModel_In_Warp.ipynb) |
-
-Additionally, several notebooks in the [notebooks](https://github.com/NVIDIA/warp/tree/main/notebooks) directory
-provide additional examples and cover key Warp features:
-
-| Notebook | Colab Link |
-|----------|------------|
-| [Warp Core Tutorial: Basics](https://github.com/NVIDIA/warp/blob/main/notebooks/core_01_basics.ipynb) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/core_01_basics.ipynb) |
-| [Warp Core Tutorial: Generics](https://github.com/NVIDIA/warp/blob/main/notebooks/core_02_generics.ipynb) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/core_02_generics.ipynb) |
-| [Warp Core Tutorial: Points](https://github.com/NVIDIA/warp/blob/main/notebooks/core_03_points.ipynb) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/core_03_points.ipynb) |
-| [Warp Core Tutorial: Meshes](https://github.com/NVIDIA/warp/blob/main/notebooks/core_04_meshes.ipynb) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/core_04_meshes.ipynb) |
-| [Warp Core Tutorial: Volumes](https://github.com/NVIDIA/warp/blob/main/notebooks/core_05_volumes.ipynb) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/core_05_volumes.ipynb) |
-| [Warp PyTorch Tutorial: Basics](https://github.com/NVIDIA/warp/blob/main/notebooks/pytorch_01_basics.ipynb) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/pytorch_01_basics.ipynb) |
-| [Warp PyTorch Tutorial: Custom Operators](https://github.com/NVIDIA/warp/blob/main/notebooks/pytorch_02_custom_operators.ipynb) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/pytorch_02_custom_operators.ipynb) |
 
 ## Running Examples
 
@@ -253,6 +240,7 @@ python -m warp.examples.browse
 Please see the following resources for additional background on Warp:
 
 * [Product Page](https://developer.nvidia.com/warp-python)
+* [How to Use NVIDIA Warp to Build GPU-Accelerated Computational Physics Simulations](https://www.nvidia.com/en-us/on-demand/session/gtc26-dlit81837/) (GTC 2026 tutorial)
 * [SIGGRAPH 2024 Course Slides](https://dl.acm.org/doi/10.1145/3664475.3664543)
 * [GTC 2024 Presentation](https://www.nvidia.com/en-us/on-demand/session/gtc24-s63345/)
 * [GTC 2022 Presentation](https://www.nvidia.com/en-us/on-demand/session/gtcspring22-s41599)

@@ -154,6 +154,9 @@
 
 ### Documentation
 
+- Remove stale tutorial notebooks from the repository. The maintained tutorials remain linked from the
+  documentation, and concise examples now cover the useful notebook snippets in the Sphinx docs.
+
 ## [1.13.0] - 2026-05-04
 
 ### Added
