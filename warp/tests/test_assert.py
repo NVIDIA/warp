@@ -3,6 +3,7 @@
 
 import signal
 import subprocess
+import sys
 import unittest
 
 import warp as wp
@@ -11,8 +12,20 @@ from warp.tests.unittest_utils import *
 
 def _run_in_subprocess(func_name: str, timeout: int = 60):
     """Run a module-level function in a subprocess, return (returncode, stdout, stderr)."""
+    setup_code = ""
+    if sys.platform == "win32":
+        # These tests intentionally abort subprocesses. Suppress Windows Error
+        # Reporting there so systems with LocalDumps enabled do not collect the
+        # expected aborts as false positive application crash dumps.
+        setup_code = (
+            "import ctypes;"
+            "SEM_FAILCRITICALERRORS=0x0001;"
+            "SEM_NOGPFAULTERRORBOX=0x0002;"
+            "ctypes.windll.kernel32.SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX);"
+        )
+
     result = subprocess.run(
-        [sys.executable, "-c", f"import warp.tests.test_assert; warp.tests.test_assert.{func_name}()"],
+        [sys.executable, "-c", f"{setup_code}import warp.tests.test_assert; warp.tests.test_assert.{func_name}()"],
         check=False,
         capture_output=True,
         text=True,
