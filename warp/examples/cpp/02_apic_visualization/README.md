@@ -140,7 +140,7 @@ The C++ program loads the pre-captured graph and executes it each frame:
 #include "warp.h"  // Warp C API including APIC functions
 
 // Load the pre-captured graph
-APICGraph graph = wp_apic_load_graph(context, "generated/wave_sim", 0);  // 0 = CUDA
+APICGraph* graph = wp_apic_load_graph(context, "generated/wave_sim", 0);  // 0 = CUDA
 
 // Query parameters
 int n_params = wp_apic_get_num_params(graph);
@@ -179,24 +179,24 @@ wp_apic_destroy_graph(graph);
 
 ```cpp
 // Load a graph from .wrp file
-APICGraph wp_apic_load_graph(void* context, const char* path, int device_type);
+APICGraph* wp_apic_load_graph(void* context, const char* path, int device_type);
 
 // Set/get named parameters (return true on success, false on failure)
-bool wp_apic_set_param(APICGraph graph, const char* name, const void* data, size_t size);
-bool wp_apic_get_param(APICGraph graph, const char* name, void* data, size_t size);
-void* wp_apic_get_param_ptr(APICGraph graph, const char* name);
+bool wp_apic_set_param(APICGraph* graph, const char* name, const void* data, size_t size);
+bool wp_apic_get_param(APICGraph* graph, const char* name, void* data, size_t size);
+void* wp_apic_get_param_ptr(APICGraph* graph, const char* name);
 
 // Get CUDA graph handles
-void* wp_apic_get_cuda_graph(APICGraph graph);
-void* wp_apic_get_cuda_graph_exec(APICGraph graph);  // Creates executable on first call
+void* wp_apic_get_cuda_graph(APICGraph* graph);
+void* wp_apic_get_cuda_graph_exec(APICGraph* graph);  // Creates executable on first call
 
 // Query parameters
-int wp_apic_get_num_params(APICGraph graph);
-const char* wp_apic_get_param_name(APICGraph graph, int index);
-size_t wp_apic_get_param_size(APICGraph graph, const char* name);
+int wp_apic_get_num_params(APICGraph* graph);
+const char* wp_apic_get_param_name(APICGraph* graph, int index);
+size_t wp_apic_get_param_size(APICGraph* graph, const char* name);
 
 // Cleanup
-void wp_apic_destroy_graph(APICGraph graph);
+void wp_apic_destroy_graph(APICGraph* graph);
 ```
 
 ## Controls

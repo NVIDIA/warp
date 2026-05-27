@@ -37,20 +37,20 @@ extern "C" {
 // Recording State Management
 // =============================================================================
 
-// Opaque handle to APIC recording/serialization state
-typedef struct APICStateInternal* APICState;
+// Opaque APIC recording/serialization state. Defined in apic_internal.h.
+struct APICState;
 
-WP_API APICState wp_apic_create_state();
-WP_API void wp_apic_destroy_state(APICState state);
+WP_API APICState* wp_apic_create_state();
+WP_API void wp_apic_destroy_state(APICState* state);
 
 // Begin/end recording: sets/clears thread-local g_apic_state
-WP_API void wp_apic_begin_recording(APICState state);
-WP_API void wp_apic_end_recording(APICState state);
+WP_API void wp_apic_begin_recording(APICState* state);
+WP_API void wp_apic_end_recording(APICState* state);
 
 // Access current thread-local recording state. Called from the launch /
 // memcpy / memset hooks in warp.cu and warp.cpp to check whether a capture
 // is active; returns nullptr when not capturing.
-WP_API APICState wp_apic_get_recording_state();
+WP_API APICState* wp_apic_get_recording_state();
 
 // =============================================================================
 // Memory Region Registration (called from Python)
@@ -66,12 +66,12 @@ WP_API APICState wp_apic_get_recording_state();
 // Register a memory region by base pointer. Returns region_id.
 // If the pointer is already registered, returns the existing region_id.
 WP_API uint32_t
-wp_apic_register_memory_region_by_ptr(APICState state, uint64_t base_ptr, uint64_t size, uint32_t element_size);
+wp_apic_register_memory_region_by_ptr(APICState* state, uint64_t base_ptr, uint64_t size, uint32_t element_size);
 
 // Register a memory region with initial data (for serialization).
 // Called from Python during capture_save().
 WP_API void wp_apic_register_memory_region(
-    APICState state, uint32_t region_id, uint64_t size, uint32_t element_size, const void* initial_data
+    APICState* state, uint32_t region_id, uint64_t size, uint32_t element_size, const void* initial_data
 );
 
 // =============================================================================
@@ -79,11 +79,11 @@ WP_API void wp_apic_register_memory_region(
 // =============================================================================
 
 WP_API void wp_apic_register_module(
-    APICState state, const char* module_hash, const char* module_name, const char* binary_filename, int target_arch
+    APICState* state, const char* module_hash, const char* module_name, const char* binary_filename, int target_arch
 );
 
 WP_API void wp_apic_register_kernel(
-    APICState state,
+    APICState* state,
     const char* kernel_key,
     const char* module_hash,
     const char* forward_name,
@@ -93,22 +93,62 @@ WP_API void wp_apic_register_kernel(
     int block_dim
 );
 
-WP_API void wp_apic_register_binding(APICState state, const char* name, uint32_t region_id);
+WP_API void wp_apic_register_binding(APICState* state, const char* name, uint32_t region_id);
 
-WP_API void wp_apic_register_ptr_location(APICState state, uint32_t region_id, uint64_t offset, uint64_t stride);
+WP_API void wp_apic_register_ptr_location(APICState* state, uint32_t region_id, uint64_t offset, uint64_t stride);
 
 // Register a mesh for serialization. Looks up the mesh by ID in the global
 // mesh descriptor table, registers its arrays as memory regions with initial
 // data, and stores an APICMeshRecord for the save path.
-WP_API void wp_apic_register_mesh(APICState state, uint64_t mesh_id);
+WP_API void wp_apic_register_mesh(APICState* state, uint64_t mesh_id);
 
 // =============================================================================
 // Operation Recording (called from the kernel-launch / memcpy / memset hooks
 // in warp.cu and warp.cpp when a capture is active)
 // =============================================================================
 
+// ============================================================================
+// Conditional / Loop ops (APIC_OP_IF / APIC_OP_WHILE)
+// ============================================================================
+//
+// Python's wp.capture_if / wp.capture_while record conditional structure
+// during APIC capture by:
+//   1. Calling wp_apic_begin_branch(state) before the branch callback to
+//      remember the current stream position.
+//   2. Running the user callback (appends ops to the main stream).
+//   3. Calling wp_apic_end_branch(state, start) to carve out the bytes
+//      appended during the callback into an APICBranchBody, truncating the
+//      main stream back to the saved position.
+//   4. Optionally repeating for the else branch.
+//   5. Calling wp_apic_record_conditional(...) to emit the APIC_OP_IF /
+//      APIC_OP_WHILE record with the branch bodies embedded as branch_a /
+//      branch_b. The bodies are consumed (freed) by the call.
+//
+// Replay reads the int32 condition from cond_region_id+cond_offset and
+// executes the appropriate branch (or repeats branch_a for OP_WHILE).
+
+// Opaque structs returned by begin_branch / end_branch. Defined in apic.cpp.
+struct APICBranchStart;  // begin-time stream position
+struct APICBranchBody;  // captured branch sub-stream
+
+WP_API APICBranchStart* wp_apic_begin_branch(APICState* state);
+WP_API APICBranchBody* wp_apic_end_branch(APICState* state, APICBranchStart* start);
+WP_API void wp_apic_free_branch_body(APICBranchBody* body);
+WP_API void wp_apic_record_conditional(
+    APICState* state,
+    int op_type,
+    int32_t cond_region_id,
+    uint64_t cond_offset,
+    APICBranchBody* branch_a,  // consumed (freed)
+    APICBranchBody* branch_b  // consumed; may be NULL for OP_WHILE / IF without else
+);
+
+// Records a kernel launch into the byte stream. For backward kernels
+// (is_forward == 0) ``adj_params`` must be non-NULL and is read as
+// ``num_params`` adjoint bindings — there is no separate adjoint count,
+// since the forward and adjoint blocks always have the same shape.
 WP_API void apic_record_kernel_launch(
-    APICState state,
+    APICState* state,
     const char* kernel_key,
     const char* module_hash,
     int is_forward,
@@ -119,11 +159,16 @@ WP_API void apic_record_kernel_launch(
     int block_dim,
     int smem_bytes,
     const APICLaunchParamRecord* params,
-    int num_params
+    int num_params,
+    const APICLaunchParamRecord* adj_params,
+    const APICLaunchPtrLocation* relocs,
+    uint32_t num_relocs,
+    const uint8_t* value_data,
+    uint32_t value_data_size
 );
 
 WP_API void apic_record_memcpy_d2d(
-    APICState state,
+    APICState* state,
     int32_t dst_region_id,
     uint64_t dst_offset,
     int32_t src_region_id,
@@ -131,9 +176,9 @@ WP_API void apic_record_memcpy_d2d(
     uint64_t size
 );
 
-WP_API void apic_record_memset(APICState state, int32_t region_id, uint64_t offset, uint64_t size, int32_t value);
+WP_API void apic_record_memset(APICState* state, int32_t region_id, uint64_t offset, uint64_t size, int32_t value);
 
-WP_API void apic_record_alloc(APICState state, int32_t region_id, uint64_t size);
+WP_API void apic_record_alloc(APICState* state, int32_t region_id, uint64_t size);
 
 // =============================================================================
 // Pointer Resolution (for memcpy/memset hooks that receive raw pointers)
@@ -141,33 +186,34 @@ WP_API void apic_record_alloc(APICState state, int32_t region_id, uint64_t size)
 
 // Resolve a raw pointer to (region_id, byte_offset).
 // Returns true on success, false if the pointer is not in any registered region.
-WP_API bool apic_resolve_ptr(APICState state, uint64_t ptr, int32_t* out_region_id, uint64_t* out_offset);
+WP_API bool apic_resolve_ptr(APICState* state, uint64_t ptr, int32_t* out_region_id, uint64_t* out_offset);
 
-// Opaque handle to a loaded .wrp graph (CPU or CUDA; see wp_apic_load_graph).
-typedef struct APICGraphInternal* APICGraph;
+// Opaque loaded .wrp graph state (CPU or CUDA; see wp_apic_load_graph).
+// Defined in apic_internal.h.
+struct APICGraph;
 
 // =============================================================================
 // CPU Graph Replay (execute operations directly from the APIC byte stream)
 // =============================================================================
 
 // Register a CPU kernel function pointer during live capture
-WP_API void wp_apic_register_cpu_kernel(APICState state, const char* kernel_key, void* forward_fn, void* backward_fn);
+WP_API void wp_apic_register_cpu_kernel(APICState* state, const char* kernel_key, void* forward_fn, void* backward_fn);
 
 // Replay CPU operations from a live capture's byte stream
-WP_API bool wp_apic_cpu_replay_state(APICState state);
+WP_API bool wp_apic_cpu_replay_state(APICState* state);
 
 // Replay CPU operations from a loaded graph's byte stream
-WP_API bool wp_apic_cpu_replay_graph(APICGraph graph);
+WP_API bool wp_apic_cpu_replay_graph(APICGraph* graph);
 
 // =============================================================================
 // Serialization: Save to .wrp file
 // =============================================================================
 
 // Returns true on success, false on failure
-WP_API bool wp_apic_state_save(APICState state, const char* path, int target_arch);
+WP_API bool wp_apic_state_save(APICState* state, const char* path, int target_arch);
 
 // State queries
-WP_API uint32_t wp_apic_get_operation_count(APICState state);
+WP_API uint32_t wp_apic_get_operation_count(APICState* state);
 
 // =============================================================================
 // Loading and Execution (standalone, no Python needed)
@@ -175,32 +221,32 @@ WP_API uint32_t wp_apic_get_operation_count(APICState state);
 
 // device_type: APICDeviceType value (APIC_DEVICE_CUDA=0, APIC_DEVICE_CPU=1).
 // context is ignored for APIC_DEVICE_CPU.
-WP_API APICGraph wp_apic_load_graph(void* context, const char* path, int device_type);
-WP_API void wp_apic_destroy_graph(APICGraph graph);
+WP_API APICGraph* wp_apic_load_graph(void* context, const char* path, int device_type);
+WP_API void wp_apic_destroy_graph(APICGraph* graph);
 
-WP_API bool wp_apic_set_param(APICGraph graph, const char* name, const void* data, size_t size);
-WP_API bool wp_apic_get_param(APICGraph graph, const char* name, void* data, size_t size);
-WP_API void* wp_apic_get_param_ptr(APICGraph graph, const char* name);
+WP_API bool wp_apic_set_param(APICGraph* graph, const char* name, const void* data, size_t size);
+WP_API bool wp_apic_get_param(APICGraph* graph, const char* name, void* data, size_t size);
+WP_API void* wp_apic_get_param_ptr(APICGraph* graph, const char* name);
 
-WP_API void* wp_apic_get_cuda_graph(APICGraph graph);
-WP_API void* wp_apic_get_cuda_graph_exec(APICGraph graph);
+WP_API void* wp_apic_get_cuda_graph(APICGraph* graph);
+WP_API void* wp_apic_get_cuda_graph_exec(APICGraph* graph);
 
-WP_API int wp_apic_get_num_params(APICGraph graph);
-WP_API const char* wp_apic_get_param_name(APICGraph graph, int index);
-WP_API size_t wp_apic_get_param_size(APICGraph graph, const char* name);
+WP_API int wp_apic_get_num_params(APICGraph* graph);
+WP_API const char* wp_apic_get_param_name(APICGraph* graph, int index);
+WP_API size_t wp_apic_get_param_size(APICGraph* graph, const char* name);
 
-WP_API bool wp_apic_launch(APICGraph graph, void* stream);
+WP_API bool wp_apic_launch(APICGraph* graph, void* stream);
 
 // CPU kernel resolution for loaded graphs (called from Python after loading .o modules)
 WP_API void
-wp_apic_register_loaded_cpu_kernel(APICGraph graph, const char* kernel_key, void* forward_fn, void* backward_fn);
+wp_apic_register_loaded_cpu_kernel(APICGraph* graph, const char* kernel_key, void* forward_fn, void* backward_fn);
 
 // Query loaded graph kernel metadata (for CPU module loading)
-WP_API int wp_apic_get_num_kernels(APICGraph graph);
-WP_API const char* wp_apic_get_kernel_key(APICGraph graph, int index);
-WP_API const char* wp_apic_get_kernel_forward_name(APICGraph graph, const char* kernel_key);
-WP_API const char* wp_apic_get_kernel_backward_name(APICGraph graph, const char* kernel_key);
-WP_API const char* wp_apic_get_kernel_module_hash(APICGraph graph, const char* kernel_key);
+WP_API int wp_apic_get_num_kernels(APICGraph* graph);
+WP_API const char* wp_apic_get_kernel_key(APICGraph* graph, int index);
+WP_API const char* wp_apic_get_kernel_forward_name(APICGraph* graph, const char* kernel_key);
+WP_API const char* wp_apic_get_kernel_backward_name(APICGraph* graph, const char* kernel_key);
+WP_API const char* wp_apic_get_kernel_module_hash(APICGraph* graph, const char* kernel_key);
 
 #ifdef __cplusplus
 }  // extern "C"

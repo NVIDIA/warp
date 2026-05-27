@@ -7,6 +7,7 @@
 #include "volume_builder.h"
 #include "volume_impl.h"
 
+#include <cstring>
 #include <map>
 
 using namespace wp;
@@ -85,8 +86,8 @@ uint64_t wp_volume_create_host(void* buf, uint64_t size, bool copy, bool owner)
     VolumeDesc volume;
     volume.context = NULL;
 
-    wp_memcpy_h2h(&volume.grid_data, buf, sizeof(pnanovdb_grid_t));
-    wp_memcpy_h2h(&volume.tree_data, (pnanovdb_grid_t*)buf + 1, sizeof(pnanovdb_tree_t));
+    std::memcpy(&volume.grid_data, buf, sizeof(pnanovdb_grid_t));
+    std::memcpy(&volume.tree_data, (pnanovdb_grid_t*)buf + 1, sizeof(pnanovdb_tree_t));
 
     if (volume.grid_data.magic != PNANOVDB_MAGIC_NUMBER && volume.grid_data.magic != PNANOVDB_MAGIC_GRID)
         return 0;
@@ -99,7 +100,7 @@ uint64_t wp_volume_create_host(void* buf, uint64_t size, bool copy, bool owner)
     volume.size_in_bytes = size;
     if (copy) {
         volume.buffer = wp_alloc_host(size, "(native:volume)");
-        wp_memcpy_h2h(volume.buffer, buf, size);
+        std::memcpy(volume.buffer, buf, size);
         volume.owner = true;
     } else {
         volume.buffer = buf;

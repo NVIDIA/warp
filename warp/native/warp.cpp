@@ -243,7 +243,7 @@ void wp_cpu_launch_kernel(void* func, void* bounds, void* args, void* adj_args, 
 
     // Skip execution during capture (record only). Execute during replay
     // or when called outside capture (apic_info == NULL).
-    APICState recording_state = wp_apic_get_recording_state();
+    APICState* recording_state = wp_apic_get_recording_state();
     if (func && !recording_state) {
         if (adj_args)
             ((kernel_fn_backward)func)(bounds, args, adj_args);
@@ -281,7 +281,8 @@ void wp_cpu_launch_kernel(void* func, void* bounds, void* args, void* adj_args, 
             recording_state, apic_info->kernel_key, apic_info->module_hash, apic_info->is_forward, shape, ndim,
             launch_size, 0, 0,
             0,  // max_blocks, block_dim, smem_bytes (not applicable for CPU)
-            apic_info->params, apic_info->num_params
+            apic_info->params, apic_info->num_params, apic_info->adj_params, apic_info->relocs, apic_info->num_relocs,
+            apic_info->value_data, apic_info->value_data_size
         );
     }
 }
@@ -289,7 +290,7 @@ void wp_cpu_launch_kernel(void* func, void* bounds, void* args, void* adj_args, 
 bool wp_memcpy_h2h(void* dest, void* src, size_t n)
 {
     // During capture, record only — don't execute (matches CUDA graph semantics)
-    APICState state = wp_apic_get_recording_state();
+    APICState* state = wp_apic_get_recording_state();
     if (state) {
         int32_t dst_region, src_region;
         uint64_t dst_offset, src_offset;
@@ -312,7 +313,7 @@ bool wp_memcpy_h2h(void* dest, void* src, size_t n)
 bool wp_memset_host(void* dest, int value, size_t n)
 {
     // During capture, record only — don't execute (matches CUDA graph semantics)
-    APICState state = wp_apic_get_recording_state();
+    APICState* state = wp_apic_get_recording_state();
     if (state) {
         int32_t region_id;
         uint64_t offset;
