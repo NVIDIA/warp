@@ -374,7 +374,7 @@ linux-aarch64 test:
     - df -h
     - !reference [.snippets, move-linux-aarch64-binaries]
   script:
-    - uv run --extra dev -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
+    - uv run --extra dev --with rmm-cu12 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
   tags:
     - lnx-aarch64-gpu-1x-580.95.05
     - gpu/L40
@@ -400,7 +400,7 @@ linux-aarch64 test orin:
     - uv sync --extra dev --no-install-package psutil
     - !reference [.snippets, section-end-install-deps]
   script:
-    - uv run -m warp.tests --maxjobs 4 --junit-report-xml rspec.xml -s autodetect --failfast
+    - uv run --with rmm-cu12 -m warp.tests --maxjobs 4 --junit-report-xml rspec.xml -s autodetect --failfast
   tags:
     - gpu/orin
 
@@ -417,7 +417,7 @@ linux-aarch64 test thor:
     - uv sync --extra dev
     - !reference [.snippets, section-end-install-deps]
   script:
-    - uv run --extra dev -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
+    - uv run --extra dev --with rmm-cu12 -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
   tags:
     - gpu/thor
 
@@ -434,7 +434,7 @@ linux-aarch64 test dgx spark:
     - uv sync --extra dev
     - !reference [.snippets, section-end-install-deps]
   script:
-    - uv run --extra dev -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
+    - uv run --extra dev --with rmm-cu12 -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
   tags:
     - os/linux
     - arch/arm
@@ -473,7 +473,7 @@ linux-x86_64 test:
     # HACK: disable P2P tests due to misbehaving agents
     - export WARP_DISABLE_P2P_TESTS=1
   script:
-    - uv run --extra dev --extra torch-cu12 --with "jax[cuda12]" -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
+    - uv run --extra dev --extra torch-cu12 --with "jax[cuda12]" --with rmm-cu12 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
 
 # A temporary job for testing on Blackwell until more runners are available
 linux-x86_64-blackwell test:
@@ -485,7 +485,7 @@ linux-x86_64-blackwell test:
     - df -h
     - !reference [.snippets, move-linux-x86_64-binaries]
   script:
-    - uv run --extra dev --extra torch-cu12 --with "jax[cuda12]" -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
+    - uv run --extra dev --extra torch-cu12 --with "jax[cuda12]" --with rmm-cu12 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
   tags:
     - arch/x86_64
     - gpu/B40
@@ -691,7 +691,7 @@ linux-x86_64 python matrix test:
     - !reference [.snippets, move-linux-x86_64-binaries]
     - !reference [.snippets, section-end-install-deps]
   script:
-    - uv run --extra dev -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
+    - uv run --extra dev --with "rmm-cu12 ; python_version < '3.14'" -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
 
 # Ensure cpp examples compile and run
 linux-x86_64 cpp examples test:

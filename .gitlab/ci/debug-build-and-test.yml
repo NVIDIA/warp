@@ -100,7 +100,7 @@ linux-x86_64 test:
     - df -h
     - !reference [.snippets, move-linux-x86_64-binaries]
   script:
-    - uv run --extra dev -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
+    - uv run --extra dev --with rmm-cu12 -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
 
 windows-x86_64 test:
   stage: test
