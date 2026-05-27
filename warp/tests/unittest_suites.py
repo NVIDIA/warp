@@ -187,7 +187,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_math import TestMath
     from warp.tests.test_module_contamination import TestModuleContamination
     from warp.tests.test_module_hashing import TestModuleHashing
-    from warp.tests.test_module_parallel_load import TestModuleParallelLoad
+    from warp.tests.test_module_parallel_load import TestModuleParallelLoad, TestParallelLoadSharedHelper
     from warp.tests.test_modules_lite import TestModuleLite
     from warp.tests.test_noise import TestNoise
     from warp.tests.test_operators import TestOperators
@@ -341,6 +341,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestModuleHashing,
         TestModuleLite,
         TestModuleParallelLoad,
+        TestParallelLoadSharedHelper,
         TestMultiGPU,
         TestNoise,
         TestOccupancy,

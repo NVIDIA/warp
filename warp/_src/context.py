@@ -2233,6 +2233,24 @@ class ModuleHasher:
         return self.unique_kernels.values()
 
 
+# Process-wide codegen lock. ``adj.build()`` mutates per-Adjoint state
+# (``adj.blocks``, ``adj.deferred_static_expressions``, etc.) on the
+# *same* Adjoint object whenever multiple modules reference a shared
+# ``@wp.func``. Holding this lock around the ``ModuleBuilder`` +
+# ``builder.codegen()`` window in :meth:`Module._compile` serialises
+# the Python-side codegen so concurrent ``Module.load`` calls (e.g.
+# from :func:`force_load` with ``max_workers > 1``) don't interleave
+# function emissions in the per-module .cu output. The expensive
+# nvrtc / nvcc invocation runs after the lock is released, so loading
+# N modules in parallel still parallelises the compiler step (the
+# dominant cost) -- only the much cheaper codegen serialises.
+#
+# Re-entrant so nested ``ModuleBuilder`` calls (e.g. the dummy build
+# inside :meth:`Module.get_module_hash`) on the same thread don't
+# deadlock.
+_codegen_lock = threading.RLock()
+
+
 class ModuleBuilder:
     def __init__(self, module, options, hasher=None):
         self.functions = {}
@@ -2811,7 +2829,12 @@ class Module:
         """
         block_dim = self.options["block_dim"]
         options = self.resolve_options(warp.config)
-        self.hashers[block_dim] = ModuleHasher(self._get_live_kernels(), options)
+        # ``ModuleHasher.__init__`` calls ``hash_kernel`` -> ``hash_adjoint``
+        # which reads shared ``@wp.func`` adjoint state; serialise with
+        # ``_codegen_lock`` so concurrent ``Module.load`` callers don't
+        # interleave hash + build mutations on the same Adjoint.
+        with _codegen_lock:
+            self.hashers[block_dim] = ModuleHasher(self._get_live_kernels(), options)
         self.resolved_options[block_dim] = options
         return self.hashers[block_dim].get_hash()
 
@@ -2823,16 +2846,27 @@ class Module:
         if block_dim is None:
             block_dim = self.options["block_dim"]
 
-        if self.has_unresolved_static_expressions:
-            options = self.resolve_options(warp.config)
-            builder_options = options | {"output_arch": None}
-            _ = ModuleBuilder(self, builder_options)
-            self.has_unresolved_static_expressions = False
+        # Both branches below mutate shared ``@wp.func`` adjoint state
+        # (``ModuleBuilder`` runs ``adj.build`` to resolve deferred
+        # ``wp.static`` expressions; ``ModuleHasher`` reads the
+        # resulting adjoint blocks via ``hash_adjoint``). The two
+        # operations are stages of one logical "compute module hash"
+        # critical section, so they live in a single ``_codegen_lock``
+        # block. Splitting the lock per stage opens a window where
+        # another thread can re-run ``adj.build`` on a shared helper
+        # and clobber the state this thread is about to hash.
+        if self.has_unresolved_static_expressions or block_dim not in self.hashers:
+            with _codegen_lock:
+                if self.has_unresolved_static_expressions:
+                    options = self.resolve_options(warp.config)
+                    builder_options = options | {"output_arch": None}
+                    _ = ModuleBuilder(self, builder_options)
+                    self.has_unresolved_static_expressions = False
 
-        if block_dim not in self.hashers:
-            options = self.resolve_options(warp.config)
-            self.hashers[block_dim] = ModuleHasher(self._get_live_kernels(), options)
-            self.resolved_options[block_dim] = options
+                if block_dim not in self.hashers:
+                    options = self.resolve_options(warp.config)
+                    self.hashers[block_dim] = ModuleHasher(self._get_live_kernels(), options)
+                    self.resolved_options[block_dim] = options
 
         return self.hashers[block_dim].get_hash()
 
@@ -3002,13 +3036,6 @@ class Module:
         ):
             return False
 
-        # Some of the tile codegen, such as cuFFTDx and cuBLASDx, requires knowledge of the target arch
-        builder = ModuleBuilder(
-            self,
-            options,
-            hasher=self.hashers.get(options["block_dim"], None),
-        )
-
         meta_path = os.path.join(output_dir, self._get_meta_name())
 
         build_dir = os.path.normpath(output_dir) + f"_p{os.getpid()}_t{threading.get_ident()}"
@@ -3025,20 +3052,46 @@ class Module:
         if opt != 3 and not is_cpu and runtime.toolkit_version is not None and runtime.toolkit_version < (12, 9):
             log_warning("Optimization level other than 3 has no effect on CUDA versions prior to 12.9.", once=True)
 
-        # build CPU
-        if is_cpu:
-            # build
-            try:
-                source_code_path = os.path.join(build_dir, f"{module_name_short}.cpp")
+        # Python codegen window -- LOCKED. See ``_codegen_lock``.
+        # Some of the tile codegen, such as cuFFTDx and cuBLASDx,
+        # requires knowledge of the target arch. Snapshot builder
+        # collections needed by ``build_cuda`` below into locals so
+        # nothing inside the lock is touched after release.
+        #
+        # NOTE: this lock window is intentionally outside the
+        # ``failed_builds`` try/except below. ``ModuleBuilder`` can
+        # legitimately raise from ``adj.build`` (e.g. user kernels
+        # with type mismatches in the type-mismatch error tests); if
+        # we recorded those in ``failed_builds`` the next ``Module.load``
+        # on the same device short-circuits with ``return None`` and
+        # subsequent unrelated kernels in the same module silently
+        # fail to launch. Only the heavy native compile records
+        # ``failed_builds``.
+        with _codegen_lock:
+            builder = ModuleBuilder(
+                self,
+                options,
+                hasher=self.hashers.get(options["block_dim"], None),
+            )
+            if is_cpu:
+                source_code_ext = "cpp"
+                source_str = builder.codegen("cpu")
+            else:
+                source_code_ext = "cu"
+                source_str = builder.codegen("cuda")
+            meta = builder.build_meta()
+            ltoir_values = list(builder.ltoirs.values())
+            fatbin_values = list(builder.fatbins.values())
 
-                # write cpp sources
-                cpp_source = builder.codegen("cpu")
+        source_code_path = os.path.join(build_dir, f"{module_name_short}.{source_code_ext}")
 
-                with open(source_code_path, "w") as cpp_file:
-                    cpp_file.write(cpp_source)
+        with open(source_code_path, "w") as source_file:
+            source_file.write(source_str)
 
-                output_path = os.path.join(build_dir, output_name)
+        output_path = os.path.join(build_dir, output_name)
 
+        try:
+            if is_cpu:
                 # build object code
                 with warp.ScopedTimer(
                     "Compile x86", active=(warp.config.verbose or warp.config.log_level <= warp.LOG_DEBUG)
@@ -3058,28 +3111,7 @@ class Module:
                         block_dim=options["block_dim"],
                         enable_tiles_in_stack_memory=options["enable_tiles_in_stack_memory"],
                     )
-
-            except Exception as e:
-                if isinstance(e, FileNotFoundError):
-                    _check_and_raise_long_path_error(e)
-
-                self.failed_builds.add(None)
-
-                raise (e)
-
-        else:
-            # build
-            try:
-                source_code_path = os.path.join(build_dir, f"{module_name_short}.cu")
-
-                # write cuda sources
-                cu_source = builder.codegen("cuda")
-
-                with open(source_code_path, "w") as cu_file:
-                    cu_file.write(cu_source)
-
-                output_path = os.path.join(build_dir, output_name)
-
+            else:
                 # generate PTX or CUBIN
                 with warp.ScopedTimer(
                     f"Compile CUDA (arch={options['output_arch']}{arch_suffix}, mode={mode}, block_dim={options['block_dim']})",
@@ -3096,27 +3128,28 @@ class Module:
                         fuse_fp=options["fuse_fp"],
                         lineinfo=options["lineinfo"],
                         compile_time_trace=options["compile_time_trace"],
-                        ltoirs=builder.ltoirs.values(),
-                        fatbins=builder.fatbins.values(),
+                        ltoirs=ltoir_values,
+                        fatbins=fatbin_values,
                         arch_suffix=arch_suffix,
                         pch_dir=runtime.get_nvrtc_pch_dir(),
                         llvm_cuda=options["llvm_cuda"],
                         use_precompiled_headers=options["use_precompiled_headers"],
                     )
 
-            except Exception as e:
-                if isinstance(e, FileNotFoundError):
-                    _check_and_raise_long_path_error(e)
+        except Exception as e:
+            if isinstance(e, FileNotFoundError):
+                _check_and_raise_long_path_error(e)
 
-                if device:
-                    self.failed_builds.add(device.context)
+            if is_cpu:
+                self.failed_builds.add(None)
+            elif device:
+                self.failed_builds.add(device.context)
 
-                raise (e)
+            raise (e)
 
         # ------------------------------------------------------------
-        # build meta data
+        # write meta data (already produced under ``_codegen_lock``)
 
-        meta = builder.build_meta()
         output_meta_path = os.path.join(build_dir, self._get_meta_name())
 
         with open(output_meta_path, "w") as meta_file:

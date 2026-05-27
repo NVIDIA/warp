@@ -160,6 +160,8 @@
   ([GH-1466](https://github.com/NVIDIA/warp/issues/1466)).
 - Fix tile byte-offset overflow for arrays larger than 2 GiB
   ([GH-1422](https://github.com/NVIDIA/warp/issues/1422)).
+- Fix an intermittent failure when loading modules in parallel with `wp.force_load(max_workers > 1)` that could cause
+  modules sharing a `@wp.func` to fail to compile or load ([GH-1474](https://github.com/NVIDIA/warp/issues/1474)).
 
 ### Documentation
 
