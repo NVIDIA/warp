@@ -497,6 +497,10 @@
 <h3>Added<a class="headerlink" href="#added" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Add <code class="docutils literal notranslate"><span class="pre">wp.tile_empty</span></code> to allocate a tile of uninitialized items (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1312">GH-1312</a>).</p></li>
+<li><p>Extend APIC graph capture on CPU with support for backward (adjoint) kernel launches
+and tile-using kernels, plus kernel parameters of any size and <code class="docutils literal notranslate"><span class="pre">&#64;wp.struct</span></code> /
+<code class="docutils literal notranslate"><span class="pre">wp.indexedarray</span></code> arguments containing pointers
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1431">GH-1431</a>).</p></li>
 <li><p>Expose CUDA graph capture mode via <code class="docutils literal notranslate"><span class="pre">ScopedCapture</span></code> / <code class="docutils literal notranslate"><span class="pre">capture_begin()</span></code>
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1410">GH-1410</a>).</p></li>
 <li><p>Add pre-allocated functors for <code class="docutils literal notranslate"><span class="pre">warp.optim.linear</span></code> solvers. Passing <code class="docutils literal notranslate"><span class="pre">run=False</span></code> to <code class="docutils literal notranslate"><span class="pre">cg</span></code>, <code class="docutils literal notranslate"><span class="pre">cr</span></code>, <code class="docutils literal notranslate"><span class="pre">bicgstab</span></code>, or <code class="docutils literal notranslate"><span class="pre">gmres</span></code>
@@ -615,11 +619,44 @@ user-visible behavior change for code that respects the <code class="docutils li
 enabling zero-copy launches on HMM and ATS systems. Add <code class="docutils literal notranslate"><span class="pre">warp.config.launch_array_access_mode</span></code> with relaxed, strict,
 and checked modes for pre-launch accessibility diagnostics on mixed-device array launches
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1461">GH-1461</a>).</p></li>
+<li><p>Unify the APIC kernel-launch parameter ABI around a single value-blob
+section plus per-blob relocation metadata. Every kernel argument
+(scalar, vec/mat, by-value <code class="docutils literal notranslate"><span class="pre">&#64;wp.struct</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.array</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.indexedarray</span></code>,
+<code class="docutils literal notranslate"><span class="pre">wp.handle</span></code>) is now serialized as a value blob with the exact bytes a
+live launch would pass; pointer fields inside the blob (<code class="docutils literal notranslate"><span class="pre">array_t.data</span></code>,
+<code class="docutils literal notranslate"><span class="pre">array_t.grad</span></code>, <code class="docutils literal notranslate"><span class="pre">indexedarray_t.indices[d]</span></code>, embedded handles) are
+emitted as relocations that the replay path patches with live
+process-local pointers. Replaces the previous split between
+array-specific records, 64-byte inline scalar packing, and a per-launch
+scalar pool. Adds end-to-end support for <code class="docutils literal notranslate"><span class="pre">wp.indexedarray</span></code> launch
+parameters and for <code class="docutils literal notranslate"><span class="pre">&#64;wp.struct</span></code> arguments containing arrays
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1431">GH-1431</a>).</p></li>
+<li><p><strong>Breaking:</strong> <code class="docutils literal notranslate"><span class="pre">APICState</span></code> and <code class="docutils literal notranslate"><span class="pre">APICGraph</span></code> now refer to the struct
+itself, not pointer typedefs, so callers of the APIC C API must write
+<code class="docutils literal notranslate"><span class="pre">APICState*</span> <span class="pre">s</span> <span class="pre">=</span> <span class="pre">wp_apic_create_state()</span></code> and
+<code class="docutils literal notranslate"><span class="pre">APICGraph*</span> <span class="pre">g</span> <span class="pre">=</span> <span class="pre">wp_apic_load_graph(...)</span></code>. <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> files produced by
+earlier versions are not compatible and will not load
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1431">GH-1431</a>).</p></li>
 </ul>
 </section>
 <section id="fixed">
 <h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">#</a></h3>
 <ul class="simple">
+<li><p>Fix APIC backward replay so it consumes output gradients exactly like live
+<code class="docutils literal notranslate"><span class="pre">wp.Tape().backward()</span></code>: the array descriptor reconstructed at replay now
+carries the original <code class="docutils literal notranslate"><span class="pre">grad</span></code> pointer and array flags (including
+<code class="docutils literal notranslate"><span class="pre">ARRAY_FLAG_RETAIN_GRAD</span></code>), so <code class="docutils literal notranslate"><span class="pre">adj_array_store</span></code>’s consume / retain
+decision matches live semantics. Also tightens the <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> loader to a
+strict-equality format-version check so older <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> files no longer
+silently misparse (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1431">GH-1431</a>).</p></li>
+<li><p>Fix assorted APIC capture issues: zero-length arrays,
+<code class="docutils literal notranslate"><span class="pre">wp_apic_end_recording(NULL)</span></code> clobbering active capture state,
+<code class="docutils literal notranslate"><span class="pre">apic_get_param_cuda()</span></code> returning before its async D2H completes,
+vec3 / sub-word-aligned scalar packing, unresolved Python C API
+symbols in standalone-loaded <code class="docutils literal notranslate"><span class="pre">warp.dll</span></code> / <code class="docutils literal notranslate"><span class="pre">libwarp.so</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">wp.utils.array_scan()</span></code> silently producing stale replay output on
+CPU APIC capture (now raises <code class="docutils literal notranslate"><span class="pre">NotImplementedError</span></code>)
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1431">GH-1431</a>).</p></li>
 <li><p>Suppress the <code class="docutils literal notranslate"><span class="pre">+avx10.1-256</span></code> “invalid feature combination” warning emitted on every CPU kernel
 compile on Intel Granite Rapids hosts (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1426">GH-1426</a>).</p></li>
 <li><p>Reject <code class="docutils literal notranslate"><span class="pre">bfloat16</span></code> <code class="docutils literal notranslate"><span class="pre">out</span></code> tiles in <code class="docutils literal notranslate"><span class="pre">wp.tile_matmul()</span></code>. The underlying libmathdx
