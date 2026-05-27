@@ -10,9 +10,12 @@ from typing import TYPE_CHECKING
 
 import warp._src.types
 from warp._src.apic.types import (
-    APIC_MAX_DIMS,
+    APIC_RELOC_DATA_PTR,
+    APIC_RELOC_HANDLE,
+    APIC_RELOC_NULL,
     APICLaunchInfo,
     APICLaunchParamRecord,
+    APICLaunchPtrLocation,
 )
 
 if TYPE_CHECKING:
@@ -32,7 +35,7 @@ class APICapture:
         self.runtime = runtime
         self.apic_savable = apic_savable  # Whether capture_save() is allowed
 
-        # C++ APICStateInternal*
+        # C++ APICState*
         self.apic_state: ctypes.c_void_p = runtime.core.wp_apic_create_state()
 
         # Region tracking: id(base_array) -> (region_id, base_ptr, capacity, base_array).
@@ -77,6 +80,9 @@ class APICapture:
         base = arr
         while hasattr(base, "_ref") and base._ref is not None and hasattr(base._ref, "ptr"):
             base = base._ref
+        # Empty arrays (shape=(0,)) have arr.ptr == None; treat as zero offset.
+        if arr.ptr is None or base.ptr is None:
+            return base, 0
         byte_offset = arr.ptr - base.ptr
         return base, byte_offset
 
@@ -104,7 +110,7 @@ class APICapture:
         Returns:
             (region_id, byte_offset) for this array within its base region.
         """
-        if arr is None or arr.ptr == 0:
+        if arr is None or not arr.ptr:
             return -1, 0
 
         base, byte_offset = self._find_base(arr)
@@ -145,7 +151,7 @@ class APICapture:
 
     def get_region_id(self, arr) -> int:
         """Get the region_id for an array (must have been tracked already)."""
-        if arr is None or arr.ptr == 0:
+        if arr is None or not arr.ptr:
             return -1
         base, _ = self._find_base(arr)
         base_id = id(base)
@@ -157,6 +163,170 @@ class APICapture:
 
     # ---- APICLaunchInfo construction ----
 
+    @staticmethod
+    def _make_reloc(value_byte_offset: int, kind: int, region_id: int, region_offset: int) -> APICLaunchPtrLocation:
+        reloc = APICLaunchPtrLocation()
+        reloc.value_byte_offset = value_byte_offset
+        reloc.region_id = region_id
+        reloc.region_offset = region_offset
+        reloc.kind = kind
+        return reloc
+
+    def _walk_value_pointers(self, arg_type, original_value, packed_value, base_offset: int, out: list) -> None:
+        """Append one APICLaunchPtrLocation per pointer field inside a value blob.
+
+        The blob's bytes come from the live ``packed_value`` (the same struct
+        the kernel would receive in a non-captured launch). The walker
+        recurses through the Warp type tree to discover pointer-typed fields
+        and emits relocations that the replay path uses to patch each 8-byte
+        slot with a live process-local pointer (or remapped handle id).
+        """
+        import warp._src.codegen  # noqa: PLC0415
+
+        array_cls = warp._src.types.array
+        indexedarray_cls = warp._src.types.indexedarray
+        array_t = warp._src.types.array_t
+        indexedarray_t = warp._src.types.indexedarray_t
+
+        if warp._src.types.matches_array_class(arg_type, array_cls):
+            data_offset = base_offset + array_t.data.offset
+            grad_offset = base_offset + array_t.grad.offset
+            if original_value is not None and original_value.ptr:
+                region_id, byte_offset = self.track_array(original_value)
+                out.append(self._make_reloc(data_offset, APIC_RELOC_DATA_PTR, region_id, byte_offset))
+            else:
+                out.append(self._make_reloc(data_offset, APIC_RELOC_NULL, -1, 0))
+            grad = getattr(original_value, "grad", None) if original_value is not None else None
+            if grad is not None and grad.ptr:
+                grad_region_id, grad_byte_offset = self.track_array(grad)
+                out.append(self._make_reloc(grad_offset, APIC_RELOC_DATA_PTR, grad_region_id, grad_byte_offset))
+            else:
+                out.append(self._make_reloc(grad_offset, APIC_RELOC_NULL, -1, 0))
+
+        elif warp._src.types.matches_array_class(arg_type, indexedarray_cls):
+            # indexedarray_t lays out a nested array_t at offset 0, then
+            # ARRAY_MAX_DIMS indices pointers. Recurse into the nested array_t
+            # for data + grad, then emit one DATA_PTR / NULL reloc per indices
+            # slot.
+            inner_array_type = arg_type if isinstance(arg_type, array_cls) else array_cls(dtype=arg_type.dtype)
+            inner_value = original_value.data if original_value is not None else None
+            inner_packed = packed_value.data if packed_value is not None else None
+            self._walk_value_pointers(
+                inner_array_type, inner_value, inner_packed, base_offset + indexedarray_t.data.offset, out
+            )
+            indices_base = base_offset + indexedarray_t.indices.offset
+            ptr_size = ctypes.sizeof(ctypes.c_void_p)
+            for d in range(warp._src.types.ARRAY_MAX_DIMS):
+                slot_offset = indices_base + d * ptr_size
+                idx_arr = None
+                if original_value is not None and d < len(original_value.indices):
+                    idx_arr = original_value.indices[d]
+                if idx_arr is not None and idx_arr.ptr:
+                    idx_rid, idx_off = self.track_array(idx_arr)
+                    out.append(self._make_reloc(slot_offset, APIC_RELOC_DATA_PTR, idx_rid, idx_off))
+                else:
+                    out.append(self._make_reloc(slot_offset, APIC_RELOC_NULL, -1, 0))
+
+        elif arg_type is warp._src.types.handle:
+            handle_value = int(original_value) if original_value else 0
+            out.append(self._make_reloc(base_offset, APIC_RELOC_HANDLE, -1, handle_value))
+            if original_value:
+                # TODO(apic): APIC_RELOC_HANDLE is generic but the save path only
+                # registers meshes. wp.Volume and wp.Bvh handles flow through this
+                # branch as raw uint64 ids; there is no runtime registry today to
+                # distinguish them, so capture_save would register them as meshes
+                # by mistake. Add a kind-aware registry so non-mesh handles
+                # round-trip.
+                self.collected_mesh_ids.add(handle_value)
+
+        elif isinstance(arg_type, warp._src.codegen.Struct):
+            # Recurse into each declared field at its ctypes offset. The
+            # codegen contract is that nested array_t / indexedarray_t /
+            # @wp.struct fields are embedded by value (not by pointer), so
+            # offsets via ``getattr(ctype, name).offset`` match the on-device
+            # struct layout.
+            for field_name, var in arg_type.vars.items():
+                field_offset = base_offset + getattr(arg_type.ctype, field_name).offset
+                sub_value = getattr(original_value, field_name, None) if original_value is not None else None
+                sub_packed = getattr(packed_value, field_name) if packed_value is not None else None
+                self._walk_value_pointers(var.type, sub_value, sub_packed, field_offset, out)
+
+        else:
+            # Unsupported array kinds — refuse rather than silently producing
+            # a wrong byte stream (the walker would otherwise emit zero
+            # relocations and leave stale pointers inside the value blob).
+            try:
+                fixedarray_cls = warp._src.types.fixedarray
+            except AttributeError:
+                fixedarray_cls = None
+            if fixedarray_cls is not None and warp._src.types.matches_array_class(arg_type, fixedarray_cls):
+                raise NotImplementedError("APIC capture does not yet support wp.fixedarray launch params")
+            try:
+                from warp._src.fabric import fabricarray, indexedfabricarray  # noqa: PLC0415
+            except ImportError:
+                fabricarray = None
+                indexedfabricarray = None
+            if fabricarray is not None and warp._src.types.matches_array_class(arg_type, fabricarray):
+                raise NotImplementedError("APIC capture does not yet support wp.fabricarray launch params")
+            if indexedfabricarray is not None and warp._src.types.matches_array_class(arg_type, indexedfabricarray):
+                raise NotImplementedError("APIC capture does not yet support wp.indexedfabricarray launch params")
+            # Plain scalars / vec / mat / ctypes Arrays: no relocations.
+
+    @staticmethod
+    def _adjoint_blob_type(arg_type):
+        """Return the type whose layout matches the *adjoint* value blob.
+
+        For most argument kinds the adjoint pack uses the same ctype as the
+        forward pack (scalar, vec/mat, plain ``wp.array``, ``wp.handle``,
+        ``@wp.struct``). The one exception is ``wp.indexedarray``: its
+        adjoint is the underlying gradient buffer, packed as a plain
+        ``array_t`` rather than an ``indexedarray_t``. Walking that blob
+        with the forward (indexedarray) type would try to read ``.data`` /
+        ``.indices`` slots that don't exist.
+        """
+        indexedarray_cls = warp._src.types.indexedarray
+        array_cls = warp._src.types.array
+        if warp._src.types.matches_array_class(arg_type, indexedarray_cls):
+            return array_cls(dtype=arg_type.dtype)
+        return arg_type
+
+    def _pack_param_record(
+        self, rec, arg, original_value, packed_value, value_data_buf, relocs_buf, adjoint: bool = False
+    ) -> None:
+        """Populate a single APICLaunchParamRecord and append its relocations.
+
+        Every kernel argument is serialized as a value blob — the exact bytes
+        the live launch would pass — copied verbatim from ``packed_value``.
+        Pointer fields inside the blob (array data / grad, indexedarray
+        indices, wp.handle ids, fields inside ``@wp.struct``) are emitted
+        as relocation entries that the replay path patches at run time.
+
+        ``adjoint=True`` selects the adjoint-side layout for the walker
+        (see ``_adjoint_blob_type``); the forward ``arg.type`` doesn't
+        always match the bytes Warp packs for the corresponding adj_arg.
+        """
+        align = ctypes.alignment(type(packed_value))
+        if align <= 0:
+            align = 1
+        pad = (-len(value_data_buf)) % align
+        if pad:
+            value_data_buf.extend(b"\x00" * pad)
+
+        value_size = ctypes.sizeof(type(packed_value))
+        rec.value_offset = len(value_data_buf)
+        rec.value_size = value_size
+        rec.value_align = align
+
+        if value_size > 0:
+            src_addr = ctypes.addressof(packed_value)
+            blob = (ctypes.c_uint8 * value_size).from_address(src_addr)
+            value_data_buf.extend(bytes(blob))
+
+        walk_type = self._adjoint_blob_type(arg.type) if adjoint else arg.type
+        start = len(relocs_buf)
+        self._walk_value_pointers(walk_type, original_value, packed_value, 0, relocs_buf)
+        rec.num_relocs = len(relocs_buf) - start
+
     def build_launch_info(
         self,
         kernel,
@@ -165,6 +335,7 @@ class APICapture:
         params: list,
         fwd_args: list,
         adjoint: bool,
+        adj_args: list | None = None,
     ) -> APICLaunchInfo:
         """Build an APICLaunchInfo ctypes struct for a kernel launch.
 
@@ -172,9 +343,11 @@ class APICapture:
             kernel: The warp kernel object.
             module_exec: The ModuleExec for this kernel.
             hooks: The KernelHooks (forward/backward function pointers).
-            params: The packed parameter list (params[0] is launch_bounds, params[1:] are ctypes args).
+            params: The packed parameter list (params[0] is launch_bounds, then
+                forward args, then adjoint args when adjoint=True).
             fwd_args: The original forward arguments (warp.array objects, scalars) before packing.
             adjoint: Whether this is a backward pass.
+            adj_args: The original adjoint arguments (only used when adjoint=True).
 
         Returns:
             An APICLaunchInfo ctypes struct ready to pass to C++.
@@ -182,65 +355,77 @@ class APICapture:
         # Collect module/kernel metadata for later serialization
         self._collect_metadata(kernel, module_exec)
 
-        # Build parameter records for kernel args
-        # Use fwd_args (original warp.array objects) for array tracking,
-        # and params (packed ctypes) for scalar byte extraction.
         kernel_args = kernel.adj.args
         num_params = len(kernel_args)
+        # APICLaunchRecord.num_params is uint16_t on the wire; refuse anything that
+        # would truncate at serialization rather than producing a misaligned record.
+        if num_params > 0xFFFF:
+            raise ValueError(
+                f"APIC capture cannot serialize kernel '{kernel.key}': "
+                f"{num_params} parameters exceeds the {0xFFFF}-parameter limit."
+            )
+        if adjoint:
+            actual_adj = 0 if adj_args is None else len(adj_args)
+            if actual_adj != num_params:
+                raise ValueError(
+                    f"APIC capture of backward kernel '{kernel.key}' expects {num_params} adj_args, got {actual_adj}."
+                )
         param_array = (APICLaunchParamRecord * num_params)() if num_params > 0 else None
+
+        # Per-launch value-data section + flat reloc table. The same buffers
+        # are shared between forward and adjoint param records; each record's
+        # ``value_offset`` and ``num_relocs`` slice them.
+        value_data_buf = bytearray()
+        relocs_buf: list = []
 
         for i, arg in enumerate(kernel_args):
             rec = param_array[i] if param_array else None
             if rec is None:
                 break
-
             rec.param_index = i + 1  # 1-based (0 is launch_bounds)
             original_value = fwd_args[i]  # Original warp.array or scalar
             packed_value = params[1 + i]  # Packed ctypes value
+            self._pack_param_record(rec, arg, original_value, packed_value, value_data_buf, relocs_buf)
 
-            if warp._src.types.is_array(original_value):
-                # Array parameter — use original warp.array for tracking
-                rec.is_array = 1
-                region_id, byte_offset = self.track_array(original_value)
-                rec.region_id = region_id
-                rec.byte_offset = byte_offset
-                rec.ndim = original_value.ndim
-                rec.element_size = warp._src.types.type_size_in_bytes(original_value.dtype)
-                for d in range(min(original_value.ndim, APIC_MAX_DIMS)):
-                    rec.shape[d] = original_value.shape[d]
-                    rec.strides[d] = original_value.strides[d]
-            elif warp._src.types.is_array(arg.type):
-                # Array type but value is None (null array)
-                rec.is_array = 1
-                rec.region_id = -1
-            else:
-                # Scalar parameter — pack raw bytes from the ctypes-packed value
-                rec.is_array = 0
-                rec.region_id = -1
+        # For backward kernels, also pack the adjoint param records. The
+        # validate-at-entry block above guarantees adj_args has exactly
+        # num_params entries when we get here.
+        adj_param_array = None
+        if adjoint and num_params > 0:
+            adj_param_array = (APICLaunchParamRecord * num_params)()
+            adj_offset = 1 + num_params  # adj args follow fwd in `params`
+            for i, arg in enumerate(kernel_args):
+                rec = adj_param_array[i]
+                rec.param_index = num_params + i + 1
+                original_value = adj_args[i]
+                packed_value = params[adj_offset + i]
+                self._pack_param_record(
+                    rec, arg, original_value, packed_value, value_data_buf, relocs_buf, adjoint=True
+                )
 
-                # Collect mesh IDs for serialization.
-                # wp.handle-typed parameters are treated as mesh handles.
-                # Volume and BVH serialization is not yet supported.
-                if arg.type is warp._src.types.handle and original_value:
-                    self.collected_mesh_ids.add(int(original_value))
-                scalar_size = ctypes.sizeof(type(packed_value))
-                max_scalar_size = APIC_MAX_DIMS * 8 * 2  # 64 bytes (shape + strides)
-                if scalar_size > max_scalar_size:
-                    raise ValueError(
-                        f"Scalar parameter too large for APIC capture: {scalar_size} bytes (max {max_scalar_size})"
-                    )
-                rec.byte_offset = scalar_size  # Store scalar_size in byte_offset
+        # Materialise the value_data buffer for the C++ side.
+        if value_data_buf:
+            value_buf = (ctypes.c_uint8 * len(value_data_buf)).from_buffer(value_data_buf)
+        else:
+            value_buf = None
 
-                shape_space = APIC_MAX_DIMS * 8  # 32 bytes
-                src_addr = ctypes.addressof(packed_value)
-                first_part = min(scalar_size, shape_space)
-                ctypes.memmove(ctypes.addressof(rec.shape), src_addr, first_part)
-                if scalar_size > shape_space:
-                    ctypes.memmove(
-                        ctypes.addressof(rec.strides),
-                        src_addr + shape_space,
-                        scalar_size - shape_space,
-                    )
+        # Materialise the reloc table for the C++ side. APICLaunchPtrLocation is a
+        # packed ctypes struct; copy each entry's bytes into a contiguous
+        # array.
+        if relocs_buf:
+            reloc_array = (APICLaunchPtrLocation * len(relocs_buf))()
+            reloc_size = ctypes.sizeof(APICLaunchPtrLocation)
+            for i, r in enumerate(relocs_buf):
+                ctypes.memmove(ctypes.addressof(reloc_array[i]), ctypes.addressof(r), reloc_size)
+        else:
+            reloc_array = None
+
+        # Keep references so the buffers outlive the launch info struct
+        # (which holds raw pointers into them).
+        self._last_value_data = value_buf
+        self._last_param_array = param_array
+        self._last_adj_param_array = adj_param_array
+        self._last_relocs = reloc_array
 
         # Build APICLaunchInfo
         info = APICLaunchInfo()
@@ -252,6 +437,19 @@ class APICapture:
         info.params = param_array
         info.num_params = num_params
         info.kernel_dim = kernel.adj.kernel_dim
+        info.value_data_size = len(value_data_buf)
+        info.value_data = (
+            ctypes.cast(value_buf, ctypes.POINTER(ctypes.c_uint8))
+            if value_buf is not None
+            else ctypes.cast(None, ctypes.POINTER(ctypes.c_uint8))
+        )
+        info.adj_params = (
+            adj_param_array if adj_param_array is not None else ctypes.cast(None, ctypes.POINTER(APICLaunchParamRecord))
+        )
+        info.num_relocs = len(relocs_buf)
+        info.relocs = (
+            reloc_array if reloc_array is not None else ctypes.cast(None, ctypes.POINTER(APICLaunchPtrLocation))
+        )
 
         return info
 

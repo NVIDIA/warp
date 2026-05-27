@@ -4406,11 +4406,11 @@ class Graph:
 
         # APIC recording state
         self.apic: bool = False  # Whether APIC serialization is allowed
-        self.apic_state: ctypes.c_void_p | None = None  # C++ APICStateInternal*
+        self.apic_state: ctypes.c_void_p | None = None  # C++ APICState*
         self._apic_capture = None  # APICapture instance
 
         # APIC loaded graph (from .wrp file)
-        self._native_graph: ctypes.c_void_p | None = None  # APICGraphInternal*
+        self._native_graph: ctypes.c_void_p | None = None  # APICGraph*
         self._params: dict = {}  # name -> {"size": int}
 
     def __del__(self):
@@ -4440,7 +4440,7 @@ class Graph:
         except (TypeError, AttributeError):
             pass
 
-        # For loaded APIC graphs, the C++ APICGraphInternal owns the CUDA graph.
+        # For loaded APIC graphs, the C++ APICGraph owns the CUDA graph.
         # Don't double-free it here.
         if hasattr(self, "_native_graph") and self._native_graph is not None:
             return
@@ -4884,6 +4884,21 @@ class Runtime:
             self.core.wp_apic_get_recording_state.restype = ctypes.c_void_p
             self.core.wp_apic_get_operation_count.argtypes = [ctypes.c_void_p]
             self.core.wp_apic_get_operation_count.restype = ctypes.c_uint32
+            self.core.wp_apic_begin_branch.argtypes = [ctypes.c_void_p]
+            self.core.wp_apic_begin_branch.restype = ctypes.c_void_p
+            self.core.wp_apic_end_branch.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.wp_apic_end_branch.restype = ctypes.c_void_p
+            self.core.wp_apic_free_branch_body.argtypes = [ctypes.c_void_p]
+            self.core.wp_apic_free_branch_body.restype = None
+            self.core.wp_apic_record_conditional.argtypes = [
+                ctypes.c_void_p,  # state
+                ctypes.c_int,  # op_type
+                ctypes.c_int32,  # cond_region_id
+                ctypes.c_uint64,  # cond_offset
+                ctypes.c_void_p,  # branch_a (consumed)
+                ctypes.c_void_p,  # branch_b (consumed)
+            ]
+            self.core.wp_apic_record_conditional.restype = None
             self.core.wp_apic_register_memory_region_by_ptr.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_uint64,
@@ -8855,11 +8870,6 @@ def launch(
 
             # Check if CPU capture is active
             if runtime._apic_capture is not None and device.is_cpu:
-                if adjoint:
-                    raise RuntimeError(
-                        "Backward kernel launches are not supported during graph capture. "
-                        "Use wp.Tape outside of capture scope instead."
-                    )
                 apic_capture = runtime._apic_capture
                 # Retain the module_exec on the graph so its LLVM shared object
                 # (and therefore the kernel function pointers stored in
@@ -8875,6 +8885,7 @@ def launch(
                     params,
                     fwd_args,
                     adjoint,
+                    adj_args=adj_args if adjoint else None,
                 )
                 func = hooks.backward if adjoint else hooks.forward
                 # Register kernel function pointer for byte-stream replay
@@ -10083,6 +10094,79 @@ def capture_resume(graph: Graph, device: DeviceLike = None, stream: Stream | Non
 condition_host = None
 
 
+def _apic_capture_branch(callback, **kwargs):
+    """Run ``callback`` with the APIC byte stream redirected into a fresh
+    sub-stream. Returns the branch body (an opaque void* owned by C++,
+    consumed by ``wp_apic_record_conditional``).
+
+    Kernel launches, memcpy, and memset are recorded but not executed under
+    an active APIC capture (wp_cpu_launch_kernel / wp_memcpy_* skip the
+    execute path when ``g_apic_state`` is set), so the branch body's
+    side-effects on tracked arrays only land at replay time. This matches
+    CUDA graph capture semantics.
+    """
+    apic_capture = runtime._apic_capture
+    start = runtime.core.wp_apic_begin_branch(apic_capture.apic_state)
+    try:
+        if isinstance(callback, Graph):
+            raise NotImplementedError(
+                "APIC capture_if/capture_while with Graph branches is not yet implemented; pass a Callable instead"
+            )
+        if not isinstance(callback, Callable):
+            raise TypeError("branch must be a Callable")
+        callback(**kwargs)
+    except Exception:
+        # Free the body we'd otherwise leak.
+        body = runtime.core.wp_apic_end_branch(apic_capture.apic_state, start)
+        runtime.core.wp_apic_free_branch_body(body)
+        raise
+    return runtime.core.wp_apic_end_branch(apic_capture.apic_state, start)
+
+
+def _apic_record_capture_if(condition, on_true, on_false, **kwargs):
+    from warp._src.apic.types import APIC_OP_IF  # noqa: PLC0415
+
+    apic_capture = runtime._apic_capture
+    cond_region_id, cond_offset = apic_capture.track_array(condition)
+    if cond_region_id < 0:
+        raise RuntimeError("capture_if(): condition array could not be tracked for APIC capture (null pointer?)")
+    branch_a = ctypes.c_void_p()
+    branch_b = ctypes.c_void_p()
+    try:
+        if on_true is not None:
+            branch_a.value = _apic_capture_branch(on_true, **kwargs)
+        if on_false is not None:
+            branch_b.value = _apic_capture_branch(on_false, **kwargs)
+    except Exception:
+        if branch_a.value:
+            runtime.core.wp_apic_free_branch_body(branch_a)
+        if branch_b.value:
+            runtime.core.wp_apic_free_branch_body(branch_b)
+        raise
+    runtime.core.wp_apic_record_conditional(
+        apic_capture.apic_state, APIC_OP_IF, cond_region_id, cond_offset, branch_a, branch_b
+    )
+
+
+def _apic_record_capture_while(condition, while_body, **kwargs):
+    from warp._src.apic.types import APIC_OP_WHILE  # noqa: PLC0415
+
+    apic_capture = runtime._apic_capture
+    cond_region_id, cond_offset = apic_capture.track_array(condition)
+    if cond_region_id < 0:
+        raise RuntimeError("capture_while(): condition array could not be tracked for APIC capture (null pointer?)")
+    body = ctypes.c_void_p()
+    try:
+        body.value = _apic_capture_branch(while_body, **kwargs)
+    except Exception:
+        if body.value:
+            runtime.core.wp_apic_free_branch_body(body)
+        raise
+    runtime.core.wp_apic_record_conditional(
+        apic_capture.apic_state, APIC_OP_WHILE, cond_region_id, cond_offset, body, None
+    )
+
+
 def capture_if(
     condition: warp.array[int],
     on_true: Callable | Graph | None = None,
@@ -10123,6 +10207,15 @@ def capture_if(
         graph = device.captures.get(stream)
     else:
         graph = None
+
+    # Under CPU APIC capture, record an APIC_OP_IF op with the two branches
+    # captured as nested sub-streams. wp_cpu_launch_kernel / wp_memcpy_*
+    # skip execution while recording is live, so the callback's side
+    # effects on tracked arrays only land at replay time (matches CUDA
+    # graph capture semantics).
+    if device.is_cpu and runtime._apic_capture is not None:
+        _apic_record_capture_if(condition, on_true, on_false, **kwargs)
+        return
 
     if graph is None:
         # if no graph is active, just execute the correct branch directly
@@ -10262,6 +10355,13 @@ def capture_while(condition: warp.array[int], while_body: Callable | Graph, stre
         graph = device.captures.get(stream)
     else:
         graph = None
+
+    # Under CPU APIC capture, record an APIC_OP_WHILE op with the body
+    # captured as a nested sub-stream. See capture_if() above for why the
+    # callback's side effects only land at replay time.
+    if device.is_cpu and runtime._apic_capture is not None:
+        _apic_record_capture_while(condition, while_body, **kwargs)
+        return
 
     if graph is None:
         # since no graph is active, just execute the kernels directly

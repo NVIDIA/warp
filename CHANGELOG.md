@@ -5,6 +5,10 @@
 ### Added
 
 - Add `wp.tile_empty` to allocate a tile of uninitialized items ([GH-1312](https://github.com/NVIDIA/warp/issues/1312)).
+- Extend APIC graph capture on CPU with support for backward (adjoint) kernel launches
+  and tile-using kernels, plus kernel parameters of any size and `@wp.struct` /
+  `wp.indexedarray` arguments containing pointers
+  ([GH-1431](https://github.com/NVIDIA/warp/issues/1431)).
 - Expose CUDA graph capture mode via `ScopedCapture` / `capture_begin()`
   ([GH-1410](https://github.com/NVIDIA/warp/issues/1410)).
 - Add pre-allocated functors for `warp.optim.linear` solvers. Passing `run=False` to `cg`, `cr`, `bicgstab`, or `gmres`
@@ -115,9 +119,42 @@
   enabling zero-copy launches on HMM and ATS systems. Add `warp.config.launch_array_access_mode` with relaxed, strict,
   and checked modes for pre-launch accessibility diagnostics on mixed-device array launches
   ([GH-1461](https://github.com/NVIDIA/warp/issues/1461)).
+- Unify the APIC kernel-launch parameter ABI around a single value-blob
+  section plus per-blob relocation metadata. Every kernel argument
+  (scalar, vec/mat, by-value `@wp.struct`, `wp.array`, `wp.indexedarray`,
+  `wp.handle`) is now serialized as a value blob with the exact bytes a
+  live launch would pass; pointer fields inside the blob (`array_t.data`,
+  `array_t.grad`, `indexedarray_t.indices[d]`, embedded handles) are
+  emitted as relocations that the replay path patches with live
+  process-local pointers. Replaces the previous split between
+  array-specific records, 64-byte inline scalar packing, and a per-launch
+  scalar pool. Adds end-to-end support for `wp.indexedarray` launch
+  parameters and for `@wp.struct` arguments containing arrays
+  ([GH-1431](https://github.com/NVIDIA/warp/issues/1431)).
+- **Breaking:** `APICState` and `APICGraph` now refer to the struct
+  itself, not pointer typedefs, so callers of the APIC C API must write
+  `APICState* s = wp_apic_create_state()` and
+  `APICGraph* g = wp_apic_load_graph(...)`. `.wrp` files produced by
+  earlier versions are not compatible and will not load
+  ([GH-1431](https://github.com/NVIDIA/warp/issues/1431)).
 
 ### Fixed
 
+- Fix APIC backward replay so it consumes output gradients exactly like live
+  `wp.Tape().backward()`: the array descriptor reconstructed at replay now
+  carries the original `grad` pointer and array flags (including
+  `ARRAY_FLAG_RETAIN_GRAD`), so `adj_array_store`'s consume / retain
+  decision matches live semantics. Also tightens the `.wrp` loader to a
+  strict-equality format-version check so older `.wrp` files no longer
+  silently misparse ([GH-1431](https://github.com/NVIDIA/warp/issues/1431)).
+- Fix assorted APIC capture issues: zero-length arrays,
+  `wp_apic_end_recording(NULL)` clobbering active capture state,
+  `apic_get_param_cuda()` returning before its async D2H completes,
+  vec3 / sub-word-aligned scalar packing, unresolved Python C API
+  symbols in standalone-loaded `warp.dll` / `libwarp.so`, and
+  `wp.utils.array_scan()` silently producing stale replay output on
+  CPU APIC capture (now raises `NotImplementedError`)
+  ([GH-1431](https://github.com/NVIDIA/warp/issues/1431)).
 - Suppress the `+avx10.1-256` "invalid feature combination" warning emitted on every CPU kernel
   compile on Intel Granite Rapids hosts ([GH-1426](https://github.com/NVIDIA/warp/issues/1426)).
 - Reject `bfloat16` `out` tiles in `wp.tile_matmul()`. The underlying libmathdx

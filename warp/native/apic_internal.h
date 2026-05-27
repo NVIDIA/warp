@@ -105,25 +105,25 @@ struct APICRegion {
     void* ptr = nullptr;  // Allocated pointer (device or host depending on context)
 };
 
-struct APICPtrLocation {
+struct APICMemoryPtrLocation {
     uint32_t region_id;
     uint64_t offset;
     uint64_t stride;
 };
 
 // CPU kernel function pointers, resolved during capture / load and consumed
-// by CPU replay. Stored both in APICStateInternal (for live capture) and
-// APICGraphInternal (for loaded .wrp graphs), keyed by kernel name.
+// by CPU replay. Stored both in APICState (for live capture) and
+// APICGraph (for loaded .wrp graphs), keyed by kernel name.
 struct APICCPUKernel {
     void* forward_fn = nullptr;
     void* backward_fn = nullptr;
 };
 
 // ============================================================================
-// APICStateInternal — recording state
+// APICState — recording state
 // ============================================================================
 
-struct APICStateInternal {
+struct APICState {
     bool recording = false;
 
     // Set by wp_apic_end_recording after apic_validate_operation_stream passes.
@@ -160,7 +160,7 @@ struct APICStateInternal {
     std::vector<std::pair<std::string, uint32_t>> bindings;
 
     // Handle pointer locations
-    std::vector<APICPtrLocation> ptr_locations;
+    std::vector<APICMemoryPtrLocation> ptr_locations;
 
     // Mesh records (registered from Python during capture_save)
     std::vector<APICMeshRecord> mesh_records;
@@ -177,10 +177,10 @@ struct APICStateInternal {
 };
 
 // ============================================================================
-// APICGraphInternal — loaded .wrp graph state
+// APICGraph — loaded .wrp graph state
 // ============================================================================
 
-struct APICGraphInternal {
+struct APICGraph {
     void* cuda_context = nullptr;
     int target_arch = 0;
     APICDeviceType device_type = APIC_DEVICE_CUDA;
@@ -199,7 +199,7 @@ struct APICGraphInternal {
     bool operations_validated = false;
 
     std::unordered_map<uint64_t, uint64_t> handle_ptr_remap;
-    std::vector<APICPtrLocation> ptr_locations;
+    std::vector<APICMemoryPtrLocation> ptr_locations;
     std::vector<APICMeshRecord> mesh_records;
     std::vector<uint64_t> created_mesh_ids;
 
@@ -215,7 +215,7 @@ struct APICGraphInternal {
     std::string base_path;
 
     // Destructor defined in apic.cu (CUDA builds) / apic.cpp (non-CUDA builds)
-    ~APICGraphInternal();
+    ~APICGraph();
 };
 
 // ============================================================================
@@ -225,7 +225,7 @@ struct APICGraphInternal {
 // Walk the operation byte stream once and verify that every record header,
 // variable-length payload, and op_type is within bounds. Prints a diagnostic
 // and returns false on first inconsistency. Defined in apic.cpp.
-bool apic_validate_operation_stream(const uint8_t* data, size_t size, uint32_t operation_count);
+bool apic_validate_operation_stream(const uint8_t* data, size_t size, uint32_t operation_count, uint32_t depth = 0);
 
 // ============================================================================
 // .wrp file reading helpers (pure C++, defined in apic.cpp)
@@ -234,36 +234,36 @@ bool apic_validate_operation_stream(const uint8_t* data, size_t size, uint32_t o
 bool apic_read_file(const char* path, std::vector<uint8_t>& data);
 
 // .wrp parsing — pure C++ (defined in apic.cpp). Populate fields on `graph`.
-bool apic_parse_metadata(const uint8_t* data, size_t size, APICGraphInternal* graph);
-bool apic_parse_operations(const uint8_t* data, size_t size, APICGraphInternal* graph);
-bool apic_parse_memory_regions(const uint8_t* data, size_t size, APICGraphInternal* graph);
+bool apic_parse_metadata(const uint8_t* data, size_t size, APICGraph* graph);
+bool apic_parse_operations(const uint8_t* data, size_t size, APICGraph* graph);
+bool apic_parse_memory_regions(const uint8_t* data, size_t size, APICGraph* graph);
 
 // Reconstruct mesh objects from serialized mesh records. Dispatches to
 // wp_mesh_create_host or wp_mesh_create_device based on graph->device_type.
-bool apic_create_meshes(APICGraphInternal* graph);
+bool apic_create_meshes(APICGraph* graph);
 
 // Free CPU-side graph resources: destroy host meshes, free host region memory.
-// Defined in apic.cpp; called from the CPU branch of APICGraphInternal's
+// Defined in apic.cpp; called from the CPU branch of APICGraph's
 // destructor (on both CUDA and non-CUDA builds).
-void apic_destroy_cpu_graph_resources(APICGraphInternal* graph);
+void apic_destroy_cpu_graph_resources(APICGraph* graph);
 
 // Allocate host memory for each region and initialize from memory_ptr (the
 // raw bytes of the memory section of a .wrp file). Called from the CPU branch
 // of wp_apic_load_graph. Returns false on allocation failure.
-bool apic_init_cpu_graph_memory(APICGraphInternal* graph, const uint8_t* memory_ptr, size_t memory_size);
+bool apic_init_cpu_graph_memory(APICGraph* graph, const uint8_t* memory_ptr, size_t memory_size);
 
 // Register a CPU mesh (host pointers) with the APIC state: registers
 // points/indices/(velocities) as memory regions with initial data and appends
 // an APICMeshRecord. mesh_id here is the address of a wp::Mesh struct.
 // Used by both the non-CUDA wp_apic_register_mesh (in apic.cpp) and the
 // CUDA-build version (in apic.cu) when the descriptor lookup fails.
-void apic_register_cpu_mesh(APICState state, uint64_t mesh_id);
+void apic_register_cpu_mesh(APICState* state, uint64_t mesh_id);
 
 // Fix up handle pointers (mesh IDs etc.) in memory regions after meshes are
 // recreated during graph load. Defined in apic.cpp; the CPU path is fully
 // implemented there, and in CUDA builds it forwards device handles through a
 // private helper defined in apic.cu.
-void apic_fixup_ptr_locations(APICGraphInternal* graph);
+void apic_fixup_ptr_locations(APICGraph* graph);
 
 // ============================================================================
 // CUDA helpers (declared here so apic.cpp can call them without including
@@ -274,23 +274,19 @@ void apic_fixup_ptr_locations(APICGraphInternal* graph);
 // Handle-pointer fixup for a single offset within a CUDA region.
 // Reads uint64_t at (base + offset), remaps via graph->handle_ptr_remap,
 // writes back. Returns false on cudaMemcpy failure.
-bool apic_fixup_handle_cuda(APICGraphInternal* graph, uint8_t* base, uint64_t offset);
+bool apic_fixup_handle_cuda(APICGraph* graph, uint8_t* base, uint64_t offset);
 
 // Host-to-device copy for wp_apic_set_param on CUDA graphs.
-bool apic_set_param_cuda(APICGraphInternal* graph, void* dst, const void* src, size_t size);
+bool apic_set_param_cuda(APICGraph* graph, void* dst, const void* src, size_t size);
 
 // Device-to-host copy for wp_apic_get_param on CUDA graphs.
-bool apic_get_param_cuda(APICGraphInternal* graph, void* dst, const void* src, size_t size);
+bool apic_get_param_cuda(APICGraph* graph, void* dst, const void* src, size_t size);
 
 // CUDA-side setup during wp_apic_load_graph: load CUmodules from the
 // modules_dir and cudaMalloc each region, then apic_init_memory (H2D) copies
 // initial data from the .wrp file into device memory. Returns false on
 // failure; the caller is responsible for deleting the graph.
 bool apic_load_graph_cuda_setup(
-    APICGraphInternal* graph,
-    void* context,
-    const std::string& modules_dir,
-    const uint8_t* memory_ptr,
-    size_t memory_size
+    APICGraph* graph, void* context, const std::string& modules_dir, const uint8_t* memory_ptr, size_t memory_size
 );
 #endif

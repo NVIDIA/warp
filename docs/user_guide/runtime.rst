@@ -1628,27 +1628,46 @@ dispatch overhead that otherwise dominates CPU launches:
     # Replay the entire batch with one native call into Warp
     wp.capture_launch(capture.graph)
 
-The set of operations currently recorded on CPU mirrors the CUDA path: kernel
-launches (:func:`wp.launch() <warp.launch>`, :func:`wp.launch_tiled() <warp.launch_tiled>`),
-memory copies (:func:`wp.copy() <warp.copy>`), and zero-initialization
-(:meth:`array.zero_() <warp.array.zero_>`). Other operations are not yet
-recorded.
+The operations recorded on CPU now cover most of the CUDA path:
+
+- Forward and backward kernel launches
+  (:func:`wp.launch() <warp.launch>`, :func:`wp.launch_tiled() <warp.launch_tiled>`,
+  and the adjoint launches emitted by :class:`wp.Tape <warp.Tape>` /
+  :meth:`Tape.backward() <warp.Tape.backward>`).
+- Memory copies (:func:`wp.copy() <warp.copy>`) and zero-initialization
+  (:meth:`array.zero_() <warp.array.zero_>`).
+- Conditional graph nodes (:func:`wp.capture_if() <warp.capture_if>` and
+  :func:`wp.capture_while() <warp.capture_while>`). The condition is re-evaluated
+  on every replay, so a captured ``while`` loop can iterate a different number
+  of times each call.
+
+The following kernel patterns are also supported under capture: tile primitives
+(``wp.tile_zeros``, ``wp.tile``, ``wp.untile``, tile reductions and scans),
+kernels with scalar parameters of any size (serialized into per-launch value
+blobs, with pointer fields patched via relocation metadata at replay), and
+empty / zero-length array arguments.
 
 Current limitations of CPU graph capture:
 
-- :meth:`array.fill_() <warp.array.fill_>` is not recorded on CPU and is silently
-  dropped from the captured graph. Use :meth:`array.zero_() <warp.array.zero_>` or
-  a kernel launch instead.
-- Conditional graph nodes (:func:`wp.capture_if() <warp.capture_if>`,
-  :func:`wp.capture_while() <warp.capture_while>`) are CUDA-only and have no CPU
-  graph counterpart. They still work outside graph capture on CPU, evaluating the
-  condition immediately.
+- :meth:`array.fill_() <warp.array.fill_>` for non-zero values is not yet
+  recorded on CPU and is silently dropped from the captured graph. Use
+  :meth:`array.zero_() <warp.array.zero_>` or a kernel launch instead.
+- :func:`wp.utils.array_scan() <warp.utils.array_scan>` is not yet recorded
+  into the CPU APIC byte stream; calling it inside a CPU :class:`ScopedCapture`
+  raises :exc:`NotImplementedError`. Run the scan before or after the captured
+  region.
+- Memsets and memcpys whose destination pointer was not previously seen by
+  Warp's tracker (for example, buffers allocated by an external solver such as
+  mujoco-warp) print ``APIC: Error - memset dst pointer not in any registered
+  region`` and are dropped from the captured graph. Routing the allocation
+  through :func:`wp.empty() <warp.empty>` / :func:`wp.zeros() <warp.zeros>`, or
+  passing the buffer through a kernel launch, ensures it is tracked.
 - Nested captures are rejected on both CPU and CUDA. Only one capture may be
   active at a time on a given thread.
 - Arrays used during capture must remain alive for the lifetime of the captured
   graph. Reusing a freed CPU pointer during capture leads to undefined behavior;
-  CUDA capture defers frees automatically while a capture is in progress, but the
-  CPU path does not.
+  CUDA capture defers frees automatically while a capture is in progress, but
+  the CPU path does not.
 
 
 .. _apic_save_load:

@@ -80,6 +80,17 @@ def array_scan(in_array: wp.array, out_array: wp.array, inclusive: bool = True) 
     from warp._src.context import runtime  # noqa: PLC0415
 
     if in_array.device.is_cpu:
+        # CPU APIC capture doesn't yet record array_scan operations, so the
+        # captured byte stream would silently produce stale output on replay
+        # (capture-time scan result, not a fresh recompute from the current
+        # input). Raise rather than serialize a broken graph; the supported
+        # workaround is to run the scan before / after the captured region.
+        if runtime._apic_capture is not None:
+            raise NotImplementedError(
+                "wp.utils.array_scan() is not yet supported during CPU APIC capture: "
+                "the scan would be silently dropped from the captured byte stream and "
+                "replay would return stale output. Run the scan outside ScopedCapture."
+            )
         if in_array.dtype == wp.int32:
             runtime.core.wp_array_scan_int_host(in_array.ptr, out_array.ptr, in_array.size, inclusive)
         elif in_array.dtype == wp.float32:

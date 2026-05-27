@@ -303,7 +303,7 @@ int main(int argc, char** argv)
 
     // Load APIC graph
     printf("\nLoading APIC graph from: %s\n", graph_path);
-    APICGraph graph = wp_apic_load_graph(context, graph_path, 0);  // 0 = CUDA device
+    APICGraph* graph = wp_apic_load_graph(context, graph_path, 0);  // 0 = CUDA device
     if (!graph) {
         fprintf(stderr, "Failed to load graph: %s\n", wp_get_error_string());
         return 1;

@@ -102,7 +102,7 @@ hosts without a display server.
 
 ```cpp
 // Load a graph for CPU execution (device_type=1, context=NULL)
-APICGraph graph = wp_apic_load_graph(NULL, "path/to/graph", 1);
+APICGraph* graph = wp_apic_load_graph(NULL, "path/to/graph", 1);
 
 // Set/get named parameters (host memory)
 wp_apic_set_param(graph, "heights", host_ptr, size);

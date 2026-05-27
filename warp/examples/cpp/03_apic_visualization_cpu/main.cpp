@@ -276,7 +276,7 @@ bool load_warp_clang()
     return g_wp_load_obj && g_wp_lookup;
 }
 
-bool load_cpu_modules(APICGraph graph, const char* modules_dir)
+bool load_cpu_modules(APICGraph* graph, const char* modules_dir)
 {
     // Load all .o files from the modules directory and resolve kernel functions
     int num_kernels = wp_apic_get_num_kernels(graph);
@@ -394,7 +394,7 @@ int main(int argc, char** argv)
 
     // Load APIC graph for CPU device (device_type=1)
     printf("\nLoading APIC graph from: %s\n", graph_path);
-    APICGraph graph = wp_apic_load_graph(nullptr, graph_path, 1);  // 1 = CPU device
+    APICGraph* graph = wp_apic_load_graph(nullptr, graph_path, 1);  // 1 = CPU device
     if (!graph) {
         fprintf(stderr, "Failed to load graph: %s\n", wp_get_error_string());
         return 1;

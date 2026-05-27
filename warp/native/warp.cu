@@ -1071,7 +1071,7 @@ bool wp_memcpy_d2d(void* context, void* dest, void* src, size_t n, void* stream)
     // make recording unconditional at capture time. For now we still execute
     // the CUDA op live under stream capture, but the record itself is API-
     // intent only and doesn't depend on the live call's result.
-    APICState apic_state = wp_apic_get_recording_state();
+    APICState* apic_state = wp_apic_get_recording_state();
     if (apic_state) {
         int32_t dst_region, src_region;
         uint64_t dst_offset, src_offset;
@@ -1255,7 +1255,7 @@ bool wp_memset_device(void* context, void* dest, int value, size_t n, void* stre
     // make recording unconditional at capture time. For now we still execute
     // the CUDA op live under stream capture, but the record itself is API-
     // intent only and doesn't depend on the live call's result.
-    APICState apic_state = wp_apic_get_recording_state();
+    APICState* apic_state = wp_apic_get_recording_state();
     if (apic_state) {
         int32_t region_id;
         uint64_t offset;
@@ -5232,7 +5232,7 @@ size_t wp_cuda_launch_kernel(
 
     // APIC recording: record kernel launch to byte stream if capturing
     if (apic_info) {
-        APICState state = wp_apic_get_recording_state();
+        APICState* state = wp_apic_get_recording_state();
         if (state) {
             // Read shape and size from launch_bounds_t<N> in args[0].
             int ndim = apic_info->kernel_dim;
@@ -5257,7 +5257,9 @@ size_t wp_cuda_launch_kernel(
 
             apic_record_kernel_launch(
                 state, apic_info->kernel_key, apic_info->module_hash, apic_info->is_forward, shape, ndim, launch_size,
-                max_blocks, block_dim, shared_memory_bytes, apic_info->params, apic_info->num_params
+                max_blocks, block_dim, shared_memory_bytes, apic_info->params, apic_info->num_params,
+                apic_info->adj_params, apic_info->relocs, apic_info->num_relocs, apic_info->value_data,
+                apic_info->value_data_size
             );
         }
     }

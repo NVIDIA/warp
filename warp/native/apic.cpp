@@ -11,7 +11,7 @@
 // helpers declared in apic_internal.h under WP_ENABLE_CUDA
 // (apic_load_graph_cuda_setup, apic_set_param_cuda, apic_get_param_cuda,
 // apic_fixup_handle_cuda). apic.cu also owns the CUDA build of the
-// APICGraphInternal destructor, the device-mesh registration path, and
+// APICGraph destructor, the device-mesh registration path, and
 // CUDA graph rebuild / launch.
 
 #include "warp.h"
@@ -21,6 +21,8 @@
 #include "error.h"
 #include "mesh.h"
 
+#include <cassert>
+#include <cstddef>  // offsetof
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -30,13 +32,13 @@
 // Thread-local Recording State
 // ============================================================================
 
-static thread_local APICState g_apic_state = nullptr;
+static thread_local APICState* g_apic_state = nullptr;
 
-APICState wp_apic_create_state() { return new APICStateInternal(); }
+APICState* wp_apic_create_state() { return new APICState(); }
 
-void wp_apic_destroy_state(APICState state) { delete state; }
+void wp_apic_destroy_state(APICState* state) { delete state; }
 
-void wp_apic_begin_recording(APICState state)
+void wp_apic_begin_recording(APICState* state)
 {
     if (state) {
         // Nested captures are not supported (matches CUDA runtime behavior).
@@ -51,7 +53,7 @@ void wp_apic_begin_recording(APICState state)
     }
 }
 
-void wp_apic_end_recording(APICState state)
+void wp_apic_end_recording(APICState* state)
 {
     if (state) {
         state->recording = false;
@@ -61,19 +63,20 @@ void wp_apic_end_recording(APICState state)
         state->operations_validated = apic_validate_operation_stream(
             state->operation_stream.data(), state->operation_stream.size(), state->operation_count
         );
+        g_apic_state = nullptr;
     }
-    g_apic_state = nullptr;
 }
 
-APICState wp_apic_get_recording_state() { return g_apic_state; }
+APICState* wp_apic_get_recording_state() { return g_apic_state; }
 
-uint32_t wp_apic_get_operation_count(APICState state) { return state ? state->operation_count : 0; }
+uint32_t wp_apic_get_operation_count(APICState* state) { return state ? state->operation_count : 0; }
 
 // ============================================================================
 // Memory Region Registration
 // ============================================================================
 
-uint32_t wp_apic_register_memory_region_by_ptr(APICState state, uint64_t base_ptr, uint64_t size, uint32_t element_size)
+uint32_t
+wp_apic_register_memory_region_by_ptr(APICState* state, uint64_t base_ptr, uint64_t size, uint32_t element_size)
 {
     if (!state)
         return 0;
@@ -82,7 +85,7 @@ uint32_t wp_apic_register_memory_region_by_ptr(APICState state, uint64_t base_pt
             return state->ptr_region_table[i].region_id;
     }
     uint32_t region_id = state->next_region_id++;
-    APICStateInternal::PtrRegionEntry entry;
+    APICState::PtrRegionEntry entry;
     entry.base_ptr = base_ptr;
     entry.size = size;
     entry.region_id = region_id;
@@ -90,11 +93,11 @@ uint32_t wp_apic_register_memory_region_by_ptr(APICState state, uint64_t base_pt
     return region_id;
 }
 
-void wp_apic_register_memory_region(APICState state, uint32_t region_id, uint64_t size, uint32_t es, const void* data)
+void wp_apic_register_memory_region(APICState* state, uint32_t region_id, uint64_t size, uint32_t es, const void* data)
 {
     if (!state)
         return;
-    APICStateInternal::RegionInfo info;
+    APICState::RegionInfo info;
     info.region_id = region_id;
     info.size = size;
     info.element_size = es;
@@ -105,7 +108,7 @@ void wp_apic_register_memory_region(APICState state, uint32_t region_id, uint64_
     state->memory_regions[region_id] = std::move(info);
 }
 
-bool apic_resolve_ptr(APICState state, uint64_t ptr, int32_t* out_region_id, uint64_t* out_offset)
+bool apic_resolve_ptr(APICState* state, uint64_t ptr, int32_t* out_region_id, uint64_t* out_offset)
 {
     if (!state)
         return false;
@@ -121,15 +124,22 @@ bool apic_resolve_ptr(APICState state, uint64_t ptr, int32_t* out_region_id, uin
     return false;
 }
 
-// Resolve a region pointer from an APICStateInternal's ptr_region_table.
-static void* apic_resolve_state_region_ptr(APICStateInternal* state, int32_t region_id, uint64_t offset)
+// Resolve a region pointer from an APICState's ptr_region_table.
+// `access_size` is the number of bytes the caller intends to read or write
+// starting at the resolved pointer; the resolver returns nullptr unless the
+// range [offset, offset + access_size) fits inside the region. Pass 0 when
+// only the pointer value is needed (e.g. a DATA_PTR relocation captured as
+// a kernel argument — the kernel's element accesses are governed by the
+// captured array shape/strides, not by this resolver).
+static void* apic_resolve_state_region_ptr(APICState* state, int32_t region_id, uint64_t offset, size_t access_size)
 {
     if (region_id < 0)
         return nullptr;
     for (size_t i = 0; i < state->ptr_region_table.size(); i++) {
         auto& entry = state->ptr_region_table[i];
         if (entry.region_id == static_cast<uint32_t>(region_id)) {
-            if (offset > entry.size || entry.base_ptr > UINTPTR_MAX - offset)
+            uint64_t end = offset + access_size;
+            if (end < offset || end > entry.size || entry.base_ptr > UINTPTR_MAX - offset)
                 return nullptr;
             return reinterpret_cast<void*>(entry.base_ptr + offset);
         }
@@ -142,7 +152,7 @@ static void* apic_resolve_state_region_ptr(APICStateInternal* state, int32_t reg
 // ============================================================================
 
 void wp_apic_register_module(
-    APICState state, const char* module_hash, const char* module_name, const char* bf, int arch
+    APICState* state, const char* module_hash, const char* module_name, const char* bf, int arch
 )
 {
     if (!state || !module_hash)
@@ -159,7 +169,7 @@ void wp_apic_register_module(
 }
 
 void wp_apic_register_kernel(
-    APICState state,
+    APICState* state,
     const char* kernel_key,
     const char* module_hash,
     const char* forward_name,
@@ -185,25 +195,25 @@ void wp_apic_register_kernel(
     }
 }
 
-void wp_apic_register_binding(APICState state, const char* name, uint32_t region_id)
+void wp_apic_register_binding(APICState* state, const char* name, uint32_t region_id)
 {
     if (!state || !name)
         return;
     state->bindings.push_back({ std::string(name), region_id });
 }
 
-void wp_apic_register_ptr_location(APICState state, uint32_t region_id, uint64_t offset, uint64_t stride)
+void wp_apic_register_ptr_location(APICState* state, uint32_t region_id, uint64_t offset, uint64_t stride)
 {
     if (!state)
         return;
-    APICPtrLocation loc;
+    APICMemoryPtrLocation loc;
     loc.region_id = region_id;
     loc.offset = offset;
     loc.stride = stride;
     state->ptr_locations.push_back(loc);
 }
 
-void wp_apic_register_cpu_kernel(APICState state, const char* kernel_key, void* forward_fn, void* backward_fn)
+void wp_apic_register_cpu_kernel(APICState* state, const char* kernel_key, void* forward_fn, void* backward_fn)
 {
     if (!state || !kernel_key)
         return;
@@ -218,7 +228,7 @@ void wp_apic_register_cpu_kernel(APICState state, const char* kernel_key, void* 
 // ============================================================================
 
 void apic_record_kernel_launch(
-    APICState state,
+    APICState* state,
     const char* kernel_key,
     const char* module_hash,
     int is_forward,
@@ -229,7 +239,12 @@ void apic_record_kernel_launch(
     int block_dim,
     int smem_bytes,
     const APICLaunchParamRecord* params,
-    int num_params
+    int num_params,
+    const APICLaunchParamRecord* adj_params,
+    const APICLaunchPtrLocation* relocs,
+    uint32_t num_relocs,
+    const uint8_t* value_data,
+    uint32_t value_data_size
 )
 {
     if (!state)
@@ -237,7 +252,15 @@ void apic_record_kernel_launch(
     size_t key_len = kernel_key ? strlen(kernel_key) : 0;
     size_t hash_len = module_hash ? strlen(module_hash) : 0;
     size_t params_size = num_params * sizeof(APICLaunchParamRecord);
-    uint32_t total_size = (uint32_t)(sizeof(APICLaunchRecord) + key_len + hash_len + params_size);
+    // Backward kernels carry an adjoint block of the same shape as the
+    // forward block; everything else is forward-only.
+    int num_adj_params = (is_forward || !adj_params) ? 0 : num_params;
+    size_t adj_params_size = num_adj_params * sizeof(APICLaunchParamRecord);
+    size_t relocs_count = relocs ? static_cast<size_t>(num_relocs) : 0;
+    size_t relocs_size = relocs_count * sizeof(APICLaunchPtrLocation);
+    size_t value_size = value_data ? static_cast<size_t>(value_data_size) : 0;
+    uint32_t total_size = (uint32_t)(sizeof(APICLaunchRecord) + key_len + hash_len + params_size + adj_params_size
+                                     + relocs_size + value_size);
 
     APICLaunchRecord rec = {};
     rec.header.op_type = APIC_OP_KERNEL_LAUNCH;
@@ -254,7 +277,9 @@ void apic_record_kernel_launch(
     rec.kernel_key_len = static_cast<uint16_t>(key_len);
     rec.module_hash_len = static_cast<uint16_t>(hash_len);
     rec.num_params = static_cast<uint16_t>(num_params);
-    rec.num_handle_offsets = 0;
+    rec._pad2 = 0;
+    rec.num_relocs = static_cast<uint32_t>(relocs_count);
+    rec.value_data_size = static_cast<uint32_t>(value_size);
 
     state->append_bytes(&rec, sizeof(rec));
     if (key_len > 0)
@@ -263,11 +288,17 @@ void apic_record_kernel_launch(
         state->append_bytes(module_hash, hash_len);
     if (params_size > 0)
         state->append_bytes(params, params_size);
+    if (adj_params_size > 0)
+        state->append_bytes(adj_params, adj_params_size);
+    if (relocs_size > 0)
+        state->append_bytes(relocs, relocs_size);
+    if (value_size > 0)
+        state->append_bytes(value_data, value_size);
     state->operation_count++;
 }
 
 void apic_record_memcpy_d2d(
-    APICState state,
+    APICState* state,
     int32_t dst_region_id,
     uint64_t dst_offset,
     int32_t src_region_id,
@@ -289,7 +320,7 @@ void apic_record_memcpy_d2d(
     state->operation_count++;
 }
 
-void apic_record_memset(APICState state, int32_t region_id, uint64_t offset, uint64_t size, int32_t value)
+void apic_record_memset(APICState* state, int32_t region_id, uint64_t offset, uint64_t size, int32_t value)
 {
     if (!state)
         return;
@@ -304,7 +335,7 @@ void apic_record_memset(APICState state, int32_t region_id, uint64_t offset, uin
     state->operation_count++;
 }
 
-void apic_record_alloc(APICState state, int32_t region_id, uint64_t size)
+void apic_record_alloc(APICState* state, int32_t region_id, uint64_t size)
 {
     if (!state)
         return;
@@ -315,6 +346,95 @@ void apic_record_alloc(APICState state, int32_t region_id, uint64_t size)
     rec.size = size;
     state->append_bytes(&rec, sizeof(rec));
     state->operation_count++;
+}
+
+// ============================================================================
+// Conditional / Loop branch capture (APIC_OP_IF / APIC_OP_WHILE)
+// ============================================================================
+
+struct APICBranchStart {
+    APICState* owner;  // The state that issued this token; end_branch refuses any other state.
+    uint64_t offset;
+    uint32_t op_count;
+};
+
+struct APICBranchBody {
+    std::vector<uint8_t> data;
+    uint32_t op_count;
+};
+
+APICBranchStart* wp_apic_begin_branch(APICState* state)
+{
+    if (!state)
+        return nullptr;
+    auto* start = new APICBranchStart();
+    start->owner = state;
+    start->offset = static_cast<uint64_t>(state->operation_stream.size());
+    start->op_count = state->operation_count;
+    return start;
+}
+
+APICBranchBody* wp_apic_end_branch(APICState* state, APICBranchStart* start)
+{
+    if (!state || !start)
+        return nullptr;
+    // Refuse tokens from a different state or whose state has been rolled
+    // back beneath the captured start position — otherwise we'd underflow
+    // operation_count or truncate the wrong stream.
+    if (start->owner != state || state->operation_count < start->op_count
+        || state->operation_stream.size() < start->offset) {
+        fprintf(stderr, "APIC: Error - branch start/state mismatch\n");
+        delete start;
+        return nullptr;
+    }
+    auto* body = new APICBranchBody();
+    size_t end_pos = state->operation_stream.size();
+    if (end_pos > start->offset) {
+        body->data.assign(state->operation_stream.begin() + start->offset, state->operation_stream.begin() + end_pos);
+        state->operation_stream.resize(start->offset);
+    }
+    body->op_count = state->operation_count - start->op_count;
+    state->operation_count = start->op_count;
+    delete start;
+    return body;
+}
+
+void wp_apic_free_branch_body(APICBranchBody* body) { delete body; }
+
+void wp_apic_record_conditional(
+    APICState* state, int op_type, int32_t cond_region_id, uint64_t cond_offset, APICBranchBody* a, APICBranchBody* b
+)
+{
+    if (!state) {
+        wp_apic_free_branch_body(a);
+        wp_apic_free_branch_body(b);
+        return;
+    }
+    uint64_t a_size = a ? static_cast<uint64_t>(a->data.size()) : 0;
+    uint64_t b_size = b ? static_cast<uint64_t>(b->data.size()) : 0;
+    uint32_t a_op_count = a ? a->op_count : 0;
+    uint32_t b_op_count = b ? b->op_count : 0;
+    uint64_t total = sizeof(APICCondRecord) + a_size + b_size;
+
+    APICCondRecord rec = {};
+    rec.header.op_type = static_cast<APICOpType>(op_type);
+    rec.header.total_size = static_cast<uint32_t>(total);
+    rec.cond_region_id = cond_region_id;
+    rec.cond_offset = cond_offset;
+    rec.branch_a_size = static_cast<uint32_t>(a_size);
+    rec.branch_a_op_count = a_op_count;
+    rec.branch_b_size = static_cast<uint32_t>(b_size);
+    rec.branch_b_op_count = b_op_count;
+
+    state->append_bytes(&rec, sizeof(rec));
+    if (a_size > 0)
+        state->append_bytes(a->data.data(), a_size);
+    if (b_size > 0)
+        state->append_bytes(b->data.data(), b_size);
+    state->operation_count++;
+
+    delete a;
+    delete b;
 }
 
 // ============================================================================
@@ -329,7 +449,7 @@ void apic_record_alloc(APICState state, int32_t region_id, uint64_t size)
 // a wp::Mesh and copies the point / index / velocity arrays via host pointers.
 // ============================================================================
 
-void apic_register_cpu_mesh(APICState state, uint64_t mesh_id)
+void apic_register_cpu_mesh(APICState* state, uint64_t mesh_id)
 {
     if (!state || mesh_id == 0)
         return;
@@ -384,20 +504,22 @@ void apic_register_cpu_mesh(APICState state, uint64_t mesh_id)
 
 #if !WP_ENABLE_CUDA
 // Non-CUDA build: mesh_id is always a host pointer (no descriptor table).
-void wp_apic_register_mesh(APICState state, uint64_t mesh_id) { apic_register_cpu_mesh(state, mesh_id); }
+void wp_apic_register_mesh(APICState* state, uint64_t mesh_id) { apic_register_cpu_mesh(state, mesh_id); }
 #endif  // !WP_ENABLE_CUDA
 
 // ============================================================================
 // Graph-side helpers (shared between CUDA and non-CUDA builds)
 // ============================================================================
 
-void* apic_resolve_region_ptr(APICGraphInternal* graph, int32_t region_id, uint64_t offset)
+// See apic_resolve_state_region_ptr for the `access_size` contract.
+void* apic_resolve_region_ptr(APICGraph* graph, int32_t region_id, uint64_t offset, size_t access_size)
 {
     if (region_id < 0)
         return nullptr;
     auto it = graph->regions.find(region_id);
     if (it != graph->regions.end() && it->second.ptr) {
-        if (offset > it->second.size)
+        uint64_t end = offset + access_size;
+        if (end < offset || end > it->second.size)
             return nullptr;
         return static_cast<void*>(static_cast<uint8_t*>(it->second.ptr) + offset);
     }
@@ -405,9 +527,9 @@ void* apic_resolve_region_ptr(APICGraphInternal* graph, int32_t region_id, uint6
 }
 
 // Free host-side mesh and region memory for a CPU graph. Called from:
-//   - Non-CUDA build: APICGraphInternal destructor (below).
+//   - Non-CUDA build: APICGraph destructor (below).
 //   - CUDA build: apic.cu's destructor calls this for APIC_DEVICE_CPU graphs.
-void apic_destroy_cpu_graph_resources(APICGraphInternal* graph)
+void apic_destroy_cpu_graph_resources(APICGraph* graph)
 {
     for (uint64_t mesh_id : graph->created_mesh_ids) {
         wp_mesh_destroy_host(mesh_id);
@@ -421,7 +543,7 @@ void apic_destroy_cpu_graph_resources(APICGraphInternal* graph)
 // Allocate host memory for each region, zero it, and (if memory_ptr is
 // non-null) copy initial data from the memory section of the .wrp file.
 // Called from the CPU branch of wp_apic_load_graph.
-bool apic_init_cpu_graph_memory(APICGraphInternal* graph, const uint8_t* memory_ptr, size_t memory_size)
+bool apic_init_cpu_graph_memory(APICGraph* graph, const uint8_t* memory_ptr, size_t memory_size)
 {
     for (auto& pair : graph->regions) {
         pair.second.ptr = malloc(pair.second.size);
@@ -464,9 +586,9 @@ bool apic_init_cpu_graph_memory(APICGraphInternal* graph, const uint8_t* memory_
 }
 
 #if !WP_ENABLE_CUDA
-// Non-CUDA build: APICGraphInternal destructor only frees host memory.
+// Non-CUDA build: APICGraph destructor only frees host memory.
 // (CUDA builds define the destructor in apic.cu so it can use cudaFree etc.)
-APICGraphInternal::~APICGraphInternal() { apic_destroy_cpu_graph_resources(this); }
+APICGraph::~APICGraph() { apic_destroy_cpu_graph_resources(this); }
 #endif
 
 // ============================================================================
@@ -503,7 +625,7 @@ static std::string apic_read_lp_string(const uint8_t*& ptr)
     return s;
 }
 
-bool apic_parse_metadata(const uint8_t* data, size_t size, APICGraphInternal* graph)
+bool apic_parse_metadata(const uint8_t* data, size_t size, APICGraph* graph)
 {
     if (!data || size < 28)
         return false;
@@ -553,7 +675,7 @@ bool apic_parse_metadata(const uint8_t* data, size_t size, APICGraphInternal* gr
     }
 
     for (uint32_t i = 0; i < num_ptr_locations; i++) {
-        APICPtrLocation loc;
+        APICMemoryPtrLocation loc;
         loc.region_id = apic_read_value<uint32_t>(ptr);
         loc.offset = apic_read_value<uint64_t>(ptr);
         loc.stride = apic_read_value<uint64_t>(ptr);
@@ -563,7 +685,7 @@ bool apic_parse_metadata(const uint8_t* data, size_t size, APICGraphInternal* gr
     return true;
 }
 
-bool apic_parse_operations(const uint8_t* data, size_t size, APICGraphInternal* graph)
+bool apic_parse_operations(const uint8_t* data, size_t size, APICGraph* graph)
 {
     if (!data || size < 4)
         return false;
@@ -577,7 +699,7 @@ bool apic_parse_operations(const uint8_t* data, size_t size, APICGraphInternal* 
     return true;
 }
 
-bool apic_parse_memory_regions(const uint8_t* data, size_t size, APICGraphInternal* graph)
+bool apic_parse_memory_regions(const uint8_t* data, size_t size, APICGraph* graph)
 {
     if (!data || size < 4)
         return true;
@@ -606,7 +728,7 @@ bool apic_parse_memory_regions(const uint8_t* data, size_t size, APICGraphIntern
     return true;
 }
 
-bool apic_create_meshes(APICGraphInternal* graph)
+bool apic_create_meshes(APICGraph* graph)
 {
     for (const APICMeshRecord& rec : graph->mesh_records) {
         auto points_it = graph->regions.find(rec.points_region_id);
@@ -672,7 +794,7 @@ bool apic_create_meshes(APICGraphInternal* graph)
 // Walk the graph's ptr_locations and remap any old handle values found at
 // those offsets to their new values in graph->handle_ptr_remap. The CPU path
 // is pure memcpy; the CUDA path delegates per-offset to apic_fixup_handle_cuda.
-void apic_fixup_ptr_locations(APICGraphInternal* graph)
+void apic_fixup_ptr_locations(APICGraph* graph)
 {
     if (graph->handle_ptr_remap.empty() || graph->ptr_locations.empty())
         return;
@@ -728,8 +850,16 @@ void apic_fixup_ptr_locations(APICGraphInternal* graph)
 // op_type is recognized. Called once at stream-close time (end of recording
 // for live capture; after .wrp load for deserialized graphs). Replay paths
 // skip per-op bounds checks once this returns true.
-bool apic_validate_operation_stream(const uint8_t* data, size_t size, uint32_t operation_count)
+bool apic_validate_operation_stream(const uint8_t* data, size_t size, uint32_t operation_count, uint32_t depth)
 {
+    // Cap conditional nesting before recursion can stack-overflow on a
+    // malformed .wrp. 1024 levels is far past anything a real program will
+    // ever produce and far below any platform's default stack budget.
+    constexpr uint32_t kMaxBranchDepth = 1024;
+    if (depth > kMaxBranchDepth) {
+        fprintf(stderr, "APIC: Error - conditional nesting exceeds %u levels\n", kMaxBranchDepth);
+        return false;
+    }
     if (operation_count == 0)
         return true;
     if (!data) {
@@ -771,6 +901,80 @@ bool apic_validate_operation_stream(const uint8_t* data, size_t size, uint32_t o
                 fprintf(stderr, "APIC: Error - kernel launch params overflow at operation %u\n", i);
                 return false;
             }
+            const uint8_t* adj_params_start = params_start + rec->num_params * sizeof(APICLaunchParamRecord);
+            // Backward kernels carry an adjoint block of num_params bindings;
+            // forward kernels carry none.
+            const uint32_t adj_count = rec->is_forward ? 0u : rec->num_params;
+            if (adj_params_start + adj_count * sizeof(APICLaunchParamRecord) > op_end) {
+                fprintf(stderr, "APIC: Error - kernel launch adj params overflow at operation %u\n", i);
+                return false;
+            }
+            const uint8_t* relocs_start = adj_params_start + adj_count * sizeof(APICLaunchParamRecord);
+            if (relocs_start + rec->num_relocs * sizeof(APICLaunchPtrLocation) > op_end) {
+                fprintf(stderr, "APIC: Error - kernel launch relocs overflow at operation %u\n", i);
+                return false;
+            }
+            const uint8_t* value_data = relocs_start + rec->num_relocs * sizeof(APICLaunchPtrLocation);
+            if (value_data + rec->value_data_size > op_end) {
+                fprintf(stderr, "APIC: Error - kernel launch value_data overflow at operation %u\n", i);
+                return false;
+            }
+            // Walk the bindings (forward followed by adjoint), bounds-check each
+            // binding's value slice and sum its num_relocs. The reloc cursor is
+            // advanced per-binding in apic_pack_args_buf at replay; total
+            // num_relocs must exactly equal the sum across all bindings.
+            uint32_t reloc_cursor = 0;
+            const APICLaunchPtrLocation* relocs_table = reinterpret_cast<const APICLaunchPtrLocation*>(relocs_start);
+            uint32_t total_bindings = static_cast<uint32_t>(rec->num_params) + adj_count;
+            for (uint32_t j = 0; j < total_bindings; j++) {
+                const APICLaunchParamRecord* binding;
+                if (j < rec->num_params) {
+                    binding = reinterpret_cast<const APICLaunchParamRecord*>(
+                        params_start + j * sizeof(APICLaunchParamRecord)
+                    );
+                } else {
+                    binding = reinterpret_cast<const APICLaunchParamRecord*>(
+                        adj_params_start + (j - rec->num_params) * sizeof(APICLaunchParamRecord)
+                    );
+                }
+                if (binding->value_offset > rec->value_data_size
+                    || binding->value_size > rec->value_data_size - binding->value_offset) {
+                    fprintf(stderr, "APIC: Error - value_data offset out of range at operation %u (param %u)\n", i, j);
+                    return false;
+                }
+                // Each reloc must point at a valid 8-byte slot inside the blob.
+                for (uint16_t r = 0; r < binding->num_relocs; r++) {
+                    if (reloc_cursor + r >= rec->num_relocs) {
+                        fprintf(stderr, "APIC: Error - reloc count exceeds table at operation %u (param %u)\n", i, j);
+                        return false;
+                    }
+                    const APICLaunchPtrLocation* reloc = &relocs_table[reloc_cursor + r];
+                    if (reloc->kind != APIC_RELOC_DATA_PTR && reloc->kind != APIC_RELOC_HANDLE
+                        && reloc->kind != APIC_RELOC_NULL) {
+                        fprintf(
+                            stderr, "APIC: Error - unknown reloc kind %u at operation %u (param %u reloc %u)\n",
+                            reloc->kind, i, j, r
+                        );
+                        return false;
+                    }
+                    if (reloc->value_byte_offset + sizeof(uint64_t) > binding->value_size) {
+                        fprintf(
+                            stderr,
+                            "APIC: Error - reloc target out of value blob at operation %u (param %u reloc %u)\n", i, j,
+                            r
+                        );
+                        return false;
+                    }
+                }
+                reloc_cursor += binding->num_relocs;
+            }
+            if (reloc_cursor != rec->num_relocs) {
+                fprintf(
+                    stderr, "APIC: Error - reloc table size mismatch at operation %u (sum=%u, header=%u)\n", i,
+                    reloc_cursor, rec->num_relocs
+                );
+                return false;
+            }
             break;
         }
         case APIC_OP_MEMCPY_H2D: {
@@ -803,6 +1007,37 @@ bool apic_validate_operation_stream(const uint8_t* data, size_t size, uint32_t o
                 return false;
             }
             break;
+        case APIC_OP_IF:
+        case APIC_OP_WHILE: {
+            if (op_end < op_start + sizeof(APICCondRecord)) {
+                fprintf(stderr, "APIC: Error - cond record overflow at operation %u\n", i);
+                return false;
+            }
+            const APICCondRecord* rec = reinterpret_cast<const APICCondRecord*>(ptr);
+            if (sizeof(APICCondRecord) + (uint64_t)rec->branch_a_size + (uint64_t)rec->branch_b_size
+                > header->total_size) {
+                fprintf(stderr, "APIC: Error - cond branch sizes overflow at operation %u\n", i);
+                return false;
+            }
+            const uint8_t* branch_a = op_start + sizeof(APICCondRecord);
+            const uint8_t* branch_b = branch_a + rec->branch_a_size;
+            // Recurse into the inner sub-streams.
+            if (rec->branch_a_size > 0
+                && !apic_validate_operation_stream(branch_a, rec->branch_a_size, rec->branch_a_op_count, depth + 1)) {
+                fprintf(stderr, "APIC: Error - branch_a invalid at operation %u\n", i);
+                return false;
+            }
+            if (header->op_type == APIC_OP_WHILE && rec->branch_b_size != 0) {
+                fprintf(stderr, "APIC: Error - APIC_OP_WHILE with non-empty branch_b at operation %u\n", i);
+                return false;
+            }
+            if (rec->branch_b_size > 0
+                && !apic_validate_operation_stream(branch_b, rec->branch_b_size, rec->branch_b_op_count, depth + 1)) {
+                fprintf(stderr, "APIC: Error - branch_b invalid at operation %u\n", i);
+                return false;
+            }
+            break;
+        }
         default:
             fprintf(stderr, "APIC: Error - unknown op type %u at operation %u\n", unsigned(header->op_type), i);
             return false;
@@ -822,17 +1057,112 @@ bool apic_validate_operation_stream(const uint8_t* data, size_t size, uint32_t o
 // CPU Graph Replay
 // ============================================================================
 
+// Pack the param array `bindings` into `args_buf` by copying each binding's
+// value blob from `value_data + value_offset` and patching the pointer fields
+// it contains via the per-binding relocation slice. Caller pre-allocates
+// `args_buf` to the size returned by apic_args_buf_size. Returns false (and
+// emits a diagnostic) if a DATA_PTR relocation cannot be resolved, so the
+// caller can abort replay rather than launching with a NULL pointer arg.
+//
+// `relocs` points at the slice of the per-launch reloc table corresponding
+// to this binding group (forward or adjoint). Within the loop the cursor
+// advances by `binding->num_relocs` per binding.
+//
+// `resolve_ptr(region_id, region_offset, access_size) -> void*` resolves
+// DATA_PTR relocations to a live host (or device) pointer. `access_size` is
+// the number of bytes the caller will read/write at the resolved pointer;
+// pass 0 for "pointer-only" use (e.g. capturing the .data field of an
+// array_t — the kernel handles element-level access). `remap_handle(uint64)
+// -> uint64` translates HANDLE relocations through the load-time handle
+// remap table (identity for live recording, real lookup for loaded graphs).
+template <typename ResolvePtrFn, typename RemapHandleFn>
+static bool apic_pack_args_buf(
+    uint8_t* args_buf,
+    size_t args_buf_size,
+    const APICLaunchParamRecord* bindings,
+    uint16_t num_bindings,
+    const uint8_t* value_data,
+    const APICLaunchPtrLocation* relocs,
+    ResolvePtrFn resolve_ptr,
+    RemapHandleFn remap_handle
+)
+{
+    memset(args_buf, 0, args_buf_size);
+    size_t args_offset = 0;
+    const APICLaunchPtrLocation* reloc_cursor = relocs;
+    for (uint16_t j = 0; j < num_bindings; j++) {
+        const APICLaunchParamRecord* binding = &bindings[j];
+        size_t align = binding->value_align > 0 ? static_cast<size_t>(binding->value_align) : alignof(void*);
+        args_offset = (args_offset + align - 1) & ~(align - 1);
+
+        // Copy the captured value bytes verbatim.
+        memcpy(args_buf + args_offset, value_data + binding->value_offset, binding->value_size);
+
+        // Patch pointer fields inside the blob.
+        for (uint16_t r = 0; r < binding->num_relocs; r++) {
+            const APICLaunchPtrLocation* reloc = &reloc_cursor[r];
+            uint64_t patched = 0;
+            switch (reloc->kind) {
+            case APIC_RELOC_DATA_PTR: {
+                // Pass access_size=0: we only need the pointer value to drop
+                // into the value blob; the kernel's element access is bounded
+                // by the captured array shape/strides, not by this resolver.
+                void* resolved = resolve_ptr(reloc->region_id, reloc->region_offset, 0);
+                if (!resolved) {
+                    fprintf(
+                        stderr,
+                        "APIC: Error - unresolved DATA_PTR relocation (region=%d offset=%llu) at param %u reloc %u\n",
+                        reloc->region_id, static_cast<unsigned long long>(reloc->region_offset), j, r
+                    );
+                    return false;
+                }
+                patched = reinterpret_cast<uint64_t>(resolved);
+                break;
+            }
+            case APIC_RELOC_HANDLE:
+                patched = remap_handle(reloc->region_offset);
+                break;
+            case APIC_RELOC_NULL:
+                patched = 0;
+                break;
+            }
+            memcpy(args_buf + args_offset + reloc->value_byte_offset, &patched, sizeof(uint64_t));
+        }
+        reloc_cursor += binding->num_relocs;
+        args_offset += binding->value_size;
+    }
+    // Catches divergence between apic_args_buf_size (used to size args_buf)
+    // and the alignment / sizing rules in the loop above.
+    assert(args_offset <= args_buf_size);
+    return true;
+}
+
+static size_t apic_args_buf_size(const APICLaunchParamRecord* bindings, uint16_t num_bindings)
+{
+    size_t total = 0;
+    for (uint16_t j = 0; j < num_bindings; j++) {
+        const APICLaunchParamRecord* binding = &bindings[j];
+        size_t align = binding->value_align > 0 ? static_cast<size_t>(binding->value_align) : alignof(void*);
+        total = (total + align - 1) & ~(align - 1);
+        total += binding->value_size;
+    }
+    return total;
+}
+
 // Walk an APIC byte stream and execute CPU operations. Assumes the stream
 // has already passed apic_validate_operation_stream — no per-op bounds
 // checks are performed here.
-// resolve_ptr: callback (int32_t region_id, uint64_t offset) -> void*
-// find_kernel: callback (const std::string& key, uint8_t is_forward) -> void*
-template <typename ResolvePtrFn, typename FindKernelFn>
+// resolve_ptr:   (int32_t region_id, uint64_t offset) -> void*
+// remap_handle:  (uint64_t old_id) -> uint64_t (identity for live recording,
+//                                                load-time remap for loaded graphs)
+// find_kernel:   (const std::string& key, uint8_t is_forward) -> void*
+template <typename ResolvePtrFn, typename RemapHandleFn, typename FindKernelFn>
 static bool apic_cpu_replay_stream(
     const uint8_t* stream_data,
     size_t stream_size,
     uint32_t operation_count,
     ResolvePtrFn resolve_ptr,
+    RemapHandleFn remap_handle,
     FindKernelFn find_kernel
 )
 {
@@ -850,7 +1180,24 @@ static bool apic_cpu_replay_stream(
             const uint8_t* var_data = ptr + sizeof(APICLaunchRecord);
             std::string key_str(reinterpret_cast<const char*>(var_data), rec->kernel_key_len);
 
-            const uint8_t* params_start = var_data + rec->kernel_key_len + rec->module_hash_len;
+            const uint16_t adj_count = rec->is_forward ? 0u : rec->num_params;
+            const APICLaunchParamRecord* fwd_bindings
+                = reinterpret_cast<const APICLaunchParamRecord*>(var_data + rec->kernel_key_len + rec->module_hash_len);
+            const APICLaunchParamRecord* adj_bindings = reinterpret_cast<const APICLaunchParamRecord*>(
+                reinterpret_cast<const uint8_t*>(fwd_bindings) + rec->num_params * sizeof(APICLaunchParamRecord)
+            );
+            const APICLaunchPtrLocation* relocs = reinterpret_cast<const APICLaunchPtrLocation*>(
+                reinterpret_cast<const uint8_t*>(adj_bindings) + adj_count * sizeof(APICLaunchParamRecord)
+            );
+            const uint8_t* value_data
+                = reinterpret_cast<const uint8_t*>(relocs) + rec->num_relocs * sizeof(APICLaunchPtrLocation);
+
+            // Sum forward num_relocs so the adjoint pack call can start its
+            // reloc cursor in the right place. The validator guarantees
+            // fwd_relocs + adj_relocs == rec->num_relocs.
+            uint32_t fwd_reloc_count = 0;
+            for (uint16_t j = 0; j < rec->num_params; j++)
+                fwd_reloc_count += fwd_bindings[j].num_relocs;
 
             void* func = find_kernel(key_str, rec->is_forward);
             if (!func) {
@@ -886,66 +1233,47 @@ static bool apic_cpu_replay_stream(
             }
             *reinterpret_cast<size_t*>(bounds_buf + coord_mult_offset) = coord_mult;
 
-            // Build args from param bindings
-            const uint8_t* params_ptr = params_start;
-
-            // Compute total args size with alignment
-            size_t args_total = 0;
-            for (uint16_t j = 0; j < rec->num_params; j++) {
-                const APICLaunchParamRecord* binding
-                    = reinterpret_cast<const APICLaunchParamRecord*>(params_ptr + j * sizeof(APICLaunchParamRecord));
-                size_t param_size
-                    = binding->is_array ? sizeof(apic_array_t) : static_cast<size_t>(binding->byte_offset);
-                size_t align = binding->is_array ? alignof(void*) : (param_size >= 8 ? 8 : (param_size >= 4 ? 4 : 1));
-                args_total = (args_total + align - 1) & ~(align - 1);
-                args_total += param_size;
-            }
-
-            // Stack-allocate args buffer (typical kernel args are small)
-            uint8_t args_stack[512];
-            uint8_t* args_buf
-                = (args_total <= sizeof(args_stack)) ? args_stack : static_cast<uint8_t*>(malloc(args_total));
-            if (!args_buf) {
-                fprintf(stderr, "APIC: Error - failed to allocate %zu bytes for kernel args\n", args_total);
+            // Build forward args buffer (always heap-allocate to keep the stack
+            // shallow before calling into the kernel — the kernel itself may
+            // allocate a 256 KB tile_shared_storage_t on its own stack frame
+            // and adding sibling stack buffers in the replay path can blow
+            // the per-thread stack budget on Windows).
+            size_t fwd_total = apic_args_buf_size(fwd_bindings, rec->num_params);
+            uint8_t* fwd_buf = static_cast<uint8_t*>(malloc(fwd_total > 0 ? fwd_total : 1));
+            if (!fwd_buf) {
+                fprintf(stderr, "APIC: Error - failed to allocate %zu bytes for kernel args\n", fwd_total);
                 return false;
             }
-            memset(args_buf, 0, args_total > 0 ? args_total : 1);
-            size_t args_offset = 0;
+            if (!apic_pack_args_buf(
+                    fwd_buf, fwd_total, fwd_bindings, rec->num_params, value_data, relocs, resolve_ptr, remap_handle
+                )) {
+                free(fwd_buf);
+                fprintf(stderr, "APIC: Error - forward arg packing failed at operation %u\n", i);
+                return false;
+            }
 
-            for (uint16_t j = 0; j < rec->num_params; j++) {
-                const APICLaunchParamRecord* binding
-                    = reinterpret_cast<const APICLaunchParamRecord*>(params_ptr + j * sizeof(APICLaunchParamRecord));
-
-                if (binding->is_array) {
-                    size_t align = alignof(void*);
-                    args_offset = (args_offset + align - 1) & ~(align - 1);
-
-                    apic_array_t* arr = reinterpret_cast<apic_array_t*>(args_buf + args_offset);
-                    void* resolved = resolve_ptr(binding->region_id, binding->byte_offset);
-                    arr->data = reinterpret_cast<uint64_t>(resolved);
-                    arr->grad = 0;
-                    arr->ndim = binding->ndim;
-                    for (int d = 0; d < binding->ndim && d < APIC_MAX_DIMS; d++) {
-                        arr->shape[d] = static_cast<int>(binding->shape[d]);
-                        arr->strides[d] = static_cast<int>(binding->strides[d]);
-                    }
-                    args_offset += sizeof(apic_array_t);
-                } else {
-                    size_t scalar_size = static_cast<size_t>(binding->byte_offset);
-                    size_t align = scalar_size >= 8 ? 8 : (scalar_size >= 4 ? 4 : 1);
-                    args_offset = (args_offset + align - 1) & ~(align - 1);
-
-                    const uint8_t* shape_bytes = reinterpret_cast<const uint8_t*>(binding->shape);
-                    const uint8_t* strides_bytes = reinterpret_cast<const uint8_t*>(binding->strides);
-                    size_t shape_bytes_size = static_cast<size_t>(APIC_MAX_DIMS * sizeof(int64_t));
-                    size_t copy_shape = scalar_size < shape_bytes_size ? scalar_size : shape_bytes_size;
-                    size_t copy_strides = (scalar_size > copy_shape) ? scalar_size - copy_shape : 0;
-                    if (copy_strides > shape_bytes_size)
-                        copy_strides = shape_bytes_size;
-                    memcpy(args_buf + args_offset, shape_bytes, copy_shape);
-                    if (copy_strides > 0)
-                        memcpy(args_buf + args_offset + copy_shape, strides_bytes, copy_strides);
-                    args_offset += scalar_size;
+            // Build adjoint args buffer when this is a backward kernel.
+            // wp_cpu_launch_kernel selects the backward ABI by adj_args != nullptr,
+            // so a zero-param backward kernel still needs a (1-byte sentinel) adj_buf.
+            size_t adj_total = 0;
+            uint8_t* adj_buf = nullptr;
+            if (!rec->is_forward) {
+                adj_total = apic_args_buf_size(adj_bindings, adj_count);
+                adj_buf = static_cast<uint8_t*>(malloc(adj_total > 0 ? adj_total : 1));
+                if (!adj_buf) {
+                    free(fwd_buf);
+                    fprintf(stderr, "APIC: Error - failed to allocate %zu bytes for adj args\n", adj_total);
+                    return false;
+                }
+                if (adj_total > 0
+                    && !apic_pack_args_buf(
+                        adj_buf, adj_total, adj_bindings, adj_count, value_data, relocs + fwd_reloc_count, resolve_ptr,
+                        remap_handle
+                    )) {
+                    free(fwd_buf);
+                    free(adj_buf);
+                    fprintf(stderr, "APIC: Error - adjoint arg packing failed at operation %u\n", i);
+                    return false;
                 }
             }
 
@@ -953,17 +1281,18 @@ static bool apic_cpu_replay_stream(
             // apic_info=nullptr is safe: g_apic_state is null during replay, so
             // the recording branch in wp_cpu_launch_kernel is a no-op and the
             // execute branch fires.
-            wp_cpu_launch_kernel(func, bounds_buf, args_buf, /*adj_args=*/nullptr, /*apic_info=*/nullptr);
+            wp_cpu_launch_kernel(func, bounds_buf, fwd_buf, adj_buf, /*apic_info=*/nullptr);
 
-            if (args_buf != args_stack)
-                free(args_buf);
+            free(fwd_buf);
+            if (adj_buf)
+                free(adj_buf);
             break;
         }
 
         case APIC_OP_MEMCPY_D2D: {
             const APICMemcpyD2DRecord* rec = reinterpret_cast<const APICMemcpyD2DRecord*>(ptr);
-            void* dst = resolve_ptr(rec->dst_region_id, rec->dst_offset);
-            const void* src = resolve_ptr(rec->src_region_id, rec->src_offset);
+            void* dst = resolve_ptr(rec->dst_region_id, rec->dst_offset, rec->size);
+            const void* src = resolve_ptr(rec->src_region_id, rec->src_offset, rec->size);
             if (!dst || !src) {
                 fprintf(stderr, "APIC: Error - memcpy pointer resolution failed at operation %u\n", i);
                 return false;
@@ -976,7 +1305,7 @@ static bool apic_cpu_replay_stream(
 
         case APIC_OP_MEMSET: {
             const APICMemsetRecord* rec = reinterpret_cast<const APICMemsetRecord*>(ptr);
-            void* dst = resolve_ptr(rec->region_id, rec->offset);
+            void* dst = resolve_ptr(rec->region_id, rec->offset, rec->size);
             if (!dst) {
                 fprintf(stderr, "APIC: Error - memset pointer resolution failed at operation %u\n", i);
                 return false;
@@ -988,6 +1317,64 @@ static bool apic_cpu_replay_stream(
 
         case APIC_OP_ALLOC:
             break;
+
+        case APIC_OP_IF: {
+            const APICCondRecord* rec = reinterpret_cast<const APICCondRecord*>(ptr);
+            const uint8_t* branch_a = ptr + sizeof(APICCondRecord);
+            const uint8_t* branch_b = branch_a + rec->branch_a_size;
+
+            // Read condition value (int32) from the captured region. The
+            // resolver verifies the full int32_t fits at cond_offset, so a
+            // malformed .wrp cannot drive an out-of-bounds read here.
+            void* cond_ptr = resolve_ptr(rec->cond_region_id, rec->cond_offset, sizeof(int32_t));
+            if (!cond_ptr) {
+                fprintf(stderr, "APIC: Error - cond pointer resolution failed at operation %u\n", i);
+                return false;
+            }
+            int32_t cond_value = *reinterpret_cast<const int32_t*>(cond_ptr);
+
+            if (cond_value && rec->branch_a_size > 0) {
+                if (!apic_cpu_replay_stream(
+                        branch_a, rec->branch_a_size, rec->branch_a_op_count, resolve_ptr, remap_handle, find_kernel
+                    ))
+                    return false;
+            } else if (!cond_value && rec->branch_b_size > 0) {
+                if (!apic_cpu_replay_stream(
+                        branch_b, rec->branch_b_size, rec->branch_b_op_count, resolve_ptr, remap_handle, find_kernel
+                    ))
+                    return false;
+            }
+            break;
+        }
+
+        case APIC_OP_WHILE: {
+            const APICCondRecord* rec = reinterpret_cast<const APICCondRecord*>(ptr);
+            const uint8_t* body = ptr + sizeof(APICCondRecord);
+
+            void* cond_ptr = resolve_ptr(rec->cond_region_id, rec->cond_offset, sizeof(int32_t));
+            if (!cond_ptr) {
+                fprintf(stderr, "APIC: Error - cond pointer resolution failed at operation %u\n", i);
+                return false;
+            }
+            // The body's first kernel is responsible for updating the
+            // condition int32; we re-read it after each iteration.
+            uint32_t guard = 0;
+            const uint32_t guard_limit = 1u << 24;  // sanity bound to break runaway loops
+            while (*reinterpret_cast<const volatile int32_t*>(cond_ptr)) {
+                if (rec->branch_a_size == 0)
+                    break;
+                if (!apic_cpu_replay_stream(
+                        body, rec->branch_a_size, rec->branch_a_op_count, resolve_ptr, remap_handle, find_kernel
+                    ))
+                    return false;
+                if (++guard >= guard_limit) {
+                    fprintf(stderr, "APIC: Error - APIC_OP_WHILE exceeded guard limit at operation %u\n", i);
+                    return false;
+                }
+            }
+            break;
+        }
+
         default:
             fprintf(stderr, "APIC: Error - unsupported CPU replay op type %u\n", unsigned(header->op_type));
             break;
@@ -1000,11 +1387,12 @@ static bool apic_cpu_replay_stream(
 }
 
 // Shared body for the two public CPU replay entry points. Container is either
-// APICStateInternal or APICGraphInternal; both expose operation_stream,
+// APICState or APICGraph; both expose operation_stream,
 // operation_count, and cpu_kernels (map<string, APICCPUKernel>). The only
 // per-container difference is how region_id is resolved to a host pointer,
 // which the caller supplies as `resolve`.
-template <typename Container, typename Resolver> static bool apic_cpu_replay_container(Container* c, Resolver resolve)
+template <typename Container, typename Resolver, typename HandleRemap>
+static bool apic_cpu_replay_container(Container* c, Resolver resolve, HandleRemap remap_handle)
 {
     auto find_kernel = [c](const std::string& key, uint8_t is_forward) -> void* {
         auto it = c->cpu_kernels.find(key);
@@ -1013,11 +1401,11 @@ template <typename Container, typename Resolver> static bool apic_cpu_replay_con
         return is_forward ? it->second.forward_fn : it->second.backward_fn;
     };
     return apic_cpu_replay_stream(
-        c->operation_stream.data(), c->operation_stream.size(), c->operation_count, resolve, find_kernel
+        c->operation_stream.data(), c->operation_stream.size(), c->operation_count, resolve, remap_handle, find_kernel
     );
 }
 
-bool wp_apic_cpu_replay_state(APICState state)
+bool wp_apic_cpu_replay_state(APICState* state)
 {
     if (!state)
         return false;
@@ -1027,12 +1415,18 @@ bool wp_apic_cpu_replay_state(APICState state)
         fprintf(stderr, "APIC: Error - replay called on unvalidated state; was wp_apic_end_recording called?\n");
         return false;
     }
-    return apic_cpu_replay_container(state, [state](int32_t region_id, uint64_t offset) {
-        return apic_resolve_state_region_ptr(state, region_id, offset);
-    });
+    // Live recording: handles captured this session are still valid, so the
+    // remap is identity.
+    return apic_cpu_replay_container(
+        state,
+        [state](int32_t region_id, uint64_t offset, size_t access_size) {
+            return apic_resolve_state_region_ptr(state, region_id, offset, access_size);
+        },
+        [](uint64_t handle) -> uint64_t { return handle; }
+    );
 }
 
-bool wp_apic_cpu_replay_graph(APICGraph graph)
+bool wp_apic_cpu_replay_graph(APICGraph* graph)
 {
     if (!graph)
         return false;
@@ -1040,9 +1434,16 @@ bool wp_apic_cpu_replay_graph(APICGraph graph)
         return true;
     // Precondition: graph->operations_validated is true. Enforced by
     // wp_apic_load_graph, which is the only path that produces an APICGraph.
-    return apic_cpu_replay_container(graph, [graph](int32_t region_id, uint64_t offset) {
-        return apic_resolve_region_ptr(graph, region_id, offset);
-    });
+    return apic_cpu_replay_container(
+        graph,
+        [graph](int32_t region_id, uint64_t offset, size_t access_size) {
+            return apic_resolve_region_ptr(graph, region_id, offset, access_size);
+        },
+        [graph](uint64_t handle) -> uint64_t {
+            auto it = graph->handle_ptr_remap.find(handle);
+            return (it != graph->handle_ptr_remap.end()) ? it->second : handle;
+        }
+    );
 }
 
 // ============================================================================
@@ -1067,7 +1468,7 @@ static void apic_write_string_nc(std::vector<uint8_t>& buf, const std::string& s
     }
 }
 
-bool wp_apic_state_save(APICState state, const char* path, int target_arch)
+bool wp_apic_state_save(APICState* state, const char* path, int target_arch)
 {
     if (!state || !path) {
         fprintf(stderr, "APIC: Null %s passed to wp_apic_state_save\n", !state ? "state" : "path");
@@ -1122,7 +1523,7 @@ bool wp_apic_state_save(APICState state, const char* path, int target_arch)
     memory_section.resize(4);
     memcpy(memory_section.data(), &region_count, 4);
     for (const auto& kv : state->memory_regions) {
-        const APICStateInternal::RegionInfo& region = kv.second;
+        const APICState::RegionInfo& region = kv.second;
         APICMemoryRegionRecord rec = {};
         rec.region_id = region.region_id;
         rec.element_size = region.element_size;
@@ -1213,18 +1614,18 @@ bool wp_apic_state_save(APICState state, const char* path, int target_arch)
 // Graph API — pure-C++ implementations (work on both CPU and CUDA graphs)
 // ============================================================================
 
-void wp_apic_destroy_graph(APICGraph graph) { delete graph; }
+void wp_apic_destroy_graph(APICGraph* graph) { delete graph; }
 
-int wp_apic_get_num_params(APICGraph graph) { return graph ? static_cast<int>(graph->binding_names.size()) : 0; }
+int wp_apic_get_num_params(APICGraph* graph) { return graph ? static_cast<int>(graph->binding_names.size()) : 0; }
 
-const char* wp_apic_get_param_name(APICGraph graph, int index)
+const char* wp_apic_get_param_name(APICGraph* graph, int index)
 {
     if (!graph || index < 0 || index >= static_cast<int>(graph->binding_names.size()))
         return nullptr;
     return graph->binding_names[index].c_str();
 }
 
-size_t wp_apic_get_param_size(APICGraph graph, const char* name)
+size_t wp_apic_get_param_size(APICGraph* graph, const char* name)
 {
     if (!graph || !name)
         return 0;
@@ -1237,7 +1638,7 @@ size_t wp_apic_get_param_size(APICGraph graph, const char* name)
     return region_it->second.size;
 }
 
-void* wp_apic_get_param_ptr(APICGraph graph, const char* name)
+void* wp_apic_get_param_ptr(APICGraph* graph, const char* name)
 {
     if (!graph || !name)
         return nullptr;
@@ -1250,9 +1651,9 @@ void* wp_apic_get_param_ptr(APICGraph graph, const char* name)
     return region_it->second.ptr;
 }
 
-int wp_apic_get_num_kernels(APICGraph graph) { return graph ? static_cast<int>(graph->kernels.size()) : 0; }
+int wp_apic_get_num_kernels(APICGraph* graph) { return graph ? static_cast<int>(graph->kernels.size()) : 0; }
 
-const char* wp_apic_get_kernel_key(APICGraph graph, int index)
+const char* wp_apic_get_kernel_key(APICGraph* graph, int index)
 {
     if (!graph || index < 0 || index >= static_cast<int>(graph->kernels.size()))
         return nullptr;
@@ -1261,7 +1662,7 @@ const char* wp_apic_get_kernel_key(APICGraph graph, int index)
     return it->first.c_str();
 }
 
-const char* wp_apic_get_kernel_forward_name(APICGraph graph, const char* kernel_key)
+const char* wp_apic_get_kernel_forward_name(APICGraph* graph, const char* kernel_key)
 {
     if (!graph || !kernel_key)
         return nullptr;
@@ -1271,7 +1672,7 @@ const char* wp_apic_get_kernel_forward_name(APICGraph graph, const char* kernel_
     return it->second.forward_name.c_str();
 }
 
-const char* wp_apic_get_kernel_backward_name(APICGraph graph, const char* kernel_key)
+const char* wp_apic_get_kernel_backward_name(APICGraph* graph, const char* kernel_key)
 {
     if (!graph || !kernel_key)
         return nullptr;
@@ -1281,7 +1682,7 @@ const char* wp_apic_get_kernel_backward_name(APICGraph graph, const char* kernel
     return it->second.backward_name.c_str();
 }
 
-const char* wp_apic_get_kernel_module_hash(APICGraph graph, const char* kernel_key)
+const char* wp_apic_get_kernel_module_hash(APICGraph* graph, const char* kernel_key)
 {
     if (!graph || !kernel_key)
         return nullptr;
@@ -1291,7 +1692,7 @@ const char* wp_apic_get_kernel_module_hash(APICGraph graph, const char* kernel_k
     return it->second.module_hash.c_str();
 }
 
-void wp_apic_register_loaded_cpu_kernel(APICGraph graph, const char* kernel_key, void* forward_fn, void* backward_fn)
+void wp_apic_register_loaded_cpu_kernel(APICGraph* graph, const char* kernel_key, void* forward_fn, void* backward_fn)
 {
     if (!graph || !kernel_key)
         return;
@@ -1305,7 +1706,7 @@ void wp_apic_register_loaded_cpu_kernel(APICGraph graph, const char* kernel_key,
 // Graph parameter set/get — common dispatcher, CUDA path lives in apic.cu
 // ============================================================================
 
-static bool apic_lookup_param_region(APICGraph graph, const char* name, void** out_ptr, size_t expected_size)
+static bool apic_lookup_param_region(APICGraph* graph, const char* name, void** out_ptr, size_t expected_size)
 {
     if (!graph || !name)
         return false;
@@ -1334,7 +1735,7 @@ static bool apic_lookup_param_region(APICGraph graph, const char* name, void** o
     return true;
 }
 
-bool wp_apic_set_param(APICGraph graph, const char* name, const void* data, size_t size)
+bool wp_apic_set_param(APICGraph* graph, const char* name, const void* data, size_t size)
 {
     if (!data)
         return false;
@@ -1353,7 +1754,7 @@ bool wp_apic_set_param(APICGraph graph, const char* name, const void* data, size
 #endif
 }
 
-bool wp_apic_get_param(APICGraph graph, const char* name, void* data, size_t size)
+bool wp_apic_get_param(APICGraph* graph, const char* name, void* data, size_t size)
 {
     if (!data)
         return false;
@@ -1376,7 +1777,7 @@ bool wp_apic_get_param(APICGraph graph, const char* name, void* data, size_t siz
 // Graph load dispatcher
 // ============================================================================
 
-APICGraph wp_apic_load_graph(void* context, const char* path, int device_type)
+APICGraph* wp_apic_load_graph(void* context, const char* path, int device_type)
 {
     if (!path) {
         wp::set_error_string("Path is null");
@@ -1429,7 +1830,7 @@ APICGraph wp_apic_load_graph(void* context, const char* path, int device_type)
         return nullptr;
     }
 
-    APICGraphInternal* graph = new APICGraphInternal();
+    APICGraph* graph = new APICGraph();
     graph->cuda_context = context;
     graph->target_arch = header->target_arch;
     graph->device_type = static_cast<APICDeviceType>(device_type);
@@ -1524,7 +1925,7 @@ APICGraph wp_apic_load_graph(void* context, const char* path, int device_type)
 // ============================================================================
 
 #if !WP_ENABLE_CUDA
-void* wp_apic_get_cuda_graph(APICGraph) { return nullptr; }
-void* wp_apic_get_cuda_graph_exec(APICGraph) { return nullptr; }
-bool wp_apic_launch(APICGraph, void*) { return false; }
+void* wp_apic_get_cuda_graph(APICGraph*) { return nullptr; }
+void* wp_apic_get_cuda_graph_exec(APICGraph*) { return nullptr; }
+bool wp_apic_launch(APICGraph*, void*) { return false; }
 #endif  // !WP_ENABLE_CUDA
