@@ -12,6 +12,7 @@ import unittest
 import numpy as np
 
 import warp as wp
+from warp._src.utils import check_p2p
 from warp.tests.unittest_utils import (
     add_function_test,
     assert_np_equal,
@@ -212,6 +213,7 @@ def test_graph_launch_array_access_mode_checked_cuda_capture(test, device):
     get_cuda_device_pair_with_peer_access_support(graph_module_load_devices),
     "Requires devices with peer access and CUDA graph module-load support",
 )
+@unittest.skipUnless(check_p2p(), "Peer-to-Peer transfers not supported")
 def test_graph_launch_array_access_mode_checked_peer_access_cuda_capture(test, _):
     target_device, peer_device = get_cuda_device_pair_with_peer_access_support(graph_module_load_devices)
     n = 64
@@ -246,6 +248,7 @@ def test_graph_launch_array_access_mode_checked_peer_access_cuda_capture(test, _
     get_cuda_device_pair_with_mempool_access_support(graph_module_load_devices),
     "Requires devices with mempool access and CUDA graph module-load support",
 )
+@unittest.skipUnless(check_p2p(), "Peer-to-Peer transfers not supported")
 def test_graph_launch_array_access_mode_checked_mempool_access_cuda_capture(test, _):
     target_device, peer_device = get_cuda_device_pair_with_mempool_access_support(graph_module_load_devices)
     n = 64
