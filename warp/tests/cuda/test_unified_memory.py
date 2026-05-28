@@ -457,6 +457,7 @@ class TestUnifiedMemory(unittest.TestCase):
         self.assertEqual(len(matching), 0)
 
     @unittest.skipUnless(get_cuda_device_pair_with_peer_access_support(), "Requires devices with peer access support")
+    @unittest.skipUnless(check_p2p(), "Peer-to-Peer transfers not supported")
     def test_unified_memory_verify_uses_peer_access_for_default_cuda_allocations(self):
         """Default CUDA allocations use peer-access state for cross-GPU verification.
 
@@ -493,6 +494,7 @@ class TestUnifiedMemory(unittest.TestCase):
             wp.set_mempool_access_enabled(target_device, peer_device, mempool_access_saved)
 
     @unittest.skipUnless(get_cuda_device_pair_with_peer_access_support(), "Requires devices with peer access support")
+    @unittest.skipUnless(check_p2p(), "Peer-to-Peer transfers not supported")
     def test_unified_memory_verify_uses_parent_allocator_for_default_cuda_slices(self):
         """Slices of default CUDA allocations should follow the base array's allocator.
 
