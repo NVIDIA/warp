@@ -470,8 +470,8 @@ class APICapture:
         if module_hash not in self.collected_modules:
             # Compute the binary path in the kernel cache (same logic as Module.load)
             module = kernel.module
-            output_name = module._get_compile_output_name(self.device)
-            module_id = module.get_module_identifier()
+            output_name = module._get_compile_output_name(self.device, block_dim=module_exec.block_dim)
+            module_id = module.get_module_identifier(block_dim=module_exec.block_dim)
             module_dir = os.path.join(warp.config.kernel_cache_dir, module_id)
             binary_path = os.path.join(module_dir, output_name)
 
@@ -503,5 +503,5 @@ class APICapture:
                 "backward_name": backward_name,
                 "forward_smem_bytes": hooks.forward_smem_bytes,
                 "backward_smem_bytes": hooks.backward_smem_bytes,
-                "block_dim": kernel.options.get("block_dim", 256),
+                "block_dim": module_exec.block_dim,
             }
