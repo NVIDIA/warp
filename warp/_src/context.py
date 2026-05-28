@@ -9460,6 +9460,63 @@ def load_module(
     force_load(device=device, modules=modules, block_dim=block_dim, max_workers=max_workers)
 
 
+def _force_load_cuda_graph_capture_modules(device: Device):
+    modules = list(user_modules.values())
+    if not modules:
+        return
+
+    restore_context = is_cuda_driver_initialized()
+    if restore_context:
+        saved_context = runtime.core.wp_cuda_context_get_current()
+
+    original_block_dims = {module: module.options["block_dim"] for module in modules}
+    original_cuda_execs = {
+        module: module.execs.get((device.context, block_dim)) is not None
+        for module, block_dim in original_block_dims.items()
+    }
+    original_cpu_execs = {
+        module: module.execs.get((None, block_dim)) is not None for module, block_dim in original_block_dims.items()
+    }
+    try:
+        # Capture preloading is best-effort because long-lived test and
+        # application processes can retain unrelated modules that are expected
+        # to fail compilation. A captured kernel that is not loadable will still
+        # fail when launched, but unrelated modules must not block capture.
+        for module in modules:
+            try:
+                module.load(device)
+            except Exception:
+                pass
+
+        # Default CUDA launches use block_dim=256. A preceding CPU launch may
+        # have left a module's active block_dim at 1, so force-loading only the
+        # active variant is not enough for graph capture on drivers that forbid
+        # module loading during capture. Limit this repair to modules that were
+        # stale from CPU execution; explicit non-default CUDA block dimensions
+        # may be required by tile kernels and must not be recompiled at the
+        # default block size.
+        default_cuda_block_dim = 256
+        default_modules = [
+            module
+            for module, block_dim in original_block_dims.items()
+            if block_dim == 1
+            and original_cpu_execs[module]
+            and not original_cuda_execs[module]
+            and module.execs.get((device.context, block_dim)) is not None
+        ]
+        for module in default_modules:
+            try:
+                module.load(device, block_dim=default_cuda_block_dim)
+            except Exception:
+                pass
+    finally:
+        for module, block_dim in original_block_dims.items():
+            module.options["block_dim"] = block_dim
+
+        if restore_context:
+            runtime.core.wp_cuda_context_set_current(saved_context)
+
+
 def _resolve_module(module: Module | types.ModuleType | str) -> Module:
     """Resolve a module from a string, Module, or types.ModuleType.
 
@@ -9917,7 +9974,7 @@ def capture_begin(
                 raise RuntimeError("Graph capture already in progress on this stream")
 
             if force_module_load:
-                force_load(device)
+                _force_load_cuda_graph_capture_modules(device)
 
         if not runtime.core.wp_cuda_graph_begin_capture(
             device.context, stream.cuda_stream, int(external), int(CaptureMode(capture_mode))
