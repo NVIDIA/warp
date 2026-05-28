@@ -7,6 +7,7 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 
 ## 2026
 
+- **EndoGSim: Physics-Aware 4D Dynamic Endoscopic Scene Simulations via MLLM-Guided Gaussian Splatting**. *C. Liu, Y. Huang, L. Bai, B. Cui, H. Ren*. May 2026. [arXiv:2605.16022](https://arxiv.org/abs/2605.16022)
 - **Learning-augmented robotic automation for real-world manufacturing**. *Y. Kim, Q. Nguyen, T. Kim, Y. Heo, J. Lee*. April 2026. [arXiv:2604.22235](https://arxiv.org/abs/2604.22235)
 - **FIT: A Large-Scale Dataset for Fit-Aware Virtual Try-On**. *J. Karras, Y. Wang, Y. Li, I. Kemelmacher-Shlizerman*. April 2026. [arXiv:2604.08526](https://arxiv.org/abs/2604.08526)
 - **Wave-appropriate reconstruction of compressible flows: physics-constrained acoustic dissipation and rank-1 entropy wave correction**. *A. S. Chamarthi*. April 2026. [arXiv:2604.02757](https://arxiv.org/abs/2604.02757)
