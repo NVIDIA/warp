@@ -9478,35 +9478,34 @@ def _force_load_cuda_graph_capture_modules(device: Device):
         module: module.execs.get((None, block_dim)) is not None for module, block_dim in original_block_dims.items()
     }
     try:
-        # Capture preloading is best-effort because long-lived test and
-        # application processes can retain unrelated modules that are expected
-        # to fail compilation. A captured kernel that is not loadable will still
-        # fail when launched, but unrelated modules must not block capture.
-        for module in modules:
-            try:
-                module.load(device)
-            except Exception:
-                pass
-
         # Default CUDA launches use block_dim=256. A preceding CPU launch may
         # have left a module's active block_dim at 1, so force-loading only the
         # active variant is not enough for graph capture on drivers that forbid
-        # module loading during capture. Limit this repair to modules that were
-        # stale from CPU execution; explicit non-default CUDA block dimensions
-        # may be required by tile kernels and must not be recompiled at the
-        # default block size.
+        # module loading during capture. Load the default CUDA variant first so
+        # a failed stale block_dim=1 load cannot prevent the variant needed by a
+        # captured default launch from being preloaded. Limit this repair to
+        # modules that were stale from CPU execution; explicit non-default CUDA
+        # block dimensions may be required by tile kernels and must not be
+        # recompiled at the default block size.
         default_cuda_block_dim = 256
         default_modules = [
             module
             for module, block_dim in original_block_dims.items()
-            if block_dim == 1
-            and original_cpu_execs[module]
-            and not original_cuda_execs[module]
-            and module.execs.get((device.context, block_dim)) is not None
+            if block_dim == 1 and original_cpu_execs[module] and not original_cuda_execs[module]
         ]
         for module in default_modules:
             try:
                 module.load(device, block_dim=default_cuda_block_dim)
+            except Exception:
+                pass
+
+        # Capture preloading is best-effort because long-lived test and
+        # application processes can retain unrelated modules that are expected
+        # to fail compilation. A captured kernel that is not loadable will still
+        # fail when launched, but unrelated modules must not block capture.
+        for module, block_dim in original_block_dims.items():
+            try:
+                module.load(device, block_dim=block_dim)
             except Exception:
                 pass
     finally:

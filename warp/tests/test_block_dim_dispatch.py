@@ -138,6 +138,53 @@ def test_force_module_load_preloads_default_cuda_block_dim_after_cpu(test, devic
     )
 
 
+def test_force_module_load_preloads_default_before_stale_cuda_block_dim(test, device):
+    """Default CUDA preloading must not depend on stale block_dim=1 loading."""
+
+    @wp.kernel(module="unique")
+    def simple_kernel(result: wp.array(dtype=wp.int32)):
+        result[0] = 1
+
+    module = simple_kernel.module
+
+    result_cpu = wp.zeros(1, dtype=wp.int32, device="cpu")
+    wp.launch(simple_kernel, dim=1, inputs=[result_cpu], device="cpu")
+    test.assertIn((wp.get_device("cpu").context, 1), module.execs)
+
+    original_load = module.load
+    load_calls = []
+
+    def fail_stale_cuda_load(load_device, block_dim=None, *args, **kwargs):
+        load_device = warp_context.runtime.get_device(load_device)
+        load_calls.append(block_dim)
+
+        if load_device.context == device.context and block_dim in (None, 1):
+            raise RuntimeError("simulated stale CUDA block_dim load failure")
+
+        return original_load(load_device, *args, block_dim=block_dim, **kwargs)
+
+    user_modules = warp_context.user_modules
+    saved_user_modules = dict(user_modules)
+    try:
+        user_modules.clear()
+        user_modules[module.name] = module
+        module.load = fail_stale_cuda_load
+
+        with wp.ScopedCapture(device=device, force_module_load=True):
+            pass
+    finally:
+        module.load = original_load
+        user_modules.clear()
+        user_modules.update(saved_user_modules)
+
+    test.assertIn(256, load_calls)
+    test.assertIn(
+        (device.context, 256),
+        module.execs,
+        "force_module_load should not require stale CUDA block_dim=1 to load first",
+    )
+
+
 def test_force_module_load_preserves_explicit_cuda_block_dim(test, device):
     """Force-loading before capture must not compile unused default variants."""
 
@@ -237,6 +284,13 @@ add_function_test(
     TestBlockDimDispatch,
     "test_force_module_load_preloads_default_cuda_block_dim_after_cpu",
     test_force_module_load_preloads_default_cuda_block_dim_after_cpu,
+    devices=cuda_devices,
+)
+
+add_function_test(
+    TestBlockDimDispatch,
+    "test_force_module_load_preloads_default_before_stale_cuda_block_dim",
+    test_force_module_load_preloads_default_before_stale_cuda_block_dim,
     devices=cuda_devices,
 )
 
