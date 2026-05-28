@@ -2447,12 +2447,13 @@ class ModuleExec:
         instance.handle = None
         return instance
 
-    def __init__(self, handle, module_hash, device, meta):
+    def __init__(self, handle, module_hash, device, meta, block_dim: int):
         self.handle = handle
         self.module_hash = module_hash
         self.device = device
         self.kernel_hooks = {}
         self.meta = meta
+        self.block_dim = block_dim
 
     # release the loaded module
     def __del__(self):
@@ -3329,13 +3330,13 @@ class Module:
                     != 0
                 ):
                     raise Exception(f"Failed to load CPU module '{self.name}'")
-                module_exec = ModuleExec(module_handle, module_hash, device, meta)
+                module_exec = ModuleExec(module_handle, module_hash, device, meta, active_block_dim)
                 self.execs[(None, active_block_dim)] = module_exec
 
             elif device.is_cuda:
                 cuda_module = warp._src.build.load_cuda(binary_path, device)
                 if cuda_module is not None:
-                    module_exec = ModuleExec(cuda_module, module_hash, device, meta)
+                    module_exec = ModuleExec(cuda_module, module_hash, device, meta, active_block_dim)
                     self.execs[(device.context, active_block_dim)] = module_exec
                 else:
                     module_load_timer.extra_msg = " (error)"

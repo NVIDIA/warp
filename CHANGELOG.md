@@ -140,6 +140,16 @@
 
 ### Fixed
 
+- Fix `Module.load` cross-device `block_dim` leak. A CPU launch on a module
+  (which silently overrides `block_dim` to 1) would mutate the module's
+  shared `options["block_dim"]`, so a subsequent `wp.load_module` or
+  `wp.ScopedCapture(force_module_load=True)` on CUDA would compile only the
+  `block_dim=1` variant on CUDA — leaving the captured CUDA launch's
+  `block_dim=256` variant uncompiled until replay time. On CUDA driver
+  versions older than 12.3 (where in-capture `cuModuleLoadDataEx` is
+  forbidden) this surfaced as `CUDA_ERROR_STREAM_CAPTURE_UNSUPPORTED`; on
+  newer drivers it silently re-compiled inside the capture
+  ([GH-564](https://github.com/NVIDIA/warp/issues/564)).
 - Fix APIC backward replay so it consumes output gradients exactly like live
   `wp.Tape().backward()`: the array descriptor reconstructed at replay now
   carries the original `grad` pointer and array flags (including
