@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Runtime &#8212; Warp 1.14.0rc1</title>
+    <title>Runtime &#8212; Warp 1.14.0rc2</title>
   
   
   
@@ -68,7 +68,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.14.0rc1" />
+  <meta name="docsearch:version" content="1.14.0rc2" />
 
 
   </head>
@@ -139,11 +139,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0rc1 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0rc1 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0rc2 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0rc2 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.14.0rc1</p>
+    <p class="title logo__title">Warp 1.14.0rc2</p>
   
 </a></div>
     
@@ -278,11 +278,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0rc1 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0rc1 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0rc2 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0rc2 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.14.0rc1</p>
+    <p class="title logo__title">Warp 1.14.0rc2</p>
   
 </a>
 
@@ -415,7 +415,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_autograd.html">warp.autograd</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_config.html">warp.config</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_fem.html">warp.fem</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_jax.html">warp.jax</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_optim.html">warp.optim</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_render.html">warp.render</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_sparse.html">warp.sparse</a></li>
@@ -2082,26 +2081,45 @@ dispatch overhead that otherwise dominates CPU launches:</p>
 <span class="n">wp</span><span class="o">.</span><span class="n">capture_launch</span><span class="p">(</span><span class="n">capture</span><span class="o">.</span><span class="n">graph</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>The set of operations currently recorded on CPU mirrors the CUDA path: kernel
-launches (<a class="reference internal" href="../api_reference/_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch()</span></code></a>, <a class="reference internal" href="../api_reference/_generated/warp.launch_tiled.html#warp.launch_tiled" title="warp.launch_tiled"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch_tiled()</span></code></a>),
-memory copies (<a class="reference internal" href="../api_reference/_generated/warp.copy.html#warp.copy" title="warp.copy"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.copy()</span></code></a>), and zero-initialization
-(<a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.zero_" title="warp.array.zero_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.zero_()</span></code></a>). Other operations are not yet
-recorded.</p>
+<p>The operations recorded on CPU now cover most of the CUDA path:</p>
+<ul class="simple">
+<li><p>Forward and backward kernel launches
+(<a class="reference internal" href="../api_reference/_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch()</span></code></a>, <a class="reference internal" href="../api_reference/_generated/warp.launch_tiled.html#warp.launch_tiled" title="warp.launch_tiled"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch_tiled()</span></code></a>,
+and the adjoint launches emitted by <a class="reference internal" href="../api_reference/_generated/warp.Tape.html#warp.Tape" title="warp.Tape"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Tape</span></code></a> /
+<a class="reference internal" href="../api_reference/_generated/warp.Tape.html#warp.Tape.backward" title="warp.Tape.backward"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Tape.backward()</span></code></a>).</p></li>
+<li><p>Memory copies (<a class="reference internal" href="../api_reference/_generated/warp.copy.html#warp.copy" title="warp.copy"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.copy()</span></code></a>) and zero-initialization
+(<a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.zero_" title="warp.array.zero_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.zero_()</span></code></a>).</p></li>
+<li><p>Conditional graph nodes (<a class="reference internal" href="../api_reference/_generated/warp.capture_if.html#warp.capture_if" title="warp.capture_if"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_if()</span></code></a> and
+<a class="reference internal" href="../api_reference/_generated/warp.capture_while.html#warp.capture_while" title="warp.capture_while"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_while()</span></code></a>). The condition is re-evaluated
+on every replay, so a captured <code class="docutils literal notranslate"><span class="pre">while</span></code> loop can iterate a different number
+of times each call.</p></li>
+</ul>
+<p>The following kernel patterns are also supported under capture: tile primitives
+(<code class="docutils literal notranslate"><span class="pre">wp.tile_zeros</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.tile</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.untile</span></code>, tile reductions and scans),
+kernels with scalar parameters of any size (serialized into per-launch value
+blobs, with pointer fields patched via relocation metadata at replay), and
+empty / zero-length array arguments.</p>
 <p>Current limitations of CPU graph capture:</p>
 <ul class="simple">
-<li><p><a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.fill_" title="warp.array.fill_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.fill_()</span></code></a> is not recorded on CPU and is silently
-dropped from the captured graph. Use <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.zero_" title="warp.array.zero_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.zero_()</span></code></a> or
-a kernel launch instead.</p></li>
-<li><p>Conditional graph nodes (<a class="reference internal" href="../api_reference/_generated/warp.capture_if.html#warp.capture_if" title="warp.capture_if"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_if()</span></code></a>,
-<a class="reference internal" href="../api_reference/_generated/warp.capture_while.html#warp.capture_while" title="warp.capture_while"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_while()</span></code></a>) are CUDA-only and have no CPU
-graph counterpart. They still work outside graph capture on CPU, evaluating the
-condition immediately.</p></li>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.fill_" title="warp.array.fill_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.fill_()</span></code></a> for non-zero values is not yet
+recorded on CPU and is silently dropped from the captured graph. Use
+<a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.zero_" title="warp.array.zero_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.zero_()</span></code></a> or a kernel launch instead.</p></li>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.utils.array_scan.html#warp.utils.array_scan" title="warp.utils.array_scan"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_scan()</span></code></a> is not yet recorded
+into the CPU APIC byte stream; calling it inside a CPU <a class="reference internal" href="../api_reference/_generated/warp.ScopedCapture.html#warp.ScopedCapture" title="warp.ScopedCapture"><code class="xref py py-class docutils literal notranslate"><span class="pre">ScopedCapture</span></code></a>
+raises <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a>. Run the scan before or after the captured
+region.</p></li>
+<li><p>Memsets and memcpys whose destination pointer was not previously seen by
+Warp’s tracker (for example, buffers allocated by an external solver such as
+mujoco-warp) print <code class="docutils literal notranslate"><span class="pre">APIC:</span> <span class="pre">Error</span> <span class="pre">-</span> <span class="pre">memset</span> <span class="pre">dst</span> <span class="pre">pointer</span> <span class="pre">not</span> <span class="pre">in</span> <span class="pre">any</span> <span class="pre">registered</span>
+<span class="pre">region</span></code> and are dropped from the captured graph. Routing the allocation
+through <a class="reference internal" href="../api_reference/_generated/warp.empty.html#warp.empty" title="warp.empty"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.empty()</span></code></a> / <a class="reference internal" href="../api_reference/_generated/warp.zeros.html#warp.zeros" title="warp.zeros"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.zeros()</span></code></a>, or
+passing the buffer through a kernel launch, ensures it is tracked.</p></li>
 <li><p>Nested captures are rejected on both CPU and CUDA. Only one capture may be
 active at a time on a given thread.</p></li>
 <li><p>Arrays used during capture must remain alive for the lifetime of the captured
 graph. Reusing a freed CPU pointer during capture leads to undefined behavior;
-CUDA capture defers frees automatically while a capture is in progress, but the
-CPU path does not.</p></li>
+CUDA capture defers frees automatically while a capture is in progress, but
+the CPU path does not.</p></li>
 </ul>
 </section>
 <section id="saving-and-loading-graphs">
@@ -2381,32 +2399,71 @@ freed, causing crashes and undefined behavior.</p>
 <p class="admonition-title">Note</p>
 <p>Mesh objects maintain references to their input geometry buffers. All buffers should live on the same device.</p>
 </div>
-<p>Meshes can be passed to kernels using their <code class="docutils literal notranslate"><span class="pre">id</span></code> attribute, which is <code class="docutils literal notranslate"><span class="pre">uint64</span></code> value that uniquely identifies the mesh.
-Once inside a kernel, you can perform geometric queries against the mesh such as ray-casts or closest-point lookups:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">raycast</span><span class="p">(</span><span class="n">mesh</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">uint64</span><span class="p">,</span>
-            <span class="n">ray_origin</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span>
-            <span class="n">ray_dir</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span>
-            <span class="n">ray_hit</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">]):</span>
+<p>Meshes can be passed to kernels using their <code class="docutils literal notranslate"><span class="pre">id</span></code> attribute, which is a <code class="docutils literal notranslate"><span class="pre">uint64</span></code> value that uniquely identifies
+the mesh.
+Once inside a kernel, you can perform geometric queries against the mesh such as ray-casts or closest-point lookups.
+For example, the result object returned by <a class="reference internal" href="../language_reference/_generated/warp.mesh_query_point.html#warp._src.lang.mesh_query_point" title="warp._src.lang.mesh_query_point"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.mesh_query_point()</span></code></a> stores the
+hit face and barycentric coordinates, which can be passed to
+<a class="reference internal" href="../language_reference/_generated/warp.mesh_eval_position.html#warp._src.lang.mesh_eval_position" title="warp._src.lang.mesh_eval_position"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.mesh_eval_position()</span></code></a>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">points</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+    <span class="p">[(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span> <span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span> <span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)],</span>
+    <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">indices</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">mesh</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Mesh</span><span class="p">(</span><span class="n">points</span><span class="o">=</span><span class="n">points</span><span class="p">,</span> <span class="n">indices</span><span class="o">=</span><span class="n">indices</span><span class="p">)</span>
+<span class="n">query_points</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([(</span><span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">closest</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty_like</span><span class="p">(</span><span class="n">query_points</span><span class="p">)</span>
 
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">closest_point_example</span><span class="p">(</span><span class="n">mesh</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">uint64</span><span class="p">,</span> <span class="n">query_points</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span> <span class="n">closest</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">]):</span>
     <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">query</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">mesh_query_point</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">query_points</span><span class="p">[</span><span class="n">tid</span><span class="p">],</span> <span class="n">max_dist</span><span class="o">=</span><span class="mf">10.0</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">query</span><span class="o">.</span><span class="n">result</span><span class="p">:</span>
+        <span class="n">closest</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">mesh_eval_position</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">query</span><span class="o">.</span><span class="n">face</span><span class="p">,</span> <span class="n">query</span><span class="o">.</span><span class="n">u</span><span class="p">,</span> <span class="n">query</span><span class="o">.</span><span class="n">v</span><span class="p">)</span>
 
-    <span class="n">t</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>      <span class="c1"># hit distance along ray</span>
-    <span class="n">u</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>      <span class="c1"># hit face barycentric u</span>
-    <span class="n">v</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>      <span class="c1"># hit face barycentric v</span>
-    <span class="n">sign</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>   <span class="c1"># hit face sign</span>
-    <span class="n">n</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">()</span>       <span class="c1"># hit face normal</span>
-    <span class="n">f</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>          <span class="c1"># hit face index</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span>
+    <span class="n">closest_point_example</span><span class="p">,</span>
+    <span class="n">dim</span><span class="o">=</span><span class="n">query_points</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
+    <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">mesh</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">query_points</span><span class="p">],</span>
+    <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">closest</span><span class="p">],</span>
+    <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">closest</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="mi">3</span><span class="p">))</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[[0.25 0.25 0.  ]]
+</pre></div>
+</div>
+<p>The result object returned by <a class="reference internal" href="../language_reference/_generated/warp.mesh_query_ray.html#warp._src.lang.mesh_query_ray" title="warp._src.lang.mesh_query_ray"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.mesh_query_ray()</span></code></a> exposes the hit distance,
+face normal, face index, and barycentric coordinates:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">ray_origins</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([(</span><span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">ray_dirs</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">)],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">hit_normals</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">ray_origins</span><span class="p">)</span>
 
-    <span class="n">color</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">()</span>
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">raycast_example</span><span class="p">(</span>
+    <span class="n">mesh</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">uint64</span><span class="p">,</span>
+    <span class="n">ray_origins</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span>
+    <span class="n">ray_dirs</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span>
+    <span class="n">hit_normals</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span>
+<span class="p">):</span>
+    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">query</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">mesh_query_ray</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">ray_origins</span><span class="p">[</span><span class="n">tid</span><span class="p">],</span> <span class="n">ray_dirs</span><span class="p">[</span><span class="n">tid</span><span class="p">],</span> <span class="n">max_t</span><span class="o">=</span><span class="mf">10.0</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">query</span><span class="o">.</span><span class="n">result</span><span class="p">:</span>
+        <span class="n">hit_normals</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">query</span><span class="o">.</span><span class="n">normal</span>
 
-    <span class="c1"># ray cast against the mesh</span>
-    <span class="k">if</span> <span class="n">wp</span><span class="o">.</span><span class="n">mesh_query_ray</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">ray_origin</span><span class="p">[</span><span class="n">tid</span><span class="p">],</span> <span class="n">ray_dir</span><span class="p">[</span><span class="n">tid</span><span class="p">],</span> <span class="mf">1.e+6</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">sign</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">f</span><span class="p">):</span>
-
-        <span class="c1"># if we got a hit then set color to the face normal</span>
-        <span class="n">color</span> <span class="o">=</span> <span class="n">n</span><span class="o">*</span><span class="mf">0.5</span> <span class="o">+</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)</span>
-
-    <span class="n">ray_hit</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">color</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span>
+    <span class="n">raycast_example</span><span class="p">,</span>
+    <span class="n">dim</span><span class="o">=</span><span class="n">ray_origins</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
+    <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">mesh</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">ray_origins</span><span class="p">,</span> <span class="n">ray_dirs</span><span class="p">],</span>
+    <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">hit_normals</span><span class="p">],</span>
+    <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">hit_normals</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[[0. 0. 1.]]
 </pre></div>
 </div>
 <p>Users may update mesh vertex positions at runtime simply by modifying the points buffer.
@@ -2420,42 +2477,50 @@ structure and ensure that queries work correctly.</p>
 <section id="hash-grids">
 <h3>Hash Grids<a class="headerlink" href="#hash-grids" title="Link to this heading">#</a></h3>
 <p>Many particle-based simulation methods such as the Discrete Element Method (DEM), or Smoothed Particle Hydrodynamics (SPH), involve iterating over spatial neighbors to compute force interactions. Hash grids are a well-established data structure to accelerate these nearest neighbor queries, and particularly well-suited to the GPU.</p>
-<p>To support spatial neighbor queries Warp provides a <code class="docutils literal notranslate"><span class="pre">HashGrid</span></code> object that may be created as follows:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">grid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">HashGrid</span><span class="p">(</span><span class="n">dim_x</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span> <span class="n">dim_y</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span> <span class="n">dim_z</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
-
+<p>To support spatial neighbor queries Warp provides a <code class="docutils literal notranslate"><span class="pre">HashGrid</span></code> object. <code class="docutils literal notranslate"><span class="pre">p</span></code> is an array of
+<a class="reference internal" href="../api_reference/_generated/warp.vec3.html#warp.vec3" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.vec3</span></code></a> point positions, and <code class="docutils literal notranslate"><span class="pre">r</span></code> is the radius to use when building the grid:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">p</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+    <span class="p">[(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span> <span class="p">(</span><span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span> <span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)],</span>
+    <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">r</span> <span class="o">=</span> <span class="mf">0.5</span>
+<span class="n">grid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">HashGrid</span><span class="p">(</span><span class="n">dim_x</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">dim_y</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">dim_z</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
 <span class="n">grid</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="n">points</span><span class="o">=</span><span class="n">p</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="n">r</span><span class="p">)</span>
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">p</span></code> is an array of <a class="reference internal" href="../api_reference/_generated/warp.vec3.html#warp.vec3" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.vec3</span></code></a> point positions, and <code class="docutils literal notranslate"><span class="pre">r</span></code> is the radius to use when building the grid.
-Neighbors can then be iterated over inside the kernel code using <a class="reference internal" href="../language_reference/_generated/warp.hash_grid_query.html#warp._src.lang.hash_grid_query" title="warp._src.lang.hash_grid_query"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.hash_grid_query()</span></code></a>
-and <a class="reference internal" href="../language_reference/_generated/warp.hash_grid_query_next.html#warp._src.lang.hash_grid_query_next" title="warp._src.lang.hash_grid_query_next"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.hash_grid_query_next()</span></code></a> as follows:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">sum</span><span class="p">(</span><span class="n">grid</span> <span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">uint64</span><span class="p">,</span>
-        <span class="n">points</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span>
-        <span class="n">output</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span>
-        <span class="n">radius</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+<p>Neighbors can then be iterated over inside the kernel code using
+<a class="reference internal" href="../language_reference/_generated/warp.hash_grid_query.html#warp._src.lang.hash_grid_query" title="warp._src.lang.hash_grid_query"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.hash_grid_query()</span></code></a>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">neighbor_count</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
 
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">count_neighbors_example</span><span class="p">(</span>
+    <span class="n">grid</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">uint64</span><span class="p">,</span>
+    <span class="n">points</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span>
+    <span class="n">radius</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">neighbor_count</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+<span class="p">):</span>
     <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">point</span> <span class="o">=</span> <span class="n">points</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span>
+    <span class="n">count</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
 
-    <span class="c1"># query point</span>
-    <span class="n">p</span> <span class="o">=</span> <span class="n">points</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="n">wp</span><span class="o">.</span><span class="n">hash_grid_query</span><span class="p">(</span><span class="n">grid</span><span class="p">,</span> <span class="n">point</span><span class="p">,</span> <span class="n">radius</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">index</span> <span class="o">!=</span> <span class="n">tid</span> <span class="ow">and</span> <span class="n">wp</span><span class="o">.</span><span class="n">length</span><span class="p">(</span><span class="n">points</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">-</span> <span class="n">point</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">radius</span><span class="p">:</span>
+            <span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
 
-    <span class="c1"># create grid query around point</span>
-    <span class="n">query</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">hash_grid_query</span><span class="p">(</span><span class="n">grid</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">radius</span><span class="p">)</span>
-    <span class="n">index</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">neighbor_count</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">count</span>
 
-    <span class="nb">sum</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">()</span>
-
-    <span class="k">while</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">hash_grid_query_next</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">index</span><span class="p">)):</span>
-
-        <span class="n">neighbor</span> <span class="o">=</span> <span class="n">points</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
-
-        <span class="c1"># compute distance to neighbor point</span>
-        <span class="n">dist</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">length</span><span class="p">(</span><span class="n">p</span><span class="o">-</span><span class="n">neighbor</span><span class="p">)</span>
-        <span class="k">if</span> <span class="p">(</span><span class="n">dist</span> <span class="o">&lt;=</span> <span class="n">radius</span><span class="p">):</span>
-            <span class="nb">sum</span> <span class="o">+=</span> <span class="n">neighbor</span>
-
-    <span class="n">output</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="nb">sum</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span>
+    <span class="n">count_neighbors_example</span><span class="p">,</span>
+    <span class="n">dim</span><span class="o">=</span><span class="n">p</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
+    <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">grid</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">r</span><span class="p">],</span>
+    <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">neighbor_count</span><span class="p">],</span>
+    <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">neighbor_count</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[1 1 0]
 </pre></div>
 </div>
 <p>Helper functions that take hash grid query objects should annotate the query argument with the matching grid coordinate
@@ -2740,21 +2805,27 @@ This is especially important in loops, functions, and temporary variables where 
 <p>The <a class="reference internal" href="../api_reference/_generated/warp.MarchingCubes.html#warp.MarchingCubes" title="warp.MarchingCubes"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.MarchingCubes</span></code></a> class can be used to extract a 2-D mesh approximating an
 isosurface of a 3-D scalar field. The resulting triangle mesh can be saved to a USD
 file using the <a class="reference internal" href="../api_reference/_generated/warp.render.UsdRenderer.html#warp.render.UsdRenderer" title="warp.render.UsdRenderer"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.render.UsdRenderer</span></code></a>.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">make_sphere_sdf</span><span class="p">(</span><span class="n">field</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array3d</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">center</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span> <span class="n">radius</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+    <span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">k</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">i</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="n">j</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="n">k</span><span class="p">))</span>
+    <span class="n">field</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">length</span><span class="p">(</span><span class="n">p</span> <span class="o">-</span> <span class="n">center</span><span class="p">)</span> <span class="o">-</span> <span class="n">radius</span>
 
-<span class="c1"># Create a 3D scalar field</span>
-<span class="n">field</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">64</span><span class="p">,</span> <span class="mi">64</span><span class="p">,</span> <span class="mi">64</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
-<span class="c1"># ... populate field with SDF or density values ...</span>
-
-<span class="c1"># Extract isosurface</span>
-<span class="n">mc</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">MarchingCubes</span><span class="p">(</span><span class="n">nx</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">ny</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">nz</span><span class="o">=</span><span class="mi">64</span><span class="p">)</span>
+<span class="n">dim</span> <span class="o">=</span> <span class="mi">16</span>
+<span class="n">field</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">dim</span><span class="p">,</span> <span class="n">dim</span><span class="p">,</span> <span class="n">dim</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">make_sphere_sdf</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">field</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">field</span><span class="p">,</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">8.0</span><span class="p">,</span> <span class="mf">8.0</span><span class="p">,</span> <span class="mf">8.0</span><span class="p">),</span> <span class="mf">4.0</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">mc</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">MarchingCubes</span><span class="p">(</span><span class="n">nx</span><span class="o">=</span><span class="n">dim</span><span class="p">,</span> <span class="n">ny</span><span class="o">=</span><span class="n">dim</span><span class="p">,</span> <span class="n">nz</span><span class="o">=</span><span class="n">dim</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
 <span class="n">mc</span><span class="o">.</span><span class="n">surface</span><span class="p">(</span><span class="n">field</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
-
-<span class="c1"># Access the resulting mesh</span>
-<span class="n">vertices</span> <span class="o">=</span> <span class="n">mc</span><span class="o">.</span><span class="n">verts</span>   <span class="c1"># wp.array of vec3f</span>
-<span class="n">indices</span> <span class="o">=</span> <span class="n">mc</span><span class="o">.</span><span class="n">indices</span>  <span class="c1"># wp.array of int32</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">mc</span><span class="o">.</span><span class="n">verts</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">mc</span><span class="o">.</span><span class="n">indices</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">%</span> <span class="mi">3</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
 </pre></div>
 </div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>True
+True
+</pre></div>
+</div>
+<p>The resulting mesh is stored in <code class="docutils literal notranslate"><span class="pre">mc.verts</span></code> as a <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.array</span></code></a> of
+<a class="reference internal" href="../api_reference/_generated/warp.vec3.html#warp.vec3" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.vec3</span></code></a> vertices and in <code class="docutils literal notranslate"><span class="pre">mc.indices</span></code> as a flat <a class="reference internal" href="../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.int32</span></code></a> index array.</p>
 <p>See <a class="extlink-github reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/examples/core/example_marching_cubes.py">warp/examples/core/example_marching_cubes.py</a> for a complete usage example.</p>
 <section id="custom-marching-cubes-implementations">
 <h3>Custom Marching Cubes Implementations<a class="headerlink" href="#custom-marching-cubes-implementations" title="Link to this heading">#</a></h3>

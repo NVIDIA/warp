@@ -1628,27 +1628,46 @@ dispatch overhead that otherwise dominates CPU launches:
     # Replay the entire batch with one native call into Warp
     wp.capture_launch(capture.graph)
 
-The set of operations currently recorded on CPU mirrors the CUDA path: kernel
-launches (:func:`wp.launch() <warp.launch>`, :func:`wp.launch_tiled() <warp.launch_tiled>`),
-memory copies (:func:`wp.copy() <warp.copy>`), and zero-initialization
-(:meth:`array.zero_() <warp.array.zero_>`). Other operations are not yet
-recorded.
+The operations recorded on CPU now cover most of the CUDA path:
+
+- Forward and backward kernel launches
+  (:func:`wp.launch() <warp.launch>`, :func:`wp.launch_tiled() <warp.launch_tiled>`,
+  and the adjoint launches emitted by :class:`wp.Tape <warp.Tape>` /
+  :meth:`Tape.backward() <warp.Tape.backward>`).
+- Memory copies (:func:`wp.copy() <warp.copy>`) and zero-initialization
+  (:meth:`array.zero_() <warp.array.zero_>`).
+- Conditional graph nodes (:func:`wp.capture_if() <warp.capture_if>` and
+  :func:`wp.capture_while() <warp.capture_while>`). The condition is re-evaluated
+  on every replay, so a captured ``while`` loop can iterate a different number
+  of times each call.
+
+The following kernel patterns are also supported under capture: tile primitives
+(``wp.tile_zeros``, ``wp.tile``, ``wp.untile``, tile reductions and scans),
+kernels with scalar parameters of any size (serialized into per-launch value
+blobs, with pointer fields patched via relocation metadata at replay), and
+empty / zero-length array arguments.
 
 Current limitations of CPU graph capture:
 
-- :meth:`array.fill_() <warp.array.fill_>` is not recorded on CPU and is silently
-  dropped from the captured graph. Use :meth:`array.zero_() <warp.array.zero_>` or
-  a kernel launch instead.
-- Conditional graph nodes (:func:`wp.capture_if() <warp.capture_if>`,
-  :func:`wp.capture_while() <warp.capture_while>`) are CUDA-only and have no CPU
-  graph counterpart. They still work outside graph capture on CPU, evaluating the
-  condition immediately.
+- :meth:`array.fill_() <warp.array.fill_>` for non-zero values is not yet
+  recorded on CPU and is silently dropped from the captured graph. Use
+  :meth:`array.zero_() <warp.array.zero_>` or a kernel launch instead.
+- :func:`wp.utils.array_scan() <warp.utils.array_scan>` is not yet recorded
+  into the CPU APIC byte stream; calling it inside a CPU :class:`ScopedCapture`
+  raises :exc:`NotImplementedError`. Run the scan before or after the captured
+  region.
+- Memsets and memcpys whose destination pointer was not previously seen by
+  Warp's tracker (for example, buffers allocated by an external solver such as
+  mujoco-warp) print ``APIC: Error - memset dst pointer not in any registered
+  region`` and are dropped from the captured graph. Routing the allocation
+  through :func:`wp.empty() <warp.empty>` / :func:`wp.zeros() <warp.zeros>`, or
+  passing the buffer through a kernel launch, ensures it is tracked.
 - Nested captures are rejected on both CPU and CUDA. Only one capture may be
   active at a time on a given thread.
 - Arrays used during capture must remain alive for the lifetime of the captured
   graph. Reusing a freed CPU pointer during capture leads to undefined behavior;
-  CUDA capture defers frees automatically while a capture is in progress, but the
-  CPU path does not.
+  CUDA capture defers frees automatically while a capture is in progress, but
+  the CPU path does not.
 
 
 .. _apic_save_load:
@@ -1970,33 +1989,82 @@ Warp provides a :class:`wp.Mesh <warp.Mesh>` class to manage triangle mesh data.
 .. note::
     Mesh objects maintain references to their input geometry buffers. All buffers should live on the same device.
 
-Meshes can be passed to kernels using their ``id`` attribute, which is ``uint64`` value that uniquely identifies the mesh.
-Once inside a kernel, you can perform geometric queries against the mesh such as ray-casts or closest-point lookups::
+Meshes can be passed to kernels using their ``id`` attribute, which is a ``uint64`` value that uniquely identifies
+the mesh.
+Once inside a kernel, you can perform geometric queries against the mesh such as ray-casts or closest-point lookups.
+For example, the result object returned by :func:`wp.mesh_query_point() <warp._src.lang.mesh_query_point>` stores the
+hit face and barycentric coordinates, which can be passed to
+:func:`wp.mesh_eval_position() <warp._src.lang.mesh_eval_position>`:
+
+.. testcode::
+    :skipif: wp.get_cuda_device_count() == 0
+
+    points = wp.array(
+        [(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0)],
+        dtype=wp.vec3,
+        device="cuda:0",
+    )
+    indices = wp.array([0, 1, 2], dtype=int, device="cuda:0")
+    mesh = wp.Mesh(points=points, indices=indices)
+    query_points = wp.array([(0.25, 0.25, 0.5)], dtype=wp.vec3, device="cuda:0")
+    closest = wp.empty_like(query_points)
 
     @wp.kernel
-    def raycast(mesh: wp.uint64,
-                ray_origin: wp.array[wp.vec3],
-                ray_dir: wp.array[wp.vec3],
-                ray_hit: wp.array[wp.vec3]):
-
+    def closest_point_example(mesh: wp.uint64, query_points: wp.array[wp.vec3], closest: wp.array[wp.vec3]):
         tid = wp.tid()
+        query = wp.mesh_query_point(mesh, query_points[tid], max_dist=10.0)
+        if query.result:
+            closest[tid] = wp.mesh_eval_position(mesh, query.face, query.u, query.v)
 
-        t = float(0.0)      # hit distance along ray
-        u = float(0.0)      # hit face barycentric u
-        v = float(0.0)      # hit face barycentric v
-        sign = float(0.0)   # hit face sign
-        n = wp.vec3()       # hit face normal
-        f = int(0)          # hit face index
+    wp.launch(
+        closest_point_example,
+        dim=query_points.shape,
+        inputs=[mesh.id, query_points],
+        outputs=[closest],
+        device="cuda:0",
+    )
+    print(np.round(closest.numpy(), 3))
 
-        color = wp.vec3()
+.. testoutput::
+    :skipif: wp.get_cuda_device_count() == 0
 
-        # ray cast against the mesh
-        if wp.mesh_query_ray(mesh, ray_origin[tid], ray_dir[tid], 1.e+6, t, u, v, sign, n, f):
+    [[0.25 0.25 0.  ]]
 
-            # if we got a hit then set color to the face normal
-            color = n*0.5 + wp.vec3(0.5, 0.5, 0.5)
+The result object returned by :func:`wp.mesh_query_ray() <warp._src.lang.mesh_query_ray>` exposes the hit distance,
+face normal, face index, and barycentric coordinates:
 
-        ray_hit[tid] = color
+.. testcode::
+    :skipif: wp.get_cuda_device_count() == 0
+
+    ray_origins = wp.array([(0.25, 0.25, 1.0)], dtype=wp.vec3, device="cuda:0")
+    ray_dirs = wp.array([(0.0, 0.0, -1.0)], dtype=wp.vec3, device="cuda:0")
+    hit_normals = wp.zeros_like(ray_origins)
+
+    @wp.kernel
+    def raycast_example(
+        mesh: wp.uint64,
+        ray_origins: wp.array[wp.vec3],
+        ray_dirs: wp.array[wp.vec3],
+        hit_normals: wp.array[wp.vec3],
+    ):
+        tid = wp.tid()
+        query = wp.mesh_query_ray(mesh, ray_origins[tid], ray_dirs[tid], max_t=10.0)
+        if query.result:
+            hit_normals[tid] = query.normal
+
+    wp.launch(
+        raycast_example,
+        dim=ray_origins.shape,
+        inputs=[mesh.id, ray_origins, ray_dirs],
+        outputs=[hit_normals],
+        device="cuda:0",
+    )
+    print(hit_normals.numpy())
+
+.. testoutput::
+    :skipif: wp.get_cuda_device_count() == 0
+
+    [[0. 0. 1.]]
 
 
 Users may update mesh vertex positions at runtime simply by modifying the points buffer.
@@ -2012,45 +2080,59 @@ Hash Grids
 
 Many particle-based simulation methods such as the Discrete Element Method (DEM), or Smoothed Particle Hydrodynamics (SPH), involve iterating over spatial neighbors to compute force interactions. Hash grids are a well-established data structure to accelerate these nearest neighbor queries, and particularly well-suited to the GPU.
 
-To support spatial neighbor queries Warp provides a ``HashGrid`` object that may be created as follows::
+To support spatial neighbor queries Warp provides a ``HashGrid`` object. ``p`` is an array of
+:class:`wp.vec3 <warp.vec3>` point positions, and ``r`` is the radius to use when building the grid:
 
-    grid = wp.HashGrid(dim_x=128, dim_y=128, dim_z=128, device="cuda")
+.. testcode::
+    :skipif: wp.get_cuda_device_count() == 0
 
+    p = wp.array(
+        [(0.0, 0.0, 0.0), (0.4, 0.0, 0.0), (2.0, 0.0, 0.0)],
+        dtype=wp.vec3,
+        device="cuda:0",
+    )
+    r = 0.5
+    grid = wp.HashGrid(dim_x=8, dim_y=8, dim_z=8, device="cuda:0")
     grid.build(points=p, radius=r)
 
-``p`` is an array of :class:`wp.vec3 <warp.vec3>` point positions, and ``r`` is the radius to use when building the grid.
-Neighbors can then be iterated over inside the kernel code using :func:`wp.hash_grid_query() <warp._src.lang.hash_grid_query>`
-and :func:`wp.hash_grid_query_next() <warp._src.lang.hash_grid_query_next>` as follows:
+Neighbors can then be iterated over inside the kernel code using
+:func:`wp.hash_grid_query() <warp._src.lang.hash_grid_query>`:
 
-.. code:: python
+.. testcode::
+    :skipif: wp.get_cuda_device_count() == 0
+
+    neighbor_count = wp.zeros(p.shape[0], dtype=int, device="cuda:0")
 
     @wp.kernel
-    def sum(grid : wp.uint64,
-            points: wp.array[wp.vec3],
-            output: wp.array[wp.vec3],
-            radius: float):
-
+    def count_neighbors_example(
+        grid: wp.uint64,
+        points: wp.array[wp.vec3],
+        radius: float,
+        neighbor_count: wp.array[int],
+    ):
         tid = wp.tid()
+        point = points[tid]
+        count = int(0)
 
-        # query point
-        p = points[tid]
+        for index in wp.hash_grid_query(grid, point, radius):
+            if index != tid and wp.length(points[index] - point) <= radius:
+                count += 1
 
-        # create grid query around point
-        query = wp.hash_grid_query(grid, p, radius)
-        index = int(0)
+        neighbor_count[tid] = count
 
-        sum = wp.vec3()
+    wp.launch(
+        count_neighbors_example,
+        dim=p.shape,
+        inputs=[grid.id, p, r],
+        outputs=[neighbor_count],
+        device="cuda:0",
+    )
+    print(neighbor_count.numpy())
 
-        while(wp.hash_grid_query_next(query, index)):
+.. testoutput::
+    :skipif: wp.get_cuda_device_count() == 0
 
-            neighbor = points[index]
-
-            # compute distance to neighbor point
-            dist = wp.length(p-neighbor)
-            if (dist <= radius):
-                sum += neighbor
-
-        output[tid] = sum
+    [1 1 0]
 
 Helper functions that take hash grid query objects should annotate the query argument with the matching grid coordinate
 precision, for example ``wp.HashGridQuery[wp.float64]``. The unparameterized ``wp.HashGridQuery`` denotes the default
@@ -2356,21 +2438,31 @@ The :class:`wp.MarchingCubes <warp.MarchingCubes>` class can be used to extract 
 isosurface of a 3-D scalar field. The resulting triangle mesh can be saved to a USD
 file using the :class:`warp.render.UsdRenderer`.
 
-.. code-block:: python
+.. testcode::
+    :skipif: wp.get_cuda_device_count() == 0
 
-    import warp as wp
+    @wp.kernel
+    def make_sphere_sdf(field: wp.array3d[float], center: wp.vec3, radius: float):
+        i, j, k = wp.tid()
+        p = wp.vec3(float(i), float(j), float(k))
+        field[i, j, k] = wp.length(p - center) - radius
 
-    # Create a 3D scalar field
-    field = wp.zeros((64, 64, 64), dtype=wp.float32, device="cuda:0")
-    # ... populate field with SDF or density values ...
-
-    # Extract isosurface
-    mc = wp.MarchingCubes(nx=64, ny=64, nz=64)
+    dim = 16
+    field = wp.zeros((dim, dim, dim), dtype=float, device="cuda:0")
+    wp.launch(make_sphere_sdf, dim=field.shape, inputs=[field, wp.vec3(8.0, 8.0, 8.0), 4.0], device="cuda:0")
+    mc = wp.MarchingCubes(nx=dim, ny=dim, nz=dim, device="cuda:0")
     mc.surface(field, threshold=0.0)
+    print(mc.verts.shape[0] > 0)
+    print(mc.indices.shape[0] % 3 == 0)
 
-    # Access the resulting mesh
-    vertices = mc.verts   # wp.array of vec3f
-    indices = mc.indices  # wp.array of int32
+.. testoutput::
+    :skipif: wp.get_cuda_device_count() == 0
+
+    True
+    True
+
+The resulting mesh is stored in ``mc.verts`` as a :class:`wp.array <warp.array>` of
+:class:`wp.vec3 <warp.vec3>` vertices and in ``mc.indices`` as a flat :class:`wp.int32 <warp.int32>` index array.
 
 See :github:`warp/examples/core/example_marching_cubes.py` for a complete usage example.
 

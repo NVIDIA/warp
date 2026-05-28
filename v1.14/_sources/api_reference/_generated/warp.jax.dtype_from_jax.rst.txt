@@ -1,6 +1,0 @@
-﻿warp.jax.dtype\_from\_jax
-=========================
-
-.. currentmodule:: warp.jax
-
-.. autofunction:: dtype_from_jax

@@ -1,6 +1,0 @@
-﻿warp.jax.ffi.jax\_callable
-==========================
-
-.. currentmodule:: warp.jax.ffi
-
-.. autofunction:: jax_callable

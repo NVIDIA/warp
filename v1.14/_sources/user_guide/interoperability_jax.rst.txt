@@ -26,7 +26,7 @@ Warp kernels can be used as JAX primitives, which allows calling them inside of 
     import jax
     import jax.numpy as jnp
 
-    from warp.jax import jax_kernel
+    from warp import jax_kernel
 
     @wp.kernel
     def triple_kernel(input: wp.array[float], output: wp.array[float]):
@@ -59,7 +59,7 @@ Here's a kernel with two inputs and one output::
     import jax.numpy as jnp
 
     import warp as wp
-    from warp.jax import jax_kernel
+    from warp import jax_kernel
 
     @wp.kernel
     def add_kernel(a: wp.array[int],
@@ -87,7 +87,7 @@ One input and two outputs::
     import jax.numpy as jnp
 
     import warp as wp
-    from warp.jax import jax_kernel
+    from warp import jax_kernel
 
     @wp.kernel
     def sincos_kernel(angle: wp.array[float],
@@ -313,7 +313,7 @@ VMAP Support
 
 The ``vmap_method`` argument can be used to specify how the callback transforms under :func:`jax.vmap`.
 The default is ``"broadcast_all"``.
-This argument can be passed to :func:`jax_kernel() <warp.jax.ffi.jax_kernel>`,
+This argument can be passed to :func:`jax_kernel() <warp.jax_kernel>`,
 and it can also be passed to each call:
 
 .. code-block:: python
@@ -335,7 +335,7 @@ Basic VMAP Example
 .. code-block:: python
 
     import warp as wp
-    from warp.jax import jax_kernel
+    from warp import jax_kernel
 
     import jax
     import jax.numpy as jnp
@@ -434,7 +434,7 @@ Automatic Differentiation
 -------------------------
 
 Warp kernels can be given JAX gradients using a convenience wrapper that wires a custom VJP around a kernel and its adjoint.
-To enable autodiff, pass the ``enable_backward=True`` argument to :func:`jax_kernel() <warp.jax.ffi.jax_kernel>`.
+To enable autodiff, pass the ``enable_backward=True`` argument to :func:`jax_kernel() <warp.jax_kernel>`.
 
 Basic example (one output)::
 
@@ -442,7 +442,7 @@ Basic example (one output)::
     import jax
     import jax.numpy as jnp
     import warp as wp
-    from warp.jax import jax_kernel
+    from warp import jax_kernel
 
     @wp.kernel
     def scale_sum_square(
@@ -478,7 +478,7 @@ Multiple outputs::
     import jax
     import jax.numpy as jnp
     import warp as wp
-    from warp.jax import jax_kernel
+    from warp import jax_kernel
 
     @wp.kernel
     def multi_output(
@@ -514,7 +514,7 @@ Vector and matrix arrays also work. Inner component dimensions are packed in the
     import jax
     import jax.numpy as jnp
     import warp as wp
-    from warp.jax import jax_kernel
+    from warp import jax_kernel
 
     @wp.kernel
     def scale_vec2(a: wp.array[wp.vec2], s: float, out: wp.array[wp.vec2]):
@@ -557,7 +557,7 @@ forward launch and the adjoint launch, so gradients computed via
     import jax
     import jax.numpy as jnp
     import warp as wp
-    from warp.jax import jax_kernel
+    from warp import jax_kernel
 
     wp.init()
 
@@ -599,12 +599,12 @@ a factor of the outer axis size via ``atomic_add``. Passing
 ``jax_callable`` for Multi-Kernel Functions
 -------------------------------------------
 
-The :func:`jax_kernel() <warp.jax.ffi.jax_kernel>` mechanism can be used to launch a single Warp kernel
+The :func:`jax_kernel() <warp.jax_kernel>` mechanism can be used to launch a single Warp kernel
 from JAX, but it's also possible to call a Python function that launches multiple kernels.
 The target Python function should have argument type annotations as if it were a Warp kernel.
-To call this function from JAX, use :func:`jax_callable() <warp.jax.ffi.jax_callable>`::
+To call this function from JAX, use :func:`jax_callable() <warp.jax_callable>`::
 
-    from warp.jax import jax_callable
+    from warp import jax_callable
 
     @wp.kernel
     def scale_kernel(a: wp.array[float], s: float, output: wp.array[float]):
@@ -653,113 +653,26 @@ To call this function from JAX, use :func:`jax_callable() <warp.jax.ffi.jax_call
     print(r1)
     print(r2)
 
-The input and output semantics of :func:`jax_callable() <warp.jax.ffi.jax_callable>` are similar to
-:func:`jax_kernel() <warp.jax.ffi.jax_kernel>`, so we won't recap everything here,
+The input and output semantics of :func:`jax_callable() <warp.jax_callable>` are similar to
+:func:`jax_kernel() <warp.jax_kernel>`, so we won't recap everything here,
 just focus on the differences:
 
-- :func:`jax_callable() <warp.jax.ffi.jax_callable>` does not take a ``launch_dims`` argument,
+- :func:`jax_callable() <warp.jax_callable>` does not take a ``launch_dims`` argument,
   since the target function is responsible for launching kernels using appropriate dimensions.
-- :func:`jax_callable() <warp.jax.ffi.jax_callable>` takes an optional ``graph_mode`` argument, which determines how the callable can be captured in a CUDA graph.
+- :func:`jax_callable() <warp.jax_callable>` takes an optional ``graph_mode`` argument, which determines how the callable can be captured in a CUDA graph.
   Graphs are generally desirable, since they can greatly improve the application performance.
-  ``GraphMode.JAX`` (default) lets JAX capture the graph, which may be used as a subgraph in an enclosing capture for maximal benefit.
-  ``GraphMode.WARP`` lets Warp capture the graph. Use this mode when the callable cannot be used as a subgraph, such as when the callable uses conditional graph nodes.
-  ``GraphMode.NONE`` disables graph capture. Use this mode if the callable performs operations that are not allowed during graph capture, such as host synchronization.
+  ``JaxCallableGraphMode.JAX`` (default) lets JAX capture the graph, which may be used as a subgraph in an enclosing capture for maximal benefit.
+  ``JaxCallableGraphMode.WARP`` lets Warp capture the graph. Use this mode when the callable cannot be used as a subgraph, such as when the callable uses conditional graph nodes.
+  ``JaxCallableGraphMode.NONE`` disables graph capture. Use this mode if the callable performs operations that are not allowed during graph capture, such as host synchronization.
+  When using ``JaxCallableGraphMode.WARP``, captured graphs are cached for reuse. Use ``graph_cache_max`` to limit the
+  number of cached graphs, and call :func:`clear_jax_callable_graph_cache() <warp.clear_jax_callable_graph_cache>` to
+  release cached graph memory for one callable or all registered JAX callables.
+- :func:`jax_kernel() <warp.jax_kernel>` and :func:`jax_callable() <warp.jax_callable>` take an optional
+  ``module_preload_mode`` argument. ``JaxModulePreloadMode.CURRENT_DEVICE`` (default) preloads the module on the
+  current JAX device, ``JaxModulePreloadMode.ALL_DEVICES`` preloads on all local JAX devices that map to CUDA devices,
+  and ``JaxModulePreloadMode.NONE`` disables preloading.
 
 See `example_jax_callable.py <https://github.com/NVIDIA/warp/blob/main/warp/examples/interop/example_jax_callable.py>`_ for examples.
-
-.. _jax-ffi-callbacks:
-
-Generic FFI Callbacks
----------------------
-
-Another way to call Python functions is to use
-:func:`register_ffi_callback() <warp.jax.ffi.register_ffi_callback>`::
-
-    from warp.jax import register_ffi_callback
-
-This allows calling functions that don't have Warp-style type annotations, but must have the form::
-
-    func(inputs, outputs, attrs, ctx)
-
-where:
-
-- ``inputs`` is a list of input buffers.
-- ``outputs`` is a list of output buffers.
-- ``attrs`` is a dictionary of attributes.
-- ``ctx`` is the execution context, including the CUDA stream.
-
-The input and output buffers are neither JAX nor Warp arrays.
-They are objects that expose the ``__cuda_array_interface__``, which can be passed to Warp kernels directly.
-Here is an example::
-
-    import jax
-
-    from warp.jax import register_ffi_callback
-
-    @wp.kernel
-    def scale_kernel(a: wp.array[float], s: float, output: wp.array[float]):
-        tid = wp.tid()
-        output[tid] = a[tid] * s
-
-    @wp.kernel
-    def scale_vec_kernel(a: wp.array[wp.vec2], s: float, output: wp.array[wp.vec2]):
-        tid = wp.tid()
-        output[tid] = a[tid] * s
-
-    # the Python function to call
-    def warp_func(inputs, outputs, attrs, ctx):
-        # input arrays
-        a = inputs[0]
-        b = inputs[1]
-
-        # scalar attributes
-        s = attrs["scale"]
-
-        # output arrays
-        c = outputs[0]
-        d = outputs[1]
-
-        device = wp.device_from_jax(jax.local_devices()[0])
-        stream = wp.Stream(device, cuda_stream=ctx.stream)
-
-        with wp.ScopedStream(stream):
-            # launch with arrays of scalars
-            wp.launch(scale_kernel, dim=a.shape, inputs=[a, s], outputs=[c])
-
-            # launch with arrays of vec2
-            # NOTE: the input shapes are from JAX arrays, so we need to strip the inner dimension for vec2 arrays
-            wp.launch(scale_vec_kernel, dim=b.shape[0], inputs=[b, s], outputs=[d])
-
-    # register callback
-    register_ffi_callback("warp_func", warp_func)
-
-    n = 10
-
-    # inputs
-    a = jnp.arange(n, dtype=jnp.float32)
-    b = jnp.arange(n, dtype=jnp.float32).reshape((n // 2, 2))  # array of wp.vec2
-    s = 2.0
-
-    # set up the call
-    out_types = [
-        jax.ShapeDtypeStruct(a.shape, jnp.float32),
-        jax.ShapeDtypeStruct(b.shape, jnp.float32),  # array of wp.vec2
-    ]
-    call = jax.ffi.ffi_call("warp_func", out_types)
-
-    # call it
-    c, d = call(a, b, scale=s)
-
-    print(c)
-    print(d)
-
-This is a more low-level approach to JAX FFI callbacks.
-A proposal was made to incorporate such a mechanism in JAX, but for now we have a prototype here.
-This approach leaves a lot of work up to the user, such as verifying argument types and shapes,
-but it can be used when other utilities like :func:`jax_kernel() <warp.jax.ffi.jax_kernel>` and
-:func:`jax_callable() <warp.jax.ffi.jax_callable>` are not sufficient.
-
-See `example_jax_ffi_callback.py <https://github.com/NVIDIA/warp/blob/main/warp/examples/interop/example_jax_ffi_callback.py>`_ for examples.
 
 .. _jax-shard-map:
 
@@ -790,7 +703,7 @@ Here's an example of how to use ``shard_map`` with a Warp kernel:
     from jax.sharding import PartitionSpec as P
     from jax.experimental.multihost_utils import process_allgather as allgather
     from jax.experimental.shard_map import shard_map
-    from warp.jax import jax_kernel
+    from warp import jax_kernel
     import numpy as np
 
     # Initialize JAX distributed environment
