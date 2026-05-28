@@ -199,6 +199,11 @@
   ([GH-1422](https://github.com/NVIDIA/warp/issues/1422)).
 - Fix an intermittent failure when loading modules in parallel with `wp.force_load(max_workers > 1)` that could cause
   modules sharing a `@wp.func` to fail to compile or load ([GH-1474](https://github.com/NVIDIA/warp/issues/1474)).
+- Fix binding a Warp function to a kernel-local variable, so patterns like ``f = my_func``,
+  ``f = module.my_func``, ``f = wp.static(...)`` returning a function, and ``wp.grad(f)`` where
+  ``f`` is such a local now compile and call correctly instead of failing during codegen.
+  Rebinding a function-valued local to a different function or to a non-function value raises a clear error
+  ([GH-1423](https://github.com/NVIDIA/warp/issues/1423)).
 
 ### Documentation
 

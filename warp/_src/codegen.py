@@ -2318,6 +2318,12 @@ class Adjoint:
         return output
 
     def emit_Name(adj, node):
+        # a static expression that resolved to a Warp function is rewritten to an `__warp_func__`
+        # Name node carrying the function on `warp_func` (see StaticExpressionReplacer). Return it
+        # directly so it can be bound to a local, e.g. `func = wp.static(...)`.
+        if hasattr(node, "warp_func"):
+            return node.warp_func
+
         # lookup symbol, if it has already been assigned to a variable then return the existing mapping
         if node.id in adj.symbols:
             return adj.symbols[node.id]
@@ -3316,8 +3322,34 @@ class Adjoint:
                 adj.symbols[name] = rhs
                 return
 
+            # handle Warp functions specially - bind the name directly to the function
+            # so later calls through the local resolve to it. This covers `f = my_func`,
+            # `f = mod.func`, and `f = wp.static(...)` returning a function. Without this the
+            # function would be routed through Var-shaped logic and miscompiled.
+            if isinstance(rhs, warp._src.context.Function):
+                if name in adj.symbols and isinstance(adj.symbols[name], warp._src.context.Function):
+                    if adj.symbols[name] is not rhs:
+                        raise WarpCodegenError(
+                            f"Error, rebinding function-valued local '{name}' to a different function is not "
+                            "supported. Warp does not have function pointers, so a local bound to a function "
+                            "must refer to the same function throughout the kernel."
+                        )
+                adj.symbols[name] = rhs
+                return
+
             # check type matches if symbol already defined
             if name in adj.symbols:
+                # a local previously bound to a function cannot be reassigned to a value. Warp does
+                # not have function pointers, so a mixed function/value local has no codegen-able
+                # meaning. Guard here before the generic type check below, which would otherwise read
+                # `adj.symbols[name].type` and fail with an opaque AttributeError on the Function.
+                if isinstance(adj.symbols[name], warp._src.context.Function):
+                    raise WarpCodegenError(
+                        f"Error, rebinding function-valued local '{name}' to a non-function value is not "
+                        "supported. Warp does not have function pointers, so a local bound to a function "
+                        "must refer to a function throughout the kernel."
+                    )
+
                 if not types_equal(strip_reference(rhs.type), adj.symbols[name].type):
                     raise WarpCodegenTypeError(
                         f"Error, assigning to existing symbol {name} ({adj.symbols[name].type}) with different type ({rhs.type})"
@@ -4462,6 +4494,16 @@ class Adjoint:
                     types[func] = None
 
             elif isinstance(node, ast.Assign):
+                # A function bound to a local (`f = mod.func`) or to several locals via tuple
+                # unpacking (`f, g = mod.a, mod.b`) is referenced only through the local(s)
+                # afterwards, so it would otherwise be missed here and left out of the module
+                # hash. Register each bound function explicitly to keep the hash sound.
+                rhs_nodes = node.value.elts if isinstance(node.value, ast.Tuple) else [node.value]
+                for rhs_node in rhs_nodes:
+                    rhs_func, _ = adj.resolve_static_expression(rhs_node, eval_types=False)
+                    if isinstance(rhs_func, warp._src.context.Function) and not rhs_func.is_builtin():
+                        functions[rhs_func] = None
+
                 # Add the LHS names to the local_variables so we know any subsequent uses are shadowed
                 lhs = node.targets[0]
                 if isinstance(lhs, ast.Tuple):

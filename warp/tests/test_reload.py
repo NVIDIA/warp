@@ -13,6 +13,7 @@ import warp.tests.aux_test_class_kernel
 
 # dummy modules used for testing reload with dependencies
 import warp.tests.aux_test_dependent as test_dependent
+import warp.tests.aux_test_dependent_local as test_dependent_local
 import warp.tests.aux_test_reference as test_reference
 import warp.tests.aux_test_reference_reference as test_reference_reference
 import warp.tests.aux_test_square as test_square
@@ -218,6 +219,24 @@ def test_reload_references(test, device):
     test_dependent.run(expect=4.0, device=device)  # 2 * 2 = 4
 
 
+def test_reference_through_local(test, device):
+    # A function bound to a kernel-local (`f = ref.magic`) or to several locals via tuple
+    # unpacking (`f, g = ref.a, ref.b`) must still register a dependency on the module(s)
+    # that define them, so reloading those modules invalidates this kernel just as a direct
+    # call would. See Module._find_references.
+
+    # Building the dependent module scans its kernels for references.
+    test_dependent_local.kern.module.get_module_hash()
+
+    references = test_dependent_local.kern.module.references
+    ref_module = test_reference.magic.module
+    refref_module = test_reference_reference.more_magic.module
+    # `f = ref.magic` records the single-binding dependency.
+    test.assertIn(ref_module, references, "single local-bound function should register its module dependency")
+    # `f, g = ref.magic, refref.more_magic` records the tuple-binding dependency on the second module.
+    test.assertIn(refref_module, references, "tuple local-bound functions should register each module dependency")
+
+
 def test_graph_launch_after_module_reload(test, device):
     @wp.kernel
     def foo(a: wp.array(dtype=int)):
@@ -290,6 +309,9 @@ add_function_test(TestReload, "test_reload", test_reload, devices=devices)
 add_function_test(TestReload, "test_reload_class", test_reload_class, devices=devices)
 # TODO: test_reload_references sometimes has issues running on cuda:1
 add_function_test(TestReload, "test_reload_references", test_reload_references, devices=get_test_devices("basic"))
+add_function_test(
+    TestReload, "test_reference_through_local", test_reference_through_local, devices=get_test_devices("basic")
+)
 add_function_test(
     TestReload,
     "test_graph_launch_after_module_reload",

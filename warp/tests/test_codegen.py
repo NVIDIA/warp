@@ -1321,6 +1321,98 @@ def test_augassign_no_double_eval_both(test, device):
     test.assertAlmostEqual(data.numpy()[0][0], 15.0)
 
 
+@wp.func
+def func_to_local_double(a: float):
+    return a * 2.0
+
+
+@wp.func
+def func_to_local_square(a: float):
+    return a * a
+
+
+@wp.func
+def func_to_local_halve(a: float):
+    return a * 0.5
+
+
+func_to_local_handlers = {"double": func_to_local_double, "square": func_to_local_square}
+
+
+# Binding a @wp.func to a local and calling through it should behave like calling it directly.
+@wp.kernel
+def assign_function_to_local_kernel(out: wp.array(dtype=float)):
+    f = func_to_local_double
+    out[0] = f(3.0)
+
+
+# A function reached through wp.static(...) can be bound to a local and called.
+@wp.kernel
+def assign_static_function_to_local_kernel(out: wp.array(dtype=float)):
+    add = wp.static(func_to_local_handlers["double"])
+    sq = wp.static(func_to_local_handlers["square"])
+    out[0] = add(3.0)
+    out[1] = sq(3.0)
+
+
+# wp.grad() of a function that was first bound to a local should match wp.grad() of the function.
+@wp.kernel(enable_backward=False)
+def grad_of_function_bound_to_local_kernel(out: wp.array(dtype=float)):
+    f = func_to_local_square
+    g = wp.grad(f)
+    out[0] = g(3.0)  # d/da a^2 = 2a = 6 at a = 3
+
+
+def test_assign_function_to_local(test, device):
+    out = wp.zeros(1, dtype=float, device=device)
+    wp.launch(assign_function_to_local_kernel, dim=1, outputs=[out], device=device)
+    test.assertEqual(out.numpy()[0], 6.0)
+
+
+def test_assign_static_function_to_local(test, device):
+    out = wp.zeros(2, dtype=float, device=device)
+    wp.launch(assign_static_function_to_local_kernel, dim=1, outputs=[out], device=device)
+    test.assertEqual(out.numpy()[0], 6.0)
+    test.assertEqual(out.numpy()[1], 9.0)
+
+
+def test_grad_of_function_bound_to_local(test, device):
+    out = wp.zeros(1, dtype=float, device=device)
+    wp.launch(grad_of_function_bound_to_local_kernel, dim=1, outputs=[out], device=device)
+    test.assertEqual(out.numpy()[0], 6.0)
+
+
+# Rebinding a function-valued local to a different function has no codegen-able meaning
+# (Warp has no function pointers) and should raise a clear error rather than miscompile.
+def test_rebind_function_local_errors(test, device):
+    @wp.kernel
+    def rebind_function_local_kernel(out: wp.array(dtype=float)):
+        f = func_to_local_double
+        f = func_to_local_halve
+        out[0] = f(3.0)
+
+    with test.assertRaisesRegex(wp.WarpCodegenError, "rebinding function-valued local"):
+        wp.launch(rebind_function_local_kernel, dim=1, outputs=[wp.zeros(1, dtype=float, device=device)], device=device)
+
+
+# Rebinding a function-valued local to a non-function value (e.g. `f = some_func; f = 1.0`) has no
+# codegen-able meaning either and should raise a clear error rather than fail on the generic type check.
+def test_rebind_function_local_to_value_errors(test, device):
+    @wp.kernel
+    def rebind_function_local_to_value_kernel(out: wp.array(dtype=float)):
+        f = func_to_local_double
+        f = 1.0
+        out[0] = f
+
+    with test.assertRaisesRegex(wp.WarpCodegenError, "rebinding function-valued local.*non-function"):
+        wp.launch(
+            rebind_function_local_to_value_kernel,
+            dim=1,
+            outputs=[wp.zeros(1, dtype=float, device=device)],
+            device=device,
+        )
+
+
 class TestCodeGen(unittest.TestCase):
     def test_extract_lambda_source_parenthesized_multiline_body(self):
         from warp._src.codegen import Adjoint  # noqa: PLC0415
@@ -1532,6 +1624,20 @@ add_function_test(
     TestCodeGen,
     "test_augassign_no_double_eval_both",
     test_augassign_no_double_eval_both,
+    devices=devices,
+)
+add_function_test(TestCodeGen, "test_assign_function_to_local", test_assign_function_to_local, devices=devices)
+add_function_test(
+    TestCodeGen, "test_assign_static_function_to_local", test_assign_static_function_to_local, devices=devices
+)
+add_function_test(
+    TestCodeGen, "test_grad_of_function_bound_to_local", test_grad_of_function_bound_to_local, devices=devices
+)
+add_function_test(TestCodeGen, "test_rebind_function_local_errors", test_rebind_function_local_errors, devices=devices)
+add_function_test(
+    TestCodeGen,
+    "test_rebind_function_local_to_value_errors",
+    test_rebind_function_local_to_value_errors,
     devices=devices,
 )
 

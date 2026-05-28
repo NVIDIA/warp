@@ -2817,6 +2817,23 @@ class Module:
                     # and that's ok too (not an external reference).
                     pass
 
+            elif isinstance(node, ast.Assign):
+                # A function bound to a kernel-local (`f = mod.func`) or to several locals via
+                # tuple unpacking (`f, g = mod.a, mod.b`) is later called through the local(s),
+                # so the ast.Call above resolves to the local rather than to the function.
+                # Resolve each right-hand side here so the dependency on the bound function's
+                # module is still registered, mirroring Adjoint.get_references. Without this,
+                # reloading the bound function's module would not unload the dependent kernel
+                # and a stale executable could be reused.
+                rhs_nodes = node.value.elts if isinstance(node.value, ast.Tuple) else [node.value]
+                for rhs_node in rhs_nodes:
+                    try:
+                        rhs_func, _ = adj.resolve_static_expression(rhs_node, eval_types=False)
+                        if isinstance(rhs_func, warp._src.context.Function) and rhs_func.module is not None:
+                            add_ref(rhs_func.module)
+                    except Exception:
+                        pass
+
         # scan for structs
         for arg in adj.args:
             if isinstance(arg.type, warp._src.codegen.Struct) and arg.type.module is not None:
