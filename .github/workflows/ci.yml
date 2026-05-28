@@ -288,16 +288,19 @@ jobs:
             artifact-name: build-artifact-ubuntu-x86_64-cuda13
             torch-extra: torch-cu13
             jax-extra: jax[cuda13]
+            rmm-args: ""
           - runner-label: linux-amd64-gpu-rtxpro6000-latest-1
             gpu-name: rtxpro6000
             artifact-name: build-artifact-ubuntu-x86_64-cuda13
             torch-extra: torch-cu13
             jax-extra: jax[cuda13]
+            rmm-args: ""
           - runner-label: linux-amd64-gpu-l4-earliest-1
             gpu-name: l4
             artifact-name: build-artifact-ubuntu-x86_64-cuda12
             torch-extra: torch-cu12
             jax-extra: jax[cuda12]
+            rmm-args: --with rmm-cu12
     container:
       image: ubuntu:24.04
       options: -u root --security-opt seccomp=unconfined --shm-size 16g
@@ -341,7 +344,7 @@ jobs:
           path: warp/bin/
 
       - name: Run Tests
-        run: uv run --extra dev --extra ${{ matrix.torch-extra }} --with "${{ matrix.jax-extra }}" -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
+        run: uv run --extra dev --extra ${{ matrix.torch-extra }} --with "${{ matrix.jax-extra }}" ${{ matrix.rmm-args }} -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
 
       - name: Test Summary
         uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86  # v2.4

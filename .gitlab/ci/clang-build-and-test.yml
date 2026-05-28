@@ -101,4 +101,4 @@ linux-x86_64 test:
     - df -h
     - !reference [.snippets, move-linux-x86_64-binaries]
   script:
-    - uv run --extra dev --extra torch-cu12 --with "jax[cuda12]" -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
+    - uv run --extra dev --extra torch-cu12 --with "jax[cuda12]" --with rmm-cu12 -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
