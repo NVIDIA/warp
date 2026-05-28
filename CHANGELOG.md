@@ -25,27 +25,29 @@
   `batch_offsets` partitions the DOF vector into independent subproblems that are all solved in a single launch
   sequence, with per-batch convergence checks ([GH-1391](https://github.com/NVIDIA/warp/issues/1391)).
 - Add `wp.tile_fft()` and `wp.tile_ifft()` (and their adjoints) on CPU and on GPU builds without libmathdx.
-  CPU supports power-of-two sizes and non-power-of-two sizes up to 4096 elements; GPU requires power-of-two sizes
-  divisible by `block_dim`. The new `wp.config.enable_mathdx_fft` flag and `"enable_mathdx_fft"` module option
-  also select the fallback on GPU builds with libmathdx, trading runtime performance for faster kernel compile times
-  ([GH-1396](https://github.com/NVIDIA/warp/issues/1396)).
+  CPU supports any power-of-two FFT length and non-power-of-two FFT lengths up to 4096 elements. The GPU fallback
+  used without libmathdx, or selected with `wp.config.enable_mathdx_fft=False` or module option
+  `"enable_mathdx_fft": False`, requires a power-of-two FFT length divisible by `block_dim`, trading runtime
+  performance for faster kernel compile times ([GH-1396](https://github.com/NVIDIA/warp/issues/1396)).
 - Add cooperative GPU scalar fallbacks for `wp.tile_cholesky()`, `wp.tile_cholesky_solve()`,
   `wp.tile_lower_solve()`, and `wp.tile_upper_solve()` (and their in-place variants) and for the
-  `wp.tile_cholesky()` adjoint, so they run on GPU when libmathdx is unavailable. Add the
-  `wp.config.enable_mathdx_solver` flag and `"enable_mathdx_solver"` module option to route these ops through the
-  fallback when libmathdx is available ([GH-1402](https://github.com/NVIDIA/warp/issues/1402)).
+  `wp.tile_cholesky()` adjoint on GPU builds without libmathdx. The fallback can also be selected on GPU builds
+  with libmathdx through `wp.config.enable_mathdx_solver=False` or module option `"enable_mathdx_solver": False`
+  ([GH-1402](https://github.com/NVIDIA/warp/issues/1402)).
 - Add `wp.tile_empty()` to allocate a tile of uninitialized items
   ([GH-1312](https://github.com/NVIDIA/warp/issues/1312)).
-- Add analytic backward passes for `wp.curlnoise()` (2D, 3D, 4D). Previously the adjoints were stubbed as no-ops and
-  `is_differentiable=False`, so gradients silently dropped through curl-noise force fields in differentiable
-  simulations ([GH-1012](https://github.com/NVIDIA/warp/issues/1012)).
-- Expose CUDA graph capture mode via `wp.CaptureMode`, `wp.ScopedCapture`, and `wp.capture_begin()`
+- Add analytic adjoints for `wp.curlnoise()` (2D, 3D, 4D). Previously the adjoints were stubbed as no-ops and
+  `is_differentiable=False`, so differentiating through curl-noise force fields produced zero gradients
+  ([GH-1012](https://github.com/NVIDIA/warp/issues/1012)).
+- Expose CUDA graph capture modes via `wp.CaptureMode`, `wp.ScopedCapture`, and `wp.capture_begin()`. Users can
+  select `wp.CaptureMode.GLOBAL`, `wp.CaptureMode.THREAD_LOCAL` (the default), or `wp.CaptureMode.RELAXED` to
+  control how CUDA handles capture-unsafe runtime calls during graph capture
   ([GH-1410](https://github.com/NVIDIA/warp/issues/1410)).
 - Add `--use-dynamic-cuda` build option to link against shared CUDA libraries instead of embedding them statically;
   the corresponding shared libraries must be present at runtime ([GH-1334](https://github.com/NVIDIA/warp/issues/1334)).
 - Add `--sanitize=<name>` build option to `build_lib.py`, enabling AddressSanitizer builds of `warp.dll` and
   `warp-clang.dll` on Windows, Linux, and macOS ([GH-1387](https://github.com/NVIDIA/warp/issues/1387)).
-- Add `wp.copysign(x, y)`: returns a value with the magnitude of `x` and the sign of `y`, matching C `copysign()`
+- Add `wp.copysign()` to copy one floating-point value's sign onto another value's magnitude, matching C `copysign()`
   ([GH-1444](https://github.com/NVIDIA/warp/issues/1444)).
 
 ### Deprecated
@@ -77,30 +79,32 @@
 - **Breaking:** Require Python development headers (`Python.h`) when building from source on Linux. Warp now compiles
   a native fast-call extension that uses the Python C API for `wp.float16` conversions, bypassing the previous
   `ctypes` path to lower per-conversion overhead. Install `libpython3-dev` / `python3-dev` if the build reports
-  missing headers
-  ([GH-1339](https://github.com/NVIDIA/warp/issues/1339)).
-- Consolidate the documented `wp.HashGrid` query API around `wp.HashGridQuery`. Query objects returned by
-  `wp.hash_grid_query()` now appear as `wp.HashGridQuery` in generated docs and stubs regardless of the grid coordinate
-  precision ([GH-1452](https://github.com/NVIDIA/warp/issues/1452)).
+  missing headers ([GH-1339](https://github.com/NVIDIA/warp/issues/1339)).
 - Allow GPU kernels to receive CPU arrays on systems where the GPU reports direct pageable CPU memory access, enabling
   zero-copy launches on HMM and ATS systems. Add `warp.config.launch_array_access_mode` with relaxed, strict, and
   checked modes for pre-launch accessibility diagnostics on mixed-device array launches
   ([GH-1461](https://github.com/NVIDIA/warp/issues/1461)).
-- Reduce overhead of converting `wp.float16` values to and from Python `float`
+- Consolidate the documented `wp.HashGrid` query API around `wp.HashGridQuery`. Query objects returned by
+  `wp.hash_grid_query()` now appear as `wp.HashGridQuery` in generated docs and stubs regardless of the grid coordinate
+  precision ([GH-1452](https://github.com/NVIDIA/warp/issues/1452)).
+- Reduce overhead of converting `wp.float16` values to and from Python `float` at the Python scope
   ([GH-1339](https://github.com/NVIDIA/warp/issues/1339)).
 - Allow `launch_dims` to be specified when `enable_backward=True` in `warp.jax_kernel()` and
   `warp.jax_experimental.jax_kernel()` ([GH-1380](https://github.com/NVIDIA/warp/issues/1380)).
-- Build the native library with `-Og -g` instead of `-O0 -g -fkeep-inline-functions` on Linux/macOS debug builds.
-  This enables debug-friendly optimizations, restores `-Wuninitialized` dataflow analysis, and avoids leaking unused
-  inline function bodies from `<Python.h>` ([GH-1414](https://github.com/NVIDIA/warp/issues/1414)).
-- Use the cooperative shared-memory adjoint for differentiated `wp.tile_cholesky()` on GPU builds without libmathdx.
-  Behavior and accuracy are preserved, but the path now allocates two `__shared__ T[n*n]` scratch buffers (e.g. 16 KiB
-  at `n=32`, 64 KiB at `n=64` in `float64`), so large differentiated Cholesky tiles can hit shared-memory limits where
-  the previous path would not ([GH-1402](https://github.com/NVIDIA/warp/issues/1402)).
-- Reduce `wp.tid()` overhead in generated kernels by specializing launch bounds by dimensionality while preserving
-  existing launch-dimension aliasing behavior ([GH-1270](https://github.com/NVIDIA/warp/issues/1270)).
+- Increase shared-memory use when differentiating `wp.tile_cholesky()` on GPU builds without libmathdx. The cooperative
+  adjoint preserves behavior and accuracy, but now uses two per-block scratch tiles (`__shared__ T[n*n]`; 16 KiB at
+  `n=32` and 64 KiB at `n=64` for `float64`), so large differentiated Cholesky tiles can exceed shared-memory limits
+  that previously allowed them ([GH-1402](https://github.com/NVIDIA/warp/issues/1402)).
+- Reduce `wp.tid()` overhead in generated kernels by specializing launch-bounds handling for the number of indices a
+  kernel reads. Existing behavior is preserved when a kernel unpacks fewer `wp.tid()` indices than the launch provides:
+  extra trailing launch dimensions still run additional threads that reuse the same returned leading indices
+  ([GH-1270](https://github.com/NVIDIA/warp/issues/1270)).
 - Remove placeholder adjoints for built-ins that are not mathematically differentiable, keeping unsupported gradients
   tied to the `is_differentiable=False` contract ([GH-988](https://github.com/NVIDIA/warp/issues/988)).
+- Change Linux/macOS debug builds from source to use `-Og -g` for the native library instead of
+  `-O0 -g -fkeep-inline-functions`. This enables debug-friendly optimizations, restores `-Wuninitialized` dataflow
+  analysis, and avoids leaking unused inline function bodies from `<Python.h>`
+  ([GH-1414](https://github.com/NVIDIA/warp/issues/1414)).
 
 ### Fixed
 
