@@ -44,7 +44,7 @@ def test_save_apic_false_error(test, device):
     b = wp.zeros(n, dtype=float, device=device)
 
     wp.load_module(device=device)
-    with wp.ScopedCapture(device=device, apic=False, force_module_load=False) as capture:
+    with wp.ScopedCapture(device=device, apic=False) as capture:
         wp.launch(scale_kernel, dim=n, inputs=[a, b, 2.0], device=device)
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -59,7 +59,7 @@ def test_save_single_kernel(test, device):
     b = wp.zeros(n, dtype=float, device=device)
 
     wp.load_module(device=device)
-    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+    with wp.ScopedCapture(device=device, apic=True) as capture:
         wp.launch(scale_kernel, dim=n, inputs=[a, b, 3.0], device=device)
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -78,7 +78,7 @@ def test_save_load_round_trip(test, device):
     b = wp.zeros(n, dtype=float, device=device)
 
     wp.load_module(device=device)
-    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+    with wp.ScopedCapture(device=device, apic=True) as capture:
         wp.launch(scale_kernel, dim=n, inputs=[a, b, 2.0], device=device)
 
     # Launch the original graph first to verify it works
@@ -113,7 +113,7 @@ def test_bindings_param_update(test, device):
     b = wp.zeros(n, dtype=float, device=device)
 
     wp.load_module(device=device)
-    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+    with wp.ScopedCapture(device=device, apic=True) as capture:
         wp.launch(scale_kernel, dim=n, inputs=[a, b, 5.0], device=device)
 
     # Launch original graph to populate memory before saving
@@ -153,7 +153,7 @@ def test_save_load_multiple_kernels(test, device):
     d = wp.zeros(n, dtype=float, device=device)
 
     wp.load_module(device=device)
-    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+    with wp.ScopedCapture(device=device, apic=True) as capture:
         wp.launch(add_kernel, dim=n, inputs=[a, b, c], device=device)
         wp.launch(scale_kernel, dim=n, inputs=[c, d, 10.0], device=device)
 
@@ -182,7 +182,7 @@ def test_save_load_memcpy(test, device):
     dst = wp.zeros(n, dtype=float, device=device)
 
     wp.load_module(device=device)
-    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+    with wp.ScopedCapture(device=device, apic=True) as capture:
         wp.copy(dst, src)
 
     wp.capture_launch(capture.graph)
@@ -208,7 +208,7 @@ def test_save_load_memset(test, device):
     arr = wp.array(np.arange(n, dtype=np.float32), device=device)
 
     wp.load_module(device=device)
-    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+    with wp.ScopedCapture(device=device, apic=True) as capture:
         arr.zero_()
 
     wp.capture_launch(capture.graph)
@@ -267,7 +267,7 @@ def test_complex_pipeline(test, device):
     g = wp.zeros(n, dtype=float, device=device)
 
     wp.load_module(device=device)
-    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+    with wp.ScopedCapture(device=device, apic=True) as capture:
         wp.launch(add_kernel, dim=n, inputs=[a, b, c], device=device)  # c = 5
         wp.copy(d, c)  # d = 5
         wp.launch(scale_kernel, dim=n, inputs=[d, e, 2.0], device=device)  # e = 10
@@ -305,7 +305,7 @@ def test_internal_allocation(test, device):
     output_data = wp.zeros(n, dtype=float, device=device)
 
     wp.load_module(device=device)
-    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+    with wp.ScopedCapture(device=device, apic=True) as capture:
         tmp = wp.zeros(n, dtype=float, device=device)
         wp.launch(scale_kernel, dim=n, inputs=[input_data, tmp, 2.0], device=device)
         wp.launch(add_kernel, dim=n, inputs=[tmp, input_data, output_data], device=device)
@@ -340,7 +340,7 @@ def test_multiple_internal_allocations(test, device):
     output_data = wp.zeros(n, dtype=float, device=device)
 
     wp.load_module(device=device)
-    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+    with wp.ScopedCapture(device=device, apic=True) as capture:
         t1 = wp.zeros(n, dtype=float, device=device)
         t2 = wp.zeros(n, dtype=float, device=device)
         t3 = wp.zeros(n, dtype=float, device=device)
@@ -378,7 +378,7 @@ def test_graph_execution_unchanged(test, device):
     output_data = wp.zeros(n, dtype=float, device=device)
 
     wp.load_module(device=device)
-    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+    with wp.ScopedCapture(device=device, apic=True) as capture:
         wp.launch(scale_kernel, dim=n, inputs=[input_data, output_data, 0.5], device=device)
 
     for _ in range(3):
@@ -398,7 +398,7 @@ def test_save_load_with_param_update(test, device):
     d = wp.zeros(n, dtype=float, device=device)
 
     wp.load_module(device=device)
-    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+    with wp.ScopedCapture(device=device, apic=True) as capture:
         wp.launch(add_kernel, dim=n, inputs=[a, b, c], device=device)
         wp.launch(scale_kernel, dim=n, inputs=[c, d, 2.0], device=device)
 
@@ -436,7 +436,7 @@ def test_save_load_memcpy_and_kernel(test, device):
     dst = wp.zeros(n, dtype=float, device=device)
 
     wp.load_module(device=device)
-    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+    with wp.ScopedCapture(device=device, apic=True) as capture:
         wp.copy(tmp, src)
         wp.launch(scale_kernel, dim=n, inputs=[tmp, dst, 2.0], device=device)
 
@@ -467,7 +467,7 @@ def test_save_load_fill(test, device):
     arr = wp.zeros(n, dtype=float, device=device)
 
     wp.load_module(device=device)
-    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+    with wp.ScopedCapture(device=device, apic=True) as capture:
         arr.fill_(42.0)
 
     wp.capture_launch(capture.graph)
@@ -493,7 +493,7 @@ def test_save_load_alloc_only(test, device):
     src = wp.array(np.arange(n, dtype=np.float32) + 1.0, device=device)
 
     wp.load_module(device=device)
-    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+    with wp.ScopedCapture(device=device, apic=True) as capture:
         # Allocate inside capture and copy data into it
         dst = wp.zeros(n, dtype=float, device=device)
         wp.copy(dst, src)
@@ -578,7 +578,7 @@ def test_capture_2d_launch_minimal(test, device):
     out_count = wp.zeros(1, dtype=int, device=device)
 
     wp.load_module(device=device)
-    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+    with wp.ScopedCapture(device=device, apic=True) as capture:
         wp.launch(
             two_d_strided_kernel,
             dim=[256, 128],
@@ -614,7 +614,7 @@ def test_capture_replay_with_tile_kernel_no_stack_overflow(test, device):
     out = wp.zeros(n, dtype=float, device=device)
 
     wp.load_module(device=device)
-    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+    with wp.ScopedCapture(device=device, apic=True) as capture:
         wp.launch_tiled(_tile_using_kernel, dim=n, inputs=[out], block_dim=64, device=device)
 
     # Multiple launches verify there's no slow leak / cumulative stack use.
@@ -650,7 +650,7 @@ def test_capture_replay_vec3_scalar_alignment(test, device):
     v = wp.vec3(1.0, 2.0, 3.0)
 
     wp.load_module(device=device)
-    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+    with wp.ScopedCapture(device=device, apic=True) as capture:
         wp.launch(_vec3_after_int_kernel, dim=n, inputs=[10, v, 100, 0.5, arr_in, arr_out], device=device)
 
     # Live execution sets the expected pattern; arr_out was zeroed before
@@ -675,7 +675,7 @@ def test_capture_with_empty_array_input(test, device):
     test.assertTrue(empty.ptr is None, f"expected None, got {empty.ptr!r}")
 
     wp.load_module(device=device)
-    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+    with wp.ScopedCapture(device=device, apic=True) as capture:
         wp.launch(touch_first_if_nonempty_kernel, dim=n_out, inputs=[empty, out], device=device)
 
     wp.capture_launch(capture.graph)
@@ -758,7 +758,7 @@ def test_capture_with_large_scalar_param(test, device):
     expected = np.full(n, float(sum(range(24))), dtype=np.float32)  # 0+1+...+23 = 276
 
     wp.load_module(device=device)
-    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+    with wp.ScopedCapture(device=device, apic=True) as capture:
         wp.launch(big_struct_sum_kernel, dim=n, inputs=[s, out], device=device)
 
     wp.capture_launch(capture.graph)
@@ -801,7 +801,7 @@ def test_capture_backward_consumes_y_grad_cpu(test, device):
     y = wp.zeros(n, dtype=float, device=device, requires_grad=True)
 
     wp.load_module(device=device)
-    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+    with wp.ScopedCapture(device=device, apic=True) as capture:
         tape = wp.Tape()
         with tape:
             wp.launch(assign_kernel, dim=n, inputs=[x, y], device=device)
@@ -829,7 +829,7 @@ def test_capture_backward_retain_grad_cpu(test, device):
     y.retain_grad = True
 
     wp.load_module(device=device)
-    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+    with wp.ScopedCapture(device=device, apic=True) as capture:
         tape = wp.Tape()
         with tape:
             wp.launch(assign_kernel, dim=n, inputs=[x, y], device=device)
@@ -853,7 +853,7 @@ def test_capture_backward_kernel_cpu(test, device):
     loss = wp.zeros(1, dtype=float, device=device, requires_grad=True)
 
     wp.load_module(device=device)
-    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+    with wp.ScopedCapture(device=device, apic=True) as capture:
         tape = wp.Tape()
         with tape:
             wp.launch(square_loss_kernel, dim=n, inputs=[x, loss], device=device)
@@ -899,7 +899,7 @@ def test_capture_struct_with_array_cpu(test, device):
     p.radius = 0.5
 
     wp.load_module(device=device)
-    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+    with wp.ScopedCapture(device=device, apic=True) as capture:
         wp.launch(step_particles_struct_kernel, dim=n, inputs=[p, 0.5], device=device)
 
     wp.capture_launch(capture.graph)
@@ -939,7 +939,7 @@ def test_capture_indexedarray_cpu(test, device):
     iarr = wp.indexedarray1d(base, [indices])
 
     wp.load_module(device=device)
-    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+    with wp.ScopedCapture(device=device, apic=True) as capture:
         wp.launch(write_indexed_kernel, dim=iarr.size, inputs=[iarr, 42.0], device=device)
 
     wp.capture_launch(capture.graph)
@@ -996,7 +996,7 @@ def test_capture_indexedarray_adjoint_pack_cpu(test, device):
     total.grad.fill_(1.0)
 
     wp.load_module(device=device)
-    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+    with wp.ScopedCapture(device=device, apic=True) as capture:
         wp.launch(
             weighted_sample_sum_kernel,
             dim=samples.size,
@@ -1037,7 +1037,7 @@ def test_capture_if_cpu(test, device):
         wp.launch(write_value_kernel, dim=n, inputs=[out, 22.0], device=device)
 
     wp.load_module(device=device)
-    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+    with wp.ScopedCapture(device=device, apic=True) as capture:
         wp.capture_if(cond, on_true=on_true, on_false=on_false)
 
     # Replay with cond=1 -> on_true branch -> out filled with 11.0
@@ -1063,7 +1063,7 @@ def test_capture_while_cpu(test, device):
         wp.launch(decrement_counter_kernel, dim=1, inputs=[counter], device=device)
 
     wp.load_module(device=device)
-    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+    with wp.ScopedCapture(device=device, apic=True) as capture:
         wp.capture_while(counter, while_body=body)
 
     counter.assign([5])
@@ -1097,11 +1097,11 @@ def test_capture_with_array_scan(test, device):
 
     if wp.get_device(device).is_cpu:
         with test.assertRaises(NotImplementedError):
-            with wp.ScopedCapture(device=device, apic=True, force_module_load=False):
+            with wp.ScopedCapture(device=device, apic=True):
                 wp.utils.array_scan(src, dst_in, inclusive=True)
         return
 
-    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+    with wp.ScopedCapture(device=device, apic=True) as capture:
         wp.utils.array_scan(src, dst_in, inclusive=True)
         wp.utils.array_scan(src, dst_ex, inclusive=False)
 
@@ -1121,7 +1121,7 @@ def test_end_recording_null_state_preserves_active(test, device):
     b = wp.zeros(n, dtype=float, device=device)
 
     wp.load_module(device=device)
-    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+    with wp.ScopedCapture(device=device, apic=True) as capture:
         wp.launch(scale_kernel, dim=n, inputs=[a, b, 2.0], device=device)
         # While capture is active, an external caller (e.g. error-cleanup path
         # in another component) calls wp_apic_end_recording(NULL).
@@ -1151,7 +1151,7 @@ def test_get_param_ptr(test, device):
     b = wp.zeros(n, dtype=float, device=device)
 
     wp.load_module(device=device)
-    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+    with wp.ScopedCapture(device=device, apic=True) as capture:
         wp.launch(scale_kernel, dim=n, inputs=[a, b, 2.0], device=device)
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -1169,7 +1169,7 @@ def test_get_param_ptr(test, device):
         test.assertIsNone(loaded.get_param_ptr("nonexistent"))
 
     # Non-loaded graph: should raise RuntimeError mentioning loaded APIC graphs.
-    with wp.ScopedCapture(device=device, force_module_load=False) as plain_capture:
+    with wp.ScopedCapture(device=device) as plain_capture:
         wp.launch(scale_kernel, dim=n, inputs=[a, b, 1.0], device=device)
 
     with test.assertRaisesRegex(RuntimeError, "loaded APIC"):
