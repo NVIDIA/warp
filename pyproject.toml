@@ -70,7 +70,6 @@ dev = [
     "warp-lang[docs]",
     "nvtx",
     "coverage[toml]",
-    "rmm-cu12 ; platform_system == 'Linux' and python_version < '3.14'",
     "ml-dtypes>=0.5.4",
 ]
 
@@ -169,6 +168,9 @@ omit = [
 
 [tool.uv]
 managed = true
+required-environments = [
+    "sys_platform == 'win32' and platform_machine == 'AMD64'",
+]
 conflicts = [
     [
         { extra = "torch-cu12" },
@@ -184,13 +186,13 @@ explicit = true
 
 [tool.uv.sources]
 torch = [
-    { index = "pytorch-cu128", extra = "torch-cu12" },
+    { index = "pytorch-cu126", extra = "torch-cu12" },
     { index = "pytorch-cu130", extra = "torch-cu13" },
 ]
 
 [[tool.uv.index]]
-name = "pytorch-cu128"
-url = "https://download.pytorch.org/whl/cu128"
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
 explicit = true
 
 [[tool.uv.index]]
