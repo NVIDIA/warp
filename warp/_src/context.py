@@ -9470,10 +9470,6 @@ def _force_load_cuda_graph_capture_modules(device: Device):
         saved_context = runtime.core.wp_cuda_context_get_current()
 
     original_block_dims = {module: module.options["block_dim"] for module in modules}
-    original_cuda_execs = {
-        module: module.execs.get((device.context, block_dim)) is not None
-        for module, block_dim in original_block_dims.items()
-    }
     original_cpu_execs = {
         module: module.execs.get((None, block_dim)) is not None for module, block_dim in original_block_dims.items()
     }
@@ -9484,14 +9480,12 @@ def _force_load_cuda_graph_capture_modules(device: Device):
         # module loading during capture. Load the default CUDA variant first so
         # a failed stale block_dim=1 load cannot prevent the variant needed by a
         # captured default launch from being preloaded. Limit this repair to
-        # modules that were stale from CPU execution; explicit non-default CUDA
-        # block dimensions may be required by tile kernels and must not be
-        # recompiled at the default block size.
+        # modules that were stale from CPU execution; an explicit stale CUDA
+        # block_dim=1 preload does not cover later default block_dim=256
+        # launches.
         default_cuda_block_dim = 256
         default_modules = [
-            module
-            for module, block_dim in original_block_dims.items()
-            if block_dim == 1 and original_cpu_execs[module] and not original_cuda_execs[module]
+            module for module, block_dim in original_block_dims.items() if block_dim == 1 and original_cpu_execs[module]
         ]
         for module in default_modules:
             try:

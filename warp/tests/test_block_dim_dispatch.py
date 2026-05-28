@@ -185,6 +185,42 @@ def test_force_module_load_preloads_default_before_stale_cuda_block_dim(test, de
     )
 
 
+def test_force_module_load_preloads_default_after_stale_cuda_load(test, device):
+    """A stale CUDA block_dim=1 exec still needs default CUDA preloading."""
+
+    @wp.kernel(module="unique")
+    def simple_kernel(result: wp.array(dtype=wp.int32)):
+        result[0] = 1
+
+    module = simple_kernel.module
+
+    result_cpu = wp.zeros(1, dtype=wp.int32, device="cpu")
+    wp.launch(simple_kernel, dim=1, inputs=[result_cpu], device="cpu")
+    test.assertIn((wp.get_device("cpu").context, 1), module.execs)
+
+    wp.load_module(module=module, device=device, block_dim=1)
+    test.assertIn((device.context, 1), module.execs)
+    test.assertNotIn((device.context, 256), module.execs)
+
+    user_modules = warp_context.user_modules
+    saved_user_modules = dict(user_modules)
+    try:
+        user_modules.clear()
+        user_modules[module.name] = module
+
+        with wp.ScopedCapture(device=device, force_module_load=True):
+            pass
+    finally:
+        user_modules.clear()
+        user_modules.update(saved_user_modules)
+
+    test.assertIn(
+        (device.context, 256),
+        module.execs,
+        "force_module_load should preload default CUDA block_dim even when stale block_dim=1 already exists",
+    )
+
+
 def test_force_module_load_preserves_explicit_cuda_block_dim(test, device):
     """Force-loading before capture must not compile unused default variants."""
 
@@ -291,6 +327,13 @@ add_function_test(
     TestBlockDimDispatch,
     "test_force_module_load_preloads_default_before_stale_cuda_block_dim",
     test_force_module_load_preloads_default_before_stale_cuda_block_dim,
+    devices=cuda_devices,
+)
+
+add_function_test(
+    TestBlockDimDispatch,
+    "test_force_module_load_preloads_default_after_stale_cuda_load",
+    test_force_module_load_preloads_default_after_stale_cuda_load,
     devices=cuda_devices,
 )
 
