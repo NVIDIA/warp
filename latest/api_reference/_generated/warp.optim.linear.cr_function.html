@@ -514,7 +514,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">run</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/linear.py#L892-L962"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.cr" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/linear.py#L895-L967"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.cr" title="Link to this definition">#</a></dt>
 <dd><p>Compute an approximate solution to a symmetric, positive-definite linear system
 using the Conjugate Residual algorithm.</p>
 <p>Supports batched systems when <code class="docutils literal notranslate"><span class="pre">A</span></code> is a <a class="reference internal" href="warp.optim.linear.LinearOperator.html#warp.optim.linear.LinearOperator" title="warp.optim.linear.LinearOperator"><code class="xref py py-class docutils literal notranslate"><span class="pre">LinearOperator</span></code></a> with <code class="docutils literal notranslate"><span class="pre">batch_offsets</span></code> set;
@@ -539,8 +539,10 @@ to the maximum number of iterations.</p></li>
 <li><p><strong>use_cuda_graph</strong> – If true and when run on a CUDA device, capture the solver iteration as a CUDA graph for reduced launch overhead.
 The linear operator and preconditioner must only perform graph-friendly operations.</p></li>
 <li><p><strong>run</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code> (default), allocate temporary buffers and immediately run the solver. If <code class="docutils literal notranslate"><span class="pre">False</span></code>, return a
-pre-allocated <a class="reference internal" href="warp.optim.linear.CR.html#warp.optim.linear.CR" title="warp.optim.linear.CR"><code class="xref py py-class docutils literal notranslate"><span class="pre">CR</span></code></a> functor that can be called repeatedly on compatible systems (same shape, batch
-count, dtype, device) without re-allocating.</p></li>
+pre-allocated <a class="reference internal" href="warp.optim.linear.CR.html#warp.optim.linear.CR" title="warp.optim.linear.CR"><code class="xref py py-class docutils literal notranslate"><span class="pre">CR</span></code></a> functor. The functor can be called repeatedly without
+reallocating temporary buffers when replacement operands match the construction-time shape, dtype, device,
+and batch layout. For batched <a class="reference internal" href="warp.optim.linear.LinearOperator.html#warp.optim.linear.LinearOperator" title="warp.optim.linear.LinearOperator"><code class="xref py py-class docutils literal notranslate"><span class="pre">LinearOperator</span></code></a> inputs, replacement operators must use the same
+<code class="docutils literal notranslate"><span class="pre">batch_offsets</span></code> array.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
