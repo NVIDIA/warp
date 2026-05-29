@@ -76,6 +76,11 @@
   arguments containing arrays in `.wrp` files. Files saved by Warp 1.13 use the old `.wrp` format and must be
   recaptured. APIC C API users must also spell `APICState*` and `APICGraph*` explicitly instead of relying on
   pointer typedefs ([GH-1431](https://github.com/NVIDIA/warp/issues/1431)).
+- **Breaking:** Change `warp.fem.PicQuadrature()` and `warp.fem.make_space_partition()` positional signatures for
+  multi-environment FEM support. `PicQuadrature()` now accepts `env_indices` before `requires_grad`, while
+  `make_space_partition()` accepts `environment_first` before the now-keyword-only `device` and `temporary_store`;
+  pass existing `requires_grad`, `device`, and `temporary_store` arguments by keyword to preserve behavior
+  ([GH-1407](https://github.com/NVIDIA/warp/issues/1407)).
 - **Breaking:** Require Python development headers (`Python.h`) when building from source on Linux. Warp now compiles
   a native fast-call extension that uses the Python C API for `wp.float16` conversions, bypassing the previous
   `ctypes` path to lower per-conversion overhead. Install `libpython3-dev` / `python3-dev` if the build reports
