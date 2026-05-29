@@ -165,6 +165,40 @@ def test_load_module_tiled_block_dim(test, device):
     test.assertEqual(module.resolved_options[64]["block_dim"], 64)
 
 
+def test_force_load_preserves_loaded_block_dim(test, device):
+    """force_load(device) with no explicit block_dim must reuse the variant
+    already loaded on the device, not compile a fresh module-level-default
+    (256) variant. capture_begin() routes through force_load() on driver
+    < 12.3, so a spurious default-block_dim compile there breaks graph
+    capture for kernels whose tile shapes are tied to a specific block_dim
+    (e.g. examples/tile/example_tile_mlp.py). Regression for the GH-564
+    mutation removal.
+    """
+
+    @wp.kernel(module="unique")
+    def k(out: wp.array(dtype=float)):
+        t = wp.tile_zeros(shape=64, dtype=float)
+        out[wp.tid()] = t[0]
+
+    module = k.module
+    cuda_device = wp.get_device(device)
+
+    out = wp.zeros(64, dtype=float, device=device)
+    wp.launch_tiled(k, dim=64, inputs=[out], block_dim=64, device=device)
+    test.assertIn((cuda_device.context, 64), module.execs)
+
+    # force_load without an explicit block_dim must reuse the loaded 64
+    # variant and must not compile the module-level default (256).
+    wp.force_load(device=cuda_device, modules=[module])
+    test.assertIn((cuda_device.context, 64), module.execs)
+    test.assertNotIn(
+        (cuda_device.context, 256),
+        module.execs,
+        "force_load must not compile the default block_dim=256 variant when a "
+        "non-default variant is already loaded on the device",
+    )
+
+
 devices = get_test_devices()
 
 # Only test on CUDA devices (CPU would pass trivially)
@@ -195,6 +229,13 @@ add_function_test(
     TestBlockDimDispatch,
     "test_load_module_tiled_block_dim",
     test_load_module_tiled_block_dim,
+    devices=cuda_devices,
+)
+
+add_function_test(
+    TestBlockDimDispatch,
+    "test_force_load_preserves_loaded_block_dim",
+    test_force_load_preserves_loaded_block_dim,
     devices=cuda_devices,
 )
 

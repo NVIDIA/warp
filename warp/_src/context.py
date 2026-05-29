@@ -9335,16 +9335,29 @@ def force_load(
         else:
             max_workers = warp.config.load_module_max_workers
 
+    def _load_block_dims(m: Module, d: Device) -> list[int | None]:
+        # With no explicit block_dim, preload the variants already loaded on
+        # this device rather than the module-level default, so we don't
+        # compile a default-block_dim variant the caller never requested.
+        # Reading m.execs keeps this device-scoped (a CPU block_dim never
+        # leaks into a CUDA preload).
+        if block_dim is not None:
+            return [block_dim]
+        loaded = [bd for (ctx, bd) in m.execs if ctx == d.context]
+        return loaded or [None]
+
     if max_workers <= 1 or (len(devices) * len(modules)) == 1:
         # serial loading; avoid the overhead of using a thread pool
         for d in devices:
             for m in modules:
-                m.load(d, block_dim=block_dim)
+                for bd in _load_block_dims(m, d):
+                    m.load(d, block_dim=bd)
     else:
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             for d in devices:
                 for m in modules:
-                    executor.submit(m.load, d, block_dim=block_dim)
+                    for bd in _load_block_dims(m, d):
+                        executor.submit(m.load, d, block_dim=bd)
 
     if is_cuda_available():
         # restore original context to avoid side effects
