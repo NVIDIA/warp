@@ -2586,7 +2586,7 @@ class Module:
         # executable modules currently loaded
         self.execs = {}  # ((device.context, blockdim): ModuleExec)
 
-        # set of device contexts where the build has failed
+        # set of (device context, block_dim) variants where the build has failed
         self.failed_builds = set()
 
         # hash data, including the module hash. Module may store multiple hashes (one per block_dim used)
@@ -3175,9 +3175,9 @@ class Module:
                 _check_and_raise_long_path_error(e)
 
             if is_cpu:
-                self.failed_builds.add(None)
+                self.failed_builds.add((None, active_block_dim))
             elif device:
-                self.failed_builds.add(device.context)
+                self.failed_builds.add((device.context, active_block_dim))
 
             raise (e)
 
@@ -3269,7 +3269,7 @@ class Module:
                 log_debug(f"[Module.load] Module hash changed, recompiling: {self.name} ({old_str} -> {new_str})")
 
         # quietly avoid repeated build attempts to reduce error spew
-        if device.context in self.failed_builds:
+        if (device.context, active_block_dim) in self.failed_builds:
             return None
 
         module_hash = self.get_module_hash(active_block_dim)
@@ -9326,7 +9326,7 @@ def force_load(
         devices = [get_device(device)]
 
     if modules is None:
-        modules = user_modules.values()
+        modules = list(user_modules.values())
 
     if max_workers is None:
         if warp.config.load_module_max_workers is None:
@@ -9335,29 +9335,33 @@ def force_load(
         else:
             max_workers = warp.config.load_module_max_workers
 
+    # Copy each module's loaded variant keys before the loads below mutate
+    # m.execs (the parallel path writes it concurrently).
+    loaded_variants = {m: tuple(m.execs) for m in modules}
+
     def _load_block_dims(m: Module, d: Device) -> list[int | None]:
         # With no explicit block_dim, preload the variants already loaded on
         # this device rather than the module-level default, so we don't
         # compile a default-block_dim variant the caller never requested.
-        # Reading m.execs keeps this device-scoped (a CPU block_dim never
+        # Filtering by context keeps this device-scoped (a CPU block_dim never
         # leaks into a CUDA preload).
         if block_dim is not None:
             return [block_dim]
-        loaded = [bd for (ctx, bd) in m.execs if ctx == d.context]
+        loaded = [dim for (ctx, dim) in loaded_variants[m] if ctx == d.context]
         return loaded or [None]
 
     if max_workers <= 1 or (len(devices) * len(modules)) == 1:
         # serial loading; avoid the overhead of using a thread pool
         for d in devices:
             for m in modules:
-                for bd in _load_block_dims(m, d):
-                    m.load(d, block_dim=bd)
+                for dim in _load_block_dims(m, d):
+                    m.load(d, block_dim=dim)
     else:
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             for d in devices:
                 for m in modules:
-                    for bd in _load_block_dims(m, d):
-                        executor.submit(m.load, d, block_dim=bd)
+                    for dim in _load_block_dims(m, d):
+                        executor.submit(m.load, d, block_dim=dim)
 
     if is_cuda_available():
         # restore original context to avoid side effects
