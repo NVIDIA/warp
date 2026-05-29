@@ -29,6 +29,7 @@ from pathlib import Path, PurePosixPath
 
 SKILL_PREFIXES = (".claude/skills/", ".codex/skills/")
 PRE_COMMIT_CONFIG = ".pre-commit-config.yaml"
+SKILL_DOC = "SKILL.md"
 SYNC_TOOL = "tools/pre-commit-hooks/sync_skills.py"
 
 
@@ -64,6 +65,20 @@ class Action:
 
     reason: str
     """Human-readable explanation for why the action was selected."""
+
+
+@dataclass(frozen=True)
+class SkillLintIssue:
+    """A parse-sensitive skill metadata issue."""
+
+    path: str
+    """Repository-relative path to the skill file."""
+
+    line: int
+    """One-based line number for the issue."""
+
+    message: str
+    """Human-readable explanation of the problem."""
 
 
 def parse_args() -> argparse.Namespace:
@@ -206,6 +221,12 @@ def read_current(path: Path | None) -> bytes | None:
     return path.read_bytes()
 
 
+def file_contents(files: Mapping[str, Path]) -> dict[str, bytes | None]:
+    """Read current file contents keyed by skill-tree-relative path."""
+
+    return {rel: read_current(path) for rel, path in files.items()}
+
+
 def read_head(root: Path, git_path: str) -> bytes | None:
     """Read a repository path from ``HEAD``, returning ``None`` for files not tracked there."""
 
@@ -224,6 +245,75 @@ def changed(current: bytes | None, base: bytes | None) -> bool:
     """Return whether a working-tree value differs from its ``HEAD`` value."""
 
     return current != base
+
+
+def has_license_field(frontmatter: list[str]) -> bool:
+    """Return whether YAML frontmatter has a non-empty top-level ``license`` field."""
+
+    for line in frontmatter:
+        if not line.startswith("license:"):
+            continue
+        value = line.split(":", 1)[1].strip()
+        return bool(value and not value.startswith("#"))
+    return False
+
+
+def validate_skill_doc(path: str, content: bytes) -> list[SkillLintIssue]:
+    """Validate metadata placement in one ``SKILL.md`` file."""
+
+    issues: list[SkillLintIssue] = []
+    try:
+        text = content.decode("utf-8")
+    except UnicodeDecodeError:
+        return [SkillLintIssue(path, 1, "must be UTF-8 text")]
+
+    lines = text.splitlines()
+    if not lines:
+        return [SkillLintIssue(path, 1, "must start with YAML frontmatter")]
+
+    if lines[0] != "---":
+        issues.append(SkillLintIssue(path, 1, "must start with YAML frontmatter delimiter '---'"))
+        return issues
+
+    try:
+        frontmatter_end = lines.index("---", 1)
+    except ValueError:
+        issues.append(SkillLintIssue(path, 1, "missing closing YAML frontmatter delimiter '---'"))
+        return issues
+
+    frontmatter = lines[1:frontmatter_end]
+    if not has_license_field(frontmatter):
+        issues.append(SkillLintIssue(path, 1, "frontmatter must include a non-empty license field"))
+
+    for line_number, line in enumerate(lines[frontmatter_end + 1 :], start=frontmatter_end + 2):
+        if "SPDX-" in line:
+            issues.append(
+                SkillLintIssue(path, line_number, "use the frontmatter license field instead of body SPDX markers")
+            )
+
+    return issues
+
+
+def validate_skill_docs(side: Side, contents: Mapping[str, bytes | None]) -> list[SkillLintIssue]:
+    """Validate all ``SKILL.md`` files in one side's content map."""
+
+    issues: list[SkillLintIssue] = []
+    for rel, content in sorted(contents.items()):
+        if PurePosixPath(rel).name != SKILL_DOC or content is None:
+            continue
+        issues.extend(validate_skill_doc(f"{side.git_prefix}/{rel}", content))
+    return issues
+
+
+def report_skill_lint_issues(issues: list[SkillLintIssue]) -> None:
+    """Print skill lint diagnostics."""
+
+    if not issues:
+        return
+
+    print("skill metadata lint failed:", file=sys.stderr)
+    for issue in issues:
+        print(f"  {issue.path}:{issue.line}: {issue.message}", file=sys.stderr)
 
 
 def mtime(path: Path | None) -> float:
@@ -348,8 +438,8 @@ def plan_auto(
     mirror operation from silently overwriting independent edits.
     """
 
-    claude_contents = {rel: read_current(path) for rel, path in claude_files.items()}
-    codex_contents = {rel: read_current(path) for rel, path in codex_files.items()}
+    claude_contents = file_contents(claude_files)
+    codex_contents = file_contents(codex_files)
     return plan_auto_contents(
         root,
         sides,
@@ -438,34 +528,66 @@ def run_with_root(args: argparse.Namespace, root: Path) -> int:
         codex.mkdir(parents=True, exist_ok=True)
     claude_files = list_files(claude, "claude")
     codex_files = list_files(codex, "codex")
+    claude_contents = file_contents(claude_files)
+    codex_contents = file_contents(codex_files)
+    lint_issues = validate_skill_docs(sides["claude"], claude_contents)
+    lint_issues.extend(validate_skill_docs(sides["codex"], codex_contents))
 
     if args.force_source is not None:
         actions = plan_forced(args.force_source, claude_files, codex_files)
         conflicts: list[str] = []
     else:
-        actions, conflicts = plan_auto(root, sides, claude_files, codex_files, args.prefer_mtime)
+        actions, conflicts = plan_auto_contents(
+            root,
+            sides,
+            claude_contents,
+            codex_contents,
+            args.prefer_mtime,
+            claude_files,
+            codex_files,
+        )
 
     if conflicts:
         print("conflicts detected:", file=sys.stderr)
         for conflict in conflicts:
             print(f"  {conflict}", file=sys.stderr)
+        report_skill_lint_issues(lint_issues)
         return 2
 
-    if not actions:
-        print("in sync")
-        return 0
-
     if args.check:
+        report_skill_lint_issues(lint_issues)
+        if not actions:
+            if lint_issues:
+                return 1
+            print("in sync")
+            return 0
+
         print("drift detected:")
         for action in actions:
             print(f"  would {describe(action)}")
         return 1
+
+    if lint_issues and not actions:
+        report_skill_lint_issues(lint_issues)
+        return 1
+
+    if not actions:
+        print("in sync")
+        return 0
 
     for action in actions:
         apply_action(action, sides)
         print(describe(action))
     prune_empty_dirs(claude)
     prune_empty_dirs(codex)
+    claude_contents = file_contents(list_files(claude, "claude"))
+    codex_contents = file_contents(list_files(codex, "codex"))
+    lint_issues = validate_skill_docs(sides["claude"], claude_contents)
+    lint_issues.extend(validate_skill_docs(sides["codex"], codex_contents))
+    if lint_issues:
+        report_skill_lint_issues(lint_issues)
+        return 1
+
     print("skills synced")
     return 0
 
@@ -483,27 +605,37 @@ def run_index_check(root: Path) -> int:
         "claude": Side("claude", root / ".claude" / "skills", ".claude/skills"),
         "codex": Side("codex", root / ".codex" / "skills", ".codex/skills"),
     }
+    claude_contents = list_index_files(root, sides["claude"])
+    codex_contents = list_index_files(root, sides["codex"])
+    lint_issues = validate_skill_docs(sides["claude"], claude_contents)
+    lint_issues.extend(validate_skill_docs(sides["codex"], codex_contents))
     actions, conflicts = plan_auto_contents(
         root,
         sides,
-        list_index_files(root, sides["claude"]),
-        list_index_files(root, sides["codex"]),
+        claude_contents,
+        codex_contents,
     )
 
     if conflicts:
         print("conflicts detected:", file=sys.stderr)
         for conflict in conflicts:
             print(f"  {conflict}", file=sys.stderr)
+        report_skill_lint_issues(lint_issues)
         return 2
 
-    if not actions:
-        print("in sync")
-        return 0
+    report_skill_lint_issues(lint_issues)
 
-    print("drift detected:")
-    for action in actions:
-        print(f"  would {describe(action)}")
-    return 1
+    if actions:
+        print("drift detected:")
+        for action in actions:
+            print(f"  would {describe(action)}")
+        return 1
+
+    if lint_issues:
+        return 1
+
+    print("in sync")
+    return 0
 
 
 def run_pre_commit(args: argparse.Namespace) -> int:

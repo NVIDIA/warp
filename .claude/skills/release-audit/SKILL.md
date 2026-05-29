@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 name: release-audit
 description: "Generate a Warp release audit report (pre-release or RC, auto-detected from version string and head ref)."
+license: Apache-2.0
 ---
 
 # Release Audit
@@ -23,6 +24,7 @@ Generates a markdown audit of the upcoming Warp release for keep/defer decisions
 - `references/render-rules.md` — URL shapes, signature/docstring code-block forms, table column specs, audit-appendix conditional, and output-style hard constraints. Loaded in Phase 6b.
 - `references/classification-rules.md` — path/symbol rules used in Phases 3-5.
 - `references/language-review-examples.md` — Phase 5a calibration for the CHANGELOG Review Notes appendix.
+- `scripts/diff_public_api.py` — deterministic JSON fact extractor for Phase 4e public runtime/stub API diffs.
 
 ## Phase 1 — Align on scope
 
@@ -205,14 +207,56 @@ The deprecation window belongs in BOTH the Breaking Changes entry for the remova
 
 ### 4e — Signature-AST diff for unlabeled breaking changes
 
-Independently of CHANGELOG content, compute the public API surface at base vs. HEAD:
+Independently of CHANGELOG content, compute the public API surface at base vs. HEAD. Prefer the deterministic helper for fact extraction, then use judgment only for report classification and wording.
 - Base: `git show <base-ref>:warp/__init__.py` → parse with `ast`. Resolve each re-export's real signature at base. Also apply to `warp/_src/builtins.py` for kernel builtins. If `git show` fails (file absent at the base ref, e.g. older releases predating the `warp/_src/` layout) or `ast.parse` raises, skip the signature-diff check for that file and emit: "Cannot perform signature-diff check: base is too old or lacks public API exports."
 - HEAD: same, against the resolved head ref's committed state (`git show <head-ref>:warp/__init__.py` and `git show <head-ref>:warp/_src/builtins.py`), consistent with Phase 2's "at HEAD" reads. Not the uncommitted working tree. Apply the same skip-and-emit fallback if either file is missing or unparsable at the head ref.
-- For each symbol whose signature shape changed AND whose matching CHANGELOG entry (if any) doesn't carry `**Breaking:**` → add to Breaking Changes section as "unlabeled signature change — please verify and consider flagging."
+- **Also compare public stubs.** Inspect `warp/__init__.pyi` and any matching public-module `.pyi` files for every runtime module included in this phase. Parse with `ast` when possible and compare public functions, classes, methods, overload variants, module-level annotated attributes, and exported aliases. A symbol, overload, method, or attribute that was present in a base public stub and absent at HEAD is a **public stub removal**. Surface it in Breaking Changes and Changes to Existing API even if the runtime implementation did not change, because stubs are the type-checker and IDE-facing public API. If no matching CHANGELOG entry carries `**Breaking:**`, label it as an unlabeled public stub removal.
+- **Also include public submodules named by CHANGELOG entries.** For every CHANGELOG entry, extract dotted public module references from code spans and prose, including `warp.<name>`, `warp.<name>.<submodule>`, `wp.<name>`, and topic-style module names such as `warp.fem`, `warp.optim.linear`, `warp.jax`, or `warp.jax_experimental`. For each referenced public submodule:
+  1. Resolve the public module/package path at base and HEAD (for example, `warp.fem` → `warp/fem/__init__.py`, `warp.optim.linear` → `warp/optim/linear.py`).
+  2. Follow public re-exports in that module/package to their real source modules (for example, `from warp._src.fem... import X as X`). Include source modules changed by the backing commit(s) when the public package re-exports a broad namespace and the CHANGELOG entry names the package rather than a specific symbol.
+  3. Parse those resolved modules with `ast` at base and HEAD. Compare public functions, public classes, class `__init__` signatures, and public methods whose names do not start with `_`. Do not scan unrelated private modules just because they are under `warp/_src`; the submodule must be named by the CHANGELOG entry or reached through that submodule's public re-export path.
+
+Run the helper after building the module list (always include `warp`, then add each public submodule from the previous bullet):
+```bash
+uv run "<skill-dir>/scripts/diff_public_api.py" \
+  --base <base-ref> \
+  --head <head-ref> \
+  --module warp \
+  --module <public-submodule>
+```
+Repeat `--module` once per module and omit the placeholder line when there are no submodules. Capture stdout as `api_diff_json`.
+
+For each `api_diff_json.changes[]` item:
+- `kind == "signature_change"` with reasons such as `inserted_positional_parameter`, `positional_to_keyword_only`, `removed_parameter`, `reordered_parameter`, or `new_required_parameter` → add to Breaking Changes when the matching CHANGELOG entry (if any) does not carry `**Breaking:**`, and add/merge a Changes-to-Existing-API row.
+- `kind == "public_stub_removal"` → add to Breaking Changes and Changes to Existing API even when runtime source is unchanged. If no matching CHANGELOG entry carries `**Breaking:**`, label as an unlabeled public stub removal.
+- If `api_diff_json.warnings[]` is non-empty, surface a concise audit note that the helper could not parse that module/path, then fall back to manual AST inspection for that path. Do not silently skip a warning.
+
+**Signature compatibility rule.** When comparing Python signatures, treat parameter order and kind as part of the public contract:
+- Ignore `self` / `cls` for methods.
+- A new required parameter is breaking unless an overload or wrapper preserves the old call form.
+- Removing, renaming, or reordering an existing parameter is breaking.
+- Moving an existing positional-or-keyword parameter behind `*` (a positional-to-keyword-only move) is breaking for positional callers.
+- **Inserting a new positional-or-keyword parameter before any existing positional-or-keyword parameter is breaking**, even if the new parameter has a default, because old positional calls now bind differently. This must be surfaced in Breaking Changes and Changes to Existing API.
+- Adding a keyword-only parameter with a default is not breaking by itself.
+- Appending a defaulted positional-or-keyword parameter after all existing positional-or-keyword parameters is not breaking by itself, but still belongs in Changes to Existing API as a new parameter or capability extension if user-facing.
+- Render breaking signature shifts with a `diff` block and a short before/after call example showing how positional callers should migrate to keywords.
 
 **Exception: Removed symbols are breaking by definition.** A symbol that appears in CHANGELOG's `Removed` section does NOT need a `**Breaking:**` marker to be valid. Do NOT flag Removed entries as "unlabeled breaking" — the section name itself communicates the breakage. Removed entries surface in the Breaking Changes callout and in the Changes-to-Existing-API section (as "removed" kind), but the report must not whinge about missing `**Breaking:**` labels on them.
 
-### 4f — Semantic-breaking verification (Claude does the work)
+### 4f — Deprecated compatibility path exceptions
+
+Independently inspect deprecated compatibility paths for newly introduced exceptions. This catches breaks in old import paths or wrappers that still exist only to warn and forward callers to a replacement API.
+
+1. Identify candidate paths from commits and CHANGELOG entries:
+   - Files or packages whose path contains `deprecated`, `deprecation`, `compat`, `compatibility`, `backcompat`, or a deprecated namespace name.
+   - Public modules named in `Deprecated`, `Removed`, or migration-style CHANGELOG entries.
+   - Modules that issue deprecation warnings, forward imports from an old namespace to a new namespace, or provide compatibility aliases (for example, a `warp.jax_experimental` shim forwarding to `warp.jax`).
+2. Compare candidate files at base and HEAD. Look specifically for new `raise` statements, changed exception types or messages, stricter guard conditions before forwarding/delegation, removed `try`/`except` fallbacks, and import-time errors added to a path that previously warned and delegated.
+3. If the old deprecated path can now raise a new or stricter exception before reaching the replacement API, add a Breaking Changes entry and a Changes-to-Existing-API row with kind `semantic change` and description `new exception in deprecated compatibility path`.
+4. Include a short before/after snippet showing the deprecated call or import form, the new exception behavior, and the replacement path users should call instead. If the behavior is ambiguous from the diff, verify with a minimal Python script at base and HEAD before reporting it.
+5. Do not suppress this because the path is deprecated. Deprecated compatibility paths still carry a migration contract until removal; new exceptions are release-manager-visible risk.
+
+### 4g — Semantic-breaking verification (the assistant performs the verification)
 
 For each commit in `commit_list_json` that touches `warp/_src/codegen.py` OR any path under `warp/native/**`:
 
@@ -221,9 +265,9 @@ For each commit in `commit_list_json` that touches `warp/_src/codegen.py` OR any
 3. **Triage** into one of three buckets:
    - **Clearly not breaking** → drop. Examples: renaming internal symbols, comment/format changes, pure internal refactors with no emitted-code difference, performance optimizations that preserve semantics, test-only changes, build-system changes, bug fixes where the pre-fix behavior was itself a bug.
    - **Clearly breaking** with an obvious user-observable shift visible from the diff alone → include directly (proceed to step 5).
-   - **Ambiguous** — the diff suggests the change could affect emitted code or runtime behavior, but Claude cannot tell from reading alone whether a user would observe a difference → **verify by running code** (step 4).
+   - **Ambiguous** — the diff suggests the change could affect emitted code or runtime behavior, but the assistant cannot tell from reading alone whether a user would observe a difference → **verify by running code** (step 4).
 
-4. **Verification by running code.** For ambiguous candidates, Claude must actually run Warp at both base and HEAD and compare observable output:
+4. **Verification by running code.** For ambiguous candidates, the assistant must actually run Warp at both base and HEAD and compare observable output:
    - Build Warp at HEAD using `uv run build_lib.py --quick` (~2-4 min) if not already built. If a build is already current, skip.
    - Check out the base tag in a separate worktree or save the current HEAD state, build Warp at base, capture the built library. `git worktree add` is useful here to avoid disturbing HEAD. Alternatively, git-stash + checkout + build + stash-pop.
    - Write a minimal Python test script that exercises the hypothesized behavior. The script should live under `/tmp/` (never commit). Example for a numerical-algorithm change: a small kernel that applies the changed op to a fixed input and prints the result. Example for a codegen change: a kernel whose emitted code should differ; compare via `wp.get_module().save_kernel_source(...)` or equivalent introspection.
@@ -241,13 +285,13 @@ For each commit in `commit_list_json` that touches `warp/_src/codegen.py` OR any
    - Commit link(s).
    - GH ref link (if any) in the entry text.
 
-**Never produce an unexamined list of candidates.** Every Breaking Changes entry either has explicit CHANGELOG backing, a signature-diff detected shape change, or Claude-verified behavioral evidence.
+**Never produce an unexamined list of candidates.** Every Breaking Changes entry either has explicit CHANGELOG backing, a signature-diff detected shape change, a public stub removal, a new exception in a deprecated compatibility path, or assistant-verified behavioral evidence.
 
-### 4g — Experimental-marker cross-reference
+### 4h — Experimental-marker cross-reference
 
 Some symbols are shipped with an explicit `**Experimental**` marker in the CHANGELOG entry that introduced them. Changes to those symbols do NOT carry the same stability contract as changes to stable APIs: the whole point of the marker is to reserve the right to break them. The report must reflect that so the release manager does not over-weight the concern.
 
-For each entry in Breaking Changes, Changes to Existing API, and Removed (as collected through 4a–4f), determine whether the affected symbol or feature area is currently experimental:
+For each entry in Breaking Changes, Changes to Existing API, and Removed (as collected through 4a–4g), determine whether the affected symbol or feature area is currently experimental:
 
 1. Collect candidate symbols / feature-area phrases from the entry: backticked identifiers, class names, and (for topic-style entries like "External texture interop") the most distinctive descriptive noun phrase.
 2. Search CHANGELOG.md in released-version sections (everything below `## [Unreleased]`) for bullets that both carry `**Experimental**` (bold, with or without trailing colon) AND name one of the candidates from step 1. Also match via GH ref if the current entry and a prior experimental entry share a GH number.
@@ -336,7 +380,7 @@ Same work, but a reader learns that there's a new interchange format and a Pytho
 
 **GH refs MUST be hyperlinks, always.** Every `GH-NNNN` in a highlight bullet is a markdown link to `https://github.com/NVIDIA/warp/issues/NNNN`. This applies even when a single bullet combines multiple GH refs. Do NOT use shortcuts like `(multiple GHs)`, `(GH-1287, GH-1298, ...)` in plain text, or `(see CHANGELOG)`. If the bullet covers six issues, render all six as individual links, either inline (`([GH-1287](...), [GH-1298](...), [GH-1335](...))`) or in a trailing parenthesis at the end of the headline. There is no upper limit on link count; a reader can scan links but cannot resolve plain numbers.
 
-**Experimental softening.** If Phase 4g tagged an entry as experimental, the highlight bullet uses `⚠️ Experimental:` as its risk prefix rather than `⚠️ Breaking:`, even if the change is technically source-breaking. The rationale sentence should lead with what changed and its stability bar, not with migration urgency; readers already know experimental APIs can shift.
+**Experimental softening.** If Phase 4h tagged an entry as experimental, the highlight bullet uses `⚠️ Experimental:` as its risk prefix rather than `⚠️ Breaking:`, even if the change is technically source-breaking. The rationale sentence should lead with what changed and its stability bar, not with migration urgency; readers already know experimental APIs can shift.
 
 Open the summary with a 2-3 sentence intro paragraph that names the shape of the release in plain language. This sets the tone for everything below it. Do not stuff the intro with numbers or repeat the bake distribution.
 

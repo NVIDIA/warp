@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 name: changelog-audit
 description: "Audit Warp CHANGELOG.md before a release: recover lost entries, sort by user impact, refine entry language, line-wrap, and (release-branch mode) bump compare refs."
+license: Apache-2.0
 ---
 
 # Changelog Audit
