@@ -8879,23 +8879,29 @@ class Launch:
         if self.params_addr:
             self.params_addr[params_index] = ctypes.c_void_p(ctypes.addressof(carg))
 
-    def set_param_at_index_from_ctype(self, index: int, value: ctypes.Structure | int | float):
+    def set_param_at_index_from_ctype(self, index: int, value: ctypes.Structure | int | float, adjoint: bool = False):
         """Set a kernel parameter at an index without any type conversion.
 
         Args:
             index: The index of the param to set.
             value: The value to set the param to.
+            adjoint: If ``True``, target the adjoint half of the param packet.
         """
+        if adjoint:
+            params_index = index + len(self.kernel.adj.args) + 1
+        else:
+            params_index = index + 1
+
         if isinstance(value, ctypes.Structure):
             # not sure how to directly assign struct->struct without reallocating using ctypes
-            self.params[index + 1] = value
+            self.params[params_index] = value
 
             # for CUDA kernels we need to update the address to each arg
             if self.params_addr:
-                self.params_addr[index + 1] = ctypes.c_void_p(ctypes.addressof(value))
+                self.params_addr[params_index] = ctypes.c_void_p(ctypes.addressof(value))
 
         else:
-            self.params[index + 1].__init__(value)
+            self.params[params_index].__init__(value)
 
     def set_param_by_name(self, name: str, value: Any, adjoint: bool = False):
         """Set a kernel parameter by argument name.
@@ -9128,7 +9134,7 @@ class DeterministicLaunch(Launch):
         elif not adjoint and index < len(self.fwd_args):
             self.fwd_args[index] = value
 
-    def set_param_at_index_from_ctype(self, index: int, value: ctypes.Structure | int | float):
+    def set_param_at_index_from_ctype(self, index: int, value: ctypes.Structure | int | float, adjoint: bool = False):
         if self._is_deterministic_target_arg(index):
             arg_label = self.kernel.adj.args[index].label
             raise RuntimeError(
@@ -9137,8 +9143,10 @@ class DeterministicLaunch(Launch):
                 "Use set_param_at_index() with a Warp array or struct object instead."
             )
 
-        super().set_param_at_index_from_ctype(index, value)
-        if index < len(self.fwd_args):
+        super().set_param_at_index_from_ctype(index, value, adjoint)
+        if adjoint and index < len(self.adj_args):
+            self.adj_args[index] = value
+        elif not adjoint and index < len(self.fwd_args):
             self.fwd_args[index] = value
 
     def launch(self, stream: Stream | None = None) -> None:

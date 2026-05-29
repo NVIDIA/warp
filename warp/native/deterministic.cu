@@ -321,6 +321,8 @@ size_t deterministic_workspace_size(int count, int op, int components, int deter
     return generic_workspace_size(count, stream);
 }
 
+// Scalar-only (components == 1); widen indexing to int64_t if extended to
+// multi-component types (see deterministic_reduce_kernel).
 template <typename T>
 __global__ void apply_reduced_runs_kernel(
     const int* __restrict__ unique_dests,
@@ -386,8 +388,8 @@ __global__ void deterministic_reduce_kernel(
     if (my_dest < 0 || my_dest >= dest_size)
         return;
 
-    int base = sorted_indices[tid] * components;
-    int dest_base = my_dest * components;
+    int64_t base = static_cast<int64_t>(sorted_indices[tid]) * components;
+    int64_t dest_base = static_cast<int64_t>(my_dest) * components;
 
     // Accumulate each segment sequentially to preserve a deterministic
     // left-to-right order. This intentionally favors reproducibility over
@@ -397,7 +399,7 @@ __global__ void deterministic_reduce_kernel(
         for (int i = tid + 1; i < num_records; ++i) {
             if (dest_index_from_key(sorted_keys[i]) != my_dest)
                 break;
-            T val = values[sorted_indices[i] * components + c];
+            T val = values[static_cast<int64_t>(sorted_indices[i]) * components + c];
             switch (op) {
             case REDUCE_OP_ADD:
                 accum = accum + val;
