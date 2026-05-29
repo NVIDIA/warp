@@ -701,6 +701,11 @@ such as vector <code class="docutils literal notranslate"><span class="pre">wp.s
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1422">GH-1422</a>).</p></li>
 <li><p>Fix an intermittent failure when loading modules in parallel with <code class="docutils literal notranslate"><span class="pre">wp.force_load(max_workers</span> <span class="pre">&gt;</span> <span class="pre">1)</span></code> that could cause
 modules sharing a <code class="docutils literal notranslate"><span class="pre">&#64;wp.func</span></code> to fail to compile or load (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1474">GH-1474</a>).</p></li>
+<li><p>Fix binding a Warp function to a kernel-local variable, so patterns like <code class="docutils literal notranslate"><span class="pre">f</span> <span class="pre">=</span> <span class="pre">my_func</span></code>,
+<code class="docutils literal notranslate"><span class="pre">f</span> <span class="pre">=</span> <span class="pre">module.my_func</span></code>, <code class="docutils literal notranslate"><span class="pre">f</span> <span class="pre">=</span> <span class="pre">wp.static(...)</span></code> returning a function, and <code class="docutils literal notranslate"><span class="pre">wp.grad(f)</span></code> where
+<code class="docutils literal notranslate"><span class="pre">f</span></code> is such a local now compile and call correctly instead of failing during codegen.
+Rebinding a function-valued local to a different function or to a non-function value raises a clear error
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1423">GH-1423</a>).</p></li>
 </ul>
 </section>
 <section id="documentation">
