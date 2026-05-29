@@ -332,6 +332,75 @@ during CUDA graph capture.
 
 See ``warp/examples/core/example_custom_allocator.py`` for a complete example.
 
+.. _pytorch-cuda-caching-allocator:
+
+PyTorch CUDA Caching Allocator
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+PyTorch exposes low-level CUDA caching allocator functions that can be used by
+other frameworks. If an application wants Warp CUDA arrays to be allocated from
+PyTorch's cache, implement a small custom allocator that calls
+``torch.cuda.caching_allocator_alloc()`` and releases pointers with
+``torch.cuda.caching_allocator_delete()``:
+
+.. code:: python
+
+    import torch
+    import warp as wp
+
+
+    class TorchCachingAllocator:
+        """Route Warp CUDA array allocations through PyTorch."""
+
+        def __init__(self):
+            self._active_allocations = {}
+
+        @staticmethod
+        def _current_warp_device_and_stream():
+            device = wp.get_cuda_device()
+            stream = device.stream.cuda_stream
+            return device.ordinal, int(stream) if stream is not None else 0
+
+        def allocate(self, size_in_bytes: int) -> int:
+            if size_in_bytes == 0:
+                return 0
+
+            device, stream = self._current_warp_device_and_stream()
+            ptr = torch.cuda.caching_allocator_alloc(size_in_bytes, device=device, stream=stream)
+            ptr = int(ptr)
+            self._active_allocations[ptr] = size_in_bytes
+            return ptr
+
+        def deallocate(self, ptr: int, size_in_bytes: int) -> None:
+            if ptr == 0:
+                return
+
+            allocated_size = self._active_allocations.get(ptr)
+            if allocated_size is None:
+                raise RuntimeError(f"Unrecognized allocation pointer {ptr:#x}")
+            if allocated_size != size_in_bytes:
+                raise RuntimeError(
+                    f"Allocation size mismatch for pointer {ptr:#x}: "
+                    f"allocated {allocated_size}, deallocating {size_in_bytes}"
+                )
+
+            del self._active_allocations[ptr]
+            torch.cuda.caching_allocator_delete(ptr)
+
+
+    allocator = TorchCachingAllocator()
+    wp.set_cuda_allocator(allocator)
+    try:
+        a = wp.zeros(1000, dtype=wp.float32, device="cuda:0")
+    finally:
+        wp.set_cuda_allocator(None)
+
+PyTorch tracks the device and stream for pointers returned by
+``caching_allocator_alloc()``, so ``caching_allocator_delete()`` only needs the
+pointer. The ``_active_allocations`` dictionary above is for validation and
+debugging; applications can customize this tracking for their own accounting,
+thread-safety, or distributed runtime needs.
+
 RMM Integration
 ~~~~~~~~~~~~~~~
 

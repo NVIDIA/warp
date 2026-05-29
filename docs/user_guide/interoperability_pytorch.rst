@@ -35,6 +35,11 @@ Warp also provides helper functions for mapping devices and dtypes between Warp 
     warp_dtype = wp.dtype_from_torch(t.dtype)
     warp_device = wp.device_from_torch(t.device)
 
+By default, Warp arrays allocated with functions such as :func:`wp.zeros() <warp.zeros>`
+use Warp's CUDA allocator. If an application needs those allocations to come
+from PyTorch's CUDA caching allocator, see
+:ref:`pytorch-cuda-caching-allocator` for a minimal custom allocator example.
+
 Stream Conversion
 -----------------
 
