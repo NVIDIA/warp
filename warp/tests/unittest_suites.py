@@ -128,7 +128,12 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.matrix.test_mat_lite import TestMatLite
     from warp.tests.test_adam import TestAdam
     from warp.tests.test_allocation_tracker import TestAllocTracker
-    from warp.tests.test_allocator import TestAllocatorProtocol, TestCustomAllocator, TestRmmAllocator
+    from warp.tests.test_allocator import (
+        TestAllocatorProtocol,
+        TestCustomAllocator,
+        TestRmmAllocator,
+        TestTorchAllocator,
+    )
     from warp.tests.test_apic import TestApic
     from warp.tests.test_apic_mesh import TestApicMesh
     from warp.tests.test_arithmetic import TestArithmetic
@@ -393,6 +398,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestTileStack,
         TestTileView,
         TestTorch,
+        TestTorchAllocator,
         TestTransientModule,
         TestTriangleClosestPoint,
         TestTypes,

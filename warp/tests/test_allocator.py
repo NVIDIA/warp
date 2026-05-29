@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import unittest
+from unittest import mock
 
 import numpy as np
 
@@ -13,12 +14,29 @@ wp.init()
 
 cuda_test_devices = get_cuda_test_devices(mode="basic")
 
+# RMM imports NVIDIA's top-level ``cuda`` package. Keep this probe after
+# ``unittest_utils`` normalizes direct-test ``sys.path`` so ``warp/tests/cuda``
+# does not shadow the installed CUDA package when this file is run by path.
 try:
     import rmm
 
     rmm_available = True
 except ImportError:
     rmm_available = False
+
+_TORCH_CUDA_PROBE_EXCEPTIONS = (RuntimeError, OSError, ValueError)
+
+
+def _try_import_torch():
+    try:
+        import torch  # noqa: PLC0415
+    except (ImportError, OSError):
+        return None, False
+
+    return torch, True
+
+
+torch, torch_available = _try_import_torch()
 
 
 class CountingAllocator:
@@ -46,6 +64,79 @@ class FailAllocator:
 
     def deallocate(self, ptr, size_in_bytes):
         pass
+
+
+class TorchCachingAllocatorForWarp:
+    """Test allocator that routes CUDA allocations through PyTorch's cache."""
+
+    def __init__(self):
+        self._active_allocations: dict[int, int] = {}
+        self.alloc_count = 0
+        self.dealloc_count = 0
+
+    @staticmethod
+    def _get_warp_device_and_stream() -> tuple[int, int]:
+        from warp._src.context import runtime  # noqa: PLC0415
+
+        device = runtime.get_current_cuda_device()
+        stream = device.stream.cuda_stream
+        return device.ordinal, int(stream) if stream is not None else 0
+
+    def allocate(self, size_in_bytes: int) -> int:
+        if size_in_bytes == 0:
+            return 0
+
+        device, stream = self._get_warp_device_and_stream()
+        ptr = torch.cuda.caching_allocator_alloc(size_in_bytes, device=device, stream=stream)
+        if not ptr:
+            raise RuntimeError(f"Failed to allocate {size_in_bytes} bytes on CUDA device {device} using PyTorch")
+
+        ptr = int(ptr)
+        self.alloc_count += 1
+        self._active_allocations[ptr] = size_in_bytes
+        return ptr
+
+    def deallocate(self, ptr: int, size_in_bytes: int) -> None:
+        if ptr == 0:
+            return
+
+        allocated_size = self._active_allocations.get(ptr)
+        if allocated_size is None:
+            raise RuntimeError(
+                f"{type(self).__name__}.deallocate called with unrecognized pointer {ptr:#x} (size={size_in_bytes})"
+            )
+        if allocated_size != size_in_bytes:
+            raise RuntimeError(
+                f"{type(self).__name__}.deallocate size mismatch for pointer {ptr:#x}: "
+                f"allocated {allocated_size}, deallocating {size_in_bytes}"
+            )
+        del self._active_allocations[ptr]
+        self.dealloc_count += 1
+
+        torch.cuda.caching_allocator_delete(ptr)
+
+    def __repr__(self):
+        return f"{type(self).__name__}(active_allocations={len(self._active_allocations)})"
+
+
+def _get_torch_cuda_allocator_test_devices():
+    if not torch_available:
+        return []
+    if not torch.cuda.is_available():
+        return []
+    if not hasattr(torch.cuda, "caching_allocator_alloc") or not hasattr(torch.cuda, "caching_allocator_delete"):
+        return []
+
+    devices = []
+    for device in cuda_test_devices:
+        try:
+            torch.empty(1, device=wp.device_to_torch(device))
+        except _TORCH_CUDA_PROBE_EXCEPTIONS as e:
+            print(f"Skipping PyTorch allocator test on device '{device}' due to exception: {e}")
+        else:
+            devices.append(device)
+
+    return devices
 
 
 # -- Protocol conformance ---------------------------------------------------
@@ -339,6 +430,88 @@ if rmm_available:
         test_rmm_allocator_double_free,
     ]:
         add_function_test(TestRmmAllocator, fn.__name__, fn, devices=cuda_test_devices)
+
+
+# -- PyTorch allocator ------------------------------------------------------
+
+
+class TestTorchAllocator(unittest.TestCase):
+    def test_torch_import_probe_handles_os_error(self):
+        """Torch DLL load failures make Torch allocator tests unavailable."""
+
+        real_import = __import__
+
+        def import_with_torch_os_error(name, *args, **kwargs):
+            if name == "torch":
+                raise OSError("DLL initialization failed")
+
+            return real_import(name, *args, **kwargs)
+
+        with mock.patch("builtins.__import__", side_effect=import_with_torch_os_error):
+            imported_torch, is_available = _try_import_torch()
+
+        self.assertIsNone(imported_torch)
+        self.assertFalse(is_available)
+
+    def test_torch_import_probe_propagates_unexpected_errors(self):
+        """Unexpected Torch import failures still fail test collection."""
+
+        real_import = __import__
+
+        def import_with_torch_runtime_error(name, *args, **kwargs):
+            if name == "torch":
+                raise RuntimeError("unexpected import failure")
+
+            return real_import(name, *args, **kwargs)
+
+        with mock.patch("builtins.__import__", side_effect=import_with_torch_runtime_error):
+            with self.assertRaisesRegex(RuntimeError, "unexpected import failure"):
+                _try_import_torch()
+
+
+def test_torch_caching_allocator(test, device):
+    """Warp arrays can allocate from PyTorch's CUDA caching allocator."""
+    device = wp.get_device(device)
+    allocator = TorchCachingAllocatorForWarp()
+    baseline_allocated = torch.cuda.memory_allocated(device.ordinal)
+    a = None
+    t = None
+
+    wp.set_cuda_allocator(allocator)
+    try:
+        a = wp.empty(128, dtype=wp.float32, device=device)
+        test.assertEqual(allocator.alloc_count, 1)
+        test.assertIn(a.ptr, allocator._active_allocations)
+        test.assertEqual(allocator._active_allocations[a.ptr], a.capacity)
+        test.assertGreaterEqual(torch.cuda.memory_allocated(device.ordinal) - baseline_allocated, a.capacity)
+
+        a.fill_(5.0)
+        wp.synchronize_device(device)
+
+        t = wp.to_torch(a)
+        test.assertEqual(t.data_ptr(), a.ptr)
+        np.testing.assert_allclose(t.cpu().numpy(), 5.0)
+
+        ptr = a.ptr
+        t = None
+        a = None
+        torch.cuda.synchronize(device.ordinal)
+
+        test.assertEqual(allocator.dealloc_count, 1)
+        test.assertNotIn(ptr, allocator._active_allocations)
+        test.assertEqual(torch.cuda.memory_allocated(device.ordinal), baseline_allocated)
+    finally:
+        t = None
+        a = None
+        wp.set_cuda_allocator(None)
+
+
+add_function_test(
+    TestTorchAllocator,
+    "test_torch_caching_allocator",
+    test_torch_caching_allocator,
+    devices=_get_torch_cuda_allocator_test_devices(),
+)
 
 
 if __name__ == "__main__":
