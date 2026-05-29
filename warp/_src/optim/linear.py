@@ -466,11 +466,12 @@ class LinearSolverState:
     """Pre-allocated state for a linear iterative solver.
 
     Holds all temporary buffers required by the solver plus a reference to the original
-    system (``A``, ``b``, ``x``, optional ``M``). Calling the state runs the solver,
-    optionally substituting a new compatible matrix, right-hand-side, solution vector,
-    or preconditioner. This avoids repeated buffer allocation when the same solver is
-    applied many times to systems that share the same shape, batch count, dtype, and
-    device.
+    problem (``A``, ``b``, ``x``, optional ``M``). Calling the state runs the solver,
+    optionally substituting a new matrix, right-hand side, solution vector, or
+    preconditioner. Replacement operands must match the construction-time shape, dtype,
+    device, and batch layout. For batched :class:`LinearOperator` inputs, the
+    ``batch_offsets`` array is part of that layout. This avoids repeated buffer
+    allocation when the same solver is applied many times.
 
     Args:
         A: the linear system's left-hand-side
@@ -585,8 +586,8 @@ class CG(LinearSolverState):
 
     See :class:`LinearSolverState` for the constructor parameters. The preconditioner
     ``M`` may be freely changed (or toggled between ``None`` and a valid operator)
-    between calls as long as the matrix shape, batch count, dtype, and device remain
-    the same.
+    between calls as long as the replacement operands match the construction-time
+    shape, dtype, device, and batch layout.
     """
 
     def _allocate(self):
@@ -726,8 +727,10 @@ def cg(
         use_cuda_graph: If true and when run on a CUDA device, capture the solver iteration as a CUDA graph for reduced launch overhead.
             The linear operator and preconditioner must only perform graph-friendly operations.
         run: If ``True`` (default), allocate temporary buffers and immediately run the solver, returning the iteration count,
-            residual norm, and absolute tolerance. If ``False``, return a pre-allocated :class:`~warp.optim.linear.CG` functor that can be
-            called repeatedly on compatible systems (same shape, batch count, dtype, device) without re-allocating.
+            residual norm, and absolute tolerance. If ``False``, return a pre-allocated :class:`~warp.optim.linear.CG` functor.
+            The functor can be called repeatedly without reallocating temporary buffers when replacement operands match the
+            construction-time shape, dtype, device, and batch layout. For batched :class:`LinearOperator` inputs, replacement
+            operators must use the same ``batch_offsets`` array.
 
     Returns:
         If ``run`` is ``True`` and ``check_every`` > 0: Tuple (final_iteration, residual_norm, absolute_tolerance)
@@ -766,8 +769,8 @@ class CR(LinearSolverState):
 
     See :class:`LinearSolverState` for the constructor parameters. The preconditioner
     ``M`` may be freely changed (or toggled between ``None`` and a valid operator)
-    between calls as long as the matrix shape, batch count, dtype, and device remain
-    the same.
+    between calls as long as the replacement operands match the construction-time
+    shape, dtype, device, and batch layout.
     """
 
     def _allocate(self):
@@ -926,8 +929,10 @@ def cr(
         use_cuda_graph: If true and when run on a CUDA device, capture the solver iteration as a CUDA graph for reduced launch overhead.
           The linear operator and preconditioner must only perform graph-friendly operations.
         run: If ``True`` (default), allocate temporary buffers and immediately run the solver. If ``False``, return a
-            pre-allocated :class:`~warp.optim.linear.CR` functor that can be called repeatedly on compatible systems (same shape, batch
-            count, dtype, device) without re-allocating.
+            pre-allocated :class:`~warp.optim.linear.CR` functor. The functor can be called repeatedly without
+            reallocating temporary buffers when replacement operands match the construction-time shape, dtype, device,
+            and batch layout. For batched :class:`LinearOperator` inputs, replacement operators must use the same
+            ``batch_offsets`` array.
 
     Returns:
         If ``run`` is ``True`` and ``check_every`` > 0: Tuple (final_iteration, residual_norm, absolute_tolerance)
@@ -1196,9 +1201,10 @@ def bicgstab(
             The linear operator and preconditioner must only perform graph-friendly operations.
         is_left_preconditioner: whether `M` should be used as a left- or right- preconditioner.
         run: If ``True`` (default), allocate temporary buffers and immediately run the solver. If ``False``, return a
-            pre-allocated :class:`~warp.optim.linear.BiCGSTAB` functor that can be called repeatedly on compatible systems (same shape,
-            batch count, dtype, device) without re-allocating. Whether ``M`` was provided at construction must match
-            subsequent calls.
+            pre-allocated :class:`~warp.optim.linear.BiCGSTAB` functor. The functor can be called repeatedly without
+            reallocating temporary buffers when replacement operands match the construction-time shape, dtype, device,
+            and batch layout. For batched :class:`LinearOperator` inputs, replacement operators must use the same
+            ``batch_offsets`` array. Whether ``M`` was provided at construction must match subsequent calls.
 
     Returns:
         If ``run`` is ``True`` and ``check_every`` > 0: Tuple (final_iteration, residual_norm, absolute_tolerance)
@@ -1527,8 +1533,10 @@ def gmres(
           The linear operator and preconditioner must only perform graph-friendly operations.
         is_left_preconditioner: whether `M` should be used as a left- or right- preconditioner.
         run: If ``True`` (default), allocate temporary buffers and immediately run the solver. If ``False``, return a
-            pre-allocated :class:`~warp.optim.linear.GMRES` functor that can be called repeatedly on compatible systems (same shape,
-            dtype, device) without re-allocating.
+            pre-allocated :class:`~warp.optim.linear.GMRES` functor. The functor can be called repeatedly without
+            reallocating temporary buffers when replacement operands match the construction-time shape, dtype, device,
+            and batch layout. For batched :class:`LinearOperator` inputs, replacement operators must use the same
+            ``batch_offsets`` array.
 
     Returns:
         If ``run`` is ``True`` and ``check_every`` > 0: Tuple (final_iteration, residual_norm, absolute_tolerance)
