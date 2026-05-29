@@ -624,6 +624,40 @@ def test_capture_replay_with_tile_kernel_no_stack_overflow(test, device):
     np.testing.assert_allclose(out.numpy(), np.zeros(n, dtype=np.float32))
 
 
+def test_save_load_tiled_nondefault_block_dim(test, device):
+    """APIC save must copy the binary for the captured block_dim variant."""
+    n = 32
+    block_dim = 64
+    out = wp.zeros(n, dtype=float, device=device)
+
+    # Compile the default variant first so capture_save would have a plausible
+    # but wrong binary to copy if it ignored the captured module executable's
+    # block_dim.
+    wp.load_module(device=device)
+    wp.load_module(module=_tile_using_kernel.module, device=device, block_dim=block_dim)
+
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.launch_tiled(_tile_using_kernel, dim=n, inputs=[out], block_dim=block_dim, device=device)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "tiled_block_dim")
+        wp.capture_save(capture.graph, path, outputs={"out": out})
+
+        module_infos = list(capture.graph._apic_capture.collected_modules.values())
+        test.assertEqual(len(module_infos), 1)
+        module_info = module_infos[0]
+        test.assertIn(module_info["module_hash"][:7], module_info["binary_filename"])
+        test.assertTrue(os.path.exists(os.path.join(path + "_modules", module_info["binary_filename"])))
+
+        loaded = wp.capture_load(path, device=device)
+        wp.capture_launch(loaded)
+        wp.synchronize_device(device)
+
+        result = wp.zeros(n, dtype=float, device=device)
+        loaded.get_param("out", result)
+        np.testing.assert_allclose(result.numpy(), np.zeros(n, dtype=np.float32))
+
+
 @wp.kernel
 def _vec3_after_int_kernel(
     pre: int,
@@ -1260,6 +1294,12 @@ add_function_test(
     "test_capture_replay_with_tile_kernel_no_stack_overflow",
     test_capture_replay_with_tile_kernel_no_stack_overflow,
     devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_save_load_tiled_nondefault_block_dim",
+    test_save_load_tiled_nondefault_block_dim,
+    devices=get_cuda_test_devices(),
 )
 add_function_test(
     TestApic,

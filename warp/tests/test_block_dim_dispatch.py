@@ -99,6 +99,106 @@ def test_block_dim_record_cmd_cpu(test, device):
     test.assertEqual(values_cpu[1], 0, "CPU: Second branch should not execute")
 
 
+def test_load_module_no_cross_device_block_dim_leak(test, device):
+    """wp.load_module(device='cuda:0') after a CPU launch must compile the
+    CUDA-default block_dim variant (256), not the stale block_dim=1 left
+    over from the CPU launch's silent override. Regression for GH-564 and
+    for the CUDA 12.2 stream-capture failure chain in test_apic.py.
+    """
+
+    @wp.kernel(module="unique")
+    def k(out: wp.array(dtype=wp.int32)):
+        wp.atomic_add(out, 0, 1)
+
+    module = k.module
+    cpu_device = wp.get_device("cpu")
+    cuda_device = wp.get_device(device)
+
+    # CPU launch first -- without the fix this also leaves
+    # module.options["block_dim"] = 1.
+    result_cpu = wp.zeros(1, dtype=wp.int32, device="cpu")
+    wp.launch(k, dim=1, inputs=[result_cpu], device="cpu")
+    test.assertIn((cpu_device.context, 1), module.execs)
+
+    # wp.load_module(device='cuda:0') without explicit block_dim must
+    # compile the CUDA-default variant, not the leaked CPU value.
+    wp.load_module(module=module, device=cuda_device)
+    test.assertIn(
+        (cuda_device.context, 256),
+        module.execs,
+        "wp.load_module should compile the CUDA default block_dim=256 variant",
+    )
+    test.assertNotIn(
+        (cuda_device.context, 1),
+        module.execs,
+        "wp.load_module must not have compiled a block_dim=1 variant on CUDA",
+    )
+
+
+def test_load_module_tiled_block_dim(test, device):
+    """A tiled launch with block_dim != 256 must compile the variant for
+    the launch's block_dim, with the source template's WP_TILE_BLOCK_DIM
+    matching. Verifies that Module.resolve_options() honours the per-load
+    block_dim, not a stale module-level default.
+    """
+
+    @wp.kernel(module="unique")
+    def k(out: wp.array(dtype=float)):
+        t = wp.tile_zeros(shape=64, dtype=float)
+        out[wp.tid()] = t[0]
+
+    module = k.module
+    cuda_device = wp.get_device(device)
+
+    out = wp.zeros(64, dtype=float, device=device)
+    wp.launch_tiled(k, dim=64, inputs=[out], block_dim=64, device=device)
+
+    test.assertIn(
+        (cuda_device.context, 64),
+        module.execs,
+        "tiled launch should produce a block_dim=64 variant",
+    )
+
+    # The resolved options for the block_dim=64 variant must carry
+    # block_dim=64, not the module-level default. (Source-gen reads this
+    # value to substitute WP_TILE_BLOCK_DIM in the .cu template.)
+    test.assertEqual(module.resolved_options[64]["block_dim"], 64)
+
+
+def test_force_load_preserves_loaded_block_dim(test, device):
+    """force_load(device) with no explicit block_dim must reuse the variant
+    already loaded on the device, not compile a fresh module-level-default
+    (256) variant. capture_begin() routes through force_load() on driver
+    < 12.3, so a spurious default-block_dim compile there breaks graph
+    capture for kernels whose tile shapes are tied to a specific block_dim
+    (e.g. examples/tile/example_tile_mlp.py). Regression for the GH-564
+    mutation removal.
+    """
+
+    @wp.kernel(module="unique")
+    def k(out: wp.array(dtype=float)):
+        t = wp.tile_zeros(shape=64, dtype=float)
+        out[wp.tid()] = t[0]
+
+    module = k.module
+    cuda_device = wp.get_device(device)
+
+    out = wp.zeros(64, dtype=float, device=device)
+    wp.launch_tiled(k, dim=64, inputs=[out], block_dim=64, device=device)
+    test.assertIn((cuda_device.context, 64), module.execs)
+
+    # force_load without an explicit block_dim must reuse the loaded 64
+    # variant and must not compile the module-level default (256).
+    wp.force_load(device=cuda_device, modules=[module])
+    test.assertIn((cuda_device.context, 64), module.execs)
+    test.assertNotIn(
+        (cuda_device.context, 256),
+        module.execs,
+        "force_load must not compile the default block_dim=256 variant when a "
+        "non-default variant is already loaded on the device",
+    )
+
+
 devices = get_test_devices()
 
 # Only test on CUDA devices (CPU would pass trivially)
@@ -115,6 +215,27 @@ add_function_test(
     TestBlockDimDispatch,
     "test_block_dim_record_cmd_cpu",
     test_block_dim_record_cmd_cpu,
+    devices=cuda_devices,
+)
+
+add_function_test(
+    TestBlockDimDispatch,
+    "test_load_module_no_cross_device_block_dim_leak",
+    test_load_module_no_cross_device_block_dim_leak,
+    devices=cuda_devices,
+)
+
+add_function_test(
+    TestBlockDimDispatch,
+    "test_load_module_tiled_block_dim",
+    test_load_module_tiled_block_dim,
+    devices=cuda_devices,
+)
+
+add_function_test(
+    TestBlockDimDispatch,
+    "test_force_load_preserves_loaded_block_dim",
+    test_force_load_preserves_loaded_block_dim,
     devices=cuda_devices,
 )
 

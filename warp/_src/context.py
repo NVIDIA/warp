@@ -2447,12 +2447,13 @@ class ModuleExec:
         instance.handle = None
         return instance
 
-    def __init__(self, handle, module_hash, device, meta):
+    def __init__(self, handle, module_hash, device, meta, block_dim: int):
         self.handle = handle
         self.module_hash = module_hash
         self.device = device
         self.kernel_hooks = {}
         self.meta = meta
+        self.block_dim = block_dim
 
     # release the loaded module
     def __del__(self):
@@ -2585,7 +2586,7 @@ class Module:
         # executable modules currently loaded
         self.execs = {}  # ((device.context, blockdim): ModuleExec)
 
-        # set of device contexts where the build has failed
+        # set of (device context, block_dim) variants where the build has failed
         self.failed_builds = set()
 
         # hash data, including the module hash. Module may store multiple hashes (one per block_dim used)
@@ -2634,14 +2635,20 @@ class Module:
         self.references = set()  # modules whose content we depend on
         self.dependents = set()  # modules that depend on our content
 
-    def resolve_options(self, config) -> dict:
+    def resolve_options(self, config, block_dim: int | None = None) -> dict:
         """Return a fully-resolved copy of the module options.
 
         Resolves ``None`` sentinels by falling back to ``config`` values and
         hardcoded defaults. Also includes global config flags that affect
         compilation, so downstream consumers never need to read config directly.
+
+        When ``block_dim`` is supplied, it overrides ``self.options["block_dim"]``
+        in the returned dict. This lets ``Module.load`` resolve a per-load
+        ``block_dim`` variant without mutating the module-level default.
         """
         options = dict(self.options)
+        if block_dim is not None:
+            options["block_dim"] = block_dim
 
         # Resolve None-means-inherit options
         if options["mode"] is None:
@@ -2881,7 +2888,7 @@ class Module:
                     self.has_unresolved_static_expressions = False
 
                 if block_dim not in self.hashers:
-                    options = self.resolve_options(warp.config)
+                    options = self.resolve_options(warp.config, block_dim=block_dim)
                     self.hashers[block_dim] = ModuleHasher(self._get_live_kernels(), options)
                     self.resolved_options[block_dim] = options
 
@@ -2916,6 +2923,7 @@ class Module:
         output_arch: int | None = None,
         arch_suffix: str = "",
         use_ptx: bool | None = None,
+        block_dim: int | None = None,
     ) -> str:
         """Get the filename to use for the compiled module binary.
 
@@ -2929,7 +2937,7 @@ class Module:
         produce distinct ``.o`` filenames without affecting the shared
         module directory (and thus CUDA caches).
         """
-        module_name_short = self.get_module_identifier()
+        module_name_short = self.get_module_identifier(block_dim=block_dim)
 
         if device and device.is_cpu:
             resolved_flags = _resolve_cpu_compiler_flags(
@@ -2974,12 +2982,12 @@ class Module:
 
         return output_name
 
-    def _get_meta_name(self) -> str:
+    def _get_meta_name(self, block_dim: int | None = None) -> str:
         """Get the filename to use for the module metadata file.
 
         This is only the filename. It should be used to form a path.
         """
-        return f"{self.get_module_identifier()}.meta"
+        return f"{self.get_module_identifier(block_dim=block_dim)}.meta"
 
     def _compile(
         self,
@@ -3020,6 +3028,13 @@ class Module:
 
         options = options | {"output_arch": output_arch}
 
+        # ``options`` is the resolved dict for the active block_dim variant
+        # (set by ``Module.load`` via ``resolve_options(block_dim=...)``). Use
+        # it for every cache-path lookup below so the .meta filename and
+        # module dir line up with the variant being compiled -- not the
+        # module-level default in ``self.options["block_dim"]``.
+        active_block_dim = options["block_dim"]
+
         # Resolve the arch suffix once for both the output filename and the build call
         if not is_cpu:
             init()
@@ -3033,10 +3048,12 @@ class Module:
             arch_suffix = ""
 
         if output_name is None:
-            output_name = self._get_compile_output_name(device, output_arch, arch_suffix, use_ptx)
+            output_name = self._get_compile_output_name(
+                device, output_arch, arch_suffix, use_ptx, block_dim=active_block_dim
+            )
 
         # Resolve output directory early so we can check for cached binaries
-        module_name_short = self.get_module_identifier()
+        module_name_short = self.get_module_identifier(block_dim=active_block_dim)
 
         if output_dir is None:
             output_dir = os.path.join(warp.config.kernel_cache_dir, f"{module_name_short}")
@@ -3049,11 +3066,11 @@ class Module:
             warp.config.cache_kernels
             and not options.get("verify_autograd_array_access", False)
             and os.path.exists(os.path.join(output_dir, output_name))
-            and os.path.exists(os.path.join(output_dir, self._get_meta_name()))
+            and os.path.exists(os.path.join(output_dir, self._get_meta_name(block_dim=active_block_dim)))
         ):
             return False
 
-        meta_path = os.path.join(output_dir, self._get_meta_name())
+        meta_path = os.path.join(output_dir, self._get_meta_name(block_dim=active_block_dim))
 
         build_dir = os.path.normpath(output_dir) + f"_p{os.getpid()}_t{threading.get_ident()}"
 
@@ -3158,16 +3175,16 @@ class Module:
                 _check_and_raise_long_path_error(e)
 
             if is_cpu:
-                self.failed_builds.add(None)
+                self.failed_builds.add((None, active_block_dim))
             elif device:
-                self.failed_builds.add(device.context)
+                self.failed_builds.add((device.context, active_block_dim))
 
             raise (e)
 
         # ------------------------------------------------------------
         # write meta data (already produced under ``_codegen_lock``)
 
-        output_meta_path = os.path.join(build_dir, self._get_meta_name())
+        output_meta_path = os.path.join(build_dir, self._get_meta_name(block_dim=active_block_dim))
 
         with open(output_meta_path, "w") as meta_file:
             json.dump(meta, meta_file)
@@ -3228,11 +3245,16 @@ class Module:
     ) -> ModuleExec | None:
         device = runtime.get_device(device)
 
-        # update module options if launching with a new block dim
-        if block_dim is not None:
-            self.options["block_dim"] = block_dim
-
-        active_block_dim = self.options["block_dim"]
+        # Resolve the active block_dim without mutating self.options.
+        # Module.options["block_dim"] is the documented per-module default
+        # (settable via wp.set_module_options); it must not be silently
+        # retargeted by every individual load, because the same field is
+        # read by force_load, wp.load_module, get_kernel_hooks, and the
+        # unique-module hash salt -- letting a CPU launch (which overrides
+        # block_dim to 1 in launch()) leak into the next CUDA pre-load via
+        # this field is the cause of GH-564 / CUDA 12.2 stream-capture
+        # failures in test_apic.py.
+        active_block_dim = block_dim if block_dim is not None else self.options["block_dim"]
 
         # check if executable module is already loaded and not stale
         exec = self.execs.get((device.context, active_block_dim))
@@ -3247,7 +3269,7 @@ class Module:
                 log_debug(f"[Module.load] Module hash changed, recompiling: {self.name} ({old_str} -> {new_str})")
 
         # quietly avoid repeated build attempts to reduce error spew
-        if device.context in self.failed_builds:
+        if (device.context, active_block_dim) in self.failed_builds:
             return None
 
         module_hash = self.get_module_hash(active_block_dim)
@@ -3288,11 +3310,11 @@ class Module:
                 else:
                     module_load_timer.extra_msg = " (cached)"
             else:
-                output_name = self._get_compile_output_name(device)
+                output_name = self._get_compile_output_name(device, block_dim=active_block_dim)
                 output_arch = self._get_compile_arch(device)
 
                 module_dir = os.path.join(warp.config.kernel_cache_dir, module_name_short)
-                meta_path = os.path.join(module_dir, self._get_meta_name())
+                meta_path = os.path.join(module_dir, self._get_meta_name(block_dim=active_block_dim))
                 binary_path = os.path.join(module_dir, output_name)
 
                 try:
@@ -3325,13 +3347,13 @@ class Module:
                     != 0
                 ):
                     raise Exception(f"Failed to load CPU module '{self.name}'")
-                module_exec = ModuleExec(module_handle, module_hash, device, meta)
+                module_exec = ModuleExec(module_handle, module_hash, device, meta, active_block_dim)
                 self.execs[(None, active_block_dim)] = module_exec
 
             elif device.is_cuda:
                 cuda_module = warp._src.build.load_cuda(binary_path, device)
                 if cuda_module is not None:
-                    module_exec = ModuleExec(cuda_module, module_hash, device, meta)
+                    module_exec = ModuleExec(cuda_module, module_hash, device, meta, active_block_dim)
                     self.execs[(device.context, active_block_dim)] = module_exec
                 else:
                     module_load_timer.extra_msg = " (error)"
@@ -9304,7 +9326,7 @@ def force_load(
         devices = [get_device(device)]
 
     if modules is None:
-        modules = user_modules.values()
+        modules = list(user_modules.values())
 
     if max_workers is None:
         if warp.config.load_module_max_workers is None:
@@ -9313,16 +9335,33 @@ def force_load(
         else:
             max_workers = warp.config.load_module_max_workers
 
+    # Copy each module's loaded variant keys before the loads below mutate
+    # m.execs (the parallel path writes it concurrently).
+    loaded_variants = {m: tuple(m.execs) for m in modules}
+
+    def _load_block_dims(m: Module, d: Device) -> list[int | None]:
+        # With no explicit block_dim, preload the variants already loaded on
+        # this device rather than the module-level default, so we don't
+        # compile a default-block_dim variant the caller never requested.
+        # Filtering by context keeps this device-scoped (a CPU block_dim never
+        # leaks into a CUDA preload).
+        if block_dim is not None:
+            return [block_dim]
+        loaded = [dim for (ctx, dim) in loaded_variants[m] if ctx == d.context]
+        return loaded or [None]
+
     if max_workers <= 1 or (len(devices) * len(modules)) == 1:
         # serial loading; avoid the overhead of using a thread pool
         for d in devices:
             for m in modules:
-                m.load(d, block_dim=block_dim)
+                for dim in _load_block_dims(m, d):
+                    m.load(d, block_dim=dim)
     else:
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             for d in devices:
                 for m in modules:
-                    executor.submit(m.load, d, block_dim=block_dim)
+                    for dim in _load_block_dims(m, d):
+                        executor.submit(m.load, d, block_dim=dim)
 
     if is_cuda_available():
         # restore original context to avoid side effects

@@ -140,6 +140,13 @@
 
 ### Fixed
 
+- Fix a bug where launching a kernel on CPU and then calling `wp.load_module`
+  or using `wp.ScopedCapture(force_module_load=True)` on CUDA would fail to
+  pre-compile the correct kernel variant for CUDA. On CUDA driver versions
+  older than 12.3 this caused a `CUDA_ERROR_STREAM_CAPTURE_UNSUPPORTED` error
+  at graph-capture time; on newer drivers the missing variant was silently
+  recompiled inside the capture window
+  ([GH-564](https://github.com/NVIDIA/warp/issues/564)).
 - Fix APIC backward replay so it consumes output gradients exactly like live
   `wp.Tape().backward()`: the array descriptor reconstructed at replay now
   carries the original `grad` pointer and array flags (including
