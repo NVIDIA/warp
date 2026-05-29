@@ -13,9 +13,31 @@ import time
 import unittest
 import xml.etree.ElementTree as ET
 
-import numpy as np
 
-import warp as wp
+def _normalize_direct_test_sys_path():
+    """Keep direct test execution from shadowing installed top-level packages.
+
+    Running a test file by path makes Python place that file's directory first
+    on ``sys.path``. For files under ``warp/tests``, that can make test
+    packages such as ``warp/tests/cuda`` shadow unrelated installed packages
+    with the same top-level name. Keep the repository root importable while
+    removing the tests package root from import precedence.
+    """
+    tests_root = os.path.dirname(os.path.abspath(__file__))
+    repo_root = os.path.dirname(os.path.dirname(tests_root))
+    normalized_sys_path = {os.path.abspath(path or os.getcwd()) for path in sys.path}
+
+    if repo_root not in normalized_sys_path:
+        sys.path.insert(0, repo_root)
+
+    sys.path[:] = [path for path in sys.path if os.path.abspath(path or os.getcwd()) != tests_root]
+
+
+_normalize_direct_test_sys_path()
+
+import numpy as np  # noqa: E402
+
+import warp as wp  # noqa: E402
 
 pxr = importlib.util.find_spec("pxr")
 USD_AVAILABLE = pxr is not None
