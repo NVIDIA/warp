@@ -519,6 +519,10 @@ in PyTorch autograd computations.</p>
 <span class="n">warp_device</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">device_from_torch</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
 </pre></div>
 </div>
+<p>By default, Warp arrays allocated with functions such as <a class="reference internal" href="../api_reference/_generated/warp.zeros.html#warp.zeros" title="warp.zeros"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.zeros()</span></code></a>
+use Warp’s CUDA allocator. If an application needs those allocations to come
+from PyTorch’s CUDA caching allocator, see
+<a class="reference internal" href="../deep_dive/allocators.html#pytorch-cuda-caching-allocator"><span class="std std-ref">PyTorch CUDA Caching Allocator</span></a> for a minimal custom allocator example.</p>
 </section>
 <section id="stream-conversion">
 <h2>Stream Conversion<a class="headerlink" href="#stream-conversion" title="Link to this heading">#</a></h2>

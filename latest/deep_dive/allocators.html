@@ -737,6 +737,70 @@ internal native allocations (e.g., BVH construction temporaries) are not affecte
 during CUDA graph capture.</p>
 <p>See <code class="docutils literal notranslate"><span class="pre">warp/examples/core/example_custom_allocator.py</span></code> for a complete example.</p>
 </section>
+<section id="pytorch-cuda-caching-allocator">
+<span id="id2"></span><h3>PyTorch CUDA Caching Allocator<a class="headerlink" href="#pytorch-cuda-caching-allocator" title="Link to this heading">#</a></h3>
+<p>PyTorch exposes low-level CUDA caching allocator functions that can be used by
+other frameworks. If an application wants Warp CUDA arrays to be allocated from
+PyTorch’s cache, implement a small custom allocator that calls
+<code class="docutils literal notranslate"><span class="pre">torch.cuda.caching_allocator_alloc()</span></code> and releases pointers with
+<code class="docutils literal notranslate"><span class="pre">torch.cuda.caching_allocator_delete()</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">TorchCachingAllocator</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Route Warp CUDA array allocations through PyTorch.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_active_allocations</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_current_warp_device_and_stream</span><span class="p">():</span>
+        <span class="n">device</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_cuda_device</span><span class="p">()</span>
+        <span class="n">stream</span> <span class="o">=</span> <span class="n">device</span><span class="o">.</span><span class="n">stream</span><span class="o">.</span><span class="n">cuda_stream</span>
+        <span class="k">return</span> <span class="n">device</span><span class="o">.</span><span class="n">ordinal</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">stream</span><span class="p">)</span> <span class="k">if</span> <span class="n">stream</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="mi">0</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">allocate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">size_in_bytes</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">size_in_bytes</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">0</span>
+
+        <span class="n">device</span><span class="p">,</span> <span class="n">stream</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_warp_device_and_stream</span><span class="p">()</span>
+        <span class="n">ptr</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">caching_allocator_alloc</span><span class="p">(</span><span class="n">size_in_bytes</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">stream</span><span class="o">=</span><span class="n">stream</span><span class="p">)</span>
+        <span class="n">ptr</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">ptr</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_active_allocations</span><span class="p">[</span><span class="n">ptr</span><span class="p">]</span> <span class="o">=</span> <span class="n">size_in_bytes</span>
+        <span class="k">return</span> <span class="n">ptr</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">deallocate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ptr</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">size_in_bytes</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">ptr</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">allocated_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_active_allocations</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ptr</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">allocated_size</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unrecognized allocation pointer </span><span class="si">{</span><span class="n">ptr</span><span class="si">:</span><span class="s2">#x</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">allocated_size</span> <span class="o">!=</span> <span class="n">size_in_bytes</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Allocation size mismatch for pointer </span><span class="si">{</span><span class="n">ptr</span><span class="si">:</span><span class="s2">#x</span><span class="si">}</span><span class="s2">: &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;allocated </span><span class="si">{</span><span class="n">allocated_size</span><span class="si">}</span><span class="s2">, deallocating </span><span class="si">{</span><span class="n">size_in_bytes</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_active_allocations</span><span class="p">[</span><span class="n">ptr</span><span class="p">]</span>
+        <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">caching_allocator_delete</span><span class="p">(</span><span class="n">ptr</span><span class="p">)</span>
+
+
+<span class="n">allocator</span> <span class="o">=</span> <span class="n">TorchCachingAllocator</span><span class="p">()</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">set_cuda_allocator</span><span class="p">(</span><span class="n">allocator</span><span class="p">)</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="k">finally</span><span class="p">:</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">set_cuda_allocator</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>PyTorch tracks the device and stream for pointers returned by
+<code class="docutils literal notranslate"><span class="pre">caching_allocator_alloc()</span></code>, so <code class="docutils literal notranslate"><span class="pre">caching_allocator_delete()</span></code> only needs the
+pointer. The <code class="docutils literal notranslate"><span class="pre">_active_allocations</span></code> dictionary above is for validation and
+debugging; applications can customize this tracking for their own accounting,
+thread-safety, or distributed runtime needs.</p>
+</section>
 <section id="rmm-integration">
 <h3>RMM Integration<a class="headerlink" href="#rmm-integration" title="Link to this heading">#</a></h3>
 <p><a class="reference external" href="https://github.com/rapidsai/rmm">RAPIDS Memory Manager (RMM)</a> provides high-performance
@@ -836,6 +900,7 @@ routes array allocations through RMM.</p>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#custom-allocators">Custom Allocators</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#setting-a-custom-allocator">Setting a Custom Allocator</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#writing-a-custom-allocator">Writing a Custom Allocator</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pytorch-cuda-caching-allocator">PyTorch CUDA Caching Allocator</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#rmm-integration">RMM Integration</a></li>
 </ul>
 </li>
