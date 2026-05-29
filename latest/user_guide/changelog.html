@@ -642,6 +642,13 @@ earlier versions are not compatible and will not load
 <section id="fixed">
 <h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">#</a></h3>
 <ul class="simple">
+<li><p>Fix a bug where launching a kernel on CPU and then calling <code class="docutils literal notranslate"><span class="pre">wp.load_module</span></code>
+or using <code class="docutils literal notranslate"><span class="pre">wp.ScopedCapture(force_module_load=True)</span></code> on CUDA would fail to
+pre-compile the correct kernel variant for CUDA. On CUDA driver versions
+older than 12.3 this caused a <code class="docutils literal notranslate"><span class="pre">CUDA_ERROR_STREAM_CAPTURE_UNSUPPORTED</span></code> error
+at graph-capture time; on newer drivers the missing variant was silently
+recompiled inside the capture window
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/564">GH-564</a>).</p></li>
 <li><p>Fix APIC backward replay so it consumes output gradients exactly like live
 <code class="docutils literal notranslate"><span class="pre">wp.Tape().backward()</span></code>: the array descriptor reconstructed at replay now
 carries the original <code class="docutils literal notranslate"><span class="pre">grad</span></code> pointer and array flags (including
