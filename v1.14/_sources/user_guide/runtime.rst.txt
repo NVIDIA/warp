@@ -1794,23 +1794,23 @@ declared in `warp/native/apic.h <https://github.com/NVIDIA/warp/blob/main/warp/n
 
     // Load a .wrp file. device_type: 0 = CUDA, 1 = CPU.
     // For CUDA, context is a CUcontext; for CPU it must be NULL.
-    APICGraph wp_apic_load_graph(void* context, const char* path, int device_type);
+    APICGraph* wp_apic_load_graph(void* context, const char* path, int device_type);
 
     // Update or read named parameter regions on the loaded graph.
-    bool wp_apic_set_param(APICGraph graph, const char* name,
+    bool wp_apic_set_param(APICGraph* graph, const char* name,
                            const void* data, size_t size);
-    bool wp_apic_get_param(APICGraph graph, const char* name,
+    bool wp_apic_get_param(APICGraph* graph, const char* name,
                            void* data, size_t size);
 
     // CUDA replay: get the CUDA graph executable (built lazily on first call)
     // and launch it via cudaGraphLaunch().
-    void* wp_apic_get_cuda_graph_exec(APICGraph graph);
+    void* wp_apic_get_cuda_graph_exec(APICGraph* graph);
 
     // CPU replay: walk the recorded operation stream and execute it directly.
-    bool wp_apic_cpu_replay_graph(APICGraph graph);
+    bool wp_apic_cpu_replay_graph(APICGraph* graph);
 
     // Release the loaded graph and its associated allocations.
-    void wp_apic_destroy_graph(APICGraph graph);
+    void wp_apic_destroy_graph(APICGraph* graph);
 
 Two reference C++ examples ship with Warp under ``warp/examples/cpp/``. Both
 implement the same interactive 2-D wave simulation visualized with GLFW/OpenGL,
@@ -1833,7 +1833,7 @@ launches the entire frame with one ``cudaGraphLaunch()`` per rendered frame:
     #include "warp.h"  // Warp C API
     #include "apic.h"  // APIC graph loading and execution
 
-    APICGraph graph = wp_apic_load_graph(context, "generated/wave_sim", 0);
+    APICGraph* graph = wp_apic_load_graph(context, "generated/wave_sim", 0);
 
     // Build the executable on first call.
     cudaGraphExec_t exec = (cudaGraphExec_t)wp_apic_get_cuda_graph_exec(graph);
@@ -1877,7 +1877,7 @@ CPU device. ``main.cpp`` does not link against CUDA at all. Replay goes through
     #include "apic.h"  // APIC graph loading and execution
     #include "warp.h"  // Warp C API
 
-    APICGraph graph = wp_apic_load_graph(nullptr, "generated/wave_sim", 1);
+    APICGraph* graph = wp_apic_load_graph(nullptr, "generated/wave_sim", 1);
 
     // ... resolve CPU kernel function pointers (see below) ...
 
@@ -1907,11 +1907,11 @@ this resolution once at startup. The C API surface for this lookup is:
 
 .. code:: c
 
-    int         wp_apic_get_num_kernels(APICGraph graph);
-    const char* wp_apic_get_kernel_key(APICGraph graph, int index);
-    const char* wp_apic_get_kernel_forward_name(APICGraph graph, const char* key);
-    const char* wp_apic_get_kernel_backward_name(APICGraph graph, const char* key);
-    void        wp_apic_register_loaded_cpu_kernel(APICGraph graph, const char* key,
+    int         wp_apic_get_num_kernels(APICGraph* graph);
+    const char* wp_apic_get_kernel_key(APICGraph* graph, int index);
+    const char* wp_apic_get_kernel_forward_name(APICGraph* graph, const char* key);
+    const char* wp_apic_get_kernel_backward_name(APICGraph* graph, const char* key);
+    void        wp_apic_register_loaded_cpu_kernel(APICGraph* graph, const char* key,
                                                    void* forward_fn, void* backward_fn);
 
 Loading the ``.wrp`` file itself currently requires a CUDA-enabled build of the
