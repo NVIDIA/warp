@@ -2863,9 +2863,10 @@ class Module:
         return self.hashers[block_dim].get_hash()
 
     def get_module_hash(self, block_dim: int | None = None) -> bytes:
-        """Get the hash of the module for the current block_dim.
+        """Get the hash of the module for a block_dim variant.
 
-        If a hash has not been computed for the current block_dim, it will be computed and cached.
+        If ``block_dim`` is ``None``, use the module-level default. If the
+        variant hash has not been computed yet, compute and cache it.
         """
         if block_dim is None:
             block_dim = self.options["block_dim"]
@@ -3247,13 +3248,9 @@ class Module:
 
         # Resolve the active block_dim without mutating self.options.
         # Module.options["block_dim"] is the documented per-module default
-        # (settable via wp.set_module_options); it must not be silently
-        # retargeted by every individual load, because the same field is
-        # read by force_load, wp.load_module, get_kernel_hooks, and the
-        # unique-module hash salt -- letting a CPU launch (which overrides
-        # block_dim to 1 in launch()) leak into the next CUDA pre-load via
-        # this field is the cause of GH-564 / CUDA 12.2 stream-capture
-        # failures in test_apic.py.
+        # (settable via wp.set_module_options); per-load variants flow
+        # through active_block_dim and are stored on ModuleExec, so a CPU
+        # launch's block_dim=1 override cannot retarget later CUDA preloads.
         active_block_dim = block_dim if block_dim is not None else self.options["block_dim"]
 
         # check if executable module is already loaded and not stale
