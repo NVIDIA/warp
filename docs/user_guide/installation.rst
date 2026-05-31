@@ -187,6 +187,94 @@ After building, the Warp package should be installed using:
 The ``-e`` option is optional but ensures that subsequent modifications to the
 library will be reflected in the Python package.
 
+CMake build
+~~~~~~~~~~~
+
+Developers who have CMake installed can use the alternate CMake build path.
+This builds the native Warp libraries in place, like ``build_lib.py``, while
+letting CMake and the selected generator handle parallel and incremental
+rebuilds.
+The commands shown below require CMake 3.24 or newer and Ninja. CMake also uses
+a Python 3.10+ environment with NumPy installed to regenerate derived native
+headers. By default, CMake may fetch LLVM and ``libmathdx`` through Packman
+unless explicit paths are provided or the corresponding features are disabled
+(``-DWARP_BUILD_CLANG=OFF`` for LLVM, ``-DWARP_USE_LIBMATHDX=OFF`` for
+``libmathdx``, or ``-DWARP_ENABLE_CUDA=OFF`` for a CPU-only build).
+
+From the repository root, the recommended path uses
+`uv <https://docs.astral.sh/uv/>`__ to prepare the Python environment before
+configuring and building:
+
+.. code-block:: console
+
+    $ uv sync --no-install-project
+    $ cmake -S . -B _build/cmake -G Ninja
+    $ cmake --build _build/cmake --parallel
+
+Without ``uv``, use a Python environment you manage and install NumPy before
+running the CMake commands:
+
+.. code-block:: console
+
+    $ python -m pip install numpy
+    $ cmake -S . -B _build/cmake -G Ninja
+    $ cmake --build _build/cmake --parallel
+
+Upon success, the CMake build writes the native libraries to ``warp/bin/``.
+The default CMake build enables CUDA on Linux and Windows, disables CUDA on
+macOS, and builds both ``warp`` and ``warp-clang``. Pass
+``-DWARP_ENABLE_CUDA=OFF`` for a CPU-only CMake build. CUDA builds default to a
+single PTX target for fast local builds; use ``CMAKE_CUDA_ARCHITECTURES`` to
+select different GPU architectures. Use ``build_lib.py`` for release builds
+that need Warp's full GPU architecture coverage.
+
+To use a specific CUDA Toolkit:
+
+.. code-block:: console
+
+    $ cmake -S . -B _build/cmake -G Ninja -DWARP_CUDA_PATH=/usr/local/cuda
+    $ cmake --build _build/cmake --parallel
+
+To link against shared CUDA libraries in the CMake build:
+
+.. code-block:: console
+
+    $ cmake -S . -B _build/cmake -G Ninja -DWARP_USE_DYNAMIC_CUDA=ON
+    $ cmake --build _build/cmake --parallel
+
+The corresponding shared CUDA libraries, including ``libnvptxcompiler``, must
+be available at runtime when using this option.
+
+To use an existing LLVM installation for ``warp-clang``:
+
+.. code-block:: console
+
+    $ cmake -S . -B _build/cmake -G Ninja -DWARP_LLVM_PATH=/opt/llvm
+    $ cmake --build _build/cmake --parallel
+
+To use an existing ``libmathdx`` installation:
+
+.. code-block:: console
+
+    $ cmake -S . -B _build/cmake -G Ninja -DWARP_LIBMATHDX_PATH=/path/to/libmathdx
+    $ cmake --build _build/cmake --parallel
+
+To build for specific CUDA architectures:
+
+.. code-block:: console
+
+    $ cmake -S . -B _build/cmake -G Ninja -DCMAKE_CUDA_ARCHITECTURES="86;89"
+    $ cmake --build _build/cmake --parallel
+
+After building, verify that the libraries can be loaded:
+
+.. code-block:: console
+
+    $ uv run python -c "import warp; warp.print_diagnostics()"
+
+The CMake path is a native library build path only. It does not replace the
+Python package build backend used for wheels.
+
 .. _conda:
 
 Conda Environments
