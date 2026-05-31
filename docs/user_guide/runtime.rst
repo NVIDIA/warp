@@ -1580,10 +1580,20 @@ The ``while_body`` callback will be executed as long as the condition is non-zer
 
 
 .. note::
-    Conditional graph node support is only available if Warp is built using CUDA Toolkit 12.4+ and the NVIDIA driver supports CUDA 12.4+.
+    CUDA graph conditional node support is only available if Warp is built using
+    CUDA Toolkit 12.4+ and the NVIDIA driver supports CUDA 12.4+. CPU graph
+    capture records :func:`wp.capture_if <warp.capture_if>` and
+    :func:`wp.capture_while <warp.capture_while>` through APIC and does not use
+    CUDA graph conditional nodes.
 
 .. note::
-    Due to a current CUDA limitation, graphs with conditional nodes cannot be used as child graphs. It means that it's not possible to create nested conditional constructs using previously captured graphs. If nesting is required, using Python callback functions is the way to go.
+    Due to a current CUDA limitation, graphs with conditional nodes cannot be
+    used as child graphs. It means that it's not possible to create nested
+    conditional constructs using previously captured graphs. If nesting is
+    required, using Python callback functions is the way to go. CPU APIC capture
+    also requires Python callback functions for ``capture_if()`` /
+    ``capture_while()`` branch bodies; passing previously captured
+    :class:`Graph` objects is not yet implemented.
 
 .. note::
     :func:`wp.capture_if <warp.capture_if>` and :func:`wp.capture_while <warp.capture_while>` will work even without graph capture on any device. If there is no active capture, the condition will be evaluated on the CPU and the correct branch will be executed immediately. This makes it possible to write code that works similarly with and without graph capture.
@@ -1914,9 +1924,11 @@ this resolution once at startup. The C API surface for this lookup is:
     void        wp_apic_register_loaded_cpu_kernel(APICGraph* graph, const char* key,
                                                    void* forward_fn, void* backward_fn);
 
-Loading the ``.wrp`` file itself currently requires a CUDA-enabled build of the
-Warp native library, but graph replay (``wp_apic_cpu_replay_graph``) has no
-CUDA runtime dependency.
+Loading a CPU ``.wrp`` graph uses the pure-C++ APIC loader in the Warp native
+library and does not require a CUDA-enabled build. CPU replay
+(``wp_apic_cpu_replay_graph``) still requires the warp-clang backend and the
+companion ``_modules`` directory described above. Loading a CUDA ``.wrp`` graph
+requires a CUDA-enabled build.
 
 Building and running
 """"""""""""""""""""
@@ -1954,11 +1966,15 @@ Current limitations of API Capture:
   capture was built with PTX output (set ``warp.config.cuda_output = "ptx"``
   before capture). Multi-GPU and cross-architecture loading are not yet
   supported.
-- Loading a ``.wrp`` file currently requires a CUDA-enabled build of the Warp
-  native library even for CPU graphs, because the parser still lives in the CUDA
-  source. Replay itself is CPU-only and has no CUDA dependency.
-- Conditional and loop graph nodes, stream events, and texture array copies are
-  not recorded.
+- Loading CPU ``.wrp`` graphs requires the warp-clang backend and the companion
+  ``_modules`` directory with the recorded CPU kernel object files. It does not
+  require a CUDA-enabled Warp native library. Loading CUDA ``.wrp`` graphs still
+  requires a CUDA-enabled build.
+- CUDA loaded-graph replay does not yet support APIC conditional and loop ops.
+  CPU ``.wrp`` graph replay supports CPU-captured
+  :func:`wp.capture_if() <warp.capture_if>` and
+  :func:`wp.capture_while() <warp.capture_while>` graphs. Stream events and
+  texture array copies are not recorded.
 
 
 Spatial Computing Primitives

@@ -5,11 +5,10 @@ with **CPU-only graph replay**. The Python side captures a simulation loop on
 the CPU device and saves it as a `.wrp` file; the C++ side loads that file and
 replays it on the host.
 
-Note: loading a `.wrp` file currently requires a **CUDA-enabled Warp library**
-even when the graph targets CPU — the `.wrp` parser and graph setup code still
-live in `apic.cu`. Once loaded, *graph replay* runs entirely on the CPU and
-makes no GPU or CUDA runtime calls. Porting the loading path into `apic.cpp`
-(so non-CUDA builds can load `.wrp` files too) is planned future work.
+CPU `.wrp` graph loading uses the pure-C++ APIC loader in the Warp native
+library and does not require a CUDA-enabled build. Replay also runs entirely on
+the CPU, but it still needs the `warp-clang` library and the companion
+`_modules` directory with the recorded CPU kernel object files.
 
 ## Overview
 
@@ -23,8 +22,8 @@ makes no GPU or CUDA runtime calls. Porting the loading path into `apic.cpp`
 - **No CUDA linking in the example** — `main.cpp` links only against `warp`
   and `warp-clang`; no `cuda.lib`/`cudart` needed
 - **Host memory** — all parameter arrays are in regular system memory
-- **CUDA-enabled Warp library still required** for `wp_apic_load_graph()` to
-  parse the `.wrp` file (see the note above)
+- **CPU-only Warp builds supported** — `wp_apic_load_graph()` can load CPU
+  `.wrp` graphs when Warp is built without CUDA
 
 ## Files
 
@@ -43,15 +42,13 @@ makes no GPU or CUDA runtime calls. Porting the loading path into `apic.cpp`
 - **CMake 3.20+**
 - **OpenGL 3.3** support
 - **Warp native library** (`warp.dll` on Windows, `warp.so` on Linux,
-  `libwarp.dylib` on macOS), built with CUDA support so
-  `wp_apic_load_graph()` is available
+  `libwarp.dylib` on macOS)
 - **Warp LLVM library** (`warp-clang.dll` on Windows, `warp-clang.so` on
   Linux, `libwarp-clang.dylib` on macOS) for CPU JIT
 
-A GPU is not required at runtime — the graph replay is CPU-only — but the
-Warp library must have been built with CUDA enabled so that `.wrp` loading
-is compiled in. Once that is moved to `apic.cpp` in a future update, this
-example will run on CPU-only builds too.
+A GPU is not required at runtime. Loading and replaying CPU `.wrp` graphs works
+with CPU-only Warp builds, provided `warp-clang` and the generated
+`wave_sim_modules/` directory are available.
 
 ### Build and Run
 
@@ -117,9 +114,7 @@ wp_apic_destroy_graph(graph);
 
 ## Current Limitations
 
-- The `.wrp` loading code is currently in `apic.cu` (compiled only with CUDA).
-  On non-CUDA builds of Warp, `wp_apic_load_graph` is stubbed to return NULL.
-  A future update will port the CPU loading path to `apic.cpp` so this example
-  runs on CPU-only Warp builds.
-- Graph replay itself is already CPU-only and has no CUDA runtime dependency
-  (see `wp_apic_cpu_replay_graph` in `apic.cpp`).
+- CPU replay requires `warp-clang` and the companion `wave_sim_modules/`
+  directory so the recorded CPU kernel object files can be loaded.
+- CPU graph loading and replay have no CUDA runtime dependency (see
+  `wp_apic_load_graph` and `wp_apic_cpu_replay_graph` in `apic.cpp`).
