@@ -137,6 +137,8 @@
   `APICGraph* g = wp_apic_load_graph(...)`. `.wrp` files produced by
   earlier versions are not compatible and will not load
   ([GH-1431](https://github.com/NVIDIA/warp/issues/1431)).
+- Improve CPU and CUDA module load failure messages with the active device,
+  block dimension, and module hash.
 
 ### Fixed
 

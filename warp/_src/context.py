@@ -3280,6 +3280,9 @@ class Module:
             if self.options["strip_hash"] is False
             else f"Module {self.name} load on device '{device}'"
         )
+        module_load_diagnostics = (
+            f"device='{device}', block_dim={active_block_dim}, module_hash={module_hash.hex()[:7]}"
+        )
 
         if warp.config.verbose or warp.config.log_level <= warp.LOG_DEBUG:
             module_load_timer_name += f" (block_dim={active_block_dim})"
@@ -3343,7 +3346,7 @@ class Module:
                     )
                     != 0
                 ):
-                    raise Exception(f"Failed to load CPU module '{self.name}'")
+                    raise Exception(f"Failed to load CPU module '{self.name}' ({module_load_diagnostics})")
                 module_exec = ModuleExec(module_handle, module_hash, device, meta, active_block_dim)
                 self.execs[(None, active_block_dim)] = module_exec
 
@@ -3354,7 +3357,7 @@ class Module:
                     self.execs[(device.context, active_block_dim)] = module_exec
                 else:
                     module_load_timer.extra_msg = " (error)"
-                    raise Exception(f"Failed to load CUDA module '{self.name}'")
+                    raise Exception(f"Failed to load CUDA module '{self.name}' ({module_load_diagnostics})")
 
         return module_exec
 
