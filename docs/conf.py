@@ -401,7 +401,7 @@ intersphinx_mapping = {
     "jax": ("https://docs.jax.dev/en/latest", None),
     "numpy": ("https://numpy.org/doc/stable", None),
     "python": ("https://docs.python.org/3", None),
-    "pytorch": ("https://pytorch.org/docs/stable", None),
+    "pytorch": ("https://docs.pytorch.org/docs/stable", None),
 }
 
 
