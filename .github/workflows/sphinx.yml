@@ -114,5 +114,7 @@ jobs:
           if [[ "${{ steps.dv.outputs.metadata_only }}" == "true" ]]; then
             flag="--metadata-only"
           fi
-          uv run tools/ci/deploy_doc.py --version "${{ steps.dv.outputs.version }}" $flag
+          # Metadata-only tag deploys skip build_lib.py, so avoid syncing the
+          # Warp project before running this stdlib-only script.
+          uv run --no-project tools/ci/deploy_doc.py --version "${{ steps.dv.outputs.version }}" $flag
           git push origin gh-pages
