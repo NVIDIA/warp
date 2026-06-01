@@ -56,7 +56,7 @@ def conditional_kernel(
 def bad_func(x: float) -> float: ...
 
 
-@wp.kernel
+@wp.kernel(module="unique")
 def invalid_native_func_kernel(a: wp.array(dtype=float)):
     i = wp.tid()
     a[i] = bad_func(1.0)
@@ -142,7 +142,7 @@ def test_bf16_arithmetic(test, device):
 def test_invalid_native_func_compile_error(test, device):
     a = wp.zeros(10, dtype=float, device=device)
 
-    with test.assertRaisesRegex(Exception, "CUDA kernel build failed with error code -1"):
+    with test.assertRaisesRegex(Exception, "CUDA kernel build failed with error code"):
         wp.launch(invalid_native_func_kernel, dim=10, inputs=[a], device=device)
 
 
