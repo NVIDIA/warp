@@ -1426,6 +1426,61 @@ class TestCodeGen(unittest.TestCase):
         self.assertIn("q[0] == 0.0", body)
         ast.parse(f"def generated(q, qd):\n    return {body}\n")
 
+    def test_replace_static_expressions_replaces_call_in_ast(self):
+        """The walker actually mutates ``adj.tree``: every resolvable ``wp.static``
+        Call gets replaced with an ``ast.Constant`` (or ``ast.Name`` for a
+        Function result). This pins the deferred-replacement application step,
+        which is the only behavioural difference vs upstream's in-flight
+        replacement.
+        """
+        from warp._src import codegen  # noqa: PLC0415
+
+        _value_a = 7
+        _value_b = 13
+
+        def _kernel_with_two_statics(out: wp.array(dtype=int)):
+            i = wp.tid()
+            out[i] = wp.static(_value_a)
+            out[i] += wp.static(_value_b)
+
+        adj = codegen.Adjoint(_kernel_with_two_statics)
+
+        # No wp.static Calls should remain in the tree after replacement.
+        remaining_static_calls = [
+            node
+            for node in ast.walk(adj.tree)
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "static"
+        ]
+        self.assertEqual(remaining_static_calls, [])
+
+        # Both constants should appear as ast.Constant nodes in the tree.
+        constants = {node.value for node in ast.walk(adj.tree) if isinstance(node, ast.Constant)}
+        self.assertIn(_value_a, constants)
+        self.assertIn(_value_b, constants)
+
+    def test_replace_static_expressions_defers_loop_var_reference(self):
+        """A ``wp.static`` call inside a ``for`` body that references the loop
+        variable must be deferred — ``has_unresolved_static_expressions`` set,
+        Call left in the AST for codegen-time resolution. This pins the
+        loop-variable tracking in ``visit_For`` / ``visit_Call``.
+        """
+        from warp._src import codegen  # noqa: PLC0415
+
+        def _kernel_with_loop_var_static(out: wp.array(dtype=int)):
+            for i in range(10):
+                out[i] = wp.static(i + 1)
+
+        adj = codegen.Adjoint(_kernel_with_loop_var_static)
+
+        self.assertTrue(adj.has_unresolved_static_expressions)
+        # wp.static(i + 1) should still be a Call in the AST (not eagerly replaced).
+        remaining_static_calls = [
+            node
+            for node in ast.walk(adj.tree)
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "static"
+        ]
+        self.assertEqual(len(remaining_static_calls), 1)
+
 
 devices = get_test_devices()
 

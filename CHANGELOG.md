@@ -139,6 +139,9 @@
   ([GH-1431](https://github.com/NVIDIA/warp/issues/1431)).
 - Improve CPU and CUDA module load failure messages with the active device,
   block dimension, and module hash.
+- Speed up Warp kernel creation by avoiding redundant work in static-expression
+  rewriting; visible on kernels with many non-`wp.static` calls
+  ([GH-1486](https://github.com/NVIDIA/warp/issues/1486)).
 
 ### Fixed
 

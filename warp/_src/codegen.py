@@ -4327,71 +4327,114 @@ class Adjoint:
     # try to replace wp.static() expressions by their evaluated value if the
     # expression can be evaluated
     def replace_static_expressions(adj):
-        class StaticExpressionReplacer(ast.NodeTransformer):
-            def __init__(self):
-                # Track loop variable names from enclosing for loops. This prevents
-                # wp.static() from capturing a global variable that shadows a loop variable.
-                # Uses a counter (not a set) to handle nested loops that reuse the same variable name.
-                self.loop_vars = {}
+        # ``visit_For`` and ``visit_Call`` below are the upstream
+        # ``ast.NodeTransformer`` subclass's methods lifted into closures —
+        # bodies are unchanged except for the trailing ``self.generic_visit(node)``,
+        # which becomes ``_walk_children(node)`` in ``visit_For`` and ``None`` in
+        # ``visit_Call`` (where ``None`` means "no replacement, recurse normally").
+        # ``_walk_children`` replaces ``generic_visit``: same DFS over
+        # ``node._fields``, but dispatching Calls/Fors inline by class identity
+        # (no ``'visit_' + cls.__name__`` + ``getattr``) and mutating list
+        # fields in place only when a replacement actually occurred.
+        # Replacements are collected as ``(container, key, new_node)`` and
+        # applied after the walk so the walk sees an unmutated tree.
+        loop_vars = {}  # was: self.loop_vars
+        replacements = []  # (container, key, new_node); applied after the walk
 
-            def visit_For(self, node):
-                # Track loop variable while visiting loop body (simple names only;
-                # tuple unpacking like `for x, y in ...` is rare in Warp kernels)
-                var_name = node.target.id if isinstance(node.target, ast.Name) else None
-                if var_name:
-                    self.loop_vars[var_name] = self.loop_vars.get(var_name, 0) + 1
-                result = self.generic_visit(node)
-                if var_name:
-                    self.loop_vars[var_name] -= 1
-                    if self.loop_vars[var_name] == 0:
-                        del self.loop_vars[var_name]
-                return result
+        def _walk_children(node):
+            for field_name in node._fields:
+                value = getattr(node, field_name, None)
+                if value is None:
+                    continue
+                if type(value) is list:
+                    for i, child in enumerate(value):
+                        if not isinstance(child, ast.AST):
+                            continue
+                        cls = type(child)
+                        if cls is ast.Call:
+                            result = visit_Call(child)
+                            if result is not None:
+                                replacements.append((value, i, result))
+                                continue
+                        elif cls is ast.For:
+                            visit_For(child)
+                            continue
+                        _walk_children(child)
+                elif isinstance(value, ast.AST):
+                    cls = type(value)
+                    if cls is ast.Call:
+                        result = visit_Call(value)
+                        if result is not None:
+                            replacements.append((node, field_name, result))
+                            continue
+                    elif cls is ast.For:
+                        visit_For(value)
+                        continue
+                    _walk_children(value)
 
-            def visit_Call(self, node):
-                func, _ = adj.resolve_static_expression(node.func, eval_types=False)
-                if adj.is_static_expression(func):
-                    # If the static expression references an enclosing loop variable,
-                    # defer evaluation to codegen time when the loop constant is available
-                    expr_node = node.args[0] if node.args else (node.keywords[0].value if node.keywords else None)
-                    if expr_node:
-                        referenced = {n.id for n in ast.walk(expr_node) if isinstance(n, ast.Name)}
-                        if referenced & self.loop_vars.keys():
-                            adj.has_unresolved_static_expressions = True
-                            return self.generic_visit(node)
+        def visit_For(node):
+            # Track loop variable while visiting loop body (simple names only;
+            # tuple unpacking like `for x, y in ...` is rare in Warp kernels)
+            var_name = node.target.id if isinstance(node.target, ast.Name) else None
+            if var_name:
+                loop_vars[var_name] = loop_vars.get(var_name, 0) + 1
+            _walk_children(node)  # was: self.generic_visit(node)
+            if var_name:
+                loop_vars[var_name] -= 1
+                if loop_vars[var_name] == 0:
+                    del loop_vars[var_name]
 
-                    try:
-                        # the static expression will execute as long as the static expression is valid and
-                        # only depends on global or captured variables
-                        obj, code = adj.evaluate_static_expression(node)
-                        if code is not None:
-                            adj.resolved_static_expressions[code] = obj
-                            if isinstance(obj, warp._src.context.Function):
-                                name_node = ast.Name("__warp_func__")
-                                # we add a pointer to the Warp function here so that we can refer to it later at
-                                # codegen time (note that the function key itself is not sufficient to uniquely
-                                # identify the function, as the function may be redefined between the current time
-                                # of wp.static() declaration and the time of codegen during module building)
-                                name_node.warp_func = obj
-                                return ast.copy_location(name_node, node)
-                            else:
-                                return ast.copy_location(ast.Constant(value=obj), node)
-                    except Exception:
-                        # Ignoring failing static expressions should generally not be an issue because only
-                        # one of these cases should be possible:
-                        #   1) the static expression itself is invalid code, in which case the module cannot be
-                        #      built all,
-                        #   2) the static expression contains a reference to a local (even if constant) variable
-                        #      (and is therefore not executable and raises this exception), in which
-                        #      case changing the constant, or the code affecting this constant, would lead to
-                        #      a different module hash anyway.
-                        # In any case, we mark this Adjoint to have unresolvable static expressions.
-                        # This will trigger a code generation step even if the module hash is unchanged.
+        def visit_Call(node):
+            func, _ = adj.resolve_static_expression(node.func, eval_types=False)
+            if adj.is_static_expression(func):
+                # If the static expression references an enclosing loop variable,
+                # defer evaluation to codegen time when the loop constant is available
+                expr_node = node.args[0] if node.args else (node.keywords[0].value if node.keywords else None)
+                if expr_node:
+                    referenced = {n.id for n in ast.walk(expr_node) if isinstance(n, ast.Name)}
+                    if referenced & loop_vars.keys():
                         adj.has_unresolved_static_expressions = True
-                        pass
+                        return None  # was: return self.generic_visit(node)
 
-                return self.generic_visit(node)
+                try:
+                    # the static expression will execute as long as the static expression is valid and
+                    # only depends on global or captured variables
+                    obj, code = adj.evaluate_static_expression(node)
+                    if code is not None:
+                        adj.resolved_static_expressions[code] = obj
+                        if isinstance(obj, warp._src.context.Function):
+                            name_node = ast.Name("__warp_func__")
+                            # we add a pointer to the Warp function here so that we can refer to it later at
+                            # codegen time (note that the function key itself is not sufficient to uniquely
+                            # identify the function, as the function may be redefined between the current time
+                            # of wp.static() declaration and the time of codegen during module building)
+                            name_node.warp_func = obj
+                            return ast.copy_location(name_node, node)
+                        else:
+                            return ast.copy_location(ast.Constant(value=obj), node)
+                except Exception:
+                    # Ignoring failing static expressions should generally not be an issue because only
+                    # one of these cases should be possible:
+                    #   1) the static expression itself is invalid code, in which case the module cannot be
+                    #      built all,
+                    #   2) the static expression contains a reference to a local (even if constant) variable
+                    #      (and is therefore not executable and raises this exception), in which
+                    #      case changing the constant, or the code affecting this constant, would lead to
+                    #      a different module hash anyway.
+                    # In any case, we mark this Adjoint to have unresolvable static expressions.
+                    # This will trigger a code generation step even if the module hash is unchanged.
+                    adj.has_unresolved_static_expressions = True
 
-        adj.tree = StaticExpressionReplacer().visit(adj.tree)
+            return None  # was: return self.generic_visit(node)
+
+        # Walk the tree, then apply replacements in one pass. ``adj.tree`` is
+        # always a Module, so we go straight into ``_walk_children``.
+        _walk_children(adj.tree)
+        for container, key, new_node in replacements:
+            if isinstance(container, list):
+                container[key] = new_node
+            else:
+                setattr(container, key, new_node)
 
     # Evaluates a static expression that does not depend on runtime values
     # if eval_types is True, try resolving the path using evaluated type information as well
