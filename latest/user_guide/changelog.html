@@ -639,6 +639,9 @@ earlier versions are not compatible and will not load
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1431">GH-1431</a>).</p></li>
 <li><p>Improve CPU and CUDA module load failure messages with the active device,
 block dimension, and module hash.</p></li>
+<li><p>Speed up Warp kernel creation by avoiding redundant work in static-expression
+rewriting; visible on kernels with many non-<code class="docutils literal notranslate"><span class="pre">wp.static</span></code> calls
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1486">GH-1486</a>).</p></li>
 </ul>
 </section>
 <section id="fixed">
