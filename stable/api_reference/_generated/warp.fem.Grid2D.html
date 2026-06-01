@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.fem.Grid2D &#8212; Warp 1.13.0</title>
+    <title>warp.fem.Grid2D &#8212; Warp 1.14.0</title>
   
   
   
@@ -44,7 +44,7 @@
 
 
 
-    <script src="../../_static/documentation_options.js?v=892a253e"></script>
+    <script src="../../_static/documentation_options.js?v=42a3b5f3"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -53,7 +53,7 @@
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.13';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.14';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
@@ -68,7 +68,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.13.0" />
+  <meta name="docsearch:version" content="1.14.0" />
 
 
   </head>
@@ -139,11 +139,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.13.0 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.13.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.13.0</p>
+    <p class="title logo__title">Warp 1.14.0</p>
   
 </a></div>
     
@@ -278,11 +278,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.13.0 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.13.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.13.0</p>
+    <p class="title logo__title">Warp 1.14.0</p>
   
 </a>
 
@@ -399,6 +399,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../../deep_dive/codegen.html">Code Generation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../deep_dive/allocators.html">Allocators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../deep_dive/memory_access.html">CPU/GPU cross-device memory access</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../deep_dive/concurrency.html">Concurrency</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../deep_dive/profiling.html">Profiling</a></li>
 </ul>
@@ -414,7 +415,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../warp_autograd.html">warp.autograd</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_config.html">warp.config</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_fem.html">warp.fem</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../warp_jax_experimental.html">warp.jax_experimental</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_optim.html">warp.optim</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_render.html">warp.render</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_sparse.html">warp.sparse</a></li>
@@ -495,7 +495,17 @@
 <h1>warp.fem.Grid2D<a class="headerlink" href="#warp-fem-grid2d" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.fem.Grid2D">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">Grid2D</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">res</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds_lo</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds_hi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scalar_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">warp.float32</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/grid_2d.py#L41-L502"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Grid2D" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">Grid2D</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">res</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">bounds_lo</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">bounds_hi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">scalar_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">warp.float32</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">env_count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/fem/geometry/grid_2d.py#L41-L767"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Grid2D" title="Link to this definition">#</a></dt>
 <dd><p>Two-dimensional regular grid geometry.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -504,6 +514,7 @@
 <li><p><strong>bounds_lo</strong> (<a class="reference internal" href="warp.vec2f.html#warp.vec2f" title="warp._src.types.vec2f"><em>vec2f</em></a><em> | </em><em>None</em>)</p></li>
 <li><p><strong>bounds_hi</strong> (<a class="reference internal" href="warp.vec2f.html#warp.vec2f" title="warp._src.types.vec2f"><em>vec2f</em></a><em> | </em><em>None</em>)</p></li>
 <li><p><strong>scalar_type</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><em>type</em></a>)</p></li>
+<li><p><strong>env_count</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
 </ul>
 </dd>
 </dl>
@@ -516,9 +527,10 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">bounds_lo</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">bounds_hi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">scalar_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">warp.float32</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">env_count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/grid_2d.py#L53-L93"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Grid2D.__init__" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/fem/geometry/grid_2d.py#L53-L99"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Grid2D.__init__" title="Link to this definition">#</a></dt>
 <dd><p>Construct a dense 2D grid.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -527,6 +539,7 @@
 <li><p><strong>bounds_lo</strong> (<a class="reference internal" href="warp.vec2f.html#warp.vec2f" title="warp._src.types.vec2f"><em>vec2f</em></a><em> | </em><em>None</em>) – Position of the lower bound of the axis-aligned grid</p></li>
 <li><p><strong>bounds_hi</strong> (<a class="reference internal" href="warp.vec2f.html#warp.vec2f" title="warp._src.types.vec2f"><em>vec2f</em></a><em> | </em><em>None</em>) – Position of the upper bound of the axis-aligned grid</p></li>
 <li><p><strong>scalar_type</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><em>type</em></a>) – Scalar type for grid coordinates (<code class="docutils literal notranslate"><span class="pre">warp.float32</span></code> or <code class="docutils literal notranslate"><span class="pre">warp.float64</span></code>)</p></li>
+<li><p><strong>env_count</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of colocated, topologically independent environments</p></li>
 </ul>
 </dd>
 </dl>
@@ -550,43 +563,52 @@
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_arg_value</span></code>(device)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Grid2D.cell_count" title="warp.fem.Grid2D.cell_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_count</span></code></a>()</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_bvh_groups</span></code>(device)</p></td>
+<td><p>Return optional per-cell BVH group indices on <code class="docutils literal notranslate"><span class="pre">device</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Grid2D.cell_count" title="warp.fem.Grid2D.cell_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_count</span></code></a>()</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Grid2D.fill_cell_arg" title="warp.fem.Grid2D.fill_cell_arg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_cell_arg</span></code></a>(args, device)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_env_arg_value</span></code>(device)</p></td>
+<td><p>Return per-cell environment indices for geometry argument structs.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Grid2D.environment_count" title="warp.fem.Grid2D.environment_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">environment_count</span></code></a>()</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_side_arg</span></code>(args, device)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Grid2D.fill_cell_arg" title="warp.fem.Grid2D.fill_cell_arg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_cell_arg</span></code></a>(args, device)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_side_arg</span></code>(args, device)</p></td>
 <td><p>Fill the arguments to be passed to side-related device functions</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_side_index_arg</span></code>(args, device)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_side_index_arg</span></code>(args, device)</p></td>
 <td><p>Fill the arguments to be passed to side-related device functions</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Grid2D.make_filtered_cell_lookup" title="warp.fem.Grid2D.make_filtered_cell_lookup"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_filtered_cell_lookup</span></code></a>([filter_func])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Grid2D.make_filtered_cell_lookup" title="warp.fem.Grid2D.make_filtered_cell_lookup"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_filtered_cell_lookup</span></code></a>([filter_func])</p></td>
 <td><p>Create a filtered cell lookup function.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Grid2D.reference_cell" title="warp.fem.Grid2D.reference_cell"><code class="xref py py-obj docutils literal notranslate"><span class="pre">reference_cell</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Grid2D.reference_cell" title="warp.fem.Grid2D.reference_cell"><code class="xref py py-obj docutils literal notranslate"><span class="pre">reference_cell</span></code></a>()</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Grid2D.reference_side" title="warp.fem.Grid2D.reference_side"><code class="xref py py-obj docutils literal notranslate"><span class="pre">reference_side</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Grid2D.reference_side" title="warp.fem.Grid2D.reference_side"><code class="xref py py-obj docutils literal notranslate"><span class="pre">reference_side</span></code></a>()</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Grid2D.side_arg_value" title="warp.fem.Grid2D.side_arg_value"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_arg_value</span></code></a>(device)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Grid2D.side_arg_value" title="warp.fem.Grid2D.side_arg_value"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_arg_value</span></code></a>(device)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Grid2D.side_count" title="warp.fem.Grid2D.side_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_count</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Grid2D.side_count" title="warp.fem.Grid2D.side_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_count</span></code></a>()</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Grid2D.side_index_arg_value" title="warp.fem.Grid2D.side_index_arg_value"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_index_arg_value</span></code></a>(device)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Grid2D.side_index_arg_value" title="warp.fem.Grid2D.side_index_arg_value"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_index_arg_value</span></code></a>(device)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Grid2D.supports_cell_lookup" title="warp.fem.Grid2D.supports_cell_lookup"><code class="xref py py-obj docutils literal notranslate"><span class="pre">supports_cell_lookup</span></code></a>(device)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Grid2D.supports_cell_lookup" title="warp.fem.Grid2D.supports_cell_lookup"><code class="xref py py-obj docutils literal notranslate"><span class="pre">supports_cell_lookup</span></code></a>(device)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_bvh</span></code>([device])</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_bvh</span></code>([device])</p></td>
 <td><p>Refit the geometry's BVH if it exists on <code class="docutils literal notranslate"><span class="pre">device</span></code>, or build it from scratch otherwise.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Grid2D.vertex_count" title="warp.fem.Grid2D.vertex_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vertex_count</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Grid2D.vertex_count" title="warp.fem.Grid2D.vertex_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vertex_count</span></code></a>()</p></td>
 <td><p></p></td>
 </tr>
 </tbody>
@@ -607,13 +629,19 @@
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">base</span></code></p></td>
 <td><p>Return the base geometry from which this geometry derives its topology.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Grid2D.boundary_side_index" title="warp.fem.Grid2D.boundary_side_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">boundary_side_index</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Grid2D.boundary_side_count_per_environment" title="warp.fem.Grid2D.boundary_side_count_per_environment"><code class="xref py py-obj docutils literal notranslate"><span class="pre">boundary_side_count_per_environment</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Grid2D.cell_closest_point" title="warp.fem.Grid2D.cell_closest_point"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_closest_point</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Grid2D.boundary_side_index" title="warp.fem.Grid2D.boundary_side_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">boundary_side_index</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Grid2D.cell_coordinates" title="warp.fem.Grid2D.cell_coordinates"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_coordinates</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Grid2D.cell_closest_point" title="warp.fem.Grid2D.cell_closest_point"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_closest_point</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Grid2D.cell_coordinates" title="warp.fem.Grid2D.cell_coordinates"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_coordinates</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Grid2D.cell_count_per_environment" title="warp.fem.Grid2D.cell_count_per_environment"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_count_per_environment</span></code></a></p></td>
 <td><p></p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Grid2D.cell_deformation_gradient" title="warp.fem.Grid2D.cell_deformation_gradient"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_deformation_gradient</span></code></a></p></td>
@@ -622,29 +650,41 @@
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_dimension</span></code></p></td>
 <td><p>Manifold dimension of the geometry cells</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Grid2D.cell_index" title="warp.fem.Grid2D.cell_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_index</span></code></a></p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_env</span></code></p></td>
+<td><p>Optional per-cell environment indices.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Grid2D.cell_env_index" title="warp.fem.Grid2D.cell_env_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_env_index</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Grid2D.cell_inverse_deformation_gradient" title="warp.fem.Grid2D.cell_inverse_deformation_gradient"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_inverse_deformation_gradient</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Grid2D.cell_environment_index" title="warp.fem.Grid2D.cell_environment_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_environment_index</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_lookup</span></code></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Grid2D.cell_index" title="warp.fem.Grid2D.cell_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_index</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Grid2D.cell_inverse_deformation_gradient" title="warp.fem.Grid2D.cell_inverse_deformation_gradient"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_inverse_deformation_gradient</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Grid2D.cell_lookup" title="warp.fem.Grid2D.cell_lookup"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_lookup</span></code></a></p></td>
 <td><p>Device function for looking up the closest cell to a position.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Grid2D.cell_measure" title="warp.fem.Grid2D.cell_measure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_measure</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Grid2D.cell_measure" title="warp.fem.Grid2D.cell_measure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_measure</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_measure_ratio</span></code></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_measure_ratio</span></code></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Grid2D.cell_normal" title="warp.fem.Grid2D.cell_normal"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_normal</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Grid2D.cell_normal" title="warp.fem.Grid2D.cell_normal"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_normal</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Grid2D.cell_position" title="warp.fem.Grid2D.cell_position"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_position</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Grid2D.cell_position" title="warp.fem.Grid2D.cell_position"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_position</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Grid2D.cell_size" title="warp.fem.Grid2D.cell_size"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_size</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Grid2D.cell_size" title="warp.fem.Grid2D.cell_size"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_size</span></code></a></p></td>
 <td><p>Size of a cell along each axis.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">compute_cell_bvh_groups</span></code></p></td>
+<td><p></p></td>
 </tr>
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">coords_type</span></code></p></td>
 <td><p>Warp vector type for element coordinates matching this geometry's scalar precision.</p></td>
@@ -661,31 +701,49 @@
 <tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Grid2D.is_flipped" title="warp.fem.Grid2D.is_flipped"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_flipped</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">name</span></code></p></td>
-<td><p>Name of the geometry, including scalar type suffix for non-default precision.</p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Grid2D.orient" title="warp.fem.Grid2D.orient"><code class="xref py py-obj docutils literal notranslate"><span class="pre">orient</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Grid2D.local_cell_index" title="warp.fem.Grid2D.local_cell_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">local_cell_index</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Grid2D.origin" title="warp.fem.Grid2D.origin"><code class="xref py py-obj docutils literal notranslate"><span class="pre">origin</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Grid2D.local_side_index" title="warp.fem.Grid2D.local_side_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">local_side_index</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Grid2D.res" title="warp.fem.Grid2D.res"><code class="xref py py-obj docutils literal notranslate"><span class="pre">res</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Grid2D.local_side_index_from_res" title="warp.fem.Grid2D.local_side_index_from_res"><code class="xref py py-obj docutils literal notranslate"><span class="pre">local_side_index_from_res</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample_type</span></code></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Grid2D.name" title="warp.fem.Grid2D.name"><code class="xref py py-obj docutils literal notranslate"><span class="pre">name</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Grid2D.orient" title="warp.fem.Grid2D.orient"><code class="xref py py-obj docutils literal notranslate"><span class="pre">orient</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Grid2D.origin" title="warp.fem.Grid2D.origin"><code class="xref py py-obj docutils literal notranslate"><span class="pre">origin</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Grid2D.res" title="warp.fem.Grid2D.res"><code class="xref py py-obj docutils literal notranslate"><span class="pre">res</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample_type</span></code></p></td>
 <td><p>Warp struct type for samples matching this geometry's scalar precision.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Grid2D.scalar_type" title="warp.fem.Grid2D.scalar_type"><code class="xref py py-obj docutils literal notranslate"><span class="pre">scalar_type</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Grid2D.scalar_type" title="warp.fem.Grid2D.scalar_type"><code class="xref py py-obj docutils literal notranslate"><span class="pre">scalar_type</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Grid2D.side_closest_point" title="warp.fem.Grid2D.side_closest_point"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_closest_point</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Grid2D.side_closest_point" title="warp.fem.Grid2D.side_closest_point"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_closest_point</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Grid2D.side_coordinates" title="warp.fem.Grid2D.side_coordinates"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_coordinates</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Grid2D.side_coordinates" title="warp.fem.Grid2D.side_coordinates"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_coordinates</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Grid2D.side_count_per_environment" title="warp.fem.Grid2D.side_count_per_environment"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_count_per_environment</span></code></a></p></td>
 <td><p></p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Grid2D.side_deformation_gradient" title="warp.fem.Grid2D.side_deformation_gradient"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_deformation_gradient</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Grid2D.side_env_index" title="warp.fem.Grid2D.side_env_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_env_index</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Grid2D.side_environment_index" title="warp.fem.Grid2D.side_environment_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_environment_index</span></code></a></p></td>
 <td><p></p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Grid2D.side_from_cell_coords" title="warp.fem.Grid2D.side_from_cell_coords"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_from_cell_coords</span></code></a></p></td>
@@ -727,13 +785,16 @@
 <tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Grid2D.strides" title="warp.fem.Grid2D.strides"><code class="xref py py-obj docutils literal notranslate"><span class="pre">strides</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">CellArg</span></code></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Grid2D.vertex_count_per_environment" title="warp.fem.Grid2D.vertex_count_per_environment"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vertex_count_per_environment</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">CellArg</span></code></p></td>
 <td><p>Structure containing arguments to be passed to device functions evaluating cell-related quantities.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">SideArg</span></code></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">SideArg</span></code></p></td>
 <td><p>Structure containing arguments to be passed to device functions evaluating side-related quantities.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">SideIndexArg</span></code></p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">SideIndexArg</span></code></p></td>
 <td><p>Structure containing arguments to be passed to device functions for indexing sides.</p></td>
 </tr>
 </tbody>
@@ -757,7 +818,12 @@
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.Grid2D.scalar_type">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">scalar_type</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/grid_2d.py#L94-L97"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Grid2D.scalar_type" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">scalar_type</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/fem/geometry/grid_2d.py#L100-L103"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Grid2D.scalar_type" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="warp.fem.Grid2D.name">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/fem/geometry/grid_2d.py#L104-L107"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Grid2D.name" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py property">
@@ -774,27 +840,32 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Grid2D.cell_count">
-<span class="sig-name descname"><span class="pre">cell_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/grid_2d.py#L117-L119"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Grid2D.cell_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">cell_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/fem/geometry/grid_2d.py#L127-L129"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Grid2D.cell_count" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Grid2D.vertex_count">
-<span class="sig-name descname"><span class="pre">vertex_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/grid_2d.py#L120-L122"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Grid2D.vertex_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">vertex_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/fem/geometry/grid_2d.py#L130-L132"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Grid2D.vertex_count" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Grid2D.side_count">
-<span class="sig-name descname"><span class="pre">side_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/grid_2d.py#L123-L125"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Grid2D.side_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">side_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/fem/geometry/grid_2d.py#L133-L135"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Grid2D.side_count" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Grid2D.boundary_side_count">
-<span class="sig-name descname"><span class="pre">boundary_side_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/grid_2d.py#L126-L128"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Grid2D.boundary_side_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">boundary_side_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/fem/geometry/grid_2d.py#L136-L138"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Grid2D.boundary_side_count" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.Grid2D.environment_count">
+<span class="sig-name descname"><span class="pre">environment_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/fem/geometry/grid_2d.py#L139-L141"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Grid2D.environment_count" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Grid2D.reference_cell">
-<span class="sig-name descname"><span class="pre">reference_cell</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/grid_2d.py#L129-L131"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Grid2D.reference_cell" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">reference_cell</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/fem/geometry/grid_2d.py#L154-L156"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Grid2D.reference_cell" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference internal" href="warp.fem.Element.html#warp.fem.Element" title="warp._src.fem.geometry.element.Element"><em>Element</em></a></p>
@@ -804,7 +875,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Grid2D.reference_side">
-<span class="sig-name descname"><span class="pre">reference_side</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/grid_2d.py#L132-L134"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Grid2D.reference_side" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">reference_side</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/fem/geometry/grid_2d.py#L157-L159"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Grid2D.reference_side" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference internal" href="warp.fem.Element.html#warp.fem.Element" title="warp._src.fem.geometry.element.Element"><em>Element</em></a></p>
@@ -814,12 +885,12 @@
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.Grid2D.res">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">res</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/grid_2d.py#L135-L138"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Grid2D.res" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">res</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/fem/geometry/grid_2d.py#L160-L163"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Grid2D.res" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.Grid2D.origin">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">origin</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/grid_2d.py#L139-L142"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Grid2D.origin" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">origin</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/fem/geometry/grid_2d.py#L164-L167"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Grid2D.origin" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py property">
@@ -829,8 +900,139 @@
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.Grid2D.Cell">
-<span class="sig-name descname"><span class="pre">Cell</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L1847-L1849"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Grid2D.Cell" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">Cell</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/types.py#L1849-L1851"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Grid2D.Cell" title="Link to this definition">#</a></dt>
 <dd><p>alias of <a class="reference internal" href="warp.vec2i.html#warp.vec2i" title="warp._src.types.vec2i"><code class="xref py py-class docutils literal notranslate"><span class="pre">vec2i</span></code></a></p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.Grid2D.cell_count_per_environment">
+<span class="sig-name descname"><span class="pre">cell_count_per_environment</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Grid2D__cell_count_per_environment(res:</span> <span class="pre">vec2i)&gt;</span></em><a class="headerlink" href="#warp.fem.Grid2D.cell_count_per_environment" title="Link to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>res</strong> (<a class="reference internal" href="warp.vec2i.html#warp.vec2i" title="warp._src.types.vec2i"><em>vec2i</em></a>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.Grid2D.vertex_count_per_environment">
+<span class="sig-name descname"><span class="pre">vertex_count_per_environment</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Grid2D__vertex_count_per_environment(res:</span> <span class="pre">vec2i)&gt;</span></em><a class="headerlink" href="#warp.fem.Grid2D.vertex_count_per_environment" title="Link to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>res</strong> (<a class="reference internal" href="warp.vec2i.html#warp.vec2i" title="warp._src.types.vec2i"><em>vec2i</em></a>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.Grid2D.side_count_per_environment">
+<span class="sig-name descname"><span class="pre">side_count_per_environment</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Grid2D__side_count_per_environment(res:</span> <span class="pre">vec2i)&gt;</span></em><a class="headerlink" href="#warp.fem.Grid2D.side_count_per_environment" title="Link to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>res</strong> (<a class="reference internal" href="warp.vec2i.html#warp.vec2i" title="warp._src.types.vec2i"><em>vec2i</em></a>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.Grid2D.boundary_side_count_per_environment">
+<span class="sig-name descname"><span class="pre">boundary_side_count_per_environment</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Grid2D__boundary_side_count_per_environment(res:</span> <span class="pre">vec2i)&gt;</span></em><a class="headerlink" href="#warp.fem.Grid2D.boundary_side_count_per_environment" title="Link to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>res</strong> (<a class="reference internal" href="warp.vec2i.html#warp.vec2i" title="warp._src.types.vec2i"><em>vec2i</em></a>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.Grid2D.cell_env_index">
+<span class="sig-name descname"><span class="pre">cell_env_index</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Grid2D__cell_env_index(res:</span> <span class="pre">vec2i,</span> <span class="pre">cell_index:</span> <span class="pre">int)&gt;</span></em><a class="headerlink" href="#warp.fem.Grid2D.cell_env_index" title="Link to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>res</strong> (<a class="reference internal" href="warp.vec2i.html#warp.vec2i" title="warp._src.types.vec2i"><em>vec2i</em></a>)</p></li>
+<li><p><strong>cell_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.Grid2D.side_env_index">
+<span class="sig-name descname"><span class="pre">side_env_index</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Grid2D__side_env_index(res:</span> <span class="pre">vec2i,</span> <span class="pre">side_index:</span> <span class="pre">int)&gt;</span></em><a class="headerlink" href="#warp.fem.Grid2D.side_env_index" title="Link to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>res</strong> (<a class="reference internal" href="warp.vec2i.html#warp.vec2i" title="warp._src.types.vec2i"><em>vec2i</em></a>)</p></li>
+<li><p><strong>side_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.Grid2D.local_cell_index">
+<span class="sig-name descname"><span class="pre">local_cell_index</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Grid2D__local_cell_index(res:</span> <span class="pre">vec2i,</span> <span class="pre">cell_index:</span> <span class="pre">int)&gt;</span></em><a class="headerlink" href="#warp.fem.Grid2D.local_cell_index" title="Link to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>res</strong> (<a class="reference internal" href="warp.vec2i.html#warp.vec2i" title="warp._src.types.vec2i"><em>vec2i</em></a>)</p></li>
+<li><p><strong>cell_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.Grid2D.local_side_index_from_res">
+<span class="sig-name descname"><span class="pre">local_side_index_from_res</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Grid2D__local_side_index_from_res(res:</span> <span class="pre">vec2i,</span> <span class="pre">side_index:</span> <span class="pre">int)&gt;</span></em><a class="headerlink" href="#warp.fem.Grid2D.local_side_index_from_res" title="Link to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>res</strong> (<a class="reference internal" href="warp.vec2i.html#warp.vec2i" title="warp._src.types.vec2i"><em>vec2i</em></a>)</p></li>
+<li><p><strong>side_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.Grid2D.cell_environment_index">
+<span class="sig-name descname"><span class="pre">cell_environment_index</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Grid2D__cell_environment_index(args:</span> <span class="pre">Any,</span> <span class="pre">cell_index:</span> <span class="pre">int)&gt;</span></em><a class="headerlink" href="#warp.fem.Grid2D.cell_environment_index" title="Link to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>args</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>)</p></li>
+<li><p><strong>s</strong> (<em>Sample</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.Grid2D.side_environment_index">
+<span class="sig-name descname"><span class="pre">side_environment_index</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Grid2D__side_environment_index(arg:</span> <span class="pre">Any,</span> <span class="pre">side_index:</span> <span class="pre">int)&gt;</span></em><a class="headerlink" href="#warp.fem.Grid2D.side_environment_index" title="Link to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>arg</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>)</p></li>
+<li><p><strong>s</strong> (<em>Sample</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.Grid2D.local_side_index">
+<span class="sig-name descname"><span class="pre">local_side_index</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Grid2D__local_side_index(arg:</span> <span class="pre">Any,</span> <span class="pre">side_index:</span> <span class="pre">int)&gt;</span></em><a class="headerlink" href="#warp.fem.Grid2D.local_side_index" title="Link to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>arg</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>)</p></li>
+<li><p><strong>side_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py attribute">
@@ -889,22 +1091,22 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Grid2D.fill_cell_arg">
-<span class="sig-name descname"><span class="pre">fill_cell_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/grid_2d.py#L188-L192"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Grid2D.fill_cell_arg" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">fill_cell_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/fem/geometry/grid_2d.py#L283-L287"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Grid2D.fill_cell_arg" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Grid2D.side_arg_value">
-<span class="sig-name descname"><span class="pre">side_arg_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/cache.py#L343-L354"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Grid2D.side_arg_value" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">side_arg_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/fem/cache.py#L343-L354"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Grid2D.side_arg_value" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Grid2D.side_index_arg_value">
-<span class="sig-name descname"><span class="pre">side_index_arg_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/grid_2d.py#L201-L203"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Grid2D.side_index_arg_value" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">side_index_arg_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/fem/geometry/grid_2d.py#L296-L298"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Grid2D.side_index_arg_value" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Grid2D.supports_cell_lookup">
-<span class="sig-name descname"><span class="pre">supports_cell_lookup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/grid_2d.py#L204-L206"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Grid2D.supports_cell_lookup" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">supports_cell_lookup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/fem/geometry/grid_2d.py#L299-L301"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Grid2D.supports_cell_lookup" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -1213,13 +1415,19 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Grid2D.make_filtered_cell_lookup">
-<span class="sig-name descname"><span class="pre">make_filtered_cell_lookup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filter_func</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/grid_2d.py#L433-L502"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Grid2D.make_filtered_cell_lookup" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">make_filtered_cell_lookup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filter_func</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/fem/geometry/grid_2d.py#L584-L678"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Grid2D.make_filtered_cell_lookup" title="Link to this definition">#</a></dt>
 <dd><p>Create a filtered cell lookup function.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>filter_func</strong> (<a class="reference internal" href="warp.Function.html#warp.Function" title="warp._src.context.Function"><em>Function</em></a>) – Optional device predicate to filter candidate cells.</p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="warp.fem.Grid2D.cell_lookup">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cell_lookup</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Function.html#warp.Function" title="warp._src.context.Function"><span class="pre">Function</span></a></em><a class="headerlink" href="#warp.fem.Grid2D.cell_lookup" title="Link to this definition">#</a></dt>
+<dd><p>Device function for looking up the closest cell to a position.</p>
 </dd></dl>
 
 </dd></dl>
@@ -1281,18 +1489,31 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Grid2D.ALT_AXIS"><code class="docutils literal notranslate"><span class="pre">ALT_AXIS</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Grid2D.LONG_AXIS"><code class="docutils literal notranslate"><span class="pre">LONG_AXIS</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Grid2D.scalar_type"><code class="docutils literal notranslate"><span class="pre">scalar_type</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Grid2D.name"><code class="docutils literal notranslate"><span class="pre">name</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Grid2D.extents"><code class="docutils literal notranslate"><span class="pre">extents</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Grid2D.cell_size"><code class="docutils literal notranslate"><span class="pre">cell_size</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Grid2D.cell_count"><code class="docutils literal notranslate"><span class="pre">cell_count()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Grid2D.vertex_count"><code class="docutils literal notranslate"><span class="pre">vertex_count()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Grid2D.side_count"><code class="docutils literal notranslate"><span class="pre">side_count()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Grid2D.boundary_side_count"><code class="docutils literal notranslate"><span class="pre">boundary_side_count()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Grid2D.environment_count"><code class="docutils literal notranslate"><span class="pre">environment_count()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Grid2D.reference_cell"><code class="docutils literal notranslate"><span class="pre">reference_cell()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Grid2D.reference_side"><code class="docutils literal notranslate"><span class="pre">reference_side()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Grid2D.res"><code class="docutils literal notranslate"><span class="pre">res</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Grid2D.origin"><code class="docutils literal notranslate"><span class="pre">origin</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Grid2D.strides"><code class="docutils literal notranslate"><span class="pre">strides</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Grid2D.Cell"><code class="docutils literal notranslate"><span class="pre">Cell</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Grid2D.cell_count_per_environment"><code class="docutils literal notranslate"><span class="pre">cell_count_per_environment</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Grid2D.vertex_count_per_environment"><code class="docutils literal notranslate"><span class="pre">vertex_count_per_environment</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Grid2D.side_count_per_environment"><code class="docutils literal notranslate"><span class="pre">side_count_per_environment</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Grid2D.boundary_side_count_per_environment"><code class="docutils literal notranslate"><span class="pre">boundary_side_count_per_environment</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Grid2D.cell_env_index"><code class="docutils literal notranslate"><span class="pre">cell_env_index</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Grid2D.side_env_index"><code class="docutils literal notranslate"><span class="pre">side_env_index</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Grid2D.local_cell_index"><code class="docutils literal notranslate"><span class="pre">local_cell_index</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Grid2D.local_side_index_from_res"><code class="docutils literal notranslate"><span class="pre">local_side_index_from_res</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Grid2D.cell_environment_index"><code class="docutils literal notranslate"><span class="pre">cell_environment_index</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Grid2D.side_environment_index"><code class="docutils literal notranslate"><span class="pre">side_environment_index</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Grid2D.local_side_index"><code class="docutils literal notranslate"><span class="pre">local_side_index</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Grid2D.cell_index"><code class="docutils literal notranslate"><span class="pre">cell_index</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Grid2D.get_cell"><code class="docutils literal notranslate"><span class="pre">get_cell</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Grid2D.Side"><code class="docutils literal notranslate"><span class="pre">Side</span></code></a></li>
@@ -1326,6 +1547,7 @@
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Grid2D.side_coordinates"><code class="docutils literal notranslate"><span class="pre">side_coordinates</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Grid2D.side_closest_point"><code class="docutils literal notranslate"><span class="pre">side_closest_point</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Grid2D.make_filtered_cell_lookup"><code class="docutils literal notranslate"><span class="pre">make_filtered_cell_lookup()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Grid2D.cell_lookup"><code class="docutils literal notranslate"><span class="pre">cell_lookup</span></code></a></li>
 </ul>
 </li>
 </ul>
@@ -1335,7 +1557,7 @@
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/_generated/warp.fem.Grid2D.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/release-1.14/docs/api_reference/_generated/warp.fem.Grid2D.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

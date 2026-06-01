@@ -51,5 +51,6 @@
       ~GeometryDomain.element_coordinates
       ~GeometryDomain.element_lookup
       ~GeometryDomain.element_partition_lookup
+      ~GeometryDomain.element_environment_index
    
    

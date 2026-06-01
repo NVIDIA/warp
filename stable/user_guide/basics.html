@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Basics &#8212; Warp 1.13.0</title>
+    <title>Basics &#8212; Warp 1.14.0</title>
   
   
   
@@ -44,7 +44,7 @@
 
 
 
-    <script src="../_static/documentation_options.js?v=892a253e"></script>
+    <script src="../_static/documentation_options.js?v=42a3b5f3"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -53,7 +53,7 @@
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.13';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.14';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
@@ -68,7 +68,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.13.0" />
+  <meta name="docsearch:version" content="1.14.0" />
 
 
   </head>
@@ -139,11 +139,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.13.0 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.13.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.13.0</p>
+    <p class="title logo__title">Warp 1.14.0</p>
   
 </a></div>
     
@@ -278,11 +278,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.13.0 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.13.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.13.0</p>
+    <p class="title logo__title">Warp 1.14.0</p>
   
 </a>
 
@@ -399,6 +399,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/codegen.html">Code Generation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/allocators.html">Allocators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/memory_access.html">CPU/GPU cross-device memory access</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/concurrency.html">Concurrency</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/profiling.html">Profiling</a></li>
 </ul>
@@ -414,7 +415,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_autograd.html">warp.autograd</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_config.html">warp.config</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_fem.html">warp.fem</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_jax_experimental.html">warp.jax_experimental</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_optim.html">warp.optim</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_render.html">warp.render</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_sparse.html">warp.sparse</a></li>
@@ -508,53 +508,6 @@ actively maintained set of Warp tutorials:</p>
 </tr>
 <tr class="row-odd"><td><p><a class="reference external" href="https://github.com/NVIDIA/accelerated-computing-hub/blob/32fe3d5a448446fd52c14a6726e1b867cbfed2d9/Accelerated_Python_User_Guide/notebooks/Chapter_12.1_IsingModel_In_Warp.ipynb">GPU-Accelerated Ising Model Simulation in NVIDIA Warp</a></p></td>
 <td><a class="reference external image-reference" href="https://colab.research.google.com/github/NVIDIA/accelerated-computing-hub/blob/32fe3d5a448446fd52c14a6726e1b867cbfed2d9/Accelerated_Python_User_Guide/notebooks/Chapter_12.1_IsingModel_In_Warp.ipynb"><img alt="Open In Colab" src="https://colab.research.google.com/assets/colab-badge.svg" />
-</a>
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-<p>Additionally, several notebooks in the <a class="reference external" href="https://github.com/NVIDIA/warp/tree/main/notebooks">notebooks</a> directory
-provide additional examples and cover key Warp features:</p>
-<div class="pst-scrollable-table-container"><table class="table">
-<thead>
-<tr class="row-odd"><th class="head"><p>Notebook</p></th>
-<th class="head"><p>Colab Link</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/notebooks/core_01_basics.ipynb">Warp Core Tutorial: Basics</a></p></td>
-<td><a class="reference external image-reference" href="https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/core_01_basics.ipynb"><img alt="Open In Colab" src="https://colab.research.google.com/assets/colab-badge.svg" />
-</a>
-</td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/notebooks/core_02_generics.ipynb">Warp Core Tutorial: Generics</a></p></td>
-<td><a class="reference external image-reference" href="https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/core_02_generics.ipynb"><img alt="Open In Colab" src="https://colab.research.google.com/assets/colab-badge.svg" />
-</a>
-</td>
-</tr>
-<tr class="row-even"><td><p><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/notebooks/core_03_points.ipynb">Warp Core Tutorial: Points</a></p></td>
-<td><a class="reference external image-reference" href="https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/core_03_points.ipynb"><img alt="Open In Colab" src="https://colab.research.google.com/assets/colab-badge.svg" />
-</a>
-</td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/notebooks/core_04_meshes.ipynb">Warp Core Tutorial: Meshes</a></p></td>
-<td><a class="reference external image-reference" href="https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/core_04_meshes.ipynb"><img alt="Open In Colab" src="https://colab.research.google.com/assets/colab-badge.svg" />
-</a>
-</td>
-</tr>
-<tr class="row-even"><td><p><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/notebooks/core_05_volumes.ipynb">Warp Core Tutorial: Volumes</a></p></td>
-<td><a class="reference external image-reference" href="https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/core_05_volumes.ipynb"><img alt="Open In Colab" src="https://colab.research.google.com/assets/colab-badge.svg" />
-</a>
-</td>
-</tr>
-<tr class="row-odd"><td><p><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/notebooks/pytorch_01_basics.ipynb">Warp PyTorch Tutorial: Basics</a></p></td>
-<td><a class="reference external image-reference" href="https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/pytorch_01_basics.ipynb"><img alt="Open In Colab" src="https://colab.research.google.com/assets/colab-badge.svg" />
-</a>
-</td>
-</tr>
-<tr class="row-even"><td><p><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/notebooks/pytorch_02_custom_operators.ipynb">Warp PyTorch Tutorial: Custom Operators</a></p></td>
-<td><a class="reference external image-reference" href="https://colab.research.google.com/github/NVIDIA/warp/blob/main/notebooks/pytorch_02_custom_operators.ipynb"><img alt="Open In Colab" src="https://colab.research.google.com/assets/colab-badge.svg" />
 </a>
 </td>
 </tr>
@@ -823,7 +776,7 @@ Any kernels registered in the module with <a class="reference internal" href="..
 <li><p>How long it took to load the module in milliseconds</p></li>
 <li><p>Whether the module was compiled <code class="docutils literal notranslate"><span class="pre">(compiled)</span></code>, loaded from the cache <code class="docutils literal notranslate"><span class="pre">(cached)</span></code>, or was unable to be loaded <code class="docutils literal notranslate"><span class="pre">(error)</span></code>.</p></li>
 </ul>
-<p>For debugging purposes, <code class="docutils literal notranslate"><span class="pre">wp.config.verbose</span> <span class="pre">=</span> <span class="pre">True</span></code> can be set to also get a printout when each module load begins.</p>
+<p>For debugging purposes, <code class="docutils literal notranslate"><span class="pre">wp.config.log_level</span> <span class="pre">=</span> <span class="pre">wp.LOG_DEBUG</span></code> can be set to also get a printout when each module load begins.</p>
 <p>Here is an example illustrating the functionality of the kernel cache by running <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">warp.examples.tile.example_tile_cholesky</span></code>
 twice. The first time, we see:</p>
 <div class="highlight-bat notranslate"><div class="highlight"><pre><span></span>Warp 1.10.0.dev0 initialized:
@@ -981,7 +934,7 @@ use vector types like <a class="reference internal" href="../api_reference/_gene
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/main/docs/user_guide/basics.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/release-1.14/docs/user_guide/basics.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

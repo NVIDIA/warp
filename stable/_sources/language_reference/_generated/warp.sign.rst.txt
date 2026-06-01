@@ -20,7 +20,6 @@
       :columns: 8
 
       * Kernel
-      * Differentiable
 
    Compute the sign of ``x``.
    

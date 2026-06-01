@@ -43,6 +43,7 @@
       ~BoundarySides.element_closest_point
       ~BoundarySides.element_coordinates
       ~BoundarySides.element_deformation_gradient
+      ~BoundarySides.element_environment_index
       ~BoundarySides.element_index
       ~BoundarySides.element_inner_cell_coords
       ~BoundarySides.element_inner_cell_index

@@ -18,7 +18,10 @@
       ~Grid2D.build_bvh
       ~Grid2D.bvh_id
       ~Grid2D.cell_arg_value
+      ~Grid2D.cell_bvh_groups
       ~Grid2D.cell_count
+      ~Grid2D.cell_env_arg_value
+      ~Grid2D.environment_count
       ~Grid2D.fill_cell_arg
       ~Grid2D.fill_side_arg
       ~Grid2D.fill_side_index_arg
@@ -44,11 +47,16 @@
       ~Grid2D.LONG_AXIS
       ~Grid2D.Side
       ~Grid2D.base
+      ~Grid2D.boundary_side_count_per_environment
       ~Grid2D.boundary_side_index
       ~Grid2D.cell_closest_point
       ~Grid2D.cell_coordinates
+      ~Grid2D.cell_count_per_environment
       ~Grid2D.cell_deformation_gradient
       ~Grid2D.cell_dimension
+      ~Grid2D.cell_env
+      ~Grid2D.cell_env_index
+      ~Grid2D.cell_environment_index
       ~Grid2D.cell_index
       ~Grid2D.cell_inverse_deformation_gradient
       ~Grid2D.cell_lookup
@@ -57,11 +65,15 @@
       ~Grid2D.cell_normal
       ~Grid2D.cell_position
       ~Grid2D.cell_size
+      ~Grid2D.compute_cell_bvh_groups
       ~Grid2D.coords_type
       ~Grid2D.dimension
       ~Grid2D.extents
       ~Grid2D.get_cell
       ~Grid2D.is_flipped
+      ~Grid2D.local_cell_index
+      ~Grid2D.local_side_index
+      ~Grid2D.local_side_index_from_res
       ~Grid2D.name
       ~Grid2D.orient
       ~Grid2D.origin
@@ -70,7 +82,10 @@
       ~Grid2D.scalar_type
       ~Grid2D.side_closest_point
       ~Grid2D.side_coordinates
+      ~Grid2D.side_count_per_environment
       ~Grid2D.side_deformation_gradient
+      ~Grid2D.side_env_index
+      ~Grid2D.side_environment_index
       ~Grid2D.side_from_cell_coords
       ~Grid2D.side_inner_cell_coords
       ~Grid2D.side_inner_cell_index
@@ -84,6 +99,7 @@
       ~Grid2D.side_position
       ~Grid2D.side_to_cell_arg
       ~Grid2D.strides
+      ~Grid2D.vertex_count_per_environment
       ~Grid2D.CellArg
       ~Grid2D.SideArg
       ~Grid2D.SideIndexArg

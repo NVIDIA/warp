@@ -10,6 +10,10 @@
       * Differentiable
 
    Compute the minimum value.
+   
+   On float types, NaN is treated as missing (C ``fmin`` semantics): the
+   operation returns the non-NaN operand when exactly one is NaN, and NaN
+   only when both are NaN.
 
 .. function:: warp._src.lang.min(a: Vector[Scalar, Any], b: Vector[Scalar, Any]) -> Vector[Scalar, Any]
    :noindex:
@@ -35,6 +39,10 @@
       * Differentiable
 
    Compute the minimum value.
+   
+   On float types, NaN elements are treated as missing (C ``fmin`` semantics);
+   the reduction returns the smallest non-NaN element, or NaN only if every
+   element is NaN.
    
    :returns: The minimum element of ``a``.
    

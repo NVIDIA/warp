@@ -18,10 +18,13 @@
       ~Quadmesh2D.build_bvh
       ~Quadmesh2D.bvh_id
       ~Quadmesh2D.cell_arg_value
+      ~Quadmesh2D.cell_bvh_groups
       ~Quadmesh2D.cell_count
+      ~Quadmesh2D.cell_env_arg_value
       ~Quadmesh2D.cell_inverse_deformation_gradient
       ~Quadmesh2D.cell_measure
       ~Quadmesh2D.cell_normal
+      ~Quadmesh2D.environment_count
       ~Quadmesh2D.fill_cell_arg
       ~Quadmesh2D.fill_cell_topo_arg
       ~Quadmesh2D.fill_side_arg
@@ -58,9 +61,12 @@
       ~Quadmesh2D.cell_bvh_id
       ~Quadmesh2D.cell_deformation_gradient
       ~Quadmesh2D.cell_dimension
+      ~Quadmesh2D.cell_env
+      ~Quadmesh2D.cell_environment_index
       ~Quadmesh2D.cell_lookup
       ~Quadmesh2D.cell_measure_ratio
       ~Quadmesh2D.cell_position
+      ~Quadmesh2D.compute_cell_bvh_groups
       ~Quadmesh2D.coords_type
       ~Quadmesh2D.dimension
       ~Quadmesh2D.edge_quad_indices
@@ -70,6 +76,7 @@
       ~Quadmesh2D.scalar_type
       ~Quadmesh2D.side_closest_point
       ~Quadmesh2D.side_deformation_gradient
+      ~Quadmesh2D.side_environment_index
       ~Quadmesh2D.side_from_cell_coords
       ~Quadmesh2D.side_inner_cell_coords
       ~Quadmesh2D.side_inner_cell_index

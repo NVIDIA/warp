@@ -23,6 +23,8 @@
 
    .. autosummary::
    
+      ~LinearOperator.batch_count
+      ~LinearOperator.batch_offsets
       ~LinearOperator.device
       ~LinearOperator.dtype
       ~LinearOperator.matvec

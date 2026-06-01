@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.optim.linear &#8212; Warp 1.13.0</title>
+    <title>warp.optim.linear &#8212; Warp 1.14.0</title>
   
   
   
@@ -44,7 +44,7 @@
 
 
 
-    <script src="../_static/documentation_options.js?v=892a253e"></script>
+    <script src="../_static/documentation_options.js?v=42a3b5f3"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -53,7 +53,7 @@
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.13';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.14';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
@@ -62,13 +62,13 @@
 
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="warp.optim.linear.LinearOperator" href="_generated/warp.optim.linear.LinearOperator.html" />
+    <link rel="next" title="warp.optim.linear.BiCGSTAB" href="_generated/warp.optim.linear.BiCGSTAB.html" />
     <link rel="prev" title="warp.optim.SGD" href="_generated/warp.optim.SGD.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.13.0" />
+  <meta name="docsearch:version" content="1.14.0" />
 
 
   </head>
@@ -139,11 +139,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.13.0 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.13.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.13.0</p>
+    <p class="title logo__title">Warp 1.14.0</p>
   
 </a></div>
     
@@ -278,11 +278,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.13.0 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.13.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.13.0</p>
+    <p class="title logo__title">Warp 1.14.0</p>
   
 </a>
 
@@ -399,6 +399,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/codegen.html">Code Generation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/allocators.html">Allocators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/memory_access.html">CPU/GPU cross-device memory access</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/concurrency.html">Concurrency</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/profiling.html">Profiling</a></li>
 </ul>
@@ -414,7 +415,6 @@
 <li class="toctree-l1"><a class="reference internal" href="warp_autograd.html">warp.autograd</a></li>
 <li class="toctree-l1"><a class="reference internal" href="warp_config.html">warp.config</a></li>
 <li class="toctree-l1"><a class="reference internal" href="warp_fem.html">warp.fem</a></li>
-<li class="toctree-l1"><a class="reference internal" href="warp_jax_experimental.html">warp.jax_experimental</a></li>
 <li class="toctree-l1"><a class="reference internal" href="warp_optim.html">warp.optim</a></li>
 <li class="toctree-l1"><a class="reference internal" href="warp_render.html">warp.render</a></li>
 <li class="toctree-l1"><a class="reference internal" href="warp_sparse.html">warp.sparse</a></li>
@@ -501,25 +501,40 @@ residual (CR), and generalized minimal residual (GMRES) methods.</p>
 <h2>API<a class="headerlink" href="#api" title="Link to this heading">#</a></h2>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.optim.linear.BiCGSTAB.html#warp.optim.linear.BiCGSTAB" title="warp.optim.linear.BiCGSTAB"><code class="xref py py-obj docutils literal notranslate"><span class="pre">BiCGSTAB</span></code></a></p></td>
+<td><p>Pre-allocated state for the BiConjugate Gradient Stabilized solver.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.optim.linear.CG.html#warp.optim.linear.CG" title="warp.optim.linear.CG"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CG</span></code></a></p></td>
+<td><p>Pre-allocated state for the Conjugate Gradient solver.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.optim.linear.CR.html#warp.optim.linear.CR" title="warp.optim.linear.CR"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CR</span></code></a></p></td>
+<td><p>Pre-allocated state for the Conjugate Residual solver.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.optim.linear.GMRES.html#warp.optim.linear.GMRES" title="warp.optim.linear.GMRES"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GMRES</span></code></a></p></td>
+<td><p>Pre-allocated state for the restarted Generalized Minimum Residual solver.</p></td>
+</tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.optim.linear.LinearOperator.html#warp.optim.linear.LinearOperator" title="warp.optim.linear.LinearOperator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LinearOperator</span></code></a></p></td>
 <td><p>Linear operator to be used as left-hand-side of linear iterative solvers.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.optim.linear.aslinearoperator.html#warp.optim.linear.aslinearoperator" title="warp.optim.linear.aslinearoperator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">aslinearoperator</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.optim.linear.LinearSolverState.html#warp.optim.linear.LinearSolverState" title="warp.optim.linear.LinearSolverState"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LinearSolverState</span></code></a></p></td>
+<td><p>Pre-allocated state for a linear iterative solver.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.optim.linear.aslinearoperator.html#warp.optim.linear.aslinearoperator" title="warp.optim.linear.aslinearoperator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">aslinearoperator</span></code></a></p></td>
 <td><p>Cast the dense or sparse matrix <code class="docutils literal notranslate"><span class="pre">A</span></code> as a <a class="reference internal" href="_generated/warp.optim.linear.LinearOperator.html#warp.optim.linear.LinearOperator" title="warp.optim.linear.LinearOperator"><code class="xref py py-class docutils literal notranslate"><span class="pre">LinearOperator</span></code></a>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.optim.linear.bicgstab.html#warp.optim.linear.bicgstab" title="warp.optim.linear.bicgstab"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bicgstab</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.optim.linear.bicgstab_function.html#warp.optim.linear.bicgstab" title="warp.optim.linear.bicgstab"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bicgstab</span></code></a></p></td>
 <td><p>Compute an approximate solution to a linear system using the Biconjugate Gradient Stabilized method (BiCGSTAB).</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.optim.linear.cg.html#warp.optim.linear.cg" title="warp.optim.linear.cg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cg</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.optim.linear.cg_function.html#warp.optim.linear.cg" title="warp.optim.linear.cg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cg</span></code></a></p></td>
 <td><p>Compute an approximate solution to a symmetric, positive-definite linear system using the Conjugate Gradient algorithm.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.optim.linear.cr.html#warp.optim.linear.cr" title="warp.optim.linear.cr"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cr</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.optim.linear.cr_function.html#warp.optim.linear.cr" title="warp.optim.linear.cr"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cr</span></code></a></p></td>
 <td><p>Compute an approximate solution to a symmetric, positive-definite linear system using the Conjugate Residual algorithm.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.optim.linear.gmres.html#warp.optim.linear.gmres" title="warp.optim.linear.gmres"><code class="xref py py-obj docutils literal notranslate"><span class="pre">gmres</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.optim.linear.gmres_function.html#warp.optim.linear.gmres" title="warp.optim.linear.gmres"><code class="xref py py-obj docutils literal notranslate"><span class="pre">gmres</span></code></a></p></td>
 <td><p>Compute an approximate solution to a linear system using the restarted Generalized Minimum Residual method (GMRES[k]).</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.optim.linear.preconditioner.html#warp.optim.linear.preconditioner" title="warp.optim.linear.preconditioner"><code class="xref py py-obj docutils literal notranslate"><span class="pre">preconditioner</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.optim.linear.preconditioner.html#warp.optim.linear.preconditioner" title="warp.optim.linear.preconditioner"><code class="xref py py-obj docutils literal notranslate"><span class="pre">preconditioner</span></code></a></p></td>
 <td><p>Construct and return a preconditioner for an input matrix.</p></td>
 </tr>
 </tbody>
@@ -548,11 +563,11 @@ residual (CR), and generalized minimal residual (GMRES) methods.</p>
       </div>
     </a>
     <a class="right-next"
-       href="_generated/warp.optim.linear.LinearOperator.html"
+       href="_generated/warp.optim.linear.BiCGSTAB.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.optim.linear.LinearOperator</p>
+        <p class="prev-next-title">warp.optim.linear.BiCGSTAB</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -585,7 +600,7 @@ residual (CR), and generalized minimal residual (GMRES) methods.</p>
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/warp_optim_linear.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/release-1.14/docs/api_reference/warp_optim_linear.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

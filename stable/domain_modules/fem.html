@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>FEM Toolkit &#8212; Warp 1.13.0</title>
+    <title>FEM Toolkit &#8212; Warp 1.14.0</title>
   
   
   
@@ -44,7 +44,7 @@
 
 
 
-    <script src="../_static/documentation_options.js?v=892a253e"></script>
+    <script src="../_static/documentation_options.js?v=42a3b5f3"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -54,7 +54,7 @@
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.13';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.14';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
@@ -69,7 +69,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.13.0" />
+  <meta name="docsearch:version" content="1.14.0" />
 
 
   </head>
@@ -140,11 +140,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.13.0 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.13.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.13.0</p>
+    <p class="title logo__title">Warp 1.14.0</p>
   
 </a></div>
     
@@ -279,11 +279,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.13.0 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.13.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.13.0</p>
+    <p class="title logo__title">Warp 1.14.0</p>
   
 </a>
 
@@ -400,6 +400,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/codegen.html">Code Generation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/allocators.html">Allocators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/memory_access.html">CPU/GPU cross-device memory access</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/concurrency.html">Concurrency</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/profiling.html">Profiling</a></li>
 </ul>
@@ -415,7 +416,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_autograd.html">warp.autograd</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_config.html">warp.config</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_fem.html">warp.fem</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_jax_experimental.html">warp.jax_experimental</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_optim.html">warp.optim</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_render.html">warp.render</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_sparse.html">warp.sparse</a></li>
@@ -638,6 +638,7 @@ This strategy is demonstrated in the <code class="docutils literal notranslate">
 <li><p><code class="docutils literal notranslate"><span class="pre">example_taylor_green.py</span></code>: 2D Taylor-Green vortex using mixed Taylor-Hood elements with semi-Lagrangian advection and BDF2 time integration</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">example_kelvin_helmholtz.py</span></code>: 2D Kelvin-Helmholtz instability using Discontinuous Galerkin for compressible Euler equations with Rusanov flux and positivity limiter</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">example_shallow_water.py</span></code>: 2D shallow water equations using Discontinuous Galerkin with Rusanov flux and positivity limiter</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">example_apic_fluid_multi_env.py</span></code>: Colocated multi-environment APIC fluid simulation using environment-aware particle quadrature and batched pressure solves</p></li>
 </ul>
 </div></blockquote>
 </section>
@@ -681,9 +682,31 @@ In case the geometry vertex positions are later modified, the BVH can be refit u
 <p>This operator is also leveraged by the <a class="reference internal" href="../api_reference/_generated/warp.fem.PicQuadrature.html#warp.fem.PicQuadrature" title="warp.fem.PicQuadrature"><code class="xref py py-class docutils literal notranslate"><span class="pre">PicQuadrature</span></code></a> to provide a way to define Particle-In-Cell quadratures from a set of arbitrary particles,
 making it possible to implement MPM-type methods.
 The particles are automatically bucketed to the geometry cells when the quadrature is initialized.
+For multi-environment geometries, position lookups are ambiguous unless the environment is specified.
+Use <a class="reference internal" href="../api_reference/_generated/warp.fem.lookup.html#warp.fem.lookup" title="warp.fem.lookup"><code class="xref py py-obj docutils literal notranslate"><span class="pre">lookup</span></code></a> with an explicit environment index in kernels, and pass <code class="docutils literal notranslate"><span class="pre">env_indices</span></code> to <a class="reference internal" href="../api_reference/_generated/warp.fem.PicQuadrature.html#warp.fem.PicQuadrature" title="warp.fem.PicQuadrature"><code class="xref py py-class docutils literal notranslate"><span class="pre">PicQuadrature</span></code></a> when constructing it from world-space particle positions.
+Calling <a class="reference internal" href="../api_reference/_generated/warp.fem.lookup.html#warp.fem.lookup" title="warp.fem.lookup"><code class="xref py py-obj docutils literal notranslate"><span class="pre">lookup</span></code></a> without an environment index is supported only for single-environment geometries and raises an exception for multi-environment geometries.
+Nonconforming fields also preserve the evaluation sample’s environment when looking up values from a multi-environment backing field.
+For unstructured mesh geometries, per-cell environment indices can be passed through the <code class="docutils literal notranslate"><span class="pre">cell_env</span></code> and <code class="docutils literal notranslate"><span class="pre">env_count</span></code> constructor arguments.
+When a mesh BVH is built, <code class="docutils literal notranslate"><span class="pre">cell_env</span></code> is used as grouped BVH data so explicit-environment lookups only traverse that environment.
+Mesh environment indices are metadata for lookup, particle binning, and environment-first partitioning; callers must still provide disconnected mesh topology for independent environments.
 For GIMP (Generalized Interpolation Material Point) methods where particles can span multiple cells,
 <a class="reference internal" href="../api_reference/_generated/warp.fem.PicQuadrature.html#warp.fem.PicQuadrature" title="warp.fem.PicQuadrature"><code class="xref py py-class docutils literal notranslate"><span class="pre">PicQuadrature</span></code></a> also accepts pre-computed cell indices, coordinates, and particle fractions as a tuple of 2D arrays.
 This is illustrated by the <code class="docutils literal notranslate"><span class="pre">example_stokes_transfer.py</span></code> and <code class="docutils literal notranslate"><span class="pre">example_apic_fluid.py</span></code> examples.</p>
+</section>
+<section id="multi-environment-geometries">
+<h3>Multi-environment geometries<a class="headerlink" href="#multi-environment-geometries" title="Link to this heading">#</a></h3>
+<p>Multi-environment geometries can represent independent simulation environments in one FEM geometry, including environments that overlap in world space.
+This is useful for reinforcement-learning workloads where many environments share the same kernels and data structures but must remain topologically disconnected.
+Grid geometries expose this through an explicit environment count, sparse grid geometries pack all environments into a single NanoVDB volume, and mesh geometries can store per-cell environment indices with the <code class="docutils literal notranslate"><span class="pre">cell_env</span></code> and <code class="docutils literal notranslate"><span class="pre">env_count</span></code> constructor arguments.
+Sparse grid builders generate hidden packed-grid offsets that keep environments from sharing packed-grid faces.
+Custom sparse-grid <code class="docutils literal notranslate"><span class="pre">env_offsets</span></code> are an advanced override for callers that need deterministic packed NanoVDB coordinates, for example to match an externally built volume; custom offsets must preserve the same face-separation property.</p>
+<p>When environments overlap spatially, position-based queries require the environment to be specified explicitly.
+Use <a class="reference internal" href="../api_reference/_generated/warp.fem.lookup.html#warp.fem.lookup" title="warp.fem.lookup"><code class="xref py py-obj docutils literal notranslate"><span class="pre">lookup</span></code></a> with an environment index in kernels, and pass <code class="docutils literal notranslate"><span class="pre">env_indices</span></code> to <a class="reference internal" href="../api_reference/_generated/warp.fem.PicQuadrature.html#warp.fem.PicQuadrature" title="warp.fem.PicQuadrature"><code class="xref py py-class docutils literal notranslate"><span class="pre">PicQuadrature</span></code></a> when constructing particle quadrature from world-space particle positions.
+Calling <a class="reference internal" href="../api_reference/_generated/warp.fem.lookup.html#warp.fem.lookup" title="warp.fem.lookup"><code class="xref py py-obj docutils literal notranslate"><span class="pre">lookup</span></code></a> without an environment index is only valid for single-environment geometries.
+For linear solves, pass <code class="docutils literal notranslate"><span class="pre">environment_first=True</span></code> to <a class="reference internal" href="../api_reference/_generated/warp.fem.make_space_partition.html#warp.fem.make_space_partition" title="warp.fem.make_space_partition"><code class="xref py py-func docutils literal notranslate"><span class="pre">make_space_partition()</span></code></a> to reorder partition nodes by environment.
+The resulting <a class="reference internal" href="../api_reference/_generated/warp.fem.SpacePartition.html#warp.fem.SpacePartition" title="warp.fem.SpacePartition"><code class="xref py py-class docutils literal notranslate"><span class="pre">SpacePartition</span></code></a> exposes <code class="docutils literal notranslate"><span class="pre">env_offsets</span></code>, which can be passed as <code class="docutils literal notranslate"><span class="pre">LinearOperator</span></code> <code class="docutils literal notranslate"><span class="pre">batch_offsets</span></code> for scalar spaces so iterative linear solvers can solve each environment as an independent batch.
+These offsets count partition nodes, not scalar coefficients; for vector- or block-valued fields, convert them to scalar coefficient offsets first.
+See <code class="docutils literal notranslate"><span class="pre">warp/examples/fem/example_apic_fluid_multi_env.py</span></code> for a multi-environment APIC fluid example using <code class="docutils literal notranslate"><span class="pre">PicQuadrature</span></code> environment indices and batched pressure solves.</p>
 </section>
 <section id="nonconforming-fields">
 <h3>Nonconforming fields<a class="headerlink" href="#nonconforming-fields" title="Link to this heading">#</a></h3>
@@ -710,7 +733,9 @@ This is useful for distributed computation (see <code class="docutils literal no
 such as <a class="reference internal" href="../api_reference/_generated/warp.fem.LinearGeometryPartition.html#warp.fem.LinearGeometryPartition" title="warp.fem.LinearGeometryPartition"><code class="xref py py-class docutils literal notranslate"><span class="pre">LinearGeometryPartition</span></code></a>  or <a class="reference internal" href="../api_reference/_generated/warp.fem.ExplicitGeometryPartition.html#warp.fem.ExplicitGeometryPartition" title="warp.fem.ExplicitGeometryPartition"><code class="xref py py-class docutils literal notranslate"><span class="pre">ExplicitGeometryPartition</span></code></a>.</p>
 <p>Function spaces can then be partitioned according to the geometry partition using <a class="reference internal" href="../api_reference/_generated/warp.fem.make_space_partition.html#warp.fem.make_space_partition" title="warp.fem.make_space_partition"><code class="xref py py-func docutils literal notranslate"><span class="pre">make_space_partition()</span></code></a>.
 The resulting <a class="reference internal" href="../api_reference/_generated/warp.fem.SpacePartition.html#warp.fem.SpacePartition" title="warp.fem.SpacePartition"><code class="xref py py-class docutils literal notranslate"><span class="pre">SpacePartition</span></code></a> object allows translating between space-wide and partition-wide node indices,
-and differentiating interior, frontier and exterior nodes.</p>
+and differentiating interior, frontier and exterior nodes.
+For multi-environment geometries and geometry partitions, passing <code class="docutils literal notranslate"><span class="pre">environment_first=True</span></code> to <a class="reference internal" href="../api_reference/_generated/warp.fem.make_space_partition.html#warp.fem.make_space_partition" title="warp.fem.make_space_partition"><code class="xref py py-func docutils literal notranslate"><span class="pre">make_space_partition()</span></code></a> additionally reorders partition nodes by environment and exposes per-environment <code class="docutils literal notranslate"><span class="pre">env_offsets</span></code>.
+If a partition is rebuilt after its geometry or partition layout changes, for example after a geometry environment-count change, reacquire arrays such as <code class="docutils literal notranslate"><span class="pre">env_offsets</span></code> and node-index mappings.</p>
 <p>The <a class="reference internal" href="../api_reference/_generated/warp.fem.Subdomain.html#warp.fem.Subdomain" title="warp.fem.Subdomain"><code class="xref py py-class docutils literal notranslate"><span class="pre">Subdomain</span></code></a> class can be used to integrate over a subset of elements while keeping the full set of degrees of freedom,
 i.e, without reindexing; this is illustrated in the <code class="docutils literal notranslate"><span class="pre">example_streamlines.py</span></code> example to define inflow and outflow boundaries.</p>
 </section>
@@ -920,6 +945,7 @@ This can be used to visualize discrete fields in VTK-aware viewers such as <code
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#advanced-usages">Advanced Usages</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#high-order-curved-geometries">High-order (curved) geometries</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#particle-based-quadrature-and-position-lookups">Particle-based quadrature and position lookups</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#multi-environment-geometries">Multi-environment geometries</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nonconforming-fields">Nonconforming fields</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#partitioning">Partitioning</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#adaptivity">Adaptivity</a></li>
@@ -937,7 +963,7 @@ This can be used to visualize discrete fields in VTK-aware viewers such as <code
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/main/docs/domain_modules/fem.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/release-1.14/docs/domain_modules/fem.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

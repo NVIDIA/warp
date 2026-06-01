@@ -141,6 +141,7 @@ Introductory Examples
  - ``example_taylor_green.py``: 2D Taylor-Green vortex using mixed Taylor-Hood elements with semi-Lagrangian advection and BDF2 time integration
  - ``example_kelvin_helmholtz.py``: 2D Kelvin-Helmholtz instability using Discontinuous Galerkin for compressible Euler equations with Rusanov flux and positivity limiter
  - ``example_shallow_water.py``: 2D shallow water equations using Discontinuous Galerkin with Rusanov flux and positivity limiter
+ - ``example_apic_fluid_multi_env.py``: Colocated multi-environment APIC fluid simulation using environment-aware particle quadrature and batched pressure solves
 
 Advanced Usages
 ---------------
@@ -187,9 +188,33 @@ the ``example_streamlines.py`` example for generating 3D streamlines by tracing 
 This operator is also leveraged by the :class:`.PicQuadrature` to provide a way to define Particle-In-Cell quadratures from a set of arbitrary particles,
 making it possible to implement MPM-type methods.
 The particles are automatically bucketed to the geometry cells when the quadrature is initialized.
+For multi-environment geometries, position lookups are ambiguous unless the environment is specified.
+Use :obj:`.lookup` with an explicit environment index in kernels, and pass ``env_indices`` to :class:`.PicQuadrature` when constructing it from world-space particle positions.
+Calling :obj:`.lookup` without an environment index is supported only for single-environment geometries and raises an exception for multi-environment geometries.
+Nonconforming fields also preserve the evaluation sample's environment when looking up values from a multi-environment backing field.
+For unstructured mesh geometries, per-cell environment indices can be passed through the ``cell_env`` and ``env_count`` constructor arguments.
+When a mesh BVH is built, ``cell_env`` is used as grouped BVH data so explicit-environment lookups only traverse that environment.
+Mesh environment indices are metadata for lookup, particle binning, and environment-first partitioning; callers must still provide disconnected mesh topology for independent environments.
 For GIMP (Generalized Interpolation Material Point) methods where particles can span multiple cells, 
 :class:`.PicQuadrature` also accepts pre-computed cell indices, coordinates, and particle fractions as a tuple of 2D arrays.
 This is illustrated by the ``example_stokes_transfer.py`` and ``example_apic_fluid.py`` examples.
+
+Multi-environment geometries
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Multi-environment geometries can represent independent simulation environments in one FEM geometry, including environments that overlap in world space.
+This is useful for reinforcement-learning workloads where many environments share the same kernels and data structures but must remain topologically disconnected.
+Grid geometries expose this through an explicit environment count, sparse grid geometries pack all environments into a single NanoVDB volume, and mesh geometries can store per-cell environment indices with the ``cell_env`` and ``env_count`` constructor arguments.
+Sparse grid builders generate hidden packed-grid offsets that keep environments from sharing packed-grid faces.
+Custom sparse-grid ``env_offsets`` are an advanced override for callers that need deterministic packed NanoVDB coordinates, for example to match an externally built volume; custom offsets must preserve the same face-separation property.
+
+When environments overlap spatially, position-based queries require the environment to be specified explicitly.
+Use :obj:`.lookup` with an environment index in kernels, and pass ``env_indices`` to :class:`.PicQuadrature` when constructing particle quadrature from world-space particle positions.
+Calling :obj:`.lookup` without an environment index is only valid for single-environment geometries.
+For linear solves, pass ``environment_first=True`` to :func:`.make_space_partition` to reorder partition nodes by environment.
+The resulting :class:`.SpacePartition` exposes ``env_offsets``, which can be passed as ``LinearOperator`` ``batch_offsets`` for scalar spaces so iterative linear solvers can solve each environment as an independent batch.
+These offsets count partition nodes, not scalar coefficients; for vector- or block-valued fields, convert them to scalar coefficient offsets first.
+See ``warp/examples/fem/example_apic_fluid_multi_env.py`` for a multi-environment APIC fluid example using ``PicQuadrature`` environment indices and batched pressure solves.
 
 Nonconforming fields
 ^^^^^^^^^^^^^^^^^^^^
@@ -219,6 +244,8 @@ such as :class:`.LinearGeometryPartition`  or :class:`.ExplicitGeometryPartition
 Function spaces can then be partitioned according to the geometry partition using :func:`.make_space_partition`. 
 The resulting :class:`.SpacePartition` object allows translating between space-wide and partition-wide node indices, 
 and differentiating interior, frontier and exterior nodes.
+For multi-environment geometries and geometry partitions, passing ``environment_first=True`` to :func:`.make_space_partition` additionally reorders partition nodes by environment and exposes per-environment ``env_offsets``.
+If a partition is rebuilt after its geometry or partition layout changes, for example after a geometry environment-count change, reacquire arrays such as ``env_offsets`` and node-index mappings.
 
 The :class:`.Subdomain` class can be used to integrate over a subset of elements while keeping the full set of degrees of freedom,
 i.e, without reindexing; this is illustrated in the ``example_streamlines.py`` example to define inflow and outflow boundaries.

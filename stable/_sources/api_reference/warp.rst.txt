@@ -22,7 +22,6 @@ These modules must be explicitly imported (e.g., ``import warp.autograd``).
 
 - :mod:`warp.autograd`
 - :mod:`warp.fem`
-- :mod:`warp.jax_experimental`
 - :mod:`warp.optim`
 - :mod:`warp.render`
 - :mod:`warp.sparse`
@@ -224,8 +223,6 @@ Spatial Acceleration
    BvhQueryTiled
    HashGrid
    HashGridQuery
-   HashGridQueryD
-   HashGridQueryH
    Mesh
    MeshQueryAABB
    MeshQueryAABBTiled
@@ -322,6 +319,7 @@ Device Management
 
    Device
    ScopedDevice
+   can_access
    get_cuda_device
    get_cuda_device_count
    get_cuda_devices
@@ -415,6 +413,7 @@ Graph Management
    :nosignatures:
    :toctree: _generated
 
+   CaptureMode
    Graph
    ScopedCapture
    capture_begin
@@ -466,6 +465,23 @@ Timing Flags
    TIMING_MEMCPY
    TIMING_MEMSET
 
+Logging
+-------
+
+.. autosummary::
+   :nosignatures:
+   :toctree: _generated
+
+   Logger
+   ScopedLogLevel
+   ScopedLogger
+   get_logger
+   set_logger
+   LOG_DEBUG
+   LOG_ERROR
+   LOG_INFO
+   LOG_WARNING
+
 NumPy Interop
 -------------
 
@@ -494,11 +510,16 @@ JAX Interop
    :nosignatures:
    :toctree: _generated
 
+   JaxCallableGraphMode
+   JaxModulePreloadMode
+   clear_jax_callable_graph_cache
    device_from_jax
    device_to_jax
    dtype_from_jax
    dtype_to_jax
    from_jax
+   jax_callable
+   jax_kernel
    to_jax
 
 PyTorch Interop

@@ -1,0 +1,22 @@
+﻿warp.ScopedLogLevel
+===================
+
+.. currentmodule:: warp
+
+.. autoclass:: ScopedLogLevel
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~ScopedLogLevel.__init__
+   
+   
+
+   
+   
+   

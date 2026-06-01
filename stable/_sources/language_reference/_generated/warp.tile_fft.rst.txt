@@ -24,3 +24,19 @@
    
    :param inout: The input/output tile.
    
+   .. rubric:: Notes
+   
+   Supported FFT sizes by backend:
+   
+   * **CPU**: Any size. Non-power-of-two sizes are capped at 4096;
+     larger non-power-of-two sizes raise ``ValueError``.
+   * **GPU with libmathdx**: Any size. This is the default when Warp
+     is built with libmathdx.
+   * **GPU without libmathdx** (or ``enable_mathdx_fft=False``):
+     Power-of-two sizes only, and the FFT size must be divisible by
+     ``block_dim``. Other sizes raise ``ValueError``. Slower than the
+     libmathdx path.
+   
+   See :attr:`warp.config.enable_mathdx_fft` to control GPU backend
+   selection.
+   

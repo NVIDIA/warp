@@ -9,3 +9,6 @@
       * Kernel
 
    Compute the index of the minimum element of vector ``a``.
+   
+   On float types, NaN elements are skipped; the result is the index of the
+   smallest non-NaN element. If every element is NaN, returns ``0``.

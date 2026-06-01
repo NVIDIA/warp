@@ -54,5 +54,6 @@
       ~Subdomain.element_coordinates
       ~Subdomain.element_lookup
       ~Subdomain.element_partition_lookup
+      ~Subdomain.element_environment_index
    
    

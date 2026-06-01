@@ -19,12 +19,15 @@
       ~DeformedGeometry.build_bvh
       ~DeformedGeometry.bvh_id
       ~DeformedGeometry.cell_arg_value
+      ~DeformedGeometry.cell_bvh_groups
       ~DeformedGeometry.cell_count
       ~DeformedGeometry.cell_deformation_gradient
+      ~DeformedGeometry.cell_env_arg_value
       ~DeformedGeometry.cell_inverse_deformation_gradient
       ~DeformedGeometry.cell_measure
       ~DeformedGeometry.cell_normal
       ~DeformedGeometry.cell_position
+      ~DeformedGeometry.environment_count
       ~DeformedGeometry.fill_cell_arg
       ~DeformedGeometry.fill_side_arg
       ~DeformedGeometry.fill_side_index_arg
@@ -60,13 +63,17 @@
    
       ~DeformedGeometry.base
       ~DeformedGeometry.cell_dimension
+      ~DeformedGeometry.cell_env
+      ~DeformedGeometry.cell_environment_index
       ~DeformedGeometry.cell_lookup
       ~DeformedGeometry.cell_measure_ratio
+      ~DeformedGeometry.compute_cell_bvh_groups
       ~DeformedGeometry.coords_type
       ~DeformedGeometry.dimension
       ~DeformedGeometry.name
       ~DeformedGeometry.sample_type
       ~DeformedGeometry.scalar_type
+      ~DeformedGeometry.side_environment_index
       ~DeformedGeometry.CellArg
       ~DeformedGeometry.SideArg
       ~DeformedGeometry.SideIndexArg

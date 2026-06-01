@@ -1,0 +1,22 @@
+﻿warp.optim.linear.LinearSolverState
+===================================
+
+.. currentmodule:: warp.optim.linear
+
+.. autoclass:: LinearSolverState
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~LinearSolverState.__init__
+   
+   
+
+   
+   
+   

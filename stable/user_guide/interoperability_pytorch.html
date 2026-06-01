@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>PyTorch Interoperability &#8212; Warp 1.13.0</title>
+    <title>PyTorch Interoperability &#8212; Warp 1.14.0</title>
   
   
   
@@ -44,7 +44,7 @@
 
 
 
-    <script src="../_static/documentation_options.js?v=892a253e"></script>
+    <script src="../_static/documentation_options.js?v=42a3b5f3"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -53,7 +53,7 @@
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.13';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.14';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
@@ -68,7 +68,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.13.0" />
+  <meta name="docsearch:version" content="1.14.0" />
 
 
   </head>
@@ -139,11 +139,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.13.0 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.13.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.13.0</p>
+    <p class="title logo__title">Warp 1.14.0</p>
   
 </a></div>
     
@@ -278,11 +278,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.13.0 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.13.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.13.0</p>
+    <p class="title logo__title">Warp 1.14.0</p>
   
 </a>
 
@@ -399,6 +399,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/codegen.html">Code Generation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/allocators.html">Allocators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/memory_access.html">CPU/GPU cross-device memory access</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/concurrency.html">Concurrency</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/profiling.html">Profiling</a></li>
 </ul>
@@ -414,7 +415,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_autograd.html">warp.autograd</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_config.html">warp.config</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_fem.html">warp.fem</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_jax_experimental.html">warp.jax_experimental</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_optim.html">warp.optim</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_render.html">warp.render</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_sparse.html">warp.sparse</a></li>
@@ -508,6 +508,17 @@
 <p>These helper functions allow the conversion of Warp arrays to/from PyTorch tensors without copying the underlying data.
 At the same time, if available, gradient arrays and tensors are converted to/from PyTorch autograd tensors, allowing the use of Warp arrays
 in PyTorch autograd computations.</p>
+<p>Warp also provides helper functions for mapping devices and dtypes between Warp and PyTorch:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="n">torch_device</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">device_to_torch</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+<span class="n">torch_dtype</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">dtype_to_torch</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="n">t</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">torch_device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch_dtype</span><span class="p">)</span>
+
+<span class="n">warp_dtype</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">dtype_from_torch</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+<span class="n">warp_device</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">device_from_torch</span><span class="p">(</span><span class="n">t</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+</pre></div>
+</div>
 </section>
 <section id="stream-conversion">
 <h2>Stream Conversion<a class="headerlink" href="#stream-conversion" title="Link to this heading">#</a></h2>
@@ -662,7 +673,7 @@ Here, we revisit the same example from above where now only a single conversion 
 <h2>Autograd Integration<a class="headerlink" href="#autograd-integration" title="Link to this heading">#</a></h2>
 <section id="using-torch-autograd-function-pytorch-2-3-1">
 <span id="pytorch-autograd-function"></span><h3>Using <code class="docutils literal notranslate"><span class="pre">torch.autograd.Function</span></code> (PyTorch &lt;= 2.3.1)<a class="headerlink" href="#using-torch-autograd-function-pytorch-2-3-1" title="Link to this heading">#</a></h3>
-<p>One can insert Warp kernel launches in a PyTorch graph by defining a <a class="reference external" href="https://docs.pytorch.org/docs/2.10/autograd.html#torch.autograd.Function" title="(in PyTorch v2.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">torch.autograd.Function</span></code></a> class, which
+<p>One can insert Warp kernel launches in a PyTorch graph by defining a <a class="reference external" href="https://docs.pytorch.org/docs/stable/autograd.html#torch.autograd.Function" title="(in PyTorch v2.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">torch.autograd.Function</span></code></a> class, which
 requires forward and backward functions to be defined. After mapping incoming PyTorch tensors to Warp arrays, a Warp kernel
 may be launched in the usual way. In the backward pass, the same kernel’s adjoint may be launched by
 setting <code class="docutils literal notranslate"><span class="pre">adjoint</span> <span class="pre">=</span> <span class="pre">True</span></code> in <a class="reference internal" href="../api_reference/_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch()</span></code></a>. Alternatively, the user may choose to rely on Warp’s tape.
@@ -746,16 +757,16 @@ In the following example, we demonstrate how Warp may be used to evaluate the Ro
 <span class="nb">print</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">xy_np</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
 </pre></div>
 </div>
-<p>Note that if Warp code is wrapped in a <a class="reference external" href="https://docs.pytorch.org/docs/2.10/autograd.html#torch.autograd.Function" title="(in PyTorch v2.10)"><code class="xref py py-class docutils literal notranslate"><span class="pre">torch.autograd.Function</span></code></a> that gets called in <a class="reference external" href="https://docs.pytorch.org/docs/2.10/generated/torch.compile.html#torch.compile" title="(in PyTorch v2.10)"><code class="xref py py-func docutils literal notranslate"><span class="pre">torch.compile()</span></code></a>, it will automatically
-exclude that function from compiler optimizations. If your script uses <a class="reference external" href="https://docs.pytorch.org/docs/2.10/generated/torch.compile.html#torch.compile" title="(in PyTorch v2.10)"><code class="xref py py-func docutils literal notranslate"><span class="pre">torch.compile()</span></code></a>,
+<p>Note that if Warp code is wrapped in a <a class="reference external" href="https://docs.pytorch.org/docs/stable/autograd.html#torch.autograd.Function" title="(in PyTorch v2.12)"><code class="xref py py-class docutils literal notranslate"><span class="pre">torch.autograd.Function</span></code></a> that gets called in <a class="reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.compile.html#torch.compile" title="(in PyTorch v2.12)"><code class="xref py py-func docutils literal notranslate"><span class="pre">torch.compile()</span></code></a>, it will automatically
+exclude that function from compiler optimizations. If your script uses <a class="reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.compile.html#torch.compile" title="(in PyTorch v2.12)"><code class="xref py py-func docutils literal notranslate"><span class="pre">torch.compile()</span></code></a>,
 we recommend using PyTorch version 2.3.0+, which has improvements that address this scenario.</p>
 </section>
 <section id="using-pytorch-custom-operators-pytorch-2-4-0">
 <span id="pytorch-custom-operators"></span><span id="pytorch-custom-ops-example"></span><h3>Using PyTorch Custom Operators (PyTorch &gt;= 2.4.0)<a class="headerlink" href="#using-pytorch-custom-operators-pytorch-2-4-0" title="Link to this heading">#</a></h3>
 <p>PyTorch 2.4+ introduced <a class="reference external" href="https://pytorch.org/tutorials/advanced/python_custom_ops.html#python-custom-ops-tutorial">custom operators</a> to replace
 PyTorch autograd functions. These treat arbitrary Python functions (including Warp calls) as opaque callables, which prevents
-<a class="reference external" href="https://docs.pytorch.org/docs/2.10/generated/torch.compile.html#torch.compile" title="(in PyTorch v2.10)"><code class="xref py py-func docutils literal notranslate"><span class="pre">torch.compile()</span></code></a> from tracing into them. This means that forward PyTorch graph evaluations that include Warp kernel launches can be safely accelerated with
-<a class="reference external" href="https://docs.pytorch.org/docs/2.10/generated/torch.compile.html#torch.compile" title="(in PyTorch v2.10)"><code class="xref py py-func docutils literal notranslate"><span class="pre">torch.compile()</span></code></a>. We can re-write the previous example using custom operators as follows:</p>
+<a class="reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.compile.html#torch.compile" title="(in PyTorch v2.12)"><code class="xref py py-func docutils literal notranslate"><span class="pre">torch.compile()</span></code></a> from tracing into them. This means that forward PyTorch graph evaluations that include Warp kernel launches can be safely accelerated with
+<a class="reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.compile.html#torch.compile" title="(in PyTorch v2.12)"><code class="xref py py-func docutils literal notranslate"><span class="pre">torch.compile()</span></code></a>. We can re-write the previous example using custom operators as follows:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
@@ -1377,7 +1388,7 @@ there will be no need for gradient allocation (deferred or otherwise) and theref
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/main/docs/user_guide/interoperability_pytorch.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/release-1.14/docs/user_guide/interoperability_pytorch.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

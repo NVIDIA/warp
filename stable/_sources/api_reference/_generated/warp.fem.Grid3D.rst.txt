@@ -18,8 +18,11 @@
       ~Grid3D.build_bvh
       ~Grid3D.bvh_id
       ~Grid3D.cell_arg_value
+      ~Grid3D.cell_bvh_groups
       ~Grid3D.cell_count
+      ~Grid3D.cell_env_arg_value
       ~Grid3D.edge_count
+      ~Grid3D.environment_count
       ~Grid3D.fill_cell_arg
       ~Grid3D.fill_side_arg
       ~Grid3D.fill_side_index_arg
@@ -43,11 +46,16 @@
    
       ~Grid3D.Side
       ~Grid3D.base
+      ~Grid3D.boundary_side_count_per_environment
       ~Grid3D.boundary_side_index
       ~Grid3D.cell_closest_point
       ~Grid3D.cell_coordinates
+      ~Grid3D.cell_count_per_environment
       ~Grid3D.cell_deformation_gradient
       ~Grid3D.cell_dimension
+      ~Grid3D.cell_env
+      ~Grid3D.cell_env_index
+      ~Grid3D.cell_environment_index
       ~Grid3D.cell_index
       ~Grid3D.cell_inverse_deformation_gradient
       ~Grid3D.cell_lookup
@@ -56,10 +64,14 @@
       ~Grid3D.cell_normal
       ~Grid3D.cell_position
       ~Grid3D.cell_size
+      ~Grid3D.compute_cell_bvh_groups
       ~Grid3D.coords_type
       ~Grid3D.dimension
+      ~Grid3D.edge_count_per_environment
       ~Grid3D.extents
       ~Grid3D.get_cell
+      ~Grid3D.local_cell_index
+      ~Grid3D.local_side_index
       ~Grid3D.name
       ~Grid3D.origin
       ~Grid3D.res
@@ -67,7 +79,9 @@
       ~Grid3D.scalar_type
       ~Grid3D.side_closest_point
       ~Grid3D.side_coordinates
+      ~Grid3D.side_count_per_environment
       ~Grid3D.side_deformation_gradient
+      ~Grid3D.side_environment_index
       ~Grid3D.side_from_cell_coords
       ~Grid3D.side_inner_cell_coords
       ~Grid3D.side_inner_cell_index
@@ -81,6 +95,7 @@
       ~Grid3D.side_position
       ~Grid3D.side_to_cell_arg
       ~Grid3D.strides
+      ~Grid3D.vertex_count_per_environment
       ~Grid3D.CellArg
       ~Grid3D.SideArg
       ~Grid3D.SideIndexArg

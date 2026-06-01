@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.capture_begin &#8212; Warp 1.13.0</title>
+    <title>warp.capture_begin &#8212; Warp 1.14.0</title>
   
   
   
@@ -44,7 +44,7 @@
 
 
 
-    <script src="../../_static/documentation_options.js?v=892a253e"></script>
+    <script src="../../_static/documentation_options.js?v=42a3b5f3"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -53,7 +53,7 @@
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.13';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.14';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
@@ -68,7 +68,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.13.0" />
+  <meta name="docsearch:version" content="1.14.0" />
 
 
   </head>
@@ -139,11 +139,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.13.0 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.13.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.13.0</p>
+    <p class="title logo__title">Warp 1.14.0</p>
   
 </a></div>
     
@@ -278,11 +278,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.13.0 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.13.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.13.0</p>
+    <p class="title logo__title">Warp 1.14.0</p>
   
 </a>
 
@@ -399,6 +399,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../../deep_dive/codegen.html">Code Generation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../deep_dive/allocators.html">Allocators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../deep_dive/memory_access.html">CPU/GPU cross-device memory access</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../deep_dive/concurrency.html">Concurrency</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../deep_dive/profiling.html">Profiling</a></li>
 </ul>
@@ -414,7 +415,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../warp_autograd.html">warp.autograd</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_config.html">warp.config</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_fem.html">warp.fem</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../warp_jax_experimental.html">warp.jax_experimental</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_optim.html">warp.optim</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_render.html">warp.render</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_sparse.html">warp.sparse</a></li>
@@ -503,9 +503,10 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">force_module_load</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">external</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">apic</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">capture_mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">CaptureMode.THREAD_LOCAL</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L9256-L9379"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.capture_begin" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/context.py#L9778-L9911"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.capture_begin" title="Link to this definition">#</a></dt>
 <dd><p>Begin capture of a graph.</p>
 <p>Captures all subsequent kernel launches and memory operations. On CUDA devices,
 operations are captured by the CUDA driver into a native graph. On CPU devices,
@@ -526,11 +527,19 @@ When running with CUDA drivers that support CUDA 12.3 or newer, this option is n
 <code class="docutils literal notranslate"><span class="pre">True</span></code> because kernels can be loaded during graph capture on more recent drivers. If this argument is
 <code class="docutils literal notranslate"><span class="pre">None</span></code>, then the behavior inherits from <code class="docutils literal notranslate"><span class="pre">warp.config.enable_graph_capture_module_load_by_default</span></code> if the
 driver is older than CUDA 12.3.</p></li>
-<li><p><strong>external</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether the capture was already started externally (CUDA only).</p></li>
+<li><p><strong>external</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether the capture was already started externally (CUDA only).
+The <code class="docutils literal notranslate"><span class="pre">capture_mode</span></code> argument should specify the mode that was used to
+initiate the external capture.</p></li>
 <li><p><strong>apic</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether to allow <a class="reference internal" href="warp.capture_save.html#warp.capture_save" title="warp.capture_save"><code class="xref py py-func docutils literal notranslate"><span class="pre">capture_save()</span></code></a> on the captured graph. On
 CUDA this also enables APIC byte-stream recording during the capture;
 on CPU, recording happens regardless because it is the only
 replay mechanism.</p></li>
+<li><p><strong>capture_mode</strong> (<a class="reference internal" href="warp.CaptureMode.html#warp.CaptureMode" title="warp._src.context.CaptureMode"><em>CaptureMode</em></a>) – The <a class="reference internal" href="warp.CaptureMode.html#warp.CaptureMode" title="warp.CaptureMode"><code class="xref py py-class docutils literal notranslate"><span class="pre">CaptureMode</span></code></a> (i.e.
+<code class="docutils literal notranslate"><span class="pre">cudaStreamCaptureMode</span></code>) used when Warp opens the capture.
+Defaults to <a class="reference internal" href="warp.CaptureMode.html#warp.CaptureMode.THREAD_LOCAL" title="warp.CaptureMode.THREAD_LOCAL"><code class="xref py py-attr docutils literal notranslate"><span class="pre">CaptureMode.THREAD_LOCAL</span></code></a>. Use
+<a class="reference internal" href="warp.CaptureMode.html#warp.CaptureMode.RELAXED" title="warp.CaptureMode.RELAXED"><code class="xref py py-attr docutils literal notranslate"><span class="pre">CaptureMode.RELAXED</span></code></a> when composing with libraries that
+may call capture-unsafe CUDA runtime APIs during the capture
+(e.g. lazy context initialization). Ignored on CPU devices.</p></li>
 </ul>
 </dd>
 </dl>
@@ -595,7 +604,7 @@ replay mechanism.</p></li>
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/_generated/warp.capture_begin.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/release-1.14/docs/api_reference/_generated/warp.capture_begin.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

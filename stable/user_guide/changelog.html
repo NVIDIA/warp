@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Changelog &#8212; Warp 1.13.0</title>
+    <title>Changelog &#8212; Warp 1.14.0</title>
   
   
   
@@ -44,7 +44,7 @@
 
 
 
-    <script src="../_static/documentation_options.js?v=892a253e"></script>
+    <script src="../_static/documentation_options.js?v=42a3b5f3"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -53,7 +53,7 @@
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.13';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.14';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
@@ -68,7 +68,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.13.0" />
+  <meta name="docsearch:version" content="1.14.0" />
 
 
   </head>
@@ -139,11 +139,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.13.0 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.13.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.13.0</p>
+    <p class="title logo__title">Warp 1.14.0</p>
   
 </a></div>
     
@@ -278,11 +278,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.13.0 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.13.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.13.0</p>
+    <p class="title logo__title">Warp 1.14.0</p>
   
 </a>
 
@@ -399,6 +399,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/codegen.html">Code Generation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/allocators.html">Allocators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/memory_access.html">CPU/GPU cross-device memory access</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/concurrency.html">Concurrency</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/profiling.html">Profiling</a></li>
 </ul>
@@ -414,7 +415,6 @@
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_autograd.html">warp.autograd</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_config.html">warp.config</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_fem.html">warp.fem</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_jax_experimental.html">warp.jax_experimental</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_optim.html">warp.optim</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_render.html">warp.render</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_sparse.html">warp.sparse</a></li>
@@ -492,9 +492,206 @@
 <section id="changelog">
 <h1>Changelog<a class="headerlink" href="#changelog" title="Link to this heading">#</a></h1>
 <section id="id1">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.13.0">1.13.0</a> - 2026-05-04<a class="headerlink" href="#id1" title="Link to this heading">#</a></h2>
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.14.0">1.14.0</a> - 2026-06-01<a class="headerlink" href="#id1" title="Link to this heading">#</a></h2>
 <section id="added">
 <h3>Added<a class="headerlink" href="#added" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>Extend APIC graph capture on CPU to replay backward (adjoint) kernel launches, tile-using kernels, kernels with
+parameters of any size, and <code class="docutils literal notranslate"><span class="pre">&#64;wp.struct</span></code> / <code class="docutils literal notranslate"><span class="pre">wp.indexedarray</span></code> launch arguments that reference Warp array data,
+gradient buffers, or <code class="docutils literal notranslate"><span class="pre">wp.indexedarray</span></code> indices
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1431">GH-1431</a>).</p></li>
+<li><p>Add multi-environment support to <code class="docutils literal notranslate"><span class="pre">warp.fem</span></code>: colocated <code class="docutils literal notranslate"><span class="pre">Grid2D</span></code>/<code class="docutils literal notranslate"><span class="pre">Grid3D</span></code> and packed <code class="docutils literal notranslate"><span class="pre">Nanogrid</span></code>/<code class="docutils literal notranslate"><span class="pre">AdaptiveNanogrid</span></code>
+geometries with environment-aware lookup and <code class="docutils literal notranslate"><span class="pre">PicQuadrature</span></code> environment indices, per-cell environment metadata for
+unstructured FEM meshes with grouped-BVH lookup and nonconforming field evaluation, and environment-first space
+partitions for batched solves plus a multi-environment APIC fluid example
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1407">GH-1407</a>).</p></li>
+<li><p>Add pluggable logging infrastructure: pass a custom logger object with <code class="docutils literal notranslate"><span class="pre">debug()</span></code>, <code class="docutils literal notranslate"><span class="pre">info()</span></code>, <code class="docutils literal notranslate"><span class="pre">warning()</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">error()</span></code> methods to <code class="docutils literal notranslate"><span class="pre">wp.set_logger()</span></code>, or scope it temporarily with <code class="docutils literal notranslate"><span class="pre">wp.ScopedLogger</span></code>. <code class="docutils literal notranslate"><span class="pre">wp.Logger</span></code> documents
+this interface. <code class="docutils literal notranslate"><span class="pre">wp.config.log_level</span></code> controls the global verbosity threshold and can be scoped temporarily with
+<code class="docutils literal notranslate"><span class="pre">wp.ScopedLogLevel</span></code>. All Python-side diagnostic output emitted by Warp now routes through the configured logger
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1315">GH-1315</a>, <a class="reference external" href="https://github.com/NVIDIA/warp/issues/1434">GH-1434</a>).</p></li>
+<li><p>Add reusable solver functors for <code class="docutils literal notranslate"><span class="pre">warp.optim.linear.cg()</span></code>, <code class="docutils literal notranslate"><span class="pre">warp.optim.linear.cr()</span></code>,
+<code class="docutils literal notranslate"><span class="pre">warp.optim.linear.bicgstab()</span></code>, and <code class="docutils literal notranslate"><span class="pre">warp.optim.linear.gmres()</span></code>. Passing <code class="docutils literal notranslate"><span class="pre">run=False</span></code> returns a state object
+that preallocates solver temporary buffers and can be reused for repeated solves with matching shape, dtype, and
+device, plus the same batch layout for batched operators. This avoids per-call allocation overhead and enables use
+in CUDA subgraphs (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1391">GH-1391</a>).</p></li>
+<li><p>Add batched-input support to <code class="docutils literal notranslate"><span class="pre">warp.optim.linear</span></code> solvers: a <code class="docutils literal notranslate"><span class="pre">warp.optim.linear.LinearOperator</span></code> built with
+<code class="docutils literal notranslate"><span class="pre">batch_offsets</span></code> partitions the DOF vector into independent subproblems that are all solved in a single launch
+sequence, with per-batch convergence checks (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1391">GH-1391</a>).</p></li>
+<li><p>Add <code class="docutils literal notranslate"><span class="pre">wp.tile_fft()</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.tile_ifft()</span></code> (and their adjoints) on CPU and on GPU builds without libmathdx.
+CPU supports any power-of-two FFT length and non-power-of-two FFT lengths up to 4096 elements. The GPU fallback
+used without libmathdx, or selected with <code class="docutils literal notranslate"><span class="pre">wp.config.enable_mathdx_fft=False</span></code> or module option
+<code class="docutils literal notranslate"><span class="pre">&quot;enable_mathdx_fft&quot;:</span> <span class="pre">False</span></code>, requires a power-of-two FFT length divisible by <code class="docutils literal notranslate"><span class="pre">block_dim</span></code>, trading runtime
+performance for faster kernel compile times (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1396">GH-1396</a>).</p></li>
+<li><p>Add cooperative GPU scalar fallbacks for <code class="docutils literal notranslate"><span class="pre">wp.tile_cholesky()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.tile_cholesky_solve()</span></code>,
+<code class="docutils literal notranslate"><span class="pre">wp.tile_lower_solve()</span></code>, and <code class="docutils literal notranslate"><span class="pre">wp.tile_upper_solve()</span></code> (and their in-place variants) and for the
+<code class="docutils literal notranslate"><span class="pre">wp.tile_cholesky()</span></code> adjoint on GPU builds without libmathdx. The fallback can also be selected on GPU builds
+with libmathdx through <code class="docutils literal notranslate"><span class="pre">wp.config.enable_mathdx_solver=False</span></code> or module option <code class="docutils literal notranslate"><span class="pre">&quot;enable_mathdx_solver&quot;:</span> <span class="pre">False</span></code>
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1402">GH-1402</a>).</p></li>
+<li><p>Add the <code class="docutils literal notranslate"><span class="pre">wp.copysign()</span></code> built-in function to copy one floating-point value’s sign onto another value’s magnitude,
+matching C <code class="docutils literal notranslate"><span class="pre">copysign()</span></code> (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1444">GH-1444</a>).</p></li>
+<li><p>Add <code class="docutils literal notranslate"><span class="pre">wp.tile_empty()</span></code> to allocate an uninitialized register or shared-memory tile when every element will be
+overwritten before it is read, avoiding the initialization cost of <code class="docutils literal notranslate"><span class="pre">wp.tile_zeros()</span></code>. Use <code class="docutils literal notranslate"><span class="pre">wp.tile_zeros()</span></code> for
+accumulators or partial writes (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1312">GH-1312</a>).</p></li>
+<li><p>Add adjoints for <code class="docutils literal notranslate"><span class="pre">wp.curlnoise()</span></code> in 2D, 3D, and 4D, so gradients now propagate through curl-noise force fields.
+Previously, differentiating through <code class="docutils literal notranslate"><span class="pre">wp.curlnoise()</span></code> produced zero gradients
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1012">GH-1012</a>).</p></li>
+<li><p>Expose CUDA graph capture modes via <code class="docutils literal notranslate"><span class="pre">wp.CaptureMode</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.ScopedCapture</span></code>, and <code class="docutils literal notranslate"><span class="pre">wp.capture_begin()</span></code>. Users can
+select <code class="docutils literal notranslate"><span class="pre">wp.CaptureMode.GLOBAL</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.CaptureMode.THREAD_LOCAL</span></code> (the default), or <code class="docutils literal notranslate"><span class="pre">wp.CaptureMode.RELAXED</span></code> to
+control how CUDA handles capture-unsafe runtime calls during graph capture
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1410">GH-1410</a>).</p></li>
+<li><p>Add <code class="docutils literal notranslate"><span class="pre">build_lib.py</span> <span class="pre">--use-dynamic-cuda</span></code> for source builds that should link Warp’s native library against shared
+CUDA libraries instead of embedding them statically. The corresponding shared libraries must be present at runtime
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1334">GH-1334</a>).</p></li>
+<li><p>Add <code class="docutils literal notranslate"><span class="pre">build_lib.py</span> <span class="pre">--sanitize=&lt;name&gt;</span></code> for source builds of Warp’s native libraries, enabling AddressSanitizer
+instrumentation for <code class="docutils literal notranslate"><span class="pre">warp.dll</span></code> and <code class="docutils literal notranslate"><span class="pre">warp-clang.dll</span></code>
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1387">GH-1387</a>).</p></li>
+</ul>
+</section>
+<section id="deprecated">
+<h3>Deprecated<a class="headerlink" href="#deprecated" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>Deprecate <code class="docutils literal notranslate"><span class="pre">warp.jax_experimental</span></code> in favor of top-level <code class="docutils literal notranslate"><span class="pre">warp</span></code> JAX APIs. Migrate
+<code class="docutils literal notranslate"><span class="pre">warp.jax_experimental.jax_kernel()</span></code> to <code class="docutils literal notranslate"><span class="pre">warp.jax_kernel()</span></code>, <code class="docutils literal notranslate"><span class="pre">warp.jax_experimental.jax_callable()</span></code> to
+<code class="docutils literal notranslate"><span class="pre">warp.jax_callable()</span></code>, and <code class="docutils literal notranslate"><span class="pre">warp.jax_experimental.GraphMode</span></code> to <code class="docutils literal notranslate"><span class="pre">warp.JaxCallableGraphMode</span></code>.
+<code class="docutils literal notranslate"><span class="pre">warp.jax_experimental.ModulePreloadMode</span></code> is also available as <code class="docutils literal notranslate"><span class="pre">warp.JaxModulePreloadMode</span></code>. The
+<code class="docutils literal notranslate"><span class="pre">get_jax_callable_default_graph_cache_max()</span></code> and <code class="docutils literal notranslate"><span class="pre">set_jax_callable_default_graph_cache_max()</span></code> helpers are also
+deprecated. Pass <code class="docutils literal notranslate"><span class="pre">graph_cache_max</span></code> to <code class="docutils literal notranslate"><span class="pre">warp.jax_callable()</span></code> or update the returned callable’s <code class="docutils literal notranslate"><span class="pre">graph_cache_max</span></code>
+attribute instead. <code class="docutils literal notranslate"><span class="pre">warp.jax_callable()</span></code> defaults to <code class="docutils literal notranslate"><span class="pre">graph_cache_max=32</span></code>. Pass <code class="docutils literal notranslate"><span class="pre">graph_cache_max=None</span></code> for an
+unlimited graph cache. <code class="docutils literal notranslate"><span class="pre">warp.jax_experimental</span></code> will be removed in Warp 1.16
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1370">GH-1370</a>).</p></li>
+<li><p>Deprecate <code class="docutils literal notranslate"><span class="pre">warp.config.verbose</span></code> and <code class="docutils literal notranslate"><span class="pre">warp.config.quiet</span></code> in favor of <code class="docutils literal notranslate"><span class="pre">warp.config.log_level</span></code>. Reading or setting
+either flag continues to work during the deprecation window and now emits a one-time <code class="docutils literal notranslate"><span class="pre">DeprecationWarning</span></code>.
+<code class="docutils literal notranslate"><span class="pre">warp.config.verbose_warnings</span></code> is unaffected and continues to control whether warning output includes the source
+location (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1315">GH-1315</a>).</p></li>
+<li><p>Deprecate <code class="docutils literal notranslate"><span class="pre">wp.HashGridQueryH</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.HashGridQueryD</span></code>. Use <code class="docutils literal notranslate"><span class="pre">wp.HashGridQuery</span></code> instead. The legacy runtime aliases
+remain available during the deprecation period for compatibility, but public stubs now expose only
+<code class="docutils literal notranslate"><span class="pre">wp.HashGridQuery</span></code>, so type annotations should migrate (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1452">GH-1452</a>).</p></li>
+<li><p>Defer until Warp 1.15 the scheduled removal of the deprecated <code class="docutils literal notranslate"><span class="pre">quadrature</span></code> and <code class="docutils literal notranslate"><span class="pre">domain</span></code> arguments of
+<code class="docutils literal notranslate"><span class="pre">warp.fem.interpolate()</span></code>, and the <code class="docutils literal notranslate"><span class="pre">space</span></code> argument of <code class="docutils literal notranslate"><span class="pre">warp.fem.make_space_restriction()</span></code> and
+<code class="docutils literal notranslate"><span class="pre">warp.fem.make_space_partition()</span></code>.</p></li>
+</ul>
+</section>
+<section id="changed">
+<h3>Changed<a class="headerlink" href="#changed" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p><strong>Breaking:</strong> Update APIC graph serialization to support <code class="docutils literal notranslate"><span class="pre">wp.indexedarray</span></code> launch parameters and <code class="docutils literal notranslate"><span class="pre">&#64;wp.struct</span></code>
+arguments containing arrays in <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> files. Files saved by Warp 1.13 use the old <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> format and must be
+recaptured. Native APIC C/C++ API users must update code that includes <code class="docutils literal notranslate"><span class="pre">apic.h</span></code> to declare APIC handles as
+explicit C/C++ pointers, such as <code class="docutils literal notranslate"><span class="pre">APICState*</span></code> and <code class="docutils literal notranslate"><span class="pre">APICGraph*</span></code>, instead of the old pointer-typedef style
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1431">GH-1431</a>).</p></li>
+<li><p><strong>Breaking:</strong> Change <code class="docutils literal notranslate"><span class="pre">warp.fem.PicQuadrature()</span></code> and <code class="docutils literal notranslate"><span class="pre">warp.fem.make_space_partition()</span></code> positional signatures for
+multi-environment FEM support. <code class="docutils literal notranslate"><span class="pre">PicQuadrature()</span></code> now accepts <code class="docutils literal notranslate"><span class="pre">env_indices</span></code> before <code class="docutils literal notranslate"><span class="pre">requires_grad</span></code>, while
+<code class="docutils literal notranslate"><span class="pre">make_space_partition()</span></code> accepts <code class="docutils literal notranslate"><span class="pre">environment_first</span></code> before the now-keyword-only <code class="docutils literal notranslate"><span class="pre">device</span></code> and <code class="docutils literal notranslate"><span class="pre">temporary_store</span></code>.
+Pass existing <code class="docutils literal notranslate"><span class="pre">requires_grad</span></code>, <code class="docutils literal notranslate"><span class="pre">device</span></code>, and <code class="docutils literal notranslate"><span class="pre">temporary_store</span></code> arguments by keyword to preserve behavior
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1407">GH-1407</a>).</p></li>
+<li><p>Allow GPU kernels to receive CPU arrays on systems where the GPU reports direct pageable CPU memory access, enabling
+zero-copy launches on systems with Heterogeneous Memory Management (HMM) or Address Translation Services (ATS). Add
+<code class="docutils literal notranslate"><span class="pre">wp.can_access()</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.config.LaunchArrayAccessMode</span></code>. Use <code class="docutils literal notranslate"><span class="pre">wp.config.launch_array_access_mode</span></code> to select relaxed,
+strict, or checked pre-launch diagnostics on mixed-device array launches
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1461">GH-1461</a>).</p></li>
+<li><p>Reduce <code class="docutils literal notranslate"><span class="pre">wp.tid()</span></code> overhead in generated kernels by specializing launch-bounds handling for the number of indices a
+kernel reads. Existing behavior is preserved when a kernel unpacks fewer <code class="docutils literal notranslate"><span class="pre">wp.tid()</span></code> indices than the launch provides:
+extra trailing launch dimensions still run additional threads that reuse the same returned leading indices
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1270">GH-1270</a>).</p></li>
+<li><p><strong>Breaking for type checkers:</strong> Consolidate the documented <code class="docutils literal notranslate"><span class="pre">wp.HashGrid</span></code> query API around <code class="docutils literal notranslate"><span class="pre">wp.HashGridQuery</span></code>.
+Query objects returned by <code class="docutils literal notranslate"><span class="pre">wp.hash_grid_query()</span></code> now appear as <code class="docutils literal notranslate"><span class="pre">wp.HashGridQuery</span></code> in generated docs and stubs
+regardless of the grid coordinate precision. Public stubs no longer expose <code class="docutils literal notranslate"><span class="pre">wp.HashGridQueryH</span></code> or
+<code class="docutils literal notranslate"><span class="pre">wp.HashGridQueryD</span></code>, though the runtime aliases remain available during the deprecation period
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1452">GH-1452</a>).</p></li>
+<li><p>Allow <code class="docutils literal notranslate"><span class="pre">launch_dims</span></code> to be specified when <code class="docutils literal notranslate"><span class="pre">enable_backward=True</span></code> in <code class="docutils literal notranslate"><span class="pre">warp.jax_kernel()</span></code> and
+<code class="docutils literal notranslate"><span class="pre">warp.jax_experimental.jax_kernel()</span></code> (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1380">GH-1380</a>).</p></li>
+<li><p>Improve the non-libmathdx GPU fallback for differentiated <code class="docutils literal notranslate"><span class="pre">wp.tile_cholesky()</span></code> by replacing the previous thread-0
+scalar adjoint with a cooperative shared-memory implementation that mirrors the libmathdx adjoint and distributes work
+across the CUDA block. This keeps the fallback usable when libmathdx is unavailable or <code class="docutils literal notranslate"><span class="pre">enable_mathdx_solver=False</span></code>.
+The tradeoff is two per-block scratch tiles (<code class="docutils literal notranslate"><span class="pre">__shared__</span> <span class="pre">T[n*n]</span></code>, 16 KiB at <code class="docutils literal notranslate"><span class="pre">n=32</span></code> and 64 KiB at <code class="docutils literal notranslate"><span class="pre">n=64</span></code> for
+<code class="docutils literal notranslate"><span class="pre">float64</span></code>), so large differentiated Cholesky tiles can exceed shared-memory limits that previously allowed them
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1402">GH-1402</a>).</p></li>
+<li><p>Reduce Python-scope overhead for converting <code class="docutils literal notranslate"><span class="pre">wp.float16</span></code> values to and from Python <code class="docutils literal notranslate"><span class="pre">float</span></code> by using a native
+Python C API fast-call path. This optimization is why Linux source builds now require <code class="docutils literal notranslate"><span class="pre">Python.h</span></code>
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1339">GH-1339</a>).</p></li>
+<li><p>Clean up autodiff handling for built-ins that intentionally do not support gradients: remove native no-op placeholder
+adjoints and prevent <code class="docutils literal notranslate"><span class="pre">wp.map()</span></code> / <code class="docutils literal notranslate"><span class="pre">wp.tile_map()</span></code> from attempting backward passes for non-differentiable mapped
+callables such as integer bitwise operations (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/988">GH-988</a>).</p></li>
+<li><p><strong>Breaking:</strong> Require Python development headers (<code class="docutils literal notranslate"><span class="pre">Python.h</span></code>) when building from source on Linux. Warp now compiles
+a native fast-call extension that uses the Python C API for <code class="docutils literal notranslate"><span class="pre">wp.float16</span></code> conversions, bypassing the previous
+<code class="docutils literal notranslate"><span class="pre">ctypes</span></code> path to lower per-conversion overhead. On Linux, install the distribution package that provides
+<code class="docutils literal notranslate"><span class="pre">Python.h</span></code> (for example, <code class="docutils literal notranslate"><span class="pre">python3-dev</span></code> / <code class="docutils literal notranslate"><span class="pre">libpython3-dev</span></code> on Debian or Ubuntu) if the build reports missing
+headers (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1339">GH-1339</a>).</p></li>
+<li><p>Change Linux/macOS debug builds from source to use <code class="docutils literal notranslate"><span class="pre">-Og</span> <span class="pre">-g</span></code> for the native library instead of
+<code class="docutils literal notranslate"><span class="pre">-O0</span> <span class="pre">-g</span> <span class="pre">-fkeep-inline-functions</span></code>. This enables debug-friendly optimizations, restores <code class="docutils literal notranslate"><span class="pre">-Wuninitialized</span></code> dataflow
+analysis, and avoids leaking unused inline function bodies from <code class="docutils literal notranslate"><span class="pre">&lt;Python.h&gt;</span></code>
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1414">GH-1414</a>).</p></li>
+</ul>
+</section>
+<section id="fixed">
+<h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>Fix <code class="docutils literal notranslate"><span class="pre">wp.min()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.max()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.clamp()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.atomic_min()</span></code>, and <code class="docutils literal notranslate"><span class="pre">wp.atomic_max()</span></code> on float arguments to use
+NaN-as-missing semantics matching C <code class="docutils literal notranslate"><span class="pre">fmin()</span></code> / <code class="docutils literal notranslate"><span class="pre">fmax()</span></code>: the operation returns the non-NaN operand when exactly one
+is NaN, and NaN only when both are NaN. Vector reductions and <code class="docutils literal notranslate"><span class="pre">wp.argmin()</span></code> / <code class="docutils literal notranslate"><span class="pre">wp.argmax()</span></code> skip NaN slots. Adjoint
+and atomic variants are updated consistently to route gradients to whichever operand the forward picked. Integer
+overloads are unchanged (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1376">GH-1376</a>).</p></li>
+<li><p>Fix APIC backward replay for loaded <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> graphs so output gradients and retained gradients are preserved and used
+the same way as in a normal <code class="docutils literal notranslate"><span class="pre">wp.Tape().backward()</span></code> call. Older <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> format versions now fail fast instead of
+being misparsed (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1431">GH-1431</a>).</p></li>
+<li><p>Fix assorted APIC capture issues involving zero-length arrays, <code class="docutils literal notranslate"><span class="pre">wp_apic_end_recording(NULL)</span></code>, asynchronous parameter
+updates, and vector and small scalar parameters. <code class="docutils literal notranslate"><span class="pre">wp.utils.array_scan()</span></code> during CPU APIC capture now raises
+<code class="docutils literal notranslate"><span class="pre">NotImplementedError</span></code> instead of producing stale replay output
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1431">GH-1431</a>).</p></li>
+<li><p>Fix Warp warning emission overriding user warning filters, making deprecation warnings unsuppressible via
+<code class="docutils literal notranslate"><span class="pre">warnings.filterwarnings()</span></code> (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1315">GH-1315</a>).</p></li>
+<li><p>Fix adjoint computation for in-place composite-component writes on arrays. Writes of the form <code class="docutils literal notranslate"><span class="pre">arr[i].y</span> <span class="pre">=</span> <span class="pre">rhs</span></code>,
+<code class="docutils literal notranslate"><span class="pre">arr[i].field</span> <span class="pre">=</span> <span class="pre">rhs</span></code> (scalar struct field), <code class="docutils literal notranslate"><span class="pre">m[i][r,</span> <span class="pre">c]</span> <span class="pre">=</span> <span class="pre">rhs</span></code>, <code class="docutils literal notranslate"><span class="pre">t[i].p</span> <span class="pre">=</span> <span class="pre">v</span></code>, <code class="docutils literal notranslate"><span class="pre">t[i].q</span> <span class="pre">=</span> <span class="pre">q</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">state[i].position</span> <span class="pre">=</span> <span class="pre">rhs</span></code> (composite-valued struct field) now correctly propagate gradients instead of silently
+dropping them (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/583">GH-583</a>,
+<a class="reference external" href="https://github.com/NVIDIA/warp/issues/248">GH-248</a>, <a class="reference external" href="https://github.com/NVIDIA/warp/issues/1174">GH-1174</a>).</p></li>
+<li><p>Fix autodiff metadata so unsupported gradients no longer appear to be implemented for APIs such as vector
+<code class="docutils literal notranslate"><span class="pre">wp.sign()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.volume_sample_i()</span></code>, and the 4-D <code class="docutils literal notranslate"><span class="pre">wp.atomic_exch()</span></code> overload
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1466">GH-1466</a>).</p></li>
+<li><p>Stabilize <code class="docutils literal notranslate"><span class="pre">wp.closest_point_edge_edge()</span></code> at near-parallel configurations. Forward output is unchanged for
+well-conditioned inputs and is now well-defined (and gradient-stable) for near-parallel edges, where it could
+previously return geometrically valid but unstable barycentric weights
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1437">GH-1437</a>).</p></li>
+<li><p>Fix tile byte-offset overflow in <code class="docutils literal notranslate"><span class="pre">wp.tile_load()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.tile_store()</span></code>, and indexed tile operations for arrays larger
+than 2 GiB. The fix uses 64-bit address arithmetic for tile global-memory accesses, which may slightly increase
+address-calculation overhead in tile-heavy kernels (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1422">GH-1422</a>).</p></li>
+<li><p>Fix assigning tile variables between register and shared storage in both directions, including pipelined
+<code class="docutils literal notranslate"><span class="pre">wp.tile_matmul()</span></code> kernels, and correct the corresponding adjoints
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1439">GH-1439</a>, <a class="reference external" href="https://github.com/NVIDIA/warp/issues/1440">GH-1440</a>).</p></li>
+<li><p>Fix cuBQL mesh BVH construction and refit on CUDA devices without memory pool support
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1430">GH-1430</a>).</p></li>
+<li><p>Fix <code class="docutils literal notranslate"><span class="pre">wp.map()</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.utils.create_warp_function()</span></code> failing with <code class="docutils literal notranslate"><span class="pre">IndentationError</span></code> for lambda expressions split
+across multiple parenthesized lines, such as formatter-wrapped expressions
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1351">GH-1351</a>).</p></li>
+<li><p>Reject <code class="docutils literal notranslate"><span class="pre">wp.bfloat16</span></code> <code class="docutils literal notranslate"><span class="pre">out</span></code> tiles in <code class="docutils literal notranslate"><span class="pre">wp.tile_matmul()</span></code>. The underlying libmathdx GEMM backend requires <code class="docutils literal notranslate"><span class="pre">out</span></code> to be
+<code class="docutils literal notranslate"><span class="pre">wp.float16</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.float32</span></code>, or <code class="docutils literal notranslate"><span class="pre">wp.float64</span></code>. When the backward pass is enabled, <code class="docutils literal notranslate"><span class="pre">wp.bfloat16</span></code> <code class="docutils literal notranslate"><span class="pre">a</span></code> and <code class="docutils literal notranslate"><span class="pre">b</span></code> tiles are
+also rejected because the backward pass uses them as accumulators for <code class="docutils literal notranslate"><span class="pre">adjA</span></code> and <code class="docutils literal notranslate"><span class="pre">adjB</span></code>. Set <code class="docutils literal notranslate"><span class="pre">enable_backward=False</span></code>
+on the kernel’s module if gradients are not needed (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1427">GH-1427</a>).</p></li>
+<li><p>Fix <code class="docutils literal notranslate"><span class="pre">wp.array.fill_()</span></code> performing temporary device allocations for common fill values, which broke CUDA graph
+composability. Oversized fill values still fall back to the previous staging path
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1412">GH-1412</a>).</p></li>
+<li><p>Fix a memory leak with retained graph allocations (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1429">GH-1429</a>).</p></li>
+<li><p>Fix a data race in <code class="docutils literal notranslate"><span class="pre">wp.ScopedMemoryTracker.report()</span></code> that could corrupt the report when called concurrently from
+multiple threads (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1415">GH-1415</a>).</p></li>
+<li><p>Fix Python-side memory growth when repeatedly declaring equivalent <code class="docutils literal notranslate"><span class="pre">module=&quot;unique&quot;</span></code> kernels that depend on other
+Warp functions (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1462">GH-1462</a>).</p></li>
+<li><p>Suppress the <code class="docutils literal notranslate"><span class="pre">+avx10.1-256</span></code> “invalid feature combination” warning emitted on every CPU kernel compile on Intel
+Granite Rapids hosts (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1426">GH-1426</a>).</p></li>
+</ul>
+</section>
+<section id="documentation">
+<h3>Documentation<a class="headerlink" href="#documentation" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>Remove stale tutorial notebooks from the repository. The maintained tutorials remain linked from the documentation,
+and concise examples now cover the useful notebook snippets in the Sphinx docs.</p></li>
+</ul>
+</section>
+</section>
+<section id="id2">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.13.0">1.13.0</a> - 2026-05-04<a class="headerlink" href="#id2" title="Link to this heading">#</a></h2>
+<section id="id3">
+<h3>Added<a class="headerlink" href="#id3" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p><strong>Experimental</strong>: Add graph-capture serialization (APIC) and CPU replay. Operations recorded
 during <code class="docutils literal notranslate"><span class="pre">wp.capture_begin()</span></code>/<code class="docutils literal notranslate"><span class="pre">wp.capture_end()</span></code> can be serialized to <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> files via
@@ -590,15 +787,15 @@ the <code class="docutils literal notranslate"><span class="pre">warp</span></co
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/847">GH-847</a>).</p></li>
 </ul>
 </section>
-<section id="deprecated">
-<h3>Deprecated<a class="headerlink" href="#deprecated" title="Link to this heading">#</a></h3>
+<section id="id4">
+<h3>Deprecated<a class="headerlink" href="#id4" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Deprecate <code class="docutils literal notranslate"><span class="pre">copy_from_array()</span></code> and <code class="docutils literal notranslate"><span class="pre">copy_to_array()</span></code> on texture objects,
 use <code class="docutils literal notranslate"><span class="pre">copy_from()</span></code> and <code class="docutils literal notranslate"><span class="pre">copy_to()</span></code> instead (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1238">GH-1238</a>).</p></li>
 </ul>
 </section>
-<section id="changed">
-<h3>Changed<a class="headerlink" href="#changed" title="Link to this heading">#</a></h3>
+<section id="id5">
+<h3>Changed<a class="headerlink" href="#id5" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p><strong>Breaking:</strong> Change <code class="docutils literal notranslate"><span class="pre">tape.backward()</span></code> to zero the gradient buffer of arrays written to in
 the forward pass, matching PyTorch’s behavior for intermediate gradients. Code that
@@ -609,7 +806,7 @@ the zeroing that prevents double-counting across multiple writes. When calling
 <code class="docutils literal notranslate"><span class="pre">tape.backward()</span></code> multiple times, pass fresh upstream gradients via the <code class="docutils literal notranslate"><span class="pre">grads=</span></code>
 argument. Backward passes of kernels with many per-element array writes (e.g. matrix
 component assignments) may be slower due to the additional zeroing. See the
-<a class="reference external" href="https://nvidia.github.io/warp/user_guide/differentiability.html">differentiability guide</a>
+<a class="reference external" href="https://nvidia.github.io/warp/stable/user_guide/differentiability.html">differentiability guide</a>
 for details (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1062">GH-1062</a>).</p></li>
 <li><p>Support short-circuit evaluation for chained <code class="docutils literal notranslate"><span class="pre">and</span></code>/<code class="docutils literal notranslate"><span class="pre">or</span></code> operators in kernels, matching
 Python semantics. Previously all operands were eagerly evaluated, so guards like
@@ -645,8 +842,8 @@ back in to the previous linker
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1346">GH-1346</a>).</p></li>
 </ul>
 </section>
-<section id="fixed">
-<h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">#</a></h3>
+<section id="id6">
+<h3>Fixed<a class="headerlink" href="#id6" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Fix wheels missing the bundled <code class="docutils literal notranslate"><span class="pre">libdevice.10.bc</span></code>, which caused all CUDA kernels compiled via the
 Clang/LLVM toolchain (<code class="docutils literal notranslate"><span class="pre">llvm_cuda=True</span></code>) to fail when no system CUDA toolkit was available.</p></li>
@@ -667,8 +864,8 @@ integer value in generated C++/CUDA code on Python 3.10, causing compilation fai
 (<a class="reference external" href="https://github.com/newton-physics/newton/issues/2363">newton#2363</a>).</p></li>
 </ul>
 </section>
-<section id="documentation">
-<h3>Documentation<a class="headerlink" href="#documentation" title="Link to this heading">#</a></h3>
+<section id="id7">
+<h3>Documentation<a class="headerlink" href="#id7" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Document the <code class="docutils literal notranslate"><span class="pre">wp.Graph</span></code> class returned by <code class="docutils literal notranslate"><span class="pre">wp.capture_end()</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.capture_load()</span></code>,
 including the APIC parameter-binding methods (<code class="docutils literal notranslate"><span class="pre">set_param</span></code>, <code class="docutils literal notranslate"><span class="pre">get_param</span></code>, <code class="docutils literal notranslate"><span class="pre">get_param_ptr</span></code>)
@@ -676,24 +873,24 @@ and the <code class="docutils literal notranslate"><span class="pre">params</spa
 </ul>
 </section>
 </section>
-<section id="id2">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.12.1">1.12.1</a> - 2026-04-06<a class="headerlink" href="#id2" title="Link to this heading">#</a></h2>
-<section id="id3">
-<h3>Removed<a class="headerlink" href="#id3" title="Link to this heading">#</a></h3>
+<section id="id8">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.12.1">1.12.1</a> - 2026-04-06<a class="headerlink" href="#id8" title="Link to this heading">#</a></h2>
+<section id="id9">
+<h3>Removed<a class="headerlink" href="#id9" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Remove the Kit extensions from this repository (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1296">GH-1296</a>).</p></li>
 </ul>
 </section>
-<section id="id4">
-<h3>Changed<a class="headerlink" href="#id4" title="Link to this heading">#</a></h3>
+<section id="id10">
+<h3>Changed<a class="headerlink" href="#id10" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Pass tile parameters in <code class="docutils literal notranslate"><span class="pre">&#64;wp.func</span></code> functions by reference for both register and shared storage,
 matching Python’s semantics for mutable objects. Previously, register tiles were passed by value
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1313">GH-1313</a>).</p></li>
 </ul>
 </section>
-<section id="id5">
-<h3>Fixed<a class="headerlink" href="#id5" title="Link to this heading">#</a></h3>
+<section id="id11">
+<h3>Fixed<a class="headerlink" href="#id11" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Fix silent precision loss in compile-time constants passed to 64-bit scalar type constructors
 (<code class="docutils literal notranslate"><span class="pre">wp.float64()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.int64()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.uint64()</span></code>) (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/485">GH-485</a>).</p></li>
@@ -736,8 +933,8 @@ which reported <code class="docutils literal notranslate"><span class="pre">&quo
 clean type names (e.g., <code class="docutils literal notranslate"><span class="pre">wp.array(dtype=wp.uint32,</span> <span class="pre">ndim=4)</span></code>) (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1341">GH-1341</a>).</p></li>
 </ul>
 </section>
-<section id="id6">
-<h3>Documentation<a class="headerlink" href="#id6" title="Link to this heading">#</a></h3>
+<section id="id12">
+<h3>Documentation<a class="headerlink" href="#id12" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Add differentiable 2-D Navier-Stokes example (<code class="docutils literal notranslate"><span class="pre">example_navier_stokes_perturbation.py</span></code>)
 for optimal initial perturbation, complementing the solver in <code class="docutils literal notranslate"><span class="pre">example_fft_poisson_navier_stokes_2d.py</span></code>.</p></li>
@@ -750,10 +947,10 @@ and search engine results for built-in functions (<a class="reference external" 
 </ul>
 </section>
 </section>
-<section id="id7">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.12.0">1.12.0</a> - 2026-03-06<a class="headerlink" href="#id7" title="Link to this heading">#</a></h2>
-<section id="id8">
-<h3>Added<a class="headerlink" href="#id8" title="Link to this heading">#</a></h3>
+<section id="id13">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.12.0">1.12.0</a> - 2026-03-06<a class="headerlink" href="#id13" title="Link to this heading">#</a></h2>
+<section id="id14">
+<h3>Added<a class="headerlink" href="#id14" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p><strong>Experimental</strong>: Add <code class="docutils literal notranslate"><span class="pre">wp.Texture1D</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.Texture2D</span></code>, and <code class="docutils literal notranslate"><span class="pre">wp.Texture3D</span></code> classes
 for hardware-accelerated texture sampling on CUDA devices,
@@ -807,8 +1004,8 @@ Supported on <code class="docutils literal notranslate"><span class="pre">Grid2D
 skipping CUDA toolkit detection and <code class="docutils literal notranslate"><span class="pre">.cu</span></code> compilation (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1223">GH-1223</a>).</p></li>
 </ul>
 </section>
-<section id="id9">
-<h3>Removed<a class="headerlink" href="#id9" title="Link to this heading">#</a></h3>
+<section id="id15">
+<h3>Removed<a class="headerlink" href="#id15" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Remove deprecated support for constructing matrices from vectors via <code class="docutils literal notranslate"><span class="pre">wp.matrix()</span></code> at the Python and kernel scopes
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1179">GH-1179</a>).</p></li>
@@ -816,8 +1013,8 @@ skipping CUDA toolkit detection and <code class="docutils literal notranslate"><
 which are now <code class="docutils literal notranslate"><span class="pre">wp.array</span></code> objects directly.</p></li>
 </ul>
 </section>
-<section id="id10">
-<h3>Deprecated<a class="headerlink" href="#id10" title="Link to this heading">#</a></h3>
+<section id="id16">
+<h3>Deprecated<a class="headerlink" href="#id16" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Deprecate Python 3.9 support. A <code class="docutils literal notranslate"><span class="pre">DeprecationWarning</span></code> is now emitted at runtime and build time
 when using Python 3.9. Support will be removed in Warp 1.13.</p></li>
@@ -828,8 +1025,8 @@ e.g.: <code class="docutils literal notranslate"><span class="pre">wp.vec3(...)<
 and the <code class="docutils literal notranslate"><span class="pre">space</span></code> argument of <code class="docutils literal notranslate"><span class="pre">make_space_restriction</span></code> and <code class="docutils literal notranslate"><span class="pre">make_space_partition</span></code> (scheduled for removal in 1.14).</p></li>
 </ul>
 </section>
-<section id="id11">
-<h3>Changed<a class="headerlink" href="#id11" title="Link to this heading">#</a></h3>
+<section id="id17">
+<h3>Changed<a class="headerlink" href="#id17" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p><strong>Breaking</strong>: Return Warp scalar types (<code class="docutils literal notranslate"><span class="pre">wp.float16</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.float64</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.int8</span></code>, etc.)
 from built-in functions and vector/matrix indexing instead of Python native types
@@ -863,8 +1060,8 @@ This only affects type stubs (<code class="docutils literal notranslate"><span c
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1216">GH-1216</a>).</p></li>
 </ul>
 </section>
-<section id="id12">
-<h3>Fixed<a class="headerlink" href="#id12" title="Link to this heading">#</a></h3>
+<section id="id18">
+<h3>Fixed<a class="headerlink" href="#id18" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Fix kernel code generation silently ignoring invalid namespace paths
 (e.g., <code class="docutils literal notranslate"><span class="pre">wp.foo.bar.tid()</span></code> resolved to <code class="docutils literal notranslate"><span class="pre">wp.tid()</span></code>) and raise an error instead
@@ -896,8 +1093,8 @@ causing unbounded memory growth in long-running simulations
 <li><p><code class="docutils literal notranslate"><span class="pre">warp.fem</span></code>: Fix uninitialized memory accesses in point-based function spaces with variable nodes per element.</p></li>
 </ul>
 </section>
-<section id="id13">
-<h3>Documentation<a class="headerlink" href="#id13" title="Link to this heading">#</a></h3>
+<section id="id19">
+<h3>Documentation<a class="headerlink" href="#id19" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Add 2-D incompressible turbulence example (<code class="docutils literal notranslate"><span class="pre">warp/examples/core/example_fft_poisson_navier_stokes_2d.py</span></code>)
 demonstrating a vorticity-streamfunction solver with tile-based FFT Poisson solve and SSP-RK3 timestepping.</p></li>
@@ -912,18 +1109,18 @@ instead of <code class="docutils literal notranslate"><span class="pre">wp.array
 </ul>
 </section>
 </section>
-<section id="id14">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.11.1">1.11.1</a> - 2026-02-01<a class="headerlink" href="#id14" title="Link to this heading">#</a></h2>
-<section id="id15">
-<h3>Changed<a class="headerlink" href="#id15" title="Link to this heading">#</a></h3>
+<section id="id20">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.11.1">1.11.1</a> - 2026-02-01<a class="headerlink" href="#id20" title="Link to this heading">#</a></h2>
+<section id="id21">
+<h3>Changed<a class="headerlink" href="#id21" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Rename all <code class="docutils literal notranslate"><span class="pre">build_lib.py</span></code> CLI flags to use kebab-case for consistency (e.g., <code class="docutils literal notranslate"><span class="pre">--cuda_path</span></code> to <code class="docutils literal notranslate"><span class="pre">--cuda-path</span></code>,
 <code class="docutils literal notranslate"><span class="pre">--llvm_source_path</span></code> to <code class="docutils literal notranslate"><span class="pre">--llvm-source-path</span></code>). Rename <code class="docutils literal notranslate"><span class="pre">--libmathdx</span></code> to <code class="docutils literal notranslate"><span class="pre">--use-libmathdx</span></code> for clarity.</p></li>
 <li><p>Permit scalar, vector, and matrix arguments in <code class="docutils literal notranslate"><span class="pre">wp.tile_map()</span></code> (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1136">GH-1136</a>).</p></li>
 </ul>
 </section>
-<section id="id16">
-<h3>Fixed<a class="headerlink" href="#id16" title="Link to this heading">#</a></h3>
+<section id="id22">
+<h3>Fixed<a class="headerlink" href="#id22" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Fix <code class="docutils literal notranslate"><span class="pre">wp.tile_matmul()</span></code> reading from uninitialized output tile when using <code class="docutils literal notranslate"><span class="pre">c</span> <span class="pre">=</span> <span class="pre">wp.tile_matmul(a,</span> <span class="pre">b)</span></code>
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1180">GH-1180</a>).</p></li>
@@ -952,8 +1149,8 @@ downloading from packman.</p></li>
 retain stale values instead of being set to zero (<a class="reference external" href="https://github.com/NVIDIA/warp/pull/1170">GH-1170</a>).</p></li>
 </ul>
 </section>
-<section id="id17">
-<h3>Documentation<a class="headerlink" href="#id17" title="Link to this heading">#</a></h3>
+<section id="id23">
+<h3>Documentation<a class="headerlink" href="#id23" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Add <code class="docutils literal notranslate"><span class="pre">example_particle_repulsion.py</span></code> to optimization examples, demonstrating how to use <code class="docutils literal notranslate"><span class="pre">wp.grad()</span></code>
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1137">GH-1137</a>).</p></li>
@@ -964,10 +1161,10 @@ functions, type constructors, constants, and <code class="docutils literal notra
 </ul>
 </section>
 </section>
-<section id="id18">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.11.0">1.11.0</a> - 2026-01-02<a class="headerlink" href="#id18" title="Link to this heading">#</a></h2>
-<section id="id19">
-<h3>Added<a class="headerlink" href="#id19" title="Link to this heading">#</a></h3>
+<section id="id24">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.11.0">1.11.0</a> - 2026-01-02<a class="headerlink" href="#id24" title="Link to this heading">#</a></h2>
+<section id="id25">
+<h3>Added<a class="headerlink" href="#id25" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Add <code class="docutils literal notranslate"><span class="pre">wp.grad()</span></code> to get a Warp function’s gradient in functions, kernels, and custom gradients
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/125">GH-125</a>).</p></li>
@@ -1003,7 +1200,7 @@ across tiles (<a class="reference external" href="https://github.com/NVIDIA/warp
 thread block occupancy. Can be an integer for <code class="docutils literal notranslate"><span class="pre">maxThreadsPerBlock</span></code> or a tuple of 1-2 integers for
 <code class="docutils literal notranslate"><span class="pre">(maxThreadsPerBlock,</span> <span class="pre">minBlocksPerMultiprocessor)</span></code> (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1049">GH-1049</a>).</p></li>
 <li><p>Add type introspection functions to query Warp types (e.g., <code class="docutils literal notranslate"><span class="pre">wp.types.is_vector()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.types.type_is_tile()</span></code>).
-See the <a class="reference external" href="https://nvidia.github.io/warp/api_reference/warp_types.html">warp.types</a> documentation for the complete list.</p></li>
+See the <a class="reference external" href="https://nvidia.github.io/warp/stable/api_reference/warp_types.html">warp.types</a> documentation for the complete list.</p></li>
 <li><p>Add support for the unpack operator (<code class="docutils literal notranslate"><span class="pre">*</span></code>) in kernels to expand vectors, matrices, quaternions,
 and 1D array slices into individual arguments, enabling syntax like <code class="docutils literal notranslate"><span class="pre">wp.vec4(*v3,</span> <span class="pre">1.0)</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.max(*v)</span></code>,
 or <code class="docutils literal notranslate"><span class="pre">wp.vec3i(*arr[:3])</span></code> (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1083">GH-1083</a>).</p></li>
@@ -1021,8 +1218,8 @@ re-capturing graphs when input/output buffer addresses change between calls
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1039">GH-1039</a>).</p></li>
 </ul>
 </section>
-<section id="id20">
-<h3>Removed<a class="headerlink" href="#id20" title="Link to this heading">#</a></h3>
+<section id="id26">
+<h3>Removed<a class="headerlink" href="#id26" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Drop support for Python 3.8. Python 3.9 is now the minimum supported version
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1019">GH-1019</a>).</p></li>
@@ -1030,8 +1227,8 @@ re-capturing graphs when input/output buffer addresses change between calls
 Use <code class="docutils literal notranslate"><span class="pre">graph_mode</span></code> instead (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/982">GH-982</a>).</p></li>
 </ul>
 </section>
-<section id="id21">
-<h3>Deprecated<a class="headerlink" href="#id21" title="Link to this heading">#</a></h3>
+<section id="id27">
+<h3>Deprecated<a class="headerlink" href="#id27" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Deprecate accepting integer inputs in <code class="docutils literal notranslate"><span class="pre">wp.isfinite()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.isnan()</span></code>, and <code class="docutils literal notranslate"><span class="pre">wp.isinf()</span></code>. These functions will only
 accept floating-point arguments in a future release (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/847">GH-847</a>).</p></li>
@@ -1041,8 +1238,8 @@ accept floating-point arguments in a future release (<a class="reference externa
 non-functional.</p></li>
 </ul>
 </section>
-<section id="id22">
-<h3>Changed<a class="headerlink" href="#id22" title="Link to this heading">#</a></h3>
+<section id="id28">
+<h3>Changed<a class="headerlink" href="#id28" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Extend <code class="docutils literal notranslate"><span class="pre">wp.tile_map()</span></code> to support user-defined functions with up to 8 input tiles, beyond the previous unary and binary
 operations (<a class="reference external" href="https://github.com/NVIDIA/warp/pull/1077">GH-1077</a>).</p></li>
@@ -1061,8 +1258,8 @@ usage patterns (<a class="reference external" href="https://github.com/NVIDIA/wa
 automatically enables stack memory on aarch64 platforms and disables it on other architectures.</p></li>
 </ul>
 </section>
-<section id="id23">
-<h3>Fixed<a class="headerlink" href="#id23" title="Link to this heading">#</a></h3>
+<section id="id29">
+<h3>Fixed<a class="headerlink" href="#id29" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Fix atomic floating-point min/max operations not returning the old value
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1058">GH-1058</a>).</p></li>
@@ -1087,10 +1284,10 @@ tiled reductions.</p></li>
 </ul>
 </section>
 </section>
-<section id="id24">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.10.1">1.10.1</a> - 2025-12-01<a class="headerlink" href="#id24" title="Link to this heading">#</a></h2>
-<section id="id25">
-<h3>Fixed<a class="headerlink" href="#id25" title="Link to this heading">#</a></h3>
+<section id="id30">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.10.1">1.10.1</a> - 2025-12-01<a class="headerlink" href="#id30" title="Link to this heading">#</a></h2>
+<section id="id31">
+<h3>Fixed<a class="headerlink" href="#id31" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Fix type inference errors when passing reference arguments (such as array elements) to built-in functions
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1071">GH-1071</a>).</p></li>
@@ -1122,18 +1319,18 @@ multiple overloads when <code class="docutils literal notranslate"><span class="
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1072">GH-1072</a>).</p></li>
 </ul>
 </section>
-<section id="id26">
-<h3>Documentation<a class="headerlink" href="#id26" title="Link to this heading">#</a></h3>
+<section id="id32">
+<h3>Documentation<a class="headerlink" href="#id32" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Add more examples to the Tiles and SIMT code documentation, demonstrating caveats when switching between
 the CPU and GPU and using <code class="docutils literal notranslate"><span class="pre">wp.tile()</span></code> (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1042">GH-1042</a>).</p></li>
 </ul>
 </section>
 </section>
-<section id="id27">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.10.0">1.10.0</a> - 2025-11-02<a class="headerlink" href="#id27" title="Link to this heading">#</a></h2>
-<section id="id28">
-<h3>Added<a class="headerlink" href="#id28" title="Link to this heading">#</a></h3>
+<section id="id33">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.10.0">1.10.0</a> - 2025-11-02<a class="headerlink" href="#id33" title="Link to this heading">#</a></h2>
+<section id="id34">
+<h3>Added<a class="headerlink" href="#id34" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Add an in-place <code class="docutils literal notranslate"><span class="pre">wp.Bvh.rebuild()</span></code> method that rebuilds the hierarchy without allocating new memory and can be
 captured in CUDA graphs (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/826">GH-826</a>).</p></li>
@@ -1175,8 +1372,8 @@ Version mismatches trigger warnings but allow execution to continue
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1046">GH-1046</a>).</p></li>
 </ul>
 </section>
-<section id="id29">
-<h3>Removed<a class="headerlink" href="#id29" title="Link to this heading">#</a></h3>
+<section id="id35">
+<h3>Removed<a class="headerlink" href="#id35" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Remove <code class="docutils literal notranslate"><span class="pre">warp.sim</span></code> module and related examples. This module has been superseded by the Newton library, a separate
 package with a new API. For migration guidance, see the
@@ -1193,16 +1390,16 @@ backend. Users on Intel Macs will receive a <code class="docutils literal notran
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/980">GH-980</a>).</p></li>
 </ul>
 </section>
-<section id="id30">
-<h3>Deprecated<a class="headerlink" href="#id30" title="Link to this heading">#</a></h3>
+<section id="id36">
+<h3>Deprecated<a class="headerlink" href="#id36" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Deprecate constructing a matrix from vectors at the Python scope (e.g. <code class="docutils literal notranslate"><span class="pre">wp.mat22(wp.vec2(1,</span> <span class="pre">2),</span> <span class="pre">wp.vec2(3,</span> <span class="pre">4))</span></code>
 should become <code class="docutils literal notranslate"><span class="pre">wp.matrix_from_rows(wp.vec2(1,</span> <span class="pre">2),</span> <span class="pre">wp.vec2(3,</span> <span class="pre">4))</span></code>)
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/981">GH-981</a>).</p></li>
 </ul>
 </section>
-<section id="id31">
-<h3>Changed<a class="headerlink" href="#id31" title="Link to this heading">#</a></h3>
+<section id="id37">
+<h3>Changed<a class="headerlink" href="#id37" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p><strong>Breaking:</strong> Change the default implementation of <code class="docutils literal notranslate"><span class="pre">jax_kernel()</span></code> to be <code class="docutils literal notranslate"><span class="pre">wp.jax_experimental.ffi.jax_kernel()</span></code>.
 The previous version is still available as <code class="docutils literal notranslate"><span class="pre">wp.jax_experimental.custom_call.jax_kernel()</span></code>, but it is not supported
@@ -1230,8 +1427,8 @@ Building fields and field restrictions is now synchronization-free by default
 This fixes a performance regression introduced in Warp 1.6.0 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/758">GH-758</a>).</p></li>
 </ul>
 </section>
-<section id="id32">
-<h3>Fixed<a class="headerlink" href="#id32" title="Link to this heading">#</a></h3>
+<section id="id38">
+<h3>Fixed<a class="headerlink" href="#id38" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Fix segmentation faults on AArch64 CPUs when using tiles. The fix uses stack memory for tile storage
 and is controlled by <code class="docutils literal notranslate"><span class="pre">wp.config.enable_tiles_in_stack_memory</span></code> (enabled by default)
@@ -1255,17 +1452,17 @@ cleaned up, as these can be safely ignored during process termination
 </ul>
 </section>
 </section>
-<section id="id33">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.9.1">1.9.1</a> - 2025-10-01<a class="headerlink" href="#id33" title="Link to this heading">#</a></h2>
-<section id="id34">
-<h3>Added<a class="headerlink" href="#id34" title="Link to this heading">#</a></h3>
+<section id="id39">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.9.1">1.9.1</a> - 2025-10-01<a class="headerlink" href="#id39" title="Link to this heading">#</a></h2>
+<section id="id40">
+<h3>Added<a class="headerlink" href="#id40" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Add documentation describing Python <code class="docutils literal notranslate"><span class="pre">IntFlag</span></code> limitations in Warp kernels
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/917">GH-917</a>).</p></li>
 </ul>
 </section>
-<section id="id35">
-<h3>Fixed<a class="headerlink" href="#id35" title="Link to this heading">#</a></h3>
+<section id="id41">
+<h3>Fixed<a class="headerlink" href="#id41" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Fix crash when radix sort is used on multiple streams (e.g., when using hash grids on multiple streams)
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/950">GH-950</a>).</p></li>
@@ -1290,16 +1487,16 @@ cleaned up, as these can be safely ignored during process termination
 </ul>
 </section>
 </section>
-<section id="id36">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.9.0">1.9.0</a> - 2025-09-04<a class="headerlink" href="#id36" title="Link to this heading">#</a></h2>
-<section id="id37">
-<h3>Added<a class="headerlink" href="#id37" title="Link to this heading">#</a></h3>
+<section id="id42">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.9.0">1.9.0</a> - 2025-09-04<a class="headerlink" href="#id42" title="Link to this heading">#</a></h2>
+<section id="id43">
+<h3>Added<a class="headerlink" href="#id43" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Add support for building Warp with CUDA 13.</p></li>
 <li><p>Add <code class="docutils literal notranslate"><span class="pre">wp.MarchingCubes.extract_surface_marching_cubes()</span></code> to extract a triangular mesh from a 3D scalar field
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/788">GH-788</a>).</p></li>
 <li><p>Add <code class="docutils literal notranslate"><span class="pre">wp.compile_aot_module()</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.load_aot_module()</span></code> to support basic ahead-of-time compilation workflows
-(<a class="reference external" href="https://nvidia.github.io/warp/deep_dive/codegen.html#ahead-of-time-compilation-workflows">docs</a>,
+(<a class="reference external" href="https://nvidia.github.io/warp/stable/deep_dive/codegen.html#ahead-of-time-compilation-workflows">docs</a>,
 <a class="reference external" href="https://github.com/NVIDIA/warp/issues/766">GH-766</a>).</p></li>
 <li><p>Add support for negative indexing and improve slicing for the <code class="docutils literal notranslate"><span class="pre">wp.matrix()</span></code>/<code class="docutils literal notranslate"><span class="pre">wp.vector()</span></code>/<code class="docutils literal notranslate"><span class="pre">wp.quaternion()</span></code> types
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/899">GH-899</a>).</p></li>
@@ -1322,22 +1519,22 @@ improving performance (defaults to <code class="docutils literal notranslate"><s
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/833">GH-833</a>).</p></li>
 </ul>
 </section>
-<section id="id38">
-<h3>Removed<a class="headerlink" href="#id38" title="Link to this heading">#</a></h3>
+<section id="id44">
+<h3>Removed<a class="headerlink" href="#id44" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Remove support for building Warp with CUDA 11.</p></li>
 </ul>
 </section>
-<section id="id39">
-<h3>Deprecated<a class="headerlink" href="#id39" title="Link to this heading">#</a></h3>
+<section id="id45">
+<h3>Deprecated<a class="headerlink" href="#id45" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Deprecate support for Intel-based macOS (x86_64) with removal targeted in late 2025.
 We will continue to support Apple Silicon-based Macs with the CPU backend.
 Users on Intel-based hardware will now receive a <code class="docutils literal notranslate"><span class="pre">DeprecationWarning</span></code> with this information.</p></li>
 </ul>
 </section>
-<section id="id40">
-<h3>Changed<a class="headerlink" href="#id40" title="Link to this heading">#</a></h3>
+<section id="id46">
+<h3>Changed<a class="headerlink" href="#id46" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Enforce strict argument matching for user-function calls from the Python scope, mirroring built-in function behavior.</p></li>
 <li><p>Enforce a consistent <code class="docutils literal notranslate"><span class="pre">wp_</span></code> prefix for all exported, C-style symbols to prevent name conflicts
@@ -1366,8 +1563,8 @@ static type checker support (<a class="reference external" href="https://github.
 <li><p>Improve error detection and reporting in conditional graphs (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/866">GH-866</a>).</p></li>
 </ul>
 </section>
-<section id="id41">
-<h3>Fixed<a class="headerlink" href="#id41" title="Link to this heading">#</a></h3>
+<section id="id47">
+<h3>Fixed<a class="headerlink" href="#id47" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Fix ARM64 CPU kernel argument passing issues by packaging arguments into a structure to work around a <code class="docutils literal notranslate"><span class="pre">libffi</span></code>
 library bug (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/356">GH-356</a>).</p></li>
@@ -1393,10 +1590,10 @@ debug mode (<a class="reference external" href="https://github.com/NVIDIA/warp/i
 </ul>
 </section>
 </section>
-<section id="id42">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.8.1">1.8.1</a> - 2025-08-01<a class="headerlink" href="#id42" title="Link to this heading">#</a></h2>
-<section id="id43">
-<h3>Deprecated<a class="headerlink" href="#id43" title="Link to this heading">#</a></h3>
+<section id="id48">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.8.1">1.8.1</a> - 2025-08-01<a class="headerlink" href="#id48" title="Link to this heading">#</a></h2>
+<section id="id49">
+<h3>Deprecated<a class="headerlink" href="#id49" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>This is the final release that will provide builds for or support the CUDA 11.x Toolkit and driver.
 Starting with v1.9.0, Warp will require CUDA 12.x or newer.</p></li>
@@ -1404,8 +1601,8 @@ Starting with v1.9.0, Warp will require CUDA 12.x or newer.</p></li>
 <code class="docutils literal notranslate"><span class="pre">GraphMode</span></code> enum (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/848">GH-848</a>).</p></li>
 </ul>
 </section>
-<section id="id44">
-<h3>Added<a class="headerlink" href="#id44" title="Link to this heading">#</a></h3>
+<section id="id50">
+<h3>Added<a class="headerlink" href="#id50" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Add documentation for creating and manipulating Warp structured arrays using NumPy
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/852">GH-852</a>).</p></li>
@@ -1416,8 +1613,8 @@ of graphs with conditional nodes that cannot be used as subgraphs in a JAX captu
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/848">GH-848</a>).</p></li>
 </ul>
 </section>
-<section id="id45">
-<h3>Fixed<a class="headerlink" href="#id45" title="Link to this heading">#</a></h3>
+<section id="id51">
+<h3>Fixed<a class="headerlink" href="#id51" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Fix <code class="docutils literal notranslate"><span class="pre">tape.zero()</span></code> to correctly reset gradient arrays in nested structs
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/807">GH-807</a>).</p></li>
@@ -1454,16 +1651,16 @@ them all to be rendered with the same scale <code class="docutils literal notran
 </ul>
 </section>
 </section>
-<section id="id46">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.8.0">1.8.0</a> - 2025-07-01<a class="headerlink" href="#id46" title="Link to this heading">#</a></h2>
-<section id="id47">
-<h3>Added<a class="headerlink" href="#id47" title="Link to this heading">#</a></h3>
+<section id="id52">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.8.0">1.8.0</a> - 2025-07-01<a class="headerlink" href="#id52" title="Link to this heading">#</a></h2>
+<section id="id53">
+<h3>Added<a class="headerlink" href="#id53" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Add <code class="docutils literal notranslate"><span class="pre">wp.map()</span></code> to map a function over arrays and add math operators for Warp arrays
-(<a class="reference external" href="https://nvidia.github.io/warp/user_guide/runtime.html#mapping-functions">docs</a>,
+(<a class="reference external" href="https://nvidia.github.io/warp/stable/user_guide/runtime.html#mapping-functions">docs</a>,
 <a class="reference external" href="https://github.com/NVIDIA/warp/issues/694">GH-694</a>).</p></li>
 <li><p>Add support for dynamic control flow in CUDA graphs, see <code class="docutils literal notranslate"><span class="pre">wp.capture_if()</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.capture_while()</span></code>
-(<a class="reference external" href="https://nvidia.github.io/warp/user_guide/runtime.html#conditional-execution">docs</a>,
+(<a class="reference external" href="https://nvidia.github.io/warp/stable/user_guide/runtime.html#conditional-execution">docs</a>,
 <a class="reference external" href="https://github.com/NVIDIA/warp/issues/597">GH-597</a>).</p></li>
 <li><p>Add <code class="docutils literal notranslate"><span class="pre">wp.capture_debug_dot_print()</span></code> to write a DOT file describing the structure of a captured CUDA graph
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/746">GH-746</a>).</p></li>
@@ -1476,7 +1673,7 @@ them all to be rendered with the same scale <code class="docutils literal notran
 <li><p>Add support for profiling GPU runtime module compilation using the global <code class="docutils literal notranslate"><span class="pre">wp.config.compile_time_trace</span></code>
 setting or the module-level <code class="docutils literal notranslate"><span class="pre">&quot;compile_time_trace&quot;</span></code> option. When used, JSON files in the Trace Event
 format will be written in the kernel cache, which can be opened in a viewer like <code class="docutils literal notranslate"><span class="pre">chrome://tracing/</span></code>
-(<a class="reference external" href="https://nvidia.github.io/warp/deep_dive/profiling.html#profiling-module-compilation">docs</a>,
+(<a class="reference external" href="https://nvidia.github.io/warp/stable/deep_dive/profiling.html#profiling-module-compilation">docs</a>,
 <a class="reference external" href="https://github.com/NVIDIA/warp/issues/609">GH-609</a>).</p></li>
 <li><p>Add support for returning multiple values from native functions like <code class="docutils literal notranslate"><span class="pre">wp.svd3()</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.quat_to_axis_angle()</span></code>
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/503">GH-503</a>).</p></li>
@@ -1508,8 +1705,8 @@ spheres using a point instancer or as simple USD points (<a class="reference ext
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/780">GH-780</a>).</p></li>
 </ul>
 </section>
-<section id="id48">
-<h3>Removed<a class="headerlink" href="#id48" title="Link to this heading">#</a></h3>
+<section id="id54">
+<h3>Removed<a class="headerlink" href="#id54" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Remove <code class="docutils literal notranslate"><span class="pre">wp.mlp()</span></code> (deprecated in v1.6.0). Use tile primitives instead.</p></li>
 <li><p>Remove <code class="docutils literal notranslate"><span class="pre">wp.autograd.plot_kernel_jacobians()</span></code> (deprecated in v1.4.0). Use <code class="docutils literal notranslate"><span class="pre">wp.autograd.jacobian_plot()</span></code> instead.</p></li>
@@ -1520,8 +1717,8 @@ Use the <code class="docutils literal notranslate"><span class="pre">function</s
 <li><p>Remove the <code class="docutils literal notranslate"><span class="pre">outputs</span></code> keyword argument from <code class="docutils literal notranslate"><span class="pre">wp.autograd.jacobian_plot()</span></code> (deprecated in v1.6.0).</p></li>
 </ul>
 </section>
-<section id="id49">
-<h3>Changed<a class="headerlink" href="#id49" title="Link to this heading">#</a></h3>
+<section id="id55">
+<h3>Changed<a class="headerlink" href="#id55" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Deprecate the <code class="docutils literal notranslate"><span class="pre">warp.sim</span></code> module (planned for removal in v1.10). It will be superseded by the upcoming Newton library,
 a separate package with a new API. Migrating will require code changes; a future guide will be provided
@@ -1548,15 +1745,15 @@ a separate package with a new API. Migrating will require code changes; a future
 averaging the shape’s and the cloth’s coefficients.</p></li>
 <li><p>Limit usage of the <code class="docutils literal notranslate"><span class="pre">wp.assign_copy()</span></code> hidden built-in to the kernel scope.</p></li>
 <li><p>Describe the distinction between <code class="docutils literal notranslate"><span class="pre">inputs</span></code> and <code class="docutils literal notranslate"><span class="pre">outputs</span></code> arguments in the
-<a class="reference external" href="https://nvidia.github.io/warp/user_guide/runtime.html#kernels">Kernel documentation</a>.</p></li>
+<a class="reference external" href="https://nvidia.github.io/warp/stable/user_guide/runtime.html#kernels">Kernel documentation</a>.</p></li>
 <li><p>Reduce the overhead of <code class="docutils literal notranslate"><span class="pre">wp.launch()</span></code> by avoiding costly native API calls
 (<a class="reference external" href="https://github.com/NVIDIA/warp/pull/774">GH-774</a>).</p></li>
 <li><p>Improve error reporting when calling <code class="docutils literal notranslate"><span class="pre">&#64;wp.func</span></code>-decorated functions from the Python scope
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/521">GH-521</a>).</p></li>
 </ul>
 </section>
-<section id="id50">
-<h3>Fixed<a class="headerlink" href="#id50" title="Link to this heading">#</a></h3>
+<section id="id56">
+<h3>Fixed<a class="headerlink" href="#id56" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Fix missing documentation for geometric structs (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/674">GH-674</a>).</p></li>
 <li><p>Fix the type annotations in various tile functions (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/714">GH-714</a>).</p></li>
@@ -1580,10 +1777,10 @@ separate kernels, increasing parallelism and speeding up the solver
 </ul>
 </section>
 </section>
-<section id="id51">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.7.2">1.7.2</a> - 2025-05-31<a class="headerlink" href="#id51" title="Link to this heading">#</a></h2>
-<section id="id52">
-<h3>Added<a class="headerlink" href="#id52" title="Link to this heading">#</a></h3>
+<section id="id57">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.7.2">1.7.2</a> - 2025-05-31<a class="headerlink" href="#id57" title="Link to this heading">#</a></h2>
+<section id="id58">
+<h3>Added<a class="headerlink" href="#id58" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Add missing adjoint method for tile <code class="docutils literal notranslate"><span class="pre">assign</span></code> operations (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/680">GH-680</a>).</p></li>
 <li><p>Add documentation for the fact that <code class="docutils literal notranslate"><span class="pre">+=</span></code> and <code class="docutils literal notranslate"><span class="pre">-=</span></code> invoke <code class="docutils literal notranslate"><span class="pre">wp.atomic_add()</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.atomic_sub()</span></code>, respectively
@@ -1592,8 +1789,8 @@ separate kernels, increasing parallelism and speeding up the solver
 leveraging Warp (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/686">GH-686</a>).</p></li>
 </ul>
 </section>
-<section id="id53">
-<h3>Changed<a class="headerlink" href="#id53" title="Link to this heading">#</a></h3>
+<section id="id59">
+<h3>Changed<a class="headerlink" href="#id59" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Prevent and document that class inheritance is not supported for <code class="docutils literal notranslate"><span class="pre">wp.struct</span></code> (now throws <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code>)
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/656">GH-656</a>).</p></li>
@@ -1607,8 +1804,8 @@ annotations to denote whether they are accessible only from the kernel scope or 
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/532">GH-532</a>).</p></li>
 </ul>
 </section>
-<section id="id54">
-<h3>Fixed<a class="headerlink" href="#id54" title="Link to this heading">#</a></h3>
+<section id="id60">
+<h3>Fixed<a class="headerlink" href="#id60" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Fix an issue where arrays stored in structs could be garbage collected without updating the struct ctype
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/720">GH-720</a>).</p></li>
@@ -1632,17 +1829,17 @@ annotations to denote whether they are accessible only from the kernel scope or 
 </ul>
 </section>
 </section>
-<section id="id55">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.7.1">1.7.1</a> - 2025-04-30<a class="headerlink" href="#id55" title="Link to this heading">#</a></h2>
-<section id="id56">
-<h3>Added<a class="headerlink" href="#id56" title="Link to this heading">#</a></h3>
+<section id="id61">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.7.1">1.7.1</a> - 2025-04-30<a class="headerlink" href="#id61" title="Link to this heading">#</a></h2>
+<section id="id62">
+<h3>Added<a class="headerlink" href="#id62" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Add example of a distributed Jacobi solver using <code class="docutils literal notranslate"><span class="pre">mpi4py</span></code> in <code class="docutils literal notranslate"><span class="pre">warp/examples/distributed/example_jacobi_mpi.py</span></code>
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/475">GH-475</a>).</p></li>
 </ul>
 </section>
-<section id="id57">
-<h3>Changed<a class="headerlink" href="#id57" title="Link to this heading">#</a></h3>
+<section id="id63">
+<h3>Changed<a class="headerlink" href="#id63" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Improve <code class="docutils literal notranslate"><span class="pre">repr()</span></code> for Warp types, including adding <code class="docutils literal notranslate"><span class="pre">repr()</span></code> for <code class="docutils literal notranslate"><span class="pre">wp.array</span></code>.</p></li>
 <li><p>Change the USD renderer to use <code class="docutils literal notranslate"><span class="pre">framesPerSecond</span></code> for time sampling instead of <code class="docutils literal notranslate"><span class="pre">timeCodesPerSecond</span></code>
@@ -1652,8 +1849,8 @@ mesh collision, see <code class="docutils literal notranslate"><span class="pre"
 <li><p>Improve handling of deprecated JAX features (<a class="reference external" href="https://github.com/NVIDIA/warp/pull/613">GH-613</a>).</p></li>
 </ul>
 </section>
-<section id="id58">
-<h3>Fixed<a class="headerlink" href="#id58" title="Link to this heading">#</a></h3>
+<section id="id64">
+<h3>Fixed<a class="headerlink" href="#id64" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Fix a code generation bug involving return statements in Warp kernels, which could result in some threads in Warp
 being skipped when processed on the GPU (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/594">GH-594</a>).</p></li>
@@ -1683,17 +1880,17 @@ with literal values and an explicit <code class="docutils literal notranslate"><
 </ul>
 </section>
 </section>
-<section id="id59">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.7.0">1.7.0</a> - 2025-03-30<a class="headerlink" href="#id59" title="Link to this heading">#</a></h2>
-<section id="id60">
-<h3>Added<a class="headerlink" href="#id60" title="Link to this heading">#</a></h3>
+<section id="id65">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.7.0">1.7.0</a> - 2025-03-30<a class="headerlink" href="#id65" title="Link to this heading">#</a></h2>
+<section id="id66">
+<h3>Added<a class="headerlink" href="#id66" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Support JAX foreign function interface (FFI)
-(<a class="reference external" href="https://nvidia.github.io/warp/user_guide/interoperability.html#generic-jax-ffi-callbacks">docs</a>,
+(<a class="reference external" href="https://nvidia.github.io/warp/stable/user_guide/interoperability_jax.html#generic-ffi-callbacks">docs</a>,
 <a class="reference external" href="https://github.com/NVIDIA/warp/issues/511">GH-511</a>).</p></li>
 <li><p>Support Python/SASS correlation in Nsight Compute reports by emitting <code class="docutils literal notranslate"><span class="pre">#line</span></code> directives in CUDA-C code.
 This setting is controlled by <code class="docutils literal notranslate"><span class="pre">wp.config.line_directives</span></code> and is <code class="docutils literal notranslate"><span class="pre">True</span></code> by default.
-(<a class="reference external" href="https://nvidia.github.io/warp/deep_dive/profiling.html#nsight-compute-profiling">docs</a>,
+(<a class="reference external" href="https://nvidia.github.io/warp/stable/deep_dive/profiling.html#nsight-compute-profiling">docs</a>,
 <a class="reference external" href="https://github.com/NVIDIA/warp/issues/437">GH-437</a>)</p></li>
 <li><p>Support <code class="docutils literal notranslate"><span class="pre">vec4f</span></code> grid construction in <code class="docutils literal notranslate"><span class="pre">wp.Volume.allocate_by_tiles()</span></code>.</p></li>
 <li><p>Add 2D SVD <code class="docutils literal notranslate"><span class="pre">wp.svd2()</span></code> (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/436">GH-436</a>).</p></li>
@@ -1720,8 +1917,8 @@ Use <code class="docutils literal notranslate"><span class="pre">wp.clear_lto_ca
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/476">GH-476</a>).</p></li>
 </ul>
 </section>
-<section id="id61">
-<h3>Changed<a class="headerlink" href="#id61" title="Link to this heading">#</a></h3>
+<section id="id67">
+<h3>Changed<a class="headerlink" href="#id67" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p><strong>Breaking:</strong> Remove CUTLASS dependency and <code class="docutils literal notranslate"><span class="pre">wp.matmul()</span></code> functionality (including batched version).
 Users should use tile primitives for matrix multiplication operations instead.</p></li>
@@ -1751,8 +1948,8 @@ flag to discard any non-zero not already present in the destination matrix.</p><
 <li><p>Remove the <code class="docutils literal notranslate"><span class="pre">globalScale</span></code> parameter from the <code class="docutils literal notranslate"><span class="pre">OgnClothSimulate</span></code> node.</p></li>
 </ul>
 </section>
-<section id="id62">
-<h3>Fixed<a class="headerlink" href="#id62" title="Link to this heading">#</a></h3>
+<section id="id68">
+<h3>Fixed<a class="headerlink" href="#id68" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Fix an out-of-bounds access bug caused by an unbalanced BVH tree (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/536">GH-536</a>).</p></li>
 <li><p>Fix an error of incorrectly adding the offset to -1 elements in <code class="docutils literal notranslate"><span class="pre">edge_indices</span></code> when adding a ModelBuilder to another
@@ -1760,29 +1957,29 @@ flag to discard any non-zero not already present in the destination matrix.</p><
 </ul>
 </section>
 </section>
-<section id="id63">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.6.2">1.6.2</a> - 2025-03-07<a class="headerlink" href="#id63" title="Link to this heading">#</a></h2>
-<section id="id64">
-<h3>Changed<a class="headerlink" href="#id64" title="Link to this heading">#</a></h3>
+<section id="id69">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.6.2">1.6.2</a> - 2025-03-07<a class="headerlink" href="#id69" title="Link to this heading">#</a></h2>
+<section id="id70">
+<h3>Changed<a class="headerlink" href="#id70" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Update project license from <em>NVIDIA Software License</em> to <em>Apache License, Version 2.0</em> (see <code class="docutils literal notranslate"><span class="pre">LICENSE.md</span></code>).</p></li>
 </ul>
 </section>
 </section>
-<section id="id65">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.6.1">1.6.1</a> - 2025-03-03<a class="headerlink" href="#id65" title="Link to this heading">#</a></h2>
-<section id="id66">
-<h3>Added<a class="headerlink" href="#id66" title="Link to this heading">#</a></h3>
+<section id="id71">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.6.1">1.6.1</a> - 2025-03-03<a class="headerlink" href="#id71" title="Link to this heading">#</a></h2>
+<section id="id72">
+<h3>Added<a class="headerlink" href="#id72" title="Link to this heading">#</a></h3>
 <ul class="simple">
-<li><p>Document <code class="docutils literal notranslate"><span class="pre">wp.Launch</span></code> objects (<a class="reference external" href="https://nvidia.github.io/warp/user_guide/runtime.html#launch-objects">docs</a>,
+<li><p>Document <code class="docutils literal notranslate"><span class="pre">wp.Launch</span></code> objects (<a class="reference external" href="https://nvidia.github.io/warp/stable/user_guide/runtime.html#launch-objects">docs</a>,
 <a class="reference external" href="https://github.com/NVIDIA/warp/issues/428">GH-428</a>).</p></li>
 <li><p>Document how overwriting previously computed results can lead to incorrect gradients
-(<a class="reference external" href="https://nvidia.github.io/warp/user_guide/differentiability.html#array-overwrites">docs</a>,
+(<a class="reference external" href="https://nvidia.github.io/warp/stable/user_guide/differentiability.html#array-overwrites">docs</a>,
 <a class="reference external" href="https://github.com/NVIDIA/warp/issues/525">GH-525</a>).</p></li>
 </ul>
 </section>
-<section id="id67">
-<h3>Fixed<a class="headerlink" href="#id67" title="Link to this heading">#</a></h3>
+<section id="id73">
+<h3>Fixed<a class="headerlink" href="#id73" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Fix unaligned loads with offset 2D tiles in <code class="docutils literal notranslate"><span class="pre">wp.tile_load()</span></code>.</p></li>
 <li><p>Fix FP64 accuracy of thread-level matrix-matrix multiplications (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/489">GH-489</a>).</p></li>
@@ -1807,10 +2004,10 @@ flag to discard any non-zero not already present in the destination matrix.</p><
 </ul>
 </section>
 </section>
-<section id="id68">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.6.0">1.6.0</a> - 2025-02-03<a class="headerlink" href="#id68" title="Link to this heading">#</a></h2>
-<section id="id69">
-<h3>Added<a class="headerlink" href="#id69" title="Link to this heading">#</a></h3>
+<section id="id74">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.6.0">1.6.0</a> - 2025-02-03<a class="headerlink" href="#id74" title="Link to this heading">#</a></h2>
+<section id="id75">
+<h3>Added<a class="headerlink" href="#id75" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Add preview of Tile Cholesky factorization and solve APIs through <code class="docutils literal notranslate"><span class="pre">wp.tile_cholesky()</span></code>, <code class="docutils literal notranslate"><span class="pre">tile_cholesky_solve()</span></code>
 and <code class="docutils literal notranslate"><span class="pre">tile_diag_add()</span></code> (preview APIs are subject to change).</p></li>
@@ -1823,11 +2020,11 @@ See <code class="docutils literal notranslate"><span class="pre">warp/examples/s
 for vector types to a new <code class="docutils literal notranslate"><span class="pre">wp.math</span></code> module.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">wp.sim.SemiImplicitIntegrator</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.sim.FeatherstoneIntegrator</span></code> now have an optional <code class="docutils literal notranslate"><span class="pre">friction_smoothing</span></code>
 constructor argument (defaults to 1.0) that controls softness of the friction norm computation.</p></li>
-<li><p>Support <code class="docutils literal notranslate"><span class="pre">assert</span></code> statements in kernels (<a class="reference external" href="https://nvidia.github.io/warp/user_guide/debugging.html#assertions">docs</a>).
+<li><p>Support <code class="docutils literal notranslate"><span class="pre">assert</span></code> statements in kernels (<a class="reference external" href="https://nvidia.github.io/warp/stable/user_guide/debugging.html#assertions">docs</a>).
 Assertions can only be triggered in <code class="docutils literal notranslate"><span class="pre">&quot;debug&quot;</span></code> mode (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/336">GH-366</a>).</p></li>
 <li><p>Support CUDA IPC on Linux. Call the <code class="docutils literal notranslate"><span class="pre">ipc_handle()</span></code> method to get an IPC handle for a <code class="docutils literal notranslate"><span class="pre">wp.Event</span></code> or a <code class="docutils literal notranslate"><span class="pre">wp.array</span></code>,
 and call <code class="docutils literal notranslate"><span class="pre">wp.from_ipc_handle()</span></code> or <code class="docutils literal notranslate"><span class="pre">wp.event_from_ipc_handle()</span></code> in another process to open the handle
-(<a class="reference external" href="https://nvidia.github.io/warp/user_guide/runtime.html#interprocess-communication-ipc">docs</a>).</p></li>
+(<a class="reference external" href="https://nvidia.github.io/warp/stable/user_guide/runtime.html#interprocess-communication-ipc">docs</a>).</p></li>
 <li><p>Add per-module option to disable fused floating point operations, use <code class="docutils literal notranslate"><span class="pre">wp.set_module_options({&quot;fuse_fp&quot;:</span> <span class="pre">False})</span></code>
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/379">GH-379</a>).</p></li>
 <li><p>Add per-module option to add CUDA-C line information for profiling, use <code class="docutils literal notranslate"><span class="pre">wp.set_module_options({&quot;lineinfo&quot;:</span> <span class="pre">True})</span></code>.</p></li>
@@ -1842,8 +2039,8 @@ to use Warp’s tile API for matrix multiplication.</p></li>
 <li><p>Add <code class="docutils literal notranslate"><span class="pre">warp/examples/tile/example_tile_nbody.py</span></code> as an example of an N-body simulation using Warp tile primitives.</p></li>
 </ul>
 </section>
-<section id="id70">
-<h3>Changed<a class="headerlink" href="#id70" title="Link to this heading">#</a></h3>
+<section id="id76">
+<h3>Changed<a class="headerlink" href="#id76" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p><strong>Breaking:</strong> Change <code class="docutils literal notranslate"><span class="pre">wp.tile_load()</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.tile_store()</span></code> indexing behavior so that indices are now specified in
 terms of <em>array elements</em> instead of <em>tile multiples</em>.</p></li>
@@ -1853,7 +2050,7 @@ e.g.: <code class="docutils literal notranslate"><span class="pre">wp.tile_load(
 <li><p>Add an implicit tile synchronization whenever a shared memory tile’s data is reinitialized (e.g. in dynamic loops).
 This could result in lower performance.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">wp.Bvh</span></code> constructor now supports various construction algorithms via the <code class="docutils literal notranslate"><span class="pre">constructor</span></code> argument, including
-<code class="docutils literal notranslate"><span class="pre">&quot;sah&quot;</span></code> (Surface Area Heuristics), <code class="docutils literal notranslate"><span class="pre">&quot;median&quot;</span></code>, and <code class="docutils literal notranslate"><span class="pre">&quot;lbvh&quot;</span></code> (<a class="reference external" href="https://nvidia.github.io/warp/api_reference/_generated/warp.Bvh.html#warp.Bvh.__init__">docs</a>)</p></li>
+<code class="docutils literal notranslate"><span class="pre">&quot;sah&quot;</span></code> (Surface Area Heuristics), <code class="docutils literal notranslate"><span class="pre">&quot;median&quot;</span></code>, and <code class="docutils literal notranslate"><span class="pre">&quot;lbvh&quot;</span></code> (<a class="reference external" href="https://nvidia.github.io/warp/stable/api_reference/_generated/warp.Bvh.html#warp.Bvh.__init__">docs</a>)</p></li>
 <li><p>Improve the query efficiency of <code class="docutils literal notranslate"><span class="pre">wp.Bvh</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.Mesh</span></code>.</p></li>
 <li><p>Improve memory consumption, compilation and runtime performance when using in-place vector/matrix assignments in
 kernels that have <code class="docutils literal notranslate"><span class="pre">enable_backward</span></code> set to <code class="docutils literal notranslate"><span class="pre">False</span></code> (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/332">GH-332</a>).</p></li>
@@ -1873,8 +2070,8 @@ Use tile primitives instead.</p></li>
 <li><p>Increase CPU array alignment for compatibility with other libraries like JAX/XLA (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/550">GH-550</a>).</p></li>
 </ul>
 </section>
-<section id="id71">
-<h3>Fixed<a class="headerlink" href="#id71" title="Link to this heading">#</a></h3>
+<section id="id77">
+<h3>Fixed<a class="headerlink" href="#id77" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Fix unintended modification of non-Warp arrays during the backward pass (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/394">GH-394</a>).</p></li>
 <li><p>Fix so that <code class="docutils literal notranslate"><span class="pre">wp.Tape.zero()</span></code> zeroes gradients passed via the <code class="docutils literal notranslate"><span class="pre">grads</span></code> parameter in <code class="docutils literal notranslate"><span class="pre">wp.Tape.backward()</span></code>
@@ -1905,18 +2102,18 @@ Use tile primitives instead.</p></li>
 </ul>
 </section>
 </section>
-<section id="id72">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.5.1">1.5.1</a> - 2025-01-02<a class="headerlink" href="#id72" title="Link to this heading">#</a></h2>
-<section id="id73">
-<h3>Added<a class="headerlink" href="#id73" title="Link to this heading">#</a></h3>
+<section id="id78">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.5.1">1.5.1</a> - 2025-01-02<a class="headerlink" href="#id78" title="Link to this heading">#</a></h2>
+<section id="id79">
+<h3>Added<a class="headerlink" href="#id79" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Add PyTorch basics and custom operators notebooks to the <code class="docutils literal notranslate"><span class="pre">notebooks</span></code> directory.</p></li>
 <li><p>Update PyTorch interop docs to include section on custom operators
-(<a class="reference external" href="https://nvidia.github.io/warp/user_guide/interoperability.html#pytorch-custom-ops-example">docs</a>).</p></li>
+(<a class="reference external" href="https://nvidia.github.io/warp/stable/user_guide/interoperability_pytorch.html#using-pytorch-custom-operators-pytorch-2-4-0">docs</a>).</p></li>
 </ul>
 </section>
-<section id="id74">
-<h3>Fixed<a class="headerlink" href="#id74" title="Link to this heading">#</a></h3>
+<section id="id80">
+<h3>Fixed<a class="headerlink" href="#id80" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>warp.sim: Fix a bug in which the color-balancing algorithm was not updating the colorings.</p></li>
 <li><p>Fix custom colors being not being updated when rendering meshes with static topology in OpenGL
@@ -1933,13 +2130,13 @@ Use tile primitives instead.</p></li>
 </ul>
 </section>
 </section>
-<section id="id75">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.5.0">1.5.0</a> - 2024-12-02<a class="headerlink" href="#id75" title="Link to this heading">#</a></h2>
-<section id="id76">
-<h3>Added<a class="headerlink" href="#id76" title="Link to this heading">#</a></h3>
+<section id="id81">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.5.0">1.5.0</a> - 2024-12-02<a class="headerlink" href="#id81" title="Link to this heading">#</a></h2>
+<section id="id82">
+<h3>Added<a class="headerlink" href="#id82" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Support for cooperative tile-based primitives using cuBLASDx and cuFFTDx, please see the tile
-<a class="reference external" href="https://nvidia.github.io/warp/user_guide/tiles.html">documentation</a> for details.</p></li>
+<a class="reference external" href="https://nvidia.github.io/warp/stable/user_guide/tiles.html">documentation</a> for details.</p></li>
 <li><p>Expose a <code class="docutils literal notranslate"><span class="pre">reversed()</span></code> built-in for iterators (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/311">GH-311</a>).</p></li>
 <li><p>Support for saving Volumes into <code class="docutils literal notranslate"><span class="pre">.nvdb</span></code> files with the <code class="docutils literal notranslate"><span class="pre">save_to_nvdb</span></code> method.</p></li>
 <li><p>warp.fem: Add <code class="docutils literal notranslate"><span class="pre">wp.fem.Trimesh3D</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.fem.Quadmesh3D</span></code> geometry types for 3D surfaces with new <code class="docutils literal notranslate"><span class="pre">example_distortion_energy</span></code> example.</p></li>
@@ -1961,8 +2158,8 @@ to set a uniform radius for the added particles.</p></li>
 <li><p>Add introductory Jupyter notebooks to the <code class="docutils literal notranslate"><span class="pre">notebooks</span></code> directory.</p></li>
 </ul>
 </section>
-<section id="id77">
-<h3>Changed<a class="headerlink" href="#id77" title="Link to this heading">#</a></h3>
+<section id="id83">
+<h3>Changed<a class="headerlink" href="#id83" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Drop support for Python 3.7; Python 3.8 is now the minimum-supported version.</p></li>
 <li><p>Promote the <code class="docutils literal notranslate"><span class="pre">wp.Int</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.Float</span></code>, and <code class="docutils literal notranslate"><span class="pre">wp.Scalar</span></code> generic annotation types to the public API.</p></li>
@@ -1973,8 +2170,8 @@ to set a uniform radius for the added particles.</p></li>
 <li><p>Raise error when passing more than 32 variadic argument to the <code class="docutils literal notranslate"><span class="pre">wp.printf()</span></code> built-in.</p></li>
 </ul>
 </section>
-<section id="id78">
-<h3>Fixed<a class="headerlink" href="#id78" title="Link to this heading">#</a></h3>
+<section id="id84">
+<h3>Fixed<a class="headerlink" href="#id84" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Fix <code class="docutils literal notranslate"><span class="pre">place</span></code> setting of paddle backend.</p></li>
 <li><p>warp.fem: Fix tri-cubic shape functions on quadrilateral meshes.</p></li>
@@ -1992,16 +2189,16 @@ to set a uniform radius for the added particles.</p></li>
 </ul>
 </section>
 </section>
-<section id="id79">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.4.2">1.4.2</a> - 2024-11-13<a class="headerlink" href="#id79" title="Link to this heading">#</a></h2>
-<section id="id80">
-<h3>Changed<a class="headerlink" href="#id80" title="Link to this heading">#</a></h3>
+<section id="id85">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.4.2">1.4.2</a> - 2024-11-13<a class="headerlink" href="#id85" title="Link to this heading">#</a></h2>
+<section id="id86">
+<h3>Changed<a class="headerlink" href="#id86" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Make the output of <code class="docutils literal notranslate"><span class="pre">wp.print()</span></code> in backward kernels consistent for all supported data types.</p></li>
 </ul>
 </section>
-<section id="id81">
-<h3>Fixed<a class="headerlink" href="#id81" title="Link to this heading">#</a></h3>
+<section id="id87">
+<h3>Fixed<a class="headerlink" href="#id87" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Fix to relax the integer types expected when indexing arrays (regression in <code class="docutils literal notranslate"><span class="pre">1.3.0</span></code>).</p></li>
 <li><p>Fix printing vector and matrix adjoints in backward kernels.</p></li>
@@ -2013,10 +2210,10 @@ to set a uniform radius for the added particles.</p></li>
 </ul>
 </section>
 </section>
-<section id="id82">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.4.1">1.4.1</a> - 2024-10-15<a class="headerlink" href="#id82" title="Link to this heading">#</a></h2>
-<section id="id83">
-<h3>Fixed<a class="headerlink" href="#id83" title="Link to this heading">#</a></h3>
+<section id="id88">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.4.1">1.4.1</a> - 2024-10-15<a class="headerlink" href="#id88" title="Link to this heading">#</a></h2>
+<section id="id89">
+<h3>Fixed<a class="headerlink" href="#id89" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Fix <code class="docutils literal notranslate"><span class="pre">iter_reverse()</span></code> not working as expected for ranges with steps other than 1 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/311">GH-311</a>).</p></li>
 <li><p>Fix potential out-of-bounds memory access when a <code class="docutils literal notranslate"><span class="pre">wp.sparse.BsrMatrix</span></code> object is reused for storing matrices of different shapes.</p></li>
@@ -2028,22 +2225,22 @@ to set a uniform radius for the added particles.</p></li>
 </ul>
 </section>
 </section>
-<section id="id84">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.4.0">1.4.0</a> - 2024-10-01<a class="headerlink" href="#id84" title="Link to this heading">#</a></h2>
-<section id="id85">
-<h3>Added<a class="headerlink" href="#id85" title="Link to this heading">#</a></h3>
+<section id="id90">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.4.0">1.4.0</a> - 2024-10-01<a class="headerlink" href="#id90" title="Link to this heading">#</a></h2>
+<section id="id91">
+<h3>Added<a class="headerlink" href="#id91" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Support for a new <code class="docutils literal notranslate"><span class="pre">wp.static(expr)</span></code> function that allows arbitrary Python expressions to be evaluated at the time of
-function/kernel definition (<a class="reference external" href="https://nvidia.github.io/warp/deep_dive/codegen.html#static-expressions">docs</a>).</p></li>
+function/kernel definition (<a class="reference external" href="https://nvidia.github.io/warp/stable/deep_dive/codegen.html#static-expressions">docs</a>).</p></li>
 <li><p>Support for stream priorities to hint to the device that it should process pending work
 in high-priority streams over pending work in low-priority streams when possible
-(<a class="reference external" href="https://nvidia.github.io/warp/deep_dive/concurrency.html#stream-priorities">docs</a>).</p></li>
-<li><p>Adaptive sparse grid geometry to <code class="docutils literal notranslate"><span class="pre">warp.fem</span></code> (<a class="reference external" href="https://nvidia.github.io/warp/domain_modules/fem.html#adaptivity">docs</a>).</p></li>
+(<a class="reference external" href="https://nvidia.github.io/warp/stable/deep_dive/concurrency.html#stream-priorities">docs</a>).</p></li>
+<li><p>Adaptive sparse grid geometry to <code class="docutils literal notranslate"><span class="pre">warp.fem</span></code> (<a class="reference external" href="https://nvidia.github.io/warp/stable/domain_modules/fem.html#adaptivity">docs</a>).</p></li>
 <li><p>Support for defining <code class="docutils literal notranslate"><span class="pre">wp.kernel</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.func</span></code> objects from within closures.</p></li>
 <li><p>Support for defining multiple versions of kernels, functions, and structs without manually assigning unique keys.</p></li>
 <li><p>Support for default argument values for user functions decorated with <code class="docutils literal notranslate"><span class="pre">wp.func</span></code>.</p></li>
 <li><p>Allow passing custom launch dimensions to <code class="docutils literal notranslate"><span class="pre">jax_kernel()</span></code> (<a class="reference external" href="https://github.com/NVIDIA/warp/pull/310">GH-310</a>).</p></li>
-<li><p>JAX interoperability examples for sharding and matrix multiplication (<a class="reference external" href="https://nvidia.github.io/warp/user_guide/interoperability.html#distributed-computation">docs</a>).</p></li>
+<li><p>JAX interoperability examples for sharding and matrix multiplication (<a class="reference external" href="https://nvidia.github.io/warp/stable/user_guide/interoperability_jax.html#distributed-computation-with-shard-map">docs</a>).</p></li>
 <li><p>Interoperability support for the PaddlePaddle ML framework (<a class="reference external" href="https://github.com/NVIDIA/warp/pull/318">GH-318</a>).</p></li>
 <li><p>Support <code class="docutils literal notranslate"><span class="pre">wp.mod()</span></code> for vector types (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/282">GH-282</a>).</p></li>
 <li><p>Expose the modulo operator <code class="docutils literal notranslate"><span class="pre">%</span></code> to Python’s runtime scalar and vector types.</p></li>
@@ -2053,12 +2250,12 @@ in high-priority streams over pending work in low-priority streams when possible
 <li><p>Support for redefining function overloads.</p></li>
 <li><p>Add an ocean sample to the <code class="docutils literal notranslate"><span class="pre">omni.warp</span></code> extension.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">warp.sim.VBDIntegrator</span></code> now supports body-particle collision.</p></li>
-<li><p>Add a <a class="reference external" href="https://nvidia.github.io/warp/user_guide/contribution_guide.html">contributing guide</a> to the Sphinx docs .</p></li>
-<li><p>Add documentation for dynamic code generation (<a class="reference external" href="https://nvidia.github.io/warp/deep_dive/codegen.html#dynamic-kernel-creation">docs</a>).</p></li>
+<li><p>Add a <a class="reference external" href="https://nvidia.github.io/warp/stable/user_guide/contribution_guide.html">contributing guide</a> to the Sphinx docs .</p></li>
+<li><p>Add documentation for dynamic code generation (<a class="reference external" href="https://nvidia.github.io/warp/stable/deep_dive/codegen.html#dynamic-kernel-creation">docs</a>).</p></li>
 </ul>
 </section>
-<section id="id86">
-<h3>Changed<a class="headerlink" href="#id86" title="Link to this heading">#</a></h3>
+<section id="id92">
+<h3>Changed<a class="headerlink" href="#id92" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">wp.sim.Model.edge_indices</span></code> now includes boundary edges.</p></li>
 <li><p>Unexposed <code class="docutils literal notranslate"><span class="pre">wp.rand*()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.sample*()</span></code>, and <code class="docutils literal notranslate"><span class="pre">wp.poisson()</span></code> from the Python scope.</p></li>
@@ -2071,8 +2268,8 @@ in high-priority streams over pending work in low-priority streams when possible
 <li><p>Improve accuracy of symmetric eigenvalues routine in <code class="docutils literal notranslate"><span class="pre">warp.fem</span></code>.</p></li>
 </ul>
 </section>
-<section id="id87">
-<h3>Fixed<a class="headerlink" href="#id87" title="Link to this heading">#</a></h3>
+<section id="id93">
+<h3>Fixed<a class="headerlink" href="#id93" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Fix for <code class="docutils literal notranslate"><span class="pre">wp.func</span></code> erroring out when defining a <code class="docutils literal notranslate"><span class="pre">Tuple</span></code> as a return type hint (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/302">GH-302</a>).</p></li>
 <li><p>Fix array in-place op (<code class="docutils literal notranslate"><span class="pre">+=</span></code>, <code class="docutils literal notranslate"><span class="pre">-=</span></code>) adjoints to compute gradients correctly in the backwards pass</p></li>
@@ -2103,8 +2300,8 @@ from a joint to its parent joint in the articulation.</p></li>
 </ul>
 </section>
 </section>
-<section id="id88">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.3.3">1.3.3</a> - 2024-09-04<a class="headerlink" href="#id88" title="Link to this heading">#</a></h2>
+<section id="id94">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.3.3">1.3.3</a> - 2024-09-04<a class="headerlink" href="#id94" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Bug fixes</p>
 <ul>
@@ -2114,8 +2311,8 @@ from a joint to its parent joint in the articulation.</p></li>
 </li>
 </ul>
 </section>
-<section id="id89">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.3.2">1.3.2</a> - 2024-08-30<a class="headerlink" href="#id89" title="Link to this heading">#</a></h2>
+<section id="id95">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.3.2">1.3.2</a> - 2024-08-30<a class="headerlink" href="#id95" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Bug fixes</p>
 <ul>
@@ -2144,16 +2341,16 @@ incorrect when the closest point lies on an edge.</p></li>
 </li>
 </ul>
 </section>
-<section id="id90">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.3.1">1.3.1</a> - 2024-07-27<a class="headerlink" href="#id90" title="Link to this heading">#</a></h2>
+<section id="id96">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.3.1">1.3.1</a> - 2024-07-27<a class="headerlink" href="#id96" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Remove <code class="docutils literal notranslate"><span class="pre">wp.synchronize()</span></code> from PyTorch autograd function example</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">Tape.check_kernel_array_access()</span></code> and <code class="docutils literal notranslate"><span class="pre">Tape.reset_array_read_flags()</span></code> are now private methods.</p></li>
 <li><p>Fix reporting unmatched argument types</p></li>
 </ul>
 </section>
-<section id="id91">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.3.0">1.3.0</a> - 2024-07-25<a class="headerlink" href="#id91" title="Link to this heading">#</a></h2>
+<section id="id97">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.3.0">1.3.0</a> - 2024-07-25<a class="headerlink" href="#id97" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Warp Core improvements</p>
 <ul>
@@ -2185,8 +2382,8 @@ loaded <code class="docutils literal notranslate"><span class="pre">(error)</spa
 </li>
 <li><p><code class="docutils literal notranslate"><span class="pre">warp.autograd</span></code> improvements:</p>
 <ul>
-<li><p>New <code class="docutils literal notranslate"><span class="pre">warp.autograd</span></code> module with utility functions <code class="docutils literal notranslate"><span class="pre">gradcheck()</span></code>, <code class="docutils literal notranslate"><span class="pre">jacobian()</span></code>, and <code class="docutils literal notranslate"><span class="pre">jacobian_fd()</span></code> for debugging kernel Jacobians (<a class="reference external" href="https://nvidia.github.io/warp/user_guide/differentiability.html#debugging-gradients">docs</a>)</p></li>
-<li><p>Add array overwrite detection, if <code class="docutils literal notranslate"><span class="pre">wp.config.verify_autograd_array_access</span></code> is true in-place operations on arrays on the Tape that could break gradient computation will be detected (<a class="reference external" href="https://nvidia.github.io/warp/user_guide/differentiability.html#array-overwrite-tracking">docs</a>)</p></li>
+<li><p>New <code class="docutils literal notranslate"><span class="pre">warp.autograd</span></code> module with utility functions <code class="docutils literal notranslate"><span class="pre">gradcheck()</span></code>, <code class="docutils literal notranslate"><span class="pre">jacobian()</span></code>, and <code class="docutils literal notranslate"><span class="pre">jacobian_fd()</span></code> for debugging kernel Jacobians (<a class="reference external" href="https://nvidia.github.io/warp/stable/user_guide/differentiability.html#debugging-gradients">docs</a>)</p></li>
+<li><p>Add array overwrite detection, if <code class="docutils literal notranslate"><span class="pre">wp.config.verify_autograd_array_access</span></code> is true in-place operations on arrays on the Tape that could break gradient computation will be detected (<a class="reference external" href="https://nvidia.github.io/warp/stable/user_guide/differentiability.html#array-overwrite-tracking">docs</a>)</p></li>
 <li><p>Fix bug where modification of <code class="docutils literal notranslate"><span class="pre">&#64;wp.func_replay</span></code> functions and native snippets would not trigger module recompilation</p></li>
 <li><p>Add documentation for dynamic loop autograd limitations</p></li>
 </ul>
@@ -2222,8 +2419,8 @@ loaded <code class="docutils literal notranslate"><span class="pre">(error)</spa
 </li>
 </ul>
 </section>
-<section id="id92">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.2.2">1.2.2</a> - 2024-07-04<a class="headerlink" href="#id92" title="Link to this heading">#</a></h2>
+<section id="id98">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.2.2">1.2.2</a> - 2024-07-04<a class="headerlink" href="#id98" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix hashing of replay functions and snippets</p></li>
 <li><p>Add additional documentation and examples demonstrating <code class="docutils literal notranslate"><span class="pre">wp.copy()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.clone()</span></code>, and <code class="docutils literal notranslate"><span class="pre">array.assign()</span></code> differentiability</p></li>
@@ -2235,16 +2432,16 @@ handle when a class instance is created but not instantiated before garbage coll
 <li><p>Support for NumPy &gt;= 2.0</p></li>
 </ul>
 </section>
-<section id="id93">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.2.1">1.2.1</a> - 2024-06-14<a class="headerlink" href="#id93" title="Link to this heading">#</a></h2>
+<section id="id99">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.2.1">1.2.1</a> - 2024-06-14<a class="headerlink" href="#id99" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix generic function caching</p></li>
 <li><p>Fix Warp not being initialized when constructing arrays with <code class="docutils literal notranslate"><span class="pre">wp.array()</span></code></p></li>
 <li><p>Fix <code class="docutils literal notranslate"><span class="pre">wp.is_mempool_access_supported()</span></code> not resolving the provided device arguments to <code class="docutils literal notranslate"><span class="pre">wp.context.Device</span></code></p></li>
 </ul>
 </section>
-<section id="id94">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.2.0">1.2.0</a> - 2024-06-06<a class="headerlink" href="#id94" title="Link to this heading">#</a></h2>
+<section id="id100">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.2.0">1.2.0</a> - 2024-06-06<a class="headerlink" href="#id100" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add a not-a-number floating-point constant that can be used as <code class="docutils literal notranslate"><span class="pre">wp.NAN</span></code> or <code class="docutils literal notranslate"><span class="pre">wp.nan</span></code>.</p></li>
 <li><p>Add <code class="docutils literal notranslate"><span class="pre">wp.isnan()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.isinf()</span></code>, and <code class="docutils literal notranslate"><span class="pre">wp.isfinite()</span></code> for scalars, vectors, matrices, etc.</p></li>
@@ -2283,15 +2480,15 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 <li><p>Publish CUDA 12.5 binaries for Hopper support, see <a class="github reference external" href="https://github.com/nvidia/warp?tab=readme-ov-file#installing">nvidia/warp</a> for details</p></li>
 </ul>
 </section>
-<section id="id95">
-<h2>1.1.1 - 2024-05-24<a class="headerlink" href="#id95" title="Link to this heading">#</a></h2>
+<section id="id101">
+<h2>1.1.1 - 2024-05-24<a class="headerlink" href="#id101" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">wp.init()</span></code> is no longer required to be called explicitly and will be performed on first call to the API</p></li>
 <li><p>Speed up <code class="docutils literal notranslate"><span class="pre">omni.warp.core</span></code>’s startup time</p></li>
 </ul>
 </section>
-<section id="id96">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.1.0">1.1.0</a> - 2024-05-09<a class="headerlink" href="#id96" title="Link to this heading">#</a></h2>
+<section id="id102">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.1.0">1.1.0</a> - 2024-05-09<a class="headerlink" href="#id102" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Support returning a value from <code class="docutils literal notranslate"><span class="pre">&#64;wp.func_native</span></code> CUDA functions using type hints</p></li>
 <li><p>Improved differentiability of the <code class="docutils literal notranslate"><span class="pre">wp.sim.FeatherstoneIntegrator</span></code></p></li>
@@ -2322,14 +2519,14 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 <li><p>Provide an informative message if setting DLL C-types failed, instructing to try rebuilding the library</p></li>
 </ul>
 </section>
-<section id="id97">
-<h2>1.0.3 - 2024-04-17<a class="headerlink" href="#id97" title="Link to this heading">#</a></h2>
+<section id="id103">
+<h2>1.0.3 - 2024-04-17<a class="headerlink" href="#id103" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add a <code class="docutils literal notranslate"><span class="pre">support_level</span></code> entry to the configuration file of the extensions</p></li>
 </ul>
 </section>
-<section id="id98">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.0.2">1.0.2</a> - 2024-03-22<a class="headerlink" href="#id98" title="Link to this heading">#</a></h2>
+<section id="id104">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.0.2">1.0.2</a> - 2024-03-22<a class="headerlink" href="#id104" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Make examples runnable from any location</p></li>
 <li><p>Fix the examples not running directly from their Python file</p></li>
@@ -2338,8 +2535,8 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 <li><p>Update <code class="docutils literal notranslate"><span class="pre">example_graph_capture.py</span></code> description</p></li>
 </ul>
 </section>
-<section id="id99">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.0.1">1.0.1</a> - 2024-03-15<a class="headerlink" href="#id99" title="Link to this heading">#</a></h2>
+<section id="id105">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.0.1">1.0.1</a> - 2024-03-15<a class="headerlink" href="#id105" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Document Device <code class="docutils literal notranslate"><span class="pre">total_memory</span></code> and <code class="docutils literal notranslate"><span class="pre">free_memory</span></code></p></li>
 <li><p>Documentation for allocators, streams, peer access, and generics</p></li>
@@ -2358,8 +2555,8 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 <li><p>Allow setting mempool release threshold as a fractional value</p></li>
 </ul>
 </section>
-<section id="id100">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.0.0">1.0.0</a> - 2024-03-07<a class="headerlink" href="#id100" title="Link to this heading">#</a></h2>
+<section id="id106">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.0.0">1.0.0</a> - 2024-03-07<a class="headerlink" href="#id106" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add <code class="docutils literal notranslate"><span class="pre">FeatherstoneIntegrator</span></code> which provides more stable simulation of articulated rigid body dynamics in generalized coordinates (<code class="docutils literal notranslate"><span class="pre">State.joint_q</span></code> and <code class="docutils literal notranslate"><span class="pre">State.joint_qd</span></code>)</p></li>
 <li><p>Introduce <code class="docutils literal notranslate"><span class="pre">warp.sim.Control</span></code> struct to store control inputs for simulations (optional, by default the <code class="docutils literal notranslate"><span class="pre">Model</span></code> control inputs are used as before); integrators now have a different simulation signature: <code class="docutils literal notranslate"><span class="pre">integrator.simulate(model:</span> <span class="pre">Model,</span> <span class="pre">state_in:</span> <span class="pre">State,</span> <span class="pre">state_out:</span> <span class="pre">State,</span> <span class="pre">dt:</span> <span class="pre">float,</span> <span class="pre">control:</span> <span class="pre">Control)</span></code></p></li>
@@ -2373,8 +2570,8 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 <li><p>Copy docstrings and annotations from wrapped kernels, functions, structs</p></li>
 </ul>
 </section>
-<section id="id101">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.15.1">0.15.1</a> - 2024-03-05<a class="headerlink" href="#id101" title="Link to this heading">#</a></h2>
+<section id="id107">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.15.1">0.15.1</a> - 2024-03-05<a class="headerlink" href="#id107" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add examples assets to the wheel packages</p></li>
 <li><p>Fix broken image link in documentation</p></li>
@@ -2383,8 +2580,8 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 <li><p>Fix issues when <code class="docutils literal notranslate"><span class="pre">wp.config.quiet</span> <span class="pre">=</span> <span class="pre">True</span></code></p></li>
 </ul>
 </section>
-<section id="id102">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.15.0">0.15.0</a> - 2024-03-04<a class="headerlink" href="#id102" title="Link to this heading">#</a></h2>
+<section id="id108">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.15.0">0.15.0</a> - 2024-03-04<a class="headerlink" href="#id108" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add thumbnails to examples gallery</p></li>
 <li><p>Apply colored lighting to examples</p></li>
@@ -2412,8 +2609,8 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 <li><p>Rename <code class="docutils literal notranslate"><span class="pre">wp.config.graph_capture_module_load_default</span></code> to <code class="docutils literal notranslate"><span class="pre">wp.config.enable_graph_capture_module_load_by_default</span></code></p></li>
 </ul>
 </section>
-<section id="id103">
-<h2>0.14.0 - 2024-02-19<a class="headerlink" href="#id103" title="Link to this heading">#</a></h2>
+<section id="id109">
+<h2>0.14.0 - 2024-02-19<a class="headerlink" href="#id109" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add support for CUDA pooled (stream-ordered) allocators</p>
 <ul>
@@ -2466,14 +2663,14 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 <li><p>Improved performance of creating arrays</p></li>
 </ul>
 </section>
-<section id="id104">
-<h2>0.13.1 - 2024-02-22<a class="headerlink" href="#id104" title="Link to this heading">#</a></h2>
+<section id="id110">
+<h2>0.13.1 - 2024-02-22<a class="headerlink" href="#id110" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Ensure that the results from the <code class="docutils literal notranslate"><span class="pre">Noise</span> <span class="pre">Deform</span></code> are deterministic across different Kit sessions</p></li>
 </ul>
 </section>
-<section id="id105">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.13.0">0.13.0</a> - 2024-02-16<a class="headerlink" href="#id105" title="Link to this heading">#</a></h2>
+<section id="id111">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.13.0">0.13.0</a> - 2024-02-16<a class="headerlink" href="#id111" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Update the license to <em>NVIDIA Software License</em>, allowing commercial use (see <code class="docutils literal notranslate"><span class="pre">LICENSE.md</span></code>)</p></li>
 <li><p>Add <code class="docutils literal notranslate"><span class="pre">CONTRIBUTING.md</span></code> guidelines (for NVIDIA employees)</p></li>
@@ -2483,8 +2680,8 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 <li><p>Allow <code class="docutils literal notranslate"><span class="pre">wp.bool</span></code> usage in vector and matrix types</p></li>
 </ul>
 </section>
-<section id="id106">
-<h2>0.12.0 - 2024-02-05<a class="headerlink" href="#id106" title="Link to this heading">#</a></h2>
+<section id="id112">
+<h2>0.12.0 - 2024-02-05<a class="headerlink" href="#id112" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add a warning when the <code class="docutils literal notranslate"><span class="pre">enable_backward</span></code> setting is set to <code class="docutils literal notranslate"><span class="pre">False</span></code> upon calling <code class="docutils literal notranslate"><span class="pre">wp.Tape.backward()</span></code></p></li>
 <li><p>Fix kernels not being recompiled as expected when defined using a closure</p></li>
@@ -2493,8 +2690,8 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 <li><p>Add a <code class="docutils literal notranslate"><span class="pre">Noise</span> <span class="pre">Deform</span></code> node for OmniGraph that deforms points using a perlin/curl noise</p></li>
 </ul>
 </section>
-<section id="id107">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.11.0">0.11.0</a> - 2024-01-23<a class="headerlink" href="#id107" title="Link to this heading">#</a></h2>
+<section id="id113">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.11.0">0.11.0</a> - 2024-01-23<a class="headerlink" href="#id113" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Re-release 1.0.0-beta.7 as a non-pre-release 0.11.0 version so it gets selected by <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">warp-lang</span></code>.</p></li>
 <li><p>Introducing a new versioning and release process, detailed in <code class="docutils literal notranslate"><span class="pre">PACKAGING.md</span></code> and resembling that of <a class="reference external" href="https://devguide.python.org/developer-workflow/development-cycle/#devcycle">Python itself</a>:</p>
@@ -2641,7 +2838,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 <li><p>Add support for <code class="docutils literal notranslate"><span class="pre">wp.volume_sample_grad_f()</span></code> which returns the value + gradient efficiently from an NVDB volume</p></li>
 <li><p>Add support for LLVM fp16 intrinsics for half-precision arithmetic</p></li>
 <li><p>Add implementation of stochastic gradient descent, see <code class="docutils literal notranslate"><span class="pre">wp.optim.SGD</span></code></p></li>
-<li><p>Add <code class="docutils literal notranslate"><span class="pre">wp.fem</span></code> framework for solving weak-form PDE problems (see <a class="reference external" href="https://nvidia.github.io/warp/domain_modules/fem.html">https://nvidia.github.io/warp/domain_modules/fem.html</a>)</p></li>
+<li><p>Add <code class="docutils literal notranslate"><span class="pre">wp.fem</span></code> framework for solving weak-form PDE problems (see <a class="reference external" href="https://nvidia.github.io/warp/stable/domain_modules/fem.html">https://nvidia.github.io/warp/stable/domain_modules/fem.html</a>)</p></li>
 <li><p>Optimizations for <code class="docutils literal notranslate"><span class="pre">omni.warp</span></code> extension load time (2.2s to 625ms cold start)</p></li>
 <li><p>Make all <code class="docutils literal notranslate"><span class="pre">omni.ui</span></code> dependencies optional so that Warp unit tests can run headless</p></li>
 <li><p>Deprecation of <code class="docutils literal notranslate"><span class="pre">wp.tid()</span></code> outside of kernel functions, users should pass <code class="docutils literal notranslate"><span class="pre">tid()</span></code> values to <code class="docutils literal notranslate"><span class="pre">wp.func</span></code> functions explicitly</p></li>
@@ -2650,8 +2847,8 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 <li><p>Remove dependency on <code class="docutils literal notranslate"><span class="pre">urdfpy</span></code> package, improve MJCF parser handling of default values</p></li>
 </ul>
 </section>
-<section id="id108">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.10.1">0.10.1</a> - 2023-07-25<a class="headerlink" href="#id108" title="Link to this heading">#</a></h2>
+<section id="id114">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.10.1">0.10.1</a> - 2023-07-25<a class="headerlink" href="#id114" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix for large multidimensional kernel launches (&gt; 2^32 threads)</p></li>
 <li><p>Fix for module hashing with generics</p></li>
@@ -2665,8 +2862,8 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 <li><p>Improvements to gradient handling with <code class="docutils literal notranslate"><span class="pre">wp.from_torch()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.to_torch()</span></code> plus documentation</p></li>
 </ul>
 </section>
-<section id="id109">
-<h2>0.10.0 - 2023-07-05<a class="headerlink" href="#id109" title="Link to this heading">#</a></h2>
+<section id="id115">
+<h2>0.10.0 - 2023-07-05<a class="headerlink" href="#id115" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add support for macOS universal binaries (x86 + aarch64) for M1+ support</p></li>
 <li><p>Add additional methods for SDF generation please see the following new methods:</p>
@@ -2729,8 +2926,8 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 <li><p>Remove deprecated <code class="docutils literal notranslate"><span class="pre">wp.ScopedCudaGuard()</span></code>, please use <code class="docutils literal notranslate"><span class="pre">wp.ScopedDevice()</span></code> instead</p></li>
 </ul>
 </section>
-<section id="id110">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.9.0">0.9.0</a> - 2023-06-01<a class="headerlink" href="#id110" title="Link to this heading">#</a></h2>
+<section id="id116">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.9.0">0.9.0</a> - 2023-06-01<a class="headerlink" href="#id116" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add support for in-place modifications to vector, matrix, and struct types inside kernels (will warn during backward pass with <code class="docutils literal notranslate"><span class="pre">wp.verbose</span></code> if using gradients)</p></li>
 <li><p>Add support for step-through VSCode debugging of kernel code with standalone LLVM compiler, see <code class="docutils literal notranslate"><span class="pre">wp.breakpoint()</span></code>, and <code class="docutils literal notranslate"><span class="pre">walkthrough_debug.py</span></code></p></li>
@@ -2757,8 +2954,8 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 <li><p>Deprecate single scalar particle radius (should be a per-particle array)</p></li>
 </ul>
 </section>
-<section id="id111">
-<h2>0.8.2 - 2023-04-21<a class="headerlink" href="#id111" title="Link to this heading">#</a></h2>
+<section id="id117">
+<h2>0.8.2 - 2023-04-21<a class="headerlink" href="#id117" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add <code class="docutils literal notranslate"><span class="pre">ModelBuilder.soft_contact_max</span></code> to control the maximum number of soft contacts that can be registered. Use <code class="docutils literal notranslate"><span class="pre">Model.allocate_soft_contacts(new_count)</span></code> to change count on existing <code class="docutils literal notranslate"><span class="pre">Model</span></code> objects.</p></li>
 <li><p>Add support for <code class="docutils literal notranslate"><span class="pre">bool</span></code> parameters</p></li>
@@ -2770,15 +2967,15 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 <li><p>Add query point without sign determination <code class="docutils literal notranslate"><span class="pre">wp.mesh_query_no_sign()</span></code></p></li>
 </ul>
 </section>
-<section id="id112">
-<h2>0.8.1 - 2023-04-13<a class="headerlink" href="#id112" title="Link to this heading">#</a></h2>
+<section id="id118">
+<h2>0.8.1 - 2023-04-13<a class="headerlink" href="#id118" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix for regression when passing flattened numeric lists as matrix arguments to kernels</p></li>
 <li><p>Fix for regressions when passing <code class="docutils literal notranslate"><span class="pre">wp.struct</span></code> types with uninitialized (<code class="docutils literal notranslate"><span class="pre">None</span></code>) member attributes</p></li>
 </ul>
 </section>
-<section id="id113">
-<h2>0.8.0 - 2023-04-05<a class="headerlink" href="#id113" title="Link to this heading">#</a></h2>
+<section id="id119">
+<h2>0.8.0 - 2023-04-05<a class="headerlink" href="#id119" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add <code class="docutils literal notranslate"><span class="pre">Texture</span> <span class="pre">Write</span></code> node for updating dynamic RTX textures from Warp kernels / nodes</p></li>
 <li><p>Add multi-dimensional kernel support to Warp Kernel Node</p></li>
@@ -2816,8 +3013,8 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 <li><p>Enable Python faulthandler by default</p></li>
 <li><p>Update to VS2019</p></li>
 </ul>
-<section id="id114">
-<h3>Breaking Changes<a class="headerlink" href="#id114" title="Link to this heading">#</a></h3>
+<section id="id120">
+<h3>Breaking Changes<a class="headerlink" href="#id120" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">wp.constant</span></code> variables can now be treated as their true type, accessing the underlying value through <code class="docutils literal notranslate"><span class="pre">constant.val</span></code> is no longer supported</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">wp.sim.model.ground_plane</span></code> is now a <code class="docutils literal notranslate"><span class="pre">wp.array</span></code> to support gradient, users should call <code class="docutils literal notranslate"><span class="pre">builder.set_ground_plane()</span></code> to create the ground</p></li>
@@ -2825,8 +3022,8 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 </section>
-<section id="id115">
-<h2>0.7.2 - 2023-02-15<a class="headerlink" href="#id115" title="Link to this heading">#</a></h2>
+<section id="id121">
+<h2>0.7.2 - 2023-02-15<a class="headerlink" href="#id121" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Reduce test time for vec/math types</p></li>
 <li><p>Clean-up CUDA disabled build pipeline</p></li>
@@ -2834,15 +3031,15 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 <li><p>Handle additional cases for array indexing inside Python</p></li>
 </ul>
 </section>
-<section id="id116">
-<h2>0.7.1 - 2023-02-14<a class="headerlink" href="#id116" title="Link to this heading">#</a></h2>
+<section id="id122">
+<h2>0.7.1 - 2023-02-14<a class="headerlink" href="#id122" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Disabling some slow tests for Kit</p></li>
 <li><p>Make unit tests run on first GPU only by default</p></li>
 </ul>
 </section>
-<section id="id117">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.7.0">0.7.0</a> - 2023-02-13<a class="headerlink" href="#id117" title="Link to this heading">#</a></h2>
+<section id="id123">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.7.0">0.7.0</a> - 2023-02-13<a class="headerlink" href="#id123" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add support for arbitrary length / type vector and matrices e.g.: <code class="docutils literal notranslate"><span class="pre">wp.vec(length=7,</span> <span class="pre">dtype=wp.float16)</span></code>, see <code class="docutils literal notranslate"><span class="pre">wp.vec()</span></code>, and <code class="docutils literal notranslate"><span class="pre">wp.mat()</span></code></p></li>
 <li><p>Add support for <code class="docutils literal notranslate"><span class="pre">array.flatten()</span></code>, <code class="docutils literal notranslate"><span class="pre">array.reshape()</span></code>, and <code class="docutils literal notranslate"><span class="pre">array.view()</span></code> with NumPy semantics</p></li>
@@ -2855,16 +3052,16 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 <li><p>Improve error handling for kernel return values</p></li>
 </ul>
 </section>
-<section id="id118">
-<h2>0.6.3 - 2023-01-31<a class="headerlink" href="#id118" title="Link to this heading">#</a></h2>
+<section id="id124">
+<h2>0.6.3 - 2023-01-31<a class="headerlink" href="#id124" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add DLPack utilities, see <code class="docutils literal notranslate"><span class="pre">wp.from_dlpack()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.to_dlpack()</span></code></p></li>
 <li><p>Add Jax utilities, see <code class="docutils literal notranslate"><span class="pre">wp.from_jax()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.to_jax()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.device_from_jax()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.device_to_jax()</span></code></p></li>
 <li><p>Fix for Linux Kit extensions OM-80132, OM-80133</p></li>
 </ul>
 </section>
-<section id="id119">
-<h2>0.6.2 - 2023-01-19<a class="headerlink" href="#id119" title="Link to this heading">#</a></h2>
+<section id="id125">
+<h2>0.6.2 - 2023-01-19<a class="headerlink" href="#id125" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Updated <code class="docutils literal notranslate"><span class="pre">wp.from_torch()</span></code> to support more data types</p></li>
 <li><p>Updated <code class="docutils literal notranslate"><span class="pre">wp.from_torch()</span></code> to automatically determine the target Warp data type if not specified</p></li>
@@ -2880,8 +3077,8 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 <li><p>Fix for quaternion slerp gradients (<code class="docutils literal notranslate"><span class="pre">wp.quat_slerp()</span></code>)</p></li>
 </ul>
 </section>
-<section id="id120">
-<h2>0.6.1 - 2022-12-05<a class="headerlink" href="#id120" title="Link to this heading">#</a></h2>
+<section id="id126">
+<h2>0.6.1 - 2022-12-05<a class="headerlink" href="#id126" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix for non-CUDA builds</p></li>
 <li><p>Fix strides computation in array_t constructor, fixes a bug with accessing mesh indices through mesh.indices[]</p></li>
@@ -2889,8 +3086,8 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 <li><p>Switch to linbuild for universal Linux binaries (affects TeamCity builds only)</p></li>
 </ul>
 </section>
-<section id="id121">
-<h2>0.6.0 - 2022-11-28<a class="headerlink" href="#id121" title="Link to this heading">#</a></h2>
+<section id="id127">
+<h2>0.6.0 - 2022-11-28<a class="headerlink" href="#id127" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add support for CUDA streams, see <code class="docutils literal notranslate"><span class="pre">wp.Stream</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.get_stream()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.set_stream()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.synchronize_stream()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></p></li>
 <li><p>Add support for CUDA events, see <code class="docutils literal notranslate"><span class="pre">wp.Event</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.record_event()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.wait_event()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.wait_stream()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.Stream.record_event()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.Stream.wait_event()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.Stream.wait_stream()</span></code></p></li>
@@ -2916,14 +3113,14 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 <li><p>Update warp.so/warp.dll to CUDA Toolkit 11.5</p></li>
 </ul>
 </section>
-<section id="id122">
-<h2>0.5.1 - 2022-11-01<a class="headerlink" href="#id122" title="Link to this heading">#</a></h2>
+<section id="id128">
+<h2>0.5.1 - 2022-11-01<a class="headerlink" href="#id128" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix for unit tests in Kit</p></li>
 </ul>
 </section>
-<section id="id123">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.5.0">0.5.0</a> - 2022-10-31<a class="headerlink" href="#id123" title="Link to this heading">#</a></h2>
+<section id="id129">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.5.0">0.5.0</a> - 2022-10-31<a class="headerlink" href="#id129" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add smoothed particle hydrodynamics (SPH) example, see <code class="docutils literal notranslate"><span class="pre">example_sph.py</span></code></p></li>
 <li><p>Add support for accessing <code class="docutils literal notranslate"><span class="pre">array.shape</span></code> inside kernels, e.g.: <code class="docutils literal notranslate"><span class="pre">width</span> <span class="pre">=</span> <span class="pre">arr.shape[0]</span></code></p></li>
@@ -2951,16 +3148,16 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 <li><p>Improved error reporting during code-gen</p></li>
 </ul>
 </section>
-<section id="id124">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.4.3">0.4.3</a> - 2022-09-20<a class="headerlink" href="#id124" title="Link to this heading">#</a></h2>
+<section id="id130">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.4.3">0.4.3</a> - 2022-09-20<a class="headerlink" href="#id130" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Update all samples to use GPU interop path by default</p></li>
 <li><p>Fix for arrays &gt; 2GB in length</p></li>
 <li><p>Add support for per-vertex USD mesh colors with <code class="docutils literal notranslate"><span class="pre">wp.render</span></code> class</p></li>
 </ul>
 </section>
-<section id="id125">
-<h2>0.4.2 - 2022-09-07<a class="headerlink" href="#id125" title="Link to this heading">#</a></h2>
+<section id="id131">
+<h2>0.4.2 - 2022-09-07<a class="headerlink" href="#id131" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Register Warp samples to the sample browser in Kit</p></li>
 <li><p>Add NDEBUG flag to release mode kernel builds</p></li>
@@ -2968,8 +3165,8 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 <li><p>Fix for broken cameras in Warp sample scenes</p></li>
 </ul>
 </section>
-<section id="id126">
-<h2>0.4.1 - 2022-08-30<a class="headerlink" href="#id126" title="Link to this heading">#</a></h2>
+<section id="id132">
+<h2>0.4.1 - 2022-08-30<a class="headerlink" href="#id132" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add geometry sampling methods, see <code class="docutils literal notranslate"><span class="pre">wp.sample_unit_cube()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.sample_unit_disk()</span></code>, etc</p></li>
 <li><p>Add <code class="docutils literal notranslate"><span class="pre">wp.lower_bound()</span></code> for searching sorted arrays</p></li>
@@ -2980,8 +3177,8 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 <li><p>Fix for code gen of functions that do not return a value</p></li>
 </ul>
 </section>
-<section id="id127">
-<h2>0.4.0 - 2022-08-09<a class="headerlink" href="#id127" title="Link to this heading">#</a></h2>
+<section id="id133">
+<h2>0.4.0 - 2022-08-09<a class="headerlink" href="#id133" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix for FP16 conversions on GPUs without hardware support</p></li>
 <li><p>Fix for <code class="docutils literal notranslate"><span class="pre">runtime</span> <span class="pre">=</span> <span class="pre">None</span></code> errors when reloading the Warp module</p></li>
@@ -2994,21 +3191,21 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 <li><p>Support running even if CUDA initialization failed, use <code class="docutils literal notranslate"><span class="pre">wp.is_cuda_available()</span></code> to check availability</p></li>
 <li><p>Statically linking with the CUDA runtime library to avoid deployment issues</p></li>
 </ul>
-<section id="id128">
-<h3>Breaking Changes<a class="headerlink" href="#id128" title="Link to this heading">#</a></h3>
+<section id="id134">
+<h3>Breaking Changes<a class="headerlink" href="#id134" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Removed <code class="docutils literal notranslate"><span class="pre">wp.runtime</span></code> reference from the top-level module, as it should be considered private</p></li>
 </ul>
 </section>
 </section>
-<section id="id129">
-<h2>0.3.2 - 2022-07-19<a class="headerlink" href="#id129" title="Link to this heading">#</a></h2>
+<section id="id135">
+<h2>0.3.2 - 2022-07-19<a class="headerlink" href="#id135" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Remove Torch import from <code class="docutils literal notranslate"><span class="pre">__init__.py</span></code>, defer import to <code class="docutils literal notranslate"><span class="pre">wp.from_torch()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.to_torch()</span></code></p></li>
 </ul>
 </section>
-<section id="id130">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.3.1">0.3.1</a> - 2022-07-12<a class="headerlink" href="#id130" title="Link to this heading">#</a></h2>
+<section id="id136">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.3.1">0.3.1</a> - 2022-07-12<a class="headerlink" href="#id136" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix for marching cubes reallocation after initialization</p></li>
 <li><p>Add support for closest point between line segment tests, see <code class="docutils literal notranslate"><span class="pre">wp.closest_point_edge_edge()</span></code> builtin</p></li>
@@ -3019,8 +3216,8 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 <li><p>Add support for using arbitrary external CUDA contexts, see <code class="docutils literal notranslate"><span class="pre">wp.map_cuda_device()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.unmap_cuda_device()</span></code></p></li>
 <li><p>Add PyTorch device aliasing functions, see <code class="docutils literal notranslate"><span class="pre">wp.device_from_torch()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.device_to_torch()</span></code></p></li>
 </ul>
-<section id="id131">
-<h3>Breaking Changes<a class="headerlink" href="#id131" title="Link to this heading">#</a></h3>
+<section id="id137">
+<h3>Breaking Changes<a class="headerlink" href="#id137" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>A CUDA device is used by default, if available (aligned with <code class="docutils literal notranslate"><span class="pre">wp.get_preferred_device()</span></code>)</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">wp.ScopedCudaGuard</span></code> is deprecated, use <code class="docutils literal notranslate"><span class="pre">wp.ScopedDevice</span></code> instead</p></li>
@@ -3029,8 +3226,8 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 </section>
-<section id="id132">
-<h2>0.3.0 - 2022-07-08<a class="headerlink" href="#id132" title="Link to this heading">#</a></h2>
+<section id="id138">
+<h2>0.3.0 - 2022-07-08<a class="headerlink" href="#id138" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add support for FP16 storage type, see <code class="docutils literal notranslate"><span class="pre">wp.float16</span></code></p></li>
 <li><p>Add support for per-dimension byte strides, see <code class="docutils literal notranslate"><span class="pre">wp.array.strides</span></code></p></li>
@@ -3055,8 +3252,8 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 <li><p>Fix for example scripts to output USD at 60 timecodes per-second (better Kit compatibility)</p></li>
 </ul>
 </section>
-<section id="id133">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.2.3">0.2.3</a> - 2022-06-13<a class="headerlink" href="#id133" title="Link to this heading">#</a></h2>
+<section id="id139">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.2.3">0.2.3</a> - 2022-06-13<a class="headerlink" href="#id139" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix for incorrect 4d array bounds checking</p></li>
 <li><p>Fix for <code class="docutils literal notranslate"><span class="pre">wp.constant</span></code> changes not updating module hash</p></li>
@@ -3064,16 +3261,16 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 <li><p>Array gradients are now allocated along with the arrays and accessible as <code class="docutils literal notranslate"><span class="pre">wp.array.grad</span></code>, users should take care to always call <code class="docutils literal notranslate"><span class="pre">wp.Tape.zero()</span></code> to clear gradients between different invocations of <code class="docutils literal notranslate"><span class="pre">wp.Tape.backward()</span></code></p></li>
 <li><p>Added <code class="docutils literal notranslate"><span class="pre">wp.array.fill_()</span></code> to set all entries to a scalar value (4-byte values only currently)</p></li>
 </ul>
-<section id="id134">
-<h3>Breaking Changes<a class="headerlink" href="#id134" title="Link to this heading">#</a></h3>
+<section id="id140">
+<h3>Breaking Changes<a class="headerlink" href="#id140" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Tape <code class="docutils literal notranslate"><span class="pre">capture</span></code> option has been removed, users can now capture tapes inside existing CUDA graphs (e.g.: inside Torch)</p></li>
 <li><p>Scalar loss arrays should now explicitly set <code class="docutils literal notranslate"><span class="pre">requires_grad=True</span></code> at creation time</p></li>
 </ul>
 </section>
 </section>
-<section id="id135">
-<h2>0.2.2 - 2022-05-30<a class="headerlink" href="#id135" title="Link to this heading">#</a></h2>
+<section id="id141">
+<h2>0.2.2 - 2022-05-30<a class="headerlink" href="#id141" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix for <code class="docutils literal notranslate"><span class="pre">from</span> <span class="pre">import</span> <span class="pre">*</span></code> inside Warp initialization</p></li>
 <li><p>Fix for body space velocity when using deforming Mesh objects with scale</p></li>
@@ -3090,8 +3287,8 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 <li><p>Add support for accessing mesh data directly in kernels, see <code class="docutils literal notranslate"><span class="pre">wp.mesh_get_point()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.mesh_get_index()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.mesh_eval_face_normal()</span></code></p></li>
 <li><p>Change to only compile for targets where kernel is launched (e.g.: will not compile CPU unless explicitly requested)</p></li>
 </ul>
-<section id="id136">
-<h3>Breaking Changes<a class="headerlink" href="#id136" title="Link to this heading">#</a></h3>
+<section id="id142">
+<h3>Breaking Changes<a class="headerlink" href="#id142" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Builtin methods such as <code class="docutils literal notranslate"><span class="pre">wp.quat_identity()</span></code> now call the Warp native implementation directly and will return a <code class="docutils literal notranslate"><span class="pre">wp.quat</span></code> object instead of NumPy array</p></li>
 <li><p>NumPy implementations of many builtin methods have been moved to <code class="docutils literal notranslate"><span class="pre">wp.utils</span></code> and will be deprecated</p></li>
@@ -3100,14 +3297,14 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 </section>
-<section id="id137">
-<h2>0.2.1 - 2022-05-11<a class="headerlink" href="#id137" title="Link to this heading">#</a></h2>
+<section id="id143">
+<h2>0.2.1 - 2022-05-11<a class="headerlink" href="#id143" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix for unit tests in Kit</p></li>
 </ul>
 </section>
-<section id="id138">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.2.0">0.2.0</a> - 2022-05-02<a class="headerlink" href="#id138" title="Link to this heading">#</a></h2>
+<section id="id144">
+<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.2.0">0.2.0</a> - 2022-05-02<a class="headerlink" href="#id144" title="Link to this heading">#</a></h2>
 <section id="warp-core">
 <h3>Warp Core<a class="headerlink" href="#warp-core" title="Link to this heading">#</a></h3>
 <ul class="simple">
@@ -3150,8 +3347,8 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 <li><p>Add examples for URDF cartpole and quadruped simulation</p></li>
 </ul>
 </section>
-<section id="id139">
-<h3>Breaking Changes<a class="headerlink" href="#id139" title="Link to this heading">#</a></h3>
+<section id="id145">
+<h3>Breaking Changes<a class="headerlink" href="#id145" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">wp.volume_sample_world()</span></code> is now replaced by <code class="docutils literal notranslate"><span class="pre">wp.volume_sample_f/i/vec()</span></code> which operate in index (local) space. Users should use <code class="docutils literal notranslate"><span class="pre">wp.volume_world_to_index()</span></code> to transform points from world space to index space before sampling.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">wp.mlp()</span></code> expects multi-dimensional arrays instead of one-dimensional arrays for inference, all other semantics remain the same as earlier versions of this API.</p></li>
@@ -3160,8 +3357,8 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 </section>
-<section id="id140">
-<h2>0.1.25 - 2022-03-20<a class="headerlink" href="#id140" title="Link to this heading">#</a></h2>
+<section id="id146">
+<h2>0.1.25 - 2022-03-20<a class="headerlink" href="#id146" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add support for class methods to be Warp kernels</p></li>
 <li><p>Add HashGrid reserve() so it can be used with CUDA graphs</p></li>
@@ -3172,10 +3369,10 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 <li><p>Move tests into core library so they can be run in Kit environment</p></li>
 </ul>
 </section>
-<section id="id141">
-<h2>0.1.24 - 2022-03-03<a class="headerlink" href="#id141" title="Link to this heading">#</a></h2>
-<section id="id142">
-<h3>Warp Core<a class="headerlink" href="#id142" title="Link to this heading">#</a></h3>
+<section id="id147">
+<h2>0.1.24 - 2022-03-03<a class="headerlink" href="#id147" title="Link to this heading">#</a></h2>
+<section id="id148">
+<h3>Warp Core<a class="headerlink" href="#id148" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Add NanoVDB support, see <code class="docutils literal notranslate"><span class="pre">wp.volume_sample*()</span></code> methods</p></li>
 <li><p>Add support for reading compile-time constants in kernels, see <code class="docutils literal notranslate"><span class="pre">wp.constant()</span></code></p></li>
@@ -3191,10 +3388,10 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 </section>
-<section id="id143">
-<h2>0.1.23 - 2022-02-17<a class="headerlink" href="#id143" title="Link to this heading">#</a></h2>
-<section id="id144">
-<h3>Warp Core<a class="headerlink" href="#id144" title="Link to this heading">#</a></h3>
+<section id="id149">
+<h2>0.1.23 - 2022-02-17<a class="headerlink" href="#id149" title="Link to this heading">#</a></h2>
+<section id="id150">
+<h3>Warp Core<a class="headerlink" href="#id150" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Fix for generated code folder being removed during Showroom installation</p></li>
 <li><p>Fix for macOS support</p></li>
@@ -3204,10 +3401,10 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 </section>
-<section id="id145">
-<h2>0.1.22 - 2022-02-14<a class="headerlink" href="#id145" title="Link to this heading">#</a></h2>
-<section id="id146">
-<h3>Warp Core<a class="headerlink" href="#id146" title="Link to this heading">#</a></h3>
+<section id="id151">
+<h2>0.1.22 - 2022-02-14<a class="headerlink" href="#id151" title="Link to this heading">#</a></h2>
+<section id="id152">
+<h3>Warp Core<a class="headerlink" href="#id152" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Fix for .so reloading on Linux</p></li>
 <li><p>Fix for while loop code-gen in some edge cases</p></li>
@@ -3216,17 +3413,17 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 <li><p>Add MSVC compiler version detection and require minimum</p></li>
 </ul>
 </section>
-<section id="id147">
-<h3>Warp Sim<a class="headerlink" href="#id147" title="Link to this heading">#</a></h3>
+<section id="id153">
+<h3>Warp Sim<a class="headerlink" href="#id153" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Add support for universal and compound joint types</p></li>
 </ul>
 </section>
 </section>
-<section id="id148">
-<h2>0.1.21 - 2022-01-19<a class="headerlink" href="#id148" title="Link to this heading">#</a></h2>
-<section id="id149">
-<h3>Warp Core<a class="headerlink" href="#id149" title="Link to this heading">#</a></h3>
+<section id="id154">
+<h2>0.1.21 - 2022-01-19<a class="headerlink" href="#id154" title="Link to this heading">#</a></h2>
+<section id="id155">
+<h3>Warp Core<a class="headerlink" href="#id155" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Fix for exception on shutdown in empty <code class="docutils literal notranslate"><span class="pre">wp.array</span></code> objects</p></li>
 <li><p>Fix for hot reload of CPU kernels in Kit</p></li>
@@ -3239,8 +3436,8 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 <li><p>Remove unused NVRTC binary dependencies (50mb smaller Linux distribution)</p></li>
 </ul>
 </section>
-<section id="id150">
-<h3>Warp Sim<a class="headerlink" href="#id150" title="Link to this heading">#</a></h3>
+<section id="id156">
+<h3>Warp Sim<a class="headerlink" href="#id156" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Bundle import of multiple shapes for simulation nodes</p></li>
 <li><p>New OgnParticleVolume node for sampling shapes -&gt; particles</p></li>
@@ -3248,26 +3445,26 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 </section>
-<section id="id151">
-<h2>0.1.20 - 2021-11-02<a class="headerlink" href="#id151" title="Link to this heading">#</a></h2>
+<section id="id157">
+<h2>0.1.20 - 2021-11-02<a class="headerlink" href="#id157" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Updates to the ripple solver for GTC (support for multiple colliders, buoyancy, etc)</p></li>
 </ul>
 </section>
-<section id="id152">
-<h2>0.1.19 - 2021-10-15<a class="headerlink" href="#id152" title="Link to this heading">#</a></h2>
+<section id="id158">
+<h2>0.1.19 - 2021-10-15<a class="headerlink" href="#id158" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Publish from 2021.3 to avoid omni.graph database incompatibilities</p></li>
 </ul>
 </section>
-<section id="id153">
-<h2>0.1.18 - 2021-10-08<a class="headerlink" href="#id153" title="Link to this heading">#</a></h2>
+<section id="id159">
+<h2>0.1.18 - 2021-10-08<a class="headerlink" href="#id159" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Enable Linux support (tested on 20.04)</p></li>
 </ul>
 </section>
-<section id="id154">
-<h2>0.1.17 - 2021-09-30<a class="headerlink" href="#id154" title="Link to this heading">#</a></h2>
+<section id="id160">
+<h2>0.1.17 - 2021-09-30<a class="headerlink" href="#id160" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix for 3x3 SVD adjoint</p></li>
 <li><p>Fix for A6000 GPU (bump compute model to sm_52 minimum)</p></li>
@@ -3277,15 +3474,15 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 <li><p>Documentation update</p></li>
 </ul>
 </section>
-<section id="id155">
-<h2>0.1.16 - 2021-09-06<a class="headerlink" href="#id155" title="Link to this heading">#</a></h2>
+<section id="id161">
+<h2>0.1.16 - 2021-09-06<a class="headerlink" href="#id161" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix for case where simple assignments (a = b) incorrectly generated reference rather than value copy</p></li>
 <li><p>Handle passing zero-length (empty) arrays to kernels</p></li>
 </ul>
 </section>
-<section id="id156">
-<h2>0.1.15 - 2021-09-03<a class="headerlink" href="#id156" title="Link to this heading">#</a></h2>
+<section id="id162">
+<h2>0.1.15 - 2021-09-03<a class="headerlink" href="#id162" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add additional math library functions (asin, etc)</p></li>
 <li><p>Add builtin 3x3 SVD support</p></li>
@@ -3299,85 +3496,85 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 <li><p>Update the example OgnRipple wave equation solver to use bundles</p></li>
 </ul>
 </section>
-<section id="id157">
-<h2>0.1.14 - 2021-08-09<a class="headerlink" href="#id157" title="Link to this heading">#</a></h2>
+<section id="id163">
+<h2>0.1.14 - 2021-08-09<a class="headerlink" href="#id163" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix for out-of-bounds memory access in CUDA BVH</p></li>
 <li><p>Better error checking after kernel launches (use <code class="docutils literal notranslate"><span class="pre">wp.config.verify_cuda=True</span></code>)</p></li>
 <li><p>Fix for vec3 normalize adjoint code</p></li>
 </ul>
 </section>
-<section id="id158">
-<h2>0.1.13 - 2021-07-29<a class="headerlink" href="#id158" title="Link to this heading">#</a></h2>
+<section id="id164">
+<h2>0.1.13 - 2021-07-29<a class="headerlink" href="#id164" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Remove OgnShrinkWrap.py test node</p></li>
 </ul>
 </section>
-<section id="id159">
-<h2>0.1.12 - 2021-07-29<a class="headerlink" href="#id159" title="Link to this heading">#</a></h2>
+<section id="id165">
+<h2>0.1.12 - 2021-07-29<a class="headerlink" href="#id165" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Switch to Woop et al.’s watertight ray-tri intersection test</p></li>
 <li><p>Disable –fast-math in CUDA compilation step for improved precision</p></li>
 </ul>
 </section>
-<section id="id160">
-<h2>0.1.11 - 2021-07-28<a class="headerlink" href="#id160" title="Link to this heading">#</a></h2>
+<section id="id166">
+<h2>0.1.11 - 2021-07-28<a class="headerlink" href="#id166" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix for <code class="docutils literal notranslate"><span class="pre">wp.mesh_query_ray()</span></code> returning incorrect t-value</p></li>
 </ul>
 </section>
-<section id="id161">
-<h2>0.1.10 - 2021-07-28<a class="headerlink" href="#id161" title="Link to this heading">#</a></h2>
+<section id="id167">
+<h2>0.1.10 - 2021-07-28<a class="headerlink" href="#id167" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix for OV extension fwatcher filters to avoid hot-reload loop due to OGN regeneration</p></li>
 </ul>
 </section>
-<section id="id162">
-<h2>0.1.9 - 2021-07-21<a class="headerlink" href="#id162" title="Link to this heading">#</a></h2>
+<section id="id168">
+<h2>0.1.9 - 2021-07-21<a class="headerlink" href="#id168" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix for loading sibling DLL paths</p></li>
 <li><p>Better type checking for built-in function arguments</p></li>
 <li><p>Added runtime docs, can now list all builtins using <code class="docutils literal notranslate"><span class="pre">wp.print_builtins()</span></code></p></li>
 </ul>
 </section>
-<section id="id163">
-<h2>0.1.8 - 2021-07-14<a class="headerlink" href="#id163" title="Link to this heading">#</a></h2>
+<section id="id169">
+<h2>0.1.8 - 2021-07-14<a class="headerlink" href="#id169" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix for hot-reload of CUDA kernels</p></li>
 <li><p>Add Tape object for replaying differentiable kernels</p></li>
 <li><p>Add helpers for Torch interop (convert <code class="docutils literal notranslate"><span class="pre">torch.Tensor</span></code> to <code class="docutils literal notranslate"><span class="pre">wp.Array</span></code>)</p></li>
 </ul>
 </section>
-<section id="id164">
-<h2>0.1.7 - 2021-07-05<a class="headerlink" href="#id164" title="Link to this heading">#</a></h2>
+<section id="id170">
+<h2>0.1.7 - 2021-07-05<a class="headerlink" href="#id170" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Switch to NVRTC for CUDA runtime</p></li>
 <li><p>Allow running without host compiler</p></li>
 <li><p>Disable asserts in kernel release mode (small perf. improvement)</p></li>
 </ul>
 </section>
-<section id="id165">
-<h2>0.1.6 - 2021-06-14<a class="headerlink" href="#id165" title="Link to this heading">#</a></h2>
+<section id="id171">
+<h2>0.1.6 - 2021-06-14<a class="headerlink" href="#id171" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Look for CUDA toolchain in target-deps</p></li>
 </ul>
 </section>
-<section id="id166">
-<h2>0.1.5 - 2021-06-14<a class="headerlink" href="#id166" title="Link to this heading">#</a></h2>
+<section id="id172">
+<h2>0.1.5 - 2021-06-14<a class="headerlink" href="#id172" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Rename OgLang -&gt; Warp</p></li>
 <li><p>Improve CUDA environment error checking</p></li>
 <li><p>Clean-up some logging, add verbose mode (<code class="docutils literal notranslate"><span class="pre">wp.config.verbose</span></code>)</p></li>
 </ul>
 </section>
-<section id="id167">
-<h2>0.1.4 - 2021-06-10<a class="headerlink" href="#id167" title="Link to this heading">#</a></h2>
+<section id="id173">
+<h2>0.1.4 - 2021-06-10<a class="headerlink" href="#id173" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add support for mesh raycast</p></li>
 </ul>
 </section>
-<section id="id168">
-<h2>0.1.3 - 2021-06-09<a class="headerlink" href="#id168" title="Link to this heading">#</a></h2>
+<section id="id174">
+<h2>0.1.3 - 2021-06-09<a class="headerlink" href="#id174" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add support for unary negation operator</p></li>
 <li><p>Add support for mutating variables during dynamic loops (non-differentiable)</p></li>
@@ -3386,8 +3583,8 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 <li><p>Update README.md with requirements / examples</p></li>
 </ul>
 </section>
-<section id="id169">
-<h2>0.1.2 - 2021-06-03<a class="headerlink" href="#id169" title="Link to this heading">#</a></h2>
+<section id="id175">
+<h2>0.1.2 - 2021-06-03<a class="headerlink" href="#id175" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add support for querying mesh velocities</p></li>
 <li><p>Add CUDA graph support, see <code class="docutils literal notranslate"><span class="pre">wp.capture_begin()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.capture_end()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.capture_launch()</span></code></p></li>
@@ -3397,14 +3594,14 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 <li><p>Fix for Linux/macOS support</p></li>
 </ul>
 </section>
-<section id="id170">
-<h2>0.1.1 - 2021-05-18<a class="headerlink" href="#id170" title="Link to this heading">#</a></h2>
+<section id="id176">
+<h2>0.1.1 - 2021-05-18<a class="headerlink" href="#id176" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix bug with conflicting CUDA contexts</p></li>
 </ul>
 </section>
-<section id="id171">
-<h2>0.1.0 - 2021-05-17<a class="headerlink" href="#id171" title="Link to this heading">#</a></h2>
+<section id="id177">
+<h2>0.1.0 - 2021-05-17<a class="headerlink" href="#id177" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Initial publish for alpha testing</p></li>
 </ul>
@@ -3456,7 +3653,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/main/docs/user_guide/changelog.md">
+    <a href="https://github.com/NVIDIA/warp/edit/release-1.14/docs/user_guide/changelog.md">
       <i class="fa-solid fa-pencil"></i>
       
       

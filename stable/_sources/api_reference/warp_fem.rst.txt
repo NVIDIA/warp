@@ -114,6 +114,7 @@ API
    element_coordinates
    element_index
    element_partition_index
+   environment_index
    grad
    grad_average
    grad_jump

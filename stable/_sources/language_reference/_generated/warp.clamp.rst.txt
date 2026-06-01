@@ -10,3 +10,7 @@
       * Differentiable
 
    Clamp the value of ``x`` to the range [low, high].
+   
+   Equivalent to ``wp.min(wp.max(low, x), high)``. On float types this means
+   NaN values of ``x`` produce ``wp.min(low, high)`` rather than propagating
+   NaN.

@@ -18,10 +18,14 @@
       ~AdaptiveNanogrid.build_bvh
       ~AdaptiveNanogrid.bvh_id
       ~AdaptiveNanogrid.cell_arg_value
+      ~AdaptiveNanogrid.cell_bvh_groups
       ~AdaptiveNanogrid.cell_count
+      ~AdaptiveNanogrid.cell_env_arg_value
+      ~AdaptiveNanogrid.environment_count
       ~AdaptiveNanogrid.fill_cell_arg
       ~AdaptiveNanogrid.fill_side_arg
       ~AdaptiveNanogrid.fill_side_index_arg
+      ~AdaptiveNanogrid.from_environment_voxels
       ~AdaptiveNanogrid.make_filtered_cell_lookup
       ~AdaptiveNanogrid.reference_cell
       ~AdaptiveNanogrid.reference_side
@@ -55,6 +59,8 @@
       ~AdaptiveNanogrid.cell_coordinates
       ~AdaptiveNanogrid.cell_deformation_gradient
       ~AdaptiveNanogrid.cell_dimension
+      ~AdaptiveNanogrid.cell_env
+      ~AdaptiveNanogrid.cell_environment_index
       ~AdaptiveNanogrid.cell_grid
       ~AdaptiveNanogrid.cell_inverse_deformation_gradient
       ~AdaptiveNanogrid.cell_lookup
@@ -63,9 +69,11 @@
       ~AdaptiveNanogrid.cell_normal
       ~AdaptiveNanogrid.cell_position
       ~AdaptiveNanogrid.coarse_ijk
+      ~AdaptiveNanogrid.compute_cell_bvh_groups
       ~AdaptiveNanogrid.coords_type
       ~AdaptiveNanogrid.dimension
       ~AdaptiveNanogrid.encode_axis_and_level
+      ~AdaptiveNanogrid.env_offsets
       ~AdaptiveNanogrid.face_grid
       ~AdaptiveNanogrid.find_cell
       ~AdaptiveNanogrid.fine_ijk
@@ -74,6 +82,7 @@
       ~AdaptiveNanogrid.scalar_type
       ~AdaptiveNanogrid.side_closest_point
       ~AdaptiveNanogrid.side_coordinates
+      ~AdaptiveNanogrid.side_environment_index
       ~AdaptiveNanogrid.side_from_cell_coords
       ~AdaptiveNanogrid.side_inner_cell_coords
       ~AdaptiveNanogrid.side_inner_cell_index

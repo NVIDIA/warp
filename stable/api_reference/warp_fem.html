@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.fem &#8212; Warp 1.13.0</title>
+    <title>warp.fem &#8212; Warp 1.14.0</title>
   
   
   
@@ -44,7 +44,7 @@
 
 
 
-    <script src="../_static/documentation_options.js?v=892a253e"></script>
+    <script src="../_static/documentation_options.js?v=42a3b5f3"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -53,7 +53,7 @@
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.13';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.14';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
@@ -68,7 +68,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.13.0" />
+  <meta name="docsearch:version" content="1.14.0" />
 
 
   </head>
@@ -139,11 +139,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.13.0 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.13.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.13.0</p>
+    <p class="title logo__title">Warp 1.14.0</p>
   
 </a></div>
     
@@ -278,11 +278,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.13.0 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.13.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.13.0</p>
+    <p class="title logo__title">Warp 1.14.0</p>
   
 </a>
 
@@ -399,6 +399,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/codegen.html">Code Generation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/allocators.html">Allocators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/memory_access.html">CPU/GPU cross-device memory access</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/concurrency.html">Concurrency</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../deep_dive/profiling.html">Profiling</a></li>
 </ul>
@@ -414,7 +415,6 @@
 <li class="toctree-l1"><a class="reference internal" href="warp_autograd.html">warp.autograd</a></li>
 <li class="toctree-l1"><a class="reference internal" href="warp_config.html">warp.config</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">warp.fem</a></li>
-<li class="toctree-l1"><a class="reference internal" href="warp_jax_experimental.html">warp.jax_experimental</a></li>
 <li class="toctree-l1"><a class="reference internal" href="warp_optim.html">warp.optim</a></li>
 <li class="toctree-l1"><a class="reference internal" href="warp_render.html">warp.render</a></li>
 <li class="toctree-l1"><a class="reference internal" href="warp_sparse.html">warp.sparse</a></li>
@@ -760,154 +760,157 @@ linear systems.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.element_partition_index.html#warp.fem.element_partition_index" title="warp.fem.element_partition_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">element_partition_index</span></code></a></p></td>
 <td><p>Return the index of the passed cell in the domain's geometry partition, or <a class="reference internal" href="_generated/warp.fem.NULL_ELEMENT_INDEX.html#warp.fem.NULL_ELEMENT_INDEX" title="warp.fem.NULL_ELEMENT_INDEX"><code class="xref py py-data docutils literal notranslate"><span class="pre">NULL_ELEMENT_INDEX</span></code></a> if not part of the partition.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.grad.html#warp.fem.grad" title="warp.fem.grad"><code class="xref py py-obj docutils literal notranslate"><span class="pre">grad</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.environment_index.html#warp.fem.environment_index" title="warp.fem.environment_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">environment_index</span></code></a></p></td>
+<td><p>Return the environment index of the sample point <code class="docutils literal notranslate"><span class="pre">s</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.grad.html#warp.fem.grad" title="warp.fem.grad"><code class="xref py py-obj docutils literal notranslate"><span class="pre">grad</span></code></a></p></td>
 <td><p>Evaluate the field gradient at a sample point <code class="docutils literal notranslate"><span class="pre">s</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.grad_average.html#warp.fem.grad_average" title="warp.fem.grad_average"><code class="xref py py-obj docutils literal notranslate"><span class="pre">grad_average</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.grad_average.html#warp.fem.grad_average" title="warp.fem.grad_average"><code class="xref py py-obj docutils literal notranslate"><span class="pre">grad_average</span></code></a></p></td>
 <td><p>Average between inner and outer element gradients.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.grad_jump.html#warp.fem.grad_jump" title="warp.fem.grad_jump"><code class="xref py py-obj docutils literal notranslate"><span class="pre">grad_jump</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.grad_jump.html#warp.fem.grad_jump" title="warp.fem.grad_jump"><code class="xref py py-obj docutils literal notranslate"><span class="pre">grad_jump</span></code></a></p></td>
 <td><p>Jump between inner and outer element gradients on an interior side.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.grad_outer.html#warp.fem.grad_outer" title="warp.fem.grad_outer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">grad_outer</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.grad_outer.html#warp.fem.grad_outer" title="warp.fem.grad_outer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">grad_outer</span></code></a></p></td>
 <td><p>Evaluate the field gradient at a sample point <code class="docutils literal notranslate"><span class="pre">s</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.inner.html#warp.fem.inner" title="warp.fem.inner"><code class="xref py py-obj docutils literal notranslate"><span class="pre">inner</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.inner.html#warp.fem.inner" title="warp.fem.inner"><code class="xref py py-obj docutils literal notranslate"><span class="pre">inner</span></code></a></p></td>
 <td><p>Evaluate the field at a sample point <code class="docutils literal notranslate"><span class="pre">s</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.integrand_decorator.html#warp.fem.integrand" title="warp.fem.integrand"><code class="xref py py-obj docutils literal notranslate"><span class="pre">integrand</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.integrand_decorator.html#warp.fem.integrand" title="warp.fem.integrand"><code class="xref py py-obj docutils literal notranslate"><span class="pre">integrand</span></code></a></p></td>
 <td><p>Decorator for functions to be integrated (or interpolated) using <code class="docutils literal notranslate"><span class="pre">warp.fem</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.integrate.html#warp.fem.integrate" title="warp.fem.integrate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">integrate</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.integrate.html#warp.fem.integrate" title="warp.fem.integrate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">integrate</span></code></a></p></td>
 <td><p>Integrates a constant, linear or bilinear form, and returns a scalar, array, or sparse matrix, respectively.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.interpolate.html#warp.fem.interpolate" title="warp.fem.interpolate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">interpolate</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.interpolate.html#warp.fem.interpolate" title="warp.fem.interpolate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">interpolate</span></code></a></p></td>
 <td><p>Interpolates a function at a finite set of sample points and optionally assigns the result to a discrete field, raw warp array, or sparse matrix.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.jump.html#warp.fem.jump" title="warp.fem.jump"><code class="xref py py-obj docutils literal notranslate"><span class="pre">jump</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.jump.html#warp.fem.jump" title="warp.fem.jump"><code class="xref py py-obj docutils literal notranslate"><span class="pre">jump</span></code></a></p></td>
 <td><p>Jump between inner and outer element values on an interior side.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.lookup.html#warp.fem.lookup" title="warp.fem.lookup"><code class="xref py py-obj docutils literal notranslate"><span class="pre">lookup</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.lookup.html#warp.fem.lookup" title="warp.fem.lookup"><code class="xref py py-obj docutils literal notranslate"><span class="pre">lookup</span></code></a></p></td>
 <td><p>Look up the sample point corresponding to a world position <code class="docutils literal notranslate"><span class="pre">x</span></code>, projecting to the closest point on the geometry.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.make_collocated_function_space.html#warp.fem.make_collocated_function_space" title="warp.fem.make_collocated_function_space"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_collocated_function_space</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.make_collocated_function_space.html#warp.fem.make_collocated_function_space" title="warp.fem.make_collocated_function_space"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_collocated_function_space</span></code></a></p></td>
 <td><p>Constructs a function space from a scalar-valued basis space and a value type, such that all degrees of freedom of the value type are stored at each of the basis nodes.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.make_contravariant_function_space.html#warp.fem.make_contravariant_function_space" title="warp.fem.make_contravariant_function_space"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_contravariant_function_space</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.make_contravariant_function_space.html#warp.fem.make_contravariant_function_space" title="warp.fem.make_contravariant_function_space"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_contravariant_function_space</span></code></a></p></td>
 <td><p>Constructs a contravariant function space from a vector-valued basis space</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.make_covariant_function_space.html#warp.fem.make_covariant_function_space" title="warp.fem.make_covariant_function_space"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_covariant_function_space</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.make_covariant_function_space.html#warp.fem.make_covariant_function_space" title="warp.fem.make_covariant_function_space"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_covariant_function_space</span></code></a></p></td>
 <td><p>Constructs a covariant function space from a vector-valued basis space</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.make_discrete_field.html#warp.fem.make_discrete_field" title="warp.fem.make_discrete_field"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_discrete_field</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.make_discrete_field.html#warp.fem.make_discrete_field" title="warp.fem.make_discrete_field"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_discrete_field</span></code></a></p></td>
 <td><p>Constructs  a zero-initialized discrete field over a function space or partition</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.make_element_based_space_topology.html#warp.fem.make_element_based_space_topology" title="warp.fem.make_element_based_space_topology"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_element_based_space_topology</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.make_element_based_space_topology.html#warp.fem.make_element_based_space_topology" title="warp.fem.make_element_based_space_topology"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_element_based_space_topology</span></code></a></p></td>
 <td><p>Makes a space topology from a geometry and an element-based shape function.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.make_element_shape_function.html#warp.fem.make_element_shape_function" title="warp.fem.make_element_shape_function"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_element_shape_function</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.make_element_shape_function.html#warp.fem.make_element_shape_function" title="warp.fem.make_element_shape_function"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_element_shape_function</span></code></a></p></td>
 <td><p>Equip a reference element with a shape function basis.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.make_free_sample.html#warp.fem.make_free_sample" title="warp.fem.make_free_sample"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_free_sample</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.make_free_sample.html#warp.fem.make_free_sample" title="warp.fem.make_free_sample"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_free_sample</span></code></a></p></td>
 <td><p>Return a <a class="reference internal" href="_generated/warp.fem.Sample_f64.html#warp.fem.Sample_f64" title="warp.fem.Sample_f64"><code class="xref py py-class docutils literal notranslate"><span class="pre">Sample_f64</span></code></a> that is not associated to any quadrature point or dof.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.make_polynomial_basis_space.html#warp.fem.make_polynomial_basis_space" title="warp.fem.make_polynomial_basis_space"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_polynomial_basis_space</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.make_polynomial_basis_space.html#warp.fem.make_polynomial_basis_space" title="warp.fem.make_polynomial_basis_space"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_polynomial_basis_space</span></code></a></p></td>
 <td><p>Equips a geometry with a polynomial basis.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.make_polynomial_space.html#warp.fem.make_polynomial_space" title="warp.fem.make_polynomial_space"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_polynomial_space</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.make_polynomial_space.html#warp.fem.make_polynomial_space" title="warp.fem.make_polynomial_space"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_polynomial_space</span></code></a></p></td>
 <td><p>Equips a geometry with a collocated, polynomial function space.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.make_restriction.html#warp.fem.make_restriction" title="warp.fem.make_restriction"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_restriction</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.make_restriction.html#warp.fem.make_restriction" title="warp.fem.make_restriction"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_restriction</span></code></a></p></td>
 <td><p>Restricts a discrete field to a subset of elements.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.make_space_partition.html#warp.fem.make_space_partition" title="warp.fem.make_space_partition"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_space_partition</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.make_space_partition.html#warp.fem.make_space_partition" title="warp.fem.make_space_partition"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_space_partition</span></code></a></p></td>
 <td><p>Compute the subset of nodes from a function space topology that touch a geometry partition</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.make_space_restriction.html#warp.fem.make_space_restriction" title="warp.fem.make_space_restriction"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_space_restriction</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.make_space_restriction.html#warp.fem.make_space_restriction" title="warp.fem.make_space_restriction"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_space_restriction</span></code></a></p></td>
 <td><p>Restricts a function space partition to a Domain, i.e. a subset of its elements.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.make_test.html#warp.fem.make_test" title="warp.fem.make_test"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_test</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.make_test.html#warp.fem.make_test" title="warp.fem.make_test"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_test</span></code></a></p></td>
 <td><p>Constructs a test field over a function space or its restriction</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.make_trial.html#warp.fem.make_trial" title="warp.fem.make_trial"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_trial</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.make_trial.html#warp.fem.make_trial" title="warp.fem.make_trial"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_trial</span></code></a></p></td>
 <td><p>Constructs a trial field over a function space or partition</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.measure.html#warp.fem.measure" title="warp.fem.measure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measure</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.measure.html#warp.fem.measure" title="warp.fem.measure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measure</span></code></a></p></td>
 <td><p>Return the measure (volume, area, or length) determinant of an element at a sample point <code class="docutils literal notranslate"><span class="pre">s</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.measure_ratio.html#warp.fem.measure_ratio" title="warp.fem.measure_ratio"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measure_ratio</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.measure_ratio.html#warp.fem.measure_ratio" title="warp.fem.measure_ratio"><code class="xref py py-obj docutils literal notranslate"><span class="pre">measure_ratio</span></code></a></p></td>
 <td><p>Return the maximum ratio between the measure of this element and that of higher-dimensional neighbors.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.node_count.html#warp.fem.node_count" title="warp.fem.node_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">node_count</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.node_count.html#warp.fem.node_count" title="warp.fem.node_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">node_count</span></code></a></p></td>
 <td><p>Return the number of nodes associated to the field <code class="docutils literal notranslate"><span class="pre">f</span></code> in the element containing the sample <code class="docutils literal notranslate"><span class="pre">s</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.node_index.html#warp.fem.node_index" title="warp.fem.node_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">node_index</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.node_index.html#warp.fem.node_index" title="warp.fem.node_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">node_index</span></code></a></p></td>
 <td><p>Return the index in the function space of a local node of the field <code class="docutils literal notranslate"><span class="pre">f</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.node_inner_weight.html#warp.fem.node_inner_weight" title="warp.fem.node_inner_weight"><code class="xref py py-obj docutils literal notranslate"><span class="pre">node_inner_weight</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.node_inner_weight.html#warp.fem.node_inner_weight" title="warp.fem.node_inner_weight"><code class="xref py py-obj docutils literal notranslate"><span class="pre">node_inner_weight</span></code></a></p></td>
 <td><p>Return the inner element weight associated to a local node of the field <code class="docutils literal notranslate"><span class="pre">f</span></code> at the sample point <code class="docutils literal notranslate"><span class="pre">s</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.node_inner_weight_gradient.html#warp.fem.node_inner_weight_gradient" title="warp.fem.node_inner_weight_gradient"><code class="xref py py-obj docutils literal notranslate"><span class="pre">node_inner_weight_gradient</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.node_inner_weight_gradient.html#warp.fem.node_inner_weight_gradient" title="warp.fem.node_inner_weight_gradient"><code class="xref py py-obj docutils literal notranslate"><span class="pre">node_inner_weight_gradient</span></code></a></p></td>
 <td><p>Return the gradient (w.r.t world coordinates) of the inner element weight associated to a local node of the field <code class="docutils literal notranslate"><span class="pre">f</span></code> at the sample point <code class="docutils literal notranslate"><span class="pre">s</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.node_outer_weight.html#warp.fem.node_outer_weight" title="warp.fem.node_outer_weight"><code class="xref py py-obj docutils literal notranslate"><span class="pre">node_outer_weight</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.node_outer_weight.html#warp.fem.node_outer_weight" title="warp.fem.node_outer_weight"><code class="xref py py-obj docutils literal notranslate"><span class="pre">node_outer_weight</span></code></a></p></td>
 <td><p>Return the outer element weight associated to a local node of the field <code class="docutils literal notranslate"><span class="pre">f</span></code> at the sample point <code class="docutils literal notranslate"><span class="pre">s</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.node_outer_weight_gradient.html#warp.fem.node_outer_weight_gradient" title="warp.fem.node_outer_weight_gradient"><code class="xref py py-obj docutils literal notranslate"><span class="pre">node_outer_weight_gradient</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.node_outer_weight_gradient.html#warp.fem.node_outer_weight_gradient" title="warp.fem.node_outer_weight_gradient"><code class="xref py py-obj docutils literal notranslate"><span class="pre">node_outer_weight_gradient</span></code></a></p></td>
 <td><p>Return the gradient (w.r.t world coordinates) of the outer element weight associated to a local node of the field <code class="docutils literal notranslate"><span class="pre">f</span></code> at the sample point <code class="docutils literal notranslate"><span class="pre">s</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.node_partition_index.html#warp.fem.node_partition_index" title="warp.fem.node_partition_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">node_partition_index</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.node_partition_index.html#warp.fem.node_partition_index" title="warp.fem.node_partition_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">node_partition_index</span></code></a></p></td>
 <td><p>For a NodalField <cite>f</cite>, returns the index of a given node in the fields's space partition, or <a class="reference internal" href="_generated/warp.fem.NULL_NODE_INDEX.html#warp.fem.NULL_NODE_INDEX" title="warp.fem.NULL_NODE_INDEX"><code class="xref py py-data docutils literal notranslate"><span class="pre">NULL_NODE_INDEX</span></code></a> if it does not exists.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.normal.html#warp.fem.normal" title="warp.fem.normal"><code class="xref py py-obj docutils literal notranslate"><span class="pre">normal</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.normal.html#warp.fem.normal" title="warp.fem.normal"><code class="xref py py-obj docutils literal notranslate"><span class="pre">normal</span></code></a></p></td>
 <td><p>Evaluate the element normal at the sample point <code class="docutils literal notranslate"><span class="pre">s</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.normalize_dirichlet_projector.html#warp.fem.normalize_dirichlet_projector" title="warp.fem.normalize_dirichlet_projector"><code class="xref py py-obj docutils literal notranslate"><span class="pre">normalize_dirichlet_projector</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.normalize_dirichlet_projector.html#warp.fem.normalize_dirichlet_projector" title="warp.fem.normalize_dirichlet_projector"><code class="xref py py-obj docutils literal notranslate"><span class="pre">normalize_dirichlet_projector</span></code></a></p></td>
 <td><p>Scale projector so that it becomes idempotent, and apply the same scaling to fixed_value if provided</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.outer.html#warp.fem.outer" title="warp.fem.outer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">outer</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.outer.html#warp.fem.outer" title="warp.fem.outer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">outer</span></code></a></p></td>
 <td><p>Evaluate the field at a sample point <code class="docutils literal notranslate"><span class="pre">s</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.partition_lookup.html#warp.fem.partition_lookup" title="warp.fem.partition_lookup"><code class="xref py py-obj docutils literal notranslate"><span class="pre">partition_lookup</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.partition_lookup.html#warp.fem.partition_lookup" title="warp.fem.partition_lookup"><code class="xref py py-obj docutils literal notranslate"><span class="pre">partition_lookup</span></code></a></p></td>
 <td><p>Look up the sample point corresponding to a world position <code class="docutils literal notranslate"><span class="pre">x</span></code>, projecting to the closest point on the geometry partition.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.position.html#warp.fem.position" title="warp.fem.position"><code class="xref py py-obj docutils literal notranslate"><span class="pre">position</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.position.html#warp.fem.position" title="warp.fem.position"><code class="xref py py-obj docutils literal notranslate"><span class="pre">position</span></code></a></p></td>
 <td><p>Evaluate the world position of the sample point <code class="docutils literal notranslate"><span class="pre">s</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.project_linear_system.html#warp.fem.project_linear_system" title="warp.fem.project_linear_system"><code class="xref py py-obj docutils literal notranslate"><span class="pre">project_linear_system</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.project_linear_system.html#warp.fem.project_linear_system" title="warp.fem.project_linear_system"><code class="xref py py-obj docutils literal notranslate"><span class="pre">project_linear_system</span></code></a></p></td>
 <td><p>Projects both the left-hand-side and right-hand-side of a linear system to enforce Dirichlet boundary conditions</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.project_system_matrix.html#warp.fem.project_system_matrix" title="warp.fem.project_system_matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">project_system_matrix</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.project_system_matrix.html#warp.fem.project_system_matrix" title="warp.fem.project_system_matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">project_system_matrix</span></code></a></p></td>
 <td><p>Projects the right-hand-side of a linear system to enforce Dirichlet boundary conditions</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.project_system_rhs.html#warp.fem.project_system_rhs" title="warp.fem.project_system_rhs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">project_system_rhs</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.project_system_rhs.html#warp.fem.project_system_rhs" title="warp.fem.project_system_rhs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">project_system_rhs</span></code></a></p></td>
 <td><p>Projects the right-hand-side of a linear system to enforce Dirichlet boundary conditions</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.scalar_type.html#warp.fem.scalar_type" title="warp.fem.scalar_type"><code class="xref py py-obj docutils literal notranslate"><span class="pre">scalar_type</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.scalar_type.html#warp.fem.scalar_type" title="warp.fem.scalar_type"><code class="xref py py-obj docutils literal notranslate"><span class="pre">scalar_type</span></code></a></p></td>
 <td><p>Return the scalar type (<code class="docutils literal notranslate"><span class="pre">warp.float32</span></code> or <code class="docutils literal notranslate"><span class="pre">warp.float64</span></code>) for the current geometry.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.set_default_temporary_store.html#warp.fem.set_default_temporary_store" title="warp.fem.set_default_temporary_store"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_default_temporary_store</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.set_default_temporary_store.html#warp.fem.set_default_temporary_store" title="warp.fem.set_default_temporary_store"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_default_temporary_store</span></code></a></p></td>
 <td><p>Globally sets the default <a class="reference internal" href="_generated/warp.fem.TemporaryStore.html#warp.fem.TemporaryStore" title="warp.fem.TemporaryStore"><code class="xref py py-class docutils literal notranslate"><span class="pre">TemporaryStore</span></code></a> instance to use for temporary allocations in <code class="docutils literal notranslate"><span class="pre">warp.fem</span></code> functions.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.to_cell_side.html#warp.fem.to_cell_side" title="warp.fem.to_cell_side"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_cell_side</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.to_cell_side.html#warp.fem.to_cell_side" title="warp.fem.to_cell_side"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_cell_side</span></code></a></p></td>
 <td><p>Convert a <a class="reference internal" href="_generated/warp.fem.Sample.html#warp.fem.Sample" title="warp.fem.Sample"><code class="xref py py-class docutils literal notranslate"><span class="pre">Sample</span></code></a> defined on a cell to a sample defined on one of its side.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.to_inner_cell.html#warp.fem.to_inner_cell" title="warp.fem.to_inner_cell"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_inner_cell</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.to_inner_cell.html#warp.fem.to_inner_cell" title="warp.fem.to_inner_cell"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_inner_cell</span></code></a></p></td>
 <td><p>Convert a <a class="reference internal" href="_generated/warp.fem.Sample.html#warp.fem.Sample" title="warp.fem.Sample"><code class="xref py py-class docutils literal notranslate"><span class="pre">Sample</span></code></a> defined on a side to a sample defined on the side's inner cell.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.to_outer_cell.html#warp.fem.to_outer_cell" title="warp.fem.to_outer_cell"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_outer_cell</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.to_outer_cell.html#warp.fem.to_outer_cell" title="warp.fem.to_outer_cell"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_outer_cell</span></code></a></p></td>
 <td><p>Convert a <a class="reference internal" href="_generated/warp.fem.Sample.html#warp.fem.Sample" title="warp.fem.Sample"><code class="xref py py-class docutils literal notranslate"><span class="pre">Sample</span></code></a> defined on a side to a sample defined on the side's outer cell.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.NULL_ELEMENT_INDEX.html#warp.fem.NULL_ELEMENT_INDEX" title="warp.fem.NULL_ELEMENT_INDEX"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NULL_ELEMENT_INDEX</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.NULL_ELEMENT_INDEX.html#warp.fem.NULL_ELEMENT_INDEX" title="warp.fem.NULL_ELEMENT_INDEX"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NULL_ELEMENT_INDEX</span></code></a></p></td>
 <td><p>Constant indicating an invalid element index.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.NULL_NODE_INDEX.html#warp.fem.NULL_NODE_INDEX" title="warp.fem.NULL_NODE_INDEX"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NULL_NODE_INDEX</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.NULL_NODE_INDEX.html#warp.fem.NULL_NODE_INDEX" title="warp.fem.NULL_NODE_INDEX"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NULL_NODE_INDEX</span></code></a></p></td>
 <td><p>Constant indicating an invalid node index.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.NULL_QP_INDEX.html#warp.fem.NULL_QP_INDEX" title="warp.fem.NULL_QP_INDEX"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NULL_QP_INDEX</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.NULL_QP_INDEX.html#warp.fem.NULL_QP_INDEX" title="warp.fem.NULL_QP_INDEX"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NULL_QP_INDEX</span></code></a></p></td>
 <td><p>Constant indicating an invalid quadrature point index.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.OUTSIDE.html#warp.fem.OUTSIDE" title="warp.fem.OUTSIDE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">OUTSIDE</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.OUTSIDE.html#warp.fem.OUTSIDE" title="warp.fem.OUTSIDE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">OUTSIDE</span></code></a></p></td>
 <td><p>Constant indicating an invalid element coordinate.</p></td>
 </tr>
 </tbody>
@@ -974,7 +977,7 @@ linear systems.</p>
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/warp_fem.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/release-1.14/docs/api_reference/warp_fem.rst">
       <i class="fa-solid fa-pencil"></i>
       
       
