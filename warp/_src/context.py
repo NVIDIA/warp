@@ -10235,7 +10235,8 @@ def capture_if(
     The condition value is retrieved from the first element of the ``condition`` array.
 
     This function is particularly useful with CUDA graphs, but can be used without graph capture as well.
-    CUDA 12.4+ is required to take advantage of conditional graph nodes for dynamic control flow.
+    CUDA 12.4+ is required for CUDA graph conditional nodes. CPU APIC capture records this operation directly, but
+    branch bodies must be callbacks; passing :class:`Graph` objects under CPU APIC capture is not yet supported.
 
     Args:
         condition: Warp array holding the condition value.
@@ -10388,7 +10389,8 @@ def capture_while(condition: warp.array[int], while_body: Callable | Graph, stre
     The ``while_body`` callback is responsible for updating the condition value so the loop can terminate.
 
     This function is particularly useful with CUDA graphs, but can be used without graph capture as well.
-    CUDA 12.4+ is required to take advantage of conditional graph nodes for dynamic control flow.
+    CUDA 12.4+ is required for CUDA graph conditional nodes. CPU APIC capture records this operation directly, but
+    the loop body must be a callback; passing a :class:`Graph` object under CPU APIC capture is not yet supported.
 
     Args:
         condition: Warp array holding the condition value.
