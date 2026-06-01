@@ -2036,11 +2036,21 @@ This is done efficiently on the device without involving the CPU.</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Conditional graph node support is only available if Warp is built using CUDA Toolkit 12.4+ and the NVIDIA driver supports CUDA 12.4+.</p>
+<p>CUDA graph conditional node support is only available if Warp is built using
+CUDA Toolkit 12.4+ and the NVIDIA driver supports CUDA 12.4+. CPU graph
+capture records <a class="reference internal" href="../api_reference/_generated/warp.capture_if.html#warp.capture_if" title="warp.capture_if"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_if</span></code></a> and
+<a class="reference internal" href="../api_reference/_generated/warp.capture_while.html#warp.capture_while" title="warp.capture_while"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_while</span></code></a> through APIC and does not use
+CUDA graph conditional nodes.</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Due to a current CUDA limitation, graphs with conditional nodes cannot be used as child graphs. It means that it’s not possible to create nested conditional constructs using previously captured graphs. If nesting is required, using Python callback functions is the way to go.</p>
+<p>Due to a current CUDA limitation, graphs with conditional nodes cannot be
+used as child graphs. It means that it’s not possible to create nested
+conditional constructs using previously captured graphs. If nesting is
+required, using Python callback functions is the way to go. CPU APIC capture
+also requires Python callback functions for <code class="docutils literal notranslate"><span class="pre">capture_if()</span></code> /
+<code class="docutils literal notranslate"><span class="pre">capture_while()</span></code> branch bodies; passing previously captured
+<a class="reference internal" href="../api_reference/_generated/warp.Graph.html#warp.Graph" title="warp.Graph"><code class="xref py py-class docutils literal notranslate"><span class="pre">Graph</span></code></a> objects is not yet implemented.</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -2327,9 +2337,11 @@ this resolution once at startup. The C API surface for this lookup is:</p>
 <span class="w">                                               </span><span class="kt">void</span><span class="o">*</span><span class="w"> </span><span class="n">forward_fn</span><span class="p">,</span><span class="w"> </span><span class="kt">void</span><span class="o">*</span><span class="w"> </span><span class="n">backward_fn</span><span class="p">);</span>
 </pre></div>
 </div>
-<p>Loading the <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> file itself currently requires a CUDA-enabled build of the
-Warp native library, but graph replay (<code class="docutils literal notranslate"><span class="pre">wp_apic_cpu_replay_graph</span></code>) has no
-CUDA runtime dependency.</p>
+<p>Loading a CPU <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> graph uses the pure-C++ APIC loader in the Warp native
+library and does not require a CUDA-enabled build. CPU replay
+(<code class="docutils literal notranslate"><span class="pre">wp_apic_cpu_replay_graph</span></code>) still requires the warp-clang backend and the
+companion <code class="docutils literal notranslate"><span class="pre">_modules</span></code> directory described above. Loading a CUDA <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> graph
+requires a CUDA-enabled build.</p>
 </section>
 <section id="building-and-running">
 <h5>Building and running<a class="headerlink" href="#building-and-running" title="Link to this heading">#</a></h5>
@@ -2363,11 +2375,15 @@ yet supported.</p></li>
 capture was built with PTX output (set <code class="docutils literal notranslate"><span class="pre">warp.config.cuda_output</span> <span class="pre">=</span> <span class="pre">&quot;ptx&quot;</span></code>
 before capture). Multi-GPU and cross-architecture loading are not yet
 supported.</p></li>
-<li><p>Loading a <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> file currently requires a CUDA-enabled build of the Warp
-native library even for CPU graphs, because the parser still lives in the CUDA
-source. Replay itself is CPU-only and has no CUDA dependency.</p></li>
-<li><p>Conditional and loop graph nodes, stream events, and texture array copies are
-not recorded.</p></li>
+<li><p>Loading CPU <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> graphs requires the warp-clang backend and the companion
+<code class="docutils literal notranslate"><span class="pre">_modules</span></code> directory with the recorded CPU kernel object files. It does not
+require a CUDA-enabled Warp native library. Loading CUDA <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> graphs still
+requires a CUDA-enabled build.</p></li>
+<li><p>CUDA loaded-graph replay does not yet support APIC conditional and loop ops.
+CPU <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> graph replay supports CPU-captured
+<a class="reference internal" href="../api_reference/_generated/warp.capture_if.html#warp.capture_if" title="warp.capture_if"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_if()</span></code></a> and
+<a class="reference internal" href="../api_reference/_generated/warp.capture_while.html#warp.capture_while" title="warp.capture_while"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_while()</span></code></a> graphs. Stream events and
+texture array copies are not recorded.</p></li>
 </ul>
 </section>
 </section>
