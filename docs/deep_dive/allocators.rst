@@ -246,7 +246,7 @@ Limitations
 Mempool-to-Mempool Copies Between GPUs During Graph Capture
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Copying data between different GPUs will fail during graph capture if the source and destination are allocated using mempool allocators and mempool access is not enabled between devices.  Note that this only applies to capturing mempool-to-mempool copies in a graph; copies done outside of graph capture are not affected.  Copies within the same mempool (i.e., same device) are also not affected.
+Copying data between different GPUs will fail during graph capture if the source and destination are allocated using mempool allocators and mempool access is not enabled between devices.  Note that this only applies to capturing mempool-to-mempool copies in a graph.  Copies done outside of graph capture are not affected.  Copies within the same mempool (i.e., same device) are also not affected.
 
 There are two workarounds.  If mempool access is supported, you can simply enable mempool access between the devices prior to graph capture, as shown in :ref:`mempool_access`.
 
@@ -398,11 +398,11 @@ PyTorch's cache, implement a small custom allocator that calls
 PyTorch tracks the device and stream for pointers returned by
 ``caching_allocator_alloc()``, so ``caching_allocator_delete()`` only needs the
 pointer. The ``_active_allocations`` dictionary above is for validation and
-debugging; applications can customize this tracking for their own accounting,
+debugging. Applications can customize this tracking for their own accounting,
 thread-safety, or distributed runtime needs.
 
-RMM Integration
-~~~~~~~~~~~~~~~
+RAPIDS Memory Manager (RMM) Integration
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 `RAPIDS Memory Manager (RMM) <https://github.com/rapidsai/rmm>`_ provides high-performance
 pooled allocators for CUDA. Warp includes a built-in adapter, :class:`~warp.utils.AllocatorRmm`, that

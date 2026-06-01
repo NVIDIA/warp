@@ -181,6 +181,7 @@ warp/examples/tile
     user_guide/tiles
     user_guide/interoperability
     user_guide/configuration
+    user_guide/cpp_cuda_workflows
     user_guide/debugging
     user_guide/limitations
     user_guide/contribution_guide

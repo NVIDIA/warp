@@ -78,7 +78,7 @@ non-differentiable.
 
     Reading or setting either deprecated flag emits a one-time
     ``DeprecationWarning``. During the deprecation window the flag is still
-    honored alongside ``log_level``, so existing code keeps working; remove the
+    honored alongside ``log_level``, so existing code keeps working. Remove the
     flag once your code sets ``log_level`` directly.
 
     ``wp.config.verbose_warnings`` is not deprecated. It is an orthogonal
@@ -167,7 +167,7 @@ Debug Mode Compilation
 In debug mode, Warp kernels will perform the following additional checks:
 
 * Raise an assertion if there is an array access outside the defined shape.
-* Warn if :func:`wp.tid() <warp._src.lang.tid>` will return an overflowed value on large grids.
+* Warn if :func:`wp.tid() <warp.tid>` will return an overflowed value on large grids.
 * (GPU-only) Warn if the CUDA grid dimensions have been capped due to an overflowed number of blocks.
 * (GPU-only) Generate line-number information for device code.
 
