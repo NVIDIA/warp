@@ -127,6 +127,23 @@ def test_bf16_arithmetic(test, device):
     np.testing.assert_allclose(out.numpy(), a_np + b_np, rtol=1e-2)
 
 
+def test_invalid_native_func_compile_error(test, device):
+    @wp.func_native("""
+        INVALID SOURCE;
+    """)
+    def bad_func(x: float) -> float: ...
+
+    @wp.kernel(module="unique")
+    def invalid_native_func_kernel(a: wp.array[float]):
+        i = wp.tid()
+        a[i] = bad_func(1.0)
+
+    a = wp.zeros(10, dtype=float, device=device)
+
+    with test.assertRaisesRegex(Exception, "CUDA kernel build failed with error code"):
+        wp.launch(invalid_native_func_kernel, dim=10, inputs=[a], device=device)
+
+
 class TestClangCUDA(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -146,7 +163,9 @@ add_function_test(TestClangCUDA, "test_conditional_kernel", test_conditional_ker
 bf16_devices = [d for d in devices if d.arch >= 80]
 add_function_test(TestClangCUDA, "test_bf16_round_trip", test_bf16_round_trip, devices=bf16_devices)
 add_function_test(TestClangCUDA, "test_bf16_arithmetic", test_bf16_arithmetic, devices=bf16_devices)
-
+add_function_test(
+    TestClangCUDA, "test_invalid_native_func_compile_error", test_invalid_native_func_compile_error, devices=devices
+)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

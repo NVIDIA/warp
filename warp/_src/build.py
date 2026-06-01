@@ -52,8 +52,7 @@ def build_cuda(
     output_path = output_path.encode("utf-8")
 
     if llvm_cuda:
-        warp._src.context.runtime.llvm.wp_compile_cuda(src, cu_path_bytes, inc_path, output_path, False)
-
+        err = warp._src.context.runtime.llvm.wp_compile_cuda(src, cu_path_bytes, inc_path, output_path, False)
     else:
         if ltoirs is None:
             ltoirs = []
@@ -96,8 +95,8 @@ def build_cuda(
             arr_link_sizes,
             arr_link_input_types,
         )
-        if err != 0:
-            raise Exception(f"CUDA kernel build failed with error code {err}")
+    if err != 0:
+        raise Exception(f"CUDA kernel build failed with error code {err}")
 
 
 # load PTX or CUBIN as a CUDA runtime module (input type determined by input_path extension)

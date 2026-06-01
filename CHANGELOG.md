@@ -234,6 +234,9 @@
 - Fix `Tape.record_scope_end()` to raise a clear error for unmatched
   scope ends and preserve nested non-empty tape visualization scopes
   ([GH-1515](https://github.com/NVIDIA/warp/issues/1515)).
+- Report Clang CUDA compilation failures immediately instead of raising a
+  downstream CUDA module load error
+  ([GH-1325](https://github.com/NVIDIA/warp/issues/1325)).
 
 ### Documentation
 
