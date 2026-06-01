@@ -213,6 +213,9 @@
   ``f`` is such a local now compile and call correctly instead of failing during codegen.
   Rebinding a function-valued local to a different function or to a non-function value raises a clear error
   ([GH-1423](https://github.com/NVIDIA/warp/issues/1423)).
+- Report Clang CUDA compilation failures immediately instead of raising a
+  downstream CUDA module load error
+  ([GH-1325](https://github.com/NVIDIA/warp/issues/1325)).
 
 ### Documentation
 
