@@ -61,6 +61,9 @@ Arrays
 * Arrays can have a maximum of four dimensions.
 * Each dimension of a Warp array cannot be greater than the maximum value representable by a 32-bit signed integer,
   :math:`2^{31}-1`.
+* A one-dimensional Warp array cannot represent more than :math:`2^{31}-1` elements. Larger logical data sets
+  must be split across multiple dimensions. See :ref:`large-array launch indexing <large_launch_indexing>` for the
+  launch and indexing pattern.
 * There are currently no data types that support complex numbers.
 * ``wp.config.launch_array_access_mode = wp.config.LaunchArrayAccessMode.CHECKED``
   only fully verifies cross-device :class:`wp.array <warp.array>` arguments when

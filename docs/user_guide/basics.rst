@@ -117,6 +117,48 @@ We retrieve a 2D thread index inside the kernel by using multiple assignment whe
         # get thread index
         i, j = wp.tid()
 
+.. _large_launch_indexing:
+
+Large array indexing
+^^^^^^^^^^^^^^^^^^^^
+
+For multi-dimensional launches, Warp derives the coordinates from a linear
+thread order in row-major form, with the last dimension varying fastest. This
+matches the default contiguous Warp array layout, so adjacent threads that
+differ only in the last index access adjacent array elements. On CUDA devices,
+this is the preferred pattern for coalesced global memory access.
+
+This is also useful when a logical data set has more than :math:`2^{31}-1`
+elements. Because each array dimension must fit in a signed 32-bit integer,
+store the data across multiple dimensions, launch over the array shape, and
+construct a 64-bit linear index when the algorithm is naturally expressed in
+1D:
+
+.. code-block:: python
+
+    @wp.kernel
+    def process_large_array(values: wp.array2d[wp.float32], logical_size: wp.int64):
+        i, j = wp.tid()
+
+        linear = wp.int64(i) * wp.int64(values.shape[1]) + wp.int64(j)
+        if linear < logical_size:
+            values[i, j] = float(linear % wp.int64(1024))
+
+    rows = 1 << 20
+    cols = 1 << 12
+    logical_size = (1 << 32) - 123
+    values = wp.empty((rows, cols), dtype=wp.float32, device="cuda")
+    wp.launch(
+        process_large_array,
+        dim=values.shape,
+        inputs=[values, wp.int64(logical_size)],
+        device=values.device,
+    )
+
+Here, the array shape pads the allocation beyond ``logical_size``. The bounds
+check skips those padded elements while preserving coalesced access for the
+contiguous region.
+
 Arrays
 ------
 
