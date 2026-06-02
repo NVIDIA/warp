@@ -1246,6 +1246,43 @@ def test_indexedarray_fill_struct(test, device):
     assert_np_equal(a4.numpy(), np.zeros(a4.shape, dtype=nptype))
 
 
+@wp.kernel
+def kernel_indexedarray_grad_1d(
+    samples: wp.indexedarray(dtype=float),
+    weights: wp.array(dtype=float),
+    total: wp.array(dtype=float),
+):
+    i = wp.tid()
+    wp.atomic_add(total, 0, samples[i] * weights[i])
+
+
+def test_indexedarray_grad_1d(test, device):
+    # gradients must flow back through a differentiable indexedarray input (GH-1479):
+    # the adjoint follows the gather indirection and accumulates into the base array's grad
+    base = wp.array(np.linspace(1.0, 6.0, 6, dtype=np.float32), dtype=float, device=device, requires_grad=True)
+    weights_np = np.array([0.25, 0.5, 1.0], dtype=np.float32)
+    weights = wp.array(weights_np, dtype=float, device=device)
+    indices = wp.array([1, 3, 5], dtype=int, device=device)
+    samples = wp.indexedarray1d(base, [indices])
+    total = wp.zeros(1, dtype=float, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(
+            kernel_indexedarray_grad_1d, dim=samples.size, inputs=[samples, weights], outputs=[total], device=device
+        )
+
+    # forward: sum of base[i] * weight over the gathered indices
+    assert_np_equal(total.numpy(), np.array([8.5], dtype=np.float32), tol=1e-6)
+
+    tape.backward(loss=total)
+
+    # d(total)/d(base[j]) is the matching weight at each gathered index, zero elsewhere
+    expected = np.zeros(6, dtype=np.float32)
+    expected[[1, 3, 5]] = weights_np
+    assert_np_equal(base.grad.numpy(), expected, tol=1e-6)
+
+
 devices = get_test_devices()
 
 
@@ -1254,6 +1291,7 @@ class TestIndexedArray(unittest.TestCase):
 
 
 add_function_test(TestIndexedArray, "test_indexedarray_1d", test_indexedarray_1d, devices=devices)
+add_function_test(TestIndexedArray, "test_indexedarray_grad_1d", test_indexedarray_grad_1d, devices=devices)
 add_function_test(TestIndexedArray, "test_indexedarray_2d", test_indexedarray_2d, devices=devices)
 add_function_test(TestIndexedArray, "test_indexedarray_3d", test_indexedarray_3d, devices=devices)
 add_function_test(TestIndexedArray, "test_indexedarray_4d", test_indexedarray_4d, devices=devices)
