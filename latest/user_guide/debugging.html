@@ -768,6 +768,39 @@ be used to detect subtle memory-access issues in Warp applications, e.g.</p>
 </div>
 <p>The Compute Sanitizer suite is available through the <a class="reference external" href="https://developer.nvidia.com/cuda-toolkit">CUDA Toolkit</a>.</p>
 </section>
+<section id="cpu-memory-error-detection-with-addresssanitizer">
+<h2>CPU Memory Error Detection with AddressSanitizer<a class="headerlink" href="#cpu-memory-error-detection-with-addresssanitizer" title="Link to this heading">#</a></h2>
+<p><a class="reference external" href="https://clang.llvm.org/docs/AddressSanitizer.html">AddressSanitizer</a> (ASan) can detect
+out-of-bounds accesses, use-after-free, and similar memory errors in JIT-compiled CPU kernels.
+Build Warp’s native libraries with the sanitizer enabled:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>build_lib.py<span class="w"> </span>--sanitize<span class="o">=</span>address
+</pre></div>
+</div>
+<p>When <code class="docutils literal notranslate"><span class="pre">warp-clang</span></code> is built this way, Warp automatically instruments CPU kernels with
+<code class="docutils literal notranslate"><span class="pre">-fsanitize=address</span></code> and resolves their sanitizer callbacks against the host’s single
+in-process ASan runtime. An out-of-bounds access into a <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.array</span></code></a> is then
+reported as a <code class="docutils literal notranslate"><span class="pre">heap-buffer-overflow</span></code>, including the allocation site.</p>
+<p>The ASan runtime must be initialized before Warp’s libraries load, so set the environment
+<strong>before</strong> <code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">warp</span></code>:</p>
+<ul>
+<li><p><strong>Linux</strong>: preload the ASan runtime so it initializes first and its symbols are globally
+visible to the JIT:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="nv">LD_PRELOAD</span><span class="o">=</span><span class="k">$(</span>gcc<span class="w"> </span>-print-file-name<span class="o">=</span>libasan.so<span class="k">)</span><span class="w"> </span><span class="nv">ASAN_OPTIONS</span><span class="o">=</span><span class="nv">verify_asan_link_order</span><span class="o">=</span><span class="m">0</span><span class="w"> </span>python<span class="w"> </span>sim.py
+</pre></div>
+</div>
+</li>
+<li><p><strong>Windows</strong>: ensure <code class="docutils literal notranslate"><span class="pre">clang_rt.asan_dynamic-x86_64.dll</span></code> (shipped with the Visual Studio
+toolchain) is on <code class="docutils literal notranslate"><span class="pre">PATH</span></code>.</p></li>
+<li><p><strong>macOS</strong>: usually works via <code class="docutils literal notranslate"><span class="pre">&#64;rpath</span></code> to the Clang ASan runtime shipped with Xcode.</p></li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Run kernels in release mode when hunting out-of-bounds array accesses with ASan.
+In <a class="reference internal" href="#debug-mode"><span class="std std-ref">Debug Mode Compilation</span></a>, Warp’s own <code class="docutils literal notranslate"><span class="pre">assert</span></code>-based bounds check aborts first; ASan
+instrumentation is applied regardless of mode. Global-buffer-overflow on a kernel’s own
+static variables is not detected, because the JIT does not run kernel module constructors.</p>
+</div>
+</section>
 </section>
 
 
@@ -834,6 +867,7 @@ be used to detect subtle memory-access issues in Warp applications, e.g.</p>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cuda-error-verification">CUDA Error Verification</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#detecting-non-finite-values">Detecting Non-Finite Values</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cuda-toolkit-debugging-tools">CUDA Toolkit Debugging Tools</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cpu-memory-error-detection-with-addresssanitizer">CPU Memory Error Detection with AddressSanitizer</a></li>
 </ul>
   </nav></div>
 

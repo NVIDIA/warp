@@ -513,6 +513,10 @@ with per-batch convergence checks (<a class="reference external" href="https://g
 <li><p>Add <code class="docutils literal notranslate"><span class="pre">--sanitize=&lt;name&gt;</span></code> build option to <code class="docutils literal notranslate"><span class="pre">build_lib.py</span></code>, enabling AddressSanitizer builds of
 <code class="docutils literal notranslate"><span class="pre">warp.dll</span></code> and <code class="docutils literal notranslate"><span class="pre">warp-clang.dll</span></code> on Windows, Linux, and macOS
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1387">GH-1387</a>).</p></li>
+<li><p>Extend AddressSanitizer support to JIT-compiled CPU kernels: when <code class="docutils literal notranslate"><span class="pre">warp-clang</span></code> is built with
+<code class="docutils literal notranslate"><span class="pre">--sanitize=address</span></code>, CPU kernels are automatically instrumented and share the host’s single
+in-process ASan runtime, so out-of-bounds accesses into a <code class="docutils literal notranslate"><span class="pre">wp.array</span></code> are reported as
+<code class="docutils literal notranslate"><span class="pre">heap-buffer-overflow</span></code> (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1387">GH-1387</a>).</p></li>
 <li><p>Add analytic backward passes for <code class="docutils literal notranslate"><span class="pre">wp.curlnoise()</span></code> (2D, 3D, 4D). Previously
 the adjoints were stubbed as no-ops and <code class="docutils literal notranslate"><span class="pre">is_differentiable=False</span></code>, so
 gradients silently dropped through curl-noise force fields in
