@@ -388,6 +388,24 @@ def test_grad_reassign_error(test, device):
         wp.launch(grad_reassign_kernel, dim=1, outputs=[out], device=device)
 
 
+def test_grad_aug_reassign_error(test, device):
+    # Augmented assignment (e.g. `g += 1.0`) of a kernel-local bound to wp.grad() is just
+    # as invalid as plain reassignment and must raise the same clear codegen error rather
+    # than the internal AttributeError that emit_AugAssign would otherwise hit. See GH-1487.
+    @wp.kernel(module="unique", enable_backward=False)
+    def grad_aug_reassign_kernel(out: wp.array(dtype=float)):
+        g = wp.grad(square)
+        g += 1.0
+        out[0] = g
+
+    out = wp.zeros(1, dtype=float, device=device)
+    with test.assertRaisesRegex(
+        wp.WarpCodegenError,
+        r"local variable 'g' is bound to wp.grad\(\) and cannot be reassigned to a non-grad value",
+    ):
+        wp.launch(grad_aug_reassign_kernel, dim=1, outputs=[out], device=device)
+
+
 class TestFunc(unittest.TestCase):
     def test_user_func_export(self):
         # tests calling overloaded user-defined functions from Python
@@ -661,6 +679,7 @@ add_kernel_test(
 add_function_test(TestFunc, func=test_grad, name="test_grad", devices=devices)
 add_function_test(TestFunc, func=test_grad_in_func_grad, name="test_grad_in_func_grad", devices=devices)
 add_function_test(TestFunc, func=test_grad_reassign_error, name="test_grad_reassign_error", devices=devices)
+add_function_test(TestFunc, func=test_grad_aug_reassign_error, name="test_grad_aug_reassign_error", devices=devices)
 
 
 if __name__ == "__main__":

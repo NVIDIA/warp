@@ -3816,6 +3816,15 @@ class Adjoint:
         # For simple name targets (x += expr), evaluate the RHS once and
         # apply the operation directly to avoid double-evaluation.
         if isinstance(lhs, ast.Name):
+            # a local previously bound to wp.grad() is a function handle, not a value. Augmented
+            # assignment would otherwise read `.type` on the stored GradWrapper below and fail with
+            # the same opaque AttributeError that plain assignment used to, so reject it here with
+            # the matching clear error.
+            if isinstance(adj.symbols.get(lhs.id), warp._src.context.GradWrapper):
+                raise WarpCodegenError(
+                    f"Error, local variable '{lhs.id}' is bound to wp.grad() and cannot be reassigned to a non-grad value."
+                )
+
             rhs = adj.eval(node.value)
             target = adj.eval(lhs)
 
