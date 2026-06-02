@@ -4924,6 +4924,13 @@ class indexedarray(noncontiguous_array_base[DType, NDim]):
     def __ctype__(self):
         return indexedarray_t(self.data, self.indices, self.shape)
 
+    # gradient of an indexed view is an indexed view into the base array's grad (same indices)
+    @property
+    def grad(self):
+        if self.data is None or self.data.grad is None:
+            return None
+        return indexedarray(self.data.grad, self.indices[: self.ndim], ndim=self.ndim)
+
     @property
     def vars(self):
         # member attributes available during code-gen (e.g.: d = arr.shape[0])

@@ -8120,7 +8120,11 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
             # - in forward passes, array types have to match
             # - in backward passes, indexed array gradients are regular arrays
             if adjoint:
-                array_matches = isinstance(value, warp.array)
+                # adjoint may be a regular array (gradient of the base storage) or the
+                # same array class as the forward arg (e.g. an indexedarray over base.grad)
+                array_matches = isinstance(value, warp.array) or (
+                    type(value) is warp._src.types.concrete_array_type(arg_type)
+                )
             else:
                 array_matches = type(value) is warp._src.types.concrete_array_type(arg_type)
 

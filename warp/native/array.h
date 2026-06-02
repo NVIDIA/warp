@@ -1312,6 +1312,38 @@ adj_address(const array_t<T>& buf, int i, const array_t<T>& adj_buf, int adj_i, 
     else if (buf.grad)
         adj_atomic_add(&index_grad(buf, i), adj_output);
 }
+// indexedarray adjoint: resolve the index indirection, then accumulate into the
+// adjoint indexedarray's storage (adj_buf.arr) or the base array's embedded grad
+template <typename T>
+inline CUDA_CALLABLE void
+adj_address(const indexedarray_t<T>& buf, int i, const indexedarray_t<T>& adj_buf, int adj_i, const T& adj_output)
+{
+    if (i < 0)
+        i += buf.shape[0];
+    if (buf.indices[0])
+        i = buf.indices[0][i];
+
+    if (adj_buf.arr.data)
+        adj_atomic_add(&index(adj_buf.arr, i), adj_output);
+    else if (buf.arr.grad)
+        adj_atomic_add(&index_grad(buf.arr, i), adj_output);
+}
+// indexedarray with a regular-array adjoint (as passed by the CUDA codegen): resolve the
+// index indirection, then accumulate into the base grad or the base array's embedded grad
+template <typename T>
+inline CUDA_CALLABLE void
+adj_address(const indexedarray_t<T>& buf, int i, const array_t<T>& adj_buf, int adj_i, const T& adj_output)
+{
+    if (i < 0)
+        i += buf.shape[0];
+    if (buf.indices[0])
+        i = buf.indices[0][i];
+
+    if (adj_buf.data)
+        adj_atomic_add(&index(adj_buf, i), adj_output);
+    else if (buf.arr.grad)
+        adj_atomic_add(&index_grad(buf.arr, i), adj_output);
+}
 template <typename T>
 inline CUDA_CALLABLE void
 adj_address(const array_t<T>& buf, int i, int j, const array_t<T>& adj_buf, int adj_i, int adj_j, const T& adj_output)
