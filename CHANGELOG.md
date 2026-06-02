@@ -21,6 +21,10 @@
 - Add `--sanitize=<name>` build option to `build_lib.py`, enabling AddressSanitizer builds of
   `warp.dll` and `warp-clang.dll` on Windows, Linux, and macOS
   ([GH-1387](https://github.com/NVIDIA/warp/issues/1387)).
+- Extend AddressSanitizer support to JIT-compiled CPU kernels: when `warp-clang` is built with
+  `--sanitize=address`, CPU kernels are automatically instrumented and share the host's single
+  in-process ASan runtime, so out-of-bounds accesses into a `wp.array` are reported as
+  `heap-buffer-overflow` ([GH-1387](https://github.com/NVIDIA/warp/issues/1387)).
 - Add analytic backward passes for `wp.curlnoise()` (2D, 3D, 4D). Previously
   the adjoints were stubbed as no-ops and `is_differentiable=False`, so
   gradients silently dropped through curl-noise force fields in

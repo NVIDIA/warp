@@ -4,6 +4,8 @@
 # TODO: add more tests for kernels and generics
 
 import os
+import subprocess
+import sys
 import tempfile
 import unittest
 from importlib import util
@@ -310,7 +312,35 @@ class TestOptionResolution(unittest.TestCase):
 
 
 class TestModuleHashing(unittest.TestCase):
-    pass
+    def test_unique_module_import_hash_before_explicit_init(self):
+        """Unique-module import-time hashing must work before explicit ``wp.init()``."""
+        code = (
+            "import warp as wp\n"
+            "import warp._src.optim.linear\n"
+            "wp.get_module('warp._src.optim.linear').hash_module()\n"
+            "print('OK')\n"
+        )
+        result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=False)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("OK", result.stdout)
+
+    def test_init_invalidates_pre_runtime_module_options(self):
+        """``wp.init()`` must clear hashes/options resolved before runtime existed."""
+        code = (
+            "import warp as wp\n"
+            "m = wp.get_module('__main__')\n"
+            "block_dim = m.options['block_dim']\n"
+            "m.get_module_hash()\n"
+            "print('before', block_dim in m.hashers, block_dim in m.resolved_options)\n"
+            "wp.init()\n"
+            "print('after', block_dim in m.hashers, block_dim in m.resolved_options)\n"
+        )
+        result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=False)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("before True True", result.stdout)
+        self.assertIn("after False False", result.stdout)
 
 
 devices = get_test_devices()

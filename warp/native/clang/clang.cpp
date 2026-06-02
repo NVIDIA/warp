@@ -415,9 +415,21 @@ WP_API int wp_compile_cpp(
         // modules with different settings get separate PCH files.
         // Note: extra_flags are not encoded — they are assumed constant
         // within a session. If they differ, Clang rejects the PCH and
-        // the fallback path handles it.
+        // the fallback path handles it. The one exception is -fsanitize=address:
+        // an ASan-instrumented PCH is ABI-incompatible with a non-ASan one, so
+        // tag the filename to keep them from colliding across sessions/installs.
+        bool sanitize_address = false;
+        if (extra_flags) {
+            for (const char** flag = extra_flags; *flag; ++flag) {
+                if (strcmp(*flag, "-fsanitize=address") == 0) {
+                    sanitize_address = true;
+                    break;
+                }
+            }
+        }
         pch_path_str = std::string(pch_dir) + "/builtin_bd" + std::to_string(block_dim) + (verify_fp ? "_vfp" : "")
-            + (debug ? "_dbg" : "") + (tiles_in_stack_memory ? "_tis" : "") + ".pch";
+            + (debug ? "_dbg" : "") + (tiles_in_stack_memory ? "_tis" : "") + (sanitize_address ? "_asan" : "")
+            + ".pch";
 
         // Check if the PCH file already exists
         FILE* f = fopen(pch_path_str.c_str(), "rb");
@@ -740,6 +752,24 @@ static llvm::orc::LLJIT* find_jit_for_module(const char* module_name)
     return nullptr;
 }
 
+// True when this warp-clang library was itself built with AddressSanitizer.
+// A JIT-compiled kernel can only be instrumented when the host library carries
+// the sanitizer runtime (there must be a single in-process copy and shadow
+// memory). This gates both the reported sanitizer (wp_warp_clang_sanitizer) and
+// the process-symbol generator that resolves a kernel's __asan_* callbacks
+// (wp_load_obj).
+static bool warp_clang_is_asan_build()
+{
+#if defined(__SANITIZE_ADDRESS__)
+    // Defined by GCC, MSVC, and Clang >= 14 when building with -fsanitize=address.
+    return true;
+#elif defined(__has_feature)
+    return __has_feature(address_sanitizer);
+#endif
+
+    return false;
+}
+
 // Load an object file into an in-memory DLL named `module_name`.
 // When `use_legacy_linker` is true, the legacy RTDyld linker is used instead
 // of JITLink; this provides debug support with pre-built LLVM but is less
@@ -823,6 +853,41 @@ WP_API int wp_load_obj(const char* object_file, const char* module_name, bool us
         }
     }
 
+    // When this library is built with AddressSanitizer, an instrumented JIT
+    // kernel references the sanitizer runtime's callbacks (__asan_loadN,
+    // __asan_shadow_memory_dynamic_address, etc.). Those live in the single
+    // in-process sanitizer runtime this ASan-built library pulled in at load
+    // time. Attach a fallback generator restricted to the sanitizer symbol
+    // namespace so the kernel binds to that one runtime; the curated CRT symbol
+    // set defined above stays authoritative for everything else, and non-ASan
+    // builds are unaffected (no generator is added).
+    if (warp_clang_is_asan_build()) {
+        const char global_prefix = jit->getDataLayout().getGlobalPrefix();
+        auto allow_sanitizer_symbols = [global_prefix](const llvm::orc::SymbolStringPtr& name) {
+            llvm::StringRef symbol = *name;
+            if (global_prefix && !symbol.empty() && symbol.front() == global_prefix)
+                symbol = symbol.drop_front();
+            // Match the sanitizer runtime namespaces with a version-agnostic prefix
+            // check: StringRef spells this startswith() in LLVM < 16 and starts_with()
+            // in >= 16, and the prebuilt LLVM may be either.
+            auto has_prefix = [](llvm::StringRef s, const char* prefix) {
+                const size_t n = strlen(prefix);
+                return s.size() >= n && memcmp(s.data(), prefix, n) == 0;
+            };
+            return has_prefix(symbol, "__asan") || has_prefix(symbol, "__lsan") || has_prefix(symbol, "__ubsan")
+                || has_prefix(symbol, "__sanitizer");
+        };
+        auto generator = llvm::orc::DynamicLibrarySearchGenerator::GetForCurrentProcess(
+            global_prefix, std::move(allow_sanitizer_symbols)
+        );
+        if (!generator) {
+            std::cerr << "Failed to create sanitizer symbol generator: " << llvm::toString(generator.takeError())
+                      << std::endl;
+            return -1;
+        }
+        (*dll).addGenerator(std::move(*generator));
+    }
+
     // Load the object file into a memory buffer
     auto buffer = llvm::MemoryBuffer::getFile(object_file);
     if (!buffer) {
@@ -877,6 +942,13 @@ WP_API uint64_t wp_lookup(const char* dll_name, const char* function_name)
 }
 
 WP_API const char* wp_warp_clang_version() { return WP_VERSION_STRING; }
+
+// Reports the sanitizer this warp-clang library was built with, so the Python
+// layer can match JIT-compiled CPU kernels to the host runtime (a single
+// in-process ASan runtime / shadow memory). Returns "address" for an
+// AddressSanitizer build, or "" when no sanitizer is active. Returns a string
+// (not a bool) so other sanitizers can be reported here in the future.
+WP_API const char* wp_warp_clang_sanitizer() { return warp_clang_is_asan_build() ? "address" : ""; }
 
 WP_API const char* wp_llvm_version()
 {

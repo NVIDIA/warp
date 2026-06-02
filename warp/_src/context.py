@@ -1961,9 +1961,39 @@ def _resolve_cpu_compiler_flags(module_flags, config_flags):
 
     Resolves ``None`` at the module level to the config value, and ``None``
     at the config level to ``"-march=native"`` (the default).
+
+    When ``warp-clang`` itself was built with AddressSanitizer, ``-fsanitize=address``
+    is appended automatically so JIT-compiled CPU kernels are instrumented to match the
+    host: the kernel's ``__asan_*`` callbacks and the host share one in-process runtime
+    and shadow memory. The flag also feeds the module hash, so instrumented and
+    non-instrumented objects never collide in the kernel cache.
     """
     flags = module_flags if module_flags is not None else config_flags
-    return flags if flags is not None else "-march=native"
+    flags = flags if flags is not None else "-march=native"
+
+    # runtime is None until wp.init(). Module hashing can happen during import
+    # for module="unique" kernels, so option resolution must not force initialization.
+    host_sanitizer = getattr(runtime, "clang_sanitizer", "")
+
+    # Asking for ASan instrumentation without an ASan-built warp-clang would produce
+    # kernels whose __asan_* references cannot resolve at load time. Fail loudly instead.
+    # Warp supports one active sanitizer at a time, so ASan is recognized only as the
+    # standalone token emitted by this path and by build_lib.py --sanitize=address.
+    has_address_sanitizer = "-fsanitize=address" in flags.split()
+
+    # Defer while the sanitizer status is unknown. wp.init() invalidates pre-init
+    # hashes/options so this check runs again once runtime.clang_sanitizer is known.
+    if has_address_sanitizer and host_sanitizer != "address" and runtime is not None:
+        raise RuntimeError(
+            "JIT AddressSanitizer support requires a warp-clang library built with "
+            "AddressSanitizer. Rebuild Warp with `build_lib.py --sanitize=address`, or "
+            "remove `-fsanitize=address` from the CPU compiler flags."
+        )
+
+    if host_sanitizer == "address" and not has_address_sanitizer:
+        flags = f"{flags} -fsanitize=address".strip()
+
+    return flags
 
 
 def _uses_march_native(flags: str) -> bool:
@@ -4764,6 +4794,12 @@ class Runtime:
                     "warp-clang library does not support version checking.\n"
                     "  This may indicate an older or mismatched library version."
                 )
+
+            # Set up the AddressSanitizer query (guard against an older/mismatched DLL
+            # missing the symbol). The clang_sanitizer property calls it on demand.
+            if hasattr(self.llvm, "wp_warp_clang_sanitizer"):
+                self.llvm.wp_warp_clang_sanitizer.argtypes = []
+                self.llvm.wp_warp_clang_sanitizer.restype = ctypes.c_char_p
         else:
             self.llvm = None
 
@@ -6469,6 +6505,12 @@ class Runtime:
             pass
 
         return None
+
+    @property
+    def clang_sanitizer(self) -> str:
+        """Sanitizer ``warp-clang`` was built with (e.g. ``"address"``), or ``""`` if none / no LLVM."""
+        query = getattr(self.llvm, "wp_warp_clang_sanitizer", None)
+        return query().decode("utf-8") if query else ""
 
     def load_dll(self, dll_path):
         try:
@@ -12045,6 +12087,11 @@ def init():
 
     if runtime is None:
         runtime = Runtime()
+        for module in list(user_modules.values()):
+            # Module hashes/options may have been computed before Runtime existed,
+            # when clang_sanitizer was unknown. Recompute them after init so
+            # sanitizer-dependent CPU flags participate in hashes and compile options.
+            module.mark_modified()
 
     if warp.config.track_memory and not runtime.core.wp_alloc_tracker_is_enabled():
         import atexit  # noqa: PLC0415
@@ -12309,6 +12356,7 @@ def print_diagnostics() -> dict:
     info["debug"] = _build_flag("debug")
     info["verify_fp"] = _build_flag("verify_fp")
     info["fast_math"] = _build_flag("fast_math")
+    info["sanitizer"] = runtime.clang_sanitizer
 
     # Devices
     devices = []
@@ -12380,6 +12428,7 @@ def print_diagnostics() -> dict:
     _field("Debug:", info["debug"])
     _field("Verify FP:", info["verify_fp"])
     _field("Fast math:", info["fast_math"])
+    _field("Sanitizer:", info["sanitizer"] or "none")
 
     _section("CPU")
     _field("Model:", info["cpu_name"])

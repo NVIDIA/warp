@@ -204,6 +204,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_reload import TestReload
     from warp.tests.test_rounding import TestRounding
     from warp.tests.test_runlength_encode import TestRunlengthEncode
+    from warp.tests.test_sanitize import TestSanitize
     from warp.tests.test_scalar_ops import TestScalarOps
     from warp.tests.test_sgd import TestSGD
     from warp.tests.test_smoothstep import TestSmoothstep
@@ -362,6 +363,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestRmmAllocator,
         TestRounding,
         TestRunlengthEncode,
+        TestSanitize,
         TestScalarOps,
         TestSGD,
         TestSmoothstep,
