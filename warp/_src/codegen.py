@@ -3350,6 +3350,14 @@ class Adjoint:
                         "must refer to a function throughout the kernel."
                     )
 
+                # a local previously bound to wp.grad() is a function handle, not a value. The same
+                # generic type check below would otherwise read `.type` on the GradWrapper and fail
+                # with an opaque AttributeError, so reject the reassignment with a clear error.
+                if isinstance(adj.symbols[name], warp._src.context.GradWrapper):
+                    raise WarpCodegenError(
+                        f"Error, local variable '{name}' is bound to wp.grad() and cannot be reassigned to a non-grad value."
+                    )
+
                 if not types_equal(strip_reference(rhs.type), adj.symbols[name].type):
                     raise WarpCodegenTypeError(
                         f"Error, assigning to existing symbol {name} ({adj.symbols[name].type}) with different type ({rhs.type})"

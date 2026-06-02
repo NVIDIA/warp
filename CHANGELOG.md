@@ -216,6 +216,9 @@
   ``f`` is such a local now compile and call correctly instead of failing during codegen.
   Rebinding a function-valued local to a different function or to a non-function value raises a clear error
   ([GH-1423](https://github.com/NVIDIA/warp/issues/1423)).
+- Raise a clear `wp.WarpCodegenError` when a kernel-local variable bound to `wp.grad()` is reassigned to a
+  non-grad value, instead of failing with an internal `AttributeError`
+  ([GH-1487](https://github.com/NVIDIA/warp/issues/1487)).
 
 ### Documentation
 
