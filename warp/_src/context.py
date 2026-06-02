@@ -3495,7 +3495,8 @@ def _set_alloc_tag_if_tracking(ptr):
 
 class CpuDefaultAllocator:
     def __init__(self, device):
-        assert device.is_cpu
+        if not device.is_cpu:
+            raise ValueError(f"CpuDefaultAllocator requires a CPU device, got '{device}'")
 
     def allocate(self, size_in_bytes):
         ptr = runtime.core.wp_alloc_host(size_in_bytes, None)
@@ -3510,7 +3511,8 @@ class CpuDefaultAllocator:
 
 class CpuPinnedAllocator:
     def __init__(self, device):
-        assert device.is_cpu
+        if not device.is_cpu:
+            raise ValueError(f"CpuPinnedAllocator requires a CPU device, got '{device}'")
         self.device = device
 
     def allocate(self, size_in_bytes):
@@ -3526,7 +3528,8 @@ class CpuPinnedAllocator:
 
 class CudaDefaultAllocator:
     def __init__(self, device):
-        assert device.is_cuda
+        if not device.is_cuda:
+            raise ValueError(f"CudaDefaultAllocator requires a CUDA device, got '{device}'")
         self.device = device
 
     def allocate(self, size_in_bytes):
@@ -3558,8 +3561,10 @@ class CudaDefaultAllocator:
 
 class CudaMempoolAllocator:
     def __init__(self, device):
-        assert device.is_cuda
-        assert device.is_mempool_supported
+        if not device.is_cuda:
+            raise ValueError(f"CudaMempoolAllocator requires a CUDA device, got '{device}'")
+        if not device.is_mempool_supported:
+            raise RuntimeError(f"CudaMempoolAllocator requires memory pool support on CUDA device '{device}'")
         self.device = device
 
     def allocate(self, size_in_bytes):
