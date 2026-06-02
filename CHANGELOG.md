@@ -234,6 +234,8 @@
 - Fix `Tape.record_scope_end()` to raise a clear error for unmatched
   scope ends and preserve nested non-empty tape visualization scopes
   ([GH-1515](https://github.com/NVIDIA/warp/issues/1515)).
+- Fix LTO cache collisions and stale FFT metadata handling by using longer cache keys and rebuilding invalid metadata
+  ([GH-1511](https://github.com/NVIDIA/warp/issues/1511)).
 
 ### Documentation
 
