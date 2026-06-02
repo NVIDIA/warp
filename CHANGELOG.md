@@ -216,6 +216,9 @@
   ``f`` is such a local now compile and call correctly instead of failing during codegen.
   Rebinding a function-valued local to a different function or to a non-function value raises a clear error
   ([GH-1423](https://github.com/NVIDIA/warp/issues/1423)).
+- Fix CUDA BVH refit out-of-bounds access for single-node and packed-root
+  trees ([GH-860](https://github.com/NVIDIA/warp/issues/860),
+  [GH-1506](https://github.com/NVIDIA/warp/issues/1506)).
 
 ### Documentation
 

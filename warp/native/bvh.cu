@@ -71,8 +71,8 @@ __global__ void bvh_refit_kernel(
             BVHPackedNodeHalf& upper = node_uppers[index];
             // update the leaf node
 
-            // only need to compute bound when this is a valid leaf node
-            if (!node_lowers[parent].b) {
+            // Single-node trees store the root leaf without a parent.
+            if (parent == -1 || !node_lowers[parent].b) {
                 const int start = lower.i;
                 const int end = upper.i;
 
@@ -112,10 +112,9 @@ __global__ void bvh_refit_kernel(
                 {
                     // update the leaf node
                     int parent_parent = parents[parent];
-                    ;
 
                     // only need to compute bound when this is a valid leaf node
-                    if (!node_lowers[parent_parent].b) {
+                    if (parent_parent == -1 || !node_lowers[parent_parent].b) {
                         const int start = parent_lower.i;
                         const int end = parent_upper.i;
                         bounds3 bound;

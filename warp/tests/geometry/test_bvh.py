@@ -158,6 +158,97 @@ def test_bvh_ray_query_inside_and_outside_bounds(test, device):
         test.assertEqual(device_intersected.sum(), 1)
 
 
+def test_bvh_refit_root_leaves(test, device):
+    """Refit CUDA BVHs whose root is represented as a leaf.
+
+    Single-node trees store the root leaf without a parent. LBVH can also pack
+    the root into a leaf when ``leaf_size`` covers all primitives. The old and
+    new AABBs occupy disjoint x-ranges, so the old query should miss after
+    refit and the new query should hit the updated bounds.
+    """
+    old_single_lower = wp.vec3(0.0, 0.0, 0.0)
+    old_single_upper = wp.vec3(1.0, 1.0, 1.0)
+    new_single_lower = wp.vec3(2.0, 0.0, 0.0)
+    new_single_upper = wp.vec3(3.0, 1.0, 1.0)
+
+    cases = [
+        (
+            f"single_leaf_{constructor}",
+            constructor,
+            1,
+            [old_single_lower],
+            [old_single_upper],
+            [new_single_lower],
+            [new_single_upper],
+            old_single_lower,
+            old_single_upper,
+            new_single_lower,
+            new_single_upper,
+            1,
+        )
+        for constructor in ("sah", "median", "lbvh")
+    ]
+    cases.append(
+        (
+            "packed_root_lbvh",
+            "lbvh",
+            2,
+            [wp.vec3(0.0, 0.0, 0.0), wp.vec3(2.0, 0.0, 0.0)],
+            [wp.vec3(1.0, 1.0, 1.0), wp.vec3(3.0, 1.0, 1.0)],
+            [wp.vec3(4.0, 0.0, 0.0), wp.vec3(6.0, 0.0, 0.0)],
+            [wp.vec3(5.0, 1.0, 1.0), wp.vec3(7.0, 1.0, 1.0)],
+            wp.vec3(0.0, 0.0, 0.0),
+            wp.vec3(3.0, 1.0, 1.0),
+            wp.vec3(4.0, 0.0, 0.0),
+            wp.vec3(7.0, 1.0, 1.0),
+            2,
+        )
+    )
+
+    for (
+        name,
+        constructor,
+        leaf_size,
+        old_lowers,
+        old_uppers,
+        new_lowers,
+        new_uppers,
+        old_query_lower,
+        old_query_upper,
+        new_query_lower,
+        new_query_upper,
+        expected_new_hits,
+    ) in cases:
+        with test.subTest(name=name):
+            lowers = wp.array(old_lowers, dtype=wp.vec3, device=device)
+            uppers = wp.array(old_uppers, dtype=wp.vec3, device=device)
+            bvh = wp.Bvh(lowers, uppers, constructor=constructor, leaf_size=leaf_size)
+
+            wp.copy(lowers, wp.array(new_lowers, dtype=wp.vec3, device=device))
+            wp.copy(uppers, wp.array(new_uppers, dtype=wp.vec3, device=device))
+            bvh.refit()
+
+            bounds_intersected = wp.zeros(shape=len(old_lowers), dtype=int, device=device)
+            wp.launch(
+                bvh_query_aabb,
+                dim=1,
+                inputs=[bvh.id, old_query_lower, old_query_upper, bounds_intersected],
+                device=device,
+            )
+            test.assertEqual(bounds_intersected.numpy().sum(), 0, f"Expected miss at old bounds ({name})")
+
+            bounds_intersected.zero_()
+            wp.launch(
+                bvh_query_aabb,
+                dim=1,
+                inputs=[bvh.id, new_query_lower, new_query_upper, bounds_intersected],
+                device=device,
+            )
+            test.assertEqual(
+                bounds_intersected.numpy().sum(), expected_new_hits, f"Expected hits at refit bounds ({name})"
+            )
+
+
 def get_random_aabbs(n, center, relative_shift, relative_size, rng):
     centers = rng.uniform(-0.5, 0.5, size=n * 3).reshape(n, 3) * relative_shift + center
     diffs = 0.5 * rng.random(n * 3).reshape(n, 3) * relative_size
@@ -735,6 +826,7 @@ add_function_test(
     test_bvh_ray_query_inside_and_outside_bounds,
     devices=devices,
 )
+add_function_test(TestBvh, "test_bvh_refit_root_leaves", test_bvh_refit_root_leaves, devices=cuda_devices)
 add_function_test(TestBvh, "test_tile_bvh_query_aabb", test_tile_bvh_query, devices=cuda_devices)
 add_function_test(TestBvh, "test_tile_bvh_query_ray", test_tile_bvh_query_ray, devices=cuda_devices)
 
