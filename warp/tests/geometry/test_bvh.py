@@ -158,6 +158,91 @@ def test_bvh_ray_query_inside_and_outside_bounds(test, device):
         test.assertEqual(device_intersected.sum(), 1)
 
 
+def test_bvh_refit_single_leaf(test, device):
+    """Refit a single-node CUDA BVH after moving its only leaf.
+
+    The old and new AABBs are one-unit boxes separated along x. Querying the
+    old box after refit should miss, while querying the new box should hit,
+    proving the root leaf bound was recomputed without reading a parent node.
+    """
+    old_lower = wp.vec3(0.0, 0.0, 0.0)
+    old_upper = wp.vec3(1.0, 1.0, 1.0)
+    new_lower = wp.vec3(2.0, 0.0, 0.0)
+    new_upper = wp.vec3(3.0, 1.0, 1.0)
+
+    for constructor in ("sah", "median", "lbvh"):
+        lowers = wp.array([old_lower], dtype=wp.vec3, device=device)
+        uppers = wp.array([old_upper], dtype=wp.vec3, device=device)
+        bvh = wp.Bvh(lowers, uppers, constructor=constructor)
+
+        wp.copy(lowers, wp.array([new_lower], dtype=wp.vec3, device=device))
+        wp.copy(uppers, wp.array([new_upper], dtype=wp.vec3, device=device))
+        bvh.refit()
+
+        bounds_intersected = wp.zeros(shape=1, dtype=int, device=device)
+        wp.launch(
+            bvh_query_aabb,
+            dim=1,
+            inputs=[bvh.id, old_lower, old_upper, bounds_intersected],
+            device=device,
+        )
+        test.assertEqual(bounds_intersected.numpy()[0], 0, f"Expected miss at old bounds ({constructor})")
+
+        bounds_intersected.zero_()
+        wp.launch(
+            bvh_query_aabb,
+            dim=1,
+            inputs=[bvh.id, new_lower, new_upper, bounds_intersected],
+            device=device,
+        )
+        test.assertEqual(bounds_intersected.numpy()[0], 1, f"Expected hit at refit bounds ({constructor})")
+
+
+def test_bvh_refit_packed_root(test, device):
+    """Refit an LBVH whose root is packed into a leaf.
+
+    The old and new AABBs occupy disjoint x-ranges, and each aggregate query
+    spans exactly one pair. With ``leaf_size=2`` the LBVH root is a packed
+    leaf, so the old query should miss after refit and the new query should
+    return both bounds without reading a parent-parent node.
+    """
+    old_lowers = [wp.vec3(0.0, 0.0, 0.0), wp.vec3(2.0, 0.0, 0.0)]
+    old_uppers = [wp.vec3(1.0, 1.0, 1.0), wp.vec3(3.0, 1.0, 1.0)]
+    new_lowers = [wp.vec3(4.0, 0.0, 0.0), wp.vec3(6.0, 0.0, 0.0)]
+    new_uppers = [wp.vec3(5.0, 1.0, 1.0), wp.vec3(7.0, 1.0, 1.0)]
+
+    old_query_lower = wp.vec3(0.0, 0.0, 0.0)
+    old_query_upper = wp.vec3(3.0, 1.0, 1.0)
+    new_query_lower = wp.vec3(4.0, 0.0, 0.0)
+    new_query_upper = wp.vec3(7.0, 1.0, 1.0)
+
+    lowers = wp.array(old_lowers, dtype=wp.vec3, device=device)
+    uppers = wp.array(old_uppers, dtype=wp.vec3, device=device)
+    bvh = wp.Bvh(lowers, uppers, constructor="lbvh", leaf_size=2)
+
+    wp.copy(lowers, wp.array(new_lowers, dtype=wp.vec3, device=device))
+    wp.copy(uppers, wp.array(new_uppers, dtype=wp.vec3, device=device))
+    bvh.refit()
+
+    bounds_intersected = wp.zeros(shape=2, dtype=int, device=device)
+    wp.launch(
+        bvh_query_aabb,
+        dim=1,
+        inputs=[bvh.id, old_query_lower, old_query_upper, bounds_intersected],
+        device=device,
+    )
+    test.assertEqual(bounds_intersected.numpy().sum(), 0, "Expected miss at old bounds")
+
+    bounds_intersected.zero_()
+    wp.launch(
+        bvh_query_aabb,
+        dim=1,
+        inputs=[bvh.id, new_query_lower, new_query_upper, bounds_intersected],
+        device=device,
+    )
+    test.assertEqual(bounds_intersected.numpy().sum(), 2, "Expected hits at refit bounds")
+
+
 def get_random_aabbs(n, center, relative_shift, relative_size, rng):
     centers = rng.uniform(-0.5, 0.5, size=n * 3).reshape(n, 3) * relative_shift + center
     diffs = 0.5 * rng.random(n * 3).reshape(n, 3) * relative_size
@@ -735,6 +820,8 @@ add_function_test(
     test_bvh_ray_query_inside_and_outside_bounds,
     devices=devices,
 )
+add_function_test(TestBvh, "test_bvh_refit_single_leaf", test_bvh_refit_single_leaf, devices=cuda_devices)
+add_function_test(TestBvh, "test_bvh_refit_packed_root", test_bvh_refit_packed_root, devices=cuda_devices)
 add_function_test(TestBvh, "test_tile_bvh_query_aabb", test_tile_bvh_query, devices=cuda_devices)
 add_function_test(TestBvh, "test_tile_bvh_query_ray", test_tile_bvh_query_ray, devices=cuda_devices)
 
