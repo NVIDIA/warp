@@ -7,7 +7,13 @@ from unittest import mock
 import numpy as np
 
 import warp as wp
-from warp._src.context import Allocator
+from warp._src.context import (
+    Allocator,
+    CpuDefaultAllocator,
+    CpuPinnedAllocator,
+    CudaDefaultAllocator,
+    CudaMempoolAllocator,
+)
 from warp.tests.unittest_utils import add_function_test, get_cuda_test_devices
 
 wp.init()
@@ -64,6 +70,19 @@ class FailAllocator:
 
     def deallocate(self, ptr, size_in_bytes):
         pass
+
+
+class FakeDevice:
+    """Minimal device shape for allocator constructor validation."""
+
+    def __init__(self, alias, *, is_cpu=False, is_cuda=False, is_mempool_supported=False):
+        self.alias = alias
+        self.is_cpu = is_cpu
+        self.is_cuda = is_cuda
+        self.is_mempool_supported = is_mempool_supported
+
+    def __str__(self):
+        return self.alias
 
 
 class TorchCachingAllocatorForWarp:
@@ -159,6 +178,53 @@ def test_protocol_conformance_cuda(test, device):
 add_function_test(
     TestAllocatorProtocol, "test_protocol_conformance_cuda", test_protocol_conformance_cuda, devices=cuda_test_devices
 )
+
+
+# -- Built-in allocator validation -----------------------------------------
+
+
+class TestAllocatorValidation(unittest.TestCase):
+    def test_cpu_allocators_require_cpu_device(self):
+        """CPU allocators reject non-CPU devices."""
+        cuda_device = FakeDevice("cuda:fake", is_cuda=True, is_mempool_supported=True)
+
+        for allocator_type in (CpuDefaultAllocator, CpuPinnedAllocator):
+            with self.subTest(allocator_type=allocator_type.__name__):
+                with self.assertRaisesRegex(
+                    ValueError,
+                    rf"{allocator_type.__name__} requires a CPU device, got 'cuda:fake'",
+                ):
+                    allocator_type(cuda_device)
+
+    def test_cuda_default_allocator_requires_cuda_device(self):
+        """The CUDA default allocator rejects non-CUDA devices."""
+        cpu_device = FakeDevice("cpu", is_cpu=True)
+
+        with self.assertRaisesRegex(
+            ValueError,
+            r"CudaDefaultAllocator requires a CUDA device, got 'cpu'",
+        ):
+            CudaDefaultAllocator(cpu_device)
+
+    def test_cuda_mempool_allocator_requires_cuda_device(self):
+        """The CUDA mempool allocator rejects non-CUDA devices."""
+        cpu_device = FakeDevice("cpu", is_cpu=True)
+
+        with self.assertRaisesRegex(
+            ValueError,
+            r"CudaMempoolAllocator requires a CUDA device, got 'cpu'",
+        ):
+            CudaMempoolAllocator(cpu_device)
+
+    def test_cuda_mempool_allocator_requires_mempool_support(self):
+        """The CUDA mempool allocator rejects devices without memory pool support."""
+        cuda_device = FakeDevice("cuda:no-mempool", is_cuda=True, is_mempool_supported=False)
+
+        with self.assertRaisesRegex(
+            RuntimeError,
+            r"CudaMempoolAllocator requires memory pool support on CUDA device 'cuda:no-mempool'",
+        ):
+            CudaMempoolAllocator(cuda_device)
 
 
 # -- Custom allocator -------------------------------------------------------

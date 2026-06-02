@@ -130,6 +130,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_allocation_tracker import TestAllocTracker
     from warp.tests.test_allocator import (
         TestAllocatorProtocol,
+        TestAllocatorValidation,
         TestCustomAllocator,
         TestRmmAllocator,
         TestTorchAllocator,
@@ -253,6 +254,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestAdam,
         TestAllocTracker,
         TestAllocatorProtocol,
+        TestAllocatorValidation,
         TestApic,
         TestApicMesh,
         TestArithmetic,
