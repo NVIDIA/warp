@@ -37,24 +37,21 @@ def test_pinned(test: unittest.TestCase, device):
 
     wp.synchronize_device(device)
 
-    with wp.ScopedTimer("Synchronous copy", print=False) as pageable_timer:
-        wp.copy(a_device, a_pageable1)
-        wp.copy(a_pageable2, a_device)
+    wp.copy(a_device, a_pageable1)
+    wp.copy(a_pageable2, a_device)
 
     wp.synchronize_device(device)
 
-    with wp.ScopedTimer("Asynchronous copy", print=False) as pinned_timer:
-        wp.copy(a_device, a_pinned1)
-        wp.copy(a_pinned2, a_device)
+    # Keep this as a correctness test. Timing comparisons between pinned and
+    # pageable transfers are too runner-dependent for CI and belong in benchmarks.
+    wp.copy(a_device, a_pinned1)
+    wp.copy(a_pinned2, a_device)
 
     wp.synchronize_device(device)
 
     # ensure correct results
     assert_np_equal(a_pageable2.numpy(), ones)
     assert_np_equal(a_pinned2.numpy(), ones)
-
-    # ensure that launching asynchronous transfers took less CPU time
-    test.assertTrue(pinned_timer.elapsed < pageable_timer.elapsed, "Pinned transfers did not take less CPU time")
 
 
 devices = get_selected_cuda_test_devices()
