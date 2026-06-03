@@ -3449,6 +3449,13 @@ class Adjoint:
             out = rhs
             for name, rhs in zip(names, out, strict=True):
                 if name in adj.symbols:
+                    if isinstance(adj.symbols[name], warp._src.context.GradWrapper):
+                        raise WarpCodegenError(
+                            f"Cannot reassign local '{name}' after binding it to wp.grad(...). Warp treats "
+                            "wp.grad(...) results as static function handles; use a different local variable "
+                            "for the new value."
+                        )
+
                     if not types_equal(rhs.type, adj.symbols[name].type):
                         raise WarpCodegenTypeError(
                             f"Error, assigning to existing symbol {name} ({adj.symbols[name].type}) with different type ({rhs.type})"
@@ -3514,6 +3521,13 @@ class Adjoint:
                         f"Error, rebinding function-valued local '{name}' to a non-function value is not "
                         "supported. Warp does not have function pointers, so a local bound to a function "
                         "must refer to a function throughout the kernel."
+                    )
+
+                if isinstance(adj.symbols[name], warp._src.context.GradWrapper):
+                    raise WarpCodegenError(
+                        f"Cannot reassign local '{name}' after binding it to wp.grad(...). Warp treats "
+                        "wp.grad(...) results as static function handles; use a different local variable "
+                        "for the new value."
                     )
 
                 if not types_equal(strip_reference(rhs.type), adj.symbols[name].type):
@@ -3976,6 +3990,12 @@ class Adjoint:
         if isinstance(lhs, ast.Name):
             rhs = adj.eval(node.value)
             target = adj.eval(lhs)
+            if isinstance(target, warp._src.context.GradWrapper):
+                raise WarpCodegenError(
+                    f"Cannot reassign local '{lhs.id}' after binding it to wp.grad(...). Warp treats "
+                    "wp.grad(...) results as static function handles; use a different local variable "
+                    "for the new value."
+                )
 
             # In-place tile ops mutate target directly; no symbol table update needed.
             if is_tile(target.type) and is_tile(rhs.type):

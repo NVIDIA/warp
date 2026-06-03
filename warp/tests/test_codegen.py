@@ -1416,6 +1416,59 @@ def test_rebind_function_local_to_value_errors(test, device):
         )
 
 
+@wp.func
+def gradwrapper_rebind_square(x: float):
+    return x * x
+
+
+def test_rebind_gradwrapper_local_to_value_errors(test, device):
+    @wp.kernel(enable_backward=False, module="unique")
+    def rebind_gradwrapper_local_to_value_kernel(out: wp.array(dtype=float)):
+        g = wp.grad(gradwrapper_rebind_square)
+        g = 1.0
+        out[0] = g
+
+    with test.assertRaisesRegex(wp.WarpCodegenError, "Cannot reassign local 'g'.*wp.grad"):
+        wp.launch(
+            rebind_gradwrapper_local_to_value_kernel,
+            dim=1,
+            outputs=[wp.zeros(1, dtype=float, device=device)],
+            device=device,
+        )
+
+
+def test_rebind_gradwrapper_local_through_tuple_errors(test, device):
+    @wp.kernel(enable_backward=False, module="unique")
+    def rebind_gradwrapper_local_through_tuple_kernel(out: wp.array(dtype=float)):
+        g = wp.grad(gradwrapper_rebind_square)
+        g, x = (1.0, 2.0)
+        out[0] = x
+
+    with test.assertRaisesRegex(wp.WarpCodegenError, "Cannot reassign local 'g'.*wp.grad"):
+        wp.launch(
+            rebind_gradwrapper_local_through_tuple_kernel,
+            dim=1,
+            outputs=[wp.zeros(1, dtype=float, device=device)],
+            device=device,
+        )
+
+
+def test_rebind_gradwrapper_local_through_augassign_errors(test, device):
+    @wp.kernel(enable_backward=False, module="unique")
+    def rebind_gradwrapper_local_through_augassign_kernel(out: wp.array(dtype=float)):
+        g = wp.grad(gradwrapper_rebind_square)
+        g += 1.0
+        out[0] = 1.0
+
+    with test.assertRaisesRegex(wp.WarpCodegenError, "Cannot reassign local 'g'.*wp.grad"):
+        wp.launch(
+            rebind_gradwrapper_local_through_augassign_kernel,
+            dim=1,
+            outputs=[wp.zeros(1, dtype=float, device=device)],
+            device=device,
+        )
+
+
 class TestCodeGen(unittest.TestCase):
     def _make_adjoint_with_filename(self, filename):
         source = "def kernel_fn(x: int):\n    y = x + 1\n    return y\n"
@@ -1931,6 +1984,24 @@ add_function_test(
     TestCodeGen,
     "test_rebind_function_local_to_value_errors",
     test_rebind_function_local_to_value_errors,
+    devices=devices,
+)
+add_function_test(
+    TestCodeGen,
+    "test_rebind_gradwrapper_local_to_value_errors",
+    test_rebind_gradwrapper_local_to_value_errors,
+    devices=devices,
+)
+add_function_test(
+    TestCodeGen,
+    "test_rebind_gradwrapper_local_through_tuple_errors",
+    test_rebind_gradwrapper_local_through_tuple_errors,
+    devices=devices,
+)
+add_function_test(
+    TestCodeGen,
+    "test_rebind_gradwrapper_local_through_augassign_errors",
+    test_rebind_gradwrapper_local_through_augassign_errors,
     devices=devices,
 )
 

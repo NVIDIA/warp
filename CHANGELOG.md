@@ -223,6 +223,9 @@
 - Fix CUDA BVH refit out-of-bounds access for single-node and packed-root
   trees ([GH-860](https://github.com/NVIDIA/warp/issues/860),
   [GH-1506](https://github.com/NVIDIA/warp/issues/1506)).
+- Fix rebinding a kernel-local variable that holds `wp.grad()` to a non-grad
+  value to raise a clear `WarpCodegenError` instead of an internal
+  `AttributeError` ([GH-1487](https://github.com/NVIDIA/warp/issues/1487)).
 
 ### Documentation
 
