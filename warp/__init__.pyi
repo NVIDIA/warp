@@ -5418,6 +5418,8 @@ def tid() -> int | tuple[int, int] | tuple[int, int, int] | tuple[int, int, int,
     The indices correspond to the thread's position in the kernel launch grid.
     If fewer indices are requested than the launch dimensionality, only the
     leading indices are returned.
+    For multi-dimensional launches, the linear thread order is unraveled in
+    row-major order, with the last launch dimension varying fastest.
 
     This function may not be called from user-defined Warp functions."""
     ...
