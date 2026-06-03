@@ -223,6 +223,9 @@
 - Fix CUDA BVH refit out-of-bounds access for single-node and packed-root
   trees ([GH-860](https://github.com/NVIDIA/warp/issues/860),
   [GH-1506](https://github.com/NVIDIA/warp/issues/1506)).
+- Fix `Tape.record_scope_end()` to raise a clear error for unmatched
+  scope ends and preserve nested non-empty tape visualization scopes
+  ([GH-1515](https://github.com/NVIDIA/warp/issues/1515)).
 
 ### Documentation
 
