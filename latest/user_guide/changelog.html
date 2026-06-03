@@ -725,6 +725,9 @@ Rebinding a function-valued local to a different function or to a non-function v
 <li><p>Fix CUDA BVH refit out-of-bounds access for single-node and packed-root
 trees (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/860">GH-860</a>,
 <a class="reference external" href="https://github.com/NVIDIA/warp/issues/1506">GH-1506</a>).</p></li>
+<li><p>Fix rebinding a kernel-local variable that holds <code class="docutils literal notranslate"><span class="pre">wp.grad()</span></code> to a non-grad
+value to raise a clear <code class="docutils literal notranslate"><span class="pre">WarpCodegenError</span></code> instead of an internal
+<code class="docutils literal notranslate"><span class="pre">AttributeError</span></code> (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1487">GH-1487</a>).</p></li>
 </ul>
 </section>
 <section id="documentation">
