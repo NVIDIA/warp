@@ -339,10 +339,13 @@ def _make_struct_field_setter(cls, field: str, var_type: type):
             setattr(inst._ctype, field, array_t())
         else:
             # wp.array
-            assert isinstance(value, array)
-            assert types_equal(value.dtype, var_type.dtype), (
-                f"assign to struct member variable {field} failed, expected type {type_repr(var_type.dtype)}, got type {type_repr(value.dtype)}"
-            )
+            if not isinstance(value, array):
+                raise TypeError(f"Struct field '{field}' expects a Warp array, got {type(value).__name__}")
+            if not types_equal(value.dtype, var_type.dtype):
+                raise TypeError(
+                    f"Assign to struct member variable {field} failed, expected type {type_repr(var_type.dtype)}, "
+                    f"got type {type_repr(value.dtype)}"
+                )
             setattr(inst._ctype, field, value.__ctype__())
 
             # workaround to prevent gradient buffers being garbage collected
@@ -357,10 +360,13 @@ def _make_struct_field_setter(cls, field: str, var_type: type):
         if value is None:
             setattr(inst._ctype, field, var_type.__ctype__())
         else:
-            assert isinstance(value, indexedarray)
-            assert types_equal(value.dtype, var_type.dtype), (
-                f"assign to struct member variable {field} failed, expected type {type_repr(var_type.dtype)}, got type {type_repr(value.dtype)}"
-            )
+            if not isinstance(value, indexedarray):
+                raise TypeError(f"Struct field '{field}' expects a Warp indexed array, got {type(value).__name__}")
+            if not types_equal(value.dtype, var_type.dtype):
+                raise TypeError(
+                    f"Assign to struct member variable {field} failed, expected type {type_repr(var_type.dtype)}, "
+                    f"got type {type_repr(value.dtype)}"
+                )
             setattr(inst._ctype, field, value.__ctype__())
 
         # workaround to prevent gradient buffers being garbage collected
