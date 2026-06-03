@@ -545,7 +545,9 @@ able to process one Warp-grid element per CUDA thread.</p>
 <ul class="simple">
 <li><p>Arrays can have a maximum of four dimensions.</p></li>
 <li><p>Each dimension of a Warp array cannot be greater than the maximum value representable by a 32-bit signed integer,
-<span class="math notranslate nohighlight">\(2^{31}-1\)</span>.</p></li>
+<span class="math notranslate nohighlight">\(2^{31}-1\)</span>. As a result, one-dimensional Warp arrays cannot represent larger logical data sets; split them
+across multiple dimensions instead. See <a class="reference internal" href="basics.html#large-launch-indexing"><span class="std std-ref">large-array launch indexing</span></a> for the launch
+and indexing pattern.</p></li>
 <li><p>There are currently no data types that support complex numbers.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">wp.config.launch_array_access_mode</span> <span class="pre">=</span> <span class="pre">wp.config.LaunchArrayAccessMode.CHECKED</span></code>
 only fully verifies cross-device <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.array</span></code></a> arguments when
