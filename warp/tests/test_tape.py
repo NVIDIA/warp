@@ -313,6 +313,50 @@ class TestTape(unittest.TestCase):
                 with wp.Tape():
                     pass
 
+    def test_tape_scope_end_without_matching_begin(self):
+        tape = wp.Tape()
+
+        with self.assertRaisesRegex(RuntimeError, "ended tape scope, but scope not present"):
+            tape.record_scope_end()
+
+    def test_tape_scope_end_twice_raises(self):
+        tape = wp.Tape()
+
+        tape.record_scope_begin("scope")
+        tape.record_scope_end()
+
+        with self.assertRaisesRegex(RuntimeError, "ended tape scope, but scope not present"):
+            tape.record_scope_end()
+
+    def test_tape_nested_nonempty_scope_markers(self):
+        tape = wp.Tape()
+
+        tape.record_scope_begin("outer")
+        tape.record_scope_begin("inner")
+        tape.launches.append(object())
+        tape.record_scope_end()
+        tape.record_scope_end()
+
+        self.assertEqual(
+            tape.scopes,
+            [
+                (0, "outer", {}),
+                (0, "inner", {}),
+                (1, None, None),
+                (1, None, None),
+            ],
+        )
+
+    def test_tape_empty_nested_scope_markers_removed(self):
+        tape = wp.Tape()
+
+        tape.record_scope_begin("outer")
+        tape.record_scope_begin("inner")
+        tape.record_scope_end()
+        tape.record_scope_end()
+
+        self.assertEqual(tape.scopes, [])
+
 
 add_function_test(TestTape, "test_tape_mul_constant", test_tape_mul_constant, devices=devices)
 add_function_test(TestTape, "test_tape_mul_variable", test_tape_mul_variable, devices=devices)

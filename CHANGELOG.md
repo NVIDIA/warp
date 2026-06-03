@@ -226,6 +226,9 @@
 - Fix rebinding a kernel-local variable that holds `wp.grad()` to a non-grad
   value to raise a clear `WarpCodegenError` instead of an internal
   `AttributeError` ([GH-1487](https://github.com/NVIDIA/warp/issues/1487)).
+- Fix `Tape.record_scope_end()` to raise a clear error for unmatched
+  scope ends and preserve nested non-empty tape visualization scopes
+  ([GH-1515](https://github.com/NVIDIA/warp/issues/1515)).
 
 ### Documentation
 

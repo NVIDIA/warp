@@ -194,7 +194,17 @@ class Tape:
         Args:
             remove_scope_if_empty (bool): If True, the scope will be removed if no kernel launches were recorded within it.
         """
-        if remove_scope_if_empty and self.scopes[-1][0] == len(self.launches):
+        open_scope_count = 0
+        for _, scope_name, _ in self.scopes:
+            if scope_name is None:
+                open_scope_count -= 1
+            else:
+                open_scope_count += 1
+
+        if open_scope_count == 0:
+            raise RuntimeError("Warp: Error, ended tape scope, but scope not present")
+
+        if remove_scope_if_empty and self.scopes[-1][1] is not None and self.scopes[-1][0] == len(self.launches):
             self.scopes = self.scopes[:-1]
         else:
             self.scopes.append((len(self.launches), None, None))
