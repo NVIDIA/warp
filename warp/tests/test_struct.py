@@ -3,6 +3,7 @@
 
 import gc  # Added for garbage collection tests
 import unittest
+import weakref
 from typing import Any
 
 import numpy as np
@@ -784,6 +785,32 @@ def test_struct_array_gc_requires_grad_toggle(test, device):
     tape.backward(loss=loss_wp)
 
 
+def test_struct_array_gc_replacement_clears_grad_keepalive(test, device):
+    """
+    Tests that replacing a grad-tracked array in a struct releases the old
+    gradient keepalive when the new field value cannot reference that gradient.
+    """
+    wp.init()
+
+    for replacement in ("none", "non_grad_array"):
+        with test.subTest(replacement=replacement):
+            s = StructWithArray()
+            old_array = wp.array([1.0, 2.0, 3.0], dtype=float, device=device, requires_grad=True)
+            old_grad_ref = weakref.ref(old_array.grad)
+            s.data = old_array
+            del old_array
+
+            if replacement == "none":
+                s.data = None
+            else:
+                s.data = wp.array([4.0, 5.0, 6.0], dtype=float, device=device)
+
+            gc.collect()
+
+            test.assertIsNone(getattr(s, "_data_grad", None))
+            test.assertIsNone(old_grad_ref())
+
+
 class TestStruct(unittest.TestCase):
     # check structs default initialized in Python correctly
     def test_struct_default_attributes_python(self):
@@ -922,6 +949,12 @@ add_kernel_test(
 add_function_test(TestStruct, "test_struct_array_hash", test_struct_array_hash, devices=None)
 add_function_test(
     TestStruct, "test_struct_array_gc_requires_grad_toggle", test_struct_array_gc_requires_grad_toggle, devices=devices
+)
+add_function_test(
+    TestStruct,
+    "test_struct_array_gc_replacement_clears_grad_keepalive",
+    test_struct_array_gc_replacement_clears_grad_keepalive,
+    devices=devices,
 )
 add_function_test(
     TestStruct, "test_struct_array_gc_direct_assignment", test_struct_array_gc_direct_assignment, devices=devices

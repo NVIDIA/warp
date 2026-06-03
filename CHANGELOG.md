@@ -223,6 +223,9 @@
 - Fix CUDA BVH refit out-of-bounds access for single-node and packed-root
   trees ([GH-860](https://github.com/NVIDIA/warp/issues/860),
   [GH-1506](https://github.com/NVIDIA/warp/issues/1506)).
+- Fix stale gradient keepalive references when replacing a `@wp.struct`
+  plain-array field with `None` or a non-gradient array
+  ([GH-1520](https://github.com/NVIDIA/warp/issues/1520)).
 
 ### Documentation
 
