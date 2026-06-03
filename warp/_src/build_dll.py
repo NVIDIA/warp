@@ -23,6 +23,41 @@ verbose_cmd = True  # print command lines before executing them
 
 MIN_CTK_VERSION = (12, 0)
 
+# Echoed by our wrapper command before dumping the environment; vcvars64.bat does not emit it.
+_VCVARS_ENV_DUMP_MARKER = "__WARP_VCVARS_ENV_BEGIN__"
+
+
+def _parse_vcvars_environment(output: str) -> dict[str, str]:
+    """Parse environment variables from ``vcvars64.bat && set`` output.
+
+    Scans the command output for ``_VCVARS_ENV_DUMP_MARKER`` and only begins parsing
+    after it, so any banner text emitted by ``vcvars64.bat`` is ignored. Each
+    subsequent line is split on the first ``=`` into a ``KEY=VALUE`` pair; lines
+    without a separator or with an empty key are skipped.
+
+    Args:
+        output: Decoded output of ``vcvars64.bat && echo MARKER && set``.
+
+    Returns:
+        Mapping of environment variable names to values found after the marker.
+        Empty if the marker is absent or no valid entries follow it.
+    """
+    env = {}
+    parse_env = False
+
+    for line in output.splitlines():
+        if not parse_env:
+            parse_env = line.strip() == _VCVARS_ENV_DUMP_MARKER
+            continue
+
+        key, sep, value = line.partition("=")
+        if not sep or not key:
+            continue
+
+        env[key] = value
+
+    return env
+
 
 def machine_architecture() -> str:
     """Return a canonical machine architecture string.
@@ -37,14 +72,14 @@ def machine_architecture() -> str:
     raise RuntimeError(f"Unrecognized machine architecture {machine}")
 
 
-def run_cmd(cmd):
+def run_cmd(cmd, print_success_output=True):
     if verbose_cmd:
         print(cmd)
 
     try:
         output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
         # Print output even on success to show warnings
-        if output:
+        if print_success_output and output:
             decoded_output = output.decode()
             if decoded_output.strip():  # Only print if not just whitespace
                 # In parallel builds, associate output with its command for clarity
@@ -115,24 +150,30 @@ def find_host_compiler() -> str:
 
         vswhere_path = r"%ProgramFiles(x86)%/Microsoft Visual Studio/Installer/vswhere.exe"
         vswhere_path = os.path.expandvars(vswhere_path)
-        if not os.path.exists(vswhere_path):
+        if not os.path.isfile(vswhere_path):
             return ""  # Signal to caller that VS not found
 
         vs_path = run_cmd(f'"{vswhere_path}" -latest -property installationPath').decode().rstrip()
         vsvars_path = os.path.join(vs_path, "VC\\Auxiliary\\Build\\vcvars64.bat")
 
-        if not os.path.exists(vsvars_path):
+        if not os.path.isfile(vsvars_path):
             return ""  # Signal to caller that VS environment script not found
 
-        output = run_cmd(f'"{vsvars_path}" && set').decode()
+        output = run_cmd(
+            f'"{vsvars_path}" && echo {_VCVARS_ENV_DUMP_MARKER} && set', print_success_output=False
+        ).decode()
 
-        for line in output.splitlines():
-            pair = line.split("=", 1)
-            if len(pair) >= 2:
-                os.environ[pair[0]] = pair[1]
+        os.environ.update(_parse_vcvars_environment(output))
 
         cl_path = shutil.which("cl.exe")
-        cl_version = os.environ["VCToolsVersion"].split(".")
+        if not cl_path:
+            return ""  # Signal to caller that cl.exe was not found after vcvars configuration
+
+        vc_tools_version = os.environ.get("VCToolsVersion")
+        if not vc_tools_version:
+            return ""  # Signal to caller that VS environment script did not configure MSVC
+
+        cl_version = vc_tools_version.split(".")
 
         # ensure at least VS2019 version, see list of MSVC versions here https://en.wikipedia.org/wiki/Microsoft_Visual_C%2B%2B
         cl_required_major = 14
