@@ -12,6 +12,7 @@ import functools
 import hashlib
 import inspect
 import itertools
+import linecache
 import math
 import re
 import textwrap
@@ -1047,26 +1048,23 @@ class Adjoint:
         adj.filename = inspect.getsourcefile(func) or "unknown source file"
         # get source file line number where function starts
         adj.fun_lineno = 0
-        adj.source = source
-        if adj.source is None:
-            adj.source, adj.fun_lineno = adj.extract_function_source(func)
+        if source is None:
+            adj.source, adj.fun_lineno, adj.tree = adj.extract_function_source(func)
+        else:
+            # ensures that indented class methods can be parsed as kernels
+            adj.source = textwrap.dedent(source)
+            adj.tree = ast.parse(adj.source)
 
         assert adj.source is not None, f"Failed to extract source code for function {func.__name__}"
 
         # Indicates where the function definition starts (excludes decorators)
         adj.fun_def_lineno = None
 
-        # get function source code
-        # ensures that indented class methods can be parsed as kernels
-        adj.source = textwrap.dedent(adj.source)
-
         adj.source_lines = adj.source.splitlines()
 
         if transformers is None:
             transformers = []
 
-        # build AST and apply node transformers
-        adj.tree = ast.parse(adj.source)
         adj.transformers = transformers
         for transformer in transformers:
             adj.tree = transformer.visit(adj.tree)
@@ -1179,16 +1177,133 @@ class Adjoint:
         return total_shared + adj.max_required_extra_shared_memory
 
     @staticmethod
-    def extract_function_source(func: Callable) -> tuple[str, int]:
+    def extract_function_source(func: Callable) -> tuple[str, int, ast.Module]:
+        """Extract a function's source as ``inspect.getsourcelines`` would, but faster.
+
+        Uses a ``co_lines()``-based heuristic to find the function's source slice
+        without tokenizing, then verifies the slice by parsing it and checking
+        that the parsed block starts with the target function. On any parse or
+        validation failure the implementation falls back transparently to
+        ``inspect.getsourcelines`` — so the only observable difference from the
+        upstream behavior is throughput.
+
+        Returns ``(source, fun_lineno, tree)`` where ``source`` is dedented and
+        ``tree == ast.parse(source)``. Callers can rely on ``tree.body[0]`` being
+        a ``FunctionDef`` / ``AsyncFunctionDef`` with ``name == func.__code__.co_name``.
+
+        ``inspect.unwrap`` is applied before reading ``__code__`` so the fast path
+        matches ``inspect.getsourcelines``'s semantics for ``__wrapped__`` chains
+        (e.g. ``functools.wraps``-decorated functions).
+
+        **Correctness.** The fast path's slice either parses to the target
+        function or it is rejected. The argument:
+
+        - The slice always covers ``[co_firstlineno, max_line]`` where
+          ``max_line = max(line for *,*,line in code.co_lines())``. By PEP 626
+          every bytecode instruction has a line in ``co_lines()``, so the slice
+          contains every executable statement of ``func``.
+        - If ``ast.parse`` succeeds and ``body[0]`` is a ``FunctionDef`` /
+          ``AsyncFunctionDef`` whose ``name == code.co_name``, the parsed block
+          starts at the target function and its body contains every executable
+          statement of ``func``. Any content the forward walk overshot into
+          ``body[1:]`` is ignored by downstream code, which only ever reads
+          ``body[0]``.
+        - The slice can be *wrong* only if the forward walk stops *inside* the
+          function body. The walk stops at the first non-blank line at indent
+          ``<= base_indent`` (a comment at that indent counts — it terminates
+          the suite just as code would), and it only ever scans forward from
+          ``max_line``, the last line carrying bytecode. So by Python's grammar
+          such a stop can land inside the function only if the line lies within
+          an unclosed multi-line string or bracket expression that began at or
+          before ``max_line``. Either case leaves the slice ending in an
+          unclosed token, so ``ast.parse`` raises ``SyntaxError``.
+        - ``SyntaxError`` triggers the fallback to
+          :meth:`_inspect_extract_function_source`, which is the upstream
+          ``inspect.getsourcelines`` behavior.
+
+        So: parse + target-function validation success ⟹ correct slice; parse or
+        validation failure ⟹ fallback. The slow path is also parsed; if *that*
+        fails, the function itself has a syntax error and we let it propagate.
+        """
         try:
-            _, fun_lineno = inspect.getsourcelines(func)
-            source = inspect.getsource(func)
+            code = inspect.unwrap(func).__code__
+        except (AttributeError, ValueError):
+            code = None
+        if code is not None:
+            fast = Adjoint._try_extract_function_source(code)
+            if fast is not None:
+                fast_source, fast_lineno = fast
+                dedented = textwrap.dedent(fast_source)
+                try:
+                    tree = ast.parse(dedented)
+                except SyntaxError:
+                    pass
+                else:
+                    if (
+                        tree.body
+                        and isinstance(tree.body[0], (ast.FunctionDef, ast.AsyncFunctionDef))
+                        and tree.body[0].name == code.co_name
+                    ):
+                        return dedented, fast_lineno, tree
+        source, fun_lineno = Adjoint._inspect_extract_function_source(func)
+        dedented = textwrap.dedent(source)
+        return dedented, fun_lineno, ast.parse(dedented)
+
+    @staticmethod
+    def _inspect_extract_function_source(func: Callable) -> tuple[str, int]:
+        """Tokenizer-driven extraction via ``inspect.getsourcelines``. Default slow
+        path for :meth:`extract_function_source` and the recovery path used when
+        the fast extractor produces an unparsable slice.
+        """
+        try:
+            source_lines, fun_lineno = inspect.getsourcelines(func)
         except OSError as e:
             raise RuntimeError(
                 "Directly evaluating Warp code defined as a string using `exec()` is not supported, "
                 "please save it to a file and use `importlib` if needed."
             ) from e
-        return source, fun_lineno
+        return "".join(source_lines), fun_lineno
+
+    @staticmethod
+    def _try_extract_function_source(code: types.CodeType) -> tuple[str, int] | None:
+        """Best-effort extraction of a function's source slice via ``co_lines()`` + linecache.
+
+        Returns ``None`` when the file isn't in ``linecache``, ``co_firstlineno``
+        is out of range, the def line is blank, or ``max_line < co_firstlineno``.
+        Otherwise returns ``(source, co_firstlineno)`` where ``source`` covers
+        ``[co_firstlineno, end]`` for some ``end >= max_line``. The slice is *not*
+        guaranteed parseable — the parse-time fallback in
+        :meth:`extract_function_source` catches every heuristic miss (see that
+        method's docstring for the proof).
+        """
+        if not (code.co_filename.startswith("<") and code.co_filename.endswith(">")):
+            linecache.checkcache(code.co_filename)
+        lines = linecache.getlines(code.co_filename)
+        start = code.co_firstlineno - 1
+        if not lines or not (0 <= start < len(lines)):
+            return None
+        first = lines[start]
+        stripped = first.lstrip()
+        if not stripped:
+            return None
+        base_indent = len(first) - len(stripped)
+
+        max_line = max((ln for _, _, ln in code.co_lines() if ln is not None), default=0)
+        if max_line < code.co_firstlineno:
+            return None
+
+        # End at the first non-blank line at indent <= base_indent past max_line.
+        end = max_line
+        while end < len(lines):
+            s = lines[end].lstrip()
+            if s and len(lines[end]) - len(s) <= base_indent:
+                break
+            end += 1
+        # inspect.getblock excludes trailing blanks; match that.
+        while end > max_line and not lines[end - 1].strip():
+            end -= 1
+
+        return "".join(lines[start:end]), code.co_firstlineno
 
     # generate function ssa form and adjoint
     @synchronized

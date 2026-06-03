@@ -2,8 +2,10 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import ast
+import inspect
 import sys
 import unittest
+from unittest import mock
 
 import warp as wp
 from warp.tests.unittest_utils import *
@@ -1414,6 +1416,203 @@ def test_rebind_function_local_to_value_errors(test, device):
 
 
 class TestCodeGen(unittest.TestCase):
+    def test_extract_function_source_slow_path_when_fast_returns_none(self):
+        """When ``_try_extract_function_source`` returns ``None`` (e.g. for an
+        ``exec``-defined function with no linecache entry), ``extract_function_source``
+        falls through to ``inspect.getsourcelines`` exactly once and parses its result.
+        """
+        from warp._src import codegen  # noqa: PLC0415
+
+        slow_source = "def generated():\n    return 42\n"
+
+        with mock.patch.object(codegen.Adjoint, "_try_extract_function_source", return_value=None):
+            with mock.patch.object(codegen.inspect, "getsourcelines", return_value=([slow_source], 123)) as get_lines:
+                source, lineno, tree = codegen.Adjoint.extract_function_source(lambda: None)
+
+        self.assertEqual(source, slow_source)  # already at column 0; dedent is a no-op
+        self.assertEqual(lineno, 123)
+        self.assertEqual(tree.body[0].name, "generated")
+        get_lines.assert_called_once()
+
+    def test_extract_function_source_fast_path_patterns(self):
+        """Every fixture in ``aux_test_extract_source_patterns`` is served by the
+        fast path. We force a hard failure if ``inspect.getsourcelines`` is ever
+        called, so each ``subTest`` proves the corresponding branch of the forward
+        walk produced a parseable slice on its own.
+        """
+        from warp._src import codegen  # noqa: PLC0415
+        from warp.tests import aux_test_extract_source_patterns as patterns  # noqa: PLC0415
+
+        fixtures = [
+            patterns.plain,
+            patterns.multiline_paren_return,
+            patterns.with_multiline_docstring,
+            patterns.with_indented_body_multiline_string,
+            patterns.with_nested_def,
+            patterns.trailing_body_comment,
+            patterns.async_function,
+            patterns.the_function_that_follows_the_comment,
+            patterns.plain_with_trailing_blanks,
+        ]
+
+        for fn in fixtures:
+            with self.subTest(fixture=fn.__name__):
+                # Sanity: the fast extractor produces *some* slice for the fixture.
+                fast = codegen.Adjoint._try_extract_function_source(fn.__code__)
+                self.assertIsNotNone(fast, f"fast extractor returned None for {fn.__name__}")
+
+                # Now run the full extraction with inspect.getsourcelines mocked to
+                # raise — if it gets called, the fast path failed for this pattern.
+                with mock.patch.object(
+                    codegen.inspect,
+                    "getsourcelines",
+                    side_effect=AssertionError(f"inspect.getsourcelines must not run for {fn.__name__}"),
+                ):
+                    _source, lineno, tree = codegen.Adjoint.extract_function_source(fn)
+
+                self.assertEqual(lineno, fn.__code__.co_firstlineno)
+                self.assertGreaterEqual(len(tree.body), 1)
+                self.assertIn(type(tree.body[0]), (ast.FunctionDef, ast.AsyncFunctionDef))
+                # body[0].name == co_name follows from the proof in extract_function_source's
+                # docstring; assert it as a regression check.
+                self.assertEqual(tree.body[0].name, fn.__code__.co_name)
+
+    def test_extract_function_source_unwraps_like_inspect(self):
+        """``extract_function_source`` follows ``__wrapped__`` so the fast path is
+        a true substitute for ``inspect.getsourcelines`` on ``functools.wraps``-style
+        decorators.
+        """
+        import functools  # noqa: PLC0415
+        import textwrap as _tw  # noqa: PLC0415
+
+        from warp._src import codegen  # noqa: PLC0415
+
+        def real_kernel():
+            return 42
+
+        @functools.wraps(real_kernel)
+        def wrapper():
+            return real_kernel()
+
+        # Confirm the fixture actually exercises the wrap: __code__ differs but
+        # __wrapped__ points back at real_kernel.
+        self.assertIs(wrapper.__wrapped__, real_kernel)
+        self.assertIsNot(wrapper.__code__, real_kernel.__code__)
+
+        reference_lines, _ = inspect.getsourcelines(wrapper)
+        reference_dedented = _tw.dedent("".join(reference_lines))
+
+        with mock.patch.object(codegen.inspect, "getsourcelines", side_effect=AssertionError("fast path should run")):
+            source, lineno, tree = codegen.Adjoint.extract_function_source(wrapper)
+
+        self.assertEqual(source, reference_dedented)
+        self.assertEqual(lineno, real_kernel.__code__.co_firstlineno)
+        self.assertEqual(tree.body[0].name, "real_kernel")
+
+    def test_adjoint_recovers_from_truncated_fast_extract(self):
+        """When the fast extractor truncates a multi-line string, the parse-time
+        fallback inside :meth:`extract_function_source` recovers via
+        ``inspect.getsourcelines``.
+        """
+        from warp._src import codegen  # noqa: PLC0415
+        from warp.tests.aux_test_extract_source_patterns import contains_truncating_string  # noqa: PLC0415
+
+        # Sanity: the fast path really does produce a truncated, unparsable slice
+        # for this fixture (otherwise the test would silently pass without exercising
+        # the fallback).
+        fast = codegen.Adjoint._try_extract_function_source(contains_truncating_string.__code__)
+        self.assertIsNotNone(fast)
+        with self.assertRaises(SyntaxError):
+            ast.parse(fast[0])
+
+        # The full extract must transparently fall back; tree, source, and the
+        # constructed Adjoint must all reflect the inspect-recovered source.
+        source, _lineno, tree = codegen.Adjoint.extract_function_source(contains_truncating_string)
+        self.assertEqual(tree.body[0].name, "contains_truncating_string")
+        import textwrap as _tw  # noqa: PLC0415
+
+        self.assertEqual(source, _tw.dedent(inspect.getsource(contains_truncating_string)))
+
+        adj = codegen.Adjoint(contains_truncating_string)
+        self.assertEqual(adj.tree.body[0].name, "contains_truncating_string")
+        self.assertEqual(adj.source, _tw.dedent(inspect.getsource(contains_truncating_string)))
+
+    def test_extract_function_source_refreshes_stale_linecache(self):
+        """The fast path must not accept stale ``linecache`` content for a file that
+        was rewritten and recompiled in the same process.
+        """
+        import linecache  # noqa: PLC0415
+        import os  # noqa: PLC0415
+        import tempfile  # noqa: PLC0415
+
+        from warp._src import codegen  # noqa: PLC0415
+
+        def load_function(path, source):
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(source)
+            namespace = {"__file__": path, "__name__": "stale_linecache_fixture"}
+            exec(compile(source, path, "exec"), namespace)
+            return namespace["stale_func"]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "stale_linecache_fixture.py")
+            source_a = "def stale_func():\n    return 1\n"
+            source_b = "def stale_func():\n    return 22\n"
+
+            try:
+                func_a = load_function(path, source_a)
+                first_source, _, _ = codegen.Adjoint.extract_function_source(func_a)
+                self.assertEqual(first_source, source_a)
+
+                func_b = load_function(path, source_b)
+
+                source, _lineno, tree = codegen.Adjoint.extract_function_source(func_b)
+                self.assertEqual(source, source_b)
+                self.assertEqual(tree.body[0].name, "stale_func")
+            finally:
+                linecache.cache.pop(path, None)
+
+    def test_extract_function_source_rejects_non_function_fast_slice(self):
+        """If malformed line metadata makes the fast slice start inside a function,
+        the parse may still succeed. That slice must be rejected and recovered via
+        ``inspect.getsourcelines``.
+        """
+        import linecache  # noqa: PLC0415
+        import os  # noqa: PLC0415
+        import tempfile  # noqa: PLC0415
+        import types  # noqa: PLC0415
+
+        from warp._src import codegen  # noqa: PLC0415
+
+        source = "def line_shifted():\n    x = 1\n"
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "line_metadata_fixture.py")
+            try:
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(source)
+                namespace = {"__file__": path, "__name__": "line_metadata_fixture"}
+                exec(compile(source, path, "exec"), namespace)
+
+                func = namespace["line_shifted"]
+                shifted_code = func.__code__.replace(co_firstlineno=func.__code__.co_firstlineno + 1)
+                shifted_func = types.FunctionType(shifted_code, func.__globals__, func.__name__)
+
+                with mock.patch.object(
+                    codegen.Adjoint,
+                    "_inspect_extract_function_source",
+                    return_value=(source, func.__code__.co_firstlineno),
+                ) as slow_extract:
+                    extracted_source, lineno, tree = codegen.Adjoint.extract_function_source(shifted_func)
+
+                self.assertEqual(extracted_source, source)
+                self.assertEqual(lineno, func.__code__.co_firstlineno)
+                self.assertIn(type(tree.body[0]), (ast.FunctionDef, ast.AsyncFunctionDef))
+                self.assertEqual(tree.body[0].name, "line_shifted")
+                slow_extract.assert_called_once_with(shifted_func)
+            finally:
+                linecache.cache.pop(path, None)
+
     def test_extract_lambda_source_parenthesized_multiline_body(self):
         from warp._src.codegen import Adjoint  # noqa: PLC0415
 

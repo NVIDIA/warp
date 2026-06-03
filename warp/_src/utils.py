@@ -663,7 +663,7 @@ def create_warp_function(func: Callable) -> tuple[wp.Function, warp._src.context
     argspec = get_full_arg_spec(func)
     key = getattr(func, "__name__", None)
     if key is None:
-        source, _ = Adjoint.extract_function_source(func)
+        source, _, _ = Adjoint.extract_function_source(func)
         key = unique_name(source)
     elif key == "<lambda>":
         body = Adjoint.extract_lambda_source(func, only_body=True)
