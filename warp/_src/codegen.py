@@ -32,6 +32,28 @@ _wp_module_name_ = "warp.codegen"
 options = {}
 
 
+def _escape_line_directive_filename(filename: str) -> str:
+    """Return ``filename`` escaped for the quoted filename field of a C/CUDA ``#line`` directive."""
+
+    escaped = []
+    for c in filename.replace("\\", "/"):
+        if c == '"':
+            escaped.append('\\"')
+        elif c == "\n":
+            escaped.append("\\n")
+        elif c == "\r":
+            escaped.append("\\r")
+        elif c == "\t":
+            escaped.append("\\t")
+        elif ord(c) < 32 or ord(c) == 127:
+            # Use fixed-width octal so following filename characters cannot be consumed by the escape.
+            escaped.append(f"\\{ord(c):03o}")
+        else:
+            escaped.append(c)
+
+    return "".join(escaped)
+
+
 def get_node_name_safe(node):
     """Safely get a string representation of an AST node for error messages.
 
@@ -1591,9 +1613,8 @@ class Adjoint:
             is_comment = statement.strip().startswith("//")
             if not is_comment:
                 line = relative_lineno + adj.fun_lineno
-                # Convert backslashes to forward slashes for CUDA compatibility
-                normalized_path = adj.filename.replace("\\", "/")
-                return f'#line {line} "{normalized_path}"'
+                escaped_path = _escape_line_directive_filename(adj.filename)
+                return f'#line {line} "{escaped_path}"'
         return None
 
     def add_forward(adj, statement: str, replay: str | None = None, skip_replay: builtins.bool = False) -> None:
