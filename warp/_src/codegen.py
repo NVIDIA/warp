@@ -306,6 +306,36 @@ def _is_tid_call(node) -> bool:
     return isinstance(node, ast.Call) and hasattr(node.func, "attr") and node.func.attr == "tid"
 
 
+def iter_ast_nodes_of_types(root: ast.AST, *types: type):
+    """Yield only the AST nodes whose exact type is in ``types``, in depth-first search (DFS) order.
+
+    Equivalent to ``(n for n in ast.walk(root) if type(n) in types)`` but
+    faster: ``ast.walk`` is a Python generator over ``iter_child_nodes``;
+    this version inlines the field iteration. Uses ``type(node) in types``
+    (exact-type match) rather than ``isinstance`` (subclass check), which is
+    safe because AST node classes are never subclassed in practice.
+    """
+    if type(root) in types:
+        yield root
+    stack = [root]
+    while stack:
+        node = stack.pop()
+        for field in node._fields:
+            value = getattr(node, field, None)
+            if value is None:
+                continue
+            if type(value) is list:
+                for child in value:
+                    if isinstance(child, ast.AST):
+                        if type(child) in types:
+                            yield child
+                        stack.append(child)
+            elif isinstance(value, ast.AST):
+                if type(value) in types:
+                    yield value
+                stack.append(value)
+
+
 def _is_texture_type(var_type: type) -> bool:
     """Check if var_type is a Texture subclass (Texture2D, Texture3D, etc.)."""
     from warp._src.texture import Texture  # noqa: PLC0415

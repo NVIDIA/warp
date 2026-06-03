@@ -2837,9 +2837,11 @@ class Module:
                 self.references.add(ref)
                 ref.dependents.add(self)
 
-        # scan for function calls
-        for node in ast.walk(adj.tree):
-            if isinstance(node, ast.Call):
+        # scan for function calls and kernel-local function bindings.
+        # ``iter_ast_nodes_of_types`` is a tight iterative DFS that avoids ``ast.walk``'s
+        # per-node generator overhead (this scan runs for every kernel registration).
+        for node in warp._src.codegen.iter_ast_nodes_of_types(adj.tree, ast.Call, ast.Assign):
+            if type(node) is ast.Call:
                 try:
                     # try to resolve the function
                     func, _ = adj.resolve_static_expression(node.func, eval_types=False)
@@ -2854,7 +2856,12 @@ class Module:
                     # and that's ok too (not an external reference).
                     pass
 
-            elif isinstance(node, ast.Assign):
+            else:
+                # ``iter_ast_nodes_of_types`` only yields ``ast.Call`` or ``ast.Assign`` per its
+                # type-filter argument above; this assertion documents that and guards
+                # against a future call-site change that adds a third type without
+                # updating this branch.
+                assert type(node) is ast.Assign
                 # A function bound to a kernel-local (`f = mod.func`) or to several locals via
                 # tuple unpacking (`f, g = mod.a, mod.b`) is later called through the local(s),
                 # so the ast.Call above resolves to the local rather than to the function.

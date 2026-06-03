@@ -145,6 +145,8 @@
   block dimension, and module hash.
 - Speed up Warp kernel creation by avoiding redundant work in static-expression
   rewriting; visible on kernels with many non-`wp.static` calls
+- Reduce kernel registration overhead, particularly for kernels containing
+  many function calls in their body
   ([GH-1486](https://github.com/NVIDIA/warp/issues/1486)).
 
 ### Fixed
