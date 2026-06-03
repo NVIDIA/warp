@@ -811,12 +811,45 @@ with Nsight Compute (<a class="reference external" href="https://developer.nvidi
 reports in a file that can be opened later with the UI executable (<code class="docutils literal notranslate"><span class="pre">ncu-ui</span></code>).</p>
 <section id="source-code-correlation-options">
 <h3>Source code correlation options<a class="headerlink" href="#source-code-correlation-options" title="Link to this heading">#</a></h3>
-<p>By default, Warp emits line directives in the CUDA-C code that help correlate SASS instructions with the Python
-Warp kernel or function code that produced it. This can sometimes complicate the analysis of data in Nsight Compute as
-one line of Python code might be correlated to tens or hundreds of SASS instructions.
-It can sometimes be helpful to correlate SASS instructions directly with CUDA-C source code in the kernel cache
-by setting <a class="reference internal" href="../api_reference/_generated/warp.config.line_directives.html#warp.config.line_directives" title="warp.config.line_directives"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.line_directives</span></code></a> to <code class="docutils literal notranslate"><span class="pre">False</span></code>. Comments in the CUDA-C code indicate the Python
-code that produced it.</p>
+<p>Nsight Compute relates each SASS (or PTX) instruction back to a single source location, taken from the line
+information embedded in the compiled module. This correlation requires line information to be enabled first
+(<a class="reference internal" href="../api_reference/_generated/warp.config.lineinfo.html#warp.config.lineinfo" title="warp.config.lineinfo"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.lineinfo</span></code></a>, discussed above). Without it, Nsight Compute can only show raw SASS.
+The embedded line information can reference only <em>one</em> source level, so Warp lets you choose whether SASS is
+correlated with the originating Python code or with the generated CUDA-C code in the kernel cache. The
+<a class="reference internal" href="../api_reference/_generated/warp.config.line_directives.html#warp.config.line_directives" title="warp.config.line_directives"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.line_directives</span></code></a> setting selects between these two:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<colgroup>
+<col style="width: 25.0%" />
+<col style="width: 35.0%" />
+<col style="width: 40.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p><code class="docutils literal notranslate"><span class="pre">line_directives</span></code></p></th>
+<th class="head"><p>SASS correlates with</p></th>
+<th class="head"><p>Other source level</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">True</span></code> (default)</p></td>
+<td><p>Python kernel/function code</p></td>
+<td><p>The generated CUDA-C is not referenced by the line information.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">False</span></code></p></td>
+<td><p>Generated CUDA-C in the kernel cache</p></td>
+<td><p>Each CUDA-C line carries a comment indicating the Python code that produced it.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>By default (<code class="docutils literal notranslate"><span class="pre">line_directives</span> <span class="pre">=</span> <span class="pre">True</span></code>), Warp emits <code class="docutils literal notranslate"><span class="pre">#line</span></code> directives in the generated CUDA-C that remap the line
+information to the Python source. This is convenient for relating performance back to the kernel you wrote, but a
+single line of Python can expand to tens or hundreds of SASS instructions, which can make the source view harder to
+read. Setting <a class="reference internal" href="../api_reference/_generated/warp.config.line_directives.html#warp.config.line_directives" title="warp.config.line_directives"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.line_directives</span></code></a> to <code class="docutils literal notranslate"><span class="pre">False</span></code> instead correlates SASS directly with the CUDA-C in
+the kernel cache; Warp still annotates that CUDA-C with comments showing the Python code each section came from, so
+the Python context stays visible inline.</p>
+<p>Note that Nsight Compute does not correlate Python source with the generated CUDA-C directly: it only relates
+compiled instructions back to source. The Python-to-CUDA-C mapping instead lives in the generated <code class="docutils literal notranslate"><span class="pre">.cu</span></code> files
+themselves, through the <code class="docutils literal notranslate"><span class="pre">#line</span></code> directives and inline comments described above.</p>
 </section>
 <section id="example-profiling-kernels-from-example-sph-py">
 <h3>Example: Profiling kernels from <code class="docutils literal notranslate"><span class="pre">example_sph.py</span></code><a class="headerlink" href="#example-profiling-kernels-from-example-sph-py" title="Link to this heading">#</a></h3>
