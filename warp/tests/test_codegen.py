@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import ast
+import linecache
 import sys
 import unittest
 
@@ -1414,6 +1415,39 @@ def test_rebind_function_local_to_value_errors(test, device):
 
 
 class TestCodeGen(unittest.TestCase):
+    def _make_adjoint_with_filename(self, filename):
+        source = "def kernel_fn(x: int):\n    y = x + 1\n    return y\n"
+        linecache.cache[filename] = (len(source), None, source.splitlines(True), filename)
+        namespace = {}
+        try:
+            exec(compile(source, filename, "exec"), namespace)
+            adj = wp._src.codegen.Adjoint(namespace["kernel_fn"])
+            adj.builder_options = {"lineinfo": True, "line_directives": True, "mode": "release"}
+            return adj
+        finally:
+            linecache.cache.pop(filename, None)
+
+    def test_line_directive_escapes_filename(self):
+        filename = '/tmp/warp_poc"\n\r\t\x00\x1f\x7fint injected_from_filename;\n//.py'
+        adj = self._make_adjoint_with_filename("/tmp/warp_poc.py")
+        adj.filename = filename
+
+        directive = adj.get_line_directive("int x;", 0)
+
+        self.assertEqual(
+            directive,
+            '#line 1 "/tmp/warp_poc\\"\\n\\r\\t\\000\\037\\177int injected_from_filename;\\n//.py"',
+        )
+        self.assertEqual(directive.count("\n"), 0)
+
+    def test_line_directive_preserves_normalized_path(self):
+        filename = "C:\\warp\\kernels\\example.py"
+        adj = self._make_adjoint_with_filename(filename)
+
+        directive = adj.get_line_directive("int x;", 0)
+
+        self.assertEqual(directive, '#line 1 "C:/warp/kernels/example.py"')
+
     def test_extract_lambda_source_parenthesized_multiline_body(self):
         from warp._src.codegen import Adjoint  # noqa: PLC0415
 
