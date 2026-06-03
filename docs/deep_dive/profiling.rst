@@ -373,12 +373,37 @@ reports in a file that can be opened later with the UI executable (``ncu-ui``).
 Source code correlation options
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-By default, Warp emits line directives in the CUDA-C code that help correlate SASS instructions with the Python
-Warp kernel or function code that produced it. This can sometimes complicate the analysis of data in Nsight Compute as
-one line of Python code might be correlated to tens or hundreds of SASS instructions.
-It can sometimes be helpful to correlate SASS instructions directly with CUDA-C source code in the kernel cache
-by setting :attr:`warp.config.line_directives` to ``False``. Comments in the CUDA-C code indicate the Python
-code that produced it.
+Nsight Compute relates each SASS (or PTX) instruction back to a single source location, taken from the line
+information embedded in the compiled module. This correlation requires line information to be enabled first
+(:attr:`warp.config.lineinfo`, discussed above). Without it, Nsight Compute can only show raw SASS.
+The embedded line information can reference only *one* source level, so Warp lets you choose whether SASS is
+correlated with the originating Python code or with the generated CUDA-C code in the kernel cache. The
+:attr:`warp.config.line_directives` setting selects between these two:
+
+.. list-table::
+    :header-rows: 1
+    :widths: 25 35 40
+
+    * - ``line_directives``
+      - SASS correlates with
+      - Other source level
+    * - ``True`` (default)
+      - Python kernel/function code
+      - The generated CUDA-C is not referenced by the line information.
+    * - ``False``
+      - Generated CUDA-C in the kernel cache
+      - Each CUDA-C line carries a comment indicating the Python code that produced it.
+
+By default (``line_directives = True``), Warp emits ``#line`` directives in the generated CUDA-C that remap the line
+information to the Python source. This is convenient for relating performance back to the kernel you wrote, but a
+single line of Python can expand to tens or hundreds of SASS instructions, which can make the source view harder to
+read. Setting :attr:`warp.config.line_directives` to ``False`` instead correlates SASS directly with the CUDA-C in
+the kernel cache; Warp still annotates that CUDA-C with comments showing the Python code each section came from, so
+the Python context stays visible inline.
+
+Note that Nsight Compute does not correlate Python source with the generated CUDA-C directly: it only relates
+compiled instructions back to source. The Python-to-CUDA-C mapping instead lives in the generated ``.cu`` files
+themselves, through the ``#line`` directives and inline comments described above.
 
 Example: Profiling kernels from ``example_sph.py``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
