@@ -451,7 +451,7 @@ def jacobian_plot(
     Args:
         jacobians: A dictionary of Jacobians, where the keys are tuples of input and output indices, and the values are the Jacobian matrices.
         kernel: The Warp kernel function, decorated with the :func:`@wp.kernel <warp.kernel>` decorator, or a :class:`FunctionMetadata` instance with the kernel/function attributes.
-        inputs: List of input variables.
+        inputs: List of input variables. Required when ``kernel`` is a Warp kernel.
         show_plot: If True, displays the plot via ``plt.show()``.
         show_colorbar: If True, displays a colorbar next to the plot (or a colorbar next to every submatrix if ).
         scale_colors_per_submatrix: If True, considers the minimum and maximum of each Jacobian submatrix separately for color scaling. Otherwise, uses the global minimum and maximum of all Jacobians.
@@ -463,11 +463,13 @@ def jacobian_plot(
         The created Matplotlib figure.
     """
 
+    if isinstance(kernel, wp.Kernel) and inputs is None:
+        raise ValueError("inputs must be provided when kernel is a Warp kernel")
+
     import matplotlib.pyplot as plt  # noqa: PLC0415
     from matplotlib.ticker import MaxNLocator  # noqa: PLC0415
 
     if isinstance(kernel, wp.Kernel):
-        assert inputs is not None
         metadata = FunctionMetadata()
         metadata.update_from_kernel(kernel, inputs)
     elif isinstance(kernel, FunctionMetadata):
@@ -637,7 +639,9 @@ def scalarize_array_1d(arr):
 
 
 def scalarize_array_2d(arr):
-    assert arr.ndim == 2
+    if arr.ndim != 2:
+        raise ValueError(f"scalarize_array_2d requires a 2D array, got {arr.ndim}D")
+
     # convert array to 2D array with scalar dtype
     if arr.dtype in wp._src.types.scalar_types:
         return arr
