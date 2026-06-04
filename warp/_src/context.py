@@ -2020,9 +2020,6 @@ def _get_cpu_feature_set() -> frozenset[str]:
     if runtime is None or runtime.llvm is None:
         return frozenset()
 
-    if not hasattr(runtime.llvm, "wp_get_host_cpu_features"):
-        return frozenset()
-
     features_ptr = runtime.llvm.wp_get_host_cpu_features()
     features_str = features_ptr.decode("utf-8") if features_ptr else ""
     if features_str:
@@ -2044,10 +2041,52 @@ def _get_host_cpu_name() -> str:
     """Return the host CPU model name as detected by LLVM."""
     if runtime is None or runtime.llvm is None:
         return "unknown"
-    if not hasattr(runtime.llvm, "wp_get_host_cpu_name"):
-        return "unknown"
     name_ptr = runtime.llvm.wp_get_host_cpu_name()
     return name_ptr.decode("utf-8") if name_ptr else "unknown"
+
+
+def _verify_library_version(lib, library_name: str, version_symbol: str, expected: str) -> None:
+    """Verify a loaded native library's version matches the expected Warp version.
+
+    Looks up ``version_symbol`` on the loaded library ``lib``, sets its ctypes signature, calls
+    it, and compares the result to ``expected``. This is a verifier, called for its
+    raise-on-mismatch effect, not an accessor. Only call it when the library is loaded; library
+    absence (e.g. ``self.llvm is None``) is the caller's concern.
+
+    Args:
+        lib: The loaded native library (a ctypes ``CDLL``).
+        library_name: Short library name used in messages (e.g. ``"warp"`` or ``"warp-clang"``).
+        version_symbol: Name of the exported no-argument function returning the version as bytes
+            (e.g. ``"wp_version"`` or ``"wp_warp_clang_version"``).
+        expected: The expected version (``warp.config.version``).
+
+    Raises:
+        RuntimeError: If the version cannot be read (missing symbol, NULL/empty return, or a
+            failed call/decode) or if the decoded version does not match ``expected``.
+    """
+    version_fn = getattr(lib, version_symbol, None)
+    if version_fn is None:
+        raise RuntimeError(f"The {library_name} native library does not export the version symbol '{version_symbol}'.")
+    version_fn.argtypes = []
+    version_fn.restype = ctypes.c_char_p
+
+    try:
+        version_ptr = version_fn()
+        loaded = version_ptr.decode("utf-8") if version_ptr else ""
+    except Exception as e:
+        raise RuntimeError(f"Failed to read the {library_name} native library version.") from e
+
+    if not loaded:
+        raise RuntimeError(f"The {library_name} native library returned an empty version string.")
+
+    if loaded != expected:
+        raise RuntimeError(
+            f"Version mismatch detected in the {library_name} native library.\n"
+            f"  Expected Warp version: {expected}\n"
+            f"  Loaded {library_name} library version: {loaded}\n"
+            f"  This may occur due to environment variables or multiple Warp installations.\n"
+            f"  Rebuild or reinstall Warp so the native library matches the Python package."
+        )
 
 
 # ModuleHasher computes the module hash based on all the kernels, module options,
@@ -4725,8 +4764,15 @@ class Runtime:
 
         self.core = self.load_dll(warp_lib)
 
+        # Verify the core library version before exercising any other native ABI.
+        _verify_library_version(self.core, "warp", "wp_version", warp.config.version)
+
         if os.path.exists(llvm_lib):
             self.llvm = self.load_dll(llvm_lib)
+
+            # Verify the warp-clang version before exercising any other native ABI.
+            _verify_library_version(self.llvm, "warp-clang", "wp_warp_clang_version", warp.config.version)
+
             # setup c-types for warp-clang.dll
             self.llvm.wp_lookup.restype = ctypes.c_uint64
 
@@ -4764,49 +4810,18 @@ class Runtime:
             ]
             self.llvm.wp_compile_cuda.restype = ctypes.c_int
 
-            if hasattr(self.llvm, "wp_llvm_version"):
-                self.llvm.wp_llvm_version.argtypes = []
-                self.llvm.wp_llvm_version.restype = ctypes.c_char_p
+            self.llvm.wp_llvm_version.argtypes = []
+            self.llvm.wp_llvm_version.restype = ctypes.c_char_p
 
-            if hasattr(self.llvm, "wp_get_host_cpu_name"):
-                self.llvm.wp_get_host_cpu_name.argtypes = []
-                self.llvm.wp_get_host_cpu_name.restype = ctypes.c_char_p
+            self.llvm.wp_get_host_cpu_name.argtypes = []
+            self.llvm.wp_get_host_cpu_name.restype = ctypes.c_char_p
 
-            if hasattr(self.llvm, "wp_get_host_cpu_features"):
-                self.llvm.wp_get_host_cpu_features.argtypes = []
-                self.llvm.wp_get_host_cpu_features.restype = ctypes.c_char_p
+            self.llvm.wp_get_host_cpu_features.argtypes = []
+            self.llvm.wp_get_host_cpu_features.restype = ctypes.c_char_p
 
-            # Verify warp-clang version (guard against missing symbol in older/mismatched DLL)
-            if hasattr(self.llvm, "wp_warp_clang_version"):
-                self.llvm.wp_warp_clang_version.argtypes = []
-                self.llvm.wp_warp_clang_version.restype = ctypes.c_char_p
-
-                clang_version_ptr = self.llvm.wp_warp_clang_version()
-                if clang_version_ptr:
-                    clang_version = clang_version_ptr.decode("utf-8")
-                    if clang_version != warp.config.version:
-                        log_warning(
-                            f"Version mismatch detected in warp-clang library.\n"
-                            f"  Expected Warp version: {warp.config.version}\n"
-                            f"  Loaded warp-clang library version: {clang_version}\n"
-                            f"  This may occur due to environment variables or multiple Warp installations."
-                        )
-                else:
-                    log_warning(
-                        "warp-clang version check returned NULL.\n"
-                        "  This may indicate a corrupted or incompatible library."
-                    )
-            else:
-                log_warning(
-                    "warp-clang library does not support version checking.\n"
-                    "  This may indicate an older or mismatched library version."
-                )
-
-            # Set up the AddressSanitizer query (guard against an older/mismatched DLL
-            # missing the symbol). The clang_sanitizer property calls it on demand.
-            if hasattr(self.llvm, "wp_warp_clang_sanitizer"):
-                self.llvm.wp_warp_clang_sanitizer.argtypes = []
-                self.llvm.wp_warp_clang_sanitizer.restype = ctypes.c_char_p
+            # The clang_sanitizer property calls wp_warp_clang_sanitizer on demand.
+            self.llvm.wp_warp_clang_sanitizer.argtypes = []
+            self.llvm.wp_warp_clang_sanitizer.restype = ctypes.c_char_p
         else:
             self.llvm = None
 
@@ -6058,13 +6073,10 @@ class Runtime:
             self.core.wp_init.argtypes = [ctypes.c_char_p]
             self.core.wp_init.restype = ctypes.c_int
 
-            self.core.wp_version.argtypes = []
-            self.core.wp_version.restype = ctypes.c_char_p
-
         except AttributeError as e:
             raise RuntimeError(f"Setting C-types for {warp_lib} failed. It may need rebuilding.") from e
 
-        # Diagnostics query functions (optional — guard for older native libraries)
+        # Diagnostics query functions
         for name, restype in [
             ("wp_nanovdb_version", ctypes.c_char_p),
             ("wp_host_compiler_version", ctypes.c_char_p),
@@ -6074,9 +6086,8 @@ class Runtime:
             ("wp_is_verify_fp_enabled", ctypes.c_int),
             ("wp_is_fast_math_enabled", ctypes.c_int),
         ]:
-            if hasattr(self.core, name):
-                getattr(self.core, name).argtypes = []
-                getattr(self.core, name).restype = restype
+            getattr(self.core, name).argtypes = []
+            getattr(self.core, name).restype = restype
 
         # Load the METH_FASTCALL module from the same native library and override
         # the ctypes bindings on self.core with faster versions. If the module fails
@@ -6103,7 +6114,12 @@ class Runtime:
         error = self.core.wp_init(warp.config.version.encode("utf-8"))
 
         if error != 0:
-            raise Exception("Warp initialization failed")
+            native_error_ptr = self.core.wp_get_error_string()
+            native_error = native_error_ptr.decode("utf-8") if native_error_ptr else "unknown"
+            raise RuntimeError(
+                f"Warp initialization failed with error code {error} for Warp version {warp.config.version}: "
+                f"{native_error}"
+            )
 
         self.device_map = {}  # device lookup by alias
         self.context_map = {}  # device lookup by context
@@ -6393,19 +6409,9 @@ class Runtime:
         """Get the version of the Warp core library.
 
         Returns:
-            Version string, or "unknown" if version cannot be determined.
+            Version string.
         """
-        if not hasattr(self.core, "wp_version"):
-            return "unknown"
-
-        try:
-            version_ptr = self.core.wp_version()
-            if version_ptr:
-                return version_ptr.decode("utf-8")
-        except (AttributeError, OSError, UnicodeDecodeError):
-            pass
-
-        return "unknown"
+        return self.core.wp_version().decode("utf-8")
 
     def get_warp_clang_version(self) -> str:
         """Get the version of the Warp CPU compilation backend (uses LLVM/Clang).
@@ -6414,44 +6420,24 @@ class Runtime:
         of the LLVM/Clang compiler that is statically linked into it.
 
         Returns:
-            Version string, or "unknown" if version cannot be determined.
+            Version string, or "unknown" if the warp-clang library is not present.
         """
         if self.llvm is None:
             return "unknown"
 
-        if not hasattr(self.llvm, "wp_warp_clang_version"):
-            # Already warned during init
-            return "unknown"
-
-        try:
-            clang_version_ptr = self.llvm.wp_warp_clang_version()
-            if clang_version_ptr:
-                return clang_version_ptr.decode("utf-8")
-        except (AttributeError, OSError, UnicodeDecodeError):
-            pass
-
-        return "unknown"
+        return self.llvm.wp_warp_clang_version().decode("utf-8")
 
     def get_llvm_version(self) -> str:
         """Get the LLVM version statically linked into the warp-clang library.
 
         Returns:
-            Version string (e.g., ``"22.0.0"``), or ``"unknown"`` if unavailable.
+            Version string (e.g., ``"22.0.0"``), or ``"unknown"`` if the warp-clang
+            library is not present.
         """
         if self.llvm is None:
             return "unknown"
 
-        if not hasattr(self.llvm, "wp_llvm_version"):
-            return "unknown"
-
-        try:
-            version_ptr = self.llvm.wp_llvm_version()
-            if version_ptr:
-                return version_ptr.decode("utf-8")
-        except (AttributeError, OSError, UnicodeDecodeError):
-            pass
-
-        return "unknown"
+        return self.llvm.wp_llvm_version().decode("utf-8")
 
     def get_nanovdb_version(self) -> str:
         """Get the NanoVDB version bundled with Warp.
@@ -6516,8 +6502,9 @@ class Runtime:
     @property
     def clang_sanitizer(self) -> str:
         """Sanitizer ``warp-clang`` was built with (e.g. ``"address"``), or ``""`` if none / no LLVM."""
-        query = getattr(self.llvm, "wp_warp_clang_sanitizer", None)
-        return query().decode("utf-8") if query else ""
+        if self.llvm is None:
+            return ""
+        return self.llvm.wp_warp_clang_sanitizer().decode("utf-8")
 
     def load_dll(self, dll_path):
         try:
@@ -6730,9 +6717,7 @@ def is_cubql_available() -> bool:
     """
     init()
 
-    if hasattr(runtime.core, "wp_is_cubql_enabled"):
-        return bool(runtime.core.wp_is_cubql_enabled())
-    return False
+    return bool(runtime.core.wp_is_cubql_enabled())
 
 
 def get_cuda_supported_archs() -> list[int]:
@@ -12307,11 +12292,8 @@ def print_diagnostics() -> dict:
         return f"{ver[0]}.{ver[1]}" if ver is not None else None
 
     def _build_flag(name):
-        """Query a boolean build flag from the native library, defaulting to False."""
-        fn = f"wp_is_{name}_enabled"
-        if hasattr(runtime.core, fn):
-            return bool(getattr(runtime.core, fn)())
-        return False
+        """Query a boolean build flag from the native library."""
+        return bool(getattr(runtime.core, f"wp_is_{name}_enabled")())
 
     info = {}
 

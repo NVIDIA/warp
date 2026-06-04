@@ -146,6 +146,11 @@
 - Speed up Warp kernel creation, particularly for workloads that declare many kernels
   programmatically (e.g. dynamic factory patterns)
   ([GH-1486](https://github.com/NVIDIA/warp/issues/1486)).
+- **Breaking:** A version mismatch between the Warp Python package and its native libraries
+  (`warp.dll` / `warp-clang.dll` and platform equivalents) now raises an error during
+  `wp.init()` instead of a warning that allowed execution to continue. A missing or unreadable
+  version symbol in a loaded native library is treated the same way
+  ([GH-1508](https://github.com/NVIDIA/warp/issues/1508)).
 
 ### Fixed
 

@@ -110,23 +110,17 @@ float wp_bfloat16_bits_to_float(uint16_t u) { return wp::wp_bfloat16_bits_to_flo
 
 int wp_init(const char* expected_version)
 {
-    // Check version mismatch (guard against NULL expected_version)
+    // A non-null expected_version opts in to a version check; a mismatch is a hard error.
+    // Passing NULL (e.g. a C++ embedder that does not opt in) skips the check.
     if (expected_version != NULL && strcmp(expected_version, WP_VERSION_STRING) != 0) {
-        fprintf(
-            stderr,
-            "Warp Warning: Version mismatch detected in Warp native library.\n"
+        wp::set_error_string(
+            "Version mismatch detected in Warp native library.\n"
             "  Expected Warp version: %s\n"
             "  Loaded native library version: %s\n"
-            "  This may occur due to environment variables or multiple Warp installations.\n",
+            "  This may occur due to environment variables or multiple Warp installations.",
             expected_version, WP_VERSION_STRING
         );
-    } else if (expected_version == NULL) {
-        fprintf(
-            stderr,
-            "Warp Warning: Version check skipped (NULL version provided).\n"
-            "  Loaded native library version: %s\n",
-            WP_VERSION_STRING
-        );
+        return 1;
     }
 
 #if WP_ENABLE_CUDA
