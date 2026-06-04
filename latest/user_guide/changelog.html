@@ -646,6 +646,11 @@ block dimension, and module hash.</p></li>
 <li><p>Speed up Warp kernel creation, particularly for workloads that declare many kernels
 programmatically (e.g. dynamic factory patterns)
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1486">GH-1486</a>).</p></li>
+<li><p><strong>Breaking:</strong> A version mismatch between the Warp Python package and its native libraries
+(<code class="docutils literal notranslate"><span class="pre">warp.dll</span></code> / <code class="docutils literal notranslate"><span class="pre">warp-clang.dll</span></code> and platform equivalents) now raises an error during
+<code class="docutils literal notranslate"><span class="pre">wp.init()</span></code> instead of a warning that allowed execution to continue. A missing or unreadable
+version symbol in a loaded native library is treated the same way
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1508">GH-1508</a>).</p></li>
 </ul>
 </section>
 <section id="fixed">
