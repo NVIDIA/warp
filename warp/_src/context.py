@@ -2877,8 +2877,7 @@ class Module:
                 ref.dependents.add(self)
 
         # scan for function calls and kernel-local function bindings.
-        # ``iter_ast_nodes_of_types`` is a tight iterative DFS that avoids ``ast.walk``'s
-        # per-node generator overhead (this scan runs for every kernel registration).
+        # ``iter_ast_nodes_of_types`` is a faster, order-preserving drop-in for ``ast.walk``.
         for node in warp._src.codegen.iter_ast_nodes_of_types(adj.tree, ast.Call, ast.Assign):
             if type(node) is ast.Call:
                 try:

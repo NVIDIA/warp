@@ -18,6 +18,7 @@ import re
 import textwrap
 import threading
 import types
+from collections import deque
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any, ClassVar, get_args, get_origin
 
@@ -330,33 +331,25 @@ def _is_tid_call(node) -> bool:
 
 
 def iter_ast_nodes_of_types(root: ast.AST, *types: type):
-    """Yield only the AST nodes whose exact type is in ``types``, in depth-first search (DFS) order.
+    """Like ``(n for n in ast.walk(root) if type(n) in types)`` but faster.
 
-    Equivalent to ``(n for n in ast.walk(root) if type(n) in types)`` but
-    faster: ``ast.walk`` is a Python generator over ``iter_child_nodes``;
-    this version inlines the field iteration. Uses ``type(node) in types``
-    (exact-type match) rather than ``isinstance`` (subclass check), which is
-    safe because AST node classes are never subclassed in practice.
+    Inlines ``ast.walk``'s field iteration over a ``deque``, preserving its
+    breadth-first order, so it is a drop-in even where order matters. Exact-type
+    match; AST node classes are never subclassed in practice.
     """
-    if type(root) in types:
-        yield root
-    stack = [root]
-    while stack:
-        node = stack.pop()
+    todo = deque((root,))
+    while todo:
+        node = todo.popleft()
+        if type(node) in types:
+            yield node
         for field in node._fields:
             value = getattr(node, field, None)
-            if value is None:
-                continue
             if type(value) is list:
                 for child in value:
                     if isinstance(child, ast.AST):
-                        if type(child) in types:
-                            yield child
-                        stack.append(child)
+                        todo.append(child)
             elif isinstance(value, ast.AST):
-                if type(value) in types:
-                    yield value
-                stack.append(value)
+                todo.append(value)
 
 
 def _is_texture_type(var_type: type) -> bool:
@@ -4693,7 +4686,8 @@ class Adjoint:
         functions: dict[warp._src.context.Function, Any] = {}
         max_dim = 0  # thread-grid dimension, inferred from wp.tid() unpack arity
 
-        for node in ast.walk(adj.tree):
+        # Faster, order-preserving drop-in for ast.walk; runs for every adjoint during hashing.
+        for node in iter_ast_nodes_of_types(adj.tree, ast.Name, ast.Attribute, ast.Call, ast.Assign):
             if isinstance(node, ast.Name) and node.id not in local_variables:
                 # look up in closure/global variables
                 obj = adj.resolve_external_reference(node.id)
