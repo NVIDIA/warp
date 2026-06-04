@@ -108,6 +108,30 @@ def test_contiguous_vec3_fill_forked_stream_capture(test, device):
         np.testing.assert_array_equal(arr.numpy(), expected)
 
 
+def test_contiguous_byte_fill_capture(test, device):
+    """Contiguous 1-byte fills through ``device.memtile`` must be capturable."""
+    cases = (
+        (wp.bool, True, np.bool_),
+        (wp.int8, -3, np.int8),
+        (wp.uint8, 7, np.uint8),
+    )
+
+    with wp.ScopedDevice(device):
+        for dtype, value, np_type in cases:
+            wp.synchronize_device()
+
+            arr = wp.zeros(8, dtype=dtype, device=device)
+            test.assertTrue(arr.is_contiguous)
+
+            with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+                arr.fill_(value)
+
+            wp.capture_launch(capture.graph)
+            wp.synchronize_device(device)
+
+            np.testing.assert_array_equal(arr.numpy(), np.full(arr.shape, value, dtype=np_type))
+
+
 def test_array_fill_oversized_value_fallback(test, device):
     """Fill values larger than the largest inline bucket use the ``_devptr`` fallback path correctly.
 
@@ -160,6 +184,13 @@ add_function_test(
     TestArrayFillCapture,
     "test_contiguous_vec3_fill_forked_stream_capture",
     test_contiguous_vec3_fill_forked_stream_capture,
+    devices=devices,
+    check_output=False,
+)
+add_function_test(
+    TestArrayFillCapture,
+    "test_contiguous_byte_fill_capture",
+    test_contiguous_byte_fill_capture,
     devices=devices,
     check_output=False,
 )

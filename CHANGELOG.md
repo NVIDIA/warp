@@ -235,6 +235,9 @@
   scope ends and preserve nested non-empty tape visualization scopes
   ([GH-1515](https://github.com/NVIDIA/warp/issues/1515)).
 
+- Fix CUDA graph capture for contiguous `wp.bool`, `wp.int8`, and `wp.uint8`
+  `array.fill_()` calls ([GH-1525](https://github.com/NVIDIA/warp/issues/1525)).
+
 ### Documentation
 
 - Remove stale tutorial notebooks from the repository. The maintained tutorials remain linked from the
