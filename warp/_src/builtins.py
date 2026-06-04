@@ -4438,7 +4438,7 @@ def tile_value_func(arg_types, arg_values):
         dtype = arg_types["x"]
         shape = (warp._src.codegen.options["block_dim"],)
 
-        return tile(dtype=dtype, shape=shape, block_dim_dependent=True)
+        return tile(dtype=dtype, shape=shape)
 
     else:
         if type_is_vector(arg_types["x"]):
@@ -4457,7 +4457,7 @@ def tile_value_func(arg_types, arg_values):
             dtype = arg_types["x"]
             shape = (warp._src.codegen.options["block_dim"],)
 
-        return tile(dtype=dtype, shape=shape, block_dim_dependent=True)
+        return tile(dtype=dtype, shape=shape)
 
 
 def tile_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
