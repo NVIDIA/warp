@@ -1165,22 +1165,6 @@ class Adjoint:
         # for unit testing errors being spit out from kernels.
         adj.skip_build = False
 
-        # Infer kernel_dim before hashing because it selects the
-        # ``launch_bounds_t<N>`` type in generated C++.
-        adj.kernel_dim = adj._infer_kernel_dim()
-
-    def _infer_kernel_dim(adj) -> int:
-        max_dim = 0
-        for node in ast.walk(adj.tree):
-            if isinstance(node, ast.Assign) and _is_tid_call(node.value):
-                target = node.targets[0]
-                if isinstance(target, ast.Tuple):
-                    max_dim = max(max_dim, len(target.elts))
-                else:
-                    max_dim = max(max_dim, 1)
-
-        return max_dim if max_dim > 0 else 1
-
     # allocate extra space for a function call that requires its
     # own shared memory space, we treat shared memory as a stack
     # where each function pushes and pops space off, the extra
@@ -4694,13 +4678,20 @@ class Adjoint:
         return ast.get_source_segment(adj.source, node)
 
     def get_references(adj) -> tuple[dict[str, Any], dict[Any, Any], dict[warp._src.context.Function, Any]]:
-        """Traverses ``adj.tree`` and returns referenced constants, types, and user-defined functions."""
+        """Traverse ``adj.tree`` for referenced constants, types, and user-defined functions.
+
+        As a side effect, also sets ``adj.kernel_dim`` (the thread-grid dimension inferred from
+        ``wp.tid()``). It is folded into this traversal rather than walked separately because
+        ``get_references`` already visits every ``Assign`` and runs for every adjoint during
+        module hashing -- which precedes any code generation or launch that reads ``kernel_dim``.
+        """
 
         local_variables = set()  # Track local variables appearing on the LHS so we know when variables are shadowed
 
         constants: dict[str, Any] = {}
         types: dict[Struct | type, Any] = {}
         functions: dict[warp._src.context.Function, Any] = {}
+        max_dim = 0  # thread-grid dimension, inferred from wp.tid() unpack arity
 
         for node in ast.walk(adj.tree):
             if isinstance(node, ast.Name) and node.id not in local_variables:
@@ -4727,6 +4718,11 @@ class Adjoint:
                     types[func] = None
 
             elif isinstance(node, ast.Assign):
+                # Infer the thread-grid dimension from `i[, j, ...] = wp.tid()` unpack arity.
+                if _is_tid_call(node.value):
+                    target = node.targets[0]
+                    max_dim = max(max_dim, len(target.elts) if isinstance(target, ast.Tuple) else 1)
+
                 # A function bound to a local (`f = mod.func`) or to several locals via tuple
                 # unpacking (`f, g = mod.a, mod.b`) is referenced only through the local(s)
                 # afterwards, so it would otherwise be missed here and left out of the module
@@ -4746,6 +4742,7 @@ class Adjoint:
                 elif isinstance(lhs, ast.Name):
                     local_variables.add(lhs.id)
 
+        adj.kernel_dim = max_dim if max_dim > 0 else 1
         return constants, types, functions
 
 
