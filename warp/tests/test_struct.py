@@ -839,6 +839,40 @@ class TestStruct(unittest.TestCase):
         self.assertIsInstance(s.i32, int)
         self.assertIsInstance(s.f64, float)
 
+    def test_struct_array_field_assignment_validation(self):
+        @wp.struct
+        class ArrayFieldStruct:
+            values: wp.array(dtype=wp.int32)
+
+        @wp.struct
+        class IndexedArrayFieldStruct:
+            values: wp.indexedarray(dtype=wp.int32)
+
+        wrong_dtype_array = wp.array([1.0], dtype=wp.float32)
+        indices = wp.array([0], dtype=wp.int32)
+        wrong_dtype_indexedarray = wp.indexedarray1d(wrong_dtype_array, [indices])
+
+        cases = (
+            (ArrayFieldStruct, "array", wrong_dtype_array, r"expects a Warp array, got list"),
+            (
+                IndexedArrayFieldStruct,
+                "indexedarray",
+                wrong_dtype_indexedarray,
+                r"expects a Warp indexed array, got list",
+            ),
+        )
+
+        for struct_type, case_name, wrong_dtype, non_array_error in cases:
+            with self.subTest(case_name=case_name, error="non_array"):
+                s = struct_type()
+                with self.assertRaisesRegex(TypeError, non_array_error):
+                    s.values = [1, 2, 3]
+
+            with self.subTest(case_name=case_name, error="wrong_dtype"):
+                s = struct_type()
+                with self.assertRaisesRegex(TypeError, r"Struct field 'values' expects dtype int32, got float32"):
+                    s.values = wrong_dtype
+
     def test_nested_vec_assignment(self):
         v = VecStruct()
         v.value[0] = 1.0
