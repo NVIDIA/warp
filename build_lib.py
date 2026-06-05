@@ -603,6 +603,46 @@ def main(argv: list[str] | None = None) -> int:
             if is_intel_mac:
                 print("Skipping kernel cache clearing on Intel Mac (binaries built for ARM64)")
         else:
+            # On Linux, an ASan-instrumented warp.so aborts at load time unless the ASan
+            # runtime comes first in the initial library list. The post-build helper
+            # subprocesses below import Warp, so on a --sanitize=address build they must
+            # LD_PRELOAD the runtime or they abort with "ASan runtime does not come first".
+            subprocess_env = os.environ.copy()
+            if args.sanitize == "address" and platform.system() == "Linux":
+                compiler = "clang++" if args.clang_build_toolchain else args.host_compiler
+                # GCC ships libasan.so; Clang ships libclang_rt.asan-<arch>.so.
+                runtime_name = (
+                    f"libclang_rt.asan-{platform.machine()}.so"
+                    if "clang" in os.path.basename(compiler)
+                    else "libasan.so"
+                )
+                try:
+                    asan_lib = subprocess.run(
+                        [compiler, f"-print-file-name={runtime_name}"],
+                        capture_output=True,
+                        text=True,
+                        check=True,
+                    ).stdout.strip()
+                except (OSError, subprocess.CalledProcessError) as e:
+                    print(f"Warning: could not query {compiler} for the ASan runtime path: {e}")
+                    asan_lib = ""
+                if asan_lib and asan_lib != runtime_name and os.path.exists(asan_lib):
+                    existing = subprocess_env.get("LD_PRELOAD", "")
+                    subprocess_env["LD_PRELOAD"] = f"{asan_lib}:{existing}" if existing else asan_lib
+                else:
+                    print(
+                        f"Warning: could not locate {runtime_name} via {compiler}; the kernel cache "
+                        "clear and diagnostics may fail to load warp.so"
+                    )
+                # Python/NumPy retain allocations across interpreter shutdown that ASan would
+                # report as leaks, making these utility subprocesses exit non-zero. Disable leak
+                # detection for them only. (verify_asan_link_order is not needed: the preload above
+                # makes the runtime first.)
+                existing_opts = subprocess_env.get("ASAN_OPTIONS", "")
+                subprocess_env["ASAN_OPTIONS"] = (
+                    f"{existing_opts}:detect_leaks=0" if existing_opts else "detect_leaks=0"
+                )
+
             # Clear kernel cache in subprocess (ensures fresh import of updated config.py)
             print("Clearing kernel cache...")
             sys.stdout.flush()
@@ -615,6 +655,7 @@ def main(argv: list[str] | None = None) -> int:
                 ],
                 cwd=base_path,
                 check=False,
+                env=subprocess_env,
             )
             if result.returncode != 0:
                 print(f"Warning: Failed to clear kernel cache (exit code {result.returncode})")
@@ -632,6 +673,7 @@ def main(argv: list[str] | None = None) -> int:
                 ],
                 cwd=base_path,
                 check=False,
+                env=subprocess_env,
             )
     except Exception as e:
         print(f"Unable to clear kernel cache: {e}")

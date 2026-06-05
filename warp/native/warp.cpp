@@ -1,6 +1,13 @@
 // SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+// glibc/musl hide posix_memalign() (used in wp_alloc_host()) under strict -std=c++NN
+// unless _GNU_SOURCE is set before <stdlib.h>, pulled in early via "warp.h". Linux-only:
+// macOS/BSD declare it unconditionally and are sensitive to _POSIX_C_SOURCE.
+#if defined(__linux__) && !defined(_GNU_SOURCE)
+#define _GNU_SOURCE
+#endif
+
 #include "warp.h"
 
 #include "alloc_tracker.h"
@@ -195,16 +202,13 @@ void* wp_alloc_host(size_t s, const char* tag)
     size_t alignment = 64;
 
     void* ptr;
-// msvc does not provide the standard aligned_alloc()
 #if defined(_MSC_VER)
     ptr = _aligned_malloc(s, alignment);
 #else
-    // ensure that the size is a multiple of alignment
-    size_t alloc_size = s;
-    size_t remainder = alloc_size % alignment;
-    if (remainder != 0)
-        alloc_size += alignment - remainder;
-    ptr = aligned_alloc(alignment, alloc_size);
+    // posix_memalign() preserves the exact size (unlike aligned_alloc(), which
+    // requires a multiple of the alignment), so ASan red-zones the logical array bound.
+    if (posix_memalign(&ptr, alignment, s) != 0)
+        ptr = nullptr;
 #endif
 
     if (g_alloc_tracker.enabled && ptr)

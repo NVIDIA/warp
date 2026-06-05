@@ -134,6 +134,21 @@ def _trigger_inbounds_ok():
         print("INBOUNDS_OK", flush=True)
 
 
+def _trigger_logical_overflow():
+    # A single-element array is logically 4 bytes, well under the host allocator's 64-byte
+    # alignment. Writing a[1] is one element past the logical end but lands inside that
+    # alignment padding. ASan only catches this when the allocation is the exact requested
+    # size: wp_alloc_host() must use an exact-size aligned allocator (posix_memalign() on
+    # POSIX, _aligned_malloc() on Windows) rather than rounding the request up to a multiple
+    # of the alignment, which would bury the redzone past the padding and hide this access.
+    wp.config.cache_kernels = False
+    wp.config.mode = "release"
+    with wp.ScopedDevice("cpu"):
+        a = wp.zeros(1, dtype=int)
+        wp.launch(_write_at_offset, dim=1, inputs=[a, 1])  # writes a[1] — past the logical end
+        wp.synchronize_device()
+
+
 class TestSanitize(unittest.TestCase):
     """ASan coverage for JIT-compiled CPU kernels (runs only on ASan builds)."""
 
@@ -154,6 +169,16 @@ class TestSanitize(unittest.TestCase):
     def test_heap_buffer_overflow_detected(self):
         self._skip_unless_asan()
         returncode, _stdout, stderr = _run_in_subprocess("_trigger_heap_overflow")
+        _assert_aborted(self, returncode)
+        self.assertIn("AddressSanitizer", stderr)
+        self.assertIn("heap-buffer-overflow", stderr)
+
+    def test_logical_bound_overflow_detected(self):
+        # Regression for the host allocator rounding requests up to the alignment: a write
+        # just past a sub-alignment array's logical end must still be reported, proving the
+        # redzone tracks the requested size rather than the padded allocation.
+        self._skip_unless_asan()
+        returncode, _stdout, stderr = _run_in_subprocess("_trigger_logical_overflow")
         _assert_aborted(self, returncode)
         self.assertIn("AddressSanitizer", stderr)
         self.assertIn("heap-buffer-overflow", stderr)

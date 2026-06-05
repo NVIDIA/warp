@@ -240,6 +240,11 @@
 - Report Clang CUDA compilation failures immediately instead of raising a
   downstream CUDA module load error
   ([GH-1325](https://github.com/NVIDIA/warp/issues/1325)).
+- Allocate host arrays at their exact requested size so AddressSanitizer reports
+  out-of-bounds accesses at the logical `wp.array` boundary instead of the
+  64-byte-aligned allocation. The POSIX path previously rounded the request up to
+  a multiple of the alignment, hiding overflows that landed in the padding
+  ([GH-1513](https://github.com/NVIDIA/warp/issues/1513)).
 
 ### Documentation
 
