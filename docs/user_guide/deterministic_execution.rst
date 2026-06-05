@@ -1,7 +1,7 @@
 .. _determinism:
 
-Determinism
-===========
+Deterministic Execution
+=======================
 
 .. currentmodule:: warp
 
