@@ -646,6 +646,74 @@ pass <code class="docutils literal notranslate"><span class="pre">--use-dynamic-
 </div>
 <p>The <code class="docutils literal notranslate"><span class="pre">-e</span></code> option is optional but ensures that subsequent modifications to the
 library will be reflected in the Python package.</p>
+<section id="cmake-build">
+<h3>CMake build<a class="headerlink" href="#cmake-build" title="Link to this heading">#</a></h3>
+<p>Developers who have CMake installed can use the alternate CMake build path.
+This builds the native Warp libraries in place, like <code class="docutils literal notranslate"><span class="pre">build_lib.py</span></code>, while
+letting CMake and the selected generator handle parallel and incremental
+rebuilds.
+The commands shown below require CMake 3.24 or newer and Ninja. CMake also uses
+a Python 3.10+ environment with NumPy installed to regenerate derived native
+headers. By default, CMake may fetch LLVM and <code class="docutils literal notranslate"><span class="pre">libmathdx</span></code> through Packman
+unless explicit paths are provided or the corresponding features are disabled
+(<code class="docutils literal notranslate"><span class="pre">-DWARP_BUILD_CLANG=OFF</span></code> for LLVM, <code class="docutils literal notranslate"><span class="pre">-DWARP_USE_LIBMATHDX=OFF</span></code> for
+<code class="docutils literal notranslate"><span class="pre">libmathdx</span></code>, or <code class="docutils literal notranslate"><span class="pre">-DWARP_ENABLE_CUDA=OFF</span></code> for a CPU-only build).</p>
+<p>From the repository root, the recommended path uses
+<a class="reference external" href="https://docs.astral.sh/uv/">uv</a> to prepare the Python environment before
+configuring and building:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>uv<span class="w"> </span>sync<span class="w"> </span>--no-install-project
+<span class="gp">$ </span>cmake<span class="w"> </span>-S<span class="w"> </span>.<span class="w"> </span>-B<span class="w"> </span>_build/cmake<span class="w"> </span>-G<span class="w"> </span>Ninja
+<span class="gp">$ </span>cmake<span class="w"> </span>--build<span class="w"> </span>_build/cmake<span class="w"> </span>--parallel
+</pre></div>
+</div>
+<p>Without <code class="docutils literal notranslate"><span class="pre">uv</span></code>, use a Python environment you manage and install NumPy before
+running the CMake commands:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>numpy
+<span class="gp">$ </span>cmake<span class="w"> </span>-S<span class="w"> </span>.<span class="w"> </span>-B<span class="w"> </span>_build/cmake<span class="w"> </span>-G<span class="w"> </span>Ninja
+<span class="gp">$ </span>cmake<span class="w"> </span>--build<span class="w"> </span>_build/cmake<span class="w"> </span>--parallel
+</pre></div>
+</div>
+<p>Upon success, the CMake build writes the native libraries to <code class="docutils literal notranslate"><span class="pre">warp/bin/</span></code>.
+The default CMake build enables CUDA on Linux and Windows, disables CUDA on
+macOS, and builds both <code class="docutils literal notranslate"><span class="pre">warp</span></code> and <code class="docutils literal notranslate"><span class="pre">warp-clang</span></code>. Pass
+<code class="docutils literal notranslate"><span class="pre">-DWARP_ENABLE_CUDA=OFF</span></code> for a CPU-only CMake build. CUDA builds default to a
+single PTX target for fast local builds; use <code class="docutils literal notranslate"><span class="pre">CMAKE_CUDA_ARCHITECTURES</span></code> to
+select different GPU architectures. Use <code class="docutils literal notranslate"><span class="pre">build_lib.py</span></code> for release builds
+that need Warp’s full GPU architecture coverage.</p>
+<p>To use a specific CUDA Toolkit:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>cmake<span class="w"> </span>-S<span class="w"> </span>.<span class="w"> </span>-B<span class="w"> </span>_build/cmake<span class="w"> </span>-G<span class="w"> </span>Ninja<span class="w"> </span>-DWARP_CUDA_PATH<span class="o">=</span>/usr/local/cuda
+<span class="gp">$ </span>cmake<span class="w"> </span>--build<span class="w"> </span>_build/cmake<span class="w"> </span>--parallel
+</pre></div>
+</div>
+<p>To link against shared CUDA libraries in the CMake build:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>cmake<span class="w"> </span>-S<span class="w"> </span>.<span class="w"> </span>-B<span class="w"> </span>_build/cmake<span class="w"> </span>-G<span class="w"> </span>Ninja<span class="w"> </span>-DWARP_USE_DYNAMIC_CUDA<span class="o">=</span>ON
+<span class="gp">$ </span>cmake<span class="w"> </span>--build<span class="w"> </span>_build/cmake<span class="w"> </span>--parallel
+</pre></div>
+</div>
+<p>The corresponding shared CUDA libraries, including <code class="docutils literal notranslate"><span class="pre">libnvptxcompiler</span></code>, must
+be available at runtime when using this option.</p>
+<p>To use an existing LLVM installation for <code class="docutils literal notranslate"><span class="pre">warp-clang</span></code>:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>cmake<span class="w"> </span>-S<span class="w"> </span>.<span class="w"> </span>-B<span class="w"> </span>_build/cmake<span class="w"> </span>-G<span class="w"> </span>Ninja<span class="w"> </span>-DWARP_LLVM_PATH<span class="o">=</span>/opt/llvm
+<span class="gp">$ </span>cmake<span class="w"> </span>--build<span class="w"> </span>_build/cmake<span class="w"> </span>--parallel
+</pre></div>
+</div>
+<p>To use an existing <code class="docutils literal notranslate"><span class="pre">libmathdx</span></code> installation:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>cmake<span class="w"> </span>-S<span class="w"> </span>.<span class="w"> </span>-B<span class="w"> </span>_build/cmake<span class="w"> </span>-G<span class="w"> </span>Ninja<span class="w"> </span>-DWARP_LIBMATHDX_PATH<span class="o">=</span>/path/to/libmathdx
+<span class="gp">$ </span>cmake<span class="w"> </span>--build<span class="w"> </span>_build/cmake<span class="w"> </span>--parallel
+</pre></div>
+</div>
+<p>To build for specific CUDA architectures:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>cmake<span class="w"> </span>-S<span class="w"> </span>.<span class="w"> </span>-B<span class="w"> </span>_build/cmake<span class="w"> </span>-G<span class="w"> </span>Ninja<span class="w"> </span>-DCMAKE_CUDA_ARCHITECTURES<span class="o">=</span><span class="s2">&quot;86;89&quot;</span>
+<span class="gp">$ </span>cmake<span class="w"> </span>--build<span class="w"> </span>_build/cmake<span class="w"> </span>--parallel
+</pre></div>
+</div>
+<p>After building, verify that the libraries can be loaded:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import warp; warp.print_diagnostics()&quot;</span>
+</pre></div>
+</div>
+<p>The CMake path is a native library build path only. It does not replace the
+Python package build backend used for wheels.</p>
+</section>
 </section>
 <section id="conda-environments">
 <span id="conda"></span><h2>Conda Environments<a class="headerlink" href="#conda-environments" title="Link to this heading">#</a></h2>
@@ -892,7 +960,10 @@ for more details on how to use Warp in Omniverse.</p>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#dependencies">Dependencies</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#building-from-source">Building from Source</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#building-from-source">Building from Source</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#cmake-build">CMake build</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#conda-environments">Conda Environments</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#using-warp-in-docker">Using Warp in Docker</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#building-warp-from-source-in-docker">Building Warp from source in Docker</a></li>

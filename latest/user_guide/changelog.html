@@ -533,6 +533,9 @@ sign of <code class="docutils literal notranslate"><span class="pre">y</span></c
 <li><p>Add <code class="docutils literal notranslate"><span class="pre">--use-dynamic-cuda</span></code> build option to link against shared CUDA libraries instead of embedding
 them statically; the corresponding shared libraries must be present at runtime
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1334">GH-1334</a>).</p></li>
+<li><p>Add an optional CMake source-build path for <code class="docutils literal notranslate"><span class="pre">warp</span></code> and <code class="docutils literal notranslate"><span class="pre">warp-clang</span></code>
+with Packman-managed dependencies and support for parallel and incremental
+developer builds (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1495">GH-1495</a>).</p></li>
 <li><p>Add pluggable logging infrastructure: implement the <code class="docutils literal notranslate"><span class="pre">wp.Logger</span></code> protocol and pass it to <code class="docutils literal notranslate"><span class="pre">wp.set_logger()</span></code>,
 or scope it temporarily with <code class="docutils literal notranslate"><span class="pre">wp.ScopedLogger</span></code>. <code class="docutils literal notranslate"><span class="pre">wp.config.log_level</span></code> controls the global verbosity threshold
 and can be scoped temporarily with <code class="docutils literal notranslate"><span class="pre">wp.ScopedLogLevel</span></code>; all Python-side diagnostic output now routes through
