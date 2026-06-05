@@ -388,20 +388,6 @@ def get_or_create_counter_target(
     return target
 
 
-# ---------------------------------------------------------------------------
-# Warp type -> C++ type string mapping for scatter buffer value types
-# ---------------------------------------------------------------------------
-
-_WARP_TO_CTYPE = {
-    warp.float16: "wp::half",
-    warp.float32: "float",
-    warp.float64: "double",
-    warp.int32: "int",
-    warp.uint32: "unsigned int",
-    warp.int64: "int64_t",
-    warp.uint64: "uint64_t",
-}
-
 _SCALAR_TYPE_IDS = {
     warp.float16: 0,
     warp.float32: 1,
@@ -410,6 +396,7 @@ _SCALAR_TYPE_IDS = {
     warp.uint32: 4,
     warp.int64: 5,
     warp.uint64: 6,
+    warp.bfloat16: 7,
 }
 
 DETERMINISTIC_SCATTER_MAX_CAPACITY = (1 << 31) - 1
@@ -417,15 +404,11 @@ DETERMINISTIC_SCATTER_MAX_CAPACITY = (1 << 31) - 1
 
 def warp_type_to_ctype(dtype) -> str:
     """Map a Warp scalar type to its C++ type string."""
-    ctype = _WARP_TO_CTYPE.get(dtype)
-    if ctype is None:
+    if dtype not in _SCALAR_TYPE_IDS:
         raise ValueError(f"Unsupported scalar type for deterministic atomic: {dtype}")
-    return ctype
+    from warp._src.codegen import Var  # noqa: PLC0415
 
-
-def is_float_type(dtype) -> bool:
-    """Return ``True`` if ``dtype`` is a Warp floating-point type."""
-    return dtype in (warp.float16, warp.float32, warp.float64)
+    return Var.dtype_to_ctype(dtype)
 
 
 def warp_scalar_type_to_id(dtype) -> int:

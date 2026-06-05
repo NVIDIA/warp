@@ -17,6 +17,7 @@ import numpy as np
 
 import warp as wp
 from warp._src import deterministic as wp_deterministic
+from warp._src.types import _np_bfloat16_bits_to_float32
 from warp.tests.unittest_utils import *
 
 
@@ -26,6 +27,22 @@ def _reference_scatter_add_float32(data_np, indices_np, out_size):
     for value, index in zip(data_np, indices_np, strict=True):
         expected[index] = np.float32(expected[index] + value)
     return expected
+
+
+def _bfloat16_numpy_bits(arr):
+    """Return raw bfloat16 bits from a Warp bfloat16 ``.numpy()`` result."""
+    arr = np.asarray(arr)
+    if arr.dtype == np.uint16:
+        return arr.copy()
+    return arr.view(np.uint16).copy()
+
+
+def _bfloat16_numpy_to_float32(arr):
+    """Convert a Warp bfloat16 ``.numpy()`` result to float32."""
+    arr = np.asarray(arr)
+    if arr.dtype == np.uint16:
+        return _np_bfloat16_bits_to_float32(arr)
+    return arr.astype(np.float32)
 
 
 def _set_test_module_options(options):
@@ -148,6 +165,32 @@ def atomic_half_kernel(
     tid = wp.tid()
     idx = dest_indices[tid]
     wp.atomic_add(output, idx, data[tid])
+
+
+@wp.kernel
+def atomic_bfloat16_kernel(
+    data: wp.array(dtype=wp.bfloat16),
+    dest_indices: wp.array(dtype=wp.int32),
+    output: wp.array(dtype=wp.bfloat16),
+):
+    """Atomic add with bfloat16."""
+    tid = wp.tid()
+    idx = dest_indices[tid]
+    wp.atomic_add(output, idx, data[tid])
+
+
+@wp.kernel
+def atomic_bfloat16_minmax_kernel(
+    data: wp.array(dtype=wp.bfloat16),
+    dest_indices: wp.array(dtype=wp.int32),
+    output_min: wp.array(dtype=wp.bfloat16),
+    output_max: wp.array(dtype=wp.bfloat16),
+):
+    """Atomic min/max with bfloat16."""
+    tid = wp.tid()
+    idx = dest_indices[tid]
+    wp.atomic_min(output_min, idx, data[tid])
+    wp.atomic_max(output_max, idx, data[tid])
 
 
 @wp.kernel
@@ -1350,6 +1393,77 @@ def test_atomic_half_deterministic(test, device):
 
     for i in range(1, len(results)):
         np.testing.assert_array_equal(results[0], results[i])
+
+
+def test_atomic_bfloat16_deterministic(test, device):
+    """Verify deterministic mode with bfloat16 atomics."""
+    if device.is_cpu:
+        test.skipTest("CPU execution is already deterministic")
+    if device.arch < 80:
+        test.skipTest("bfloat16 atomics require CUDA architecture >= 80")
+
+    n = 64
+    out_size = 8
+    rng = np.random.default_rng(91)
+
+    # Small integers are exactly representable in bfloat16, so correctness does
+    # not depend on emulating bfloat16 rounding in the host reference.
+    data_np = rng.integers(1, 5, size=n).astype(np.float32)
+    indices_np = rng.integers(0, out_size, size=n, dtype=np.int32)
+
+    expected_add = np.zeros(out_size, dtype=np.float32)
+    expected_min = np.full(out_size, 16.0, dtype=np.float32)
+    expected_max = np.zeros(out_size, dtype=np.float32)
+    for value, index in zip(data_np, indices_np, strict=True):
+        expected_add[index] += value
+        expected_min[index] = min(expected_min[index], value)
+        expected_max[index] = max(expected_max[index], value)
+
+    data = wp.array(data_np, dtype=wp.bfloat16, device=device)
+    indices = wp.array(indices_np, dtype=wp.int32, device=device)
+
+    add_bits = []
+    for _ in range(3):
+        output = wp.zeros(out_size, dtype=wp.bfloat16, device=device)
+        wp.launch(
+            atomic_bfloat16_kernel,
+            dim=n,
+            inputs=[data, indices],
+            outputs=[output],
+            device=device,
+        )
+        add_bits.append(_bfloat16_numpy_bits(output.numpy()))
+        np.testing.assert_allclose(_bfloat16_numpy_to_float32(output.numpy()), expected_add, rtol=0.0, atol=0.0)
+
+    test.assertTrue(
+        any(target.scalar_dtype is wp.bfloat16 for target in atomic_bfloat16_kernel.adj.det_meta.scatter_targets)
+    )
+    for i in range(1, len(add_bits)):
+        np.testing.assert_array_equal(add_bits[0], add_bits[i])
+
+    min_bits = []
+    max_bits = []
+    for _ in range(3):
+        output_min = wp.full(out_size, value=wp.bfloat16(16.0), dtype=wp.bfloat16, device=device)
+        output_max = wp.zeros(out_size, dtype=wp.bfloat16, device=device)
+        wp.launch(
+            atomic_bfloat16_minmax_kernel,
+            dim=n,
+            inputs=[data, indices],
+            outputs=[output_min, output_max],
+            device=device,
+        )
+        min_bits.append(_bfloat16_numpy_bits(output_min.numpy()))
+        max_bits.append(_bfloat16_numpy_bits(output_max.numpy()))
+        np.testing.assert_allclose(_bfloat16_numpy_to_float32(output_min.numpy()), expected_min, rtol=0.0, atol=0.0)
+        np.testing.assert_allclose(_bfloat16_numpy_to_float32(output_max.numpy()), expected_max, rtol=0.0, atol=0.0)
+
+    test.assertTrue(
+        any(target.scalar_dtype is wp.bfloat16 for target in atomic_bfloat16_minmax_kernel.adj.det_meta.scatter_targets)
+    )
+    for i in range(1, len(min_bits)):
+        np.testing.assert_array_equal(min_bits[0], min_bits[i])
+        np.testing.assert_array_equal(max_bits[0], max_bits[i])
 
 
 def test_atomic_double_deterministic(test, device):
@@ -3192,6 +3306,7 @@ def test_deterministic_enum_parity(test, device):
             "SCALAR_UINT": wp_deterministic._SCALAR_TYPE_IDS[wp.uint32],
             "SCALAR_INT64": wp_deterministic._SCALAR_TYPE_IDS[wp.int64],
             "SCALAR_UINT64": wp_deterministic._SCALAR_TYPE_IDS[wp.uint64],
+            "SCALAR_BFLOAT16": wp_deterministic._SCALAR_TYPE_IDS[wp.bfloat16],
         },
     )
 
@@ -3276,6 +3391,7 @@ def test_scatter_record_count_capture_uses_capacity(test, device):
 # ---------------------------------------------------------------------------
 
 cuda_devices = get_selected_cuda_test_devices()
+bfloat16_cuda_devices = [device for device in cuda_devices if device.arch >= 80]
 all_devices = get_test_devices()
 
 
@@ -3338,6 +3454,13 @@ add_function_test(
 )
 add_function_test(
     TestDeterministic, "test_atomic_half_deterministic", test_atomic_half_deterministic, devices=cuda_devices
+)
+add_function_test(
+    TestDeterministic,
+    "test_atomic_bfloat16_deterministic",
+    test_atomic_bfloat16_deterministic,
+    devices=bfloat16_cuda_devices,
+    check_output=False,
 )
 add_function_test(
     TestDeterministic, "test_atomic_double_deterministic", test_atomic_double_deterministic, devices=cuda_devices

@@ -41,6 +41,7 @@ enum ScalarType {
     SCALAR_UINT = 4,
     SCALAR_INT64 = 5,
     SCALAR_UINT64 = 6,
+    SCALAR_BFLOAT16 = 7,
 };
 
 enum DeterminismLevel {
@@ -670,6 +671,10 @@ wp_deterministic_sort_reduce_workspace_size(int count, int op, int scalar_type, 
         return deterministic_workspace_size<int64_t>(count, op, components, determinism_level, stream);
     case SCALAR_UINT64:
         return deterministic_workspace_size<uint64_t>(count, op, components, determinism_level, stream);
+#ifndef WP_NO_BFLOAT16
+    case SCALAR_BFLOAT16:
+        return deterministic_workspace_size<wp::bfloat16>(count, op, components, determinism_level, stream);
+#endif
     default:
         return 0;
     }
@@ -745,6 +750,15 @@ void wp_deterministic_sort_reduce_device(
             reinterpret_cast<void*>(workspace), workspace_size
         );
         break;
+#ifndef WP_NO_BFLOAT16
+    case SCALAR_BFLOAT16:
+        deterministic_sort_reduce_device<wp::bfloat16>(
+            reinterpret_cast<int64_t*>(keys), reinterpret_cast<wp::bfloat16*>(values), count,
+            reinterpret_cast<wp::bfloat16*>(dest_array), dest_size, op, components, determinism_level,
+            reinterpret_cast<void*>(workspace), workspace_size
+        );
+        break;
+#endif
     default:
         break;
     }

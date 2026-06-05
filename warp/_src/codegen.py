@@ -2254,7 +2254,6 @@ class Adjoint:
             REDUCE_OP_MIN,
             get_or_create_counter_target,
             get_or_create_scatter_target,
-            is_float_type,
             warp_type_to_ctype,
         )
 
@@ -2336,7 +2335,7 @@ class Adjoint:
         # in two-pass counter kernels they are side effects and must not run
         # during phase 0.  The pre-scan handles atomics that appear before the
         # counter atomic in source order.
-        if not is_float_type(scalar_dtype) and not return_is_consumed:
+        if scalar_dtype not in float_types and not return_is_consumed:
             if adj.det_meta.has_consumed_atomic:
                 adj.add_forward(f"WP_DET_SIDE_EFFECT_IF_ACTIVE(det_ctx, {cpu_call});")
                 return output
@@ -6283,7 +6282,6 @@ def _deterministic_adjoint_address_call(adj, fwd_args, output_list, fallback_cal
     from warp._src.deterministic import (  # noqa: PLC0415
         REDUCE_OP_ADD,
         get_or_create_scatter_target,
-        is_float_type,
         warp_type_to_ctype,
     )
 
@@ -6306,7 +6304,7 @@ def _deterministic_adjoint_address_call(adj, fwd_args, output_list, fallback_cal
         scalar_dtype = value_dtype
         if hasattr(scalar_dtype, "_wp_scalar_type_"):
             scalar_dtype = scalar_dtype._wp_scalar_type_
-        if not is_float_type(scalar_dtype):
+        if scalar_dtype not in float_types:
             return fallback_call
 
         if not any(arg.label == target_root_label for arg in adj.args):
