@@ -41,6 +41,9 @@
 - Add `--use-dynamic-cuda` build option to link against shared CUDA libraries instead of embedding
   them statically; the corresponding shared libraries must be present at runtime
   ([GH-1334](https://github.com/NVIDIA/warp/issues/1334)).
+- Add an optional CMake source-build path for `warp` and `warp-clang`
+  with Packman-managed dependencies and support for parallel and incremental
+  developer builds ([GH-1495](https://github.com/NVIDIA/warp/issues/1495)).
 - Add pluggable logging infrastructure: implement the `wp.Logger` protocol and pass it to `wp.set_logger()`,
   or scope it temporarily with `wp.ScopedLogger`. `wp.config.log_level` controls the global verbosity threshold
   and can be scoped temporarily with `wp.ScopedLogLevel`; all Python-side diagnostic output now routes through

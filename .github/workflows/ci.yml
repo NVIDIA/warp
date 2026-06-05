@@ -127,6 +127,131 @@ jobs:
           retention-days: ${{ github.repository == 'NVIDIA/warp' && 7 || 1 }}
       
 
+  build-warp-cmake:
+    if: github.event_name != 'schedule' || github.repository == 'NVIDIA/warp'
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2025
+            platform: windows
+            cuda-version: "13.0.2"
+            cuda-sub-packages: '["cudart", "crt", "nvcc", "nvrtc_dev", "nvjitlink", "nvvm", "nvptxcompiler"]'
+            cuda-non-cuda-packages: ''
+            warp-cache-root-suffix: '\warp-cache-cmake'
+          - os: ubuntu-24.04
+            platform: ubuntu-x86_64
+            cuda-version: "13.0.2"
+            cuda-sub-packages: '["cudart-dev", "nvcc", "nvrtc-dev"]'
+            cuda-non-cuda-packages: '["libnvjitlink-dev"]'
+            warp-cache-root-suffix: /warp-cache-cmake
+          - os: ubuntu-24.04-arm
+            platform: ubuntu-aarch64
+            cuda-version: "13.0.2"
+            cuda-sub-packages: '["cudart-dev", "nvcc", "nvrtc-dev"]'
+            cuda-non-cuda-packages: '["libnvjitlink-dev"]'
+            warp-cache-root-suffix: /warp-cache-cmake
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+          lfs: true
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57  # v8.0.0
+        with:
+          version: "0.11.16"
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Install CTK (with non-CUDA packages)
+        if: matrix.cuda-sub-packages != '' && matrix.cuda-non-cuda-packages != ''
+        uses: Jimver/cuda-toolkit@3d45d157f327c09c04b50ee6ccdea2d9d017ec76  # v0.2.35
+        with:
+          cuda: ${{ matrix.cuda-version }}
+          sub-packages: ${{ matrix.cuda-sub-packages }}
+          non-cuda-sub-packages: ${{ matrix.cuda-non-cuda-packages }}
+          method: 'network'
+
+      - name: Install CTK (without non-CUDA packages)
+        if: matrix.cuda-sub-packages != '' && matrix.cuda-non-cuda-packages == ''
+        uses: Jimver/cuda-toolkit@3d45d157f327c09c04b50ee6ccdea2d9d017ec76  # v0.2.35
+        with:
+          cuda: ${{ matrix.cuda-version }}
+          sub-packages: ${{ matrix.cuda-sub-packages }}
+          method: 'network'
+
+      - name: Print build tool versions
+        run: |
+          cmake --version
+          ninja --version
+
+      - name: Prepare Python environment for CMake codegen
+        run: uv sync --no-install-project
+
+      - name: Set up MSVC developer environment
+        if: matrix.platform == 'windows'
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vsPath = & $vswhere -latest -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          $vsDevCmd = Join-Path $vsPath "Common7\Tools\VsDevCmd.bat"
+          if (!(Test-Path $vsDevCmd)) {
+            throw "VsDevCmd.bat was not found"
+          }
+
+          $before = @{}
+          Get-ChildItem Env: | ForEach-Object { $before[$_.Name] = $_.Value }
+          cmd /c "`"$vsDevCmd`" -arch=x64 -host_arch=x64 > nul && set" |
+            ForEach-Object {
+              $name, $value = $_ -split '=', 2
+              if ($name -and $before[$name] -ne $value) {
+                "$name=$value" >> $env:GITHUB_ENV
+              }
+            }
+
+      - name: Build Warp with CMake
+        if: matrix.platform != 'windows'
+        env:
+          WARP_CACHE_ROOT: ${{ runner.temp }}${{ matrix.warp-cache-root-suffix }}
+          WARP_CACHE_PATH: ${{ runner.temp }}${{ matrix.warp-cache-root-suffix }}
+        run: |
+          cuda_path="${CUDA_HOME:-${CUDA_PATH:-}}"
+          if [ -z "$cuda_path" ]; then
+            echo "CUDA_HOME or CUDA_PATH must be set" >&2
+            exit 1
+          fi
+          cmake -S . -B _build/cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DWARP_CUDA_PATH:PATH="$cuda_path"
+          cmake --build _build/cmake --parallel
+
+      - name: Build Warp with CMake
+        if: matrix.platform == 'windows'
+        env:
+          WARP_CACHE_ROOT: ${{ runner.temp }}${{ matrix.warp-cache-root-suffix }}
+          WARP_CACHE_PATH: ${{ runner.temp }}${{ matrix.warp-cache-root-suffix }}
+        run: |
+          if (!$env:CUDA_PATH) {
+            throw "CUDA_PATH must be set"
+          }
+          cmake -S . -B _build/cmake -G Ninja `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_C_COMPILER=cl `
+            -DCMAKE_CXX_COMPILER=cl `
+            "-DWARP_CUDA_PATH:PATH=$env:CUDA_PATH"
+          cmake --build _build/cmake --parallel
+
+      - name: Verify Warp diagnostics
+        env:
+          WARP_CACHE_ROOT: ${{ runner.temp }}${{ matrix.warp-cache-root-suffix }}
+          WARP_CACHE_PATH: ${{ runner.temp }}${{ matrix.warp-cache-root-suffix }}
+        run: |
+          uv run python -c "import warp; info = warp.print_diagnostics(); assert not info['warp_native'].startswith('unknown'); assert not info['warp_clang'].startswith('unknown')"
+
+
   test-warp-cpu:
     if: github.event_name != 'schedule' || github.repository == 'NVIDIA/warp'
     runs-on: ${{ matrix.os }}

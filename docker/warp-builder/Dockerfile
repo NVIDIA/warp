@@ -55,17 +55,48 @@ RUN CUDA_MAJOR=$(echo ${CUDA_VERSION} | cut -d. -f1) && \
     --component $component || exit 1; \
     done
 
+# Install pinned CMake from official Kitware binary tarballs.
+FROM base AS cmake-installer
+
+ARG CMAKE_VERSION=4.3.3
+ARG TARGETARCH
+
+RUN if [ "$TARGETARCH" = "sbsa" ]; then \
+    CMAKE_ARCH="aarch64"; \
+    elif [ "$TARGETARCH" = "x86_64" ]; then \
+    CMAKE_ARCH="x86_64"; \
+    elif [ "$TARGETARCH" = "aarch64" ]; then \
+    CMAKE_ARCH="aarch64"; \
+    else \
+    echo "Unsupported architecture: $TARGETARCH" && exit 1; \
+    fi && \
+    if [ "$CMAKE_ARCH" = "x86_64" ]; then \
+    CMAKE_SHA256="927b2368a946c37269c3a66225ab00544e756459cdd0b5d0da438694fb9ff802"; \
+    elif [ "$CMAKE_ARCH" = "aarch64" ]; then \
+    CMAKE_SHA256="9ea38356dbd3e32e51029a3e09a0f2f8e117ef4fbcaad7a21ffb36409bbd5cb4"; \
+    fi && \
+    CMAKE_FILE="cmake-${CMAKE_VERSION}-linux-${CMAKE_ARCH}.tar.gz" && \
+    wget -nv --https-only --max-redirect=1 "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/${CMAKE_FILE}" && \
+    echo "${CMAKE_SHA256}  ${CMAKE_FILE}" | sha256sum -c - && \
+    mkdir -p /opt/cmake && \
+    tar -xzf "${CMAKE_FILE}" --strip-components=1 -C /opt/cmake && \
+    rm "${CMAKE_FILE}" && \
+    /opt/cmake/bin/cmake --version
+
 # Build LLVM from source
 FROM base AS llvm-builder
 WORKDIR /tmp/llvm-build
 
 ARG TARGETARCH
 
+COPY --from=cmake-installer /opt/cmake /opt/cmake
+ENV PATH=/opt/cmake/bin:${PATH}
+
 # Install build tools needed for LLVM (not needed in final image)
 RUN yum install -y \
+    curl \
     git \
     unzip \
-    cmake \
     && yum clean all
 
 # Install modern Ninja from GitHub releases (yum's ninja-build is too old for LLVM 21.1.0)
@@ -74,16 +105,21 @@ ARG NINJA_VERSION=1.13.2
 RUN ARCH=$(uname -m) && \
     if [ "$ARCH" = "x86_64" ]; then \
     NINJA_FILE="ninja-linux.zip"; \
+    NINJA_SHA256="5749cbc4e668273514150a80e387a957f933c6ed3f5f11e03fb30955e2bbead6"; \
     elif [ "$ARCH" = "aarch64" ]; then \
     NINJA_FILE="ninja-linux-aarch64.zip"; \
+    NINJA_SHA256="fd2cacc8050a7f12a16a2e48f9e06fca5c14fc4c2bee2babb67b58be17a607fc"; \
     else \
     echo "Unsupported architecture: $ARCH" && exit 1; \
     fi && \
-    wget --max-redirect=1 https://github.com/ninja-build/ninja/releases/download/v${NINJA_VERSION}/${NINJA_FILE} && \
-    unzip ${NINJA_FILE} && \
+    curl -fL --proto '=https' --proto-redir '=https' --max-redirs 1 \
+    -o "${NINJA_FILE}" \
+    "https://github.com/ninja-build/ninja/releases/download/v${NINJA_VERSION}/${NINJA_FILE}" && \
+    echo "${NINJA_SHA256}  ${NINJA_FILE}" | sha256sum -c - && \
+    unzip "${NINJA_FILE}" && \
     mv ninja /usr/local/bin/ && \
     chmod +x /usr/local/bin/ninja && \
-    rm ${NINJA_FILE} && \
+    rm "${NINJA_FILE}" && \
     ninja --version
 
 # Clone LLVM 21.1.0 (same version as build_llvm.py)
@@ -286,8 +322,14 @@ ARG TARGETARCH
 # parse_redist.py creates /opt/cuda/linux-${TARGETARCH}/ structure (e.g., linux-x86_64, linux-aarch64)
 COPY --from=cuda-installer /opt/cuda/linux-${TARGETARCH} /usr/local/cuda
 
+# Copy the pinned CMake binary distribution from Kitware.
+COPY --from=cmake-installer /opt/cmake /opt/cmake
+
 # Copy LLVM installation from builder stage
 COPY --from=llvm-builder /opt/llvm /opt/llvm
+
+# Copy the pinned modern Ninja downloaded in the LLVM builder stage.
+COPY --from=llvm-builder /usr/local/bin/ninja /usr/local/bin/ninja
 
 # Copy uv from official image
 COPY --from=uv /uv /uvx /bin/
@@ -305,13 +347,15 @@ RUN mkdir -p /usr/local/cuda/licenses && \
     echo "See: https://docs.nvidia.com/cuda/eula/" >> /usr/local/cuda/licenses/README.txt
 
 # Set environment variables
-ENV PATH=/usr/local/cuda/bin:/opt/llvm/bin:${PATH}
+ENV PATH=/opt/cmake/bin:/usr/local/cuda/bin:/opt/llvm/bin:${PATH}
 ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64:/usr/local/cuda/lib:/opt/llvm/lib:${LD_LIBRARY_PATH}
 ENV CUDA_HOME=/usr/local/cuda
 ENV CUDA_PATH=/usr/local/cuda
 
-# Verify CUDA, LLVM, and uv installation
+# Verify CUDA, CMake, Ninja, LLVM, and uv installation
 RUN nvcc --version && \
+    cmake --version && \
+    ninja --version && \
     uv --version && \
     echo "Build environment ready with LLVM!" && \
     echo "LLVM libraries:" && \
