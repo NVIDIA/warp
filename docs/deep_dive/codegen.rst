@@ -97,6 +97,11 @@ Warp generates C++/CUDA source code for CPU/GPU and stores the .cpp/.cu source f
 The kernel cache folder path is printed during the :ref:`Warp initialization <warp-initialization>` and
 can be retrieved after Warp has been initialized from the ``warp.config.kernel_cache_dir`` :ref:`configuration setting <global-settings>`.
 
+When needed, users can intentionally insert small C++/CUDA snippets into
+generated modules with :func:`@wp.func_native <warp.func_native>`. See
+:ref:`Native Snippets in Warp Kernels <native_functions>` for the public
+native-function API.
+
 In addition to Warp's kernel cache, the NVIDIA CUDA driver maintains a separate
 compute cache that stores JIT-compiled GPU binaries (e.g., native code produced
 from PTX). This driver-level cache is not managed by Warp and is not affected by
@@ -1215,6 +1220,8 @@ Output:
     17
 
 Kernel ``k1`` uses the latest definition of function ``f``, while kernel ``k2`` uses the definition of ``f`` when the kernel was declared.
+
+.. _ahead_of_time_compilation_workflows:
 
 Ahead-of-Time Compilation Workflows
 -----------------------------------

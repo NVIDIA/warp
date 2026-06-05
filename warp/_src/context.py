@@ -999,8 +999,97 @@ def func(
 
 
 def func_native(snippet: str, adj_snippet: str | None = None, replay_snippet: str | None = None):
-    """
-    Decorator to register native code snippet, @func_native
+    """Register a Warp function implemented by a native C++/CUDA snippet.
+
+    ``@wp.func_native`` is an escape hatch for operations that are easier to
+    express in native code than in Warp's kernel language, such as CUDA
+    intrinsics, shared-memory synchronization patterns, or small C++ helper
+    expressions. The decorated Python function is a typed stub: its argument
+    names become the variable names available inside the snippet, and its body
+    should be ``...``.
+
+    Args:
+        snippet: Native C++/CUDA code inserted into the generated forward
+            function body.
+        adj_snippet: Optional native code inserted into the generated adjoint
+            function body. Use ``adj_``-prefixed argument names, and ``adj_ret``
+            for the adjoint of a return value.
+        replay_snippet: Optional native code used when Warp replays the forward
+            function while executing the generated backward pass. Use this when
+            replaying ``snippet`` would repeat an unsafe side effect, such as
+            incrementing an atomic counter.
+
+    Returns:
+        A decorator that registers the typed stub as a Warp function.
+
+    Note:
+        Compute thread indices in the calling kernel or function and pass them
+        explicitly; snippets cannot call :func:`wp.tid() <warp.tid>`.
+        Pure C++ snippets can be used by CPU kernels, while CUDA-specific
+        constructs require CUDA kernels. If the snippet returns a value, the
+        Python stub must declare the return type. Struct return values are not
+        supported.
+
+    Example:
+        Insert a native element-wise operation:
+
+        .. code-block:: python
+
+            snippet = "out[tid] = x[tid] + 1.0f;"
+
+
+            @wp.func_native(snippet)
+            def increment(
+                x: wp.array[wp.float32],
+                out: wp.array[wp.float32],
+                tid: int,
+            ): ...
+
+
+            @wp.kernel
+            def kernel(x: wp.array[wp.float32], out: wp.array[wp.float32]):
+                tid = wp.tid()
+                increment(x, out, tid)
+
+        Use CUDA shared memory:
+
+        This pattern assumes the kernel is launched with ``block_dim=128``.
+
+        .. code-block:: python
+
+            snippet = '''
+                int local_tid = threadIdx.x;
+                __shared__ int values[128];
+                values[local_tid] = arr[tid];
+                __syncthreads();
+                out[tid] = values[127 - local_tid];
+                '''
+
+
+            @wp.func_native(snippet)
+            def reverse_block(arr: wp.array[int], out: wp.array[int], tid: int): ...
+
+        Provide an adjoint snippet for differentiability:
+
+        .. code-block:: python
+
+            snippet = "out[tid] = 2.0f * x[tid] + y[tid];"
+            adj_snippet = '''
+                adj_x[tid] += 2.0f * adj_out[tid];
+                adj_y[tid] += adj_out[tid];
+                '''
+
+
+            @wp.func_native(snippet=snippet, adj_snippet=adj_snippet)
+            def axpy(
+                x: wp.array[wp.float32],
+                y: wp.array[wp.float32],
+                out: wp.array[wp.float32],
+                tid: int,
+            ): ...
+
+    See Also:
+        :ref:`Native Snippets in Warp Kernels <native_functions>`
     """
 
     frame = inspect.currentframe()
@@ -1310,7 +1399,7 @@ def kernel(
 
 
         @wp.kernel(module_options={"fast_math": True}, module="unique")
-        def my_kernel_fast(a: wp.array(dtype=float), b: wp.array(dtype=float)):
+        def my_kernel_fast(a: wp.array[float], b: wp.array[float]):
             # fast_math is a module-level option, so module="unique" is required
             tid = wp.tid()
             b[tid] = a[tid] + 1.0
