@@ -246,6 +246,9 @@
   a multiple of the alignment, hiding overflows that landed in the padding
   ([GH-1513](https://github.com/NVIDIA/warp/issues/1513)).
 
+- Fix CUDA graph capture for contiguous `wp.bool`, `wp.int8`, and `wp.uint8`
+  `array.fill_()` calls ([GH-1525](https://github.com/NVIDIA/warp/issues/1525)).
+
 ### Documentation
 
 - Remove stale tutorial notebooks from the repository. The maintained tutorials remain linked from the

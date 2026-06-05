@@ -1357,7 +1357,7 @@ void wp_memtile_device(void* context, void* dst, const void* src, size_t srcsize
         int16_t value = *reinterpret_cast<const int16_t*>(src);
         wp_launch_device(WP_CURRENT_CONTEXT, memtile_value_kernel, n, (p, value, n));
     } else if (srcsize == 1) {
-        check_cuda(cudaMemset(dst, *reinterpret_cast<const int8_t*>(src), n));
+        wp_memset_device(context, dst, *reinterpret_cast<const int8_t*>(src), n, WP_CURRENT_STREAM);
     } else if (!launch_memtile_kernel_by_value(dst, src, srcsize, n)) {
         // generic fallback for values too large to pass through kernel args
         void* value_devptr = NULL;  // fill value in device memory
