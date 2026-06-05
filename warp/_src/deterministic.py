@@ -402,15 +402,6 @@ _SCALAR_TYPE_IDS = {
 DETERMINISTIC_SCATTER_MAX_CAPACITY = (1 << 31) - 1
 
 
-def warp_type_to_ctype(dtype) -> str:
-    """Map a Warp scalar type to its C++ type string."""
-    if dtype not in _SCALAR_TYPE_IDS:
-        raise ValueError(f"Unsupported scalar type for deterministic atomic: {dtype}")
-    from warp._src.codegen import Var  # noqa: PLC0415
-
-    return Var.dtype_to_ctype(dtype)
-
-
 def warp_scalar_type_to_id(dtype) -> int:
     """Map a Warp scalar type to the native deterministic reducer enum."""
     type_id = _SCALAR_TYPE_IDS.get(dtype)

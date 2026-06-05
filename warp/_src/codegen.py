@@ -2254,7 +2254,6 @@ class Adjoint:
             REDUCE_OP_MIN,
             get_or_create_counter_target,
             get_or_create_scatter_target,
-            warp_type_to_ctype,
         )
 
         args_list = list(bound_args.values())
@@ -2299,7 +2298,7 @@ class Adjoint:
         return_is_consumed = not return_is_discarded
 
         value_ctype = Var.dtype_to_ctype(value_dtype)
-        scalar_ctype = warp_type_to_ctype(scalar_dtype)
+        scalar_ctype = Var.dtype_to_ctype(scalar_dtype)
 
         zero_expr = _cinit_expr(return_type)
 
@@ -6282,7 +6281,7 @@ def _deterministic_adjoint_address_call(adj, fwd_args, output_list, fallback_cal
     from warp._src.deterministic import (  # noqa: PLC0415
         REDUCE_OP_ADD,
         get_or_create_scatter_target,
-        warp_type_to_ctype,
+        warp_scalar_type_to_id,
     )
 
     arr_var = fwd_args[0]
@@ -6327,7 +6326,7 @@ def _deterministic_adjoint_address_call(adj, fwd_args, output_list, fallback_cal
         # Validate that the scalar value has a deterministic reducer.  The
         # result is used by launch-time post-reduce, but checking here gives a
         # source-adjacent error if an unsupported gradient type appears.
-        warp_type_to_ctype(scalar_dtype)
+        warp_scalar_type_to_id(scalar_dtype)
     except (AttributeError, KeyError, TypeError, ValueError) as e:
         raise WarpCodegenError(f"Deterministic mode could not lower adjoint address accumulation: {e}") from e
 
