@@ -299,11 +299,11 @@ private:
 
 // CUDA timing range used during event-based timing
 struct CudaTimingRange {
-    void* context;
-    const char* name;
-    int flag;
-    CUevent start;
-    CUevent end;
+    void* context = nullptr;
+    const char* name = nullptr;
+    int flag = 0;
+    CUevent start = {};
+    CUevent end = {};
 };
 
 // Timing result used to pass timings to Python

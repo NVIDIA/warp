@@ -213,7 +213,7 @@ struct BVH {
 struct CuBQLNode {
     vec3 lower;
     vec3 upper;
-    uint64_t admin;
+    uint64_t admin = 0;
 };
 
 struct CuBQLBVH {

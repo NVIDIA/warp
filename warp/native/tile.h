@@ -624,8 +624,8 @@ template <typename Shape> struct tile_coord_iter_t {
     static constexpr int lastdim = N - 1;
 
     tile_coord_t<N> coord;
-    int strides[N];  // byte strides; bounded by array_t::strides[] int32 ABI
-    int64_t byte_offset;  // cumulative bytes; can exceed 2 GiB for large arrays
+    int strides[N] = {};  // byte strides; bounded by array_t::strides[] int32 ABI
+    int64_t byte_offset = 0;  // cumulative bytes; can exceed 2 GiB for large arrays
 
     // initialize from a starting coordinate and the global array byte strides/offsets
     inline CUDA_CALLABLE void init(const tile_coord_t<N>& c, const int* byte_strides, const int* tile_offset)

@@ -360,7 +360,7 @@ struct APICBranchStart {
 
 struct APICBranchBody {
     std::vector<uint8_t> data;
-    uint32_t op_count;
+    uint32_t op_count = 0;
 };
 
 APICBranchStart* wp_apic_begin_branch(APICState* state)

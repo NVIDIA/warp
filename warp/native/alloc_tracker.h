@@ -17,10 +17,10 @@ enum AllocKind {
 };
 
 struct AllocRecord {
-    size_t size;
-    size_t seq;  // allocation sequence number (monotonically increasing)
-    AllocKind kind;
-    int device_ordinal;  // -1 for host/pinned
+    size_t size = 0;
+    size_t seq = 0;  // allocation sequence number (monotonically increasing)
+    AllocKind kind = {};
+    int device_ordinal = 0;  // -1 for host/pinned
     std::string tag;  // Python call-site info or "(native)"
     std::string scope;  // e.g. "simulation/collision"
 };
@@ -78,8 +78,8 @@ private:
 
     struct ScopeKey {
         std::string scope;
-        AllocKind kind;
-        int ordinal;  // only meaningful for ALLOC_KIND_DEVICE
+        AllocKind kind = {};
+        int ordinal = 0;  // only meaningful for ALLOC_KIND_DEVICE
 
         bool operator==(const ScopeKey& o) const { return scope == o.scope && kind == o.kind && ordinal == o.ordinal; }
     };

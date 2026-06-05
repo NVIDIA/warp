@@ -457,7 +457,7 @@ inline CUDA_CALLABLE vec4 noise_4d_gradient(
 // (wrt all input axes), and Hessian (symmetric). Kept as a templated
 // struct so the composition rule is shared across 2D / 3D / 4D.
 template <unsigned N> struct noise_level_t {
-    float val;
+    float val = 0.0f;
     vec_t<N, float> grad;
     mat_t<N, N, float> hess;
 };
