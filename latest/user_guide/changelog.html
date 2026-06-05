@@ -736,6 +736,9 @@ value to raise a clear <code class="docutils literal notranslate"><span class="p
 <li><p>Fix <code class="docutils literal notranslate"><span class="pre">Tape.record_scope_end()</span></code> to raise a clear error for unmatched
 scope ends and preserve nested non-empty tape visualization scopes
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1515">GH-1515</a>).</p></li>
+<li><p>Report Clang CUDA compilation failures immediately instead of raising a
+downstream CUDA module load error
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1325">GH-1325</a>).</p></li>
 </ul>
 </section>
 <section id="documentation">
