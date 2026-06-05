@@ -387,6 +387,7 @@
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/debugging.html">Debugging</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/limitations.html">Limitations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/contribution_guide.html">Contribution Guide</a></li>
@@ -506,7 +507,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">module_options</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L1269-L1495"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.kernel" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L1358-L1584"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.kernel" title="Link to this definition">#</a></dt>
 <dd><p>Decorator to register a Warp kernel from a Python function.
 The function must be defined with type annotations for all arguments.
 The function must not return anything.</p>
@@ -540,7 +541,7 @@ The function must not return anything.</p>
 
 
 <span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">module_options</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;fast_math&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span> <span class="n">module</span><span class="o">=</span><span class="s2">&quot;unique&quot;</span><span class="p">)</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">my_kernel_fast</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">),</span> <span class="n">b</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">my_kernel_fast</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">b</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
     <span class="c1"># fast_math is a module-level option, so module=&quot;unique&quot; is required</span>
     <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
     <span class="n">b</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">+</span> <span class="mf">1.0</span>

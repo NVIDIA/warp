@@ -387,6 +387,7 @@
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../user_guide/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../user_guide/debugging.html">Debugging</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../user_guide/limitations.html">Limitations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../user_guide/contribution_guide.html">Contribution Guide</a></li>
@@ -565,6 +566,10 @@ hello
 <p>Warp generates C++/CUDA source code for CPU/GPU and stores the .cpp/.cu source files under the module directories of the kernel cache.
 The kernel cache folder path is printed during the <a class="reference internal" href="../user_guide/basics.html#warp-initialization"><span class="std std-ref">Warp initialization</span></a> and
 can be retrieved after Warp has been initialized from the <code class="docutils literal notranslate"><span class="pre">warp.config.kernel_cache_dir</span></code> <a class="reference internal" href="../user_guide/configuration.html#global-settings"><span class="std std-ref">configuration setting</span></a>.</p>
+<p>When needed, users can intentionally insert small C++/CUDA snippets into
+generated modules with <a class="reference internal" href="../api_reference/_generated/warp.func_native.html#warp.func_native" title="warp.func_native"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.func_native</span></code></a>. See
+<a class="reference internal" href="../user_guide/cpp_cuda_workflows.html#native-functions"><span class="std std-ref">Native Snippets in Warp Kernels</span></a> for the public
+native-function API.</p>
 <p>In addition to Warp’s kernel cache, the NVIDIA CUDA driver maintains a separate
 compute cache that stores JIT-compiled GPU binaries (e.g., native code produced
 from PTX). This driver-level cache is not managed by Warp and is not affected by
@@ -1536,7 +1541,7 @@ Module __main__ e93fbb9 load on device &#39;cuda:0&#39; took 167.84 ms  (compile
 <p>Kernel <code class="docutils literal notranslate"><span class="pre">k1</span></code> uses the latest definition of function <code class="docutils literal notranslate"><span class="pre">f</span></code>, while kernel <code class="docutils literal notranslate"><span class="pre">k2</span></code> uses the definition of <code class="docutils literal notranslate"><span class="pre">f</span></code> when the kernel was declared.</p>
 </section>
 <section id="ahead-of-time-compilation-workflows">
-<h2>Ahead-of-Time Compilation Workflows<a class="headerlink" href="#ahead-of-time-compilation-workflows" title="Link to this heading">#</a></h2>
+<span id="id3"></span><h2>Ahead-of-Time Compilation Workflows<a class="headerlink" href="#ahead-of-time-compilation-workflows" title="Link to this heading">#</a></h2>
 <p>Under typical use cases, Warp will compile and load modules automatically at runtime when kernels are launched using
 <a class="reference internal" href="../api_reference/_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch()</span></code></a> or <a class="reference internal" href="../api_reference/_generated/warp.launch_tiled.html#warp.launch_tiled" title="warp.launch_tiled"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch_tiled()</span></code></a>.</p>
 <p>However, there are some cases where it is convenient to compile a module ahead of time, perhaps even on a different

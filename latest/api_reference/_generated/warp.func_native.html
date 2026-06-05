@@ -387,6 +387,7 @@
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/debugging.html">Debugging</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/limitations.html">Limitations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/contribution_guide.html">Contribution Guide</a></li>
@@ -495,17 +496,96 @@
 <h1>warp.func_native<a class="headerlink" href="#warp-func-native" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.func_native">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">func_native</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">snippet</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adj_snippet</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">replay_snippet</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L1001-L1031"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.func_native" title="Link to this definition">#</a></dt>
-<dd><p>Decorator to register native code snippet, &#64;func_native</p>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">func_native</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">snippet</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adj_snippet</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">replay_snippet</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L1001-L1120"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.func_native" title="Link to this definition">#</a></dt>
+<dd><p>Register a Warp function implemented by a native C++/CUDA snippet.</p>
+<p><code class="docutils literal notranslate"><span class="pre">&#64;warp.func_native</span></code> is an escape hatch for operations that are easier to
+express in native code than in Warp’s kernel language, such as CUDA
+intrinsics, shared-memory synchronization patterns, or small C++ helper
+expressions. The decorated Python function is a typed stub: its argument
+names become the variable names available inside the snippet, and its body
+should be <code class="docutils literal notranslate"><span class="pre">...</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>snippet</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>)</p></li>
-<li><p><strong>adj_snippet</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>)</p></li>
-<li><p><strong>replay_snippet</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>)</p></li>
+<li><p><strong>snippet</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Native C++/CUDA code inserted into the generated forward
+function body.</p></li>
+<li><p><strong>adj_snippet</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Optional native code inserted into the generated adjoint
+function body. Use <code class="docutils literal notranslate"><span class="pre">adj_</span></code>-prefixed argument names, and <code class="docutils literal notranslate"><span class="pre">adj_ret</span></code>
+for the adjoint of a return value.</p></li>
+<li><p><strong>replay_snippet</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Optional native code used when Warp replays the forward
+function while executing the generated backward pass. Use this when
+replaying <code class="docutils literal notranslate"><span class="pre">snippet</span></code> would repeat an unsafe side effect, such as
+incrementing an atomic counter.</p></li>
 </ul>
 </dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A decorator that registers the typed stub as a Warp function.</p>
+</dd>
 </dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Compute thread indices in the calling kernel or function and pass them
+explicitly; snippets cannot call <a class="reference internal" href="../../language_reference/_generated/warp.tid.html#warp._src.lang.tid" title="warp._src.lang.tid"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tid()</span></code></a>.
+Pure C++ snippets can be used by CPU kernels, while CUDA-specific
+constructs require CUDA kernels. If the snippet returns a value, the
+Python stub must declare the return type. Struct return values are not
+supported.</p>
+</div>
+<p class="rubric">Example</p>
+<p>Insert a native element-wise operation:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">snippet</span> <span class="o">=</span> <span class="s2">&quot;out[tid] = x[tid] + 1.0f;&quot;</span>
+
+
+<span class="nd">@warp</span><span class="o">.</span><span class="n">func_native</span><span class="p">(</span><span class="n">snippet</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">increment</span><span class="p">(</span>
+    <span class="n">x</span><span class="p">:</span> <span class="n">warp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">warp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span>
+    <span class="n">out</span><span class="p">:</span> <span class="n">warp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">warp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span>
+    <span class="n">tid</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+<span class="p">):</span> <span class="o">...</span>
+
+
+<span class="nd">@warp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">kernel</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">warp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">warp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span> <span class="n">out</span><span class="p">:</span> <span class="n">warp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">warp</span><span class="o">.</span><span class="n">float32</span><span class="p">]):</span>
+    <span class="n">tid</span> <span class="o">=</span> <span class="n">warp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">increment</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">out</span><span class="p">,</span> <span class="n">tid</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Use CUDA shared memory:</p>
+<p>This pattern assumes the kernel is launched with <code class="docutils literal notranslate"><span class="pre">block_dim=128</span></code>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">snippet</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">    int local_tid = threadIdx.x;</span>
+<span class="s1">    __shared__ int values[128];</span>
+<span class="s1">    values[local_tid] = arr[tid];</span>
+<span class="s1">    __syncthreads();</span>
+<span class="s1">    out[tid] = values[127 - local_tid];</span>
+<span class="s1">    &#39;&#39;&#39;</span>
+
+
+<span class="nd">@warp</span><span class="o">.</span><span class="n">func_native</span><span class="p">(</span><span class="n">snippet</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">reverse_block</span><span class="p">(</span><span class="n">arr</span><span class="p">:</span> <span class="n">warp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">out</span><span class="p">:</span> <span class="n">warp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">tid</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span> <span class="o">...</span>
+</pre></div>
+</div>
+<p>Provide an adjoint snippet for differentiability:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">snippet</span> <span class="o">=</span> <span class="s2">&quot;out[tid] = 2.0f * x[tid] + y[tid];&quot;</span>
+<span class="n">adj_snippet</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">    adj_x[tid] += 2.0f * adj_out[tid];</span>
+<span class="s1">    adj_y[tid] += adj_out[tid];</span>
+<span class="s1">    &#39;&#39;&#39;</span>
+
+
+<span class="nd">@warp</span><span class="o">.</span><span class="n">func_native</span><span class="p">(</span><span class="n">snippet</span><span class="o">=</span><span class="n">snippet</span><span class="p">,</span> <span class="n">adj_snippet</span><span class="o">=</span><span class="n">adj_snippet</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">axpy</span><span class="p">(</span>
+    <span class="n">x</span><span class="p">:</span> <span class="n">warp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">warp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span>
+    <span class="n">y</span><span class="p">:</span> <span class="n">warp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">warp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span>
+    <span class="n">out</span><span class="p">:</span> <span class="n">warp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">warp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span>
+    <span class="n">tid</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+<span class="p">):</span> <span class="o">...</span>
+</pre></div>
+</div>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p><a class="reference internal" href="../../user_guide/cpp_cuda_workflows.html#native-functions"><span class="std std-ref">Native Snippets in Warp Kernels</span></a></p>
+</div>
 </dd></dl>
 
 </section>

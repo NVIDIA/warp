@@ -387,6 +387,7 @@
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../user_guide/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../user_guide/debugging.html">Debugging</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../user_guide/limitations.html">Limitations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../user_guide/contribution_guide.html">Contribution Guide</a></li>
@@ -670,7 +671,7 @@ For memory allocated using default CUDA allocators, we can enable CUDA <a class=
 <h3>Limitations<a class="headerlink" href="#limitations" title="Link to this heading">#</a></h3>
 <section id="mempool-to-mempool-copies-between-gpus-during-graph-capture">
 <h4>Mempool-to-Mempool Copies Between GPUs During Graph Capture<a class="headerlink" href="#mempool-to-mempool-copies-between-gpus-during-graph-capture" title="Link to this heading">#</a></h4>
-<p>Copying data between different GPUs will fail during graph capture if the source and destination are allocated using mempool allocators and mempool access is not enabled between devices.  Note that this only applies to capturing mempool-to-mempool copies in a graph; copies done outside of graph capture are not affected.  Copies within the same mempool (i.e., same device) are also not affected.</p>
+<p>Copying data between different GPUs will fail during graph capture if the source and destination are allocated using mempool allocators and mempool access is not enabled between devices.  Note that this only applies to capturing mempool-to-mempool copies in a graph.  Copies done outside of graph capture are not affected.  Copies within the same mempool (i.e., same device) are also not affected.</p>
 <p>There are two workarounds.  If mempool access is supported, you can simply enable mempool access between the devices prior to graph capture, as shown in <a class="reference internal" href="#mempool-access"><span class="std std-ref">Memory Pool Access</span></a>.</p>
 <p>If mempool access is not supported, you will need to pre-allocate the arrays involved in the copy using the default CUDA allocators.  This will need to be done before capture begins:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># pre-allocate the arrays with mempools disabled</span>
@@ -798,11 +799,11 @@ PyTorch’s cache, implement a small custom allocator that calls
 <p>PyTorch tracks the device and stream for pointers returned by
 <code class="docutils literal notranslate"><span class="pre">caching_allocator_alloc()</span></code>, so <code class="docutils literal notranslate"><span class="pre">caching_allocator_delete()</span></code> only needs the
 pointer. The <code class="docutils literal notranslate"><span class="pre">_active_allocations</span></code> dictionary above is for validation and
-debugging; applications can customize this tracking for their own accounting,
+debugging. Applications can customize this tracking for their own accounting,
 thread-safety, or distributed runtime needs.</p>
 </section>
-<section id="rmm-integration">
-<h3>RMM Integration<a class="headerlink" href="#rmm-integration" title="Link to this heading">#</a></h3>
+<section id="rapids-memory-manager-rmm-integration">
+<h3>RAPIDS Memory Manager (RMM) Integration<a class="headerlink" href="#rapids-memory-manager-rmm-integration" title="Link to this heading">#</a></h3>
 <p><a class="reference external" href="https://github.com/rapidsai/rmm">RAPIDS Memory Manager (RMM)</a> provides high-performance
 pooled allocators for CUDA. Warp includes a built-in adapter, <a class="reference internal" href="../api_reference/_generated/warp.utils.AllocatorRmm.html#warp.utils.AllocatorRmm" title="warp.utils.AllocatorRmm"><code class="xref py py-class docutils literal notranslate"><span class="pre">AllocatorRmm</span></code></a>, that
 routes array allocations through RMM.</p>
@@ -901,7 +902,7 @@ routes array allocations through RMM.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#setting-a-custom-allocator">Setting a Custom Allocator</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#writing-a-custom-allocator">Writing a Custom Allocator</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pytorch-cuda-caching-allocator">PyTorch CUDA Caching Allocator</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#rmm-integration">RMM Integration</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#rapids-memory-manager-rmm-integration">RAPIDS Memory Manager (RMM) Integration</a></li>
 </ul>
 </li>
 </ul>

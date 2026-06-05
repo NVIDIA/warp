@@ -388,6 +388,7 @@
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging</a></li>
 <li class="toctree-l1"><a class="reference internal" href="limitations.html">Limitations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="contribution_guide.html">Contribution Guide</a></li>
@@ -1060,69 +1061,23 @@ input.grad:  [0.5        0.35355338 0.28867513 0.25       0.2236068  0.20412414
 </section>
 <section id="custom-native-functions">
 <h2>Custom Native Functions<a class="headerlink" href="#custom-native-functions" title="Link to this heading">#</a></h2>
-<p>Users may insert native C++/CUDA code in Warp kernels using <a class="reference internal" href="../api_reference/_generated/warp.func_native.html#warp.func_native" title="warp.func_native"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.func_native</span></code></a> decorated functions.
-These accept native code as strings that get compiled after code generation, and are called within <a class="reference internal" href="../api_reference/_generated/warp.kernel_decorator.html#warp.kernel" title="warp.kernel"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.kernel</span></code></a> functions.
-For example:</p>
+<p>Native functions created with <a class="reference internal" href="../api_reference/_generated/warp.func_native.html#warp.func_native" title="warp.func_native"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.func_native</span></code></a> insert
+C++/CUDA snippets into generated Warp modules. The general feature is documented
+in <a class="reference internal" href="cpp_cuda_workflows.html#native-functions"><span class="std std-ref">Native Snippets in Warp Kernels</span></a>; this section only
+covers how native snippets interact with tape replay and backward passes.</p>
+<p>When a native function participates in a tape-recorded computation, Warp needs
+an adjoint implementation for the native operation. Provide it with the
+<code class="docutils literal notranslate"><span class="pre">adj_snippet</span></code> argument:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">snippet</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
-<span class="s2">    __shared__ int sum[128];</span>
-
-<span class="s2">    sum[tid] = arr[tid];</span>
-<span class="s2">    __syncthreads();</span>
-
-<span class="s2">    for (int stride = 64; stride &gt; 0; stride &gt;&gt;= 1) {</span>
-<span class="s2">        if (tid &lt; stride) {</span>
-<span class="s2">            sum[tid] += sum[tid + stride];</span>
-<span class="s2">        }</span>
-<span class="s2">        __syncthreads();</span>
-<span class="s2">    }</span>
-
-<span class="s2">    if (tid == 0) {</span>
-<span class="s2">        out[0] = sum[0];</span>
-<span class="s2">    }</span>
-<span class="s2">    &quot;&quot;&quot;</span>
-
-<span class="nd">@wp</span><span class="o">.</span><span class="n">func_native</span><span class="p">(</span><span class="n">snippet</span><span class="p">)</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">reduce</span><span class="p">(</span><span class="n">arr</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">tid</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span> <span class="o">...</span>
-
-
-<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">reduce_kernel</span><span class="p">(</span><span class="n">arr</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">int</span><span class="p">]):</span>
-    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
-    <span class="n">reduce</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="n">out</span><span class="p">,</span> <span class="n">tid</span><span class="p">)</span>
-
-
-<span class="n">N</span> <span class="o">=</span> <span class="mi">128</span>
-<span class="n">x</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
-<span class="n">out</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
-
-<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="n">reduce_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">N</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">x</span><span class="p">,</span> <span class="n">out</span><span class="p">])</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
-</pre></div>
-</div>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[8128]
-</pre></div>
-</div>
-<p>Notice the use of shared memory here: The Warp library does not expose shared memory as a feature, but the CUDA compiler will
-readily accept the above snippet. This means CUDA features not exposed in Warp are still accessible in Warp scripts.
-Warp kernels meant for the CPU won’t be able to leverage CUDA features of course, but this same mechanism supports pure C++ snippets as well.</p>
-<p>Please bear in mind the following: the thread index in your snippet should be computed in a <a class="reference internal" href="../api_reference/_generated/warp.kernel_decorator.html#warp.kernel" title="warp.kernel"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.kernel</span></code></a> and passed to your snippet,
-as in the above example. This means your <a class="reference internal" href="../api_reference/_generated/warp.func_native.html#warp.func_native" title="warp.func_native"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.func_native</span></code></a> function signature should include the variables used in your snippet,
-as well as a thread index of type <code class="docutils literal notranslate"><span class="pre">int</span></code>. The function body itself should be stubbed with <code class="docutils literal notranslate"><span class="pre">...</span></code> (the snippet will be inserted during compilation).</p>
-<p>Should you wish to record your native function on the tape and then subsequently rewind the tape, you must include an adjoint snippet
-alongside your snippet as an additional input to the decorator, as in the following example:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">snippet</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
-<span class="s2">out[tid] = a * x[tid] + y[tid];</span>
+<span class="s2">out[tid] = 2.0f * x[tid] + y[tid];</span>
 <span class="s2">&quot;&quot;&quot;</span>
 <span class="n">adj_snippet</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
-<span class="s2">adj_a += x[tid] * adj_out[tid];</span>
-<span class="s2">adj_x[tid] += a * adj_out[tid];</span>
+<span class="s2">adj_x[tid] += 2.0f * adj_out[tid];</span>
 <span class="s2">adj_y[tid] += adj_out[tid];</span>
 <span class="s2">&quot;&quot;&quot;</span>
 
-<span class="nd">@wp</span><span class="o">.</span><span class="n">func_native</span><span class="p">(</span><span class="n">snippet</span><span class="p">,</span> <span class="n">adj_snippet</span><span class="p">)</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">saxpy</span><span class="p">(</span>
-    <span class="n">a</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+<span class="nd">@wp</span><span class="o">.</span><span class="n">func_native</span><span class="p">(</span><span class="n">snippet</span><span class="o">=</span><span class="n">snippet</span><span class="p">,</span> <span class="n">adj_snippet</span><span class="o">=</span><span class="n">adj_snippet</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">axpy</span><span class="p">(</span>
     <span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
     <span class="n">y</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
     <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
@@ -1131,131 +1086,41 @@ alongside your snippet as an additional input to the decorator, as in the follow
     <span class="o">...</span>
 
 <span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">saxpy_kernel</span><span class="p">(</span>
-    <span class="n">a</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">axpy_kernel</span><span class="p">(</span>
     <span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
     <span class="n">y</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
-    <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span>
+    <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
 <span class="p">):</span>
     <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
-    <span class="n">saxpy</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">out</span><span class="p">,</span> <span class="n">tid</span><span class="p">)</span>
+    <span class="n">axpy</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">out</span><span class="p">,</span> <span class="n">tid</span><span class="p">)</span>
 
-<span class="n">N</span> <span class="o">=</span> <span class="mi">128</span>
-<span class="n">a</span> <span class="o">=</span> <span class="mf">2.0</span>
+<span class="n">N</span> <span class="o">=</span> <span class="mi">8</span>
 <span class="n">x</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="n">y</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-<span class="n">out</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
-<span class="n">adj_out</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="n">out</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
 
-<span class="n">tape</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Tape</span><span class="p">()</span>
+<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">Tape</span><span class="p">()</span> <span class="k">as</span> <span class="n">tape</span><span class="p">:</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="n">axpy_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">N</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">])</span>
 
-<span class="k">with</span> <span class="n">tape</span><span class="p">:</span>
-    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="n">saxpy_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">N</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">])</span>
-
-<span class="n">tape</span><span class="o">.</span><span class="n">backward</span><span class="p">(</span><span class="n">grads</span><span class="o">=</span><span class="p">{</span><span class="n">out</span><span class="p">:</span> <span class="n">adj_out</span><span class="p">})</span>
+<span class="n">tape</span><span class="o">.</span><span class="n">backward</span><span class="p">(</span><span class="n">grads</span><span class="o">=</span><span class="p">{</span><span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">out</span><span class="p">)})</span>
 
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;x.grad = </span><span class="si">{</span><span class="n">x</span><span class="o">.</span><span class="n">grad</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;y.grad = </span><span class="si">{</span><span class="n">y</span><span class="o">.</span><span class="n">grad</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>x.grad = [2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2.
- 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2.
- 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2.
- 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2.
- 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2. 2.
- 2. 2. 2. 2. 2. 2. 2. 2.]
-y.grad = [1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1.
- 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1.
- 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1.
- 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1.
- 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1. 1.
- 1. 1. 1. 1. 1. 1. 1. 1.]
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>x.grad = [2. 2. 2. 2. 2. 2. 2. 2.]
+y.grad = [1. 1. 1. 1. 1. 1. 1. 1.]
 </pre></div>
 </div>
-<p>You may also include a custom replay snippet to be executed as part of the adjoint (see <a class="reference internal" href="#id2">Custom Gradient Functions</a> for a full explanation).
-Consider the following example:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">num_threads</span> <span class="o">=</span> <span class="mi">8</span>
-<span class="n">counter</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
-<span class="n">thread_values</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">num_threads</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
-<span class="n">inputs</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">num_threads</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<span class="n">outputs</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span>
-
-<span class="n">snippet</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
-<span class="s2">    int next_index = atomicAdd(counter, 1);</span>
-<span class="s2">    thread_values[tid] = next_index;</span>
-<span class="s2">    &quot;&quot;&quot;</span>
-<span class="n">replay_snippet</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
-
-
-<span class="nd">@wp</span><span class="o">.</span><span class="n">func_native</span><span class="p">(</span><span class="n">snippet</span><span class="p">,</span> <span class="n">replay_snippet</span><span class="o">=</span><span class="n">replay_snippet</span><span class="p">)</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">reversible_increment</span><span class="p">(</span><span class="n">counter</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">thread_values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">tid</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
-    <span class="o">...</span>
-
-
-<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">run_atomic_add</span><span class="p">(</span>
-    <span class="nb">input</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
-    <span class="n">counter</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
-    <span class="n">thread_values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
-    <span class="n">output</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
-<span class="p">):</span>
-    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
-    <span class="n">reversible_increment</span><span class="p">(</span><span class="n">counter</span><span class="p">,</span> <span class="n">thread_values</span><span class="p">,</span> <span class="n">tid</span><span class="p">)</span>
-    <span class="n">idx</span> <span class="o">=</span> <span class="n">thread_values</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span>
-    <span class="n">output</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">=</span> <span class="nb">input</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">**</span> <span class="mf">2.0</span>
-
-
-<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">Tape</span><span class="p">()</span> <span class="k">as</span> <span class="n">tape</span><span class="p">:</span>
-    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">run_atomic_add</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">num_threads</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">inputs</span><span class="p">,</span> <span class="n">counter</span><span class="p">,</span> <span class="n">thread_values</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">outputs</span><span class="p">])</span>
-
-<span class="n">tape</span><span class="o">.</span><span class="n">backward</span><span class="p">(</span><span class="n">grads</span><span class="o">=</span><span class="p">{</span><span class="n">outputs</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">num_threads</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">)})</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;inputs.grad = </span><span class="si">{</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">inputs</span><span class="o">.</span><span class="n">grad</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span><span class="w"> </span><span class="mi">5</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</pre></div>
-</div>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>inputs.grad = [ 0.  2.  4.  6.  8. 10. 12. 14.]
-</pre></div>
-</div>
-<p>By default, <code class="docutils literal notranslate"><span class="pre">snippet</span></code> would be called in the backward pass, but in this case, we have defined a custom replay snippet that is called instead.
-<code class="docutils literal notranslate"><span class="pre">replay_snippet</span></code> is a no-op, which is all that we require, since <code class="docutils literal notranslate"><span class="pre">thread_values</span></code> are cached in the forward pass.
-If we did not have a <code class="docutils literal notranslate"><span class="pre">replay_snippet</span></code> defined, <code class="docutils literal notranslate"><span class="pre">thread_values</span></code> would be overwritten with counter values that exceed the input array size in the backward pass.</p>
-<p>A native snippet may also include a return statement. If this is the case, you must specify the return type in the native function definition, as in the following example:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">snippet</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
-<span class="s2">    float sq = x * x;</span>
-<span class="s2">    return sq;</span>
-<span class="s2">    &quot;&quot;&quot;</span>
-<span class="n">adj_snippet</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
-<span class="s2">    adj_x += 2.f * x * adj_ret;</span>
-<span class="s2">    &quot;&quot;&quot;</span>
-
-
-<span class="nd">@wp</span><span class="o">.</span><span class="n">func_native</span><span class="p">(</span><span class="n">snippet</span><span class="p">,</span> <span class="n">adj_snippet</span><span class="p">)</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">square</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-    <span class="o">...</span>
-
-
-<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">square_kernel</span><span class="p">(</span><span class="nb">input</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span> <span class="n">output</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">Any</span><span class="p">]):</span>
-    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
-    <span class="n">x</span> <span class="o">=</span> <span class="nb">input</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span>
-    <span class="n">output</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">square</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-
-
-<span class="n">N</span> <span class="o">=</span> <span class="mi">5</span>
-<span class="n">x</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<span class="n">y</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-
-<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">Tape</span><span class="p">()</span> <span class="k">as</span> <span class="n">tape</span><span class="p">:</span>
-    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="n">square_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">N</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">])</span>
-
-<span class="n">tape</span><span class="o">.</span><span class="n">backward</span><span class="p">(</span><span class="n">grads</span><span class="o">=</span><span class="p">{</span><span class="n">y</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)})</span>
-
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;x.grad = </span><span class="si">{</span><span class="n">x</span><span class="o">.</span><span class="n">grad</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</pre></div>
-</div>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>x.grad = [0. 2. 4. 6. 8.]
-</pre></div>
-</div>
+<p>During the backward pass, Warp runs a forward replay phase. By default, native
+functions replay the original <code class="docutils literal notranslate"><span class="pre">snippet</span></code>. If replaying the native snippet would
+repeat an unsafe side effect, provide <code class="docutils literal notranslate"><span class="pre">replay_snippet</span></code>.
+For example, a native snippet that writes cached indices using an atomic counter
+can use an empty replay snippet so the cached forward values are reused instead
+of overwritten during the backward pass.</p>
+<p>See <a class="reference internal" href="cpp_cuda_workflows.html#native-functions"><span class="std std-ref">Native Snippets in Warp Kernels</span></a> for the full
+native-function syntax, CPU/CUDA behavior, return values, replay snippets, and
+limitations.</p>
 </section>
 <section id="grad">
 <h2><code class="docutils literal notranslate"><span class="pre">grad()</span></code><a class="headerlink" href="#grad" title="Link to this heading">#</a></h2>

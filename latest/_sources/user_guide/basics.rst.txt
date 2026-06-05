@@ -316,8 +316,9 @@ determine the tile argument type:
 
 See :ref:`Generic Functions` for details on using ``typing.Any`` in user function signatures.
 
-See :doc:`differentiability` for details on how to define custom gradient functions,
-custom replay functions, and custom native functions.
+See :doc:`differentiability` for details on custom gradient and replay
+functions. See :doc:`cpp_cuda_workflows` for native C++/CUDA snippets and
+other non-Python integration workflows.
 
 User Structs
 --------------
