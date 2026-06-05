@@ -60,9 +60,9 @@ def _get_test_module_options():
 
 @wp.kernel
 def scatter_add_kernel(
-    data: wp.array(dtype=wp.float32),
-    dest_indices: wp.array(dtype=wp.int32),
-    output: wp.array(dtype=wp.float32),
+    data: wp.array[wp.float32],
+    dest_indices: wp.array[wp.int32],
+    output: wp.array[wp.float32],
 ):
     """Each thread atomically adds to output[dest_indices[tid]]."""
     tid = wp.tid()
@@ -72,9 +72,9 @@ def scatter_add_kernel(
 
 @wp.kernel
 def augassign_add_kernel(
-    data: wp.array(dtype=wp.float32),
-    dest_indices: wp.array(dtype=wp.int32),
-    output: wp.array(dtype=wp.float32),
+    data: wp.array[wp.float32],
+    dest_indices: wp.array[wp.int32],
+    output: wp.array[wp.float32],
 ):
     """Same as scatter_add_kernel but using += syntax."""
     tid = wp.tid()
@@ -84,11 +84,11 @@ def augassign_add_kernel(
 
 @wp.kernel
 def multi_array_atomic_kernel(
-    data: wp.array(dtype=wp.float32),
-    dest_indices: wp.array(dtype=wp.int32),
-    out_a: wp.array(dtype=wp.float32),
-    out_b: wp.array(dtype=wp.float32),
-    out_c: wp.array(dtype=wp.float32),
+    data: wp.array[wp.float32],
+    dest_indices: wp.array[wp.int32],
+    out_a: wp.array[wp.float32],
+    out_b: wp.array[wp.float32],
+    out_c: wp.array[wp.float32],
 ):
     """Atomic add to three different output arrays from the same kernel."""
     tid = wp.tid()
@@ -101,9 +101,9 @@ def multi_array_atomic_kernel(
 
 @wp.kernel
 def atomic_sub_kernel(
-    data: wp.array(dtype=wp.float32),
-    dest_indices: wp.array(dtype=wp.int32),
-    output: wp.array(dtype=wp.float32),
+    data: wp.array[wp.float32],
+    dest_indices: wp.array[wp.int32],
+    output: wp.array[wp.float32],
 ):
     """Atomic sub test."""
     tid = wp.tid()
@@ -113,10 +113,10 @@ def atomic_sub_kernel(
 
 @wp.kernel
 def atomic_add_2d_kernel(
-    data: wp.array(dtype=wp.float32),
-    row_indices: wp.array(dtype=wp.int32),
-    col_indices: wp.array(dtype=wp.int32),
-    output: wp.array2d(dtype=wp.float32),
+    data: wp.array[wp.float32],
+    row_indices: wp.array[wp.int32],
+    col_indices: wp.array[wp.int32],
+    output: wp.array2d[wp.float32],
 ):
     """Atomic add to a 2D array."""
     tid = wp.tid()
@@ -127,10 +127,10 @@ def atomic_add_2d_kernel(
 
 @wp.kernel
 def sliced_2d_atomic_add_kernel(
-    data: wp.array(dtype=wp.float32),
-    row_indices: wp.array(dtype=wp.int32),
-    col_indices: wp.array(dtype=wp.int32),
-    output: wp.array2d(dtype=wp.float32),
+    data: wp.array[wp.float32],
+    row_indices: wp.array[wp.int32],
+    col_indices: wp.array[wp.int32],
+    output: wp.array2d[wp.float32],
 ):
     """Atomic add through a sliced ``output[row]`` view."""
     tid = wp.tid()
@@ -141,11 +141,11 @@ def sliced_2d_atomic_add_kernel(
 
 @wp.kernel
 def sliced_3d_atomic_add_kernel(
-    data: wp.array(dtype=wp.float32),
-    row_indices: wp.array(dtype=wp.int32),
-    col_indices: wp.array(dtype=wp.int32),
-    depth_indices: wp.array(dtype=wp.int32),
-    output: wp.array(dtype=wp.float32, ndim=3),
+    data: wp.array[wp.float32],
+    row_indices: wp.array[wp.int32],
+    col_indices: wp.array[wp.int32],
+    depth_indices: wp.array[wp.int32],
+    output: wp.array3d[wp.float32],
 ):
     """Atomic add through a sliced ``output[row, col]`` view."""
     tid = wp.tid()
@@ -157,9 +157,9 @@ def sliced_3d_atomic_add_kernel(
 
 @wp.kernel
 def atomic_half_kernel(
-    data: wp.array(dtype=wp.float16),
-    dest_indices: wp.array(dtype=wp.int32),
-    output: wp.array(dtype=wp.float16),
+    data: wp.array[wp.float16],
+    dest_indices: wp.array[wp.int32],
+    output: wp.array[wp.float16],
 ):
     """Atomic add with float16."""
     tid = wp.tid()
@@ -169,9 +169,9 @@ def atomic_half_kernel(
 
 @wp.kernel
 def atomic_bfloat16_kernel(
-    data: wp.array(dtype=wp.bfloat16),
-    dest_indices: wp.array(dtype=wp.int32),
-    output: wp.array(dtype=wp.bfloat16),
+    data: wp.array[wp.bfloat16],
+    dest_indices: wp.array[wp.int32],
+    output: wp.array[wp.bfloat16],
 ):
     """Atomic add with bfloat16."""
     tid = wp.tid()
@@ -181,10 +181,10 @@ def atomic_bfloat16_kernel(
 
 @wp.kernel
 def atomic_bfloat16_minmax_kernel(
-    data: wp.array(dtype=wp.bfloat16),
-    dest_indices: wp.array(dtype=wp.int32),
-    output_min: wp.array(dtype=wp.bfloat16),
-    output_max: wp.array(dtype=wp.bfloat16),
+    data: wp.array[wp.bfloat16],
+    dest_indices: wp.array[wp.int32],
+    output_min: wp.array[wp.bfloat16],
+    output_max: wp.array[wp.bfloat16],
 ):
     """Atomic min/max with bfloat16."""
     tid = wp.tid()
@@ -195,9 +195,9 @@ def atomic_bfloat16_minmax_kernel(
 
 @wp.kernel
 def atomic_double_kernel(
-    data: wp.array(dtype=wp.float64),
-    dest_indices: wp.array(dtype=wp.int32),
-    output: wp.array(dtype=wp.float64),
+    data: wp.array[wp.float64],
+    dest_indices: wp.array[wp.int32],
+    output: wp.array[wp.float64],
 ):
     """Atomic add with float64."""
     tid = wp.tid()
@@ -207,9 +207,9 @@ def atomic_double_kernel(
 
 @wp.kernel
 def vec3_scatter_add_kernel(
-    data: wp.array(dtype=wp.vec3),
-    dest_indices: wp.array(dtype=wp.int32),
-    output: wp.array(dtype=wp.vec3),
+    data: wp.array[wp.vec3],
+    dest_indices: wp.array[wp.int32],
+    output: wp.array[wp.vec3],
 ):
     """Atomic add with ``wp.vec3`` values."""
     tid = wp.tid()
@@ -218,9 +218,9 @@ def vec3_scatter_add_kernel(
 
 @wp.kernel
 def gather_address_kernel(
-    values: wp.array(dtype=wp.float32),
-    source_indices: wp.array(dtype=wp.int32),
-    output: wp.array(dtype=wp.float32),
+    values: wp.array[wp.float32],
+    source_indices: wp.array[wp.int32],
+    output: wp.array[wp.float32],
 ):
     """Read many output lanes from the same input lanes.
 
@@ -233,9 +233,9 @@ def gather_address_kernel(
 
 @wp.kernel
 def vec3_gather_address_kernel(
-    values: wp.array(dtype=wp.vec3),
-    source_indices: wp.array(dtype=wp.int32),
-    output: wp.array(dtype=wp.vec3),
+    values: wp.array[wp.vec3],
+    source_indices: wp.array[wp.int32],
+    output: wp.array[wp.vec3],
 ):
     """Vector-valued gather covering cloth/particle-style position gradients."""
     tid = wp.tid()
@@ -244,10 +244,10 @@ def vec3_gather_address_kernel(
 
 @wp.kernel
 def gather_with_nongrad_input_kernel(
-    values: wp.array(dtype=wp.float32),
-    source_indices: wp.array(dtype=wp.int32),
-    scale: wp.array(dtype=wp.float32),
-    output: wp.array(dtype=wp.float32),
+    values: wp.array[wp.float32],
+    source_indices: wp.array[wp.int32],
+    scale: wp.array[wp.float32],
+    output: wp.array[wp.float32],
 ):
     """Read a non-differentiable input while accumulating into another gradient."""
     tid = wp.tid()
@@ -256,9 +256,9 @@ def gather_with_nongrad_input_kernel(
 
 @wp.kernel
 def vec3_atomic_minmax_kernel(
-    points: wp.array(dtype=wp.vec3),
-    out_min: wp.array(dtype=wp.vec3),
-    out_max: wp.array(dtype=wp.vec3),
+    points: wp.array[wp.vec3],
+    out_min: wp.array[wp.vec3],
+    out_max: wp.array[wp.vec3],
 ):
     """Component-wise deterministic min/max for bounding-box style reductions."""
     tid = wp.tid()
@@ -269,9 +269,9 @@ def vec3_atomic_minmax_kernel(
 
 @wp.kernel
 def mat33_scatter_add_kernel(
-    data: wp.array(dtype=wp.mat33),
-    dest_indices: wp.array(dtype=wp.int32),
-    output: wp.array(dtype=wp.mat33),
+    data: wp.array[wp.mat33],
+    dest_indices: wp.array[wp.int32],
+    output: wp.array[wp.mat33],
 ):
     """Atomic add with ``wp.mat33`` values."""
     tid = wp.tid()
@@ -289,24 +289,24 @@ def _det_closure_transform_b(x: wp.float32) -> wp.float32:
 
 
 @wp.func
-def _det_func_scatter_add_leaf(arr: wp.array(dtype=wp.float32), idx: int, value: wp.float32):
+def _det_func_scatter_add_leaf(arr: wp.array[wp.float32], idx: int, value: wp.float32):
     wp.atomic_add(arr, idx, value)
 
 
 @wp.func
-def _det_func_scatter_add_wrapper(dst: wp.array(dtype=wp.float32), idx: int, value: wp.float32):
+def _det_func_scatter_add_wrapper(dst: wp.array[wp.float32], idx: int, value: wp.float32):
     _det_func_scatter_add_leaf(dst, idx, value)
 
 
 @wp.struct
 class _DetStructCounterWriter:
-    counter: wp.array(dtype=wp.int32)
-    output: wp.array(dtype=wp.float32)
+    counter: wp.array[wp.int32]
+    output: wp.array[wp.float32]
 
 
 @wp.struct
 class _DetNameCollisionStruct:
-    b: wp.array(dtype=wp.float32)
+    b: wp.array[wp.float32]
 
 
 @wp.struct
@@ -322,26 +322,26 @@ def _det_struct_counter_write(writer: _DetStructCounterWriter, value: wp.float32
 
 
 @wp.func
-def _det_counter_write(counter: wp.array(dtype=wp.int32), output: wp.array(dtype=wp.float32), value: wp.float32):
+def _det_counter_write(counter: wp.array[wp.int32], output: wp.array[wp.float32], value: wp.float32):
     slot = wp.atomic_add(counter, 0, 1)
     output[slot] = value
 
 
 @wp.func
-def _det_set_int_scratch(scratch: wp.array(dtype=wp.int32), index: int, value: int):
+def _det_set_int_scratch(scratch: wp.array[wp.int32], index: int, value: int):
     scratch[index] = value
 
 
 @wp.func
-def _det_increment_array(output: wp.array(dtype=wp.float32), index: int):
+def _det_increment_array(output: wp.array[wp.float32], index: int):
     output[index] = output[index] + 1.0
 
 
 def _make_deterministic_closure_kernel(transform_func):
     @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
     def _deterministic_closure_kernel(
-        data: wp.array(dtype=wp.float32),
-        output: wp.array(dtype=wp.float32),
+        data: wp.array[wp.float32],
+        output: wp.array[wp.float32],
     ):
         tid = wp.tid()
         wp.atomic_add(output, tid % 8, transform_func(data[tid]))
@@ -351,8 +351,8 @@ def _make_deterministic_closure_kernel(transform_func):
 
 @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
 def struct_field_counter_kernel(
-    data: wp.array(dtype=wp.float32),
-    counts: wp.array(dtype=wp.int32),
+    data: wp.array[wp.float32],
+    counts: wp.array[wp.int32],
     writer: _DetStructCounterWriter,
 ):
     tid = wp.tid()
@@ -365,8 +365,8 @@ def struct_field_counter_kernel(
 
 @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
 def struct_field_helper_counter_kernel(
-    data: wp.array(dtype=wp.float32),
-    flags: wp.array(dtype=wp.int32),
+    data: wp.array[wp.float32],
+    flags: wp.array[wp.int32],
     writer: _DetStructCounterWriter,
 ):
     tid = wp.tid()
@@ -375,7 +375,7 @@ def struct_field_helper_counter_kernel(
 
 
 @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
-def struct_tile_stack_kernel(out: wp.array(dtype=wp.int32)):
+def struct_tile_stack_kernel(out: wp.array[wp.int32]):
     _i, j = wp.tid()
     stack = wp.tile_stack(capacity=16, dtype=_DetTileStackEntry)
     entry = _DetTileStackEntry()
@@ -389,9 +389,9 @@ def struct_tile_stack_kernel(out: wp.array(dtype=wp.int32)):
 
 @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
 def helper_counter_side_effect_kernel(
-    counter: wp.array(dtype=wp.int32),
-    output: wp.array(dtype=wp.float32),
-    scratch: wp.array(dtype=wp.float32),
+    counter: wp.array[wp.int32],
+    output: wp.array[wp.float32],
+    scratch: wp.array[wp.float32],
 ):
     """Normal stores before helper counter calls must be suppressed in phase 0."""
     tid = wp.tid()
@@ -401,9 +401,9 @@ def helper_counter_side_effect_kernel(
 
 @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
 def counter_with_helper_store_kernel(
-    counter: wp.array(dtype=wp.int32),
-    output: wp.array(dtype=wp.float32),
-    scratch: wp.array(dtype=wp.float32),
+    counter: wp.array[wp.int32],
+    output: wp.array[wp.float32],
+    scratch: wp.array[wp.float32],
 ):
     """Pure write helpers called from counter kernels must be skipped in phase 0."""
     tid = wp.tid()
@@ -414,9 +414,9 @@ def counter_with_helper_store_kernel(
 
 @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
 def helper_name_collision_kernel(
-    a_b: wp.array(dtype=wp.float32),
+    a_b: wp.array[wp.float32],
     a: _DetNameCollisionStruct,
-    data: wp.array(dtype=wp.float32),
+    data: wp.array[wp.float32],
 ):
     tid = wp.tid()
     wp.atomic_add(a_b, 0, data[tid])
@@ -425,9 +425,9 @@ def helper_name_collision_kernel(
 
 @wp.kernel
 def func_scatter_add_kernel(
-    data: wp.array(dtype=wp.float32),
-    dest_indices: wp.array(dtype=wp.int32),
-    output: wp.array(dtype=wp.float32),
+    data: wp.array[wp.float32],
+    dest_indices: wp.array[wp.int32],
+    output: wp.array[wp.float32],
 ):
     tid = wp.tid()
     _det_func_scatter_add_leaf(output, dest_indices[tid], data[tid])
@@ -435,9 +435,9 @@ def func_scatter_add_kernel(
 
 @wp.kernel
 def nested_func_scatter_add_kernel(
-    data: wp.array(dtype=wp.float32),
-    dest_indices: wp.array(dtype=wp.int32),
-    accum: wp.array(dtype=wp.float32),
+    data: wp.array[wp.float32],
+    dest_indices: wp.array[wp.int32],
+    accum: wp.array[wp.float32],
 ):
     tid = wp.tid()
     _det_func_scatter_add_wrapper(accum, dest_indices[tid], data[tid])
@@ -445,8 +445,8 @@ def nested_func_scatter_add_kernel(
 
 @wp.kernel
 def triple_scatter_add_kernel(
-    data: wp.array(dtype=wp.float32),
-    output: wp.array(dtype=wp.float32),
+    data: wp.array[wp.float32],
+    output: wp.array[wp.float32],
 ):
     """Emit three deterministic scatter records per thread to the same target."""
     tid = wp.tid()
@@ -458,9 +458,9 @@ def triple_scatter_add_kernel(
 
 @wp.kernel(module="unique", module_options={"deterministic": "run_to_run", "deterministic_max_records": 4})
 def loop_scatter_add_kernel(
-    data: wp.array(dtype=wp.float32),
-    counts: wp.array(dtype=wp.int32),
-    output: wp.array(dtype=wp.float32),
+    data: wp.array[wp.float32],
+    counts: wp.array[wp.int32],
+    output: wp.array[wp.float32],
 ):
     """Emit a data-dependent number of scatter records to the same target."""
     tid = wp.tid()
@@ -472,9 +472,9 @@ def loop_scatter_add_kernel(
 
 @wp.kernel(module="unique", module_options={"deterministic": "run_to_run", "deterministic_max_records": 1})
 def underprovisioned_loop_scatter_kernel(
-    data: wp.array(dtype=wp.float32),
-    counts: wp.array(dtype=wp.int32),
-    output: wp.array(dtype=wp.float32),
+    data: wp.array[wp.float32],
+    counts: wp.array[wp.int32],
+    output: wp.array[wp.float32],
 ):
     tid = wp.tid()
     count = counts[tid]
@@ -484,8 +484,8 @@ def underprovisioned_loop_scatter_kernel(
 
 @wp.kernel(module="unique")
 def mixed_reduce_op_same_array_kernel(
-    data: wp.array(dtype=wp.float32),
-    output: wp.array(dtype=wp.float32),
+    data: wp.array[wp.float32],
+    output: wp.array[wp.float32],
 ):
     """Apply different atomic reductions to the same destination array."""
     tid = wp.tid()
@@ -500,9 +500,9 @@ def mixed_reduce_op_same_array_kernel(
 
 @wp.kernel
 def counter_kernel(
-    data: wp.array(dtype=wp.float32),
-    counter: wp.array(dtype=wp.int32),
-    output: wp.array(dtype=wp.float32),
+    data: wp.array[wp.float32],
+    counter: wp.array[wp.int32],
+    output: wp.array[wp.float32],
 ):
     """Allocate a slot and write data to it."""
     tid = wp.tid()
@@ -512,10 +512,10 @@ def counter_kernel(
 
 @wp.kernel
 def conditional_counter_kernel(
-    data: wp.array(dtype=wp.float32),
+    data: wp.array[wp.float32],
     threshold: wp.float32,
-    counter: wp.array(dtype=wp.int32),
-    output: wp.array(dtype=wp.float32),
+    counter: wp.array[wp.int32],
+    output: wp.array[wp.float32],
 ):
     """Stream compaction: only emit elements above threshold."""
     tid = wp.tid()
@@ -527,9 +527,9 @@ def conditional_counter_kernel(
 
 @wp.kernel
 def variable_counter_kernel(
-    counts: wp.array(dtype=wp.int32),
-    counter: wp.array(dtype=wp.int32),
-    output: wp.array(dtype=wp.int32),
+    counts: wp.array[wp.int32],
+    counter: wp.array[wp.int32],
+    output: wp.array[wp.int32],
 ):
     """Reserve a variable number of slots per thread."""
     tid = wp.tid()
@@ -542,8 +542,8 @@ def variable_counter_kernel(
 
 @wp.kernel
 def static_index_counter_kernel(
-    counter: wp.array(dtype=wp.int32),
-    output: wp.array(dtype=wp.int32),
+    counter: wp.array[wp.int32],
+    output: wp.array[wp.int32],
 ):
     """Reserve slots from a fixed nonzero counter index."""
     tid = wp.tid()
@@ -553,10 +553,10 @@ def static_index_counter_kernel(
 
 @wp.kernel
 def indexed_counter_kernel(
-    values: wp.array(dtype=wp.int32),
-    bins: wp.array(dtype=wp.int32),
-    counters: wp.array(dtype=wp.int32),
-    output: wp.array2d(dtype=wp.int32),
+    values: wp.array[wp.int32],
+    bins: wp.array[wp.int32],
+    counters: wp.array[wp.int32],
+    output: wp.array2d[wp.int32],
 ):
     """Reserve slots from a data-dependent counter index."""
     tid = wp.tid()
@@ -567,10 +567,10 @@ def indexed_counter_kernel(
 
 @wp.kernel
 def sliced_counter_kernel(
-    values: wp.array(dtype=wp.int32),
-    bins: wp.array(dtype=wp.int32),
-    counters: wp.array2d(dtype=wp.int32),
-    output: wp.array2d(dtype=wp.int32),
+    values: wp.array[wp.int32],
+    bins: wp.array[wp.int32],
+    counters: wp.array2d[wp.int32],
+    output: wp.array2d[wp.int32],
 ):
     """Reserve slots through a sliced counter view such as ``counters[bin]``."""
     tid = wp.tid()
@@ -581,10 +581,10 @@ def sliced_counter_kernel(
 
 @wp.kernel(module="unique", module_options={"deterministic": "run_to_run", "deterministic_max_records": 4})
 def loop_indexed_counter_kernel(
-    counts: wp.array(dtype=wp.int32),
-    bins: wp.array(dtype=wp.int32),
-    counters: wp.array(dtype=wp.int32),
-    output: wp.array2d(dtype=wp.int32),
+    counts: wp.array[wp.int32],
+    bins: wp.array[wp.int32],
+    counters: wp.array[wp.int32],
+    output: wp.array2d[wp.int32],
 ):
     """Emit a data-dependent number of counter records to dynamic destinations."""
     tid = wp.tid()
@@ -598,9 +598,9 @@ def loop_indexed_counter_kernel(
 
 @wp.kernel
 def counter_side_effect_kernel(
-    counter: wp.array(dtype=wp.int32),
-    output: wp.array(dtype=wp.float32),
-    scratch: wp.array(dtype=wp.float32),
+    counter: wp.array[wp.int32],
+    output: wp.array[wp.float32],
+    scratch: wp.array[wp.float32],
 ):
     """Counter kernel with a normal array write that must not execute in phase 0."""
     tid = wp.tid()
@@ -611,8 +611,8 @@ def counter_side_effect_kernel(
 
 @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
 def local_scratch_counter_kernel(
-    counter: wp.array(dtype=wp.int32),
-    output: wp.array(dtype=wp.int32),
+    counter: wp.array[wp.int32],
+    output: wp.array[wp.int32],
 ):
     """Local scratch stores must execute in phase 0 when they control counters."""
     tid = wp.tid()
@@ -628,9 +628,9 @@ def local_scratch_counter_kernel(
 
 @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
 def counter_with_atomic_xor_kernel(
-    counter: wp.array(dtype=wp.int32),
-    flag: wp.array(dtype=wp.int32),
-    output: wp.array(dtype=wp.int32),
+    counter: wp.array[wp.int32],
+    flag: wp.array[wp.int32],
+    output: wp.array[wp.int32],
 ):
     """Counter kernel with an unintercepted ``atomic_xor`` side effect."""
     tid = wp.tid()
@@ -640,15 +640,15 @@ def counter_with_atomic_xor_kernel(
 
 
 @wp.func
-def _det_set_flag(flag: wp.array(dtype=wp.int32), mask: wp.int32):
+def _det_set_flag(flag: wp.array[wp.int32], mask: wp.int32):
     wp.atomic_xor(flag, 0, mask)
 
 
 @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
 def counter_with_helper_atomic_xor_kernel(
-    counter: wp.array(dtype=wp.int32),
-    flag: wp.array(dtype=wp.int32),
-    output: wp.array(dtype=wp.int32),
+    counter: wp.array[wp.int32],
+    flag: wp.array[wp.int32],
+    output: wp.array[wp.int32],
 ):
     """Counter kernel that delegates the bitwise atomic to a ``@wp.func`` helper."""
     tid = wp.tid()
@@ -659,9 +659,9 @@ def counter_with_helper_atomic_xor_kernel(
 
 @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
 def counter_with_consumed_atomic_xor_kernel(
-    flag: wp.array(dtype=wp.int32),
-    counter: wp.array(dtype=wp.int32),
-    output: wp.array(dtype=wp.int32),
+    flag: wp.array[wp.int32],
+    counter: wp.array[wp.int32],
+    output: wp.array[wp.int32],
 ):
     """Counter kernel whose control flow consumes a wrapped bitwise atomic's return."""
     tid = wp.tid()
@@ -673,9 +673,9 @@ def counter_with_consumed_atomic_xor_kernel(
 
 @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
 def counter_with_component_store_kernel(
-    counter: wp.array(dtype=wp.int32),
-    values: wp.array(dtype=wp.vec3),
-    output: wp.array(dtype=wp.int32),
+    counter: wp.array[wp.int32],
+    values: wp.array[wp.vec3],
+    output: wp.array[wp.int32],
 ):
     """Counter kernel that writes through the array-slot fast path."""
     tid = wp.tid()
@@ -685,23 +685,23 @@ def counter_with_component_store_kernel(
 
 
 @wp.func
-def _det_custom_replay_counter(counter: wp.array(dtype=wp.int32), tids: wp.array(dtype=wp.int32), tid: int):
+def _det_custom_replay_counter(counter: wp.array[wp.int32], tids: wp.array[wp.int32], tid: int):
     slot = wp.atomic_add(counter, 0, 1)
     tids[tid] = slot
     return slot
 
 
 @wp.func_replay(_det_custom_replay_counter)
-def _replay_det_custom_replay_counter(counter: wp.array(dtype=wp.int32), tids: wp.array(dtype=wp.int32), tid: int):
+def _replay_det_custom_replay_counter(counter: wp.array[wp.int32], tids: wp.array[wp.int32], tid: int):
     return tids[tid]
 
 
 @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
 def custom_replay_counter_kernel(
-    data: wp.array(dtype=wp.float32),
-    counter: wp.array(dtype=wp.int32),
-    tids: wp.array(dtype=wp.int32),
-    output: wp.array(dtype=wp.float32),
+    data: wp.array[wp.float32],
+    counter: wp.array[wp.int32],
+    tids: wp.array[wp.int32],
+    output: wp.array[wp.float32],
 ):
     tid = wp.tid()
     slot = _det_custom_replay_counter(counter, tids, tid)
@@ -715,10 +715,10 @@ def custom_replay_counter_kernel(
 
 @wp.kernel
 def mixed_pattern_kernel(
-    data: wp.array(dtype=wp.float32),
-    counter: wp.array(dtype=wp.int32),
-    output: wp.array(dtype=wp.float32),
-    accum: wp.array(dtype=wp.float32),
+    data: wp.array[wp.float32],
+    counter: wp.array[wp.int32],
+    output: wp.array[wp.float32],
+    accum: wp.array[wp.float32],
 ):
     """Counter allocation + accumulation in the same kernel."""
     tid = wp.tid()
@@ -734,9 +734,9 @@ def mixed_pattern_kernel(
 
 @wp.kernel
 def mixed_counter_int_atomic_kernel(
-    counter: wp.array(dtype=wp.int32),
-    output: wp.array(dtype=wp.int32),
-    accum: wp.array(dtype=wp.int32),
+    counter: wp.array[wp.int32],
+    output: wp.array[wp.int32],
+    accum: wp.array[wp.int32],
 ):
     """Integer side-effect atomic must not run during counter phase 0."""
     tid = wp.tid()
@@ -752,8 +752,8 @@ def mixed_counter_int_atomic_kernel(
 
 @wp.kernel
 def int_atomic_add_kernel(
-    dest_indices: wp.array(dtype=wp.int32),
-    output: wp.array(dtype=wp.int32),
+    dest_indices: wp.array[wp.int32],
+    output: wp.array[wp.int32],
 ):
     """Integer atomic add (should be deterministic without transformation)."""
     tid = wp.tid()
@@ -762,20 +762,20 @@ def int_atomic_add_kernel(
 
 
 @wp.func
-def _det_lookup_value(values: wp.array(dtype=wp.float32), index: int) -> wp.float32:
+def _det_lookup_value(values: wp.array[wp.float32], index: int) -> wp.float32:
     return values[index]
 
 
 @wp.func_grad(_det_lookup_value)
-def _adj_det_lookup_value(values: wp.array(dtype=wp.float32), index: int, adj_ret: wp.float32):
+def _adj_det_lookup_value(values: wp.array[wp.float32], index: int, adj_ret: wp.float32):
     wp.adjoint[values][index] += adj_ret
 
 
 @wp.kernel
 def custom_adjoint_lookup_kernel(
-    values: wp.array(dtype=wp.float32),
-    indices: wp.array(dtype=wp.int32),
-    output: wp.array(dtype=wp.float32),
+    values: wp.array[wp.float32],
+    indices: wp.array[wp.int32],
+    output: wp.array[wp.float32],
 ):
     """Use a custom adjoint that accumulates into ``wp.adjoint[values]``."""
     tid = wp.tid()
@@ -785,9 +785,9 @@ def custom_adjoint_lookup_kernel(
 
 @wp.kernel
 def custom_adjoint_gather_kernel(
-    values: wp.array(dtype=wp.float32),
-    indices: wp.array(dtype=wp.int32),
-    output: wp.array(dtype=wp.float32),
+    values: wp.array[wp.float32],
+    indices: wp.array[wp.int32],
+    output: wp.array[wp.float32],
 ):
     """Use a custom adjoint that scatters per-lane output gradients."""
     tid = wp.tid()
@@ -797,9 +797,9 @@ def custom_adjoint_gather_kernel(
 @wp.func
 def _det_custom_square_store(
     i: int,
-    values: wp.array(dtype=wp.float32),
-    output: wp.array(dtype=wp.float32),
-    scratch: wp.array(dtype=wp.float32),
+    values: wp.array[wp.float32],
+    output: wp.array[wp.float32],
+    scratch: wp.array[wp.float32],
 ):
     output[i] = values[i] * values[i]
 
@@ -807,9 +807,9 @@ def _det_custom_square_store(
 @wp.func_grad(_det_custom_square_store)
 def _adj_det_custom_square_store(
     i: int,
-    values: wp.array(dtype=wp.float32),
-    output: wp.array(dtype=wp.float32),
-    scratch: wp.array(dtype=wp.float32),
+    values: wp.array[wp.float32],
+    output: wp.array[wp.float32],
+    scratch: wp.array[wp.float32],
 ):
     scratch[i] = 0.0
     wp.adjoint[values][i] += 2.0 * values[i] * wp.adjoint[output][i]
@@ -817,29 +817,29 @@ def _adj_det_custom_square_store(
 
 @wp.kernel
 def custom_adjoint_store_kernel(
-    values: wp.array(dtype=wp.float32),
-    output: wp.array(dtype=wp.float32),
-    scratch: wp.array(dtype=wp.float32),
+    values: wp.array[wp.float32],
+    output: wp.array[wp.float32],
+    scratch: wp.array[wp.float32],
 ):
     tid = wp.tid()
     _det_custom_square_store(tid, values, output, scratch)
 
 
 @wp.func
-def _not_guaranteed_lookup_value(values: wp.array(dtype=wp.float32), index: int) -> wp.float32:
+def _not_guaranteed_lookup_value(values: wp.array[wp.float32], index: int) -> wp.float32:
     return values[index]
 
 
 @wp.func_grad(_not_guaranteed_lookup_value)
-def _adj_not_guaranteed_lookup_value(values: wp.array(dtype=wp.float32), index: int, adj_ret: wp.float32):
+def _adj_not_guaranteed_lookup_value(values: wp.array[wp.float32], index: int, adj_ret: wp.float32):
     wp.adjoint[values][index] += adj_ret
 
 
 @wp.kernel
 def custom_adjoint_not_guaranteed_kernel(
-    values: wp.array(dtype=wp.float32),
-    indices: wp.array(dtype=wp.int32),
-    output: wp.array(dtype=wp.float32),
+    values: wp.array[wp.float32],
+    indices: wp.array[wp.int32],
+    output: wp.array[wp.float32],
 ):
     """Use a custom adjoint while deterministic mode is disabled."""
     tid = wp.tid()
@@ -1688,8 +1688,8 @@ def test_mixed_reduce_ops_same_array(test, device):
 
         @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
         def mixed_reduce_op_same_array_local_kernel(
-            data: wp.array(dtype=wp.float32),
-            output: wp.array(dtype=wp.float32),
+            data: wp.array[wp.float32],
+            output: wp.array[wp.float32],
         ):
             tid = wp.tid()
             wp.atomic_add(output, 0, data[tid])
@@ -1782,7 +1782,7 @@ def test_config_deterministic_max_records_default(test, device):
         wp.config.deterministic_max_records = 7
 
         @wp.kernel(module="unique")
-        def _config_max_records_kernel(output: wp.array(dtype=wp.float32)):
+        def _config_max_records_kernel(output: wp.array[wp.float32]):
             tid = wp.tid()
             wp.atomic_add(output, tid % 2, 1.0)
 
@@ -2224,8 +2224,8 @@ def test_counter_int64_rejected(test, device):
 
         @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
         def counter_int64_kernel(
-            counter: wp.array(dtype=wp.int64),
-            output: wp.array(dtype=wp.float32),
+            counter: wp.array[wp.int64],
+            output: wp.array[wp.float32],
         ):
             """Unsupported non-int32 consumed-return counter."""
             tid = wp.tid()
@@ -2246,8 +2246,8 @@ def test_counter_non_add_atomic_rejected(test, device):
 
         @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
         def counter_sub_kernel(
-            counter: wp.array(dtype=wp.int32),
-            output: wp.array(dtype=wp.float32),
+            counter: wp.array[wp.int32],
+            output: wp.array[wp.float32],
         ):
             """Unsupported consumed-return counter using ``atomic_sub``."""
             tid = wp.tid()
@@ -2262,8 +2262,8 @@ def test_counter_non_add_atomic_rejected(test, device):
 
         @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
         def counter_max_kernel(
-            counter: wp.array(dtype=wp.int32),
-            output: wp.array(dtype=wp.float32),
+            counter: wp.array[wp.int32],
+            output: wp.array[wp.float32],
         ):
             """Unsupported consumed-return counter using ``atomic_max``."""
             tid = wp.tid()
@@ -2286,8 +2286,8 @@ def test_float_atomic_consumed_return_rejected(test, device):
 
         @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
         def float_leader_if_kernel(
-            total: wp.array(dtype=wp.float32),
-            log: wp.array(dtype=wp.int32),
+            total: wp.array[wp.float32],
+            log: wp.array[wp.int32],
         ):
             """Return consumed by an ``if`` test."""
             tid = wp.tid()
@@ -2302,8 +2302,8 @@ def test_float_atomic_consumed_return_rejected(test, device):
 
         @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
         def float_nested_call_in_if_kernel(
-            total: wp.array(dtype=wp.float32),
-            out: wp.array(dtype=wp.float32),
+            total: wp.array[wp.float32],
+            out: wp.array[wp.float32],
         ):
             """Return consumed by a nested call inside an ``if`` test."""
             tid = wp.tid()
@@ -2318,8 +2318,8 @@ def test_float_atomic_consumed_return_rejected(test, device):
 
         @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
         def float_nested_bare_atomic_kernel(
-            total: wp.array(dtype=wp.float32),
-            other: wp.array(dtype=wp.float32),
+            total: wp.array[wp.float32],
+            other: wp.array[wp.float32],
         ):
             """Return consumed as the value argument of a bare atomic statement."""
             wp.atomic_add(total, 0, wp.atomic_add(other, 0, 1.0))
@@ -2336,8 +2336,8 @@ def test_float_atomic_bare_statement_allowed(test, device):
 
     @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
     def bare_float_accum_kernel(
-        contribs: wp.array(dtype=wp.float32),
-        accum: wp.array(dtype=wp.float32),
+        contribs: wp.array[wp.float32],
+        accum: wp.array[wp.float32],
     ):
         tid = wp.tid()
         wp.atomic_add(accum, tid % 4, contribs[tid])
@@ -2487,8 +2487,8 @@ def test_module_option_override(test, device):
     # Create a kernel with a per-module deterministic override.
     @wp.kernel(module_options={"deterministic": "gpu_to_gpu"}, module="unique")
     def per_kernel_det(
-        data: wp.array(dtype=wp.float32),
-        output: wp.array(dtype=wp.float32),
+        data: wp.array[wp.float32],
+        output: wp.array[wp.float32],
     ):
         tid = wp.tid()
         wp.atomic_add(output, tid % 4, data[tid])

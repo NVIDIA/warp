@@ -35,9 +35,9 @@ file that defines your kernels, before the kernels are defined:
 
     @wp.kernel
     def accumulate(
-        values: wp.array(dtype=wp.float32),
-        bins: wp.array(dtype=wp.int32),
-        out: wp.array(dtype=wp.float32),
+        values: wp.array[wp.float32],
+        bins: wp.array[wp.int32],
+        out: wp.array[wp.float32],
     ):
         tid = wp.tid()
         wp.atomic_add(out, bins[tid], values[tid])
@@ -136,9 +136,9 @@ output arrays, and the atomic return value is ignored:
 
     @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
     def bin_values(
-        values: wp.array(dtype=wp.float32),
-        bins: wp.array(dtype=wp.int32),
-        out: wp.array(dtype=wp.float32),
+        values: wp.array[wp.float32],
+        bins: wp.array[wp.int32],
+        out: wp.array[wp.float32],
     ):
         tid = wp.tid()
         wp.atomic_add(out, bins[tid], values[tid])
@@ -187,9 +187,9 @@ Some kernels use an atomic return value as a slot number:
 
     @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
     def compact_positive(
-        values: wp.array(dtype=wp.float32),
-        count: wp.array(dtype=wp.int32),
-        compacted: wp.array(dtype=wp.float32),
+        values: wp.array[wp.float32],
+        count: wp.array[wp.int32],
+        compacted: wp.array[wp.float32],
     ):
         tid = wp.tid()
         v = values[tid]
@@ -238,9 +238,9 @@ The most common example is a gather in the forward pass:
 
     @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
     def gather(
-        values: wp.array(dtype=wp.float32),
-        indices: wp.array(dtype=wp.int32),
-        out: wp.array(dtype=wp.float32),
+        values: wp.array[wp.float32],
+        indices: wp.array[wp.int32],
+        out: wp.array[wp.float32],
     ):
         tid = wp.tid()
         out[tid] = values[indices[tid]]
@@ -259,7 +259,7 @@ written in Warp code using supported atomic patterns:
 .. code:: python
 
     @wp.func_grad(load_value)
-    def adj_load_value(values: wp.array(dtype=wp.float32), index: int, adj_ret: wp.float32):
+    def adj_load_value(values: wp.array[wp.float32], index: int, adj_ret: wp.float32):
         wp.adjoint[values][index] += adj_ret
 
 
@@ -288,9 +288,9 @@ each output element one thread and visit the inputs in a fixed order:
 
     @wp.kernel
     def reduce_by_bin(
-        values: wp.array(dtype=wp.float32),
-        bins: wp.array(dtype=wp.int32),
-        out: wp.array(dtype=wp.float32),
+        values: wp.array[wp.float32],
+        bins: wp.array[wp.int32],
+        out: wp.array[wp.float32],
         n: int,
     ):
         bin_id = wp.tid()
@@ -312,8 +312,8 @@ For slot allocation, write the count-scan-write pattern explicitly:
 
     @wp.kernel
     def count_positive(
-        values: wp.array(dtype=wp.float32),
-        counts: wp.array(dtype=wp.int32),
+        values: wp.array[wp.float32],
+        counts: wp.array[wp.int32],
     ):
         tid = wp.tid()
         counts[tid] = wp.int32(values[tid] > 0.0)
@@ -321,9 +321,9 @@ For slot allocation, write the count-scan-write pattern explicitly:
 
     @wp.kernel
     def write_positive(
-        values: wp.array(dtype=wp.float32),
-        offsets: wp.array(dtype=wp.int32),
-        out: wp.array(dtype=wp.float32),
+        values: wp.array[wp.float32],
+        offsets: wp.array[wp.int32],
+        out: wp.array[wp.float32],
     ):
         tid = wp.tid()
 
@@ -407,9 +407,9 @@ option directly:
         module_options={"deterministic": "run_to_run", "deterministic_max_records": 8},
     )
     def loop_accumulate(
-        values: wp.array(dtype=wp.float32),
-        loop_counts: wp.array(dtype=wp.int32),
-        out: wp.array(dtype=wp.float32),
+        values: wp.array[wp.float32],
+        loop_counts: wp.array[wp.int32],
+        out: wp.array[wp.float32],
     ):
         tid = wp.tid()
 
@@ -496,9 +496,9 @@ The benchmark kernel for Pattern A is deliberately small:
 
     @wp.kernel
     def atomic_add_kernel(
-        values: wp.array(dtype=wp.float32),
-        indices: wp.array(dtype=wp.int32),
-        out: wp.array(dtype=wp.float32),
+        values: wp.array[wp.float32],
+        indices: wp.array[wp.int32],
+        out: wp.array[wp.float32],
     ):
         tid = wp.tid()
         wp.atomic_add(out, indices[tid], values[tid])
@@ -586,9 +586,9 @@ Slot allocation has a different shape.  The kernel is:
 
     @wp.kernel
     def counter_kernel(
-        values: wp.array(dtype=wp.float32),
-        count: wp.array(dtype=wp.int32),
-        out: wp.array(dtype=wp.float32),
+        values: wp.array[wp.float32],
+        count: wp.array[wp.int32],
+        out: wp.array[wp.float32],
     ):
         tid = wp.tid()
         slot = wp.atomic_add(count, 0, 1)
@@ -643,7 +643,7 @@ Unsupported atomics
     .. code:: python
 
         @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
-        def not_rewritten(lock: wp.array(dtype=wp.int32)):
+        def not_rewritten(lock: wp.array[wp.int32]):
             # Compare-and-swap is still the ordinary Warp atomic.
             wp.atomic_cas(lock, 0, 0, 1)
 
@@ -663,7 +663,7 @@ One reduction family per target
     .. code:: python
 
         @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
-        def rejected(values: wp.array(dtype=wp.float32), out: wp.array(dtype=wp.float32)):
+        def rejected(values: wp.array[wp.float32], out: wp.array[wp.float32]):
             tid = wp.tid()
             wp.atomic_add(out, 0, values[tid])
             wp.atomic_max(out, 0, values[tid])
@@ -674,9 +674,9 @@ One reduction family per target
 
         @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
         def allowed(
-            values: wp.array(dtype=wp.float32),
-            sum_out: wp.array(dtype=wp.float32),
-            max_out: wp.array(dtype=wp.float32),
+            values: wp.array[wp.float32],
+            sum_out: wp.array[wp.float32],
+            max_out: wp.array[wp.float32],
         ):
             tid = wp.tid()
             wp.atomic_add(sum_out, 0, values[tid])
@@ -693,10 +693,10 @@ Side effects in the counting pass
 
         @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
         def avoid_scratch_dependency(
-            values: wp.array(dtype=wp.float32),
-            scratch: wp.array(dtype=wp.float32),
-            count: wp.array(dtype=wp.int32),
-            out: wp.array(dtype=wp.float32),
+            values: wp.array[wp.float32],
+            scratch: wp.array[wp.float32],
+            count: wp.array[wp.int32],
+            out: wp.array[wp.float32],
         ):
             tid = wp.tid()
             scratch[tid] = values[tid]
@@ -717,7 +717,7 @@ Fixed scatter capacity
             module="unique",
             module_options={"deterministic": "run_to_run", "deterministic_max_records": 4},
         )
-        def can_overflow(loop_counts: wp.array(dtype=wp.int32), out: wp.array(dtype=wp.float32)):
+        def can_overflow(loop_counts: wp.array[wp.int32], out: wp.array[wp.float32]):
             tid = wp.tid()
 
             for i in range(loop_counts[tid]):

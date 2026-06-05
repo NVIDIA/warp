@@ -40,9 +40,9 @@ if DETERMINISM_SUPPORTED:
 
 @wp.kernel(enable_backward=False)
 def scatter_add_kernel(
-    vals: wp.array(dtype=wp.float32),
-    indices: wp.array(dtype=wp.int32),
-    out: wp.array(dtype=wp.float32),
+    vals: wp.array[wp.float32],
+    indices: wp.array[wp.int32],
+    out: wp.array[wp.float32],
 ):
     tid = wp.tid()
     wp.atomic_add(out, indices[tid], vals[tid])
@@ -50,9 +50,9 @@ def scatter_add_kernel(
 
 @wp.kernel(**DETERMINISTIC_KERNEL_OPTIONS)
 def scatter_add_kernel_deterministic(
-    vals: wp.array(dtype=wp.float32),
-    indices: wp.array(dtype=wp.int32),
-    out: wp.array(dtype=wp.float32),
+    vals: wp.array[wp.float32],
+    indices: wp.array[wp.int32],
+    out: wp.array[wp.float32],
 ):
     tid = wp.tid()
     wp.atomic_add(out, indices[tid], vals[tid])
@@ -60,9 +60,9 @@ def scatter_add_kernel_deterministic(
 
 @wp.kernel(enable_backward=False)
 def counter_kernel(
-    vals: wp.array(dtype=wp.float32),
-    counter: wp.array(dtype=wp.int32),
-    out: wp.array(dtype=wp.float32),
+    vals: wp.array[wp.float32],
+    counter: wp.array[wp.int32],
+    out: wp.array[wp.float32],
 ):
     tid = wp.tid()
     slot = wp.atomic_add(counter, 0, 1)
@@ -71,9 +71,9 @@ def counter_kernel(
 
 @wp.kernel(**DETERMINISTIC_KERNEL_OPTIONS)
 def counter_kernel_deterministic(
-    vals: wp.array(dtype=wp.float32),
-    counter: wp.array(dtype=wp.int32),
-    out: wp.array(dtype=wp.float32),
+    vals: wp.array[wp.float32],
+    counter: wp.array[wp.int32],
+    out: wp.array[wp.float32],
 ):
     tid = wp.tid()
     slot = wp.atomic_add(counter, 0, 1)
@@ -81,13 +81,13 @@ def counter_kernel_deterministic(
 
 
 @wp.kernel(enable_backward=False)
-def zero_float_array_kernel(out: wp.array(dtype=wp.float32)):
+def zero_float_array_kernel(out: wp.array[wp.float32]):
     tid = wp.tid()
     out[tid] = 0.0
 
 
 @wp.kernel(enable_backward=False)
-def zero_int_array_kernel(out: wp.array(dtype=wp.int32)):
+def zero_int_array_kernel(out: wp.array[wp.int32]):
     tid = wp.tid()
     out[tid] = 0
 
