@@ -14,6 +14,7 @@ from warp.tests.deterministic.common import (
     _bfloat16_numpy_to_float32,
     _reference_scatter_add_float32,
     all_devices,
+    assert_equal_repeated,
     bfloat16_cuda_devices,
     cuda_devices,
 )
@@ -28,6 +29,21 @@ def _set_test_module_options(options):
 
 def _get_test_module_options():
     return wp.get_module_options(module=_THIS_MODULE)
+
+
+def _make_float_scatter_inputs(n, out_size, seed, device):
+    rng = np.random.default_rng(seed)
+    data_np = rng.random(n, dtype=np.float32)
+    indices_np = rng.integers(0, out_size, size=n, dtype=np.int32)
+    data = wp.array(data_np, dtype=wp.float32, device=device)
+    indices = wp.array(indices_np, dtype=wp.int32, device=device)
+    return data_np, indices_np, data, indices
+
+
+def _launch_scatter_once(kernel, n, data, indices, out_size, device):
+    output = wp.zeros(out_size, dtype=wp.float32, device=device)
+    wp.launch(kernel, dim=n, inputs=[data, indices], outputs=[output], device=device)
+    return output.numpy().copy()
 
 
 @wp.kernel
@@ -328,63 +344,16 @@ def test_scatter_add_reproducibility(test, device):
     """Verify that float atomic_add produces bit-exact identical results across runs."""
     n = 4096
     out_size = 64
-    rng = np.random.default_rng(42)
+    _, _, data, indices = _make_float_scatter_inputs(n, out_size, 42, device)
 
-    data_np = rng.random(n, dtype=np.float32)
-    indices_np = rng.integers(0, out_size, size=n, dtype=np.int32)
-
-    data = wp.array(data_np, dtype=wp.float32, device=device)
-    indices = wp.array(indices_np, dtype=wp.int32, device=device)
-
-    results = []
-    for _ in range(3):
-        output = wp.zeros(out_size, dtype=wp.float32, device=device)
-        wp.launch(
-            scatter_add_kernel,
-            dim=n,
-            inputs=[data, indices],
-            outputs=[output],
-            device=device,
-        )
-        results.append(output.numpy().copy())
-
-    # All runs must produce bit-exact identical results.
-    for i in range(1, len(results)):
-        np.testing.assert_array_equal(
-            results[0],
-            results[i],
-            err_msg=f"Run 0 vs run {i} differ (deterministic mode should be bit-exact)",
-        )
-
-
-def test_gpu_to_gpu_mode_reproducibility(test, device):
-    """Verify the module-level ``gpu_to_gpu`` mode produces reproducible results."""
-    n = 1024
-    out_size = 16
-    rng = np.random.default_rng(44)
-
-    data_np = rng.random(n, dtype=np.float32)
-    indices_np = rng.integers(0, out_size, size=n, dtype=np.int32)
-
-    data = wp.array(data_np, dtype=wp.float32, device=device)
-    indices = wp.array(indices_np, dtype=wp.int32, device=device)
-
-    old_det = _get_test_module_options()["deterministic"]
-    try:
-        _set_test_module_options({"deterministic": "gpu_to_gpu"})
-        results = []
-        for _ in range(3):
-            output = wp.zeros(out_size, dtype=wp.float32, device=device)
-            wp.launch(scatter_add_kernel, dim=n, inputs=[data, indices], outputs=[output], device=device)
-            results.append(output.numpy().copy())
-        for i in range(1, len(results)):
-            np.testing.assert_array_equal(results[0], results[i])
-    finally:
-        _set_test_module_options({"deterministic": old_det})
+    assert_equal_repeated(
+        lambda: _launch_scatter_once(scatter_add_kernel, n, data, indices, out_size, device),
+        err_msg="deterministic mode should be bit-exact",
+    )
 
 
 def test_gpu_to_gpu_matches_canonical_float32_reference(test, device):
-    """Verify ``gpu_to_gpu`` matches the canonical float32 CPU reduction order."""
+    """Verify ``gpu_to_gpu`` is reproducible and matches the canonical order."""
     data_np = np.array(
         [
             1.0e20,
@@ -413,9 +382,9 @@ def test_gpu_to_gpu_matches_canonical_float32_reference(test, device):
     old_det = _get_test_module_options()["deterministic"]
     try:
         _set_test_module_options({"deterministic": "gpu_to_gpu"})
-        output = wp.zeros(out_size, dtype=wp.float32, device=device)
-        wp.launch(scatter_add_kernel, dim=data_np.shape[0], inputs=[data, indices], outputs=[output], device=device)
-        result = output.numpy()
+        result = assert_equal_repeated(
+            lambda: _launch_scatter_once(scatter_add_kernel, data_np.shape[0], data, indices, out_size, device)
+        )
     finally:
         _set_test_module_options({"deterministic": old_det})
 
@@ -426,28 +395,9 @@ def test_augassign_add_reproducibility(test, device):
     """Verify += syntax (desugars to atomic_add) is also deterministic."""
     n = 2048
     out_size = 32
-    rng = np.random.default_rng(123)
+    _, _, data, indices = _make_float_scatter_inputs(n, out_size, 123, device)
 
-    data_np = rng.random(n, dtype=np.float32)
-    indices_np = rng.integers(0, out_size, size=n, dtype=np.int32)
-
-    data = wp.array(data_np, dtype=wp.float32, device=device)
-    indices = wp.array(indices_np, dtype=wp.int32, device=device)
-
-    results = []
-    for _ in range(3):
-        output = wp.zeros(out_size, dtype=wp.float32, device=device)
-        wp.launch(
-            augassign_add_kernel,
-            dim=n,
-            inputs=[data, indices],
-            outputs=[output],
-            device=device,
-        )
-        results.append(output.numpy().copy())
-
-    for i in range(1, len(results)):
-        np.testing.assert_array_equal(results[0], results[i])
+    assert_equal_repeated(lambda: _launch_scatter_once(augassign_add_kernel, n, data, indices, out_size, device))
 
 
 def test_scatter_add_correctness(test, device):
@@ -486,16 +436,9 @@ def test_multi_array_atomic(test, device):
     """Verify deterministic mode works with multiple target arrays."""
     n = 1024
     out_size = 16
-    rng = np.random.default_rng(77)
+    _, _, data, indices = _make_float_scatter_inputs(n, out_size, 77, device)
 
-    data_np = rng.random(n, dtype=np.float32)
-    indices_np = rng.integers(0, out_size, size=n, dtype=np.int32)
-
-    data = wp.array(data_np, dtype=wp.float32, device=device)
-    indices = wp.array(indices_np, dtype=wp.int32, device=device)
-
-    results_a, results_b, results_c = [], [], []
-    for _ in range(3):
+    def launch_once():
         out_a = wp.zeros(out_size, dtype=wp.float32, device=device)
         out_b = wp.zeros(out_size, dtype=wp.float32, device=device)
         out_c = wp.zeros(out_size, dtype=wp.float32, device=device)
@@ -506,42 +449,18 @@ def test_multi_array_atomic(test, device):
             outputs=[out_a, out_b, out_c],
             device=device,
         )
-        results_a.append(out_a.numpy().copy())
-        results_b.append(out_b.numpy().copy())
-        results_c.append(out_c.numpy().copy())
+        return out_a.numpy().copy(), out_b.numpy().copy(), out_c.numpy().copy()
 
-    for i in range(1, len(results_a)):
-        np.testing.assert_array_equal(results_a[0], results_a[i])
-        np.testing.assert_array_equal(results_b[0], results_b[i])
-        np.testing.assert_array_equal(results_c[0], results_c[i])
+    assert_equal_repeated(launch_once)
 
 
 def test_atomic_sub_deterministic(test, device):
     """Verify atomic_sub is deterministic."""
     n = 2048
     out_size = 32
-    rng = np.random.default_rng(55)
+    _, _, data, indices = _make_float_scatter_inputs(n, out_size, 55, device)
 
-    data_np = rng.random(n, dtype=np.float32)
-    indices_np = rng.integers(0, out_size, size=n, dtype=np.int32)
-
-    data = wp.array(data_np, dtype=wp.float32, device=device)
-    indices = wp.array(indices_np, dtype=wp.int32, device=device)
-
-    results = []
-    for _ in range(3):
-        output = wp.zeros(out_size, dtype=wp.float32, device=device)
-        wp.launch(
-            atomic_sub_kernel,
-            dim=n,
-            inputs=[data, indices],
-            outputs=[output],
-            device=device,
-        )
-        results.append(output.numpy().copy())
-
-    for i in range(1, len(results)):
-        np.testing.assert_array_equal(results[0], results[i])
+    assert_equal_repeated(lambda: _launch_scatter_once(atomic_sub_kernel, n, data, indices, out_size, device))
 
 
 def test_atomic_add_2d(test, device):
@@ -558,8 +477,7 @@ def test_atomic_add_2d(test, device):
     row_idx = wp.array(row_np, dtype=wp.int32, device=device)
     col_idx = wp.array(col_np, dtype=wp.int32, device=device)
 
-    results = []
-    for _ in range(3):
+    def launch_once():
         output = wp.zeros(shape=(rows, cols), dtype=wp.float32, device=device)
         wp.launch(
             atomic_add_2d_kernel,
@@ -568,10 +486,9 @@ def test_atomic_add_2d(test, device):
             outputs=[output],
             device=device,
         )
-        results.append(output.numpy().copy())
+        return output.numpy().copy()
 
-    for i in range(1, len(results)):
-        np.testing.assert_array_equal(results[0], results[i])
+    assert_equal_repeated(launch_once)
 
 
 def test_sliced_2d_array_atomic_add(test, device):
@@ -592,8 +509,7 @@ def test_sliced_2d_array_atomic_add(test, device):
     for i in range(n):
         expected[row_np[i], col_np[i]] = np.float32(expected[row_np[i], col_np[i]] + data_np[i])
 
-    results = []
-    for _ in range(3):
+    def launch_once():
         output = wp.zeros(shape=(rows, cols), dtype=wp.float32, device=device)
         wp.launch(
             sliced_2d_atomic_add_kernel,
@@ -602,12 +518,9 @@ def test_sliced_2d_array_atomic_add(test, device):
             outputs=[output],
             device=device,
         )
-        results.append(output.numpy().copy())
+        return output.numpy().copy()
 
-    for result in results:
-        np.testing.assert_allclose(result, expected, rtol=1e-5, atol=1e-5)
-    for i in range(1, len(results)):
-        np.testing.assert_array_equal(results[0], results[i])
+    np.testing.assert_allclose(assert_equal_repeated(launch_once), expected, rtol=1e-5, atol=1e-5)
 
 
 def test_sliced_3d_array_atomic_add(test, device):
@@ -632,8 +545,7 @@ def test_sliced_3d_array_atomic_add(test, device):
             expected[row_np[i], col_np[i], depth_np[i]] + data_np[i]
         )
 
-    results = []
-    for _ in range(3):
+    def launch_once():
         output = wp.zeros(shape=(rows, cols, depth), dtype=wp.float32, device=device)
         wp.launch(
             sliced_3d_atomic_add_kernel,
@@ -642,12 +554,9 @@ def test_sliced_3d_array_atomic_add(test, device):
             outputs=[output],
             device=device,
         )
-        results.append(output.numpy().copy())
+        return output.numpy().copy()
 
-    for result in results:
-        np.testing.assert_allclose(result, expected, rtol=1e-5, atol=1e-5)
-    for i in range(1, len(results)):
-        np.testing.assert_array_equal(results[0], results[i])
+    np.testing.assert_allclose(assert_equal_repeated(launch_once), expected, rtol=1e-5, atol=1e-5)
 
 
 def test_strided_1d_view_atomic_add(test, device):
@@ -669,21 +578,16 @@ def test_strided_1d_view_atomic_add(test, device):
     data = wp.array(data_np, dtype=wp.float32, device=device)
     dest = wp.array(dest_np, dtype=wp.int32, device=device)
 
-    results = []
-    for _ in range(3):
+    def launch_once():
         base = wp.full(shape=(base_size,), value=sentinel, dtype=wp.float32, device=device)
         view = base[::2]
         test.assertFalse(view.is_contiguous)
         wp.launch(scatter_add_kernel, dim=n, inputs=[data, dest], outputs=[view], device=device)
-        results.append(base.numpy().copy())
+        return base.numpy().copy()
 
-    for result in results:
-        even = result[0::2]
-        odd = result[1::2]
-        np.testing.assert_allclose(even, sentinel + expected_view, rtol=1e-5, atol=1e-5)
-        np.testing.assert_array_equal(odd, np.full(view_size, sentinel, dtype=np.float32))
-    for i in range(1, len(results)):
-        np.testing.assert_array_equal(results[0], results[i])
+    result = assert_equal_repeated(launch_once)
+    np.testing.assert_allclose(result[0::2], sentinel + expected_view, rtol=1e-5, atol=1e-5)
+    np.testing.assert_array_equal(result[1::2], np.full(view_size, sentinel, dtype=np.float32))
 
 
 def test_zero_stride_view_atomic_add(test, device):
@@ -703,8 +607,7 @@ def test_zero_stride_view_atomic_add(test, device):
     data = wp.array(data_np, dtype=wp.float32, device=device)
     dest = wp.array(dest_np, dtype=wp.int32, device=device)
 
-    results = []
-    for _ in range(3):
+    def launch_once():
         base = wp.full(shape=(1,), value=sentinel, dtype=wp.float32, device=device)
         view = wp.array(
             ptr=base.ptr,
@@ -716,12 +619,11 @@ def test_zero_stride_view_atomic_add(test, device):
         )
         test.assertFalse(view.is_contiguous)
         wp.launch(scatter_add_kernel, dim=n, inputs=[data, dest], outputs=[view], device=device)
-        results.append(base.numpy().copy())
+        return base.numpy().copy()
 
-    for result in results:
-        np.testing.assert_allclose(result, np.array([expected], dtype=np.float32), rtol=1e-5, atol=1e-5)
-    for i in range(1, len(results)):
-        np.testing.assert_array_equal(results[0], results[i])
+    np.testing.assert_allclose(
+        assert_equal_repeated(launch_once), np.array([expected], dtype=np.float32), rtol=1e-5, atol=1e-5
+    )
 
 
 def test_column_slice_atomic_add(test, device):
@@ -743,20 +645,17 @@ def test_column_slice_atomic_add(test, device):
     data = wp.array(data_np, dtype=wp.float32, device=device)
     dest = wp.array(dest_np, dtype=wp.int32, device=device)
 
-    results = []
-    for _ in range(3):
+    def launch_once():
         base = wp.full(shape=(rows, cols), value=sentinel, dtype=wp.float32, device=device)
         view = base[:, target_col]
         test.assertFalse(view.is_contiguous)
         wp.launch(scatter_add_kernel, dim=n, inputs=[data, dest], outputs=[view], device=device)
-        results.append(base.numpy().copy())
+        return base.numpy().copy()
 
-    for result in results:
-        np.testing.assert_allclose(result[:, target_col], sentinel + expected_col, rtol=1e-5, atol=1e-5)
-        other_cols = np.delete(result, target_col, axis=1)
-        np.testing.assert_array_equal(other_cols, np.full(other_cols.shape, sentinel, dtype=np.float32))
-    for i in range(1, len(results)):
-        np.testing.assert_array_equal(results[0], results[i])
+    result = assert_equal_repeated(launch_once)
+    np.testing.assert_allclose(result[:, target_col], sentinel + expected_col, rtol=1e-5, atol=1e-5)
+    other_cols = np.delete(result, target_col, axis=1)
+    np.testing.assert_array_equal(other_cols, np.full(other_cols.shape, sentinel, dtype=np.float32))
 
 
 def test_transposed_2d_atomic_add(test, device):
@@ -778,8 +677,7 @@ def test_transposed_2d_atomic_add(test, device):
     row_idx = wp.array(row_np, dtype=wp.int32, device=device)
     col_idx = wp.array(col_np, dtype=wp.int32, device=device)
 
-    results = []
-    for _ in range(3):
+    def launch_once():
         base = wp.zeros(shape=(base_rows, base_cols), dtype=wp.float32, device=device)
         view = base.transpose([1, 0])
         test.assertFalse(view.is_contiguous)
@@ -790,12 +688,9 @@ def test_transposed_2d_atomic_add(test, device):
             outputs=[view],
             device=device,
         )
-        results.append(base.numpy().copy())
+        return base.numpy().copy()
 
-    for result in results:
-        np.testing.assert_allclose(result, expected_view.T, rtol=1e-5, atol=1e-5)
-    for i in range(1, len(results)):
-        np.testing.assert_array_equal(results[0], results[i])
+    np.testing.assert_allclose(assert_equal_repeated(launch_once), expected_view.T, rtol=1e-5, atol=1e-5)
 
 
 def test_atomic_half_deterministic(test, device):
@@ -810,8 +705,7 @@ def test_atomic_half_deterministic(test, device):
     data = wp.array(data_np, dtype=wp.float16, device=device)
     indices = wp.array(indices_np, dtype=wp.int32, device=device)
 
-    results = []
-    for _ in range(3):
+    def launch_once():
         output = wp.zeros(out_size, dtype=wp.float16, device=device)
         wp.launch(
             atomic_half_kernel,
@@ -820,10 +714,9 @@ def test_atomic_half_deterministic(test, device):
             outputs=[output],
             device=device,
         )
-        results.append(output.numpy().copy())
+        return output.numpy().copy()
 
-    for i in range(1, len(results)):
-        np.testing.assert_array_equal(results[0], results[i])
+    assert_equal_repeated(launch_once)
 
 
 def test_atomic_bfloat16_deterministic(test, device):
@@ -851,8 +744,7 @@ def test_atomic_bfloat16_deterministic(test, device):
     data = wp.array(data_np, dtype=wp.bfloat16, device=device)
     indices = wp.array(indices_np, dtype=wp.int32, device=device)
 
-    add_bits = []
-    for _ in range(3):
+    def launch_add_once():
         output = wp.zeros(out_size, dtype=wp.bfloat16, device=device)
         wp.launch(
             atomic_bfloat16_kernel,
@@ -861,18 +753,17 @@ def test_atomic_bfloat16_deterministic(test, device):
             outputs=[output],
             device=device,
         )
-        add_bits.append(_bfloat16_numpy_bits(output.numpy()))
-        np.testing.assert_allclose(_bfloat16_numpy_to_float32(output.numpy()), expected_add, rtol=0.0, atol=0.0)
+        values = output.numpy()
+        return _bfloat16_numpy_bits(values), _bfloat16_numpy_to_float32(values)
+
+    _, add_values = assert_equal_repeated(launch_add_once)
+    np.testing.assert_allclose(add_values, expected_add, rtol=0.0, atol=0.0)
 
     test.assertTrue(
         any(target.scalar_dtype is wp.bfloat16 for target in atomic_bfloat16_kernel.adj.det_meta.scatter_targets)
     )
-    for i in range(1, len(add_bits)):
-        np.testing.assert_array_equal(add_bits[0], add_bits[i])
 
-    min_bits = []
-    max_bits = []
-    for _ in range(3):
+    def launch_minmax_once():
         output_min = wp.full(out_size, value=wp.bfloat16(16.0), dtype=wp.bfloat16, device=device)
         output_max = wp.zeros(out_size, dtype=wp.bfloat16, device=device)
         wp.launch(
@@ -882,17 +773,22 @@ def test_atomic_bfloat16_deterministic(test, device):
             outputs=[output_min, output_max],
             device=device,
         )
-        min_bits.append(_bfloat16_numpy_bits(output_min.numpy()))
-        max_bits.append(_bfloat16_numpy_bits(output_max.numpy()))
-        np.testing.assert_allclose(_bfloat16_numpy_to_float32(output_min.numpy()), expected_min, rtol=0.0, atol=0.0)
-        np.testing.assert_allclose(_bfloat16_numpy_to_float32(output_max.numpy()), expected_max, rtol=0.0, atol=0.0)
+        min_values = output_min.numpy()
+        max_values = output_max.numpy()
+        return (
+            _bfloat16_numpy_bits(min_values),
+            _bfloat16_numpy_bits(max_values),
+            _bfloat16_numpy_to_float32(min_values),
+            _bfloat16_numpy_to_float32(max_values),
+        )
+
+    _, _, min_values, max_values = assert_equal_repeated(launch_minmax_once)
+    np.testing.assert_allclose(min_values, expected_min, rtol=0.0, atol=0.0)
+    np.testing.assert_allclose(max_values, expected_max, rtol=0.0, atol=0.0)
 
     test.assertTrue(
         any(target.scalar_dtype is wp.bfloat16 for target in atomic_bfloat16_minmax_kernel.adj.det_meta.scatter_targets)
     )
-    for i in range(1, len(min_bits)):
-        np.testing.assert_array_equal(min_bits[0], min_bits[i])
-        np.testing.assert_array_equal(max_bits[0], max_bits[i])
 
 
 def test_atomic_double_deterministic(test, device):
@@ -907,8 +803,7 @@ def test_atomic_double_deterministic(test, device):
     data = wp.array(data_np, dtype=wp.float64, device=device)
     indices = wp.array(indices_np, dtype=wp.int32, device=device)
 
-    results = []
-    for _ in range(3):
+    def launch_once():
         output = wp.zeros(out_size, dtype=wp.float64, device=device)
         wp.launch(
             atomic_double_kernel,
@@ -917,10 +812,9 @@ def test_atomic_double_deterministic(test, device):
             outputs=[output],
             device=device,
         )
-        results.append(output.numpy().copy())
+        return output.numpy().copy()
 
-    for i in range(1, len(results)):
-        np.testing.assert_array_equal(results[0], results[i])
+    assert_equal_repeated(launch_once)
 
 
 def test_vec3_atomic_add_deterministic(test, device):
@@ -935,20 +829,16 @@ def test_vec3_atomic_add_deterministic(test, device):
     data = wp.array(data_np, dtype=wp.vec3, device=device)
     indices = wp.array(indices_np, dtype=wp.int32, device=device)
 
-    results = []
-    for _ in range(3):
+    def launch_once():
         output = wp.zeros(out_size, dtype=wp.vec3, device=device)
         wp.launch(vec3_scatter_add_kernel, dim=n, inputs=[data, indices], outputs=[output], device=device)
-        results.append(output.numpy().copy())
+        return output.numpy().copy()
 
     expected = np.zeros((out_size, 3), dtype=np.float32)
     for i in range(n):
         expected[indices_np[i]] += data_np[i]
 
-    for result in results:
-        np.testing.assert_allclose(result, expected, rtol=1e-5, atol=1e-5)
-    for i in range(1, len(results)):
-        np.testing.assert_array_equal(results[0], results[i])
+    np.testing.assert_allclose(assert_equal_repeated(launch_once), expected, rtol=1e-5, atol=1e-5)
 
 
 def test_vec3_atomic_minmax_deterministic(test, device):
@@ -958,27 +848,20 @@ def test_vec3_atomic_minmax_deterministic(test, device):
     points_np = rng.standard_normal((n, 3), dtype=np.float32)
     points = wp.array(points_np, dtype=wp.vec3, device=device)
 
-    mins = []
-    maxs = []
-    for _ in range(3):
+    def launch_once():
         out_min = wp.empty(1, dtype=wp.vec3, device=device)
         out_max = wp.empty(1, dtype=wp.vec3, device=device)
         out_min.fill_(wp.vec3(np.inf, np.inf, np.inf))
         out_max.fill_(wp.vec3(-np.inf, -np.inf, -np.inf))
         wp.launch(vec3_atomic_minmax_kernel, dim=n, inputs=[points], outputs=[out_min, out_max], device=device)
-        mins.append(out_min.numpy().copy())
-        maxs.append(out_max.numpy().copy())
+        return out_min.numpy().copy(), out_max.numpy().copy()
 
     expected_min = np.min(points_np, axis=0, keepdims=True)
     expected_max = np.max(points_np, axis=0, keepdims=True)
+    result_min, result_max = assert_equal_repeated(launch_once)
 
-    for result in mins:
-        np.testing.assert_allclose(result, expected_min, rtol=0.0, atol=0.0)
-    for result in maxs:
-        np.testing.assert_allclose(result, expected_max, rtol=0.0, atol=0.0)
-    for i in range(1, len(mins)):
-        np.testing.assert_array_equal(mins[0], mins[i])
-        np.testing.assert_array_equal(maxs[0], maxs[i])
+    np.testing.assert_allclose(result_min, expected_min, rtol=0.0, atol=0.0)
+    np.testing.assert_allclose(result_max, expected_max, rtol=0.0, atol=0.0)
 
 
 def test_mat33_atomic_add_deterministic(test, device):
@@ -993,20 +876,16 @@ def test_mat33_atomic_add_deterministic(test, device):
     data = wp.array(data_np, dtype=wp.mat33, device=device)
     indices = wp.array(indices_np, dtype=wp.int32, device=device)
 
-    results = []
-    for _ in range(3):
+    def launch_once():
         output = wp.zeros(out_size, dtype=wp.mat33, device=device)
         wp.launch(mat33_scatter_add_kernel, dim=n, inputs=[data, indices], outputs=[output], device=device)
-        results.append(output.numpy().copy())
+        return output.numpy().copy()
 
     expected = np.zeros((out_size, 3, 3), dtype=np.float32)
     for i in range(n):
         expected[indices_np[i]] += data_np[i]
 
-    for result in results:
-        np.testing.assert_allclose(result, expected, rtol=1e-5, atol=1e-5)
-    for i in range(1, len(results)):
-        np.testing.assert_array_equal(results[0], results[i])
+    np.testing.assert_allclose(assert_equal_repeated(launch_once), expected, rtol=1e-5, atol=1e-5)
 
 
 def test_triple_scatter_capacity_estimate(test, device):
@@ -1016,17 +895,13 @@ def test_triple_scatter_capacity_estimate(test, device):
     data_np = rng.random(n, dtype=np.float32)
     data = wp.array(data_np, dtype=wp.float32, device=device)
 
-    results = []
-    for _ in range(3):
+    def launch_once():
         output = wp.zeros(1, dtype=wp.float32, device=device)
         wp.launch(triple_scatter_add_kernel, dim=n, inputs=[data], outputs=[output], device=device)
-        results.append(output.numpy().copy())
+        return output.numpy().copy()
 
     expected = np.array([6.0 * data_np.sum()], dtype=np.float32)
-    for result in results:
-        np.testing.assert_allclose(result, expected, rtol=1e-5, atol=1e-5)
-    for i in range(1, len(results)):
-        np.testing.assert_array_equal(results[0], results[i])
+    np.testing.assert_allclose(assert_equal_repeated(launch_once), expected, rtol=1e-5, atol=1e-5)
 
 
 def test_loop_scatter_max_records_override(test, device):
@@ -1041,16 +916,12 @@ def test_loop_scatter_max_records_override(test, device):
 
     expected = np.array([np.dot(data_np, counts_np).astype(np.float32)], dtype=np.float32)
 
-    results = []
-    for _ in range(3):
+    def launch_once():
         output = wp.zeros(1, dtype=wp.float32, device=device)
         wp.launch(loop_scatter_add_kernel, dim=n, inputs=[data, counts], outputs=[output], device=device)
-        results.append(output.numpy().copy())
+        return output.numpy().copy()
 
-    for result in results:
-        np.testing.assert_allclose(result, expected, rtol=1e-5, atol=1e-5)
-    for i in range(1, len(results)):
-        np.testing.assert_array_equal(results[0], results[i])
+    np.testing.assert_allclose(assert_equal_repeated(launch_once), expected, rtol=1e-5, atol=1e-5)
 
 
 def test_scatter_overflow_reports_error(test, device):
@@ -1134,69 +1005,30 @@ def test_deterministic_closure_kernel(test, device):
     data_np = rng.random(n, dtype=np.float32)
     data = wp.array(data_np, dtype=wp.float32, device=device)
 
-    results_a = []
-    results_b = []
-    for _ in range(3):
+    def launch_once():
         out_a = wp.zeros(8, dtype=wp.float32, device=device)
         out_b = wp.zeros(8, dtype=wp.float32, device=device)
         wp.launch(kernel_a, dim=n, inputs=[data], outputs=[out_a], device=device)
         wp.launch(kernel_b, dim=n, inputs=[data], outputs=[out_b], device=device)
-        results_a.append(out_a.numpy().copy())
-        results_b.append(out_b.numpy().copy())
+        return out_a.numpy().copy(), out_b.numpy().copy()
 
-    for i in range(1, len(results_a)):
-        np.testing.assert_array_equal(results_a[0], results_a[i])
-        np.testing.assert_array_equal(results_b[0], results_b[i])
-
-    test.assertFalse(np.array_equal(results_a[0], results_b[0]))
+    result_a, result_b = assert_equal_repeated(launch_once)
+    test.assertFalse(np.array_equal(result_a, result_b))
 
 
-def test_deterministic_func_kernel(test, device):
-    """Verify deterministic atomics inside ``@wp.func`` calls remain reproducible."""
+def test_deterministic_func_kernels(test, device):
+    """Verify deterministic atomics inside direct and nested ``@wp.func`` calls."""
     n = 512
     out_size = 16
-    rng = np.random.default_rng(74)
-    data_np = rng.random(n, dtype=np.float32)
-    indices_np = rng.integers(0, out_size, size=n, dtype=np.int32)
+    data_np, indices_np, data, indices = _make_float_scatter_inputs(n, out_size, 74, device)
+    expected = _reference_scatter_add_float32(data_np, indices_np, out_size)
 
-    data = wp.array(data_np, dtype=wp.float32, device=device)
-    indices = wp.array(indices_np, dtype=wp.int32, device=device)
-    results = []
-    for _ in range(3):
-        output = wp.zeros(out_size, dtype=wp.float32, device=device)
-        wp.launch(func_scatter_add_kernel, dim=n, inputs=[data, indices], outputs=[output], device=device)
-        results.append(output.numpy().copy())
-
-    for result in results:
-        np.testing.assert_allclose(
-            result, _reference_scatter_add_float32(data_np, indices_np, out_size), rtol=1e-6, atol=1e-6
-        )
-    for i in range(1, len(results)):
-        np.testing.assert_array_equal(results[0], results[i])
-
-
-def test_nested_deterministic_func_kernel(test, device):
-    """Verify deterministic helper args propagate through nested ``@wp.func`` calls."""
-    n = 512
-    out_size = 16
-    rng = np.random.default_rng(75)
-    data_np = rng.random(n, dtype=np.float32)
-    indices_np = rng.integers(0, out_size, size=n, dtype=np.int32)
-
-    data = wp.array(data_np, dtype=wp.float32, device=device)
-    indices = wp.array(indices_np, dtype=wp.int32, device=device)
-    results = []
-    for _ in range(3):
-        accum = wp.zeros(out_size, dtype=wp.float32, device=device)
-        wp.launch(nested_func_scatter_add_kernel, dim=n, inputs=[data, indices], outputs=[accum], device=device)
-        results.append(accum.numpy().copy())
-
-    for result in results:
-        np.testing.assert_allclose(
-            result, _reference_scatter_add_float32(data_np, indices_np, out_size), rtol=1e-6, atol=1e-6
-        )
-    for i in range(1, len(results)):
-        np.testing.assert_array_equal(results[0], results[i])
+    for kernel in (func_scatter_add_kernel, nested_func_scatter_add_kernel):
+        with test.subTest(kernel=kernel.key):
+            result = assert_equal_repeated(
+                lambda kernel=kernel: _launch_scatter_once(kernel, n, data, indices, out_size, device)
+            )
+            np.testing.assert_allclose(result, expected, rtol=1e-6, atol=1e-6)
 
 
 class TestDeterministicScatter(DeterministicTestBase):
@@ -1209,7 +1041,6 @@ def _add(name, devices=cuda_devices, **kwargs):
 
 for _name in (
     "test_scatter_add_reproducibility",
-    "test_gpu_to_gpu_mode_reproducibility",
     "test_gpu_to_gpu_matches_canonical_float32_reference",
     "test_augassign_add_reproducibility",
     "test_multi_array_atomic",
@@ -1233,8 +1064,7 @@ for _name in (
     "test_mixed_reduce_ops_same_array",
     "test_helper_name_collision",
     "test_deterministic_closure_kernel",
-    "test_deterministic_func_kernel",
-    "test_nested_deterministic_func_kernel",
+    "test_deterministic_func_kernels",
 ):
     _add(_name)
 

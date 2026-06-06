@@ -7,7 +7,7 @@ import unittest
 import numpy as np
 
 import warp as wp
-from warp.tests.deterministic.common import DeterministicTestBase, all_devices, cuda_devices
+from warp.tests.deterministic.common import DeterministicTestBase, all_devices, assert_equal_repeated, cuda_devices
 from warp.tests.unittest_utils import add_function_test
 
 
@@ -332,20 +332,16 @@ def test_struct_field_counter_atomic(test, device):
     data = wp.array(data_np, dtype=wp.float32, device=device)
     counts = wp.array(counts_np, dtype=wp.int32, device=device)
 
-    results = []
-    counter_values = []
-    for _ in range(3):
+    def launch_once():
         writer = _DetStructCounterWriter()
         writer.counter = wp.zeros(1, dtype=wp.int32, device=device)
         writer.output = wp.zeros(expected.shape[0] + 4, dtype=wp.float32, device=device)
         wp.launch(struct_field_counter_kernel, dim=64, inputs=[data, counts, writer], device=device)
-        counter_values.append(int(writer.counter.numpy()[0]))
-        results.append(writer.output.numpy()[: expected.shape[0]].copy())
+        return int(writer.counter.numpy()[0]), writer.output.numpy()[: expected.shape[0]].copy()
 
-    np.testing.assert_array_equal(np.array(counter_values), np.full(3, expected.shape[0], dtype=np.int32))
-    for i in range(1, len(results)):
-        np.testing.assert_array_equal(results[0], results[i])
-    np.testing.assert_array_equal(results[0].view(np.uint32), expected.view(np.uint32))
+    counter_value, result = assert_equal_repeated(launch_once)
+    test.assertEqual(counter_value, expected.shape[0])
+    np.testing.assert_array_equal(result.view(np.uint32), expected.view(np.uint32))
 
 
 def test_struct_field_helper_counter_atomic(test, device):
@@ -358,20 +354,16 @@ def test_struct_field_helper_counter_atomic(test, device):
     data = wp.array(data_np, dtype=wp.float32, device=device)
     flags = wp.array(flags_np, dtype=wp.int32, device=device)
 
-    results = []
-    counter_values = []
-    for _ in range(3):
+    def launch_once():
         writer = _DetStructCounterWriter()
         writer.counter = wp.zeros(1, dtype=wp.int32, device=device)
         writer.output = wp.zeros(expected.shape[0] + 4, dtype=wp.float32, device=device)
         wp.launch(struct_field_helper_counter_kernel, dim=64, inputs=[data, flags, writer], device=device)
-        counter_values.append(int(writer.counter.numpy()[0]))
-        results.append(writer.output.numpy()[: expected.shape[0]].copy())
+        return int(writer.counter.numpy()[0]), writer.output.numpy()[: expected.shape[0]].copy()
 
-    np.testing.assert_array_equal(np.array(counter_values), np.full(3, expected.shape[0], dtype=np.int32))
-    for i in range(1, len(results)):
-        np.testing.assert_array_equal(results[0], results[i])
-    np.testing.assert_array_equal(results[0].view(np.uint32), expected.view(np.uint32))
+    counter_value, result = assert_equal_repeated(launch_once)
+    test.assertEqual(counter_value, expected.shape[0])
+    np.testing.assert_array_equal(result.view(np.uint32), expected.view(np.uint32))
 
 
 def test_counter_reproducibility(test, device):
@@ -381,8 +373,7 @@ def test_counter_reproducibility(test, device):
     data_np = rng.random(n, dtype=np.float32)
     data = wp.array(data_np, dtype=wp.float32, device=device)
 
-    results = []
-    for _ in range(3):
+    def launch_once():
         counter = wp.zeros(1, dtype=wp.int32, device=device)
         output = wp.zeros(n, dtype=wp.float32, device=device)
         wp.launch(
@@ -392,53 +383,27 @@ def test_counter_reproducibility(test, device):
             outputs=[output],
             device=device,
         )
-        results.append(output.numpy().copy())
+        return output.numpy().copy()
 
-    for i in range(1, len(results)):
-        np.testing.assert_array_equal(
-            results[0],
-            results[i],
-            err_msg=f"Counter run 0 vs run {i} differ",
-        )
+    assert_equal_repeated(launch_once, err_msg="counter runs differ")
 
 
 def test_counter_phase0_suppresses_array_writes(test, device):
     """Verify non-counter array stores are skipped during the counting pass."""
     n = 128
-    counter = wp.zeros(1, dtype=wp.int32, device=device)
-    output = wp.zeros(n, dtype=wp.float32, device=device)
-    scratch = wp.zeros(n, dtype=wp.float32, device=device)
+    for kernel in (
+        counter_side_effect_kernel,
+        helper_counter_side_effect_kernel,
+        counter_with_helper_store_kernel,
+    ):
+        with test.subTest(kernel=kernel.key):
+            counter = wp.zeros(1, dtype=wp.int32, device=device)
+            output = wp.zeros(n, dtype=wp.float32, device=device)
+            scratch = wp.zeros(n, dtype=wp.float32, device=device)
+            wp.launch(kernel, dim=n, inputs=[counter], outputs=[output, scratch], device=device)
 
-    wp.launch(counter_side_effect_kernel, dim=n, inputs=[counter], outputs=[output, scratch], device=device)
-
-    np.testing.assert_array_equal(scratch.numpy(), np.ones(n, dtype=np.float32))
-    test.assertEqual(int(counter.numpy()[0]), n)
-
-
-def test_counter_phase0_suppresses_array_writes_before_helper(test, device):
-    """Verify phase 0 suppresses stores before helper functions with counters."""
-    n = 128
-    counter = wp.zeros(1, dtype=wp.int32, device=device)
-    output = wp.zeros(n, dtype=wp.float32, device=device)
-    scratch = wp.zeros(n, dtype=wp.float32, device=device)
-
-    wp.launch(helper_counter_side_effect_kernel, dim=n, inputs=[counter], outputs=[output, scratch], device=device)
-
-    np.testing.assert_array_equal(scratch.numpy(), np.ones(n, dtype=np.float32))
-    test.assertEqual(int(counter.numpy()[0]), n)
-
-
-def test_counter_phase0_suppresses_helper_array_writes(test, device):
-    """Verify phase 0 suppresses pure write helpers called from counter kernels."""
-    n = 128
-    counter = wp.zeros(1, dtype=wp.int32, device=device)
-    output = wp.zeros(n, dtype=wp.float32, device=device)
-    scratch = wp.zeros(n, dtype=wp.float32, device=device)
-
-    wp.launch(counter_with_helper_store_kernel, dim=n, inputs=[counter], outputs=[output, scratch], device=device)
-
-    np.testing.assert_array_equal(scratch.numpy(), np.ones(n, dtype=np.float32))
-    test.assertEqual(int(counter.numpy()[0]), n)
+            np.testing.assert_array_equal(scratch.numpy(), np.ones(n, dtype=np.float32))
+            test.assertEqual(int(counter.numpy()[0]), n)
 
 
 def test_counter_phase0_preserves_local_scratch_writes(test, device):
@@ -453,30 +418,18 @@ def test_counter_phase0_preserves_local_scratch_writes(test, device):
     np.testing.assert_array_equal(output.numpy(), np.arange(2 * n, dtype=np.int32))
 
 
-def test_counter_phase0_skips_unintercepted_atomic_xor(test, device):
-    """Verify ``atomic_xor`` in a counter kernel fires once, not twice."""
-    counter = wp.zeros(1, dtype=wp.int32, device=device)
-    flag = wp.zeros(1, dtype=wp.int32, device=device)
-    output = wp.full(1, value=-1, dtype=wp.int32, device=device)
+def test_counter_phase0_skips_unconsumed_bitwise_atomics(test, device):
+    """Verify unconsumed bitwise atomics in counter kernels fire once, not twice."""
+    for kernel in (counter_with_atomic_xor_kernel, counter_with_helper_atomic_xor_kernel):
+        with test.subTest(kernel=kernel.key):
+            counter = wp.zeros(1, dtype=wp.int32, device=device)
+            flag = wp.zeros(1, dtype=wp.int32, device=device)
+            output = wp.full(1, value=-1, dtype=wp.int32, device=device)
+            wp.launch(kernel, dim=1, inputs=[counter, flag], outputs=[output], device=device)
 
-    wp.launch(counter_with_atomic_xor_kernel, dim=1, inputs=[counter, flag], outputs=[output], device=device)
-
-    test.assertEqual(int(flag.numpy()[0]), 1)
-    test.assertEqual(int(counter.numpy()[0]), 1)
-    test.assertEqual(int(output.numpy()[0]), 0)
-
-
-def test_counter_phase0_skips_atomic_xor_in_helper_func(test, device):
-    """Verify ``atomic_xor`` in a @wp.func called from a counter kernel fires once."""
-    counter = wp.zeros(1, dtype=wp.int32, device=device)
-    flag = wp.zeros(1, dtype=wp.int32, device=device)
-    output = wp.full(1, value=-1, dtype=wp.int32, device=device)
-
-    wp.launch(counter_with_helper_atomic_xor_kernel, dim=1, inputs=[counter, flag], outputs=[output], device=device)
-
-    test.assertEqual(int(flag.numpy()[0]), 1)
-    test.assertEqual(int(counter.numpy()[0]), 1)
-    test.assertEqual(int(output.numpy()[0]), 0)
+            test.assertEqual(int(flag.numpy()[0]), 1)
+            test.assertEqual(int(counter.numpy()[0]), 1)
+            test.assertEqual(int(output.numpy()[0]), 0)
 
 
 def test_counter_consumed_bitwise_atomic_rejected(test, device):
@@ -626,22 +579,18 @@ def test_counter_variable_total_writeback(test, device):
 def test_counter_nonzero_index(test, device):
     """Verify consumed-return counters support fixed nonzero indices."""
     n = 32
-    results = []
-    counters = []
 
-    for _ in range(3):
+    def launch_once():
         counter = wp.zeros(2, dtype=wp.int32, device=device)
         output = wp.full(n, value=-1, dtype=wp.int32, device=device)
         wp.launch(static_index_counter_kernel, dim=n, inputs=[counter], outputs=[output], device=device)
-        counters.append(counter.numpy().copy())
-        results.append(output.numpy().copy())
+        return counter.numpy().copy(), output.numpy().copy()
 
     expected_counter = np.array([0, n], dtype=np.int32)
     expected_output = np.arange(n, dtype=np.int32)
-    for counter in counters:
-        np.testing.assert_array_equal(counter, expected_counter)
-    for result in results:
-        np.testing.assert_array_equal(result, expected_output)
+    counter, result = assert_equal_repeated(launch_once)
+    np.testing.assert_array_equal(counter, expected_counter)
+    np.testing.assert_array_equal(result, expected_output)
 
 
 def test_counter_indexed_destinations(test, device):
@@ -663,19 +612,15 @@ def test_counter_indexed_destinations(test, device):
     values = wp.array(values_np, dtype=wp.int32, device=device)
     bins = wp.array(bins_np, dtype=wp.int32, device=device)
 
-    results = []
-    counters = []
-    for _ in range(3):
+    def launch_once():
         counter = wp.zeros(bin_count, dtype=wp.int32, device=device)
         output = wp.full((bin_count, n), value=-1, dtype=wp.int32, device=device)
         wp.launch(indexed_counter_kernel, dim=n, inputs=[values, bins, counter], outputs=[output], device=device)
-        counters.append(counter.numpy().copy())
-        results.append(output.numpy().copy())
+        return counter.numpy().copy(), output.numpy().copy()
 
-    for counter in counters:
-        np.testing.assert_array_equal(counter, expected_counts)
-    for result in results:
-        np.testing.assert_array_equal(result, expected_output)
+    counter, result = assert_equal_repeated(launch_once)
+    np.testing.assert_array_equal(counter, expected_counts)
+    np.testing.assert_array_equal(result, expected_output)
 
 
 def test_counter_sliced_destinations(test, device):
@@ -872,9 +817,7 @@ def test_conditional_counter(test, device):
 
     data = wp.array(data_np, dtype=wp.float32, device=device)
 
-    results = []
-    counts = []
-    for _ in range(3):
+    def launch_once():
         counter = wp.zeros(1, dtype=wp.int32, device=device)
         output = wp.zeros(n, dtype=wp.float32, device=device)
         wp.launch(
@@ -884,16 +827,10 @@ def test_conditional_counter(test, device):
             outputs=[output],
             device=device,
         )
-        counts.append(int(counter.numpy()[0]))
-        results.append(output.numpy()[:expected_count].copy())
+        return int(counter.numpy()[0]), output.numpy()[:expected_count].copy()
 
-    # Count should be correct.
-    for c in counts:
-        test.assertEqual(c, expected_count)
-
-    # Results should be identical across runs.
-    for i in range(1, len(results)):
-        np.testing.assert_array_equal(results[0], results[i])
+    count, _ = assert_equal_repeated(launch_once)
+    test.assertEqual(count, expected_count)
 
 
 def test_mixed_pattern(test, device):
@@ -903,8 +840,7 @@ def test_mixed_pattern(test, device):
     data_np = rng.random(n, dtype=np.float32)
     data = wp.array(data_np, dtype=wp.float32, device=device)
 
-    results_out, results_accum = [], []
-    for _ in range(3):
+    def launch_once():
         counter = wp.zeros(1, dtype=wp.int32, device=device)
         output = wp.zeros(n, dtype=wp.float32, device=device)
         accum = wp.zeros(8, dtype=wp.float32, device=device)
@@ -915,12 +851,9 @@ def test_mixed_pattern(test, device):
             outputs=[output, accum],
             device=device,
         )
-        results_out.append(output.numpy().copy())
-        results_accum.append(accum.numpy().copy())
+        return output.numpy().copy(), accum.numpy().copy()
 
-    for i in range(1, len(results_out)):
-        np.testing.assert_array_equal(results_out[0], results_out[i])
-        np.testing.assert_array_equal(results_accum[0], results_accum[i])
+    assert_equal_repeated(launch_once)
 
 
 def test_counter_with_integer_accumulation(test, device):
@@ -972,11 +905,8 @@ for _name in (
     "test_struct_field_helper_counter_atomic",
     "test_counter_reproducibility",
     "test_counter_phase0_suppresses_array_writes",
-    "test_counter_phase0_suppresses_array_writes_before_helper",
-    "test_counter_phase0_suppresses_helper_array_writes",
     "test_counter_phase0_preserves_local_scratch_writes",
-    "test_counter_phase0_skips_unintercepted_atomic_xor",
-    "test_counter_phase0_skips_atomic_xor_in_helper_func",
+    "test_counter_phase0_skips_unconsumed_bitwise_atomics",
     "test_counter_consumed_bitwise_atomic_rejected",
     "test_counter_phase0_suppresses_component_stores",
     "test_counter_nonzero_initial_value",

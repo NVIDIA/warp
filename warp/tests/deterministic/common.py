@@ -32,6 +32,22 @@ cuda_devices = get_selected_cuda_test_devices()
 bfloat16_cuda_devices = [device for device in cuda_devices if device.arch >= 80]
 all_devices = get_test_devices()
 cpu_device = wp.get_device("cpu")
+REPEAT_COUNT = 3
+
+
+def assert_equal_repeated(make_result, *, runs=REPEAT_COUNT, err_msg=None):
+    """Run ``make_result`` several times and require bit-exact identical outputs."""
+
+    first = make_result()
+    for i in range(1, runs):
+        result = make_result()
+        message = err_msg or f"Run 0 vs run {i} differ"
+        if isinstance(first, tuple):
+            for expected, actual in zip(first, result, strict=True):
+                np.testing.assert_array_equal(expected, actual, err_msg=message)
+        else:
+            np.testing.assert_array_equal(first, result, err_msg=message)
+    return first
 
 
 class DeterministicTestBase(unittest.TestCase):
