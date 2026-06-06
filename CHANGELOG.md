@@ -9,17 +9,10 @@
   and tile-using kernels, plus kernel parameters of any size and `@wp.struct` /
   `wp.indexedarray` arguments containing pointers
   ([GH-1431](https://github.com/NVIDIA/warp/issues/1431)).
-- Add deterministic execution mode for atomic operations via `wp.config.deterministic = True`. Floating-point atomic
-  accumulations use a scatter-sort-reduce strategy for bit-exact reproducibility across runs, and counter/allocator
-  atomics where the return value is used run with automatic two-pass prefix-sum slot assignment. Configurable at the
-  global, module, and kernel level ([GH-1443](https://github.com/NVIDIA/warp/issues/1443)).
 - Add deterministic execution mode for atomic operations via `wp.config.deterministic = "run_to_run"`. Supported atomic
-  accumulation and slot-allocation patterns can produce bit-exact repeated results. Configurable at the global, module,
-  and kernel level ([GH-1443](https://github.com/NVIDIA/warp/issues/1443)).
   accumulation and slot-allocation patterns can produce bit-exact repeated results. Configurable at the global and module
   level. Use `wp.config.deterministic_max_records` to raise the default per-thread record bound for deterministic atomics
   in modules created after the config is set ([GH-1443](https://github.com/NVIDIA/warp/issues/1443)).
-- Add `wp.tile_empty` to allocate a tile of uninitialized items ([GH-1312](https://github.com/NVIDIA/warp/issues/1312)).
 - Expose CUDA graph capture mode via `ScopedCapture` / `capture_begin()`
   ([GH-1410](https://github.com/NVIDIA/warp/issues/1410)).
 - Add pre-allocated functors for `warp.optim.linear` solvers. Passing `run=False` to `cg`, `cr`, `bicgstab`, or `gmres`
