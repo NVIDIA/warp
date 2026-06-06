@@ -20,13 +20,17 @@ using wp::Texture;
 
 uint64_t wp_texture_create_host(
     int ndim,
-    int* shape,
+    int num_mip_levels,
+    int* mip_widths,
+    int* mip_heights,
+    int* mip_depths,
     int num_channels,
     int dtype,
     int filter_mode,
+    int mip_filter_mode,
     int* address_modes,
     bool use_normalized_coords,
-    void** data_ptr_out
+    void** mip_data_ptrs_out
 )
 {
     if (ndim < 1 || ndim > 3) {
@@ -34,10 +38,30 @@ uint64_t wp_texture_create_host(
         return 0;
     }
 
-    for (int i = 0; i < ndim; i++) {
-        if (shape[i] <= 0) {
+    if (num_mip_levels < 1 || num_mip_levels > WP_TEXTURE_MAX_MIP_LEVELS) {
+        wp::set_error_string(
+            "Warp error: Number of texture mip levels must be in [1, %d], got %d", WP_TEXTURE_MAX_MIP_LEVELS,
+            num_mip_levels
+        );
+        return 0;
+    }
+
+    for (int i = 0; i < num_mip_levels; i++) {
+        if (mip_widths[i] <= 0) {
             wp::set_error_string(
-                "Warp error: Texture dimensions must be positive integers, got %d at dimension %d", shape[i], i
+                "Warp error: Texture width must be a positive integer at mip level %d, got %d", i, mip_widths[i]
+            );
+            return 0;
+        }
+        if (ndim > 1 && mip_heights[i] <= 0) {
+            wp::set_error_string(
+                "Warp error: Texture height must be a positive integer at mip level %d, got %d", i, mip_heights[i]
+            );
+            return 0;
+        }
+        if (ndim > 2 && mip_depths[i] <= 0) {
+            wp::set_error_string(
+                "Warp error: Texture depth must be a positive integer at mip level %d, got %d", i, mip_depths[i]
             );
             return 0;
         }
@@ -48,24 +72,19 @@ uint64_t wp_texture_create_host(
         return 0;
     }
 
-    Texture* tex = nullptr;
-    if (ndim == 1) {
-        tex = new (wp_alloc_host(sizeof(Texture), "(native:texture)"))
-            Texture(shape[0], num_channels, dtype, filter_mode, address_modes[0], use_normalized_coords);
-    } else if (ndim == 2) {
-        tex = new (wp_alloc_host(sizeof(Texture), "(native:texture)")) Texture(
-            shape[0], shape[1], num_channels, dtype, filter_mode, address_modes[0], address_modes[1],
-            use_normalized_coords
-        );
-    } else {
-        tex = new (wp_alloc_host(sizeof(Texture), "(native:texture)")) Texture(
-            shape[0], shape[1], shape[2], num_channels, dtype, filter_mode, address_modes[0], address_modes[1],
-            address_modes[2], use_normalized_coords
-        );
-    }
+    int32_t addr_u = address_modes[0];
+    int32_t addr_v = ndim > 1 ? address_modes[1] : 0;
+    int32_t addr_w = ndim > 2 ? address_modes[2] : 0;
 
-    if (data_ptr_out) {
-        *data_ptr_out = tex->data;
+    Texture* tex = new (wp_alloc_host(sizeof(Texture), "(native:texture)")) Texture(
+        ndim, num_mip_levels, mip_widths, mip_heights, mip_depths, num_channels, dtype, filter_mode, mip_filter_mode,
+        addr_u, addr_v, addr_w, use_normalized_coords
+    );
+
+    if (mip_data_ptrs_out) {
+        for (int i = 0; i < num_mip_levels; i++) {
+            mip_data_ptrs_out[i] = tex->mip_data[i];
+        }
     }
 
     return reinterpret_cast<uint64_t>(tex);
@@ -127,7 +146,9 @@ static CUaddress_mode get_cuda_address_mode(int address_mode)
     }
 }
 
-uint64_t wp_texture_create_device(void* context, int ndim, int* shape, int num_channels, int dtype, bool surface_access)
+uint64_t wp_texture_create_device(
+    void* context, int ndim, int* shape, int num_channels, int dtype, bool surface_access, int num_mip_levels
+)
 {
     if (ndim < 1 || ndim > 3) {
         wp::set_error_string("Warp error: Number of texture dimensions must be 1, 2, or 3, got %d", ndim);
@@ -148,16 +169,22 @@ uint64_t wp_texture_create_device(void* context, int ndim, int* shape, int num_c
         return 0;
     }
 
+    if (num_mip_levels < 1 || num_mip_levels > WP_TEXTURE_MAX_MIP_LEVELS) {
+        wp::set_error_string(
+            "Warp error: Number of texture mip levels must be in [1, %d], got %d", WP_TEXTURE_MAX_MIP_LEVELS,
+            num_mip_levels
+        );
+        return 0;
+    }
+
     ContextGuard guard(context);
 
     size_t width = shape[0];
     size_t height = ndim > 1 ? shape[1] : 0;
     size_t depth = ndim > 2 ? shape[2] : 0;
 
-    // determine the CUDA array format
     CUarray_format format = get_cuda_format(dtype);
 
-    // create array descriptor
     CUDA_ARRAY3D_DESCRIPTOR arr_desc = {};
     arr_desc.Width = width;
     arr_desc.Height = height;
@@ -166,19 +193,50 @@ uint64_t wp_texture_create_device(void* context, int ndim, int* shape, int num_c
     arr_desc.NumChannels = num_channels;
     arr_desc.Flags = surface_access ? CUDA_ARRAY3D_SURFACE_LDST : 0;
 
-    // create the CUDA array
-    CUarray cuda_array = NULL;
-    check_cu(cuArray3DCreate_f(&cuda_array, &arr_desc));
+    if (num_mip_levels > 1) {
+        CUmipmappedArray mipmap_array = NULL;
+        if (!check_cu(cuMipmappedArrayCreate_f(&mipmap_array, &arr_desc, (unsigned int)num_mip_levels))) {
+            return 0;
+        }
+        return reinterpret_cast<uint64_t>(mipmap_array);
+    }
 
+    CUarray cuda_array = NULL;
+    if (!check_cu(cuArray3DCreate_f(&cuda_array, &arr_desc))) {
+        return 0;
+    }
     return reinterpret_cast<uint64_t>(cuda_array);
 }
 
-void wp_texture_destroy_device(void* context, uint64_t array_handle)
+void wp_texture_destroy_device(void* context, uint64_t array_handle, bool is_mipmapped)
 {
     ContextGuard guard(context);
-    if (array_handle != 0) {
+    if (array_handle == 0) {
+        return;
+    }
+    if (is_mipmapped) {
+        check_cu(cuMipmappedArrayDestroy_f((CUmipmappedArray)array_handle));
+    } else {
         check_cu(cuArrayDestroy_f((CUarray)array_handle));
     }
+}
+
+uint64_t wp_texture_get_mip_level_array_device(void* context, uint64_t mipmap_array_handle, int level)
+{
+    if (!mipmap_array_handle) {
+        wp::set_error_string("Warp error: Null mipmapped array handle");
+        return 0;
+    }
+
+    ContextGuard guard(context);
+
+    CUarray level_array = NULL;
+    if (!check_cu(
+            cuMipmappedArrayGetLevel_f(&level_array, (CUmipmappedArray)mipmap_array_handle, (unsigned int)level)
+        )) {
+        return 0;
+    }
+    return reinterpret_cast<uint64_t>(level_array);
 }
 
 bool wp_texture_copy_device(
@@ -303,7 +361,14 @@ bool wp_texture_descriptor_from_cuda_array(void* context, uint64_t array_handle,
 }
 
 uint64_t wp_texture_object_create_device(
-    void* context, uint64_t array_handle, int ndim, int filter_mode, int* address_modes, bool use_normalized_coords
+    void* context,
+    uint64_t array_handle,
+    int ndim,
+    int filter_mode,
+    int mip_filter_mode,
+    int* address_modes,
+    bool use_normalized_coords,
+    int num_mip_levels
 )
 {
     if (!array_handle) {
@@ -316,18 +381,27 @@ uint64_t wp_texture_object_create_device(
         return 0;
     }
 
+    if (num_mip_levels < 1 || num_mip_levels > WP_TEXTURE_MAX_MIP_LEVELS) {
+        wp::set_error_string(
+            "Number of texture mip levels must be in [1, %d], got %d", WP_TEXTURE_MAX_MIP_LEVELS, num_mip_levels
+        );
+        return 0;
+    }
+
     ContextGuard guard(context);
 
-    // Create resource descriptor
     CUDA_RESOURCE_DESC res_desc = {};
-    res_desc.resType = CU_RESOURCE_TYPE_ARRAY;
-    res_desc.res.array.hArray = reinterpret_cast<CUarray>(array_handle);
+    if (num_mip_levels > 1) {
+        res_desc.resType = CU_RESOURCE_TYPE_MIPMAPPED_ARRAY;
+        res_desc.res.mipmap.hMipmappedArray = reinterpret_cast<CUmipmappedArray>(array_handle);
+    } else {
+        res_desc.resType = CU_RESOURCE_TYPE_ARRAY;
+        res_desc.res.array.hArray = reinterpret_cast<CUarray>(array_handle);
+    }
     res_desc.flags = 0;
 
-    // Create texture descriptor
     CUDA_TEXTURE_DESC tex_desc = {};
 
-    // Per-axis address modes
     for (int i = 0; i < 3; i++) {
         if (i < ndim)
             tex_desc.addressMode[i] = get_cuda_address_mode(address_modes[i]);
@@ -335,7 +409,6 @@ uint64_t wp_texture_object_create_device(
             tex_desc.addressMode[i] = CU_TR_ADDRESS_MODE_CLAMP;
     }
 
-    // Filter mode: 0=nearest, 1=linear
     tex_desc.filterMode = (filter_mode == 0) ? CU_TR_FILTER_MODE_POINT : CU_TR_FILTER_MODE_LINEAR;
 
     // Coordinate mode: normalized [0,1] or texel space [0,width/height]
@@ -344,12 +417,11 @@ uint64_t wp_texture_object_create_device(
     tex_desc.flags = use_normalized_coords ? CU_TRSF_NORMALIZED_COORDINATES : 0;
 
     tex_desc.maxAnisotropy = 0;
-    tex_desc.mipmapFilterMode = CU_TR_FILTER_MODE_POINT;
+    tex_desc.mipmapFilterMode = (mip_filter_mode == 0) ? CU_TR_FILTER_MODE_POINT : CU_TR_FILTER_MODE_LINEAR;
     tex_desc.mipmapLevelBias = 0;
     tex_desc.minMipmapLevelClamp = 0;
-    tex_desc.maxMipmapLevelClamp = 0;
+    tex_desc.maxMipmapLevelClamp = (num_mip_levels > 1) ? (float)(num_mip_levels - 1) : 0.0f;
 
-    // Create texture object
     CUtexObject tex_object = 0;
     check_cu(cuTexObjectCreate_f(&tex_object, &res_desc, &tex_desc, nullptr));
 
@@ -392,13 +464,21 @@ void wp_surface_object_destroy_device(void* context, uint64_t surface_handle)
 
 // Stub implementations for non-CUDA builds
 
-uint64_t wp_texture_create_device(void* context, int ndim, int* shape, int num_channels, int dtype, bool surface_access)
+uint64_t wp_texture_create_device(
+    void* context, int ndim, int* shape, int num_channels, int dtype, bool surface_access, int num_mip_levels
+)
 {
     wp::set_error_string("Warp error: CUDA not enabled");
     return 0;
 }
 
-void wp_texture_destroy_device(void* context, uint64_t array_handle) { }
+void wp_texture_destroy_device(void* context, uint64_t array_handle, bool is_mipmapped) { }
+
+uint64_t wp_texture_get_mip_level_array_device(void* context, uint64_t mipmap_array_handle, int level)
+{
+    wp::set_error_string("Warp error: CUDA not enabled");
+    return 0;
+}
 
 bool wp_texture_copy_device(
     void* context,
@@ -427,7 +507,14 @@ bool wp_texture_descriptor_from_cuda_array(void* context, uint64_t array_handle,
 }
 
 uint64_t wp_texture_object_create_device(
-    void* context, uint64_t array_handle, int ndim, int filter_mode, int* address_modes, bool use_normalized_coords
+    void* context,
+    uint64_t array_handle,
+    int ndim,
+    int filter_mode,
+    int mip_filter_mode,
+    int* address_modes,
+    bool use_normalized_coords,
+    int num_mip_levels
 )
 {
     wp::set_error_string("Warp error: CUDA not enabled");

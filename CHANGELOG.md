@@ -61,6 +61,7 @@
   - Per-cell environment metadata for unstructured FEM meshes with grouped-BVH lookup and nonconforming field
     evaluation
   - Environment-first space partitions for batched solves, plus a multi-environment APIC fluid example
+- Add mipmap (texture level-of-detail) support to `wp.Texture1D`, `wp.Texture2D` and `wp.Texture3D` via the new `num_mip_levels` and `mip_filter_mode` constructor parameters, with `wp.texture_sample` accepting an optional trailing `lod` argument for controlling the sampled detail level ([GH-1409](https://github.com/NVIDIA/warp/issues/1409))
 
 ### Removed
 

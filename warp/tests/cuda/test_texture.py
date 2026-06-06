@@ -2601,6 +2601,169 @@ def test_texture3d_array(test, device):
 
 
 # ============================================================================
+# Mipmap Tests
+# ============================================================================
+
+
+@wp.kernel
+def sample_texture2d_mipmap(
+    tex: wp.Texture2D,
+    output: wp.array2d(dtype=wp.vec4f),
+    width: int,
+    height: int,
+    lod: float,
+):
+    i, j = wp.tid()
+    u = (wp.float(j) + 0.5) / wp.float(width)
+    v = (wp.float(i) + 0.5) / wp.float(height)
+    output[i, j] = wp.texture_sample(tex, wp.vec2f(u, v), dtype=wp.vec4f, lod=lod)
+
+
+@wp.kernel
+def sample_texture1d_mipmap(
+    tex: wp.Texture1D,
+    output: wp.array(dtype=float),
+    width: int,
+    lod: float,
+):
+    tid = wp.tid()
+    u = (wp.float(tid) + 0.5) / wp.float(width)
+    output[tid] = wp.texture_sample(tex, u, dtype=float, lod=lod)
+
+
+@wp.kernel
+def sample_texture3d_mipmap(
+    tex: wp.Texture3D,
+    output: wp.array3d(dtype=float),
+    width: int,
+    height: int,
+    depth: int,
+    lod: float,
+):
+    i, j, k = wp.tid()
+    u = (wp.float(k) + 0.5) / wp.float(width)
+    v = (wp.float(j) + 0.5) / wp.float(height)
+    w = (wp.float(i) + 0.5) / wp.float(depth)
+    output[i, j, k] = wp.texture_sample(tex, wp.vec3f(u, v, w), dtype=float, lod=lod)
+
+
+def test_texture2d_mipmap_full_chain(test, device):
+    """A texture created with num_mip_levels=0 should expose the full chain down to 1x1."""
+    width = height = 16
+    data = np.zeros((height, width, 4), dtype=np.float32)
+    y = np.linspace(0.0, 1.0, height, dtype=np.float32)
+    x = np.linspace(0.0, 1.0, width, dtype=np.float32)
+    yy, xx = np.meshgrid(y, x, indexing="ij")
+    data[..., 0] = xx
+    data[..., 1] = yy
+    data[..., 2] = 1.0 - xx
+    data[..., 3] = 1.0
+
+    tex = wp.Texture2D(data=data, num_mip_levels=0, device=device)
+
+    test.assertTrue(tex.is_mipmapped)
+    # log2(16) + 1 == 5 levels.
+    test.assertEqual(tex.num_mip_levels, 5)
+
+    for lod in (0.0, 1.0, 2.0):
+        output = wp.zeros((height, width), dtype=wp.vec4f, device=device)
+        wp.launch(
+            sample_texture2d_mipmap,
+            dim=(height, width),
+            inputs=[tex, output, width, height, lod],
+            device=device,
+        )
+        arr = output.numpy()
+        # Mean color of each mip level should stay close to the original mean (0.5, 0.5, 0.5, 1).
+        mean = arr.mean(axis=(0, 1))
+        np.testing.assert_allclose(mean, np.array([0.5, 0.5, 0.5, 1.0], dtype=np.float32), atol=5e-2)
+
+
+def test_texture2d_mipmap_lod_selects_constant_level(test, device):
+    """Sampling at an integer LOD should return the constant color of that level."""
+    width = height = 8
+
+    base = np.full((height, width, 4), fill_value=0.1, dtype=np.float32)
+    base[..., 3] = 1.0
+
+    num_levels = 4
+    tex = wp.Texture2D(
+        data=base,
+        num_mip_levels=num_levels,
+        mip_filter_mode=wp.TextureFilterMode.CLOSEST,
+        device=device,
+    )
+
+    test.assertEqual(tex.num_mip_levels, num_levels)
+
+    for lod in range(num_levels):
+        output = wp.zeros((height, width), dtype=wp.vec4f, device=device)
+        wp.launch(
+            sample_texture2d_mipmap,
+            dim=(height, width),
+            inputs=[tex, output, width, height, float(lod)],
+            device=device,
+        )
+        arr = output.numpy()
+        np.testing.assert_allclose(arr.mean(axis=(0, 1)), np.array([0.1, 0.1, 0.1, 1.0]), atol=5e-3)
+
+
+def test_texture1d_mipmap(test, device):
+    width = 16
+    data = np.linspace(0.0, 1.0, width, dtype=np.float32)
+    tex = wp.Texture1D(data=data, num_mip_levels=0, device=device)
+
+    test.assertTrue(tex.is_mipmapped)
+    test.assertEqual(tex.num_mip_levels, 5)
+
+    output = wp.zeros(width, dtype=float, device=device)
+    wp.launch(sample_texture1d_mipmap, dim=width, inputs=[tex, output, width, 0.0], device=device)
+    np.testing.assert_allclose(output.numpy(), data, atol=1e-5)
+
+
+def test_texture3d_mipmap(test, device):
+    size = 8
+    data = np.full((size, size, size), fill_value=0.25, dtype=np.float32)
+
+    tex = wp.Texture3D(
+        data=data,
+        num_mip_levels=3,
+        mip_filter_mode=wp.TextureFilterMode.LINEAR,
+        device=device,
+    )
+
+    test.assertTrue(tex.is_mipmapped)
+    test.assertEqual(tex.num_mip_levels, 3)
+
+    output = wp.zeros((size, size, size), dtype=float, device=device)
+    wp.launch(
+        sample_texture3d_mipmap,
+        dim=(size, size, size),
+        inputs=[tex, output, size, size, size, 1.5],
+        device=device,
+    )
+    np.testing.assert_allclose(output.numpy(), np.full_like(data, 0.25), atol=1e-3)
+
+
+def test_texture2d_mipmap_rejects_copy(test, device):
+    data = np.zeros((8, 8), dtype=np.float32)
+    tex = wp.Texture2D(data=data, num_mip_levels=2, device=device)
+    with test.assertRaises(RuntimeError):
+        tex.copy_from(data)
+    with test.assertRaises(RuntimeError):
+        tex.copy_to(np.zeros_like(data))
+
+
+def test_texture_mipmap_invalid_levels(test, device):
+    data = np.zeros((8, 8), dtype=np.float32)
+    # 5 levels for an 8x8 texture is the maximum, 6 should fail.
+    with test.assertRaises(ValueError):
+        wp.Texture2D(data=data, num_mip_levels=6, device=device)
+    with test.assertRaises(ValueError):
+        wp.Texture2D(data=data, num_mip_levels=-1, device=device)
+
+
+# ============================================================================
 # Test Class
 # ============================================================================
 
@@ -2851,6 +3014,44 @@ add_function_test(TestTexture, "test_texture2d_struct_member", test_texture2d_st
 add_function_test(TestTexture, "test_texture3d_struct_member", test_texture3d_struct_member, devices=all_devices)
 add_function_test(
     TestTexture, "test_texture_struct_both_members", test_texture_struct_both_members, devices=all_devices
+)
+
+# Mipmap tests - run on all devices
+add_function_test(
+    TestTexture,
+    "test_texture2d_mipmap_full_chain",
+    test_texture2d_mipmap_full_chain,
+    devices=all_devices,
+)
+add_function_test(
+    TestTexture,
+    "test_texture2d_mipmap_lod_selects_constant_level",
+    test_texture2d_mipmap_lod_selects_constant_level,
+    devices=all_devices,
+)
+add_function_test(
+    TestTexture,
+    "test_texture1d_mipmap",
+    test_texture1d_mipmap,
+    devices=all_devices,
+)
+add_function_test(
+    TestTexture,
+    "test_texture3d_mipmap",
+    test_texture3d_mipmap,
+    devices=all_devices,
+)
+add_function_test(
+    TestTexture,
+    "test_texture2d_mipmap_rejects_copy",
+    test_texture2d_mipmap_rejects_copy,
+    devices=all_devices,
+)
+add_function_test(
+    TestTexture,
+    "test_texture_mipmap_invalid_levels",
+    test_texture_mipmap_invalid_levels,
+    devices=all_devices,
 )
 
 

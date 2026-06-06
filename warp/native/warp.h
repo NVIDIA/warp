@@ -196,19 +196,25 @@ WP_API const char* wp_volume_get_blind_data_info(
 );
 
 // Textures
-WP_API uint64_t
-wp_texture_create_device(void* context, int ndim, int* shape, int num_channels, int dtype, bool surface_access);
-WP_API void wp_texture_destroy_device(void* context, uint64_t array_handle);
+WP_API uint64_t wp_texture_create_device(
+    void* context, int ndim, int* shape, int num_channels, int dtype, bool surface_access, int num_mip_levels
+);
+WP_API void wp_texture_destroy_device(void* context, uint64_t array_handle, bool is_mipmapped);
+WP_API uint64_t wp_texture_get_mip_level_array_device(void* context, uint64_t mipmap_array_handle, int level);
 
 WP_API uint64_t wp_texture_create_host(
     int ndim,
-    int* shape,
+    int num_mip_levels,
+    int* mip_widths,
+    int* mip_heights,
+    int* mip_depths,
     int num_channels,
     int dtype,
     int filter_mode,
+    int mip_filter_mode,
     int* address_modes,
     bool use_normalized_coords,
-    void** data_ptr_out
+    void** mip_data_ptrs_out
 );
 WP_API void wp_texture_destroy_host(uint64_t tex_handle);
 
@@ -216,7 +222,14 @@ WP_API bool
 wp_texture_descriptor_from_cuda_array(void* context, uint64_t array_handle, wp::cuda_array_desc_t* desc_out);
 
 WP_API uint64_t wp_texture_object_create_device(
-    void* context, uint64_t array_handle, int ndim, int filter_mode, int* address_modes, bool use_normalized_coords
+    void* context,
+    uint64_t array_handle,
+    int ndim,
+    int filter_mode,
+    int mip_filter_mode,
+    int* address_modes,
+    bool use_normalized_coords,
+    int num_mip_levels
 );
 WP_API void wp_texture_object_destroy_device(void* context, uint64_t tex_handle);
 

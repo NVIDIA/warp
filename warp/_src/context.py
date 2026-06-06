@@ -5577,21 +5577,33 @@ class Runtime:
                 ctypes.c_int,  # num_channels
                 ctypes.c_int,  # dtype
                 ctypes.c_bool,  # surface_access
+                ctypes.c_int,  # num_mip_levels
             ]
             self.core.wp_texture_create_device.restype = ctypes.c_uint64
 
-            self.core.wp_texture_destroy_device.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
+            self.core.wp_texture_destroy_device.argtypes = [ctypes.c_void_p, ctypes.c_uint64, ctypes.c_bool]
             self.core.wp_texture_destroy_device.restype = None
+
+            self.core.wp_texture_get_mip_level_array_device.argtypes = [
+                ctypes.c_void_p,  # context
+                ctypes.c_uint64,  # mipmap_array_handle
+                ctypes.c_int,  # level
+            ]
+            self.core.wp_texture_get_mip_level_array_device.restype = ctypes.c_uint64
 
             self.core.wp_texture_create_host.argtypes = [
                 ctypes.c_int,  # ndim
-                ctypes.POINTER(ctypes.c_int),  # shape [ndim]
+                ctypes.c_int,  # num_mip_levels
+                ctypes.POINTER(ctypes.c_int),  # mip_widths
+                ctypes.POINTER(ctypes.c_int),  # mip_heights
+                ctypes.POINTER(ctypes.c_int),  # mip_depths
                 ctypes.c_int,  # num_channels
                 ctypes.c_int,  # dtype
-                ctypes.c_int,  # filter mode
+                ctypes.c_int,  # filter_mode
+                ctypes.c_int,  # mip_filter_mode
                 ctypes.POINTER(ctypes.c_int),  # address_modes [ndim]
                 ctypes.c_bool,  # use_normalized_coords
-                ctypes.c_void_p,  # data_ptr_out
+                ctypes.POINTER(ctypes.c_void_p),  # mip_data_ptrs_out (void**)
             ]
             self.core.wp_texture_create_host.restype = ctypes.c_uint64
 
@@ -5603,8 +5615,10 @@ class Runtime:
                 ctypes.c_uint64,  # array_handle
                 ctypes.c_int,  # ndim
                 ctypes.c_int,  # filter_mode
+                ctypes.c_int,  # mip_filter_mode
                 ctypes.POINTER(ctypes.c_int),  # address_modes [ndim]
                 ctypes.c_bool,  # use_normalized_coords
+                ctypes.c_int,  # num_mip_levels
             ]
             self.core.wp_texture_object_create_device.restype = ctypes.c_uint64
 

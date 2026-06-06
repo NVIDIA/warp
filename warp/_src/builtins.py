@@ -8879,7 +8879,8 @@ def texture_sample_1d_dispatch_func(input_types: Mapping[str, type], return_type
 # texture_sample for 1D textures with scalar coordinate
 add_builtin(
     "texture_sample",
-    input_types={"tex": Texture1D, "u": float, "dtype": Any},
+    input_types={"tex": Texture1D, "u": float, "dtype": Any, "lod": float},
+    defaults={"lod": -1.0},
     value_func=texture_sample_1d_value_func,
     export_func=lambda input_types: {k: v for k, v in input_types.items() if k != "dtype"},
     dispatch_func=texture_sample_1d_dispatch_func,
@@ -8896,6 +8897,10 @@ add_builtin(
         u: U coordinate. Range is [0, 1] if the texture was created with
             ``normalized_coords=True`` (default), or [0, width] if ``normalized_coords=False``.
         dtype: The return type (``float``, :class:`warp.vec2f`, or :class:`warp.vec4f`).
+        lod: Mipmap level-of-detail as a float. When omitted, the base mip level is sampled
+            using the non-LOD code path. Fractional values blend between neighbouring mip
+            levels when ``mip_filter_mode`` is :attr:`warp.TextureFilterMode.LINEAR`.
+            Ignored for textures created with a single mip level.
 
     Returns:
         The sampled value of the specified ``dtype``.
@@ -8926,7 +8931,8 @@ def texture_sample_2d_dispatch_func(input_types: Mapping[str, type], return_type
 # texture_sample for 2D textures with vec2 coordinates
 add_builtin(
     "texture_sample",
-    input_types={"tex": Texture2D, "uv": vec2f, "dtype": Any},
+    input_types={"tex": Texture2D, "uv": vec2f, "dtype": Any, "lod": float},
+    defaults={"lod": -1.0},
     value_func=texture_sample_2d_value_func,
     export_func=lambda input_types: {k: v for k, v in input_types.items() if k != "dtype"},
     dispatch_func=texture_sample_2d_dispatch_func,
@@ -8943,6 +8949,10 @@ add_builtin(
         uv: UV coordinates as a :class:`warp.vec2f`. Range is [0, 1] if the texture was created with
             ``normalized_coords=True`` (default), or [0, width] x [0, height] if ``normalized_coords=False``.
         dtype: The return type (``float``, :class:`warp.vec2f`, or :class:`warp.vec4f`).
+        lod: Mipmap level-of-detail as a float. When omitted, the base mip level is sampled
+            using the non-LOD code path. Fractional values blend between neighbouring mip
+            levels when ``mip_filter_mode`` is :attr:`warp.TextureFilterMode.LINEAR`.
+            Ignored for textures created with a single mip level.
 
     Returns:
         The sampled value of the specified ``dtype``.
@@ -8954,7 +8964,8 @@ add_builtin(
 # texture_sample for 2D textures with separate u, v coordinates
 add_builtin(
     "texture_sample",
-    input_types={"tex": Texture2D, "u": float, "v": float, "dtype": Any},
+    input_types={"tex": Texture2D, "u": float, "v": float, "dtype": Any, "lod": float},
+    defaults={"lod": -1.0},
     value_func=texture_sample_2d_value_func,
     export_func=lambda input_types: {k: v for k, v in input_types.items() if k != "dtype"},
     dispatch_func=texture_sample_2d_dispatch_func,
@@ -8973,6 +8984,10 @@ add_builtin(
         v: V coordinate. Range is [0, 1] if the texture was created with
             ``normalized_coords=True`` (default), or [0, height] if ``normalized_coords=False``.
         dtype: The return type (``float``, :class:`warp.vec2f`, or :class:`warp.vec4f`).
+        lod: Mipmap level-of-detail as a float. When omitted, the base mip level is sampled
+            using the non-LOD code path. Fractional values blend between neighbouring mip
+            levels when ``mip_filter_mode`` is :attr:`warp.TextureFilterMode.LINEAR`.
+            Ignored for textures created with a single mip level.
 
     Returns:
         The sampled value of the specified ``dtype``.
@@ -9003,7 +9018,8 @@ def texture_sample_3d_dispatch_func(input_types: Mapping[str, type], return_type
 # texture_sample for 3D textures with vec3 coordinates
 add_builtin(
     "texture_sample",
-    input_types={"tex": Texture3D, "uvw": vec3f, "dtype": Any},
+    input_types={"tex": Texture3D, "uvw": vec3f, "dtype": Any, "lod": float},
+    defaults={"lod": -1.0},
     value_func=texture_sample_3d_value_func,
     export_func=lambda input_types: {k: v for k, v in input_types.items() if k != "dtype"},
     dispatch_func=texture_sample_3d_dispatch_func,
@@ -9020,6 +9036,10 @@ add_builtin(
         uvw: UVW coordinates as a :class:`warp.vec3f`. Range is [0, 1] if the texture was created with
             ``normalized_coords=True`` (default), or [0, width] x [0, height] x [0, depth] if ``normalized_coords=False``.
         dtype: The return type (``float``, :class:`warp.vec2f`, or :class:`warp.vec4f`).
+        lod: Mipmap level-of-detail as a float. When omitted, the base mip level is sampled
+            using the non-LOD code path. Fractional values blend between neighbouring mip
+            levels when ``mip_filter_mode`` is :attr:`warp.TextureFilterMode.LINEAR`.
+            Ignored for textures created with a single mip level.
 
     Returns:
         The sampled value of the specified ``dtype``.
@@ -9031,7 +9051,8 @@ add_builtin(
 # texture_sample for 3D textures with separate u, v, w coordinates
 add_builtin(
     "texture_sample",
-    input_types={"tex": Texture3D, "u": float, "v": float, "w": float, "dtype": Any},
+    input_types={"tex": Texture3D, "u": float, "v": float, "w": float, "dtype": Any, "lod": float},
+    defaults={"lod": -1.0},
     value_func=texture_sample_3d_value_func,
     export_func=lambda input_types: {k: v for k, v in input_types.items() if k != "dtype"},
     dispatch_func=texture_sample_3d_dispatch_func,
@@ -9052,6 +9073,10 @@ add_builtin(
         w: W coordinate. Range is [0, 1] if the texture was created with
             ``normalized_coords=True`` (default), or [0, depth] if ``normalized_coords=False``.
         dtype: The return type (``float``, :class:`warp.vec2f`, or :class:`warp.vec4f`).
+        lod: Mipmap level-of-detail as a float. When omitted, the base mip level is sampled
+            using the non-LOD code path. Fractional values blend between neighbouring mip
+            levels when ``mip_filter_mode`` is :attr:`warp.TextureFilterMode.LINEAR`.
+            Ignored for textures created with a single mip level.
 
     Returns:
         The sampled value of the specified ``dtype``.

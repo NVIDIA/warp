@@ -185,6 +185,11 @@ CUresult cuTexObjectCreate_f(
     const CUDA_RESOURCE_VIEW_DESC* pResViewDesc
 );
 CUresult cuTexObjectDestroy_f(CUtexObject texObject);
+CUresult cuMipmappedArrayCreate_f(
+    CUmipmappedArray* pHandle, const CUDA_ARRAY3D_DESCRIPTOR* pMipmappedArrayDesc, unsigned int numMipmapLevels
+);
+CUresult cuMipmappedArrayDestroy_f(CUmipmappedArray hMipmappedArray);
+CUresult cuMipmappedArrayGetLevel_f(CUarray* pLevelArray, CUmipmappedArray hMipmappedArray, unsigned int level);
 
 bool init_cuda_driver();
 bool is_cuda_driver_initialized();
