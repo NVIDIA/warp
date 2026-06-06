@@ -496,7 +496,7 @@
 <h1>warp.Texture<a class="headerlink" href="#warp-texture" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.Texture">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Texture</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L154-L886"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Texture</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L155-L1109"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture" title="Link to this definition">#</a></dt>
 <dd><p>Texture base class for hardware-accelerated sampling on GPU and software sampling on CPU.</p>
 <div class="admonition-experimental admonition">
 <p class="admonition-title">Experimental</p>
@@ -544,12 +544,14 @@ floats in [0, 1]; signed integer textures are normalized to [-1, 1]; float types
 <dd><em class="sig-param"><span class="n"><span class="pre">address_mode_v</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">address_mode_w</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">normalized_coords</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">num_mip_levels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">mip_filter_mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">TextureFilterMode.LINEAR</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">surface_access</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">cuda_array</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L197-L407"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.__init__" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L199-L452"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.__init__" title="Link to this definition">#</a></dt>
 <dd><p>Create a texture.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -578,7 +580,16 @@ Can be a single int or a tuple of per-axis values.</p></li>
 <li><p><strong>address_mode_w</strong> (<a class="reference internal" href="warp.TextureAddressMode.html#warp.TextureAddressMode" title="warp.TextureAddressMode"><em>TextureAddressMode</em></a><em> | </em><em>None</em>) – Per-axis address mode for W (3D only). Overrides
 <code class="docutils literal notranslate"><span class="pre">address_mode</span></code> if specified.</p></li>
 <li><p><strong>normalized_coords</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, coordinates are in <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">1]</span></code>
-range. If <code class="docutils literal notranslate"><span class="pre">False</span></code>, coordinates are in texel space.</p></li>
+range. If <code class="docutils literal notranslate"><span class="pre">False</span></code>, coordinates are in texel space. Mipmapped
+textures on a CUDA device require <code class="docutils literal notranslate"><span class="pre">normalized_coords=True</span></code>.</p></li>
+<li><p><strong>num_mip_levels</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of mipmap levels to allocate. Use <code class="docutils literal notranslate"><span class="pre">1</span></code> (default)
+to disable mipmapping. Use <code class="docutils literal notranslate"><span class="pre">0</span></code> to allocate the full mip chain
+down to a 1x1 (or 1x1x1) base level. When <code class="docutils literal notranslate"><span class="pre">data</span></code> is provided and
+<code class="docutils literal notranslate"><span class="pre">num_mip_levels</span> <span class="pre">!=</span> <span class="pre">1</span></code>, Warp auto-generates the lower mip levels
+using a 2x box filter. Requires <code class="docutils literal notranslate"><span class="pre">data</span></code> on construction; mipmap
+contents are immutable afterwards.</p></li>
+<li><p><strong>mip_filter_mode</strong> (<a class="reference internal" href="warp.TextureFilterMode.html#warp.TextureFilterMode" title="warp.TextureFilterMode"><em>TextureFilterMode</em></a>) – Filter mode used to blend between mip levels when
+sampling with a non-integer LOD, see <a class="reference internal" href="warp.TextureFilterMode.html#warp.TextureFilterMode" title="warp.TextureFilterMode"><code class="xref py py-class docutils literal notranslate"><span class="pre">TextureFilterMode</span></code></a>.</p></li>
 <li><p><strong>device</strong> (<em>DeviceLike</em>) – Device on which to create the texture.</p></li>
 <li><p><strong>surface_access</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code> and <code class="docutils literal notranslate"><span class="pre">device</span></code> is CUDA, allocates the backing
 CUDA array with surface load/store support so <a class="reference internal" href="#warp.Texture.cuda_surface" title="warp.Texture.cuda_surface"><code class="xref py py-attr docutils literal notranslate"><span class="pre">cuda_surface</span></code></a>
@@ -637,20 +648,32 @@ can be used.</p></li>
 <tr class="row-even"><td><p><a class="reference internal" href="#warp.Texture.dtype" title="warp.Texture.dtype"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dtype</span></code></a></p></td>
 <td><p>Data type of the texture.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Texture.height" title="warp.Texture.height"><code class="xref py py-obj docutils literal notranslate"><span class="pre">height</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Texture.filter_mode" title="warp.Texture.filter_mode"><code class="xref py py-obj docutils literal notranslate"><span class="pre">filter_mode</span></code></a></p></td>
+<td><p>Filter mode used for intra-level sampling, see <a class="reference internal" href="warp.TextureFilterMode.html#warp.TextureFilterMode" title="warp.TextureFilterMode"><code class="xref py py-class docutils literal notranslate"><span class="pre">TextureFilterMode</span></code></a>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.Texture.height" title="warp.Texture.height"><code class="xref py py-obj docutils literal notranslate"><span class="pre">height</span></code></a></p></td>
 <td><p>Texture height in pixels.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.Texture.id" title="warp.Texture.id"><code class="xref py py-obj docutils literal notranslate"><span class="pre">id</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Texture.id" title="warp.Texture.id"><code class="xref py py-obj docutils literal notranslate"><span class="pre">id</span></code></a></p></td>
 <td><p>Device-independent texture identifier.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Texture.ndim" title="warp.Texture.ndim"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ndim</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.Texture.is_mipmapped" title="warp.Texture.is_mipmapped"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_mipmapped</span></code></a></p></td>
+<td><p>Whether the texture was allocated with more than one mip level.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Texture.mip_filter_mode" title="warp.Texture.mip_filter_mode"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mip_filter_mode</span></code></a></p></td>
+<td><p>Filter mode used to blend between mip levels, see <a class="reference internal" href="warp.TextureFilterMode.html#warp.TextureFilterMode" title="warp.TextureFilterMode"><code class="xref py py-class docutils literal notranslate"><span class="pre">TextureFilterMode</span></code></a>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.Texture.ndim" title="warp.Texture.ndim"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ndim</span></code></a></p></td>
 <td><p>Texture dimensionality (1, 2, or 3).</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.Texture.normalized_coords" title="warp.Texture.normalized_coords"><code class="xref py py-obj docutils literal notranslate"><span class="pre">normalized_coords</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Texture.normalized_coords" title="warp.Texture.normalized_coords"><code class="xref py py-obj docutils literal notranslate"><span class="pre">normalized_coords</span></code></a></p></td>
 <td><p>Whether texture uses normalized coordinates.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Texture.num_channels" title="warp.Texture.num_channels"><code class="xref py py-obj docutils literal notranslate"><span class="pre">num_channels</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.Texture.num_channels" title="warp.Texture.num_channels"><code class="xref py py-obj docutils literal notranslate"><span class="pre">num_channels</span></code></a></p></td>
 <td><p>Number of channels.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Texture.num_mip_levels" title="warp.Texture.num_mip_levels"><code class="xref py py-obj docutils literal notranslate"><span class="pre">num_mip_levels</span></code></a></p></td>
+<td><p>Number of mip levels allocated for this texture (<code class="docutils literal notranslate"><span class="pre">1</span></code> if not mipmapped).</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#warp.Texture.width" title="warp.Texture.width"><code class="xref py py-obj docutils literal notranslate"><span class="pre">width</span></code></a></p></td>
 <td><p>Texture width in pixels.</p></td>
@@ -660,7 +683,7 @@ can be used.</p></li>
 </div>
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Texture.copy_from">
-<span class="sig-name descname"><span class="pre">copy_from</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L517-L606"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.copy_from" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">copy_from</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L564-L657"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.copy_from" title="Link to this definition">#</a></dt>
 <dd><p>Copy texture data from a source.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -672,7 +695,7 @@ a NumPy array, or another texture.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Texture.copy_to">
-<span class="sig-name descname"><span class="pre">copy_to</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dst</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L607-L696"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.copy_to" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">copy_to</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dst</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L658-L751"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.copy_to" title="Link to this definition">#</a></dt>
 <dd><p>Copy texture data to a destination.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -684,7 +707,7 @@ a NumPy array, or another texture.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Texture.copy_from_array">
-<span class="sig-name descname"><span class="pre">copy_from_array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L697-L708"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.copy_from_array" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">copy_from_array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L752-L763"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.copy_from_array" title="Link to this definition">#</a></dt>
 <dd><p>Copy from a CUDA Warp array into this texture’s CUDA array.
 Deprecated, use <code class="docutils literal notranslate"><span class="pre">Texture.copy_from()</span></code> method instead.</p>
 <dl class="field-list simple">
@@ -696,7 +719,7 @@ Deprecated, use <code class="docutils literal notranslate"><span class="pre">Tex
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Texture.copy_to_array">
-<span class="sig-name descname"><span class="pre">copy_to_array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dst</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L709-L720"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.copy_to_array" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">copy_to_array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dst</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L764-L775"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.copy_to_array" title="Link to this definition">#</a></dt>
 <dd><p>Copy from this texture’s CUDA array into a CUDA Warp array.
 Deprecated, use <code class="docutils literal notranslate"><span class="pre">Texture.copy_to()</span></code> method instead.</p>
 <dl class="field-list simple">
@@ -708,67 +731,91 @@ Deprecated, use <code class="docutils literal notranslate"><span class="pre">Tex
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.Texture.ndim">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ndim</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L772-L776"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.ndim" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ndim</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L973-L977"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.ndim" title="Link to this definition">#</a></dt>
 <dd><p>Texture dimensionality (1, 2, or 3).</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.Texture.width">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">width</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L777-L781"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.width" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">width</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L978-L982"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.width" title="Link to this definition">#</a></dt>
 <dd><p>Texture width in pixels.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.Texture.height">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">height</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L782-L786"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.height" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">height</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L983-L987"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.height" title="Link to this definition">#</a></dt>
 <dd><p>Texture height in pixels.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.Texture.depth">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">depth</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L787-L791"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.depth" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">depth</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L988-L992"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.depth" title="Link to this definition">#</a></dt>
 <dd><p>Texture depth in pixels (1 for 2D textures).</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.Texture.num_channels">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">num_channels</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L792-L796"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.num_channels" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">num_channels</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L993-L997"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.num_channels" title="Link to this definition">#</a></dt>
 <dd><p>Number of channels.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.Texture.dtype">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dtype</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L797-L801"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.dtype" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dtype</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L998-L1002"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.dtype" title="Link to this definition">#</a></dt>
 <dd><p>Data type of the texture.</p>
 </dd></dl>
 
 <dl class="py property">
+<dt class="sig sig-object py" id="warp.Texture.filter_mode">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">filter_mode</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.TextureFilterMode.html#warp.TextureFilterMode" title="warp._src.texture.TextureFilterMode"><span class="pre">TextureFilterMode</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L1003-L1007"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.filter_mode" title="Link to this definition">#</a></dt>
+<dd><p>Filter mode used for intra-level sampling, see <a class="reference internal" href="warp.TextureFilterMode.html#warp.TextureFilterMode" title="warp.TextureFilterMode"><code class="xref py py-class docutils literal notranslate"><span class="pre">TextureFilterMode</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="warp.Texture.mip_filter_mode">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">mip_filter_mode</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.TextureFilterMode.html#warp.TextureFilterMode" title="warp._src.texture.TextureFilterMode"><span class="pre">TextureFilterMode</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L1008-L1012"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.mip_filter_mode" title="Link to this definition">#</a></dt>
+<dd><p>Filter mode used to blend between mip levels, see <a class="reference internal" href="warp.TextureFilterMode.html#warp.TextureFilterMode" title="warp.TextureFilterMode"><code class="xref py py-class docutils literal notranslate"><span class="pre">TextureFilterMode</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="warp.Texture.num_mip_levels">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">num_mip_levels</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L1013-L1017"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.num_mip_levels" title="Link to this definition">#</a></dt>
+<dd><p>Number of mip levels allocated for this texture (<code class="docutils literal notranslate"><span class="pre">1</span></code> if not mipmapped).</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="warp.Texture.is_mipmapped">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_mipmapped</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L1018-L1022"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.is_mipmapped" title="Link to this definition">#</a></dt>
+<dd><p>Whether the texture was allocated with more than one mip level.</p>
+</dd></dl>
+
+<dl class="py property">
 <dt class="sig sig-object py" id="warp.Texture.address_mode_u">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">address_mode_u</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L802-L806"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.address_mode_u" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">address_mode_u</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L1023-L1027"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.address_mode_u" title="Link to this definition">#</a></dt>
 <dd><p>Address mode for U axis.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.Texture.address_mode_v">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">address_mode_v</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L807-L811"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.address_mode_v" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">address_mode_v</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L1028-L1032"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.address_mode_v" title="Link to this definition">#</a></dt>
 <dd><p>Address mode for V axis.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.Texture.address_mode_w">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">address_mode_w</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L812-L816"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.address_mode_w" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">address_mode_w</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L1033-L1037"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.address_mode_w" title="Link to this definition">#</a></dt>
 <dd><p>Address mode for W axis (3D only).</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.Texture.normalized_coords">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">normalized_coords</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L817-L821"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.normalized_coords" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">normalized_coords</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L1038-L1042"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.normalized_coords" title="Link to this definition">#</a></dt>
 <dd><p>Whether texture uses normalized coordinates.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.Texture.id">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">id</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L822-L830"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.id" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">id</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L1043-L1051"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.id" title="Link to this definition">#</a></dt>
 <dd><p>Device-independent texture identifier.</p>
 <p>On CUDA textures, this is the same handle as <a class="reference internal" href="#warp.Texture.cuda_texture" title="warp.Texture.cuda_texture"><code class="xref py py-attr docutils literal notranslate"><span class="pre">cuda_texture</span></code></a> (<code class="docutils literal notranslate"><span class="pre">cudaTextureObject_t</span></code>).
 On host textures, this is the backing host texture handle.</p>
@@ -776,7 +823,7 @@ On host textures, this is the backing host texture handle.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.Texture.cuda_array">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cuda_array</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L831-L841"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.cuda_array" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cuda_array</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L1052-L1062"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.cuda_array" title="Link to this definition">#</a></dt>
 <dd><p>CUDA array handle backing this texture.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -787,7 +834,7 @@ On host textures, this is the backing host texture handle.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.Texture.cuda_texture">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cuda_texture</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L842-L854"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.cuda_texture" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cuda_texture</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L1063-L1075"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.cuda_texture" title="Link to this definition">#</a></dt>
 <dd><p>CUDA texture object handle.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -798,7 +845,7 @@ On host textures, this is the backing host texture handle.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.Texture.cuda_surface">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cuda_surface</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L855-L886"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.cuda_surface" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cuda_surface</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L1076-L1109"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture.cuda_surface" title="Link to this definition">#</a></dt>
 <dd><p>CUDA surface object handle backing this texture.</p>
 <p>The surface object is created lazily on first access and cached for the texture lifetime.</p>
 <dl class="field-list simple">
@@ -873,6 +920,10 @@ On host textures, this is the backing host texture handle.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Texture.depth"><code class="docutils literal notranslate"><span class="pre">depth</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Texture.num_channels"><code class="docutils literal notranslate"><span class="pre">num_channels</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Texture.dtype"><code class="docutils literal notranslate"><span class="pre">dtype</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Texture.filter_mode"><code class="docutils literal notranslate"><span class="pre">filter_mode</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Texture.mip_filter_mode"><code class="docutils literal notranslate"><span class="pre">mip_filter_mode</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Texture.num_mip_levels"><code class="docutils literal notranslate"><span class="pre">num_mip_levels</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Texture.is_mipmapped"><code class="docutils literal notranslate"><span class="pre">is_mipmapped</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Texture.address_mode_u"><code class="docutils literal notranslate"><span class="pre">address_mode_u</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Texture.address_mode_v"><code class="docutils literal notranslate"><span class="pre">address_mode_v</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Texture.address_mode_w"><code class="docutils literal notranslate"><span class="pre">address_mode_w</span></code></a></li>

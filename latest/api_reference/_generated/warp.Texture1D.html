@@ -496,7 +496,7 @@
 <h1>warp.Texture1D<a class="headerlink" href="#warp-texture1d" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.Texture1D">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Texture1D</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L888-L961"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture1D" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Texture1D</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L1111-L1188"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture1D" title="Link to this definition">#</a></dt>
 <dd><p>1D texture class.</p>
 <div class="admonition-experimental admonition">
 <p class="admonition-title">Experimental</p>
@@ -529,6 +529,8 @@ Use this for explicit 1D texture creation and as a type hint in kernel parameter
 <li><p><strong>address_mode</strong> (<a class="reference internal" href="warp.TextureAddressMode.html#warp.TextureAddressMode" title="warp.TextureAddressMode"><em>TextureAddressMode</em></a>)</p></li>
 <li><p><strong>address_mode_u</strong> (<a class="reference internal" href="warp.TextureAddressMode.html#warp.TextureAddressMode" title="warp.TextureAddressMode"><em>TextureAddressMode</em></a><em> | </em><em>None</em>)</p></li>
 <li><p><strong>normalized_coords</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>)</p></li>
+<li><p><strong>num_mip_levels</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>mip_filter_mode</strong> (<a class="reference internal" href="warp.TextureFilterMode.html#warp.TextureFilterMode" title="warp.TextureFilterMode"><em>TextureFilterMode</em></a>)</p></li>
 <li><p><strong>device</strong> (<em>DeviceLike</em>)</p></li>
 <li><p><strong>surface_access</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>)</p></li>
 <li><p><strong>cuda_array</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
@@ -548,12 +550,14 @@ Use this for explicit 1D texture creation and as a type hint in kernel parameter
 <dd><em class="sig-param"><span class="n"><span class="pre">address_mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">TextureAddressMode.CLAMP</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">address_mode_u</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">normalized_coords</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">num_mip_levels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">mip_filter_mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">TextureFilterMode.LINEAR</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">surface_access</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">cuda_array</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L923-L955"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture1D.__init__" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L1146-L1182"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture1D.__init__" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -564,6 +568,8 @@ Use this for explicit 1D texture creation and as a type hint in kernel parameter
 <li><p><strong>address_mode</strong> (<a class="reference internal" href="warp.TextureAddressMode.html#warp.TextureAddressMode" title="warp.TextureAddressMode"><em>TextureAddressMode</em></a>)</p></li>
 <li><p><strong>address_mode_u</strong> (<a class="reference internal" href="warp.TextureAddressMode.html#warp.TextureAddressMode" title="warp.TextureAddressMode"><em>TextureAddressMode</em></a><em> | </em><em>None</em>)</p></li>
 <li><p><strong>normalized_coords</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>)</p></li>
+<li><p><strong>num_mip_levels</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>mip_filter_mode</strong> (<a class="reference internal" href="warp.TextureFilterMode.html#warp.TextureFilterMode" title="warp.TextureFilterMode"><em>TextureFilterMode</em></a>)</p></li>
 <li><p><strong>device</strong> (<em>DeviceLike</em>)</p></li>
 <li><p><strong>surface_access</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>)</p></li>
 <li><p><strong>cuda_array</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
@@ -620,20 +626,32 @@ Use this for explicit 1D texture creation and as a type hint in kernel parameter
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">dtype</span></code></p></td>
 <td><p>Data type of the texture.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">height</span></code></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">filter_mode</span></code></p></td>
+<td><p>Filter mode used for intra-level sampling, see <a class="reference internal" href="warp.TextureFilterMode.html#warp.TextureFilterMode" title="warp.TextureFilterMode"><code class="xref py py-class docutils literal notranslate"><span class="pre">TextureFilterMode</span></code></a>.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">height</span></code></p></td>
 <td><p>Texture height in pixels.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">id</span></code></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">id</span></code></p></td>
 <td><p>Device-independent texture identifier.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">ndim</span></code></p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_mipmapped</span></code></p></td>
+<td><p>Whether the texture was allocated with more than one mip level.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">mip_filter_mode</span></code></p></td>
+<td><p>Filter mode used to blend between mip levels, see <a class="reference internal" href="warp.TextureFilterMode.html#warp.TextureFilterMode" title="warp.TextureFilterMode"><code class="xref py py-class docutils literal notranslate"><span class="pre">TextureFilterMode</span></code></a>.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">ndim</span></code></p></td>
 <td><p>Texture dimensionality (1, 2, or 3).</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">normalized_coords</span></code></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">normalized_coords</span></code></p></td>
 <td><p>Whether texture uses normalized coordinates.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">num_channels</span></code></p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">num_channels</span></code></p></td>
 <td><p>Number of channels.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">num_mip_levels</span></code></p></td>
+<td><p>Number of mip levels allocated for this texture (<code class="docutils literal notranslate"><span class="pre">1</span></code> if not mipmapped).</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#warp.Texture1D.vars" title="warp.Texture1D.vars"><code class="xref py py-obj docutils literal notranslate"><span class="pre">vars</span></code></a></p></td>
 <td><p></p></td>

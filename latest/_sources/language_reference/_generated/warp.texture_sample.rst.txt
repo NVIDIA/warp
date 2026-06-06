@@ -1,7 +1,7 @@
 ﻿warp.texture\_sample
 ====================
 
-.. function:: warp._src.lang.texture_sample(tex: Texture1D, u: float32, dtype: Any) -> Any
+.. function:: warp._src.lang.texture_sample(tex: Texture1D, u: float32, dtype: Any, lod: float32) -> Any
 
    .. hlist::
       :columns: 8
@@ -18,12 +18,16 @@
    :param u: U coordinate. Range is [0, 1] if the texture was created with
              ``normalized_coords=True`` (default), or [0, width] if ``normalized_coords=False``.
    :param dtype: The return type (``float``, :class:`warp.vec2f`, or :class:`warp.vec4f`).
+   :param lod: Mipmap level-of-detail as a float. When omitted, the base mip level is sampled
+               using the non-LOD code path. Fractional values blend between neighbouring mip
+               levels when ``mip_filter_mode`` is :attr:`warp.TextureFilterMode.LINEAR`.
+               Ignored for textures created with a single mip level.
    
    :returns: The sampled value of the specified ``dtype``.
    
    Filtering mode is :attr:`warp.TextureFilterMode.CLOSEST` or :attr:`warp.TextureFilterMode.LINEAR`.
 
-.. function:: warp._src.lang.texture_sample(tex: Texture2D, uv: vec2f, dtype: Any) -> Any
+.. function:: warp._src.lang.texture_sample(tex: Texture2D, uv: vec2f, dtype: Any, lod: float32) -> Any
    :noindex:
 
    .. hlist::
@@ -41,12 +45,16 @@
    :param uv: UV coordinates as a :class:`warp.vec2f`. Range is [0, 1] if the texture was created with
               ``normalized_coords=True`` (default), or [0, width] x [0, height] if ``normalized_coords=False``.
    :param dtype: The return type (``float``, :class:`warp.vec2f`, or :class:`warp.vec4f`).
+   :param lod: Mipmap level-of-detail as a float. When omitted, the base mip level is sampled
+               using the non-LOD code path. Fractional values blend between neighbouring mip
+               levels when ``mip_filter_mode`` is :attr:`warp.TextureFilterMode.LINEAR`.
+               Ignored for textures created with a single mip level.
    
    :returns: The sampled value of the specified ``dtype``.
    
    Filtering mode is :attr:`warp.TextureFilterMode.CLOSEST` or :attr:`warp.TextureFilterMode.LINEAR`.
 
-.. function:: warp._src.lang.texture_sample(tex: Texture2D, u: float32, v: float32, dtype: Any) -> Any
+.. function:: warp._src.lang.texture_sample(tex: Texture2D, u: float32, v: float32, dtype: Any, lod: float32) -> Any
    :noindex:
 
    .. hlist::
@@ -66,12 +74,16 @@
    :param v: V coordinate. Range is [0, 1] if the texture was created with
              ``normalized_coords=True`` (default), or [0, height] if ``normalized_coords=False``.
    :param dtype: The return type (``float``, :class:`warp.vec2f`, or :class:`warp.vec4f`).
+   :param lod: Mipmap level-of-detail as a float. When omitted, the base mip level is sampled
+               using the non-LOD code path. Fractional values blend between neighbouring mip
+               levels when ``mip_filter_mode`` is :attr:`warp.TextureFilterMode.LINEAR`.
+               Ignored for textures created with a single mip level.
    
    :returns: The sampled value of the specified ``dtype``.
    
    Filtering mode is :attr:`warp.TextureFilterMode.CLOSEST` or :attr:`warp.TextureFilterMode.LINEAR`.
 
-.. function:: warp._src.lang.texture_sample(tex: Texture3D, uvw: vec3f, dtype: Any) -> Any
+.. function:: warp._src.lang.texture_sample(tex: Texture3D, uvw: vec3f, dtype: Any, lod: float32) -> Any
    :noindex:
 
    .. hlist::
@@ -89,12 +101,16 @@
    :param uvw: UVW coordinates as a :class:`warp.vec3f`. Range is [0, 1] if the texture was created with
                ``normalized_coords=True`` (default), or [0, width] x [0, height] x [0, depth] if ``normalized_coords=False``.
    :param dtype: The return type (``float``, :class:`warp.vec2f`, or :class:`warp.vec4f`).
+   :param lod: Mipmap level-of-detail as a float. When omitted, the base mip level is sampled
+               using the non-LOD code path. Fractional values blend between neighbouring mip
+               levels when ``mip_filter_mode`` is :attr:`warp.TextureFilterMode.LINEAR`.
+               Ignored for textures created with a single mip level.
    
    :returns: The sampled value of the specified ``dtype``.
    
    Filtering mode is :attr:`warp.TextureFilterMode.CLOSEST` or :attr:`warp.TextureFilterMode.LINEAR`.
 
-.. function:: warp._src.lang.texture_sample(tex: Texture3D, u: float32, v: float32, w: float32, dtype: Any) -> Any
+.. function:: warp._src.lang.texture_sample(tex: Texture3D, u: float32, v: float32, w: float32, dtype: Any, lod: float32) -> Any
    :noindex:
 
    .. hlist::
@@ -116,6 +132,10 @@
    :param w: W coordinate. Range is [0, 1] if the texture was created with
              ``normalized_coords=True`` (default), or [0, depth] if ``normalized_coords=False``.
    :param dtype: The return type (``float``, :class:`warp.vec2f`, or :class:`warp.vec4f`).
+   :param lod: Mipmap level-of-detail as a float. When omitted, the base mip level is sampled
+               using the non-LOD code path. Fractional values blend between neighbouring mip
+               levels when ``mip_filter_mode`` is :attr:`warp.TextureFilterMode.LINEAR`.
+               Ignored for textures created with a single mip level.
    
    :returns: The sampled value of the specified ``dtype``.
    

@@ -35,11 +35,15 @@
       ~Texture.cuda_texture
       ~Texture.depth
       ~Texture.dtype
+      ~Texture.filter_mode
       ~Texture.height
       ~Texture.id
+      ~Texture.is_mipmapped
+      ~Texture.mip_filter_mode
       ~Texture.ndim
       ~Texture.normalized_coords
       ~Texture.num_channels
+      ~Texture.num_mip_levels
       ~Texture.width
    
    
