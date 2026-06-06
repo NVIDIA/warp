@@ -8,11 +8,11 @@ import unittest
 import numpy as np
 
 import warp as wp
-import warp.tests.deterministic.test_counter as counter_module
-import warp.tests.deterministic.test_scatter as scatter_module
+import warp.tests.deterministic.test_deterministic_counter as counter_module
+import warp.tests.deterministic.test_deterministic_scatter as scatter_module
 from warp.tests.deterministic.common import DeterministicTestBase, cuda_devices
-from warp.tests.deterministic.test_counter import counter_kernel, indexed_counter_kernel
-from warp.tests.deterministic.test_scatter import (
+from warp.tests.deterministic.test_deterministic_counter import counter_kernel, indexed_counter_kernel
+from warp.tests.deterministic.test_deterministic_scatter import (
     _det_closure_transform_a,
     _make_deterministic_closure_kernel,
     func_scatter_add_kernel,

@@ -10,10 +10,10 @@ from pathlib import Path
 import numpy as np
 
 import warp as wp
-import warp.tests.deterministic.test_scatter as scatter_module
+import warp.tests.deterministic.test_deterministic_scatter as scatter_module
 from warp._src import deterministic as wp_deterministic
 from warp.tests.deterministic.common import DeterministicTestBase, all_devices, cpu_device
-from warp.tests.deterministic.test_scatter import loop_scatter_add_kernel
+from warp.tests.deterministic.test_deterministic_scatter import loop_scatter_add_kernel
 from warp.tests.unittest_utils import add_function_test
 
 _THIS_MODULE = sys.modules[__name__]
