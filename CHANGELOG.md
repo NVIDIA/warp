@@ -52,6 +52,8 @@
   visualization scopes ([GH-1515](https://github.com/NVIDIA/warp/issues/1515)).
 - Fix rebinding a kernel-local variable that holds `wp.grad()` to a non-grad value to raise a clear `WarpCodegenError`
   instead of an internal `AttributeError` ([GH-1487](https://github.com/NVIDIA/warp/issues/1487)).
+- Fix stale gradient keepalive references when replacing a `@wp.struct` plain-array field with `None` or a
+  non-gradient array ([GH-1520](https://github.com/NVIDIA/warp/issues/1520)).
 
 ### Documentation
 

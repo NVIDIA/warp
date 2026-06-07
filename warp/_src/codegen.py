@@ -393,11 +393,15 @@ def _make_struct_field_setter(cls, field: str, var_type: type):
                 )
             setattr(inst._ctype, field, value.__ctype__())
 
-            # workaround to prevent gradient buffers being garbage collected
-            # since users can do struct.array.requires_grad = False the gradient array
-            # would be collected while the struct ctype still holds a reference to it
-            if value.requires_grad:
-                cls.__setattr__(inst, "_" + field + "_grad", value.grad)
+        # Keep gradient buffers alive while the struct's native array
+        # descriptor may reference them. Clear any previous keepalive when
+        # this field no longer points at a grad-tracked array.
+        grad_attr = "_" + field + "_grad"
+        if value is not None and value.requires_grad:
+            cls.__setattr__(inst, grad_attr, value.grad)
+        else:
+            # clear any previous keepalive
+            cls.__setattr__(inst, grad_attr, None)
 
         cls.__setattr__(inst, field, value)
 
