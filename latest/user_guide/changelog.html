@@ -551,6 +551,8 @@ multiple of the alignment, hiding overflows that landed in padding
 visualization scopes (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1515">GH-1515</a>).</p></li>
 <li><p>Fix rebinding a kernel-local variable that holds <code class="docutils literal notranslate"><span class="pre">wp.grad()</span></code> to a non-grad value to raise a clear <code class="docutils literal notranslate"><span class="pre">WarpCodegenError</span></code>
 instead of an internal <code class="docutils literal notranslate"><span class="pre">AttributeError</span></code> (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1487">GH-1487</a>).</p></li>
+<li><p>Fix stale gradient keepalive references when replacing a <code class="docutils literal notranslate"><span class="pre">&#64;wp.struct</span></code> plain-array field with <code class="docutils literal notranslate"><span class="pre">None</span></code> or a
+non-gradient array (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1520">GH-1520</a>).</p></li>
 </ul>
 </section>
 <section id="documentation">
