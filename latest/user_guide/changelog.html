@@ -554,6 +554,8 @@ visualization scopes (<a class="reference external" href="https://github.com/NVI
 instead of an internal <code class="docutils literal notranslate"><span class="pre">AttributeError</span></code> (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1487">GH-1487</a>).</p></li>
 <li><p>Fix stale gradient keepalive references when replacing a <code class="docutils literal notranslate"><span class="pre">&#64;wp.struct</span></code> plain-array field with <code class="docutils literal notranslate"><span class="pre">None</span></code> or a
 non-gradient array (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1520">GH-1520</a>).</p></li>
+<li><p>Fix CUDA kernel launch failures to raise a Python <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code> instead of only logging native CUDA stderr and
+continuing with stale outputs or gradients (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1535">GH-1535</a>).</p></li>
 </ul>
 </section>
 <section id="documentation">
