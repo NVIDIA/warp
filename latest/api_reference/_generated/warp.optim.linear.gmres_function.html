@@ -517,7 +517,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">run</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/linear.py#L1496-L1573"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.gmres" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/linear.py#L1499-L1576"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.gmres" title="Link to this definition">#</a></dt>
 <dd><p>Compute an approximate solution to a linear system using the restarted Generalized Minimum Residual method (GMRES[k]).</p>
 <p>Supports batched systems when <code class="docutils literal notranslate"><span class="pre">A</span></code> is a <a class="reference internal" href="warp.optim.linear.LinearOperator.html#warp.optim.linear.LinearOperator" title="warp.optim.linear.LinearOperator"><code class="xref py py-class docutils literal notranslate"><span class="pre">LinearOperator</span></code></a> with <code class="docutils literal notranslate"><span class="pre">batch_offsets</span></code> set;
 all subproblems iterate together and convergence uses the worst-case residual.</p>
