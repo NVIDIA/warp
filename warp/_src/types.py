@@ -3072,7 +3072,7 @@ class array(Array[DType, NDim]):
     def __init__(
         self,
         data: list | tuple | npt.NDArray | None = None,
-        dtype: Any = Any,
+        dtype: type[DType] = Any,
         shape: int | tuple[int, ...] | list[int] | None = None,
         strides: tuple[int, ...] | None = None,
         ptr: int | None = None,

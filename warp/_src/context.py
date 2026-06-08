@@ -66,7 +66,7 @@ import warp.config
 from warp._src.codegen import WarpCodegenTypeError, synchronized
 from warp._src.logger import LOG_DEBUG, LOG_WARNING, get_logger, log_debug, log_error, log_info, log_warning
 from warp._src.texture import Texture1D, Texture2D, Texture3D, texture1d_t, texture2d_t, texture3d_t
-from warp._src.types import LAUNCH_MAX_DIMS, Array, LaunchBounds, launch_bounds_t, type_repr
+from warp._src.types import LAUNCH_MAX_DIMS, Array, DType, LaunchBounds, launch_bounds_t, type_repr
 
 _wp_module_name_ = "warp.context"
 
@@ -7647,13 +7647,13 @@ class RegisteredGLBuffer:
 
 def zeros(
     shape: int | tuple[int, ...] | list[int] | None = None,
-    dtype: type = float,
+    dtype: type[DType] | None = None,
     device: DeviceLike = None,
     requires_grad: bool = False,
     pinned: bool = False,
     retain_grad: bool = False,
     **kwargs,
-) -> warp.array:
+) -> warp.array[DType]:
     """Return a zero-initialized array.
 
     Args:
@@ -7667,6 +7667,8 @@ def zeros(
     Returns:
         A warp.array object representing the allocation
     """
+    if dtype is None:
+        dtype = float
 
     arr = empty(
         shape=shape,
@@ -7712,13 +7714,13 @@ def zeros_like(
 
 def ones(
     shape: int | tuple[int, ...] | list[int] | None = None,
-    dtype: type = float,
+    dtype: type[DType] | None = None,
     device: DeviceLike = None,
     requires_grad: bool = False,
     pinned: bool = False,
     retain_grad: bool = False,
     **kwargs,
-) -> warp.array:
+) -> warp.array[DType]:
     """Return a one-initialized array.
 
     Args:
@@ -7732,6 +7734,8 @@ def ones(
     Returns:
         A warp.array object representing the allocation
     """
+    if dtype is None:
+        dtype = float
 
     return full(
         shape=shape,
@@ -7771,13 +7775,13 @@ def ones_like(
 def full(
     shape: int | tuple[int, ...] | list[int] | None = None,
     value: Any = 0,
-    dtype: type | None = None,
+    dtype: type[DType] | None = None,
     device: DeviceLike = None,
     requires_grad: bool = False,
     pinned: bool = False,
     retain_grad: bool = False,
     **kwargs,
-) -> warp.array:
+) -> warp.array[DType]:
     """Return an array with all elements initialized to the given value.
 
     Args:
@@ -7902,13 +7906,13 @@ def clone(
 
 def empty(
     shape: int | tuple[int, ...] | list[int] | None = None,
-    dtype=float,
+    dtype: type[DType] | None = None,
     device: DeviceLike = None,
     requires_grad: bool = False,
     pinned: bool = False,
     retain_grad: bool = False,
     **kwargs,
-) -> warp.array:
+) -> warp.array[DType]:
     """Return an uninitialized array.
 
     Args:
@@ -7922,6 +7926,9 @@ def empty(
     Returns:
         A warp.array object representing the allocation
     """
+
+    if dtype is None:
+        dtype = float
 
     # backwards compatibility for case where users called wp.empty(n=length, ...)
     if "n" in kwargs:
@@ -7998,12 +8005,12 @@ def empty_like(
 
 def from_numpy(
     arr: np.ndarray,
-    dtype: type | None = None,
+    dtype: type[DType] | None = None,
     shape: Sequence[int] | None = None,
     device: DeviceLike | None = None,
     requires_grad: bool = False,
     retain_grad: bool = False,
-) -> warp.array:
+) -> warp.array[DType]:
     """Return a Warp array created from a NumPy array.
 
     Args:
