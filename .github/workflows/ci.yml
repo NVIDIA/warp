@@ -31,13 +31,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: windows-2025
+          # CUDA 12.x and CUDA 13.0 reject the VS 2026 image.
+          - os: windows-2022
             platform: windows
             cuda-version: "12.9.1"
             artifact-name: build-artifact-windows-cuda12
             cuda-sub-packages: '["cudart", "nvcc", "nvrtc_dev", "nvjitlink"]'
             cuda-non-cuda-packages: ''
-          - os: windows-2025
+          - os: windows-2022
             platform: windows
             cuda-version: "13.0.2"
             artifact-name: build-artifact-windows-cuda13
@@ -136,7 +137,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: windows-2025
+          # CUDA 12.x and CUDA 13.0 reject the VS 2026 image.
+          - os: windows-2022
             platform: windows
             cuda-version: "13.0.2"
             cuda-sub-packages: '["cudart", "crt", "nvcc", "nvrtc_dev", "nvjitlink", "nvvm", "nvptxcompiler"]'
