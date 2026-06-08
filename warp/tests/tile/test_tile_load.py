@@ -787,7 +787,8 @@ def test_tile_extract(kernel, ndim):
                 kernel,
                 dim=shape,
                 inputs=[input, output],
-                block_dim=1024,
+                # Debug CUDA backward kernels may be resource-limited below 1024 threads.
+                block_dim=512,
                 device=device,
             )
 
