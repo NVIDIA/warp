@@ -31,8 +31,9 @@
   precompiles the correct CUDA kernel variant. On CUDA drivers older than 12.3 this previously raised
   `CUDA_ERROR_STREAM_CAPTURE_UNSUPPORTED`; on newer drivers it silently recompiled inside the capture window
   ([GH-564](https://github.com/NVIDIA/warp/issues/564)).
-- Fix an intermittent failure when loading modules in parallel with `wp.force_load(max_workers > 1)` that could cause
-  modules sharing a `@wp.func` to fail to compile or load ([GH-1474](https://github.com/NVIDIA/warp/issues/1474)).
+- Fix intermittent failures when loading modules in parallel with `wp.force_load(max_workers > 1)` that could cause
+  modules sharing a `@wp.func` to fail to compile or to raise a `KeyError` in `Module.load`
+  ([GH-1474](https://github.com/NVIDIA/warp/issues/1474), [GH-1532](https://github.com/NVIDIA/warp/issues/1532)).
 - Fix binding a Warp function to a kernel-local variable, so patterns like `f = my_func`,
   `f = module.my_func`, assigning a `wp.static(...)` function result to `f`, and `wp.grad(f)` where `f` is such
   a local now compile and call correctly instead of failing during code generation. Rebinding a function-valued

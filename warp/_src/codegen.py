@@ -1022,16 +1022,39 @@ def get_arg_value(arg: Any) -> Any:
     return arg
 
 
-# decorator for synchronizing function calls (reentrant critical section)
-def synchronized(func):
-    lock = threading.RLock()
+# Re-entrant lock guarding mutation and reading of shared per-Adjoint
+# state. ``@wp.func`` helpers share one ``Adjoint`` object across every
+# module that references them; ``Adjoint.build`` rewrites ``adj.blocks``,
+# ``adj.symbols``, ``adj.variables``, ``adj.deferred_static_expressions``
+# from scratch, and ``ModuleBuilder.codegen`` later reads those same
+# fields. Holding this lock across the full build+emit window in
+# ``Module._compile`` stops a parallel ``Module.load`` (e.g. from
+# ``wp.force_load(max_workers > 1)``) from clobbering the state mid-emit.
+# Re-entrant so ``Module._compile`` -> ``ModuleBuilder.build_kernel`` ->
+# ``Adjoint.build`` on the same thread doesn't deadlock.
+_codegen_lock = threading.RLock()
 
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        with lock:
-            return func(*args, **kwargs)
 
-    return wrapper
+def synchronized(rlock: threading.RLock | None = None):
+    """Decorator that serializes calls to the wrapped function under a re-entrant lock.
+
+    ``@synchronized()`` mints a fresh private ``RLock`` for this decoration.
+    ``@synchronized(rlock)`` uses the given ``RLock``; pass the same lock to
+    every decoration that must mutually exclude. The lock is re-entrant, so
+    nested calls from the same thread do not deadlock.
+    """
+    if rlock is None:
+        rlock = threading.RLock()
+
+    def decorator(func):
+        @functools.wraps(func)
+        def locked_call(*args, **kwargs):
+            with rlock:
+                return func(*args, **kwargs)
+
+        return locked_call
+
+    return decorator
 
 
 class Adjoint:
@@ -1317,7 +1340,7 @@ class Adjoint:
         return "".join(lines[start:end]), code.co_firstlineno
 
     # generate function ssa form and adjoint
-    @synchronized
+    @synchronized(_codegen_lock)
     def build(adj, builder, default_builder_options=None):
         # arg Var read/write flags are held during module rebuilds, so we reset here even when skipping a build
         for arg in adj.args:

@@ -174,21 +174,13 @@ class TestParallelLoadSharedHelper(unittest.TestCase):
     calls ``adj.build`` on each helper, which mutates per-Adjoint state
     (``adj.blocks``, ``adj.deferred_static_expressions``, ...). When
     two modules that reference the *same* helper build concurrently
-    (e.g., via ``wp.force_load(max_workers > 1)``), without a lock
-    around the codegen window the threads interleave their writes to
-    the shared adjoint and the emitted .cu file has corrupt sections
-    -- one helper's body emitted inside another, or references to
-    ``var_*`` / ``_idx`` / ``dim`` that were never declared. nvrtc
-    then rejects the file with dozens of syntax errors and
-    ``Module._compile`` raises.
-
-    The race reproduces reliably only on the CUDA codegen path (not
-    CPU) because the CUDA emit walks a longer per-function path: it
-    additionally emits the device-side adjoint stub, snapshots
-    ``adj.blocks[0].body_replay`` for the reverse-mode glue, and
-    reads ``options['enable_backward']`` from the codegen-time
-    global -- giving more interleaving opportunities for two
-    threads building the same shared helper.
+    (e.g., via ``wp.force_load(max_workers > 1)``), without
+    ``_codegen_lock`` around the codegen window the threads interleave
+    their writes to the shared adjoint and the emitted .cu file has
+    corrupt sections -- one helper's body emitted inside another, or
+    references to ``var_*`` / ``_idx`` / ``dim`` that were never
+    declared. nvrtc then rejects the file with dozens of syntax errors
+    and ``Module._compile`` raises.
 
     Reproducing the race reliably requires:
 
@@ -213,8 +205,7 @@ class TestParallelLoadSharedHelper(unittest.TestCase):
         # ``module="unique"`` puts every factory output in its own
         # ``Module`` object; if N kernels share a helper, N separate
         # modules each try to inline that helper's adjoint at compile
-        # time -- the exact pattern PhoneX hits with its singleworld
-        # factory.
+        # time.
         @wp.kernel(module="unique")
         def k(out: wp.array(dtype=float)):
             tid = wp.tid()
@@ -262,11 +253,7 @@ class TestParallelLoadSharedHelper(unittest.TestCase):
     def test_force_load_parallel_with_shared_func_high_concurrency(self):
         """Same race but with more modules than worker threads, so the
         ``ThreadPoolExecutor`` queues tasks and reuses workers between
-        builds. ``force_load`` submits exactly ``len(devices) * len(modules)``
-        tasks, so to actually change scheduling vs. the basic test we
-        submit 2x the modules and cap ``max_workers`` below that count
-        -- this forces real queueing/contention rather than a
-        thread-per-task fan-out."""
+        builds."""
         device = wp.get_preferred_device()
         max_workers = max(2, self.NUM_MODULES // 2)
         for attempt in range(self.ATTEMPTS):
