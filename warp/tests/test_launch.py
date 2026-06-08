@@ -48,6 +48,11 @@ def square_kernel(input: wp.array(dtype=float), output: wp.array(dtype=float)):
     output[i] = input[i] * input[i]
 
 
+@wp.kernel
+def noop_kernel():
+    tid = wp.tid()
+
+
 def test1d(test, device):
     a = np.arange(0, dim_x).reshape(dim_x)
 
@@ -400,6 +405,12 @@ def kernel_single_tuple_bound(x: wp.array(dtype=float)):
     x[tid] = x[tid] * 2.0
 
 
+@wp.kernel(launch_bounds=256)
+def bounded_square_kernel(data: wp.array(dtype=float), output: wp.array(dtype=float)):
+    i = wp.tid()
+    output[i] = data[i] * data[i]
+
+
 def test_launch_bounds_none(test, device):
     """Test kernel without launch_bounds"""
     n = 1024
@@ -436,7 +447,61 @@ def test_launch_bounds_single_tuple(test, device):
     assert_np_equal(x.numpy(), np.full(n, 2.0, dtype=np.float32))
 
 
+def test_launch_device_block_dim_failure(test, device):
+    """Raise when CUDA rejects an oversized launch block.
+
+    Protects users from continuing after native stderr with kernel outputs left unchanged.
+    """
+    with test.assertRaisesRegex(RuntimeError, r"Error launching kernel: .*noop_kernel.*Warp CUDA error"):
+        wp.launch(noop_kernel, dim=1, block_dim=2048, device=device)
+
+
+def test_launch_bounds_block_dim_failure(test, device):
+    """Raise when CUDA rejects a launch-bounds violation.
+
+    Protects users from silently skipping kernels whose outputs feed later simulation stages.
+    """
+    x = wp.ones(1, dtype=float, device=device)
+
+    with test.assertRaisesRegex(RuntimeError, r"Error launching kernel: .*kernel_single_bound.*Warp CUDA error"):
+        wp.launch(kernel_single_bound, dim=1, inputs=[x], block_dim=512, device=device)
+
+
+def test_launch_cmd_block_dim_failure(test, device):
+    """Raise when recorded launches hit CUDA launch errors.
+
+    Protects recorded command replay from returning normally with stale outputs.
+    """
+    x = wp.ones(1, dtype=float, device=device)
+    cmd = wp.launch(kernel_single_bound, dim=1, inputs=[x], block_dim=512, device=device, record_cmd=True)
+
+    with test.assertRaisesRegex(RuntimeError, r"Error launching kernel: .*kernel_single_bound.*Warp CUDA error"):
+        cmd.launch()
+
+
+def test_launch_adjoint_block_dim_failure(test, device):
+    """Raise when adjoint launches hit CUDA launch errors.
+
+    Protects differentiable simulations from using missing or partial gradients.
+    """
+    input_arr = wp.array([1.0], dtype=float, requires_grad=True, device=device)
+    output_arr = wp.empty_like(input_arr)
+    output_arr.grad.fill_(1.0)
+
+    with test.assertRaisesRegex(RuntimeError, r"Error launching kernel: .*bounded_square_kernel.*Warp CUDA error"):
+        wp.launch(
+            bounded_square_kernel,
+            dim=input_arr.size,
+            inputs=[input_arr, output_arr],
+            adj_inputs=[None, None],
+            adjoint=True,
+            block_dim=512,
+            device=device,
+        )
+
+
 devices = get_test_devices()
+cuda_devices = get_cuda_test_devices()
 
 
 class TestLaunch(unittest.TestCase):
@@ -462,6 +527,18 @@ add_function_test(TestLaunch, "test_launch_bounds_none", test_launch_bounds_none
 add_function_test(TestLaunch, "test_launch_bounds_single", test_launch_bounds_single, devices=devices)
 add_function_test(TestLaunch, "test_launch_bounds_tuple", test_launch_bounds_tuple, devices=devices)
 add_function_test(TestLaunch, "test_launch_bounds_single_tuple", test_launch_bounds_single_tuple, devices=devices)
+add_function_test(
+    TestLaunch, "test_launch_device_block_dim_failure", test_launch_device_block_dim_failure, devices=cuda_devices
+)
+add_function_test(
+    TestLaunch, "test_launch_bounds_block_dim_failure", test_launch_bounds_block_dim_failure, devices=cuda_devices
+)
+add_function_test(
+    TestLaunch, "test_launch_cmd_block_dim_failure", test_launch_cmd_block_dim_failure, devices=cuda_devices
+)
+add_function_test(
+    TestLaunch, "test_launch_adjoint_block_dim_failure", test_launch_adjoint_block_dim_failure, devices=cuda_devices
+)
 
 
 if __name__ == "__main__":
