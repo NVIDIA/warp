@@ -60,7 +60,7 @@ else:
 
 
 class scalar_base:
-    def __init__(self, x=0):
+    def __init__(self, x: int | float = 0):
         self.value = x
 
     def __bool__(self) -> builtins.bool:

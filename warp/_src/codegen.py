@@ -1804,7 +1804,12 @@ class Adjoint:
         # parameter) because emit_Assign maps symbols directly to the Var
         # returned here, and a const-qualified C++ variable cannot be passed
         # by non-const reference to functions that write through it.
-        if func.is_builtin() and func.value_type in (float64, int64, uint64) and len(bound_args) == 1:
+        if (
+            func.is_builtin()
+            and func.value_type in (float64, int64, uint64)
+            and func.native_func == func.value_type.__name__
+            and len(bound_args) == 1
+        ):
             arg = next(iter(bound_args.values()))
             if isinstance(arg, Var) and arg.constant is not None:
                 raw = arg.constant

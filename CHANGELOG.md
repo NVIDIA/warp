@@ -57,6 +57,9 @@
   non-gradient array ([GH-1520](https://github.com/NVIDIA/warp/issues/1520)).
 - Fix CUDA kernel launch failures to raise a Python `RuntimeError` instead of only logging native CUDA stderr and
   continuing with stale outputs or gradients ([GH-1535](https://github.com/NVIDIA/warp/issues/1535)).
+- Fix unary minus on referenced 64-bit scalar constants, such as values declared with `wp.constant(wp.float64(...))`,
+  being silently dropped when the constant appears as the leading operand of a multiply or divide expression, e.g.
+  `-a * b` producing the wrong sign ([GH-1540](https://github.com/NVIDIA/warp/issues/1540)).
 
 ### Documentation
 
