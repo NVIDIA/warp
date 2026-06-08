@@ -556,6 +556,9 @@ instead of an internal <code class="docutils literal notranslate"><span class="p
 non-gradient array (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1520">GH-1520</a>).</p></li>
 <li><p>Fix CUDA kernel launch failures to raise a Python <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code> instead of only logging native CUDA stderr and
 continuing with stale outputs or gradients (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1535">GH-1535</a>).</p></li>
+<li><p>Fix unary minus on referenced 64-bit scalar constants, such as values declared with <code class="docutils literal notranslate"><span class="pre">wp.constant(wp.float64(...))</span></code>,
+being silently dropped when the constant appears as the leading operand of a multiply or divide expression, e.g.
+<code class="docutils literal notranslate"><span class="pre">-a</span> <span class="pre">*</span> <span class="pre">b</span></code> producing the wrong sign (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1540">GH-1540</a>).</p></li>
 </ul>
 </section>
 <section id="documentation">
