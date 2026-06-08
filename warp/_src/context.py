@@ -2965,9 +2965,10 @@ class Module:
                 self.references.add(ref)
                 ref.dependents.add(self)
 
-        # scan for function calls and kernel-local function bindings.
-        # ``iter_ast_nodes_of_types`` is a faster, order-preserving drop-in for ``ast.walk``.
-        for node in warp._src.codegen.iter_ast_nodes_of_types(adj.tree, ast.Call, ast.Assign):
+        # scan for function calls and kernel-local function bindings. ``reference_nodes`` shares
+        # a single AST traversal with Adjoint.get_references; it also yields Name/Attribute
+        # nodes, which this dependency scan ignores.
+        for node in adj.reference_nodes():
             if type(node) is ast.Call:
                 try:
                     # try to resolve the function
@@ -2983,12 +2984,7 @@ class Module:
                     # and that's ok too (not an external reference).
                     pass
 
-            else:
-                # ``iter_ast_nodes_of_types`` only yields ``ast.Call`` or ``ast.Assign`` per its
-                # type-filter argument above; this assertion documents that and guards
-                # against a future call-site change that adds a third type without
-                # updating this branch.
-                assert type(node) is ast.Assign
+            elif type(node) is ast.Assign:
                 # A function bound to a kernel-local (`f = mod.func`) or to several locals via
                 # tuple unpacking (`f, g = mod.a, mod.b`) is later called through the local(s),
                 # so the ast.Call above resolves to the local rather than to the function.

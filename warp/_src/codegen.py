@@ -1162,6 +1162,10 @@ class Adjoint:
         # for unit testing errors being spit out from kernels.
         adj.skip_build = False
 
+        # Cache of reference-candidate AST nodes, materialized once by ``reference_nodes()``.
+        # Reset to None if ``adj.tree`` is ever mutated after the cache is populated.
+        adj._reference_nodes = None
+
     # allocate extra space for a function call that requires its
     # own shared memory space, we treat shared memory as a stack
     # where each function pushes and pops space off, the extra
@@ -4674,6 +4678,31 @@ class Adjoint:
         # return the Python code corresponding to the given AST node
         return ast.get_source_segment(adj.source, node)
 
+    def reference_nodes(adj) -> tuple[ast.AST, ...]:
+        """Return the cached ``Name``/``Attribute``/``Call``/``Assign`` nodes of ``adj.tree``.
+
+        Both ``Adjoint.get_references`` (module hashing) and ``Module._find_references``
+        (dependency tracking) walk the kernel AST to find references. They run at different
+        times (hashing versus registration), so they cannot share the resolution of those
+        nodes, but they can share the traversal: the tree is walked once here and the node
+        tuple is reused, each caller resolving from it at its own time.
+
+        Sharing the resolution would be wrong in either direction. Resolving at hash time and
+        reusing the result for dependency tracking would miss the dependency edges of modules
+        that are only reached transitively, so reloading such a module would not unload its
+        dependents. Resolving at registration time and reusing the result for hashing would
+        make a regular kernel's hash stale if a referenced global or constant is rebound
+        before the kernel is first built.
+
+        This cache assumes ``adj.tree`` is structurally final before the first call. Any code
+        that mutates ``adj.tree`` afterwards must reset ``adj._reference_nodes`` to ``None``.
+        """
+        if adj._reference_nodes is None:
+            adj._reference_nodes = tuple(
+                iter_ast_nodes_of_types(adj.tree, ast.Name, ast.Attribute, ast.Call, ast.Assign)
+            )
+        return adj._reference_nodes
+
     def get_references(adj) -> tuple[dict[str, Any], dict[Any, Any], dict[warp._src.context.Function, Any]]:
         """Traverse ``adj.tree`` for referenced constants, types, and user-defined functions.
 
@@ -4690,8 +4719,8 @@ class Adjoint:
         functions: dict[warp._src.context.Function, Any] = {}
         max_dim = 0  # thread-grid dimension, inferred from wp.tid() unpack arity
 
-        # Faster, order-preserving drop-in for ast.walk; runs for every adjoint during hashing.
-        for node in iter_ast_nodes_of_types(adj.tree, ast.Name, ast.Attribute, ast.Call, ast.Assign):
+        # Shared single traversal (see reference_nodes); resolved here at hash time.
+        for node in adj.reference_nodes():
             if isinstance(node, ast.Name) and node.id not in local_variables:
                 # look up in closure/global variables
                 obj = adj.resolve_external_reference(node.id)
