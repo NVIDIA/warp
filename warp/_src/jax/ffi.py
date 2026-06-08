@@ -451,7 +451,7 @@ class FfiKernel:
                 assert hooks.forward, "Failed to find kernel entry point"
 
                 # launch the kernel
-                wp._src.context.runtime.core.wp_cuda_launch_kernel(
+                if wp._src.context.runtime.core.wp_cuda_launch_kernel(
                     device.context,
                     hooks.forward,
                     launch_bounds.size,
@@ -461,7 +461,11 @@ class FfiKernel:
                     kernel_params,
                     stream,
                     None,  # apic_info
-                )
+                ):
+                    raise RuntimeError(
+                        f"Error launching kernel: {self.kernel.key} on device {device}: "
+                        f"{wp._src.context.runtime.get_error_string()}"
+                    )
 
         except Exception as e:
             print(traceback.format_exc())

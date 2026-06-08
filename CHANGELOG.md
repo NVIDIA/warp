@@ -55,6 +55,8 @@
   instead of an internal `AttributeError` ([GH-1487](https://github.com/NVIDIA/warp/issues/1487)).
 - Fix stale gradient keepalive references when replacing a `@wp.struct` plain-array field with `None` or a
   non-gradient array ([GH-1520](https://github.com/NVIDIA/warp/issues/1520)).
+- Fix CUDA kernel launch failures to raise a Python `RuntimeError` instead of only logging native CUDA stderr and
+  continuing with stale outputs or gradients ([GH-1535](https://github.com/NVIDIA/warp/issues/1535)).
 
 ### Documentation
 

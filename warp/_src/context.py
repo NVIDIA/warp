@@ -8554,6 +8554,11 @@ def invoke(kernel, hooks, params: Sequence[Any], adjoint: bool):
         hooks.backward(ctypes.byref(params[0]), ctypes.byref(args), ctypes.byref(adj_args))
 
 
+def _raise_cuda_launch_error(kernel: Kernel, device: Device) -> None:
+    """Raise a RuntimeError for the current CUDA launch failure."""
+    raise RuntimeError(f"Error launching kernel: {kernel.key} on device {device}: {runtime.get_error_string()}")
+
+
 class Launch:
     """Represent all data required for a kernel launch so that launches can be replayed quickly.
 
@@ -8760,7 +8765,7 @@ class Launch:
                     graph._retain_module_exec(self.module_exec)
 
             if self.adjoint:
-                runtime.core.wp_cuda_launch_kernel(
+                if runtime.core.wp_cuda_launch_kernel(
                     self.device.context,
                     self.hooks.backward,
                     self.bounds.size,
@@ -8770,9 +8775,10 @@ class Launch:
                     self.params_addr,
                     stream.cuda_stream,
                     None,  # apic_info: replayed launches don't re-record
-                )
+                ):
+                    _raise_cuda_launch_error(self.kernel, self.device)
             else:
-                runtime.core.wp_cuda_launch_kernel(
+                if runtime.core.wp_cuda_launch_kernel(
                     self.device.context,
                     self.hooks.forward,
                     self.bounds.size,
@@ -8782,7 +8788,8 @@ class Launch:
                     self.params_addr,
                     stream.cuda_stream,
                     None,  # apic_info: replayed launches don't re-record
-                )
+                ):
+                    _raise_cuda_launch_error(self.kernel, self.device)
 
 
 def _canonicalize_dim(dim: int | Sequence[int]) -> tuple[int, ...]:
@@ -9101,7 +9108,7 @@ def launch(
                             "Backward kernel launches are not supported during APIC graph capture. "
                             "Use wp.Tape outside of capture scope instead."
                         )
-                    runtime.core.wp_cuda_launch_kernel(
+                    if runtime.core.wp_cuda_launch_kernel(
                         device.context,
                         hooks.backward,
                         bounds.size,
@@ -9111,7 +9118,8 @@ def launch(
                         kernel_params,
                         stream.cuda_stream,
                         None,
-                    )
+                    ):
+                        _raise_cuda_launch_error(kernel, device)
 
             else:
                 if hooks.forward is None:
@@ -9144,7 +9152,7 @@ def launch(
                             False,
                         )
                         apic_info_ptr = ctypes.byref(apic_info)
-                    runtime.core.wp_cuda_launch_kernel(
+                    if runtime.core.wp_cuda_launch_kernel(
                         device.context,
                         hooks.forward,
                         bounds.size,
@@ -9154,7 +9162,8 @@ def launch(
                         kernel_params,
                         stream.cuda_stream,
                         apic_info_ptr,
-                    )
+                    ):
+                        _raise_cuda_launch_error(kernel, device)
 
             try:
                 runtime.verify_cuda_device(device)
