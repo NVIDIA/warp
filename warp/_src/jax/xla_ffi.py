@@ -644,11 +644,14 @@ def jax_dtype_from_ffi(ffi_dtype):
 # Execution context (stream, stage)
 class ExecutionContext:
     stage: XLA_FFI_ExecutionStage
-    stream: int
+    stream: int | None
 
-    def __init__(self, callframe: XLA_FFI_CallFrame):
+    def __init__(self, callframe: XLA_FFI_CallFrame, platform: str = "CUDA"):
         self.stage = XLA_FFI_ExecutionStage(callframe.stage)
-        self.stream = get_stream_from_callframe(callframe)
+        if platform == "CUDA":
+            self.stream = get_stream_from_callframe(callframe)
+        else:
+            self.stream = None
 
 
 class FfiBuffer:

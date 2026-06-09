@@ -15,6 +15,8 @@
 - Extend `wp.utils.array_scan()` to 64-bit scalar and vector types, and extend `wp.utils.radix_sort_pairs()` to 32- and
   64-bit signed, unsigned, and floating-point keys with 4- or 8-byte values
   ([GH-1538](https://github.com/NVIDIA/warp/issues/1538)).
+- Add support for running JAX FFI callbacks on the CPU (Host) platform in addition to CUDA
+  ([GH-1446](https://github.com/NVIDIA/warp/issues/1446)).
 
 ### Removed
 
