@@ -7,8 +7,10 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 
 ## 2026
 
+- **SSR: Scaling Surefooted and Symmetric Humanoid Traversal to the Open World**. *R. Yu, Y. Wang, Y. Hao, J. Wu, Q. Zhu*. May 2026. [arXiv:2605.30770](https://arxiv.org/abs/2605.30770)
 - **EndoGSim: Physics-Aware 4D Dynamic Endoscopic Scene Simulations via MLLM-Guided Gaussian Splatting**. *C. Liu, Y. Huang, L. Bai, B. Cui, H. Ren*. May 2026. [arXiv:2605.16022](https://arxiv.org/abs/2605.16022)
 - **Learning-augmented robotic automation for real-world manufacturing**. *Y. Kim, Q. Nguyen, T. Kim, Y. Heo, J. Lee*. April 2026. [arXiv:2604.22235](https://arxiv.org/abs/2604.22235)
+- **Novel Algorithms for Smoothly Differentiable and Efficiently Vectorizable Contact Manifold Construction**. *O. Beker, A. R. Geist, A. Paulus, G. Martius*. April 2026. [arXiv:2604.17538](https://arxiv.org/abs/2604.17538)
 - **FIT: A Large-Scale Dataset for Fit-Aware Virtual Try-On**. *J. Karras, Y. Wang, Y. Li, I. Kemelmacher-Shlizerman*. April 2026. [arXiv:2604.08526](https://arxiv.org/abs/2604.08526)
 - **Wave-appropriate reconstruction of compressible flows: physics-constrained acoustic dissipation and rank-1 entropy wave correction**. *A. S. Chamarthi*. April 2026. [arXiv:2604.02757](https://arxiv.org/abs/2604.02757)
 - **Discovering neural cohesive zone laws from displacement fields**. *G. Barkoulis Gavris, W. Sun*. April 2026. [DOI:10.1016/j.cma.2026.118733](https://doi.org/10.1016/j.cma.2026.118733)
@@ -96,6 +98,7 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 - **Diffusion Texture Painting**. *A. Hu, N. Desai, H. Abu Alhaija, S. W. Kim, M. Shugrina*. July 2024. [DOI:10.1145/3641519.3657458](https://doi.org/10.1145/3641519.3657458)
 - **Physically Embodied Gaussian Splatting: A Realtime Correctable World Model for Robotics**. *J. Abou-Chakra, K. Rana, F. Dayoub, N. Sünderhauf*. June 2024. [arXiv:2406.10788](https://arxiv.org/abs/2406.10788)
 - **DreamPhysics: Learning Physics-Based 3D Dynamics with Video Diffusion Priors**. *T. Huang, H. Zhang, Y. Zeng, Z. Zhang, H. Li, W. Zuo, R. W. H. Lau*. June 2024. [arXiv:2406.01476](https://arxiv.org/abs/2406.01476)
+- **Robust Biharmonic Skinning Using Geometric Fields**. *A. Dodik, V. Sitzmann, J. Solomon, O. Stein*. June 2024. [arXiv:2406.00238](https://arxiv.org/abs/2406.00238)
 - **Atlas3D: Physically Constrained Self-Supporting Text-to-3D for Simulation and Fabrication**. *Y. Chen, T. Xie, Z. Zong, X. Li, F. Gao, Y. Yang, Y. N. Wu, C. Jiang*. May 2024. [arXiv:2405.18515](https://arxiv.org/abs/2405.18515)
 - **GarmentCodeData: A Dataset of 3D Made-to-Measure Garments With Sewing Patterns**. *M. Korosteleva, T. L. Kesdogan, F. Kemper, S. Wenninger, J. Koller, Y. Zhang, M. Botsch, O. Sorkine-Hornung*. May 2024. [arXiv:2405.17609](https://arxiv.org/abs/2405.17609)
 - **LLM and Simulation as Bilevel Optimizers: A New Paradigm to Advance Physical Scientific Discovery**. *P. Ma, T. Wang, M. Guo, Z. Sun, J. B. Tenenbaum, D. Rus, C. Gan, W. Matusik*. May 2024. [arXiv:2405.09783](https://arxiv.org/abs/2405.09783)

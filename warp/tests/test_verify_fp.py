@@ -52,6 +52,9 @@ def nan_kernel(foos: wp.array(dtype=TestStruct)):
 
 
 def test_nan(test, device):
+    if wp.config.mode == "debug":
+        test.skipTest("verify_fp asserts before NaN warning checks in debug mode")
+
     if sys.platform == "win32":
         test.skipTest("Skipping test on Windows due to unreliable stdout capture")
 

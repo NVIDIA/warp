@@ -358,14 +358,32 @@ void wp_memtile_host(void* dst, const void* src, size_t srcsize, size_t n)
     }
 }
 
-void wp_array_scan_int_host(uint64_t in, uint64_t out, int len, bool inclusive)
+void wp_array_scan_int_host(
+    uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
+)
 {
-    scan_host((const int*)in, (int*)out, len, inclusive);
+    scan_host((const int*)in, (int*)out, len, in_stride, out_stride, type_len, inclusive);
 }
 
-void wp_array_scan_float_host(uint64_t in, uint64_t out, int len, bool inclusive)
+void wp_array_scan_int64_host(
+    uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
+)
 {
-    scan_host((const float*)in, (float*)out, len, inclusive);
+    scan_host((const int64_t*)in, (int64_t*)out, len, in_stride, out_stride, type_len, inclusive);
+}
+
+void wp_array_scan_float_host(
+    uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
+)
+{
+    scan_host((const float*)in, (float*)out, len, in_stride, out_stride, type_len, inclusive);
+}
+
+void wp_array_scan_double_host(
+    uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
+)
+{
+    scan_host((const double*)in, (double*)out, len, in_stride, out_stride, type_len, inclusive);
 }
 
 
@@ -1183,8 +1201,26 @@ WP_API bool wp_cuda_configure_kernel_shared_memory(void* kernel, int size) { ret
 WP_API void wp_cuda_set_context_restore_policy(bool always_restore) { }
 WP_API int wp_cuda_get_context_restore_policy() { return false; }
 
-WP_API void wp_array_scan_int_device(uint64_t in, uint64_t out, int len, bool inclusive) { }
-WP_API void wp_array_scan_float_device(uint64_t in, uint64_t out, int len, bool inclusive) { }
+WP_API void wp_array_scan_int_device(
+    uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
+)
+{
+}
+WP_API void wp_array_scan_int64_device(
+    uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
+)
+{
+}
+WP_API void wp_array_scan_float_device(
+    uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
+)
+{
+}
+WP_API void wp_array_scan_double_device(
+    uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
+)
+{
+}
 
 WP_API bool wp_cuda_graphics_map(void* context, void* resource) { return false; }
 WP_API void wp_cuda_graphics_unmap(void* context, void* resource) { }

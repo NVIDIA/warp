@@ -2421,11 +2421,10 @@ template <typename T> inline CUDA_CALLABLE T atomic_cas(T* address, T compare, T
 template <> inline CUDA_CALLABLE float atomic_cas(float* address, float compare, float val)
 {
 #if defined(__CUDA_ARCH__)
-    auto result = atomicCAS(
-        reinterpret_cast<unsigned int*>(address), reinterpret_cast<unsigned int&>(compare),
-        reinterpret_cast<unsigned int&>(val)
-    );
-    return reinterpret_cast<float&>(result);
+    unsigned int compare_bits = __float_as_uint(compare);
+    unsigned int val_bits = __float_as_uint(val);
+    auto result = atomicCAS(reinterpret_cast<unsigned int*>(address), compare_bits, val_bits);
+    return __uint_as_float(result);
 #else
     float old = *address;
     if (old == compare) {
@@ -2438,11 +2437,10 @@ template <> inline CUDA_CALLABLE float atomic_cas(float* address, float compare,
 template <> inline CUDA_CALLABLE double atomic_cas(double* address, double compare, double val)
 {
 #if defined(__CUDA_ARCH__)
-    auto result = atomicCAS(
-        reinterpret_cast<unsigned long long int*>(address), reinterpret_cast<unsigned long long int&>(compare),
-        reinterpret_cast<unsigned long long int&>(val)
-    );
-    return reinterpret_cast<double&>(result);
+    unsigned long long int compare_bits = static_cast<unsigned long long int>(__double_as_longlong(compare));
+    unsigned long long int val_bits = static_cast<unsigned long long int>(__double_as_longlong(val));
+    auto result = atomicCAS(reinterpret_cast<unsigned long long int*>(address), compare_bits, val_bits);
+    return __longlong_as_double(static_cast<long long int>(result));
 #else
     double old = *address;
     if (old == compare) {
@@ -2456,10 +2454,10 @@ template <> inline CUDA_CALLABLE int64 atomic_cas(int64* address, int64 compare,
 {
 #if defined(__CUDA_ARCH__)
     auto result = atomicCAS(
-        reinterpret_cast<unsigned long long int*>(address), reinterpret_cast<unsigned long long int&>(compare),
-        reinterpret_cast<unsigned long long int&>(val)
+        reinterpret_cast<unsigned long long int*>(address), static_cast<unsigned long long int>(compare),
+        static_cast<unsigned long long int>(val)
     );
-    return reinterpret_cast<int64&>(result);
+    return static_cast<int64>(result);
 #else
     int64 old = *address;
     if (old == compare) {
@@ -2483,10 +2481,9 @@ template <typename T> inline CUDA_CALLABLE T atomic_exch(T* address, T val)
 template <> inline CUDA_CALLABLE double atomic_exch(double* address, double val)
 {
 #if defined(__CUDA_ARCH__)
-    auto result = atomicExch(
-        reinterpret_cast<unsigned long long int*>(address), reinterpret_cast<unsigned long long int&>(val)
-    );
-    return reinterpret_cast<double&>(result);
+    unsigned long long int val_bits = static_cast<unsigned long long int>(__double_as_longlong(val));
+    auto result = atomicExch(reinterpret_cast<unsigned long long int*>(address), val_bits);
+    return __longlong_as_double(static_cast<long long int>(result));
 #else
     double old = *address;
     *address = val;
@@ -2497,10 +2494,9 @@ template <> inline CUDA_CALLABLE double atomic_exch(double* address, double val)
 template <> inline CUDA_CALLABLE int64 atomic_exch(int64* address, int64 val)
 {
 #if defined(__CUDA_ARCH__)
-    auto result = atomicExch(
-        reinterpret_cast<unsigned long long int*>(address), reinterpret_cast<unsigned long long int&>(val)
-    );
-    return reinterpret_cast<int64&>(result);
+    auto result
+        = atomicExch(reinterpret_cast<unsigned long long int*>(address), static_cast<unsigned long long int>(val));
+    return static_cast<int64>(result);
 #else
     int64 old = *address;
     *address = val;

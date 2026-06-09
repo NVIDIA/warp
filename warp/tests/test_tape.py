@@ -303,7 +303,29 @@ def test_tape_visualize_subscript(test, device):
     test.assertIn("array: dtype=", dot_code)
 
 
+def test_tape_backward_cuda_launch_failure(test, device):
+    """Raise when Tape backward hits CUDA launch errors.
+
+    Corrupt the recorded backward launch block size to reproduce the stale-gradient failure mode.
+    Protects ``Tape.backward()`` from returning after a failed replay with stale or missing gradients.
+    """
+    x = wp.array([1.0], dtype=wp.float32, device=device, requires_grad=True)
+    y = wp.empty_like(x, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(kernel=mul_constant, dim=x.size, inputs=[x], outputs=[y], block_dim=256, device=device)
+
+    launch = tape.launches[0]
+    test.assertEqual(len(launch), 8)
+    launch[6] = 2048  # block_dim
+
+    with test.assertRaisesRegex(RuntimeError, r"Error launching kernel: .*mul_constant.*Warp CUDA error"):
+        tape.backward(grads={y: wp.ones_like(y)})
+
+
 devices = get_test_devices()
+cuda_devices = get_cuda_test_devices()
 
 
 class TestTape(unittest.TestCase):
@@ -367,6 +389,9 @@ add_function_test(TestTape, "test_tape_visualize", test_tape_visualize, devices=
 add_function_test(TestTape, "test_tape_struct_subscript", test_tape_struct_subscript, devices=devices)
 add_function_test(TestTape, "test_tape_nested_struct_subscript", test_tape_nested_struct_subscript, devices=devices)
 add_function_test(TestTape, "test_tape_visualize_subscript", test_tape_visualize_subscript, devices=devices)
+add_function_test(
+    TestTape, "test_tape_backward_cuda_launch_failure", test_tape_backward_cuda_launch_failure, devices=cuda_devices
+)
 
 
 if __name__ == "__main__":

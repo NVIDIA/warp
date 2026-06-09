@@ -217,6 +217,7 @@ set(WARP_CPP_SOURCES
     warp/native/texture.cpp
     warp/native/mathdx.cpp
     warp/native/coloring.cpp
+    warp/native/deterministic.cpp
     warp/native/fastcall.cpp
 )
 
@@ -226,6 +227,7 @@ if(WARP_ENABLE_CUDA)
     list(
         APPEND WARP_SOURCES
         warp/native/bvh.cu
+        warp/native/deterministic.cu
         warp/native/mesh.cu
         warp/native/sort.cu
         warp/native/hashgrid.cu

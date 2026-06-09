@@ -372,13 +372,17 @@ static bool apic_rebuild_cuda_graph(APICGraph* graph, CUstream stream)
             // Replay via the same wp_cuda_launch_kernel that captured this op.
             // apic_info=nullptr is safe: g_apic_state is null during replay, so
             // the recording branch in wp_cuda_launch_kernel is a no-op.
-            wp_cuda_launch_kernel(
+            size_t launch_result = wp_cuda_launch_kernel(
                 graph->cuda_context, kernel, rec->dim, rec->max_blocks, rec->block_dim, rec->smem_bytes, args.data(),
                 stream, /*apic_info=*/nullptr
             );
 
             for (uint8_t* p : arg_storage)
                 delete[] p;
+            if (launch_result) {
+                success = false;
+                break;
+            }
             break;
         }
 

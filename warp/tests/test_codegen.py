@@ -4,6 +4,7 @@
 import ast
 import inspect
 import linecache
+import math
 import sys
 import unittest
 from unittest import mock
@@ -1469,6 +1470,37 @@ def test_rebind_gradwrapper_local_through_augassign_errors(test, device):
         )
 
 
+F64_CONST = wp.constant(wp.float64(2.0 * math.pi))
+I64_CONST = wp.constant(wp.int64(7))
+
+
+@wp.kernel(module="test_unary_minus_on_64bit_constant_f64")
+def _unary_minus_f64_kernel(values: wp.array(dtype=wp.float64), out: wp.array(dtype=wp.float64)):
+    b = values[0]
+    c = values[1]
+    out[0] = -F64_CONST * b / (c * c)
+
+
+@wp.kernel(module="test_unary_minus_on_64bit_constant_i64")
+def _unary_minus_i64_kernel(values: wp.array(dtype=wp.int64), out: wp.array(dtype=wp.int64)):
+    out[0] = -I64_CONST * values[0]
+
+
+def test_unary_minus_on_64bit_constant(test, device):
+    b, c = 3.0, 5.0
+    expected_f64 = -(2.0 * math.pi) * b / (c * c)
+    values_f64 = wp.array([b, c], dtype=wp.float64, device=device)
+    out_f64 = wp.zeros(1, dtype=wp.float64, device=device)
+    wp.launch(_unary_minus_f64_kernel, dim=1, inputs=[values_f64, out_f64], device=device)
+
+    values_i64 = wp.array([2], dtype=wp.int64, device=device)
+    out_i64 = wp.zeros(1, dtype=wp.int64, device=device)
+    wp.launch(_unary_minus_i64_kernel, dim=1, inputs=[values_i64, out_i64], device=device)
+
+    np.testing.assert_allclose(out_f64.numpy(), [expected_f64], rtol=1e-15)
+    np.testing.assert_array_equal(out_i64.numpy(), [-7 * 2])
+
+
 class TestCodeGen(unittest.TestCase):
     def _make_adjoint_with_filename(self, filename):
         source = "def kernel_fn(x: int):\n    y = x + 1\n    return y\n"
@@ -2002,6 +2034,12 @@ add_function_test(
     TestCodeGen,
     "test_rebind_gradwrapper_local_through_augassign_errors",
     test_rebind_gradwrapper_local_through_augassign_errors,
+    devices=devices,
+)
+add_function_test(
+    TestCodeGen,
+    "test_unary_minus_on_64bit_constant",
+    test_unary_minus_on_64bit_constant,
     devices=devices,
 )
 

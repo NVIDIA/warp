@@ -39,7 +39,15 @@ struct FloatKeyToUint {
     // http://stereopsis.com/radix.html
     inline CUDA_CALLABLE uint32_t convert(float value)
     {
-        unsigned int i = reinterpret_cast<unsigned int&>(value);
+#if defined(__CUDA_ARCH__)
+        unsigned int i = __float_as_uint(value);
+#else
+        union {
+            float f;
+            unsigned int u;
+        } bits = { value };
+        unsigned int i = bits.u;
+#endif
         unsigned int mask = (unsigned int)(-(int)(i >> 31)) | 0x80000000;
         return i ^ mask;
     }

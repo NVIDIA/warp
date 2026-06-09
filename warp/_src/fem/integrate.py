@@ -2813,9 +2813,7 @@ def interpolate(
     dest: DiscreteField | FieldRestriction | wp.array | BsrMatrix | None = None,
     at: Quadrature | SpaceRestriction | GeometryDomain | None = None,
     dest_space: FunctionSpace | None = None,
-    quadrature: Quadrature | None = None,
     dim: int | None = None,
-    domain: GeometryDomain | None = None,
     fields: dict[str, FieldLike] | None = None,
     values: dict[str, Any] | None = None,
     reduction: str = "weighted_average",
@@ -2848,14 +2846,11 @@ def interpolate(
               * at each of the domain's nodes, if `dest` is a field or `dest_space` is provided;
               * at an arbitrary number of samples, in the domain if `dim` is provided;
               * at each of the domain's elements, otherwise).
-         - ``None``, in which case it will be inferred from `dest`, `dest_space`, or the deprecated `domain` and `quadrature` arguments,
-           when possible.
+         - ``None``, in which case it will be inferred from `dest` or `dest_space`, when possible.
         dest_space: When interpolating at nodes, the function space that defines the degree of freedom basis.
           If `dest` is a :class:`DiscreteField`, or a :class:`FieldRestriction`, this will be inferred from the space of the field.
-        quadrature: (Deprecated) Equivalent to passing a :class:`Quadrature` to `at`. Will be removed in Warp 1.15.
         dim: If `dest` is an array or ``None``, and `at` is a :class:`GeometryDomain`, the number of arbitrary samples at which to interpolate.
            In this case, the ``Sample`` passed to the `integrand` will be invalid, but the sample point index ``s.qp_index`` can be used to define custom interpolation logic.
-        domain: (Deprecated) Equivalent to passing a :class:`Domain` to `at`. Will be removed in Warp 1.15.
         fields: Discrete fields to be passed to the integrand. Keys in the dictionary must match integrand parameters names.
         values: Additional variable values to be passed to the integrand, can be of any type accepted by warp kernel launches. Keys in the dictionary must match integrand parameter names.
         reduction: Reduction method to be used for interpolation at nodes shared by several elements. Can be one of "weighted_average", "mean", "sum", "max", "min", "first".
@@ -2884,24 +2879,6 @@ def interpolate(
     if not isinstance(integrand, Integrand):
         raise ValueError("integrand must be tagged with @integrand decorator")
 
-    # deprecation warnings
-    if quadrature is not None:
-        if at is not None:
-            raise ValueError("Cannot pass both `at` and the deprecated `quadrature` argument")
-        log_warning(
-            "The `quadrature` argument of `fem.interpolate` is deprecated and will be removed in Warp 1.15. Please use `at` instead.",
-            category=DeprecationWarning,
-            stacklevel=2,
-        )
-    if domain is not None:
-        if at is not None:
-            raise ValueError("Cannot pass both `at` and the deprecated `domain` argument")
-        log_warning(
-            "The `domain` argument of `fem.interpolate` is deprecated and will be removed in Warp 1.15. Please use `at` instead.",
-            category=DeprecationWarning,
-            stacklevel=2,
-        )
-
     arguments = _parse_integrand_arguments(integrand, fields)
     if arguments.test_name:
         raise ValueError(f"Test field '{arguments.test_name}' maybe not be used for interpolation")
@@ -2913,13 +2890,14 @@ def interpolate(
     trial = arguments.field_args.get(arguments.trial_name, None)
 
     # convert to one of the three main location types: space_restriction, quadrature, or int
+    quadrature: Quadrature | None = None
+    domain: GeometryDomain | None = None
     if isinstance(dest, FieldRestriction):
         # interpolate at the nodes of the field restriction
         space_restriction = dest.space_restriction
         dest = dest.field
         dest_space = dest.space
         domain = space_restriction.domain
-        quadrature = None
         dim = None
     elif isinstance(at, SpaceRestriction):
         # interpolate at the nodes of the space restriction
@@ -2930,16 +2908,10 @@ def interpolate(
             raise ValueError("`dest_space` must be provided when interpolating at nodes of a space restriction")
         space_restriction = at
         domain = space_restriction.domain
-        quadrature = None
         dim = None
     elif isinstance(at, Quadrature):
         # interpolate at quadrature points
         quadrature = at
-        domain = quadrature.domain
-        dim = None
-        space_restriction = None
-    elif quadrature is not None:
-        # interpolate at quadrature points
         domain = quadrature.domain
         dim = None
         space_restriction = None

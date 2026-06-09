@@ -50,6 +50,7 @@ _wp_module_name_ = "warp.codegen"
 # of current compile options (block_dim) etc
 options = {}
 
+
 def _escape_line_directive_filename(filename: str) -> str:
     """Return ``filename`` escaped for the quoted filename field of a C/CUDA ``#line`` directive."""
 
@@ -410,11 +411,15 @@ def _make_struct_field_setter(cls, field: str, var_type: type):
                 )
             setattr(inst._ctype, field, value.__ctype__())
 
-            # workaround to prevent gradient buffers being garbage collected
-            # since users can do struct.array.requires_grad = False the gradient array
-            # would be collected while the struct ctype still holds a reference to it
-            if value.requires_grad:
-                cls.__setattr__(inst, "_" + field + "_grad", value.grad)
+        # Keep gradient buffers alive while the struct's native array
+        # descriptor may reference them. Clear any previous keepalive when
+        # this field no longer points at a grad-tracked array.
+        grad_attr = "_" + field + "_grad"
+        if value is not None and value.requires_grad:
+            cls.__setattr__(inst, grad_attr, value.grad)
+        else:
+            # clear any previous keepalive
+            cls.__setattr__(inst, grad_attr, None)
 
         cls.__setattr__(inst, field, value)
 
@@ -1035,16 +1040,39 @@ def get_arg_value(arg: Any) -> Any:
     return arg
 
 
-# decorator for synchronizing function calls (reentrant critical section)
-def synchronized(func):
-    lock = threading.RLock()
+# Re-entrant lock guarding mutation and reading of shared per-Adjoint
+# state. ``@wp.func`` helpers share one ``Adjoint`` object across every
+# module that references them; ``Adjoint.build`` rewrites ``adj.blocks``,
+# ``adj.symbols``, ``adj.variables``, ``adj.deferred_static_expressions``
+# from scratch, and ``ModuleBuilder.codegen`` later reads those same
+# fields. Holding this lock across the full build+emit window in
+# ``Module._compile`` stops a parallel ``Module.load`` (e.g. from
+# ``wp.force_load(max_workers > 1)``) from clobbering the state mid-emit.
+# Re-entrant so ``Module._compile`` -> ``ModuleBuilder.build_kernel`` ->
+# ``Adjoint.build`` on the same thread doesn't deadlock.
+_codegen_lock = threading.RLock()
 
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        with lock:
-            return func(*args, **kwargs)
 
-    return wrapper
+def synchronized(rlock: threading.RLock | None = None):
+    """Decorator that serializes calls to the wrapped function under a re-entrant lock.
+
+    ``@synchronized()`` mints a fresh private ``RLock`` for this decoration.
+    ``@synchronized(rlock)`` uses the given ``RLock``; pass the same lock to
+    every decoration that must mutually exclude. The lock is re-entrant, so
+    nested calls from the same thread do not deadlock.
+    """
+    if rlock is None:
+        rlock = threading.RLock()
+
+    def decorator(func):
+        @functools.wraps(func)
+        def locked_call(*args, **kwargs):
+            with rlock:
+                return func(*args, **kwargs)
+
+        return locked_call
+
+    return decorator
 
 
 class Adjoint:
@@ -1179,6 +1207,10 @@ class Adjoint:
         adj.det_meta = None
         adj.det_registry = None
         adj._det_atomic_return_discarded = False
+
+        # Cache of reference-candidate AST nodes, materialized once by ``reference_nodes()``.
+        # Reset to None if ``adj.tree`` is ever mutated after the cache is populated.
+        adj._reference_nodes = None
 
     # allocate extra space for a function call that requires its
     # own shared memory space, we treat shared memory as a stack
@@ -1331,7 +1363,7 @@ class Adjoint:
         return "".join(lines[start:end]), code.co_firstlineno
 
     # generate function ssa form and adjoint
-    @synchronized
+    @synchronized(_codegen_lock)
     def build(adj, builder, default_builder_options=None):
         # arg Var read/write flags are held during module rebuilds, so we reset here even when skipping a build
         for arg in adj.args:
@@ -1822,7 +1854,12 @@ class Adjoint:
         # parameter) because emit_Assign maps symbols directly to the Var
         # returned here, and a const-qualified C++ variable cannot be passed
         # by non-const reference to functions that write through it.
-        if func.is_builtin() and func.value_type in (float64, int64, uint64) and len(bound_args) == 1:
+        if (
+            func.is_builtin()
+            and func.value_type in (float64, int64, uint64)
+            and func.native_func == func.value_type.__name__
+            and len(bound_args) == 1
+        ):
             arg = next(iter(bound_args.values()))
             if isinstance(arg, Var) and arg.constant is not None:
                 raw = arg.constant
@@ -4826,6 +4863,31 @@ class Adjoint:
         # return the Python code corresponding to the given AST node
         return ast.get_source_segment(adj.source, node)
 
+    def reference_nodes(adj) -> tuple[ast.AST, ...]:
+        """Return the cached ``Name``/``Attribute``/``Call``/``Assign`` nodes of ``adj.tree``.
+
+        Both ``Adjoint.get_references`` (module hashing) and ``Module._find_references``
+        (dependency tracking) walk the kernel AST to find references. They run at different
+        times (hashing versus registration), so they cannot share the resolution of those
+        nodes, but they can share the traversal: the tree is walked once here and the node
+        tuple is reused, each caller resolving from it at its own time.
+
+        Sharing the resolution would be wrong in either direction. Resolving at hash time and
+        reusing the result for dependency tracking would miss the dependency edges of modules
+        that are only reached transitively, so reloading such a module would not unload its
+        dependents. Resolving at registration time and reusing the result for hashing would
+        make a regular kernel's hash stale if a referenced global or constant is rebound
+        before the kernel is first built.
+
+        This cache assumes ``adj.tree`` is structurally final before the first call. Any code
+        that mutates ``adj.tree`` afterwards must reset ``adj._reference_nodes`` to ``None``.
+        """
+        if adj._reference_nodes is None:
+            adj._reference_nodes = tuple(
+                iter_ast_nodes_of_types(adj.tree, ast.Name, ast.Attribute, ast.Call, ast.Assign)
+            )
+        return adj._reference_nodes
+
     def get_references(adj) -> tuple[dict[str, Any], dict[Any, Any], dict[warp._src.context.Function, Any]]:
         """Traverse ``adj.tree`` for referenced constants, types, and user-defined functions.
 
@@ -4842,8 +4904,8 @@ class Adjoint:
         functions: dict[warp._src.context.Function, Any] = {}
         max_dim = 0  # thread-grid dimension, inferred from wp.tid() unpack arity
 
-        # Faster, order-preserving drop-in for ast.walk; runs for every adjoint during hashing.
-        for node in iter_ast_nodes_of_types(adj.tree, ast.Name, ast.Attribute, ast.Call, ast.Assign):
+        # Shared single traversal (see reference_nodes); resolved here at hash time.
+        for node in adj.reference_nodes():
             if isinstance(node, ast.Name) and node.id not in local_variables:
                 # look up in closure/global variables
                 obj = adj.resolve_external_reference(node.id)

@@ -1425,7 +1425,10 @@ class GMRES(LinearSolverState):
 
             # compute and apply dot products in parallel,
             # since the Hj column entries are independent per batch
-            tiled_dot.compute(w_repeated, V[: j + 1])
+            # Keep both operands at j + 1 rows: TiledDot uses the first operand
+            # to choose the launch width, so an unsliced repeated view would read
+            # past the active V slice in debug bounds-checked builds.
+            tiled_dot.compute(w_repeated[: j + 1], V[: j + 1])
             copy_hessenberg_col.set_param_at_index(0, j)
             copy_hessenberg_col.launch()
 
