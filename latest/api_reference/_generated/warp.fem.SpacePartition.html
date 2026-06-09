@@ -496,7 +496,7 @@
 <h1>warp.fem.SpacePartition<a class="headerlink" href="#warp-fem-spacepartition" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.fem.SpacePartition">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">SpacePartition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">space_topology</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">geo_partition</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/partition.py#L23-L87"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpacePartition" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">SpacePartition</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">space_topology</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">geo_partition</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/partition.py#L21-L85"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpacePartition" title="Link to this definition">#</a></dt>
 <dd><p>Partition of a function space over a geometry partition.</p>
 <p>A space partition associates nodes of a function space topology with
 a geometry partition, enabling distributed computation over subdomains.</p>
@@ -510,7 +510,7 @@ a geometry partition, enabling distributed computation over subdomains.</p>
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.SpacePartition.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">space_topology</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">geo_partition</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/partition.py#L41-L44"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpacePartition.__init__" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">space_topology</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">geo_partition</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/partition.py#L39-L42"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpacePartition.__init__" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -571,7 +571,7 @@ a geometry partition, enabling distributed computation over subdomains.</p>
 </div>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.fem.SpacePartition.PartitionArg">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">PartitionArg</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/partition.py#L30-L34"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpacePartition.PartitionArg" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">PartitionArg</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/partition.py#L28-L32"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpacePartition.PartitionArg" title="Link to this definition">#</a></dt>
 <dd><p>Structure containing arguments to be passed to device functions.</p>
 </dd></dl>
 
@@ -589,13 +589,13 @@ a geometry partition, enabling distributed computation over subdomains.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.SpacePartition.node_count">
-<span class="sig-name descname"><span class="pre">node_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/partition.py#L45-L47"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpacePartition.node_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">node_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/partition.py#L43-L45"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpacePartition.node_count" title="Link to this definition">#</a></dt>
 <dd><p>Return number of nodes in this partition.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.SpacePartition.owned_node_count">
-<span class="sig-name descname"><span class="pre">owned_node_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/partition.py#L48-L50"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpacePartition.owned_node_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">owned_node_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/partition.py#L46-L48"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpacePartition.owned_node_count" title="Link to this definition">#</a></dt>
 <dd><p>Return number of nodes in this partition, excluding exterior halo.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -606,7 +606,7 @@ a geometry partition, enabling distributed computation over subdomains.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.SpacePartition.interior_node_count">
-<span class="sig-name descname"><span class="pre">interior_node_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/partition.py#L51-L53"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpacePartition.interior_node_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">interior_node_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/partition.py#L49-L51"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpacePartition.interior_node_count" title="Link to this definition">#</a></dt>
 <dd><p>Return number of interior nodes in this partition.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -617,7 +617,7 @@ a geometry partition, enabling distributed computation over subdomains.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.SpacePartition.space_node_indices">
-<span class="sig-name descname"><span class="pre">space_node_indices</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/partition.py#L54-L56"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpacePartition.space_node_indices" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">space_node_indices</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/partition.py#L52-L54"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpacePartition.space_node_indices" title="Link to this definition">#</a></dt>
 <dd><p>Return the global function space indices for nodes in this partition</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -628,7 +628,7 @@ a geometry partition, enabling distributed computation over subdomains.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.SpacePartition.rebuild">
-<span class="sig-name descname"><span class="pre">rebuild</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temporary_store</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/partition.py#L57-L64"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpacePartition.rebuild" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">rebuild</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temporary_store</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/partition.py#L55-L62"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpacePartition.rebuild" title="Link to this definition">#</a></dt>
 <dd><p>Rebuild the space partition indices</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -647,13 +647,13 @@ a geometry partition, enabling distributed computation over subdomains.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.SpacePartition.fill_partition_arg">
-<span class="sig-name descname"><span class="pre">fill_partition_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/partition.py#L72-L75"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpacePartition.fill_partition_arg" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">fill_partition_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/partition.py#L70-L73"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpacePartition.fill_partition_arg" title="Link to this definition">#</a></dt>
 <dd><p>Fill partition arguments for device functions.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.SpacePartition.partition_node_index">
-<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">partition_node_index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">space_node_index</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/partition.py#L76-L79"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpacePartition.partition_node_index" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">partition_node_index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">space_node_index</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/partition.py#L74-L77"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpacePartition.partition_node_index" title="Link to this definition">#</a></dt>
 <dd><p>Return the index in the partition of a function space node, or <a class="reference internal" href="warp.fem.NULL_NODE_INDEX.html#warp.fem.NULL_NODE_INDEX" title="warp.fem.NULL_NODE_INDEX"><code class="xref py py-data docutils literal notranslate"><span class="pre">NULL_NODE_INDEX</span></code></a> if it does not exist.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -667,7 +667,7 @@ a geometry partition, enabling distributed computation over subdomains.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.SpacePartition.name">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/partition.py#L83-L87"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpacePartition.name" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/partition.py#L81-L85"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpacePartition.name" title="Link to this definition">#</a></dt>
 <dd><p>Name of the space partition.</p>
 </dd></dl>
 

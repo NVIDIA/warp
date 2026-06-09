@@ -499,7 +499,6 @@
 <span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">make_space_restriction</span></span><span class="sig-paren">(</span>
 
 <dl>
-<dd><em class="sig-param"><span class="n"><span class="pre">space</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">space_partition</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">domain</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">space_topology</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
@@ -507,13 +506,12 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">temporary_store</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/__init__.py#L43-L91"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.make_space_restriction" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/__init__.py#L42-L78"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.make_space_restriction" title="Link to this definition">#</a></dt>
 <dd><p>Restricts a function space partition to a Domain, i.e. a subset of its elements.</p>
-<p>One of <cite>space_partition</cite>, <cite>space_topology</cite>, or <cite>space</cite> must be provided (and will be considered in that order).</p>
+<p>One of <cite>space_partition</cite> or <cite>space_topology</cite> must be provided (and will be considered in that order).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>space</strong> (<a class="reference internal" href="warp.fem.FunctionSpace.html#warp.fem.FunctionSpace" title="warp._src.fem.space.function_space.FunctionSpace"><em>FunctionSpace</em></a><em> | </em><em>None</em>) – (deprecated) if neither <cite>space_partition</cite> nor <cite>space_topology</cite> are provided, the space defining the topology to restrict</p></li>
 <li><p><strong>space_partition</strong> (<a class="reference internal" href="warp.fem.SpacePartition.html#warp.fem.SpacePartition" title="warp._src.fem.space.partition.SpacePartition"><em>SpacePartition</em></a><em> | </em><em>None</em>) – the subset of nodes from the space topology to consider</p></li>
 <li><p><strong>domain</strong> (<a class="reference internal" href="warp.fem.GeometryDomain.html#warp.fem.GeometryDomain" title="warp._src.fem.domain.GeometryDomain"><em>GeometryDomain</em></a><em> | </em><em>None</em>) – the domain to restrict the space to, defaults to all cells of the space geometry or partition.</p></li>
 <li><p><strong>space_topology</strong> (<a class="reference internal" href="warp.fem.SpaceTopology.html#warp.fem.SpaceTopology" title="warp._src.fem.space.topology.SpaceTopology"><em>SpaceTopology</em></a><em> | </em><em>None</em>) – the space topology to be restricted, if <cite>space_partition</cite> is <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>

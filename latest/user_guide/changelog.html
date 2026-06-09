@@ -509,6 +509,12 @@ into a <code class="docutils literal notranslate"><span class="pre">wp.array</sp
 </section>
 <section id="removed">
 <h3>Removed<a class="headerlink" href="#removed" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">warp.fem</span></code>: Remove the deprecated <code class="docutils literal notranslate"><span class="pre">quadrature</span></code> and <code class="docutils literal notranslate"><span class="pre">domain</span></code> arguments of <code class="docutils literal notranslate"><span class="pre">fem.interpolate()</span></code>, and the deprecated
+<code class="docutils literal notranslate"><span class="pre">space</span></code> argument of <code class="docutils literal notranslate"><span class="pre">fem.make_space_restriction()</span></code> and <code class="docutils literal notranslate"><span class="pre">fem.make_space_partition()</span></code>. Pass a <code class="docutils literal notranslate"><span class="pre">Quadrature</span></code> or
+<code class="docutils literal notranslate"><span class="pre">GeometryDomain</span></code> to <code class="docutils literal notranslate"><span class="pre">at</span></code> when interpolating, pass <code class="docutils literal notranslate"><span class="pre">space_topology</span></code> to <code class="docutils literal notranslate"><span class="pre">fem.make_space_partition()</span></code>, and pass
+<code class="docutils literal notranslate"><span class="pre">space_topology</span></code> or <code class="docutils literal notranslate"><span class="pre">space_partition</span></code> to <code class="docutils literal notranslate"><span class="pre">fem.make_space_restriction()</span></code>.</p></li>
+</ul>
 </section>
 <section id="deprecated">
 <h3>Deprecated<a class="headerlink" href="#deprecated" title="Link to this heading">#</a></h3>
