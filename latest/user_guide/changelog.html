@@ -505,6 +505,9 @@ parallel and incremental developer builds (<a class="reference external" href="h
 <li><p>Extend AddressSanitizer support to JIT-compiled CPU kernels: when <code class="docutils literal notranslate"><span class="pre">warp-clang</span></code> is built with <code class="docutils literal notranslate"><span class="pre">--sanitize=address</span></code>, CPU
 kernels are automatically instrumented and share the host’s single in-process ASan runtime, so out-of-bounds accesses
 into a <code class="docutils literal notranslate"><span class="pre">wp.array</span></code> are reported as <code class="docutils literal notranslate"><span class="pre">heap-buffer-overflow</span></code> (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1387">GH-1387</a>).</p></li>
+<li><p>Extend <code class="docutils literal notranslate"><span class="pre">wp.utils.array_scan()</span></code> to 64-bit scalar and vector types, and extend <code class="docutils literal notranslate"><span class="pre">wp.utils.radix_sort_pairs()</span></code> to 32- and
+64-bit signed, unsigned, and floating-point keys with 4- or 8-byte values
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1538">GH-1538</a>).</p></li>
 </ul>
 </section>
 <section id="removed">
