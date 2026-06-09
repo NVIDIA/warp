@@ -1,10 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-import contextlib
-import io
 import unittest
-import warnings
 
 import numpy as np
 
@@ -567,67 +564,42 @@ cuda_devices_with_mempool = get_selected_cuda_test_devices_with_mempool()
 
 
 class TestFemIntegrate(unittest.TestCase):
-    def test_make_space_partition_requires_space_source(self):
-        with self.assertRaisesRegex(ValueError, "One of `space_topology` or `space` must be provided"):
+    def test_make_space_partition_requires_space_topology(self):
+        with self.assertRaisesRegex(TypeError, "missing 1 required positional argument: 'space_topology'"):
             fem.make_space_partition()
 
     def test_make_space_restriction_requires_space_source(self):
-        with self.assertRaisesRegex(
-            ValueError, "One of `space_partition`, `space_topology`, or `space` must be provided"
-        ):
+        with self.assertRaisesRegex(ValueError, "One of `space_partition` or `space_topology` must be provided"):
             fem.make_space_restriction()
 
-    def test_deferred_deprecated_fem_arguments(self):
+    def test_removed_deprecated_fem_arguments(self):
         device = "cpu"
-
-        def assert_deprecation_mentions_warp_1_15(callback):
-            with warnings.catch_warnings(), contextlib.redirect_stderr(io.StringIO()) as output:
-                warnings.simplefilter("always", DeprecationWarning)
-                result = callback()
-
-            self.assertIn("will be removed in Warp 1.15", output.getvalue())
-            return result
 
         with wp.ScopedDevice(device):
             geo = fem.Grid2D(res=wp.vec2i(2))
             domain = fem.Cells(geometry=geo)
             scalar_space = fem.make_polynomial_space(geo, degree=1)
 
-            legacy_partition = assert_deprecation_mentions_warp_1_15(
-                lambda: fem.make_space_partition(space=scalar_space)
-            )
+            with self.assertRaisesRegex(TypeError, "unexpected keyword argument 'space'"):
+                fem.make_space_partition(space=scalar_space)
             modern_partition = fem.make_space_partition(space_topology=scalar_space.topology)
-            self.assertEqual(legacy_partition.node_count(), modern_partition.node_count())
+            self.assertEqual(modern_partition.node_count(), scalar_space.node_count())
 
-            legacy_restriction = assert_deprecation_mentions_warp_1_15(
-                lambda: fem.make_space_restriction(space=scalar_space, domain=domain)
-            )
+            with self.assertRaisesRegex(TypeError, "unexpected keyword argument 'space'"):
+                fem.make_space_restriction(space=scalar_space, domain=domain)
             modern_restriction = fem.make_space_restriction(space_topology=scalar_space.topology, domain=domain)
-            self.assertEqual(legacy_restriction.node_count(), modern_restriction.node_count())
-            self.assertEqual(
-                legacy_restriction.total_node_element_count(), modern_restriction.total_node_element_count()
-            )
+            self.assertEqual(modern_restriction.node_count(), scalar_space.node_count())
 
-            legacy_field = scalar_space.make_field()
             modern_field = scalar_space.make_field()
-            assert_deprecation_mentions_warp_1_15(
-                lambda: fem.interpolate(bilinear_field, dest=legacy_field, domain=domain)
-            )
+            with self.assertRaisesRegex(TypeError, "unexpected keyword argument 'domain'"):
+                fem.interpolate(bilinear_field, dest=modern_field, domain=domain)
             fem.interpolate(bilinear_field, dest=modern_field, at=domain)
-            assert_np_equal(legacy_field.dof_values.numpy(), modern_field.dof_values.numpy())
 
             quadrature = fem.RegularQuadrature(domain=domain, order=1)
-            legacy_values = wp.empty(quadrature.total_point_count(), dtype=float, device=device)
-            modern_values = wp.empty_like(legacy_values)
-            with self.assertRaisesRegex(ValueError, "Cannot pass both `at` and the deprecated `domain` argument"):
-                fem.interpolate(piecewise_constant, dest=legacy_values, at=quadrature, domain=domain)
-            with self.assertRaisesRegex(ValueError, "Cannot pass both `at` and the deprecated `quadrature` argument"):
-                fem.interpolate(piecewise_constant, dest=legacy_values, at=domain, quadrature=quadrature)
-            assert_deprecation_mentions_warp_1_15(
-                lambda: fem.interpolate(piecewise_constant, dest=legacy_values, quadrature=quadrature)
-            )
+            modern_values = wp.empty(quadrature.total_point_count(), dtype=float, device=device)
+            with self.assertRaisesRegex(TypeError, "unexpected keyword argument 'quadrature'"):
+                fem.interpolate(piecewise_constant, dest=modern_values, quadrature=quadrature)
             fem.interpolate(piecewise_constant, dest=modern_values, at=quadrature)
-            assert_np_equal(legacy_values.numpy(), modern_values.numpy())
 
 
 add_function_test(TestFemIntegrate, "test_integrate_gradient", test_integrate_gradient, devices=devices)

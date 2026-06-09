@@ -15,6 +15,11 @@
 
 ### Removed
 
+- `warp.fem`: Remove the deprecated `quadrature` and `domain` arguments of `fem.interpolate()`, and the deprecated
+  `space` argument of `fem.make_space_restriction()` and `fem.make_space_partition()`. Pass a `Quadrature` or
+  `GeometryDomain` to `at` when interpolating, pass `space_topology` to `fem.make_space_partition()`, and pass
+  `space_topology` or `space_partition` to `fem.make_space_restriction()`.
+
 ### Deprecated
 
 ### Changed
