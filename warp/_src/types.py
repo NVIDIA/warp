@@ -7186,11 +7186,19 @@ simple_type_codes = {
 }
 
 
+def is_callable_annotation(annotation) -> bool:
+    """Return whether an annotation denotes a type-erased callable."""
+
+    return annotation is Callable or get_origin(annotation) is Callable
+
+
 def get_type_code(arg_type) -> str:
     if arg_type is Any:
         # special case for generics
         # note: since Python 3.11 Any is a type, so we check for it first
         return "?"
+    elif is_callable_annotation(arg_type):
+        return "c"
     elif (
         sys.version_info < (3, 11)
         and hasattr(types, "GenericAlias")
@@ -7270,9 +7278,6 @@ def get_type_code(arg_type) -> str:
     elif arg_type == Int:
         # generic int
         return "i?"
-    elif isinstance(arg_type, Callable):
-        # TODO: elaborate on Callable type?
-        return "c"
     elif arg_type is Ellipsis:
         return "?"
     else:

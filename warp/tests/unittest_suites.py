@@ -172,6 +172,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_fastcall import TestFastcall, TestFastcallAvailable
     from warp.tests.test_fp16 import TestFp16
     from warp.tests.test_func import TestFunc
+    from warp.tests.test_func_callable import TestFuncCallable
     from warp.tests.test_future_annotations import TestFutureAnnotations
     from warp.tests.test_generics import TestGenerics
     from warp.tests.test_grad import TestGrad
@@ -311,6 +312,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestFemShape,
         TestFp16,
         TestFunc,
+        TestFuncCallable,
         TestFutureAnnotations,
         TestGenerics,
         TestGrad,
@@ -462,6 +464,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.test_fast_math import TestFastMath
     from warp.tests.test_fp16 import TestFp16
     from warp.tests.test_func import TestFunc
+    from warp.tests.test_func_callable import TestFuncCallable
     from warp.tests.test_generics import TestGenerics
     from warp.tests.test_grad import TestGrad
     from warp.tests.test_grad_customs import TestGradCustoms
@@ -499,6 +502,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestEnum,
         TestFastMath,
         TestFunc,
+        TestFuncCallable,
         TestGenerics,
         TestMath,
         TestModuleHashing,
