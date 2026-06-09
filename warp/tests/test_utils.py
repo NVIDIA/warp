@@ -80,6 +80,74 @@ def test_array_scan_vector(test, device):
         test.assertTrue(error_exc <= tolerance)
 
 
+def test_array_scan_strided_views(test, device):
+    # Interleave data with padding to exercise 1D strided views and
+    # verify array_scan() writes only through the output view.
+    scalar_values = np.array((6, -3, 5, 0, -2, 8), dtype=np.int64)
+    scalar_base = np.zeros(scalar_values.size * 2, dtype=np.int64)
+    scalar_base[::2] = scalar_values
+
+    scalar_values_base = wp.array(scalar_base, dtype=wp.int64, device=device)
+    values = scalar_values_base[::2]  # Create a non-contiguous Warp array view.
+
+    sentinel = np.int64(-12345)
+    result_inc_base = wp.array(np.full_like(scalar_base, sentinel), dtype=wp.int64, device=device)
+    result_exc_base = wp.array(np.full_like(scalar_base, sentinel), dtype=wp.int64, device=device)
+
+    result_inc = result_inc_base[::2]
+    result_exc = result_exc_base[::2]
+
+    wp.utils.array_scan(values, result_inc, True)
+    wp.utils.array_scan(values, result_exc, False)
+
+    result_inc_base = result_inc_base.numpy()
+    result_exc_base = result_exc_base.numpy()
+    expected_inc = np.cumsum(scalar_values)
+    expected_exc = np.zeros_like(scalar_values)
+    expected_exc[1:] = expected_inc[:-1]
+
+    np.testing.assert_array_equal(result_inc_base[::2], expected_inc)
+    np.testing.assert_array_equal(result_exc_base[::2], expected_exc)
+    np.testing.assert_array_equal(result_inc_base[1::2], sentinel)
+    np.testing.assert_array_equal(result_exc_base[1::2], sentinel)
+
+    vector_values = np.array(
+        (
+            (2.0, -1.0, 4.0),
+            (0.5, 3.0, -2.0),
+            (-1.5, 0.0, 5.0),
+            (4.0, -2.0, 1.0),
+        ),
+        dtype=np.float64,
+    )
+    vector_base = np.zeros((vector_values.shape[0] * 2, 3), dtype=np.float64)
+    vector_base[1::2] = vector_values
+
+    vector_values_base = wp.array(vector_base, dtype=wp.vec3d, device=device)
+    values = vector_values_base[1::2]  # Create a non-contiguous Warp array view.
+
+    sentinel = -999.0
+    result_inc_base = wp.array(np.full(vector_base.shape, sentinel, dtype=np.float64), dtype=wp.vec3d, device=device)
+    result_exc_base = wp.array(np.full(vector_base.shape, sentinel, dtype=np.float64), dtype=wp.vec3d, device=device)
+
+    result_inc = result_inc_base[1::2]
+    result_exc = result_exc_base[1::2]
+
+    wp.utils.array_scan(values, result_inc, True)
+    wp.utils.array_scan(values, result_exc, False)
+
+    result_inc_base = result_inc_base.numpy()
+    result_exc_base = result_exc_base.numpy()
+    expected_inc = np.cumsum(vector_values, axis=0)
+    expected_exc = np.zeros_like(vector_values)
+    expected_exc[1:] = expected_inc[:-1]
+
+    np.testing.assert_allclose(result_inc_base[1::2], expected_inc)
+    np.testing.assert_allclose(result_exc_base[1::2], expected_exc)
+    np.testing.assert_allclose(result_inc_base[::2], sentinel)
+    np.testing.assert_allclose(result_exc_base[::2], sentinel)
+
+
 def test_array_scan_empty(test, device):
     values = wp.array((), dtype=int, device=device)
     result = wp.array((), dtype=int, device=device)
@@ -158,6 +226,45 @@ def test_radix_sort_pairs_value_types(test, device):
         wp.utils.radix_sort_pairs(keys, values, 8)
         assert_np_equal(keys.numpy()[:8], np.array((1, 2, 3, 4, 5, 6, 7, 8)))
         assert_np_equal(values.numpy()[:8], np.array((5, 2, 8, 4, 7, 6, 1, 3)))
+
+
+def test_radix_sort_pairs_64_bit_keys_8_byte_values(test, device):
+    # Use duplicate 64-bit keys plus 8-byte payloads large enough to catch
+    # unstable key/value movement or payload truncation.
+    cases = (
+        (
+            wp.int64,
+            np.array((5, -(2**40), -7, 0, 2**40, -7, 5), dtype=np.int64),
+            wp.uint64,
+            np.array((2**48 + 1, 2**48 + 2, 2**48 + 3, 2**48 + 4, 2**48 + 5, 2**48 + 6, 2**48 + 7), dtype=np.uint64),
+        ),
+        (
+            wp.uint64,
+            np.array((2**63 + 3, 11, 2**63 + 3, 0, 2**40, 11, 2**63 + 2), dtype=np.uint64),
+            wp.float64,
+            np.array((10.25, -5.5, 20.5, 0.0, 7.75, 11.125, -13.5), dtype=np.float64),
+        ),
+    )
+
+    for key_type, keys, value_type, values in cases:
+        with test.subTest(key_type=key_type, value_type=value_type):
+            count = keys.size
+            # radix_sort_pairs() uses the second half of each array as scratch storage.
+            key_storage = np.zeros(count * 2, dtype=keys.dtype)
+            value_storage = np.zeros(count * 2, dtype=values.dtype)
+            key_storage[:count] = keys
+            value_storage[:count] = values
+
+            wp_keys = wp.array(key_storage, dtype=key_type, device=device)
+            wp_values = wp.array(value_storage, dtype=value_type, device=device)
+            wp.utils.radix_sort_pairs(wp_keys, wp_values, count)
+
+            order = np.argsort(keys, kind="stable")
+            np.testing.assert_array_equal(wp_keys.numpy()[:count], keys[order])
+            if np.issubdtype(values.dtype, np.floating):
+                np.testing.assert_allclose(wp_values.numpy()[:count], values[order])
+            else:
+                np.testing.assert_array_equal(wp_values.numpy()[:count], values[order])
 
 
 def test_radix_sort_pairs_error_non_contiguous(test, device):
@@ -617,6 +724,7 @@ class TestUtils(unittest.TestCase):
 
 add_function_test(TestUtils, "test_array_scan", test_array_scan, devices=devices)
 add_function_test(TestUtils, "test_array_scan_vector", test_array_scan_vector, devices=devices)
+add_function_test(TestUtils, "test_array_scan_strided_views", test_array_scan_strided_views, devices=devices)
 add_function_test(TestUtils, "test_array_scan_empty", test_array_scan_empty, devices=devices)
 add_function_test(
     TestUtils, "test_array_scan_error_sizes_mismatch", test_array_scan_error_sizes_mismatch, devices=devices
@@ -631,6 +739,12 @@ add_function_test(TestUtils, "test_radix_sort_pairs", test_radix_sort_pairs, dev
 add_function_test(TestUtils, "test_radix_sort_pairs_signed_keys", test_radix_sort_pairs_signed_keys, devices=devices)
 add_function_test(TestUtils, "test_radix_sort_pairs_bit_range", test_radix_sort_pairs_bit_range, devices=devices)
 add_function_test(TestUtils, "test_radix_sort_pairs_value_types", test_radix_sort_pairs_value_types, devices=devices)
+add_function_test(
+    TestUtils,
+    "test_radix_sort_pairs_64_bit_keys_8_byte_values",
+    test_radix_sort_pairs_64_bit_keys_8_byte_values,
+    devices=devices,
+)
 add_function_test(TestUtils, "test_radix_sort_pairs_empty", test_radix_sort_pairs_empty, devices=devices)
 add_function_test(
     TestUtils,
