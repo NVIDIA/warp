@@ -1245,6 +1245,157 @@ def test_ffi_callback(test, device):
 
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
+def test_ffi_jax_kernel_host_add(test, device):
+    import jax.numpy as jp
+
+    jax_kernel = wp.jax_kernel
+
+    jax_add = jax_kernel(add_kernel)
+
+    @jax.jit
+    def f():
+        n = ARRAY_SIZE
+        a = jp.arange(n, dtype=jp.float32)
+        b = jp.ones(n, dtype=jp.float32)
+        return jax_add(a, b)
+
+    with jax.default_device(jax.devices("cpu")[0]):
+        (y,) = f()
+
+    jax.block_until_ready(y)
+
+    result = np.asarray(y)
+    expected = np.arange(1, ARRAY_SIZE + 1, dtype=np.float32)
+
+    assert_np_equal(result, expected)
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
+def test_ffi_jax_kernel_host_sincos(test, device):
+    import jax.numpy as jp
+
+    jax_kernel = wp.jax_kernel
+
+    jax_sincos = jax_kernel(sincos_kernel, num_outputs=2)
+
+    @jax.jit
+    def f():
+        n = ARRAY_SIZE
+        a = jp.arange(n, dtype=jp.float32)
+        return jax_sincos(a)
+
+    with jax.default_device(jax.devices("cpu")[0]):
+        s, c = f()
+
+    jax.block_until_ready([s, c])
+
+    ref_a = np.arange(ARRAY_SIZE, dtype=np.float32)
+    ref_s = np.sin(ref_a)
+    ref_c = np.cos(ref_a)
+
+    assert_np_equal(np.asarray(s), ref_s)
+    assert_np_equal(np.asarray(c), ref_c)
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
+def test_ffi_jax_kernel_host_in_out(test, device):
+    import jax.numpy as jp
+
+    jax_kernel = wp.jax_kernel
+
+    # b is in-out, c is out only
+    jax_in_out = jax_kernel(in_out_kernel, num_outputs=2, in_out_argnames=["b"])
+
+    @jax.jit
+    def f():
+        n = ARRAY_SIZE
+        a = jp.ones(n, dtype=jp.float32)
+        b = jp.arange(n, dtype=jp.float32)
+        return jax_in_out(a, b)
+
+    with jax.default_device(jax.devices("cpu")[0]):
+        b, c = f()
+
+    jax.block_until_ready([b, c])
+
+    assert_np_equal(np.asarray(b), np.arange(1, ARRAY_SIZE + 1, dtype=np.float32))
+    assert_np_equal(np.asarray(c), np.full(ARRAY_SIZE, 2, dtype=np.float32))
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
+def test_ffi_jax_kernel_host_scale_vec_constant(test, device):
+    import jax.numpy as jp
+
+    jax_kernel = wp.jax_kernel
+
+    jax_scale_vec = jax_kernel(scale_vec_kernel)
+
+    @jax.jit
+    def f():
+        a = jp.arange(ARRAY_SIZE, dtype=jp.float32).reshape((ARRAY_SIZE // 2, 2))
+        s = 2.0
+        return jax_scale_vec(a, s)
+
+    with jax.default_device(jax.devices("cpu")[0]):
+        (b,) = f()
+
+    jax.block_until_ready(b)
+
+    expected = 2 * np.arange(ARRAY_SIZE, dtype=np.float32).reshape((ARRAY_SIZE // 2, 2))
+
+    assert_np_equal(b, expected)
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
+def test_ffi_jax_callable_host_scale_constant(test, device):
+    import jax.numpy as jp
+
+    jax_callable = wp.jax_callable
+
+    jax_func = jax_callable(scale_func, num_outputs=2)
+
+    @jax.jit
+    def f():
+        a = jp.arange(ARRAY_SIZE, dtype=jp.float32)
+        b = jp.arange(ARRAY_SIZE, dtype=jp.float32).reshape((ARRAY_SIZE // 2, 2))  # array of vec2
+        s = 2.0
+        return jax_func(a, b, s)
+
+    with jax.default_device(jax.devices("cpu")[0]):
+        result1, result2 = f()
+
+    jax.block_until_ready([result1, result2])
+
+    assert_np_equal(result1, 2 * np.arange(ARRAY_SIZE, dtype=np.float32))
+    assert_np_equal(result2, 2 * np.arange(ARRAY_SIZE, dtype=np.float32).reshape((ARRAY_SIZE // 2, 2)))
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
+def test_ffi_jax_callable_host_in_out(test, device):
+    import jax.numpy as jp
+
+    jax_callable = wp.jax_callable
+
+    # alpha is static (scalar attribute), b is in-out, c is output only
+    jax_func = jax_callable(in_out_func, num_outputs=2, in_out_argnames=["b"])
+
+    @jax.jit
+    def f():
+        n = ARRAY_SIZE
+        a = jp.ones(n, dtype=jp.float32)
+        b = jp.arange(n, dtype=jp.float32)
+        return jax_func(a, b)
+
+    with jax.default_device(jax.devices("cpu")[0]):
+        b, c = f()
+
+    jax.block_until_ready([b, c])
+
+    assert_np_equal(np.asarray(b), np.arange(1, ARRAY_SIZE + 1, dtype=np.float32))
+    assert_np_equal(np.asarray(c), np.full(ARRAY_SIZE, 2, dtype=np.float32))
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_autodiff_simple(test, device):
     if device.ordinal > 0:
         test.skipTest("Flaky on device ordinal > 0: JAX FFI jit(grad()) returns zeros")
@@ -2523,6 +2674,29 @@ try:
                 partial(test_ffi_vmap_lookup, vmap_method=vmap_method),
                 devices=jax_compatible_cuda_devices,
             )
+
+    # ffi Host (CPU) tests — always registered (not gated on CUDA availability)
+    add_function_test(TestJax, "test_ffi_jax_kernel_host_add", test_ffi_jax_kernel_host_add, devices=None)
+    add_function_test(TestJax, "test_ffi_jax_kernel_host_sincos", test_ffi_jax_kernel_host_sincos, devices=None)
+    add_function_test(TestJax, "test_ffi_jax_kernel_host_in_out", test_ffi_jax_kernel_host_in_out, devices=None)
+    add_function_test(
+        TestJax,
+        "test_ffi_jax_kernel_host_scale_vec_constant",
+        test_ffi_jax_kernel_host_scale_vec_constant,
+        devices=None,
+    )
+    add_function_test(
+        TestJax,
+        "test_ffi_jax_callable_host_scale_constant",
+        test_ffi_jax_callable_host_scale_constant,
+        devices=None,
+    )
+    add_function_test(
+        TestJax,
+        "test_ffi_jax_callable_host_in_out",
+        test_ffi_jax_callable_host_in_out,
+        devices=None,
+    )
 
     # bfloat16 tests require arch >= 80
     bf16_jax_devices = [d for d in jax_compatible_devices if d.is_cpu or (d.is_cuda and d.arch >= 80)]
