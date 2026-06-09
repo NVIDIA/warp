@@ -530,6 +530,9 @@ libraries (<code class="docutils literal notranslate"><span class="pre">warp.dll
 or unreadable native version symbols the same way (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1508">GH-1508</a>).</p></li>
 <li><p>Speed up Warp kernel creation, particularly for workloads that declare many kernels programmatically (e.g. dynamic
 factory patterns) (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1486">GH-1486</a>).</p></li>
+<li><p>Improve <code class="docutils literal notranslate"><span class="pre">wp.mesh_query_ray()</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.mesh_query_ray_anyhit()</span></code> BVH traversal performance
+by visiting the nearer child first at each inner node, enabling earlier tightening of the
+closest-hit bound and more aggressive subtree pruning. (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1529">GH-1529</a>)</p></li>
 </ul>
 </section>
 <section id="fixed">
@@ -568,6 +571,13 @@ continuing with stale outputs or gradients (<a class="reference external" href="
 <li><p>Fix unary minus on referenced 64-bit scalar constants, such as values declared with <code class="docutils literal notranslate"><span class="pre">wp.constant(wp.float64(...))</span></code>,
 being silently dropped when the constant appears as the leading operand of a multiply or divide expression, e.g.
 <code class="docutils literal notranslate"><span class="pre">-a</span> <span class="pre">*</span> <span class="pre">b</span></code> producing the wrong sign (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1540">GH-1540</a>).</p></li>
+<li><p>Fix <code class="docutils literal notranslate"><span class="pre">wp.mesh_query_ray()</span></code> and related functions silently missing intersections for
+axis-aligned rays whose origin lies on a BVH node’s AABB slab boundary. The previous
+traversal relied on fixed <code class="docutils literal notranslate"><span class="pre">eps</span> <span class="pre">=</span> <span class="pre">1e-3</span></code> AABB inflation to avoid <code class="docutils literal notranslate"><span class="pre">0</span> <span class="pre">*</span> <span class="pre">inf</span></code> cases in the
+slab calculation, but that offset is not robust at larger coordinate scales where it
+can round away in float32. Parallel slabs are now handled explicitly, and the
+per-traversal epsilon expansion is removed
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1530">GH-1530</a>).</p></li>
 </ul>
 </section>
 <section id="documentation">
