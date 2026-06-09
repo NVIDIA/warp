@@ -13,6 +13,7 @@ API
    :nosignatures:
    :toctree: _generated
 
+   DeterministicMode
    LaunchArrayAccessMode
    cache_kernels
    compile_time_trace

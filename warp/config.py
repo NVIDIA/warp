@@ -16,6 +16,7 @@ For information on module-level and kernel-level settings, see :doc:`/user_guide
 
 import sys as _sys
 import types as _types
+from enum import Enum as _Enum
 from enum import IntEnum as _IntEnum
 
 from warp._src.logger import LOG_INFO as _LOG_INFO
@@ -79,6 +80,8 @@ class _ConfigModule(_types.ModuleType):
             raise ValueError(
                 f"warp.config.launch_array_access_mode must be a warp.config.LaunchArrayAccessMode value, got {value!r}"
             )
+        if name == "deterministic" and not isinstance(value, DeterministicMode):
+            raise ValueError(f"warp.config.deterministic must be a warp.config.DeterministicMode value, got {value!r}")
         super().__setattr__(name, value)
 
 
@@ -97,6 +100,19 @@ class LaunchArrayAccessMode(_IntEnum):
 
     STRICT = 2
     """Require every Warp array argument to be allocated on the launch device."""
+
+
+class DeterministicMode(str, _Enum):
+    """Deterministic execution modes for supported atomic operations."""
+
+    NOT_GUARANTEED = "not_guaranteed"
+    """Use normal atomic execution without constraining atomic ordering."""
+
+    RUN_TO_RUN = "run_to_run"
+    """Produce bit-exact repeated results on the same GPU architecture."""
+
+    GPU_TO_GPU = "gpu_to_gpu"
+    """Use a stronger path intended to preserve results across GPU architectures."""
 
 
 launch_array_access_mode: LaunchArrayAccessMode = LaunchArrayAccessMode.RELAXED
@@ -436,41 +452,20 @@ the default number of worker threads is determined by this setting. ``0`` means 
 If ``None``, Warp determines the behavior (currently equal to ``min(os.cpu_count(), 4)``).
 """
 
-deterministic: str | bool = "not_guaranteed"
+deterministic: DeterministicMode = DeterministicMode.NOT_GUARANTEED
 """Determinism guarantee for supported atomic operations.
 
 Accepted values are:
 
-- ``"not_guaranteed"``: Default behavior. Atomic ordering is not constrained.
-- ``"run_to_run"``: Produce bit-exact reproducible results across repeated runs
-  on the same GPU architecture.
-- ``"gpu_to_gpu"``: Use a stronger reduction path intended to preserve the same
-  result across GPU architectures as well.
-
-For ease of use, ``True`` and ``False`` are accepted as shorthands for
-``"run_to_run"`` and ``"not_guaranteed"``, respectively.
-
-When this setting is stronger than ``"not_guaranteed"``, floating-point atomic
-operations (``atomic_add``, ``atomic_sub``, ``atomic_min``, ``atomic_max``) and
-counter-pattern atomics (where the return value is used for slot allocation)
-produce bit-exact reproducible results according to the selected guarantee.
-
-Accumulation atomics are deferred to a post-kernel sort-reduce step that processes
-values in a fixed order. Counter atomics use a two-pass execution scheme (counting
-pass + prefix sum + execution pass) to assign deterministic slot indices.
-
-Note: Enabling this flag impacts performance. Accumulation atomics incur ~2-5x
-overhead from sorting. Counter atomics incur ~2-3x overhead from the extra kernel
-pass.
-
-Known limitation: In the two-pass counter mode, the counting pass (Phase 0)
-suppresses all side effects (array writes, non-counter atomics, ``printf``).
-Kernels where counter contributions depend on earlier scratch array writes within
-the same kernel may produce incorrect results. Use local variables or read directly
-from input arrays for control flow that determines counter contributions.
+- ``DeterministicMode.NOT_GUARANTEED``: Default behavior.
+- ``DeterministicMode.RUN_TO_RUN``: Bit-exact repeated results on the same GPU
+  architecture.
+- ``DeterministicMode.GPU_TO_GPU``: Stronger cross-GPU reproducibility path.
 
 Set this before module creation/import for it to apply broadly. Existing
 modules can be changed by setting the ``"deterministic"`` module option.
+See :doc:`/user_guide/deterministic_execution` for supported patterns,
+performance considerations, and limitations.
 """
 
 deterministic_max_records: int = 0

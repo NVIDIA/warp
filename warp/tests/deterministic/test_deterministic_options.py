@@ -105,6 +105,50 @@ def test_module_option_override(test, device):
         _set_test_module_options({"deterministic": old_det})
 
 
+def test_deterministic_mode_validation(test, device):
+    """Verify deterministic mode accepts explicit modes and rejects boolean shorthands."""
+    del device
+
+    test.assertEqual(
+        wp_deterministic.normalize_deterministic_mode(wp.config.DeterministicMode.RUN_TO_RUN),
+        wp_deterministic.DETERMINISTIC_RUN_TO_RUN,
+    )
+    test.assertEqual(
+        wp_deterministic.normalize_deterministic_mode("gpu_to_gpu"),
+        wp_deterministic.DETERMINISTIC_GPU_TO_GPU,
+    )
+
+    @wp.kernel(module="unique", module_options={"deterministic": wp.config.DeterministicMode.RUN_TO_RUN})
+    def _enum_mode_kernel(output: wp.array[wp.float32]):
+        output[0] = 1.0
+
+    options = _enum_mode_kernel.module.resolve_options(wp.config)
+    test.assertEqual(options["deterministic"], wp_deterministic.DETERMINISTIC_RUN_TO_RUN)
+
+    old_det = wp.config.deterministic
+    try:
+        wp.config.deterministic = wp.config.DeterministicMode.GPU_TO_GPU
+        test.assertEqual(wp.config.deterministic, wp.config.DeterministicMode.GPU_TO_GPU)
+
+        with test.assertRaisesRegex(ValueError, "DeterministicMode"):
+            wp.config.deterministic = "run_to_run"
+
+        with test.assertRaisesRegex(ValueError, "DeterministicMode"):
+            wp.config.deterministic = True
+    finally:
+        wp.config.deterministic = old_det
+
+    for value in (True, False, "deterministic"):
+        with test.subTest(value=value), test.assertRaisesRegex(ValueError, "deterministic must be"):
+            wp_deterministic.normalize_deterministic_mode(value)
+
+    with test.assertRaisesRegex(ValueError, "got bool"):
+
+        @wp.kernel(module="unique", module_options={"deterministic": True})
+        def _bool_mode_kernel(output: wp.array[wp.float32]):
+            output[0] = 1.0
+
+
 def test_deterministic_enum_parity(test, device):
     """Keep Python deterministic constants aligned with the native enums."""
     del device
@@ -276,6 +320,7 @@ def _add(name, devices=all_devices):
 _add("test_metadata_refresh_struct_tile_stack", devices=[cpu_device])
 _add("test_config_deterministic_max_records_default", devices=[cpu_device])
 _add("test_module_option_override")
+_add("test_deterministic_mode_validation", devices=[cpu_device])
 _add("test_deterministic_enum_parity")
 _add("test_run_sort_reduce_uses_emitted_record_count", devices=[cpu_device])
 _add("test_scatter_record_count_capture_uses_capacity", devices=[cpu_device])

@@ -89,25 +89,47 @@ _DETERMINISTIC_MODE_IDS = {
 }
 
 
+def _format_valid_deterministic_modes() -> str:
+    return ", ".join(repr(mode) for mode in sorted(_VALID_DETERMINISTIC_MODES))
+
+
+def normalize_deterministic_mode(value) -> str:
+    """Return the string value for a deterministic mode.
+
+    Module options accept the public ``warp.config.DeterministicMode`` enum and
+    the existing string values. Booleans are rejected so the mode selection stays
+    explicit.
+    """
+    if isinstance(value, bool):
+        raise ValueError(
+            "deterministic must be a warp.config.DeterministicMode value or one of "
+            f"{_format_valid_deterministic_modes()}, got bool"
+        )
+
+    enum_value = getattr(value, "value", None)
+    if enum_value in _VALID_DETERMINISTIC_MODES:
+        return enum_value
+
+    if isinstance(value, str) and value in _VALID_DETERMINISTIC_MODES:
+        return value
+
+    raise ValueError(
+        "deterministic must be a warp.config.DeterministicMode value or one of "
+        f"{_format_valid_deterministic_modes()}, got {value!r}"
+    )
+
+
 def is_deterministic_mode_enabled(value) -> bool:
     """Return ``True`` if a deterministic mode stronger than default is enabled."""
     if value is None:
         return False
-    if isinstance(value, bool):
-        value = DETERMINISTIC_RUN_TO_RUN if value else DETERMINISTIC_NOT_GUARANTEED
-    if value not in _VALID_DETERMINISTIC_MODES:
-        valid_modes = ", ".join(repr(mode) for mode in sorted(_VALID_DETERMINISTIC_MODES))
-        raise ValueError(f"deterministic must be one of {valid_modes}, got {value!r}")
+    value = normalize_deterministic_mode(value)
     return value != DETERMINISTIC_NOT_GUARANTEED
 
 
 def deterministic_mode_to_id(value) -> int:
     """Map a deterministic mode to the native enum id."""
-    try:
-        return _DETERMINISTIC_MODE_IDS[value]
-    except KeyError as e:
-        valid_modes = ", ".join(repr(mode) for mode in sorted(_VALID_DETERMINISTIC_MODES))
-        raise ValueError(f"deterministic must be one of {valid_modes}, got {value!r}") from e
+    return _DETERMINISTIC_MODE_IDS[normalize_deterministic_mode(value)]
 
 
 def reduce_op_to_family(reduce_op: int) -> str:

@@ -242,20 +242,26 @@ class TestUniqueModule(unittest.TestCase):
 
         old_det = wp.config.deterministic
         try:
-            wp.config.deterministic = "not_guaranteed"
+            wp.config.deterministic = wp.config.DeterministicMode.NOT_GUARANTEED
 
             @wp.kernel(module="unique")
             def _config_capture_kernel(out: wp.array(dtype=float)):
                 tid = wp.tid()
                 wp.atomic_add(out, 0, float(tid))
 
-            self.assertEqual(_config_capture_kernel.module.options["deterministic"], "not_guaranteed")
+            self.assertEqual(
+                _config_capture_kernel.module.options["deterministic"],
+                wp.config.DeterministicMode.NOT_GUARANTEED,
+            )
             hash_before = _config_capture_kernel.module.get_module_hash()
 
-            wp.config.deterministic = "run_to_run"
+            wp.config.deterministic = wp.config.DeterministicMode.RUN_TO_RUN
             hash_after = _config_capture_kernel.module.get_module_hash()
 
-            self.assertEqual(_config_capture_kernel.module.options["deterministic"], "not_guaranteed")
+            self.assertEqual(
+                _config_capture_kernel.module.options["deterministic"],
+                wp.config.DeterministicMode.NOT_GUARANTEED,
+            )
             self.assertEqual(hash_before, hash_after)
         finally:
             wp.config.deterministic = old_det

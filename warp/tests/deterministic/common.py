@@ -59,7 +59,7 @@ class DeterministicTestBase(unittest.TestCase):
     def setUpClass(cls):
         cls._old_deterministic = wp.config.deterministic
         cls._old_module_deterministic = []
-        wp.config.deterministic = "run_to_run"
+        wp.config.deterministic = wp.config.DeterministicMode.RUN_TO_RUN
 
         modules = cls.deterministic_modules
         if modules is None:

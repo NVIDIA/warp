@@ -2838,19 +2838,9 @@ class Module:
         if options["enable_mathdx_fft"] is None:
             options["enable_mathdx_fft"] = config.enable_mathdx_fft
 
-        from warp._src.deterministic import (  # noqa: PLC0415
-            _VALID_DETERMINISTIC_MODES,
-            DETERMINISTIC_NOT_GUARANTEED,
-            DETERMINISTIC_RUN_TO_RUN,
-        )
+        from warp._src.deterministic import normalize_deterministic_mode  # noqa: PLC0415
 
-        if isinstance(options["deterministic"], bool):
-            options["deterministic"] = (
-                DETERMINISTIC_RUN_TO_RUN if options["deterministic"] else DETERMINISTIC_NOT_GUARANTEED
-            )
-        if options["deterministic"] not in _VALID_DETERMINISTIC_MODES:
-            valid_modes = ", ".join(repr(mode) for mode in sorted(_VALID_DETERMINISTIC_MODES))
-            raise ValueError(f"deterministic must be one of {valid_modes}, got {options['deterministic']!r}")
+        options["deterministic"] = normalize_deterministic_mode(options["deterministic"])
 
         deterministic_max_records = options["deterministic_max_records"]
         if isinstance(deterministic_max_records, bool):
