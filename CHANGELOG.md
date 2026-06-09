@@ -32,6 +32,9 @@
   or unreadable native version symbols the same way ([GH-1508](https://github.com/NVIDIA/warp/issues/1508)).
 - Speed up Warp kernel creation, particularly for workloads that declare many kernels programmatically (e.g. dynamic
   factory patterns) ([GH-1486](https://github.com/NVIDIA/warp/issues/1486)).
+- Improve `wp.mesh_query_ray()` and `wp.mesh_query_ray_anyhit()` BVH traversal performance
+  by visiting the nearer child first at each inner node, enabling earlier tightening of the
+  closest-hit bound and more aggressive subtree pruning. ([GH-1529](https://github.com/NVIDIA/warp/issues/1529))
 
 ### Fixed
 
@@ -68,6 +71,13 @@
 - Fix unary minus on referenced 64-bit scalar constants, such as values declared with `wp.constant(wp.float64(...))`,
   being silently dropped when the constant appears as the leading operand of a multiply or divide expression, e.g.
   `-a * b` producing the wrong sign ([GH-1540](https://github.com/NVIDIA/warp/issues/1540)).
+- Fix `wp.mesh_query_ray()` and related functions silently missing intersections for
+  axis-aligned rays whose origin lies on a BVH node's AABB slab boundary. The previous
+  traversal relied on fixed `eps = 1e-3` AABB inflation to avoid `0 * inf` cases in the
+  slab calculation, but that offset is not robust at larger coordinate scales where it
+  can round away in float32. Parallel slabs are now handled explicitly, and the
+  per-traversal epsilon expansion is removed
+  ([GH-1530](https://github.com/NVIDIA/warp/issues/1530)).
 
 ### Documentation
 

@@ -151,6 +151,35 @@ intersect_ray_aabb(const vec3& pos, const vec3& rcp_dir, const vec3& lower, cons
     return hit;
 }
 
+// Robust ray-AABB intersection that correctly handles axis-aligned rays.
+// When dir[i] == 0, the ray is parallel to that slab: reject if the origin lies
+// outside [lower[i], upper[i]], otherwise leave the interval unconstrained for
+// that axis.
+CUDA_CALLABLE inline bool intersect_ray_aabb_robust(
+    const vec3& pos, const vec3& dir, const vec3& rcp_dir, const vec3& lower, const vec3& upper, float& t
+)
+{
+    float lmin = -FLT_MAX;
+    float lmax = FLT_MAX;
+
+    for (int i = 0; i < 3; ++i) {
+        if (dir[i] == 0.0f) {
+            if (pos[i] < lower[i] || pos[i] > upper[i])
+                return false;
+        } else {
+            float l1 = (lower[i] - pos[i]) * rcp_dir[i];
+            float l2 = (upper[i] - pos[i]) * rcp_dir[i];
+            lmin = max(min(l1, l2), lmin);
+            lmax = min(max(l1, l2), lmax);
+        }
+    }
+
+    bool hit = ((lmax >= 0.f) & (lmax >= lmin));
+    if (hit)
+        t = lmin;
+    return hit;
+}
+
 CUDA_CALLABLE inline bool
 intersect_aabb_aabb(const vec3& a_lower, const vec3& a_upper, const vec3& b_lower, const vec3& b_upper)
 {

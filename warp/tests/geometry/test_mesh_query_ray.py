@@ -713,6 +713,97 @@ def test_mesh_query_ray_edge(test, device):
         test.assertEqual(counts.numpy()[0], n)
 
 
+def test_mesh_query_ray_parallel_slab_boundaries(test, device):
+    """Regression for the parallel-slab false negative in BVH ray traversal.
+
+    When dir[i] == 0 the ray is parallel to that slab axis.  The previous
+    safe_ray_rcp_dir trick replaced zero dir components with ~FLT_MIN, which
+    caused a false negative whenever the ray origin sat exactly on the far AABB
+    face (start[i] == upper[i]): the slab computed lmax = 0 and rejected any
+    intersection at t > 0 through the remaining axes.
+
+    Five cases exercise intersect_ray_aabb_robust on the Warp BVH backends via
+    mesh_query_ray_count_intersections, which tests every node's AABB including
+    the root regardless of tree depth (cuBQL has its own parallel-slab handling
+    and is not tested here):
+
+      1. start.x == upper.x  — the specific regression introduced by this branch
+      2. start.x == lower.x  — near-face boundary on the opposite side
+      3. start.y == upper.y  — same upper-face regression on the y axis
+      4. start.y == lower.y  — near-face boundary on the y axis
+      5. interior origin     — sanity check that normal rays still hit
+
+    The flat mesh also has a degenerate z-slab (lower.z == upper.z == 0).  The
+    z-axis is the only non-zero direction component (dir.z == -1), so it is
+    exercised by the normal slab path.  An end-to-end degenerate-slab test for
+    the zero-direction case (dir[i] == 0, lower[i] == upper[i]) would require
+    the ray to be coplanar with the mesh, making triangle intersection
+    degenerate.
+    """
+    # Flat quad at z = 0, spanning x in [0, 2] and y in [0, 2].
+    # AABB: lower=(0,0,0), upper=(2,2,0) — degenerate z-slab, finite x and y.
+    verts = np.array(
+        [[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [2.0, 2.0, 0.0], [0.0, 2.0, 0.0]],
+        dtype=np.float32,
+    )
+    indices = np.array([0, 1, 2, 0, 2, 3], dtype=np.int32)
+
+    # Five test rays, all going in -z so they must cross z = 0 to hit the mesh.
+    # The x- and y-direction components are zero; the BVH must not prune any of
+    # these based on the x- or y-slab even when the origin is on the slab face.
+    ray_starts = np.array(
+        [
+            [2.0, 1.0, 1.0],  # 1: start.x == upper.x — false-negative regression
+            [0.0, 1.0, 1.0],  # 2: start.x == lower.x
+            [1.0, 2.0, 1.0],  # 3: start.y == upper.y — same regression on y-axis
+            [1.0, 0.0, 1.0],  # 4: start.y == lower.y
+            [1.0, 1.0, 1.0],  # 5: interior origin — sanity check
+        ],
+        dtype=np.float32,
+    )
+    ray_dirs = np.tile([0.0, 0.0, -1.0], (5, 1)).astype(np.float32)
+
+    labels = [
+        "start.x == upper.x",
+        "start.x == lower.x",
+        "start.y == upper.y",
+        "start.y == lower.y",
+        "interior (sanity)",
+    ]
+
+    # cuBQL has its own pre-existing parallel-slab handling; test Warp BVH only.
+    constructors = ["sah", "median"]
+    if device.is_cuda:
+        constructors.append("lbvh")
+
+    for constructor in constructors:
+        # mesh_query_ray_count_intersections tests every node's AABB including
+        # the root, so the parallel-slab fix is exercised regardless of BVH
+        # depth or leaf size.
+        mesh = wp.Mesh(
+            points=wp.array(verts, dtype=wp.vec3, device=device),
+            indices=wp.array(indices, dtype=int, device=device),
+            bvh_constructor=constructor,
+        )
+        starts_wp = wp.array(ray_starts, dtype=wp.vec3, device=device)
+        dirs_wp = wp.array(ray_dirs, dtype=wp.vec3, device=device)
+        counts = wp.zeros(5, dtype=int, device=device)
+        wp.launch(
+            mesh_query_ray_count_intersections_kernel,
+            dim=5,
+            inputs=[mesh.id, starts_wp, dirs_wp, counts],
+            device=device,
+        )
+
+        counts_np = counts.numpy()
+        for i, label in enumerate(labels):
+            test.assertGreaterEqual(
+                counts_np[i],
+                1,
+                f"[{constructor}] {label}: expected at least one intersection, got {counts_np[i]}",
+            )
+
+
 devices = get_test_devices()
 
 
@@ -733,6 +824,12 @@ class TestMeshQueryRay(unittest.TestCase):
 
 
 add_function_test(TestMeshQueryRay, "test_mesh_query_ray_edge", test_mesh_query_ray_edge, devices=devices)
+add_function_test(
+    TestMeshQueryRay,
+    "test_mesh_query_ray_parallel_slab_boundaries",
+    test_mesh_query_ray_parallel_slab_boundaries,
+    devices=devices,
+)
 add_function_test(TestMeshQueryRay, "test_mesh_query_ray_grad", test_mesh_query_ray_grad, devices=devices)
 add_function_test(
     TestMeshQueryRay,
