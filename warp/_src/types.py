@@ -7358,11 +7358,31 @@ simple_type_codes = {
 }
 
 
+def is_warp_function_annotation(annotation) -> bool:
+    """Return whether an annotation denotes a type-erased Warp function."""
+
+    function_type = getattr(warp, "Function", None)
+    if function_type is not None and annotation is function_type:
+        return True
+
+    context = getattr(getattr(warp, "_src", None), "context", None)
+    context_function_type = getattr(context, "Function", None)
+    return context_function_type is not None and annotation is context_function_type
+
+
+def is_builtin_callable_annotation(annotation) -> bool:
+    """Return whether a built-in signature uses ``Callable`` for a function slot."""
+
+    return annotation is Callable or get_origin(annotation) is Callable
+
+
 def get_type_code(arg_type) -> str:
     if arg_type is Any:
         # special case for generics
         # note: since Python 3.11 Any is a type, so we check for it first
         return "?"
+    elif is_warp_function_annotation(arg_type):
+        return "c"
     elif (
         sys.version_info < (3, 11)
         and hasattr(types, "GenericAlias")
@@ -7446,9 +7466,6 @@ def get_type_code(arg_type) -> str:
     elif arg_type == Int:
         # generic int
         return "i?"
-    elif isinstance(arg_type, Callable):
-        # TODO: elaborate on Callable type?
-        return "c"
     elif arg_type is Ellipsis:
         return "?"
     elif isinstance(arg_type, Reference):

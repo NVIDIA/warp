@@ -360,6 +360,67 @@ User functions may also be overloaded by defining multiple function signatures w
     def custom(x: wp.vec3):
         return x + wp.vec3(1.0, 0.0, 0.0)
 
+.. _callable-parameters:
+
+Function Parameters
+^^^^^^^^^^^^^^^^^^^
+
+User functions can accept another user-defined Warp function or simple built-in
+Warp function by annotating the parameter as :class:`warp.Function`.
+Function targets are chosen when Warp generates code, not while the kernel is
+running. Warp compiles a separate version of the user function for each distinct
+set of target functions used at a call site. This is similar to generic
+specialization: many target combinations mean more specialized versions to
+compile, including for ``wp.grad()`` calls. The function target is chosen where
+the user function is called and can be invoked directly inside the user function
+body:
+
+.. code-block:: python
+
+    import warp as wp
+
+    @wp.func
+    def square(x: float):
+        return x * x
+
+
+    @wp.func
+    def cube(x: float):
+        return x * x * x
+
+
+    @wp.func
+    def apply(f: wp.Function, x: float):
+        return f(x)
+
+
+    @wp.kernel
+    def apply_kernel(
+        values: wp.array[float],
+        square_out: wp.array[float],
+        cube_out: wp.array[float],
+    ):
+        i = wp.tid()
+        square_out[i] = apply(square, values[i])
+        cube_out[i] = apply(cube, values[i])
+
+The :class:`warp.Function` annotation is type-erased. It does not encode or
+validate the target function signature. The target is checked only through the
+actual calls made in the function body during code generation.
+
+Function parameters may also use defaults and keyword arguments:
+
+.. code-block:: python
+
+    @wp.func
+    def apply_default(f: wp.Function = square, x: float = 0.0):
+        return f(x)
+
+Pass only user-defined :func:`@wp.func <warp.func>` functions or simple built-in
+functions such as ``wp.sin``, ``wp.cos``, ``wp.sqrt``, ``wp.add``, and ``wp.min``
+as function targets. See :doc:`limitations` for unsupported function targets and
+other restrictions.
+
 Tiles may also be passed to user functions. The function signature tile argument should include
 dtype and shape parameters to match the tile type intended to be used in the function. For example:
 
