@@ -33,7 +33,12 @@ template <typename T> struct cub_strided_iterator {
     T* ptr = nullptr;
     int stride = 1;
 
-    CUDA_CALLABLE self_type operator++(int) { return ++(self_type(*this)); }
+    CUDA_CALLABLE self_type operator++(int)
+    {
+        self_type old(*this);
+        ++(*this);
+        return old;
+    }
 
     CUDA_CALLABLE self_type& operator++()
     {
@@ -147,7 +152,12 @@ template <typename ElemT, typename ScalarT> struct cub_inner_product_iterator {
     int stride_b = 1;
     int type_length = 1;
 
-    CUDA_CALLABLE self_type operator++(int) { return ++(self_type(*this)); }
+    CUDA_CALLABLE self_type operator++(int)
+    {
+        self_type old(*this);
+        ++(*this);
+        return old;
+    }
 
     CUDA_CALLABLE self_type& operator++()
     {

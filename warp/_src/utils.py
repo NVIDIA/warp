@@ -51,10 +51,11 @@ def array_scan(in_array: wp.array, out_array: wp.array, inclusive: bool = True) 
     """Perform a scan (prefix sum) operation on an array.
 
     This function computes the inclusive or exclusive scan of the input array and stores the result in the output array.
-    The scan operation computes a running sum of elements in the array.
+    The scan operation computes a running sum of elements in the array. Vector types are scanned component-wise.
 
     Args:
-        in_array: Input array to scan. Must be of type ``int32`` or ``float32``.
+        in_array: Input array to scan. Must be a scalar or vector type with scalar type ``int32``, ``int64``,
+          ``float32``, or ``float64``.
         out_array: Output array to store scan results. Must match input array type and size.
         inclusive: If ``True``, performs an inclusive scan (includes current element in sum).
           If ``False``, performs an exclusive scan (excludes current element).
@@ -77,6 +78,21 @@ def array_scan(in_array: wp.array, out_array: wp.array, inclusive: bool = True) 
     if in_array.size == 0:
         return
 
+    if not in_array.is_contiguous and in_array.ndim != 1:
+        raise RuntimeError("Input array must be contiguous or one-dimensional")
+
+    if not out_array.is_contiguous and out_array.ndim != 1:
+        raise RuntimeError("Output array must be contiguous or one-dimensional")
+
+    if not (wp._src.types.type_is_scalar(in_array.dtype) or wp._src.types.type_is_vector(in_array.dtype)):
+        raise RuntimeError(f"Unsupported data type: {type_repr(in_array.dtype)}")
+
+    scalar_type = wp._src.types.type_scalar_type(in_array.dtype)
+    type_length = wp._src.types.type_size(in_array.dtype)
+    dtype_size = wp._src.types.type_size_in_bytes(in_array.dtype)
+    in_stride = in_array.strides[0] if in_array.ndim == 1 and not in_array.is_contiguous else dtype_size
+    out_stride = out_array.strides[0] if out_array.ndim == 1 and not out_array.is_contiguous else dtype_size
+
     from warp._src.context import runtime  # noqa: PLC0415
 
     if in_array.device.is_cpu:
@@ -91,22 +107,35 @@ def array_scan(in_array: wp.array, out_array: wp.array, inclusive: bool = True) 
                 "the scan would be silently dropped from the captured byte stream and "
                 "replay would return stale output. Run the scan outside ScopedCapture."
             )
-        if in_array.dtype == wp.int32:
-            runtime.core.wp_array_scan_int_host(in_array.ptr, out_array.ptr, in_array.size, inclusive)
-        elif in_array.dtype == wp.float32:
-            runtime.core.wp_array_scan_float_host(in_array.ptr, out_array.ptr, in_array.size, inclusive)
+
+        if scalar_type == wp.int32:
+            native_func = runtime.core.wp_array_scan_int_host
+        elif scalar_type == wp.int64:
+            native_func = runtime.core.wp_array_scan_int64_host
+        elif scalar_type == wp.float32:
+            native_func = runtime.core.wp_array_scan_float_host
+        elif scalar_type == wp.float64:
+            native_func = runtime.core.wp_array_scan_double_host
         else:
             raise RuntimeError(f"Unsupported data type: {type_repr(in_array.dtype)}")
     elif in_array.device.is_cuda:
-        if in_array.dtype == wp.int32:
-            runtime.core.wp_array_scan_int_device(in_array.ptr, out_array.ptr, in_array.size, inclusive)
-        elif in_array.dtype == wp.float32:
-            runtime.core.wp_array_scan_float_device(in_array.ptr, out_array.ptr, in_array.size, inclusive)
+        if scalar_type == wp.int32:
+            native_func = runtime.core.wp_array_scan_int_device
+        elif scalar_type == wp.int64:
+            native_func = runtime.core.wp_array_scan_int64_device
+        elif scalar_type == wp.float32:
+            native_func = runtime.core.wp_array_scan_float_device
+        elif scalar_type == wp.float64:
+            native_func = runtime.core.wp_array_scan_double_device
         else:
             raise RuntimeError(f"Unsupported data type: {type_repr(in_array.dtype)}")
 
+    native_func(in_array.ptr, out_array.ptr, in_array.size, in_stride, out_stride, type_length, inclusive)
 
-def radix_sort_pairs(keys: wp.array, values: wp.array, count: int) -> None:
+
+def radix_sort_pairs(
+    keys: wp.array, values: wp.array, count: int, begin_bit: int = 0, end_bit: int | None = None
+) -> None:
     """Sort key-value pairs using radix sort.
 
     This function sorts pairs of arrays based on the keys array, maintaining the key-value
@@ -114,9 +143,12 @@ def radix_sort_pairs(keys: wp.array, values: wp.array, count: int) -> None:
     The `keys` and `values` arrays must be large enough to accommodate 2*`count` elements.
 
     Args:
-        keys: Array of keys to sort. Must be of type ``int32``, ``float32``, or ``int64``.
-        values: Array of values to sort along with keys. Must be of type ``int32``.
+        keys: Array of keys to sort. Must be of type ``int32``, ``uint32``, ``float32``, ``int64``, ``uint64``,
+          or ``float64``.
+        values: Array of values to sort along with keys. Elements must be 4 or 8 bytes wide.
         count: Number of elements to sort.
+        begin_bit: The least-significant key bit to start sorting from.
+        end_bit: The key bit to stop sorting at. If ``None``, sorts through the full key width.
 
     Raises:
         RuntimeError: If array storage devices don't match, if storage size is insufficient, or if data types are unsupported.
@@ -130,26 +162,76 @@ def radix_sort_pairs(keys: wp.array, values: wp.array, count: int) -> None:
     if keys.size < 2 * count or values.size < 2 * count:
         raise RuntimeError("Keys and values array storage must be large enough to contain 2*count elements")
 
+    value_size = wp._src.types.type_size_in_bytes(values.dtype)
+    if value_size not in (4, 8):
+        raise RuntimeError(
+            f"Unsupported keys and values data types: {type_repr(keys.dtype)}, {type_repr(values.dtype)}"
+        )
+
+    if not keys.is_contiguous:
+        raise RuntimeError(
+            f"radix_sort_pairs() requires a contiguous keys array, got non-contiguous keys with "
+            f"data types: {type_repr(keys.dtype)}, {type_repr(values.dtype)}"
+        )
+
+    if not values.is_contiguous:
+        raise RuntimeError(
+            f"radix_sort_pairs() requires a contiguous values array, got non-contiguous values with "
+            f"data types: {type_repr(keys.dtype)}, {type_repr(values.dtype)}"
+        )
+
+    if keys.dtype in (wp.int32, wp.uint32, wp.float32):
+        key_bit_width = 32
+    elif keys.dtype in (wp.int64, wp.uint64, wp.float64):
+        key_bit_width = 64
+    else:
+        key_bit_width = None
+
+    if key_bit_width is not None:
+        if end_bit is None:
+            end_bit = key_bit_width
+
+        if not isinstance(begin_bit, int) or not isinstance(end_bit, int):
+            raise RuntimeError("begin_bit and end_bit must be integers")
+
+        if not (0 <= begin_bit <= end_bit <= key_bit_width):
+            raise RuntimeError(f"Invalid radix sort bit range [{begin_bit}, {end_bit}) for {key_bit_width}-bit keys")
+
+    if key_bit_width is not None and begin_bit == end_bit:
+        return
+
     from warp._src.context import runtime  # noqa: PLC0415
 
     if keys.device.is_cpu:
-        if keys.dtype == wp.int32 and values.dtype == wp.int32:
-            runtime.core.wp_radix_sort_pairs_int_host(keys.ptr, values.ptr, count)
-        elif keys.dtype == wp.float32 and values.dtype == wp.int32:
-            runtime.core.wp_radix_sort_pairs_float_host(keys.ptr, values.ptr, count)
-        elif keys.dtype == wp.int64 and values.dtype == wp.int32:
-            runtime.core.wp_radix_sort_pairs_int64_host(keys.ptr, values.ptr, count)
+        if keys.dtype == wp.int32:
+            runtime.core.wp_radix_sort_pairs_int_host(keys.ptr, values.ptr, count, begin_bit, end_bit, value_size)
+        elif keys.dtype == wp.uint32:
+            runtime.core.wp_radix_sort_pairs_uint_host(keys.ptr, values.ptr, count, begin_bit, end_bit, value_size)
+        elif keys.dtype == wp.float32:
+            runtime.core.wp_radix_sort_pairs_float_host(keys.ptr, values.ptr, count, begin_bit, end_bit, value_size)
+        elif keys.dtype == wp.float64:
+            runtime.core.wp_radix_sort_pairs_double_host(keys.ptr, values.ptr, count, begin_bit, end_bit, value_size)
+        elif keys.dtype == wp.int64:
+            runtime.core.wp_radix_sort_pairs_int64_host(keys.ptr, values.ptr, count, begin_bit, end_bit, value_size)
+        elif keys.dtype == wp.uint64:
+            runtime.core.wp_radix_sort_pairs_uint64_host(keys.ptr, values.ptr, count, begin_bit, end_bit, value_size)
         else:
             raise RuntimeError(
                 f"Unsupported keys and values data types: {type_repr(keys.dtype)}, {type_repr(values.dtype)}"
             )
     elif keys.device.is_cuda:
-        if keys.dtype == wp.int32 and values.dtype == wp.int32:
-            runtime.core.wp_radix_sort_pairs_int_device(keys.ptr, values.ptr, count)
-        elif keys.dtype == wp.float32 and values.dtype == wp.int32:
-            runtime.core.wp_radix_sort_pairs_float_device(keys.ptr, values.ptr, count)
-        elif keys.dtype == wp.int64 and values.dtype == wp.int32:
-            runtime.core.wp_radix_sort_pairs_int64_device(keys.ptr, values.ptr, count)
+        if keys.dtype == wp.int32:
+            runtime.core.wp_radix_sort_pairs_int_device(keys.ptr, values.ptr, count, begin_bit, end_bit, value_size)
+        elif keys.dtype == wp.uint32:
+            runtime.core.wp_radix_sort_pairs_uint_device(keys.ptr, values.ptr, count, begin_bit, end_bit, value_size)
+        elif keys.dtype == wp.float32:
+            runtime.core.wp_radix_sort_pairs_float_device(keys.ptr, values.ptr, count, begin_bit, end_bit, value_size)
+        elif keys.dtype == wp.float64:
+            runtime.core.wp_radix_sort_pairs_double_device(keys.ptr, values.ptr, count, begin_bit, end_bit, value_size)
+        elif keys.dtype == wp.int64:
+            runtime.core.wp_radix_sort_pairs_int64_device(keys.ptr, values.ptr, count, begin_bit, end_bit, value_size)
+        elif keys.dtype == wp.uint64:
+            runtime.core.wp_radix_sort_pairs_uint64_device(keys.ptr, values.ptr, count, begin_bit, end_bit, value_size)
         else:
             raise RuntimeError(
                 f"Unsupported keys and values data types: {type_repr(keys.dtype)}, {type_repr(values.dtype)}"

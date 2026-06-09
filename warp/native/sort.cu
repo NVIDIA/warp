@@ -4,10 +4,12 @@
 #include "warp.h"
 
 #include "cuda_util.h"
+#include "error.h"
 #include "sort.h"
 
 #define THRUST_IGNORE_CUB_VERSION_CHECK
 
+#include <cassert>
 #include <unordered_map>
 
 #include <cub/cub.cuh>
@@ -21,21 +23,24 @@ struct RadixSortTemp {
 // use unique temp buffers per CUDA stream to avoid race conditions
 static std::unordered_map<void*, RadixSortTemp> g_radix_sort_temp_map;
 
+template <int Size> struct SortPayload {
+    uint8_t data[Size];
+};
 
-template <typename KeyType> void radix_sort_reserve_internal(void* context, int n, void** mem_out, size_t* size_out)
+
+template <typename KeyType, typename ValueType>
+void radix_sort_reserve_internal(void* context, int n, void** mem_out, size_t* size_out, int begin_bit, int end_bit)
 {
     ContextGuard guard(context);
 
     cub::DoubleBuffer<KeyType> d_keys;
-    cub::DoubleBuffer<int> d_values;
+    cub::DoubleBuffer<ValueType> d_values;
 
     CUstream stream = static_cast<CUstream>(wp_cuda_stream_get_current());
 
     // compute temporary memory required
     size_t sort_temp_size;
-    check_cuda(
-        cub::DeviceRadixSort::SortPairs(NULL, sort_temp_size, d_keys, d_values, n, 0, sizeof(KeyType) * 8, stream)
-    );
+    check_cuda(cub::DeviceRadixSort::SortPairs(NULL, sort_temp_size, d_keys, d_values, n, begin_bit, end_bit, stream));
 
     RadixSortTemp& temp = g_radix_sort_temp_map[stream];
 
@@ -51,9 +56,9 @@ template <typename KeyType> void radix_sort_reserve_internal(void* context, int 
         *size_out = temp.size;
 }
 
-void radix_sort_reserve(void* context, int n, void** mem_out, size_t* size_out)
+void radix_sort_reserve(void* context, int n, void** mem_out, size_t* size_out, int begin_bit, int end_bit)
 {
-    radix_sort_reserve_internal<int>(context, n, mem_out, size_out);
+    radix_sort_reserve_internal<int, int>(context, n, mem_out, size_out, begin_bit, end_bit);
 }
 
 void radix_sort_release(void* context, void* stream)
@@ -66,20 +71,21 @@ void radix_sort_release(void* context, void* stream)
     }
 }
 
-template <typename KeyType> void radix_sort_pairs_device(void* context, KeyType* keys, int* values, int n)
+template <typename KeyType, typename ValueType>
+void radix_sort_pairs_device(void* context, KeyType* keys, ValueType* values, int n, int begin_bit, int end_bit)
 {
     ContextGuard guard(context);
 
     cub::DoubleBuffer<KeyType> d_keys(keys, keys + n);
-    cub::DoubleBuffer<int> d_values(values, values + n);
+    cub::DoubleBuffer<ValueType> d_values(values, values + n);
 
     RadixSortTemp temp;
-    radix_sort_reserve_internal<KeyType>(WP_CURRENT_CONTEXT, n, &temp.mem, &temp.size);
+    radix_sort_reserve_internal<KeyType, ValueType>(WP_CURRENT_CONTEXT, n, &temp.mem, &temp.size, begin_bit, end_bit);
 
     // sort
     check_cuda(
         cub::DeviceRadixSort::SortPairs(
-            temp.mem, temp.size, d_keys, d_values, n, 0, sizeof(KeyType) * 8, (cudaStream_t)wp_cuda_stream_get_current()
+            temp.mem, temp.size, d_keys, d_values, n, begin_bit, end_bit, (cudaStream_t)wp_cuda_stream_get_current()
         )
     );
 
@@ -87,47 +93,108 @@ template <typename KeyType> void radix_sort_pairs_device(void* context, KeyType*
         wp_memcpy_d2d(WP_CURRENT_CONTEXT, keys, d_keys.Current(), sizeof(KeyType) * n);
 
     if (d_values.Current() != values)
-        wp_memcpy_d2d(WP_CURRENT_CONTEXT, values, d_values.Current(), sizeof(int) * n);
+        wp_memcpy_d2d(WP_CURRENT_CONTEXT, values, d_values.Current(), sizeof(ValueType) * n);
 }
 
-void radix_sort_pairs_device(void* context, int* keys, int* values, int n)
+template <typename KeyType>
+void radix_sort_pairs_device_dispatch_value(
+    void* context, KeyType* keys, void* values, int n, int begin_bit, int end_bit, int value_size
+)
 {
-    radix_sort_pairs_device<int>(context, keys, values, n);
+    if (value_size == 4) {
+        radix_sort_pairs_device<KeyType, SortPayload<4>>(
+            context, keys, reinterpret_cast<SortPayload<4>*>(values), n, begin_bit, end_bit
+        );
+    } else if (value_size == 8) {
+        radix_sort_pairs_device<KeyType, SortPayload<8>>(
+            context, keys, reinterpret_cast<SortPayload<8>*>(values), n, begin_bit, end_bit
+        );
+    } else {
+        wp::set_error_string("Warp sort error: Unsupported radix sort value size %d", value_size);
+        assert(false && "Unsupported radix sort value size");
+    }
 }
 
-void radix_sort_pairs_device(void* context, float* keys, int* values, int n)
+void radix_sort_pairs_device(void* context, int* keys, int* values, int n, int begin_bit, int end_bit)
 {
-    radix_sort_pairs_device<float>(context, keys, values, n);
+    radix_sort_pairs_device_dispatch_value(context, keys, values, n, begin_bit, end_bit, sizeof(int));
 }
 
-void radix_sort_pairs_device(void* context, int64_t* keys, int* values, int n)
+void radix_sort_pairs_device(void* context, uint32_t* keys, int* values, int n, int begin_bit, int end_bit)
 {
-    radix_sort_pairs_device<int64_t>(context, keys, values, n);
+    radix_sort_pairs_device_dispatch_value(context, keys, values, n, begin_bit, end_bit, sizeof(int));
 }
 
-void radix_sort_pairs_device(void* context, uint64_t* keys, int* values, int n)
+void radix_sort_pairs_device(void* context, float* keys, int* values, int n, int begin_bit, int end_bit)
 {
-    radix_sort_pairs_device<uint64_t>(context, keys, values, n);
+    radix_sort_pairs_device_dispatch_value(context, keys, values, n, begin_bit, end_bit, sizeof(int));
 }
 
-void wp_radix_sort_pairs_int_device(uint64_t keys, uint64_t values, int n)
+void radix_sort_pairs_device(void* context, double* keys, int* values, int n, int begin_bit, int end_bit)
 {
-    radix_sort_pairs_device(WP_CURRENT_CONTEXT, reinterpret_cast<int*>(keys), reinterpret_cast<int*>(values), n);
+    radix_sort_pairs_device_dispatch_value(context, keys, values, n, begin_bit, end_bit, sizeof(int));
 }
 
-void wp_radix_sort_pairs_float_device(uint64_t keys, uint64_t values, int n)
+void radix_sort_pairs_device(void* context, int64_t* keys, int* values, int n, int begin_bit, int end_bit)
 {
-    radix_sort_pairs_device(WP_CURRENT_CONTEXT, reinterpret_cast<float*>(keys), reinterpret_cast<int*>(values), n);
+    radix_sort_pairs_device_dispatch_value(context, keys, values, n, begin_bit, end_bit, sizeof(int));
 }
 
-void wp_radix_sort_pairs_int64_device(uint64_t keys, uint64_t values, int n)
+void radix_sort_pairs_device(void* context, uint64_t* keys, int* values, int n, int begin_bit, int end_bit)
 {
-    radix_sort_pairs_device(WP_CURRENT_CONTEXT, reinterpret_cast<int64_t*>(keys), reinterpret_cast<int*>(values), n);
+    radix_sort_pairs_device_dispatch_value(context, keys, values, n, begin_bit, end_bit, sizeof(int));
 }
 
-void wp_radix_sort_pairs_uint64_device(uint64_t keys, uint64_t values, int n)
+void wp_radix_sort_pairs_int_device(uint64_t keys, uint64_t values, int n, int begin_bit, int end_bit, int value_size)
 {
-    radix_sort_pairs_device(WP_CURRENT_CONTEXT, reinterpret_cast<uint64_t*>(keys), reinterpret_cast<int*>(values), n);
+    radix_sort_pairs_device_dispatch_value(
+        WP_CURRENT_CONTEXT, reinterpret_cast<int*>(keys), reinterpret_cast<void*>(values), n, begin_bit, end_bit,
+        value_size
+    );
+}
+
+void wp_radix_sort_pairs_uint_device(uint64_t keys, uint64_t values, int n, int begin_bit, int end_bit, int value_size)
+{
+    radix_sort_pairs_device_dispatch_value(
+        WP_CURRENT_CONTEXT, reinterpret_cast<uint32_t*>(keys), reinterpret_cast<void*>(values), n, begin_bit, end_bit,
+        value_size
+    );
+}
+
+void wp_radix_sort_pairs_float_device(uint64_t keys, uint64_t values, int n, int begin_bit, int end_bit, int value_size)
+{
+    radix_sort_pairs_device_dispatch_value(
+        WP_CURRENT_CONTEXT, reinterpret_cast<float*>(keys), reinterpret_cast<void*>(values), n, begin_bit, end_bit,
+        value_size
+    );
+}
+
+void wp_radix_sort_pairs_double_device(
+    uint64_t keys, uint64_t values, int n, int begin_bit, int end_bit, int value_size
+)
+{
+    radix_sort_pairs_device_dispatch_value(
+        WP_CURRENT_CONTEXT, reinterpret_cast<double*>(keys), reinterpret_cast<void*>(values), n, begin_bit, end_bit,
+        value_size
+    );
+}
+
+void wp_radix_sort_pairs_int64_device(uint64_t keys, uint64_t values, int n, int begin_bit, int end_bit, int value_size)
+{
+    radix_sort_pairs_device_dispatch_value(
+        WP_CURRENT_CONTEXT, reinterpret_cast<int64_t*>(keys), reinterpret_cast<void*>(values), n, begin_bit, end_bit,
+        value_size
+    );
+}
+
+void wp_radix_sort_pairs_uint64_device(
+    uint64_t keys, uint64_t values, int n, int begin_bit, int end_bit, int value_size
+)
+{
+    radix_sort_pairs_device_dispatch_value(
+        WP_CURRENT_CONTEXT, reinterpret_cast<uint64_t*>(keys), reinterpret_cast<void*>(values), n, begin_bit, end_bit,
+        value_size
+    );
 }
 
 void segmented_sort_reserve(void* context, int n, int num_segments, void** mem_out, size_t* size_out)

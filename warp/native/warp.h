@@ -291,23 +291,60 @@ WP_API void wp_array_sum_float_host(uint64_t a, uint64_t out, int count, int str
 WP_API void wp_array_sum_double_host(uint64_t a, uint64_t out, int count, int stride, int type_len);
 WP_API void wp_array_sum_double_device(uint64_t a, uint64_t out, int count, int stride, int type_len);
 
-WP_API void wp_array_scan_int_host(uint64_t in, uint64_t out, int len, bool inclusive);
-WP_API void wp_array_scan_float_host(uint64_t in, uint64_t out, int len, bool inclusive);
+WP_API void
+wp_array_scan_int_host(uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive);
+WP_API void wp_array_scan_int64_host(
+    uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
+);
+WP_API void wp_array_scan_float_host(
+    uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
+);
+WP_API void wp_array_scan_double_host(
+    uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
+);
 
-WP_API void wp_array_scan_int_device(uint64_t in, uint64_t out, int len, bool inclusive);
-WP_API void wp_array_scan_float_device(uint64_t in, uint64_t out, int len, bool inclusive);
+WP_API void wp_array_scan_int_device(
+    uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
+);
+WP_API void wp_array_scan_int64_device(
+    uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
+);
+WP_API void wp_array_scan_float_device(
+    uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
+);
+WP_API void wp_array_scan_double_device(
+    uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
+);
 
-WP_API void wp_radix_sort_pairs_int_host(uint64_t keys, uint64_t values, int n);
-WP_API void wp_radix_sort_pairs_int_device(uint64_t keys, uint64_t values, int n);
+WP_API void
+wp_radix_sort_pairs_int_host(uint64_t keys, uint64_t values, int n, int begin_bit, int end_bit, int value_size);
+WP_API void
+wp_radix_sort_pairs_int_device(uint64_t keys, uint64_t values, int n, int begin_bit, int end_bit, int value_size);
 
-WP_API void wp_radix_sort_pairs_float_host(uint64_t keys, uint64_t values, int n);
-WP_API void wp_radix_sort_pairs_float_device(uint64_t keys, uint64_t values, int n);
+WP_API void
+wp_radix_sort_pairs_uint_host(uint64_t keys, uint64_t values, int n, int begin_bit, int end_bit, int value_size);
+WP_API void
+wp_radix_sort_pairs_uint_device(uint64_t keys, uint64_t values, int n, int begin_bit, int end_bit, int value_size);
 
-WP_API void wp_radix_sort_pairs_int64_host(uint64_t keys, uint64_t values, int n);
-WP_API void wp_radix_sort_pairs_int64_device(uint64_t keys, uint64_t values, int n);
+WP_API void
+wp_radix_sort_pairs_float_host(uint64_t keys, uint64_t values, int n, int begin_bit, int end_bit, int value_size);
+WP_API void
+wp_radix_sort_pairs_float_device(uint64_t keys, uint64_t values, int n, int begin_bit, int end_bit, int value_size);
 
-WP_API void wp_radix_sort_pairs_uint64_host(uint64_t keys, uint64_t values, int n);
-WP_API void wp_radix_sort_pairs_uint64_device(uint64_t keys, uint64_t values, int n);
+WP_API void
+wp_radix_sort_pairs_double_host(uint64_t keys, uint64_t values, int n, int begin_bit, int end_bit, int value_size);
+WP_API void
+wp_radix_sort_pairs_double_device(uint64_t keys, uint64_t values, int n, int begin_bit, int end_bit, int value_size);
+
+WP_API void
+wp_radix_sort_pairs_int64_host(uint64_t keys, uint64_t values, int n, int begin_bit, int end_bit, int value_size);
+WP_API void
+wp_radix_sort_pairs_int64_device(uint64_t keys, uint64_t values, int n, int begin_bit, int end_bit, int value_size);
+
+WP_API void
+wp_radix_sort_pairs_uint64_host(uint64_t keys, uint64_t values, int n, int begin_bit, int end_bit, int value_size);
+WP_API void
+wp_radix_sort_pairs_uint64_device(uint64_t keys, uint64_t values, int n, int begin_bit, int end_bit, int value_size);
 
 WP_API void wp_segmented_sort_pairs_float_host(
     uint64_t keys,

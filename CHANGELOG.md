@@ -12,6 +12,9 @@
 - Extend AddressSanitizer support to JIT-compiled CPU kernels: when `warp-clang` is built with `--sanitize=address`, CPU
   kernels are automatically instrumented and share the host's single in-process ASan runtime, so out-of-bounds accesses
   into a `wp.array` are reported as `heap-buffer-overflow` ([GH-1387](https://github.com/NVIDIA/warp/issues/1387)).
+- Extend `wp.utils.array_scan()` to 64-bit scalar and vector types, and extend `wp.utils.radix_sort_pairs()` to 32- and
+  64-bit signed, unsigned, and floating-point keys with 4- or 8-byte values
+  ([GH-1538](https://github.com/NVIDIA/warp/issues/1538)).
 
 ### Removed
 

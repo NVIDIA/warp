@@ -5,37 +5,48 @@
 
 #include "scan.h"
 
-#include <cstring>
-#include <numeric>
-
-template <typename T> void scan_host(const T* values_in, T* values_out, int n, bool inclusive)
+template <typename T>
+void scan_host(
+    const T* values_in, T* values_out, int n, int in_byte_stride, int out_byte_stride, int type_length, bool inclusive
+)
 {
+    assert((in_byte_stride % sizeof(T)) == 0);
+    assert((out_byte_stride % sizeof(T)) == 0);
+
     if (n <= 0)
         return;
 
-    static void* scan_temp_memory = NULL;
-    static size_t scan_temp_max_size = 0;
+    const int in_stride = in_byte_stride / sizeof(T);
+    const int out_stride = out_byte_stride / sizeof(T);
 
-    // compute temporary memory required
-    if (!inclusive && n > scan_temp_max_size) {
-        wp_free_host(scan_temp_memory);
-        scan_temp_memory = wp_alloc_host(sizeof(T) * n, "(native:scan)");
-        scan_temp_max_size = n;
-    }
+    for (int k = 0; k < type_length; ++k) {
+        T sum = T(0);
 
-    T* result = inclusive ? values_out : static_cast<T*>(scan_temp_memory);
+        for (int i = 0; i < n; ++i) {
+            const T value = values_in[i * in_stride + k];
 
-    // scan
-    std::partial_sum(values_in, values_in + n, result);
-    if (!inclusive) {
-        values_out[0] = (T)0;
-        // Internal scratch -> output copy. Use plain memcpy so it doesn't
-        // interact with APIC recording (the scan itself isn't a captured op;
-        // its memcpys are implementation details).
-        if (n > 1)
-            std::memcpy(values_out + 1, result, sizeof(T) * (n - 1));
+            if (inclusive) {
+                sum += value;
+                values_out[i * out_stride + k] = sum;
+            } else {
+                values_out[i * out_stride + k] = sum;
+                sum += value;
+            }
+        }
     }
 }
 
+template <typename T> void scan_host(const T* values_in, T* values_out, int n, bool inclusive)
+{
+    scan_host(values_in, values_out, n, sizeof(T), sizeof(T), 1, inclusive);
+}
+
 template void scan_host(const int*, int*, int, bool);
+template void scan_host(const int64_t*, int64_t*, int, bool);
 template void scan_host(const float*, float*, int, bool);
+template void scan_host(const double*, double*, int, bool);
+
+template void scan_host(const int*, int*, int, int, int, int, bool);
+template void scan_host(const int64_t*, int64_t*, int, int, int, int, bool);
+template void scan_host(const float*, float*, int, int, int, int, bool);
+template void scan_host(const double*, double*, int, int, int, int, bool);
