@@ -2676,15 +2676,9 @@ try:
             )
 
     # ffi Host (CPU) tests — always registered (not gated on CUDA availability)
-    add_function_test(
-        TestJax, "test_ffi_jax_kernel_host_add", test_ffi_jax_kernel_host_add, devices=None
-    )
-    add_function_test(
-        TestJax, "test_ffi_jax_kernel_host_sincos", test_ffi_jax_kernel_host_sincos, devices=None
-    )
-    add_function_test(
-        TestJax, "test_ffi_jax_kernel_host_in_out", test_ffi_jax_kernel_host_in_out, devices=None
-    )
+    add_function_test(TestJax, "test_ffi_jax_kernel_host_add", test_ffi_jax_kernel_host_add, devices=None)
+    add_function_test(TestJax, "test_ffi_jax_kernel_host_sincos", test_ffi_jax_kernel_host_sincos, devices=None)
+    add_function_test(TestJax, "test_ffi_jax_kernel_host_in_out", test_ffi_jax_kernel_host_in_out, devices=None)
     add_function_test(
         TestJax,
         "test_ffi_jax_kernel_host_scale_vec_constant",
