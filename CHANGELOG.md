@@ -68,6 +68,9 @@
 - Fix unary minus on referenced 64-bit scalar constants, such as values declared with `wp.constant(wp.float64(...))`,
   being silently dropped when the constant appears as the leading operand of a multiply or divide expression, e.g.
   `-a * b` producing the wrong sign ([GH-1540](https://github.com/NVIDIA/warp/issues/1540)).
+- Fix parameterized `@wp.func(...)` decorators, such as `@wp.func(module="unique")`, in directly executed scripts to
+  register successfully instead of raising `AttributeError` during decoration
+  ([GH-1544](https://github.com/NVIDIA/warp/issues/1544)).
 
 ### Documentation
 
