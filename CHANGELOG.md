@@ -81,6 +81,8 @@
 - Fix parameterized `@wp.func(...)` decorators, such as `@wp.func(module="unique")`, in directly executed scripts to
   register successfully instead of raising `AttributeError` during decoration
   ([GH-1544](https://github.com/NVIDIA/warp/issues/1544)).
+- Fix LTO cache collisions and stale FFT metadata handling by using longer cache keys and rebuilding invalid metadata
+  ([GH-1511](https://github.com/NVIDIA/warp/issues/1511)).
 
 ### Documentation
 
