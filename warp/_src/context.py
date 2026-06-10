@@ -138,6 +138,31 @@ def get_function_args(func):
 complex_type_hints = (Any, Callable, tuple)
 sequence_types = (list, tuple)
 
+
+class det_scatter_buf_t(ctypes.Structure):
+    _fields_ = [
+        ("keys", ctypes.c_void_p),
+        ("vals", ctypes.c_void_p),
+        ("count", ctypes.c_void_p),
+        ("capacity", ctypes.c_int),
+    ]
+
+
+class det_counter_buf_t(ctypes.Structure):
+    _fields_ = [
+        ("keys", ctypes.c_void_p),
+        ("values", ctypes.c_void_p),
+        ("prefixes", ctypes.c_void_p),
+        ("record_slots", ctypes.c_void_p),
+        ("cursors", ctypes.c_void_p),
+        ("count", ctypes.c_void_p),
+        ("capacity", ctypes.c_int),
+        ("records_per_thread", ctypes.c_int),
+        ("target_ptr", ctypes.c_uint64),
+        ("target_size", ctypes.c_int),
+    ]
+
+
 function_key_counts: dict[str, int] = {}
 
 
@@ -551,8 +576,8 @@ class Function:
         bound_args = tuple(bound_args.arguments.values())
         return call_builtin_from_desc(desc, bound_args)
 
-    def build(self, builder: ModuleBuilder | None):
-        self.adj.build(builder)
+    def build(self, builder: ModuleBuilder | None, default_builder_options=None):
+        self.adj.build(builder, default_builder_options)
 
         # complete the function return type after we have analyzed it (inferred from return statement in ast)
         if not self.value_func:
@@ -1209,7 +1234,7 @@ def func_grad(forward_fn):
             )
         else:
             # resolve return variables
-            forward_fn.adj.build(None, forward_fn.module.options)
+            forward_fn.build(None, forward_fn.module.options)
 
             expected_args = list(forward_fn.input_types.items())
             if forward_fn.adj.return_var is not None:
@@ -1425,7 +1450,8 @@ def kernel(
             after the kernel name and hash. If ``None``, the module is
             inferred from the function's module.
         module_options: A dict of module-level compilation options
-            (e.g. ``fast_math``, ``mode``, ``max_unroll``) that are
+            (e.g. ``fast_math``, ``mode``, ``max_unroll``,
+            ``deterministic``, ``deterministic_max_records``) that are
             applied to the kernel's module. Requires
             ``module="unique"``; raises ``ValueError`` otherwise.
             For shared modules, use :func:`warp.set_module_options`
@@ -2763,6 +2789,8 @@ class Module:
             "block_dim": 256,
             "compile_time_trace": warp.config.compile_time_trace,
             "strip_hash": False,
+            "deterministic": warp.config.deterministic,
+            "deterministic_max_records": warp.config.deterministic_max_records,
         }
 
         # Module dependencies are determined by scanning each function
@@ -2813,6 +2841,24 @@ class Module:
             options["enable_mathdx_solver"] = config.enable_mathdx_solver
         if options["enable_mathdx_fft"] is None:
             options["enable_mathdx_fft"] = config.enable_mathdx_fft
+
+        from warp._src.deterministic import normalize_deterministic_mode  # noqa: PLC0415
+
+        options["deterministic"] = normalize_deterministic_mode(options["deterministic"])
+
+        deterministic_max_records = options["deterministic_max_records"]
+        if isinstance(deterministic_max_records, bool):
+            raise TypeError("deterministic_max_records must be a non-negative integer, got bool")
+        try:
+            deterministic_max_records = operator.index(deterministic_max_records)
+        except TypeError as e:
+            raise TypeError(
+                "deterministic_max_records must be a non-negative integer, "
+                f"got {type(deterministic_max_records).__name__}"
+            ) from e
+        if deterministic_max_records < 0:
+            raise ValueError(f"deterministic_max_records must be non-negative, got {deterministic_max_records}")
+        options["deterministic_max_records"] = deterministic_max_records
 
         # Fold in global config flags that affect compilation
         options["verify_fp"] = config.verify_fp
@@ -3014,18 +3060,44 @@ class Module:
         if block_dim is None:
             block_dim = self.options["block_dim"]
 
-        if self.has_unresolved_static_expressions:
-            options = self.resolve_options(warp.config, block_dim=block_dim)
-            builder_options = options | {"output_arch": None, "block_dim": block_dim}
-            _ = ModuleBuilder(self, builder_options)
-            self.has_unresolved_static_expressions = False
+        # Both branches below mutate shared ``@wp.func`` adjoint state
+        # (``ModuleBuilder`` runs ``adj.build`` to resolve deferred
+        # ``wp.static`` expressions; ``ModuleHasher`` reads the
+        # resulting adjoint blocks via ``hash_adjoint``). The two
+        # operations are stages of one logical "compute module hash"
+        # critical section, so they live in a single ``_codegen_lock``
+        # block. Splitting the lock per stage opens a window where
+        # another thread can re-run ``adj.build`` on a shared helper
+        # and clobber the state this thread is about to hash.
+        if self.has_unresolved_static_expressions or block_dim not in self.hashers:
+            with _codegen_lock:
+                if self.has_unresolved_static_expressions:
+                    options = self.resolve_options(warp.config, block_dim=block_dim)
+                    builder_options = options | {"output_arch": None, "block_dim": block_dim}
+                    _ = ModuleBuilder(self, builder_options)
+                    self.has_unresolved_static_expressions = False
 
-        if block_dim not in self.hashers:
-            options = self.resolve_options(warp.config, block_dim=block_dim)
-            self.hashers[block_dim] = ModuleHasher(self._get_live_kernels(), options)
-            self.resolved_options[block_dim] = options
+                if block_dim not in self.hashers:
+                    options = self.resolve_options(warp.config, block_dim=block_dim)
+                    self.hashers[block_dim] = ModuleHasher(self._get_live_kernels(), options)
+                    self.resolved_options[block_dim] = options
 
         return self.hashers[block_dim].get_hash()
+
+    def _refresh_deterministic_launch_metadata(self, block_dim: int, options: dict) -> None:
+        """Repopulate ``det_meta`` after a cache hit without firing tile LTO compilation."""
+        from warp._src.deterministic import is_deterministic_mode_enabled  # noqa: PLC0415
+
+        if not is_deterministic_mode_enabled(options.get("deterministic")):
+            return
+
+        hasher = self.hashers.get(block_dim)
+        if hasher is None:
+            return
+
+        builder_options = options | {"output_arch": None}
+        for kernel in hasher.get_unique_kernels():
+            kernel.adj.build(None, builder_options)
 
     def _use_ptx(self, device) -> bool:
         return device.get_cuda_output_format(self.options.get("cuda_output")) == "ptx"
@@ -3436,6 +3508,7 @@ class Module:
             # -----------------------------------------------------------
             # Determine binary path and build if necessary
 
+            compiled = False
             if binary_path:
                 # We will never re-codegen or re-compile in this situation
                 # The expected files must already exist
@@ -3466,6 +3539,9 @@ class Module:
                     raise e
 
                 module_load_timer.extra_msg = " (compiled)" if compiled else " (cached)"
+
+            if device.is_cuda and not compiled:
+                self._refresh_deterministic_launch_metadata(active_block_dim, options)
 
             # -----------------------------------------------------------
             # Load CPU or CUDA binary
@@ -4587,6 +4663,7 @@ class Graph:
         self.device = device
         self.capture_id = capture_id
         self.module_execs: set[ModuleExec] = set()
+        self._deterministic_buffer_refs: list[Any] = []
         self.graph_exec: ctypes.c_void_p | None = None
         self.graph: ctypes.c_void_p | None = None
 
@@ -5349,6 +5426,7 @@ class Runtime:
                 ctypes.c_int,
                 ctypes.c_int,
             ]
+            self.core.wp_radix_sort_pairs_int_host.restype = None
             self.core.wp_radix_sort_pairs_int_device.argtypes = [
                 ctypes.c_uint64,
                 ctypes.c_uint64,
@@ -5357,6 +5435,7 @@ class Runtime:
                 ctypes.c_int,
                 ctypes.c_int,
             ]
+            self.core.wp_radix_sort_pairs_int_device.restype = None
 
             self.core.wp_radix_sort_pairs_uint_host.argtypes = [
                 ctypes.c_uint64,
@@ -5366,6 +5445,7 @@ class Runtime:
                 ctypes.c_int,
                 ctypes.c_int,
             ]
+            self.core.wp_radix_sort_pairs_uint_host.restype = None
             self.core.wp_radix_sort_pairs_uint_device.argtypes = [
                 ctypes.c_uint64,
                 ctypes.c_uint64,
@@ -5374,6 +5454,7 @@ class Runtime:
                 ctypes.c_int,
                 ctypes.c_int,
             ]
+            self.core.wp_radix_sort_pairs_uint_device.restype = None
 
             self.core.wp_radix_sort_pairs_float_host.argtypes = [
                 ctypes.c_uint64,
@@ -5383,6 +5464,7 @@ class Runtime:
                 ctypes.c_int,
                 ctypes.c_int,
             ]
+            self.core.wp_radix_sort_pairs_float_host.restype = None
             self.core.wp_radix_sort_pairs_float_device.argtypes = [
                 ctypes.c_uint64,
                 ctypes.c_uint64,
@@ -5391,6 +5473,7 @@ class Runtime:
                 ctypes.c_int,
                 ctypes.c_int,
             ]
+            self.core.wp_radix_sort_pairs_float_device.restype = None
 
             self.core.wp_radix_sort_pairs_double_host.argtypes = [
                 ctypes.c_uint64,
@@ -5400,6 +5483,7 @@ class Runtime:
                 ctypes.c_int,
                 ctypes.c_int,
             ]
+            self.core.wp_radix_sort_pairs_double_host.restype = None
             self.core.wp_radix_sort_pairs_double_device.argtypes = [
                 ctypes.c_uint64,
                 ctypes.c_uint64,
@@ -5408,6 +5492,7 @@ class Runtime:
                 ctypes.c_int,
                 ctypes.c_int,
             ]
+            self.core.wp_radix_sort_pairs_double_device.restype = None
 
             self.core.wp_radix_sort_pairs_int64_host.argtypes = [
                 ctypes.c_uint64,
@@ -5417,6 +5502,7 @@ class Runtime:
                 ctypes.c_int,
                 ctypes.c_int,
             ]
+            self.core.wp_radix_sort_pairs_int64_host.restype = None
             self.core.wp_radix_sort_pairs_int64_device.argtypes = [
                 ctypes.c_uint64,
                 ctypes.c_uint64,
@@ -5425,6 +5511,7 @@ class Runtime:
                 ctypes.c_int,
                 ctypes.c_int,
             ]
+            self.core.wp_radix_sort_pairs_int64_device.restype = None
 
             self.core.wp_radix_sort_pairs_uint64_host.argtypes = [
                 ctypes.c_uint64,
@@ -5434,6 +5521,7 @@ class Runtime:
                 ctypes.c_int,
                 ctypes.c_int,
             ]
+            self.core.wp_radix_sort_pairs_uint64_host.restype = None
             self.core.wp_radix_sort_pairs_uint64_device.argtypes = [
                 ctypes.c_uint64,
                 ctypes.c_uint64,
@@ -5442,6 +5530,7 @@ class Runtime:
                 ctypes.c_int,
                 ctypes.c_int,
             ]
+            self.core.wp_radix_sort_pairs_uint64_device.restype = None
 
             self.core.wp_segmented_sort_pairs_int_host.argtypes = [
                 ctypes.c_uint64,
@@ -5451,6 +5540,7 @@ class Runtime:
                 ctypes.c_uint64,
                 ctypes.c_int,
             ]
+            self.core.wp_segmented_sort_pairs_int_host.restype = None
             self.core.wp_segmented_sort_pairs_int_device.argtypes = [
                 ctypes.c_uint64,
                 ctypes.c_uint64,
@@ -5459,6 +5549,7 @@ class Runtime:
                 ctypes.c_uint64,
                 ctypes.c_int,
             ]
+            self.core.wp_segmented_sort_pairs_int_device.restype = None
 
             self.core.wp_segmented_sort_pairs_float_host.argtypes = [
                 ctypes.c_uint64,
@@ -5468,6 +5559,7 @@ class Runtime:
                 ctypes.c_uint64,
                 ctypes.c_int,
             ]
+            self.core.wp_segmented_sort_pairs_float_host.restype = None
             self.core.wp_segmented_sort_pairs_float_device.argtypes = [
                 ctypes.c_uint64,
                 ctypes.c_uint64,
@@ -5476,6 +5568,7 @@ class Runtime:
                 ctypes.c_uint64,
                 ctypes.c_int,
             ]
+            self.core.wp_segmented_sort_pairs_float_device.restype = None
 
             self.core.wp_runlength_encode_int_host.argtypes = [
                 ctypes.c_uint64,
@@ -5491,6 +5584,56 @@ class Runtime:
                 ctypes.c_uint64,
                 ctypes.c_int,
             ]
+
+            # Deterministic mode: sort scatter records and apply
+            # component-wise segmented reduction for scalar/composite values.
+            self.core.wp_deterministic_sort_reduce_workspace_size.argtypes = [
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+            ]
+            self.core.wp_deterministic_sort_reduce_workspace_size.restype = ctypes.c_size_t
+
+            self.core.wp_deterministic_sort_reduce_device.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_int,
+                ctypes.c_uint64,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_uint64,
+                ctypes.c_size_t,
+            ]
+            self.core.wp_deterministic_sort_reduce_device.restype = None
+            self.core.wp_deterministic_counter_scan_workspace_size.argtypes = [
+                ctypes.c_int,
+            ]
+            self.core.wp_deterministic_counter_scan_workspace_size.restype = ctypes.c_size_t
+            self.core.wp_deterministic_counter_scan_device.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_int,
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_int,
+                ctypes.c_uint64,
+                ctypes.c_size_t,
+            ]
+            self.core.wp_deterministic_counter_scan_device.restype = None
+            self.core.wp_deterministic_counter_writeback_device.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_int,
+                ctypes.c_uint64,
+                ctypes.c_uint64,
+                ctypes.c_int,
+            ]
+            self.core.wp_deterministic_counter_writeback_device.restype = None
 
             self.core.wp_bvh_create_host.restype = ctypes.c_uint64
             self.core.wp_bvh_create_host.argtypes = [
@@ -8728,6 +8871,51 @@ def invoke(kernel, hooks, params: Sequence[Any], adjoint: bool):
         hooks.backward(ctypes.byref(params[0]), ctypes.byref(args), ctypes.byref(adj_args))
 
 
+def _build_cuda_kernel_params(params: Sequence[Any]):
+    kernel_args = [ctypes.c_void_p(ctypes.addressof(x)) for x in params]
+    return (ctypes.c_void_p * len(kernel_args))(*kernel_args)
+
+
+def _retain_cuda_module_for_capture(module_exec, stream):
+    if module_exec is None:
+        return
+    if len(runtime.captures) == 0 or not runtime.core.wp_cuda_stream_is_capturing(stream.cuda_stream):
+        return
+
+    capture_id = runtime.core.wp_cuda_stream_get_capture_id(stream.cuda_stream)
+    graph = runtime.captures.get(capture_id)
+    if graph is not None:
+        graph._retain_module_exec(module_exec)
+
+
+def _cuda_launch_kernel(
+    device,
+    module_exec,
+    hook,
+    dim,
+    max_blocks,
+    block_dim,
+    shared_memory_bytes,
+    params_addr,
+    stream,
+    apic_info_ptr=None,
+):
+    _retain_cuda_module_for_capture(module_exec, stream)
+
+    if runtime.core.wp_cuda_launch_kernel(
+        device.context,
+        hook,
+        dim,
+        max_blocks,
+        block_dim,
+        shared_memory_bytes,
+        params_addr,
+        stream.cuda_stream,
+        apic_info_ptr,
+    ):
+        raise RuntimeError(f"Error launching kernel on device {device}: {runtime.get_error_string()}")
+
+
 def _raise_cuda_launch_error(kernel: Kernel, device: Device) -> None:
     """Raise a RuntimeError for the current CUDA launch failure."""
     raise RuntimeError(f"Error launching kernel: {kernel.key} on device {device}: {runtime.get_error_string()}")
@@ -8791,10 +8979,7 @@ class Launch:
                         params.append(pack_arg(kernel, a.type, a.label, 0, device, True))
 
             # Create array of parameter addresses
-            kernel_args = [ctypes.c_void_p(ctypes.addressof(x)) for x in params]
-            kernel_params = (ctypes.c_void_p * len(kernel_args))(*kernel_args)
-
-            params_addr = kernel_params
+            params_addr = _build_cuda_kernel_params(params)
 
         self.kernel = kernel
         self.hooks = hooks
@@ -8855,23 +9040,29 @@ class Launch:
         if self.params_addr:
             self.params_addr[params_index] = ctypes.c_void_p(ctypes.addressof(carg))
 
-    def set_param_at_index_from_ctype(self, index: int, value: ctypes.Structure | int | float):
+    def set_param_at_index_from_ctype(self, index: int, value: ctypes.Structure | int | float, adjoint: bool = False):
         """Set a kernel parameter at an index without any type conversion.
 
         Args:
             index: The index of the param to set.
             value: The value to set the param to.
+            adjoint: If ``True``, target the adjoint half of the param packet.
         """
+        if adjoint:
+            params_index = index + len(self.kernel.adj.args) + 1
+        else:
+            params_index = index + 1
+
         if isinstance(value, ctypes.Structure):
             # not sure how to directly assign struct->struct without reallocating using ctypes
-            self.params[index + 1] = value
+            self.params[params_index] = value
 
             # for CUDA kernels we need to update the address to each arg
             if self.params_addr:
-                self.params_addr[index + 1] = ctypes.c_void_p(ctypes.addressof(value))
+                self.params_addr[params_index] = ctypes.c_void_p(ctypes.addressof(value))
 
         else:
-            self.params[index + 1].__init__(value)
+            self.params[params_index].__init__(value)
 
     def set_param_by_name(self, name: str, value: Any, adjoint: bool = False):
         """Set a kernel parameter by argument name.
@@ -9176,8 +9367,53 @@ def launch(
         pack_args(fwd_args, params, adjoint=False)
         pack_args(adj_args, params, adjoint=True)
 
+        # Deterministic mode: redirect to the launcher that supplies the hidden
+        # deterministic buffers. Backward kernels use the same path so generated
+        # tape adjoints can reduce gradient atomics in a fixed order.
+        det_meta = getattr(kernel.adj, "det_meta", None)
+        if det_meta is not None and det_meta.needs_deterministic and device.is_cuda:
+            from warp._src.deterministic import create_deterministic_launch, launch_deterministic  # noqa: PLC0415
+
+            launch_hook = hooks.backward if adjoint else hooks.forward
+            launch_kind = "backward" if adjoint else "forward"
+            if launch_hook is None:
+                raise RuntimeError(
+                    f"Failed to find {launch_kind} kernel '{kernel.key}' from module '{kernel.module.name}' for device '{device}'"
+                )
+            if stream is None:
+                stream = device.stream
+            if record_cmd:
+                return create_deterministic_launch(
+                    kernel=kernel,
+                    device=device,
+                    det_meta=det_meta,
+                    fwd_args=fwd_args,
+                    adj_args=adj_args,
+                    hooks=hooks,
+                    params=params,
+                    bounds=bounds,
+                    max_blocks=max_blocks,
+                    block_dim=block_dim,
+                    adjoint=adjoint,
+                )
+            launch_deterministic(
+                kernel,
+                hooks,
+                params,
+                bounds,
+                device,
+                stream,
+                max_blocks,
+                block_dim,
+                det_meta,
+                fwd_args,
+                adj_args=adj_args,
+                adjoint=adjoint,
+                module_exec=module_exec,
+            )
+
         # run kernel
-        if device.is_cpu:
+        elif device.is_cpu:
             if adjoint:
                 if hooks.backward is None:
                     raise RuntimeError(
@@ -10100,6 +10336,8 @@ def set_module_options(options: dict[str, Any], module: Any = None):
     * **mode**: The compilation mode to use, can be ``"debug"`` or ``"release"``, defaults to the value of ``warp.config.mode``.
     * **optimization_level**: Compiler optimization level (0-3). When ``None``, falls back to ``warp.config.optimization_level``; if that is also ``None``, uses target-specific defaults (``-O2`` for CPU, ``-O3`` for CUDA).
     * **cpu_compiler_flags**: CPU compiler flags (see ``warp.config.cpu_compiler_flags``), defaults to the global config value when ``None``.
+    * **deterministic**: Determinism guarantee for supported atomic operations. Accepted values are ``"not_guaranteed"``, ``"run_to_run"``, and ``"gpu_to_gpu"``. Defaults to the value of ``warp.config.deterministic`` when the module is created.
+    * **deterministic_max_records**: Per-target, per-thread upper bound for deterministic scatter records. Defaults to ``0``, which means use the code-generated lower bound only. This is useful when dynamic loops or repeated visits to the same atomic site can emit more records than static analysis can prove.
     * **block_dim**: The default number of threads to assign to each block, defaults to ``256``.
     * **compile_time_trace**: Enable compile-time tracing, defaults to the value of ``warp.config.compile_time_trace``.
     * **strip_hash**: Omit the content hash from compiled kernel file names, defaults to ``False``.

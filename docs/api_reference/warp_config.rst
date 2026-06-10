@@ -13,12 +13,16 @@ API
    :nosignatures:
    :toctree: _generated
 
+   DeterministicMode
    LaunchArrayAccessMode
    cache_kernels
    compile_time_trace
    cpu_compiler_flags
    cuda_arch_suffix
    cuda_output
+   deterministic
+   deterministic_debug
+   deterministic_max_records
    enable_backward
    enable_graph_capture_module_load_by_default
    enable_mathdx_fft

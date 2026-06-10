@@ -166,6 +166,129 @@ class TestUniqueModule(unittest.TestCase):
         wp.launch(_kernel_fast_math, dim=3, inputs=[a, b], device="cpu")
         np.testing.assert_allclose(b.numpy(), [2.0, 3.0, 4.0])
 
+    def test_module_options_affect_unique_module_identity(self):
+        """Module options must contribute to unique module hashing."""
+
+        @wp.kernel(module="unique")
+        def _scatter_normal(
+            values: wp.array(dtype=wp.float32), indices: wp.array(dtype=wp.int32), out: wp.array(dtype=float)
+        ):
+            tid = wp.tid()
+            wp.atomic_add(out, indices[tid], values[tid])
+
+        @wp.kernel(
+            module="unique",
+            module_options={"deterministic": "run_to_run", "deterministic_max_records": 1},
+        )
+        def _scatter_deterministic(
+            values: wp.array(dtype=wp.float32), indices: wp.array(dtype=wp.int32), out: wp.array(dtype=float)
+        ):
+            tid = wp.tid()
+            wp.atomic_add(out, indices[tid], values[tid])
+
+        self.assertNotEqual(
+            _scatter_normal.module.name,
+            _scatter_deterministic.module.name,
+            "Different module options must produce different unique module names",
+        )
+
+        if not wp.is_cuda_available():
+            return
+
+        values = wp.array([1.0, 2.0, 3.0, 4.0], dtype=wp.float32, device="cuda:0")
+        indices = wp.array([0, 0, 0, 0], dtype=wp.int32, device="cuda:0")
+
+        out_normal = wp.zeros(1, dtype=float, device="cuda:0")
+        out_deterministic = wp.zeros(1, dtype=float, device="cuda:0")
+
+        wp.launch(_scatter_normal, dim=4, inputs=[values, indices], outputs=[out_normal], device="cuda:0")
+        wp.launch(_scatter_deterministic, dim=4, inputs=[values, indices], outputs=[out_deterministic], device="cuda:0")
+
+        np.testing.assert_allclose(out_normal.numpy(), [10.0])
+        np.testing.assert_allclose(out_deterministic.numpy(), [10.0])
+
+    def test_deterministic_load_populates_launch_metadata(self):
+        """Loading deterministic kernels must populate metadata used on cache hits."""
+        cuda_devices = get_cuda_test_devices()
+        if not cuda_devices:
+            self.skipTest("No CUDA devices available")
+
+        @wp.kernel(
+            module="unique",
+            module_options={"deterministic": "run_to_run", "deterministic_max_records": 1},
+        )
+        def _scatter_deterministic(
+            values: wp.array(dtype=wp.float32), indices: wp.array(dtype=wp.int32), out: wp.array(dtype=float)
+        ):
+            tid = wp.tid()
+            wp.atomic_add(out, indices[tid], values[tid])
+
+        device = cuda_devices[0]
+        _scatter_deterministic.module.load(device)
+
+        delattr(_scatter_deterministic.adj, "det_meta")
+        _scatter_deterministic.module.unload()
+        self.assertFalse(hasattr(_scatter_deterministic.adj, "det_meta"))
+
+        _scatter_deterministic.module.load(device)
+
+        self.assertTrue(hasattr(_scatter_deterministic.adj, "det_meta"))
+        self.assertTrue(_scatter_deterministic.adj.det_meta.needs_deterministic)
+        self.assertEqual(_scatter_deterministic.adj.det_meta.determinism_mode, "run_to_run")
+        self.assertEqual(_scatter_deterministic.adj.det_meta.max_records, 1)
+
+    def test_global_deterministic_captured_at_module_creation(self):
+        """Global deterministic config changes do not rehash existing modules."""
+
+        old_det = wp.config.deterministic
+        try:
+            wp.config.deterministic = wp.config.DeterministicMode.NOT_GUARANTEED
+
+            @wp.kernel(module="unique")
+            def _config_capture_kernel(out: wp.array(dtype=float)):
+                tid = wp.tid()
+                wp.atomic_add(out, 0, float(tid))
+
+            self.assertEqual(
+                _config_capture_kernel.module.options["deterministic"],
+                wp.config.DeterministicMode.NOT_GUARANTEED,
+            )
+            hash_before = _config_capture_kernel.module.get_module_hash()
+
+            wp.config.deterministic = wp.config.DeterministicMode.RUN_TO_RUN
+            hash_after = _config_capture_kernel.module.get_module_hash()
+
+            self.assertEqual(
+                _config_capture_kernel.module.options["deterministic"],
+                wp.config.DeterministicMode.NOT_GUARANTEED,
+            )
+            self.assertEqual(hash_before, hash_after)
+        finally:
+            wp.config.deterministic = old_det
+
+    def test_deterministic_max_records_validation(self):
+        """``deterministic_max_records`` must be a non-negative integer."""
+
+        @wp.kernel(module="unique", module_options={"deterministic_max_records": 2})
+        def _valid_max_records(a: wp.array(dtype=float)):
+            pass
+
+        self.assertEqual(_valid_max_records.module.options["deterministic_max_records"], 2)
+
+        invalid_values = [True, 1.5, "2"]
+        for value in invalid_values:
+            with self.subTest(value=value), self.assertRaises(TypeError):
+
+                @wp.kernel(module="unique", module_options={"deterministic_max_records": value})
+                def _bad_kernel_type(a: wp.array(dtype=float)):
+                    pass
+
+        with self.assertRaises(ValueError):
+
+            @wp.kernel(module="unique", module_options={"deterministic_max_records": -1})
+            def _bad_kernel_value(a: wp.array(dtype=float)):
+                pass
+
     def test_module_options_error_without_unique(self):
         """ValueError raised when module_options are used without ``module="unique"``."""
         with self.assertRaises(ValueError) as cm:

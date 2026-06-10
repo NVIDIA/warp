@@ -23,6 +23,24 @@ from collections.abc import Callable, Mapping, Sequence
 from typing import Any, ClassVar, get_args, get_origin
 
 import warp.config
+from warp._src.deterministic import (
+    _DET_INTERCEPTABLE_ATOMICS,
+    _DET_UNINTERCEPTED_SIDE_EFFECT_ATOMICS,
+    _add_deterministic_array_store,
+    _det_needs_store_guard,
+    _det_wrap_side_effect_call,
+    _det_wrap_slot_store,
+    _deterministic_adjoint_address_call,
+    _deterministic_call_args,
+    _deterministic_call_name,
+    _deterministic_function_args,
+    _deterministic_has_consumed_atomic_impl,
+    _deterministic_has_propagating_side_effect,
+    _deterministic_kernel_args,
+    _deterministic_kernel_locals,
+    _include_deterministic_call_meta,
+    emit_deterministic_atomic,
+)
 from warp._src.logger import log_debug, log_warning
 from warp._src.types import *
 
@@ -1185,6 +1203,11 @@ class Adjoint:
         # for unit testing errors being spit out from kernels.
         adj.skip_build = False
 
+        # Deterministic-mode state, populated by ``build()`` when enabled.
+        adj.det_meta = None
+        adj.det_registry = None
+        adj._det_atomic_return_discarded = False
+
         # Cache of reference-candidate AST nodes, materialized once by ``reference_nodes()``.
         # Reset to None if ``adj.tree`` is ever mutated after the cache is populated.
         adj._reference_nodes = None
@@ -1363,6 +1386,26 @@ class Adjoint:
         global options
         options = adj.builder_options
 
+        # Initialize deterministic mode metadata if enabled
+        from warp._src.deterministic import (  # noqa: PLC0415
+            DeterministicMeta,
+            DeterministicRegistry,
+            is_deterministic_mode_enabled,
+        )
+
+        deterministic_mode = adj.builder_options.get("deterministic")
+        if is_deterministic_mode_enabled(deterministic_mode):
+            adj.det_meta = DeterministicMeta(
+                determinism_mode=deterministic_mode,
+                max_records=adj.builder_options.get("deterministic_max_records", 0),
+                has_consumed_atomic=_deterministic_has_consumed_atomic_impl(adj.tree, adj, seen=None),
+                has_side_effect_store=adj.is_user_function and _deterministic_has_propagating_side_effect(adj.tree),
+            )
+            adj.det_registry = DeterministicRegistry()
+        else:
+            adj.det_meta = None
+            adj.det_registry = None
+
         adj.symbols = {}  # map from symbols to adjoint variables
         adj.variables = []  # list of local variables (in order)
         adj.deferred_static_expressions = []
@@ -1488,7 +1531,9 @@ class Adjoint:
         arg_strs = []
 
         for a in args:
-            if isinstance(a, warp._src.context.Function):
+            if isinstance(a, str):
+                arg_strs.append(a)
+            elif isinstance(a, warp._src.context.Function):
                 # functions don't have a var_ prefix so strip it off here
                 if prefix == "var":
                     arg_strs.append(f"{a.namespace}{a.native_func}")
@@ -1517,10 +1562,14 @@ class Adjoint:
         args,
         args_out,
         use_initializer_list,
+        extra_args=None,
         has_output_args=True,
         require_original_output_arg=False,
     ):
+        if extra_args is None:
+            extra_args = []
         formatted_var = adj.format_args("var", args_var)
+        formatted_extra = adj.format_args("var", extra_args)
         formatted_out = []
         if has_output_args and (require_original_output_arg or len(args_out) > 1):
             formatted_out = adj.format_args("var", args_out)
@@ -1536,15 +1585,16 @@ class Adjoint:
 
         if use_initializer_list:
             var_str = f"{{{', '.join(formatted_var)}}}"
+            extra_str = ", ".join(formatted_extra)
             out_str = f"{{{', '.join(formatted_out)}}}"
             adj_str = f"{{{', '.join(formatted_var_adj)}}}"
             out_adj_str = ", ".join(formatted_out_adj)
             if len(args_out) > 1:
-                arg_str = ", ".join([var_str, out_str, adj_str, out_adj_str])
+                arg_str = ", ".join(x for x in [var_str, extra_str, out_str, adj_str, out_adj_str] if x)
             else:
-                arg_str = ", ".join([var_str, adj_str, out_adj_str])
+                arg_str = ", ".join(x for x in [var_str, extra_str, adj_str, out_adj_str] if x)
         else:
-            arg_str = ", ".join(formatted_var + formatted_out + formatted_var_adj + formatted_out_adj)
+            arg_str = ", ".join(formatted_var + formatted_extra + formatted_out + formatted_var_adj + formatted_out_adj)
         return arg_str
 
     def indent(adj):
@@ -1834,7 +1884,7 @@ class Adjoint:
                 func.adj.used_by_backward_kernel = True
 
             if adj.builder is None:
-                func.build(None)
+                func.build(None, adj.builder_options)
 
             elif func not in adj.builder.functions:
                 adj.builder.build_function(func)
@@ -1846,6 +1896,23 @@ class Adjoint:
                     adj.builder.deferred_functions.append(func.custom_grad_func)
                 if func.custom_replay_func:
                     adj.builder.deferred_functions.append(func.custom_replay_func)
+
+            func_det_meta = getattr(func.adj, "det_meta", None)
+            if adj.det_meta is not None and func_det_meta is not None:
+                try:
+                    _include_deterministic_call_meta(adj, func_det_meta, bound_args)
+                except ValueError as e:
+                    raise WarpCodegenError(str(e)) from e
+            if adj.det_meta is not None and func.custom_grad_func is not None:
+                custom_grad_det_meta = getattr(func.custom_grad_func.adj, "det_meta", None)
+                if not hasattr(func.custom_grad_func.adj, "return_var") or custom_grad_det_meta is None:
+                    func.custom_grad_func.build(None, adj.builder_options)
+                custom_grad_det_meta = getattr(func.custom_grad_func.adj, "det_meta", None)
+                if custom_grad_det_meta is not None:
+                    try:
+                        _include_deterministic_call_meta(adj, custom_grad_det_meta, bound_args)
+                    except ValueError as e:
+                        raise WarpCodegenError(str(e)) from e
 
         # Resolve the return value based on the types and values of the given arguments.
         bound_arg_types = {k: get_arg_type(v) for k, v in bound_args.items()}
@@ -1883,6 +1950,13 @@ class Adjoint:
             output = [adj.add_var(v) for v in return_type]
             output_list = output
 
+        # Deterministic mode: intercept atomic builtins and emit scatter or
+        # two-pass code instead of the normal atomic call.
+        if adj.det_meta is not None and func.is_builtin() and func.key in _DET_INTERCEPTABLE_ATOMICS:
+            det_output = emit_deterministic_atomic(adj, func, bound_args, return_type, output, output_list)
+            if det_output is not None:
+                return det_output
+
         # If we have a built-in that requires special handling to dispatch
         # the arguments to the underlying C++ function, then we can resolve
         # these using the `dispatch_func`. Since this is only called from
@@ -1917,32 +1991,50 @@ class Adjoint:
                 if adj.used_by_backward_kernel:
                     func_arg_var.adj.used_by_backward_kernel = True
 
-                adj.builder.build_function(func_arg_var)
+                if adj.builder is None:
+                    func_arg_var.build(None, adj.builder_options)
+                else:
+                    adj.builder.build_function(func_arg_var)
 
             fwd_args.append(strip_reference(func_arg_var))
 
+        det_args = []
+        if not func.is_builtin():
+            det_args = _deterministic_call_args(adj, getattr(func.adj, "det_meta", None), bound_args)
+        replay_det_args = det_args
+        if func.custom_replay_func is not None:
+            replay_det_args = _deterministic_call_args(
+                adj, getattr(func.custom_replay_func.adj, "det_meta", None), bound_args
+            )
+
         if return_type is None:
             # handles expression (zero output) functions, e.g.: void do_something();
-            forward_call = (
-                f"{func.namespace}{func_name}({adj.format_forward_call_args(fwd_args, use_initializer_list)});"
-            )
+            forward_call = f"{func.namespace}{func_name}({adj.format_forward_call_args(fwd_args + det_args, use_initializer_list)});"
             replay_call = forward_call
             if func.custom_replay_func is not None or func.replay_snippet is not None:
-                replay_call = f"{func.namespace}replay_{func_name}({adj.format_forward_call_args(fwd_args, use_initializer_list)});"
+                replay_call = f"{func.namespace}replay_{func_name}({adj.format_forward_call_args(fwd_args + replay_det_args, use_initializer_list)});"
 
         elif not isinstance(return_type, Sequence) or len(return_type) == 1:
             # handle simple function (one output)
-            forward_call = f"var_{output} = {func.namespace}{func_name}({adj.format_forward_call_args(fwd_args, use_initializer_list)});"
+            forward_call = f"var_{output} = {func.namespace}{func_name}({adj.format_forward_call_args(fwd_args + det_args, use_initializer_list)});"
             replay_call = forward_call
             if func.custom_replay_func is not None:
-                replay_call = f"var_{output} = {func.namespace}replay_{func_name}({adj.format_forward_call_args(fwd_args, use_initializer_list)});"
+                replay_call = f"var_{output} = {func.namespace}replay_{func_name}({adj.format_forward_call_args(fwd_args + replay_det_args, use_initializer_list)});"
 
         else:
             # handle multiple value functions
-            forward_call = (
-                f"{func.namespace}{func_name}({adj.format_forward_call_args(fwd_args + output, use_initializer_list)});"
-            )
+            forward_call = f"{func.namespace}{func_name}({adj.format_forward_call_args(fwd_args + det_args + output, use_initializer_list)});"
             replay_call = forward_call
+
+        # In two-pass counter kernels, atomics that deterministic mode does
+        # not intercept would otherwise fire in both phase 0 and phase 1.
+        if func.is_builtin() and func.key in _DET_UNINTERCEPTED_SIDE_EFFECT_ATOMICS:
+            if _det_needs_store_guard(adj) and not adj._det_atomic_return_discarded:
+                raise WarpCodegenError(
+                    f"Deterministic mode does not support consuming the return of wp.{func.key} in two-pass kernels."
+                )
+            forward_call = _det_wrap_side_effect_call(adj, forward_call)
+            replay_call = _det_wrap_side_effect_call(adj, replay_call)
 
         if func.skip_replay:
             adj.add_forward(forward_call, replay="// " + replay_call)
@@ -1963,11 +2055,18 @@ class Adjoint:
             reverse_has_output_args = (
                 func.require_original_output_arg or len(output_list) > 1
             ) and func.custom_grad_func is None
+            if func.custom_grad_func is not None:
+                reverse_extra_args = _deterministic_call_args(
+                    adj, getattr(func.custom_grad_func.adj, "det_meta", None), bound_args
+                )
+            else:
+                reverse_extra_args = det_args
             arg_str = adj.format_reverse_call_args(
                 fwd_args,
                 adj_args,
                 output_list,
                 use_initializer_list,
+                extra_args=reverse_extra_args,
                 has_output_args=reverse_has_output_args,
                 require_original_output_arg=func.require_original_output_arg,
             )
@@ -1977,6 +2076,8 @@ class Adjoint:
                 else:
                     adj_func_name = func.native_func
                 reverse_call = f"{func.namespace}adj_{adj_func_name}({arg_str});"
+                if adj.det_meta is not None and func.is_builtin() and func.key == "address":
+                    reverse_call = _deterministic_adjoint_address_call(adj, fwd_args, output_list, reverse_call)
                 adj.add_reverse(reverse_call)
 
         # update our smem roofline requirements based on any
@@ -2034,7 +2135,7 @@ class Adjoint:
 
             # Build the function if not already built
             if adj.builder is None:
-                func.build(None)
+                func.build(None, adj.builder_options)
             elif func not in adj.builder.functions:
                 adj.builder.build_function(func)
 
@@ -2529,7 +2630,8 @@ class Adjoint:
         if isinstance(obj, type):
             return obj
         if isinstance(obj, Struct):
-            adj.builder.build_struct_recursive(obj)
+            if adj.builder is not None:
+                adj.builder.build_struct_recursive(obj)
             return obj
         if isinstance(obj, types.ModuleType):
             return obj
@@ -2641,6 +2743,18 @@ class Adjoint:
                     adj.add_forward(f"{attr.emit()} = {cast}&({aggregate.emit()}->{attr_var.label});")
                 else:
                     adj.add_forward(f"{attr.emit()} = {cast}&({aggregate.emit()}.{attr_var.label});")
+
+                det_root_label = None
+                det_attr_path = ()
+                if isinstance(aggregate, Var):
+                    det_root_label = getattr(aggregate, "_det_ref_root_label", aggregate.label)
+                    det_attr_path = (*getattr(aggregate, "_det_ref_attr_path", ()), attr_var.label)
+
+                if det_root_label is not None:
+                    attr._det_ref_root_label = det_root_label
+                    attr._det_ref_attr_path = det_attr_path
+                    if is_array(strip_reference(attr_type)):
+                        attr._det_ref_array_type = strip_reference(attr_type)
 
                 if adj.is_differentiable_value_type(strip_reference(attr_type)):
                     adj.add_reverse(f"{aggregate.emit_adj()}.{attr_var.label} += {adj_cast}{attr.emit_adj()};")
@@ -2967,6 +3081,17 @@ class Adjoint:
         adj.add_forward(f"goto start_{adj.loop_blocks[-1].label};")
 
     def emit_Expr(adj, node):
+        if (
+            adj.det_meta is not None
+            and isinstance(node.value, ast.Call)
+            and _deterministic_call_name(node.value.func)
+            in (_DET_INTERCEPTABLE_ATOMICS | _DET_UNINTERCEPTED_SIDE_EFFECT_ATOMICS)
+        ):
+            node.value._det_atomic_return_discarded = True
+            try:
+                return adj.eval(node.value)
+            finally:
+                del node.value._det_atomic_return_discarded
         return adj.eval(node.value)
 
     def check_tid_in_func_error(adj, node):
@@ -3236,7 +3361,13 @@ class Adjoint:
         # Evaluate keyword arguments.
         kwargs = {x.arg: adj.resolve_arg(x.value) for x in node.keywords}
 
-        out = adj.add_call(func, args, kwargs, type_args, min_outputs=min_outputs)
+        return_is_discarded = bool(getattr(node, "_det_atomic_return_discarded", False))
+        previous_return_is_discarded = adj._det_atomic_return_discarded
+        adj._det_atomic_return_discarded = return_is_discarded
+        try:
+            out = adj.add_call(func, args, kwargs, type_args, min_outputs=min_outputs)
+        finally:
+            adj._det_atomic_return_discarded = previous_return_is_discarded
 
         if adj.builder_options.get("verify_autograd_array_access", False):
             # Extract the types and values passed as arguments to the function call.
@@ -3294,6 +3425,11 @@ class Adjoint:
                     target.mark_read()
 
             else:
+                det_view_indices = tuple(indices)
+                det_view_indices_are_int = all(
+                    warp._src.types.type_is_int(strip_reference(index.type)) for index in det_view_indices
+                )
+
                 if warp._src.types.matches_array_class(target_type, warp._src.types.array):
                     # In order to reduce the number of overloads needed in the C
                     # implementation to support combinations of int/slice indices,
@@ -3311,6 +3447,13 @@ class Adjoint:
 
                 # handles array views (fewer indices than dimensions)
                 out = adj.add_builtin_call("view", [target, *indices])
+
+                if det_view_indices_are_int:
+                    out._det_view_parent = target
+                    out._det_view_indices = det_view_indices
+                    if getattr(target, "_det_adjoint_target", False):
+                        out._det_adjoint_target = True
+                        out._det_adjoint_root_label = getattr(target, "_det_adjoint_root_label", None)
 
                 if adj.builder_options.get("verify_autograd_array_access", False):
                     # store reference to target Var to propagate downstream read/write state back to root arg Var
@@ -3398,6 +3541,8 @@ class Adjoint:
             var = adj.eval(node.slice)
             var_name = var.label
             var = Var(f"adj_{var_name}", type=var.type, constant=None, prefix=False)
+            var._det_adjoint_target = True
+            var._det_adjoint_root_label = var_name
             return var
 
         target, indices = adj.eval_subscript(node)
@@ -3660,7 +3805,8 @@ class Adjoint:
         array_indices_cpp = ", ".join(v.emit() for v in array_index_vars)
 
         # Forward: one slot store.
-        adj.add_forward(f"wp::index({arr_cpp}, {array_indices_cpp}){access_cpp} = {rhs_cpp};")
+        slot_lvalue = f"wp::index({arr_cpp}, {array_indices_cpp}){access_cpp}"
+        adj.add_forward(_det_wrap_slot_store(adj, slot_lvalue, rhs_cpp))
 
         # Reverse: single call to the slot-level adj_array_store variant,
         # with the composite-component access encoded as a short lambda.
@@ -3843,7 +3989,13 @@ class Adjoint:
         target_type = strip_reference(target.type)
 
         if is_array(target_type):
-            adj.add_builtin_call("array_store", [target, *indices, rhs])
+            # Deterministic two-pass mode must suppress normal array writes in
+            # phase 0 so the counting pass does not introduce side effects.
+            if _det_needs_store_guard(adj):
+                adj.det_meta.needs_context = True
+                _add_deterministic_array_store(adj, target, indices, rhs)
+            else:
+                adj.add_builtin_call("array_store", [target, *indices, rhs])
 
             if adj.builder_options.get("verify_autograd_array_access", False):
                 kernel_name = adj.fun_name
@@ -4137,39 +4289,44 @@ class Adjoint:
                 filename = adj.filename
                 lineno = adj.lineno + adj.fun_lineno
 
-                if isinstance(node.op, ast.Add):
-                    adj.add_builtin_call("atomic_add", [target, *indices, rhs])
+                previous_return_is_discarded = adj._det_atomic_return_discarded
+                adj._det_atomic_return_discarded = True
+                try:
+                    if isinstance(node.op, ast.Add):
+                        adj.add_builtin_call("atomic_add", [target, *indices, rhs])
 
-                    if adj.builder_options.get("verify_autograd_array_access", False):
-                        target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
+                        if adj.builder_options.get("verify_autograd_array_access", False):
+                            target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
 
-                elif isinstance(node.op, ast.Sub):
-                    adj.add_builtin_call("atomic_sub", [target, *indices, rhs])
+                    elif isinstance(node.op, ast.Sub):
+                        adj.add_builtin_call("atomic_sub", [target, *indices, rhs])
 
-                    if adj.builder_options.get("verify_autograd_array_access", False):
-                        target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
+                        if adj.builder_options.get("verify_autograd_array_access", False):
+                            target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
 
-                elif isinstance(node.op, ast.BitAnd):
-                    adj.add_builtin_call("atomic_and", [target, *indices, rhs])
+                    elif isinstance(node.op, ast.BitAnd):
+                        adj.add_builtin_call("atomic_and", [target, *indices, rhs])
 
-                    if adj.builder_options.get("verify_autograd_array_access", False):
-                        target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
+                        if adj.builder_options.get("verify_autograd_array_access", False):
+                            target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
 
-                elif isinstance(node.op, ast.BitOr):
-                    adj.add_builtin_call("atomic_or", [target, *indices, rhs])
+                    elif isinstance(node.op, ast.BitOr):
+                        adj.add_builtin_call("atomic_or", [target, *indices, rhs])
 
-                    if adj.builder_options.get("verify_autograd_array_access", False):
-                        target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
+                        if adj.builder_options.get("verify_autograd_array_access", False):
+                            target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
 
-                elif isinstance(node.op, ast.BitXor):
-                    adj.add_builtin_call("atomic_xor", [target, *indices, rhs])
+                    elif isinstance(node.op, ast.BitXor):
+                        adj.add_builtin_call("atomic_xor", [target, *indices, rhs])
 
-                    if adj.builder_options.get("verify_autograd_array_access", False):
-                        target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
-                else:
-                    log_debug(f"Warning: in-place op {node.op} is not differentiable")
-                    augassign_subscript(target, indices)
-                    return
+                        if adj.builder_options.get("verify_autograd_array_access", False):
+                            target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
+                    else:
+                        log_debug(f"Warning: in-place op {node.op} is not differentiable")
+                        augassign_subscript(target, indices)
+                        return
+                finally:
+                    adj._det_atomic_return_discarded = previous_return_is_discarded
 
             elif (
                 type_is_vector(target_type)
@@ -4808,6 +4965,7 @@ cpu_module_header = """
 #define WP_TILE_BLOCK_DIM {block_dim}
 #define WP_NO_CRT
 #include "builtin.h"
+#include "deterministic.h"
 
 // avoid namespacing of float type for casting to float type, this is to avoid wp::float(x), which is not valid in C++
 #define float(x) cast_float(x)
@@ -4829,6 +4987,7 @@ cuda_module_header = """
 #define WP_TILE_BLOCK_DIM {block_dim}
 #define WP_NO_CRT
 #include "builtin.h"
+#include "deterministic.h"
 
 // Map wp.breakpoint() to a device brkpt at the call site so cuda-gdb attributes the stop to the generated .cu line
 #if defined(__CUDACC__) && !defined(_MSC_VER)
@@ -5402,6 +5561,9 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None, forward_only
         forward_args.append(s)
         if not adj.custom_reverse_mode or i < adj.custom_reverse_num_input_args:
             reverse_args.append(s)
+    det_args = _deterministic_function_args(adj)
+    forward_args.extend(det_args)
+    reverse_args.extend(det_args)
     if has_multiple_outputs:
         for i, arg in enumerate(adj.return_var):
             forward_args.append(arg.ctype() + " & ret_" + str(i))
@@ -5647,7 +5809,11 @@ def codegen_kernel(kernel, device, options):
         for arg in adj.args:
             forward_args.append(arg.ctype() + " var_" + arg.label)
 
-    forward_body = codegen_func_forward(adj, func_type="kernel", device=device)
+        forward_args.extend(_deterministic_kernel_args(adj))
+
+    forward_body = ""
+    forward_body += _deterministic_kernel_locals(adj, device)
+    forward_body += codegen_func_forward(adj, func_type="kernel", device=device)
     template_fmt_args.update(
         {
             "forward_args": indent(forward_args),
@@ -5673,8 +5839,11 @@ def codegen_kernel(kernel, device, options):
                     reverse_args.append(_arg.ctype() + " adj_" + arg.label)
                 else:
                     reverse_args.append(arg.ctype() + " adj_" + arg.label)
+            reverse_args.extend(_deterministic_kernel_args(adj))
 
-        reverse_body = codegen_func_reverse(adj, func_type="kernel", device=device)
+        reverse_body = ""
+        reverse_body += _deterministic_kernel_locals(adj, device)
+        reverse_body += codegen_func_reverse(adj, func_type="kernel", device=device)
         template_fmt_args.update(
             {
                 "reverse_args": indent(reverse_args),
