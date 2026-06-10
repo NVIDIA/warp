@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.wait_event &#8212; Warp 1.15.0.dev0</title>
+    <title>warp.sparse.bsr_compress &#8212; Warp 1.15.0.dev0</title>
   
   
   
@@ -49,7 +49,7 @@
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.wait_event';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.sparse.bsr_compress';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
@@ -62,8 +62,8 @@
 
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="warp.Allocator" href="warp.Allocator.html" />
-    <link rel="prev" title="warp.synchronize_event" href="warp.synchronize_event.html" />
+    <link rel="next" title="warp.sparse.bsr_copy" href="warp.sparse.bsr_copy.html" />
+    <link rel="prev" title="warp.sparse.bsr_block_index" href="warp.sparse.bsr_block_index.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -460,9 +460,9 @@
       </a>
     </li>
     
-    <li class="breadcrumb-item"><a href="../warp.html" class="nav-link">warp</a></li>
+    <li class="breadcrumb-item"><a href="../warp_sparse.html" class="nav-link">warp.sparse</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.wait_event</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.sparse.bsr_compress</span></li>
   </ul>
 </nav>
 </div>
@@ -475,7 +475,7 @@
         <div class="header-article-item">
 
 <div class="d-flex justify-content-end w-100">
-  <a href="../../_sources/api_reference/_generated/warp.wait_event.rst.txt">
+  <a href="../../_sources/api_reference/_generated/warp.sparse.bsr_compress.rst.txt">
     <i class="fa-solid fa-file-code"></i> View page source
   </a>
 </div>
@@ -492,19 +492,52 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="warp-wait-event">
-<h1>warp.wait_event<a class="headerlink" href="#warp-wait-event" title="Link to this heading">#</a></h1>
+  <section id="warp-sparse-bsr-compress">
+<h1>warp.sparse.bsr_compress<a class="headerlink" href="#warp-sparse-bsr-compress" title="Link to this heading">#</a></h1>
 <dl class="py function">
-<dt class="sig sig-object py" id="warp.wait_event">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">wait_event</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">external</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L7586-L7596"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.wait_event" title="Link to this definition">#</a></dt>
-<dd><p>Convenience function for calling <a class="reference internal" href="warp.Stream.html#warp.Stream.wait_event" title="warp.Stream.wait_event"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Stream.wait_event()</span></code></a> on the current stream.</p>
+<dt class="sig sig-object py" id="warp.sparse.bsr_compress">
+<span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_compress</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">prune_numerical_zeros</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">inplace</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">topology</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/sparse.py#L1381-L1483"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_compress" title="Link to this definition">#</a></dt>
+<dd><p>Compress the active blocks of <code class="docutils literal notranslate"><span class="pre">src</span></code> and return <code class="docutils literal notranslate"><span class="pre">src</span></code>.</p>
+<p>Slack entries outside <code class="docutils literal notranslate"><span class="pre">offsets[row]:offsets[row]</span> <span class="pre">+</span> <span class="pre">row_counts[row]</span></code> are ignored. When
+<code class="docutils literal notranslate"><span class="pre">inplace=False</span></code>, the topology is rebuilt natively from active row and
+column data, and values are accumulated with differentiable Warp kernels.
+When <code class="docutils literal notranslate"><span class="pre">inplace=True</span></code>, entries are sorted and coalesced independently
+within each active row using native in-place compression without
+<code class="docutils literal notranslate"><span class="pre">O(nnz)</span></code> temporary allocation, but this path is not differentiable.
+In-place compression requires native support and currently supports
+matrices whose scalar type is <code class="docutils literal notranslate"><span class="pre">float32</span></code> or <code class="docutils literal notranslate"><span class="pre">float64</span></code>;
+<code class="docutils literal notranslate"><span class="pre">topology=&quot;padded&quot;</span></code> preserves the existing row capacity instead of
+packing active blocks into compact row storage. Compact compression sets
+<code class="docutils literal notranslate"><span class="pre">src.row_counts</span></code> to <code class="docutils literal notranslate"><span class="pre">None</span></code> and does not update any previously attached
+row-count array. Callers should not rely on buffer identity being
+preserved for any <code class="docutils literal notranslate"><span class="pre">inplace</span></code> value.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>event</strong> (<a class="reference internal" href="warp.Event.html#warp.Event" title="warp._src.context.Event"><em>Event</em></a>) – <a class="reference internal" href="warp.Event.html#warp.Event" title="warp.Event"><code class="xref py py-class docutils literal notranslate"><span class="pre">Event</span></code></a> instance to wait for.</p></li>
-<li><p><strong>external</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether this is an external event during graph capture. This
-argument has no effect outside of graph capture.</p></li>
+<li><p><strong>src</strong> (<a class="reference internal" href="warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a><em>[</em><em>_MatrixBlockType</em><em>[</em><em>Rows</em><em>, </em><em>Cols</em><em>, </em><em>Scalar</em><em>] </em><em>| </em><em>_ScalarBlockType</em><em>[</em><em>Scalar</em><em>]</em><em>]</em>) – Matrix to compress.</p></li>
+<li><p><strong>prune_numerical_zeros</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, zero-valued input blocks are ignored before coalescing.</p></li>
+<li><p><strong>inplace</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, sort and coalesce each active row range directly
+in <code class="docutils literal notranslate"><span class="pre">src</span></code> using native in-place compression without <code class="docutils literal notranslate"><span class="pre">O(nnz)</span></code>
+temporary allocation. This path is not differentiable. With
+<code class="docutils literal notranslate"><span class="pre">topology=&quot;compact&quot;</span></code>, active blocks are also packed into compact
+row storage. If <code class="docutils literal notranslate"><span class="pre">False</span></code>, use differentiable value accumulation.</p></li>
+<li><p><strong>topology</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><em>Literal</em></a><em>[</em><em>'compact'</em><em>, </em><em>'padded'</em><em>] </em><em>| </em><em>None</em>) – Topology policy for the compressed arrays. Defaults to
+<code class="docutils literal notranslate"><span class="pre">&quot;compact&quot;</span></code>. <code class="docutils literal notranslate"><span class="pre">&quot;padded&quot;</span></code> preserves existing row capacity; it
+cannot report row-capacity overflow because compression never
+increases the active block count.</p></li>
 </ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a>[<em>_MatrixBlockType</em>[<em>Rows</em>, <em>Cols</em>, <em>Scalar</em>] | <em>_ScalarBlockType</em>[<em>Scalar</em>]]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -522,20 +555,20 @@ argument has no effect outside of graph capture.</p></li>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.synchronize_event.html"
+       href="warp.sparse.bsr_block_index.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.synchronize_event</p>
+        <p class="prev-next-title">warp.sparse.bsr_block_index</p>
       </div>
     </a>
     <a class="right-next"
-       href="warp.Allocator.html"
+       href="warp.sparse.bsr_copy.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.Allocator</p>
+        <p class="prev-next-title">warp.sparse.bsr_copy</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -560,7 +593,7 @@ argument has no effect outside of graph capture.</p></li>
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.wait_event"><code class="docutils literal notranslate"><span class="pre">wait_event()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.bsr_compress"><code class="docutils literal notranslate"><span class="pre">bsr_compress()</span></code></a></li>
 </ul>
   </nav></div>
 
@@ -568,7 +601,7 @@ argument has no effect outside of graph capture.</p></li>
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/_generated/warp.wait_event.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/_generated/warp.sparse.bsr_compress.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

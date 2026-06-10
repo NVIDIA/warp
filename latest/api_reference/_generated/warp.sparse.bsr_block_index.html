@@ -62,7 +62,7 @@
 
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="warp.sparse.bsr_copy" href="warp.sparse.bsr_copy.html" />
+    <link rel="next" title="warp.sparse.bsr_compress" href="warp.sparse.bsr_compress.html" />
     <link rel="prev" title="warp.sparse.bsr_axpy" href="warp.sparse.bsr_axpy.html" />
 
 
@@ -497,15 +497,19 @@
 <dl class="py data">
 <dt class="sig sig-object py" id="warp.sparse.bsr_block_index">
 <span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_block_index</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">bsr_block_index(row:</span> <span class="pre">int,</span> <span class="pre">col:</span> <span class="pre">int,</span> <span class="pre">bsr_offsets:</span> <span class="pre">array(ndim=1,</span> <span class="pre">dtype=int32),</span> <span class="pre">bsr_columns:</span> <span class="pre">array(ndim=1,</span> <span class="pre">dtype=int32))&gt;</span></em><a class="headerlink" href="#warp.sparse.bsr_block_index" title="Link to this definition">#</a></dt>
-<dd><p>Return the index of the block at block-coordinates (row, col), or -1 if no such block exists.</p>
-<p>Assumes that the segments of <code class="docutils literal notranslate"><span class="pre">bsr_columns</span></code> corresponding to each row are sorted.</p>
+<dd><p>Return the active block index in a capacity-aware BSR matrix, or -1 if no such block exists.</p>
+<p>This row-capacity overload searches
+<code class="docutils literal notranslate"><span class="pre">bsr_offsets[row]:bsr_offsets[row]</span> <span class="pre">+</span> <span class="pre">bsr_row_counts[row]</span></code> and ignores
+slack storage. If <code class="docutils literal notranslate"><span class="pre">bsr_row_counts</span></code> is <code class="docutils literal notranslate"><span class="pre">None</span></code>, it falls back to compact
+storage rows defined by <code class="docutils literal notranslate"><span class="pre">bsr_offsets</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>row</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Row of the block.</p></li>
-<li><p><strong>col</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Column of the block.</p></li>
-<li><p><strong>bsr_offsets</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>array</em></a><em>(</em><em>ndim=1</em><em>, </em><em>dtype=int32</em><em>)</em>) – Array of size at least <code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">+</span> <span class="pre">row</span></code> containing the offsets of the blocks in each row.</p></li>
-<li><p><strong>bsr_columns</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>array</em></a><em>(</em><em>ndim=1</em><em>, </em><em>dtype=int32</em><em>)</em>) – Array of size at least equal to <code class="docutils literal notranslate"><span class="pre">bsr_offsets[row</span> <span class="pre">+</span> <span class="pre">1]</span></code> containing the column indices of the blocks.</p></li>
+<li><p><strong>row</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>col</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>bsr_offsets</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>array</em></a><em>(</em><em>ndim=1</em><em>, </em><em>dtype=int32</em><em>)</em>)</p></li>
+<li><p><strong>bsr_columns</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>array</em></a><em>(</em><em>ndim=1</em><em>, </em><em>dtype=int32</em><em>)</em>)</p></li>
+<li><p><strong>bsr_row_counts</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>array</em></a><em>(</em><em>ndim=1</em><em>, </em><em>dtype=int32</em><em>)</em>)</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
@@ -536,11 +540,11 @@
       </div>
     </a>
     <a class="right-next"
-       href="warp.sparse.bsr_copy.html"
+       href="warp.sparse.bsr_compress.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.sparse.bsr_copy</p>
+        <p class="prev-next-title">warp.sparse.bsr_compress</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>

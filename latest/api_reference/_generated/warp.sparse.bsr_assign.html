@@ -496,7 +496,17 @@
 <h1>warp.sparse.bsr_assign<a class="headerlink" href="#warp-sparse-bsr-assign" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.sparse.bsr_assign">
-<span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_assign</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dest</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">src</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">structure_only</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">masked</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/sparse.py#L888-L1041"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_assign" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_assign</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">dest</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">structure_only</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">masked</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">topology</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/sparse.py#L2068-L2263"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_assign" title="Link to this definition">#</a></dt>
 <dd><p>Copy the content of the <code class="docutils literal notranslate"><span class="pre">src</span></code> BSR matrix to <code class="docutils literal notranslate"><span class="pre">dest</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -507,7 +517,13 @@ than <code class="docutils literal notranslate"><span class="pre">src</span></co
 <li><p><strong>structure_only</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, only the non-zero indices are copied, and uninitialized value storage is allocated
 to accommodate at least <code class="docutils literal notranslate"><span class="pre">src.nnz</span></code> blocks. If <code class="docutils literal notranslate"><span class="pre">structure_only</span></code> is <code class="docutils literal notranslate"><span class="pre">False</span></code>, values are also copied with implicit
 casting if the two matrices use distinct scalar types.</p></li>
-<li><p><strong>masked</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, keep the non-zero topology of <code class="docutils literal notranslate"><span class="pre">dest</span></code> unchanged.</p></li>
+<li><p><strong>masked</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Deprecated. Use <code class="docutils literal notranslate"><span class="pre">topology=&quot;masked&quot;</span></code> instead. If <code class="docutils literal notranslate"><span class="pre">True</span></code>, keep
+the non-zero topology of <code class="docutils literal notranslate"><span class="pre">dest</span></code> unchanged.</p></li>
+<li><p><strong>topology</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><em>Literal</em></a><em>[</em><em>'compact'</em><em>, </em><em>'masked'</em><em>, </em><em>'padded'</em><em>] </em><em>| </em><em>None</em>) – Optional topology policy. <code class="docutils literal notranslate"><span class="pre">&quot;compact&quot;</span></code> keeps the existing
+compact rebuild behavior, <code class="docutils literal notranslate"><span class="pre">&quot;masked&quot;</span></code> is equivalent to the deprecated <code class="docutils literal notranslate"><span class="pre">masked=True</span></code>,
+and <code class="docutils literal notranslate"><span class="pre">&quot;padded&quot;</span></code> copies each source row into existing destination row
+capacity without changing <code class="docutils literal notranslate"><span class="pre">dest.offsets</span></code> and records capacity
+overflow in <code class="docutils literal notranslate"><span class="pre">dest.status_sync()</span></code>.</p></li>
 </ul>
 </dd>
 </dl>

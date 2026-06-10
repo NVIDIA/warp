@@ -497,13 +497,18 @@
 <dl class="py data">
 <dt class="sig sig-object py" id="warp.sparse.bsr_row_index">
 <span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_row_index</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">bsr_row_index(offsets:</span> <span class="pre">array(ndim=1,</span> <span class="pre">dtype=int32),</span> <span class="pre">row_count:</span> <span class="pre">int,</span> <span class="pre">block_index:</span> <span class="pre">int)&gt;</span></em><a class="headerlink" href="#warp.sparse.bsr_row_index" title="Link to this definition">#</a></dt>
-<dd><p>Return the index of the row containing a given block, or -1 if no such row exists.</p>
+<dd><p>Return the row containing an active block in a capacity-aware BSR matrix, or -1 if no such row exists.</p>
+<p>This row-capacity overload searches active row ranges
+<code class="docutils literal notranslate"><span class="pre">offsets[row]:offsets[row]</span> <span class="pre">+</span> <span class="pre">row_counts[row]</span></code> and ignores slack storage.
+If <code class="docutils literal notranslate"><span class="pre">row_counts</span></code> is <code class="docutils literal notranslate"><span class="pre">None</span></code>, it falls back to compact storage rows
+defined by <code class="docutils literal notranslate"><span class="pre">offsets</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>offsets</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>array</em></a><em>(</em><em>ndim=1</em><em>, </em><em>dtype=int32</em><em>)</em>) – Array of size at least <code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">+</span> <span class="pre">row_count</span></code> containing the offsets of the blocks in each row.</p></li>
-<li><p><strong>row_count</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of rows of blocks.</p></li>
-<li><p><strong>block_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Index of the block.</p></li>
+<li><p><strong>offsets</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>array</em></a><em>(</em><em>ndim=1</em><em>, </em><em>dtype=int32</em><em>)</em>)</p></li>
+<li><p><strong>row_count</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>block_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>row_counts</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>array</em></a><em>(</em><em>ndim=1</em><em>, </em><em>dtype=int32</em><em>)</em>)</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>

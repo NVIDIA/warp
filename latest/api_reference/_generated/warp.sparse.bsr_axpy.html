@@ -505,9 +505,10 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">beta</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">masked</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">work_arrays</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">topology</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/sparse.py#L1547-L1721"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_axpy" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/sparse.py#L3104-L3381"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_axpy" title="Link to this definition">#</a></dt>
 <dd><p>Perform the sparse matrix addition <code class="docutils literal notranslate"><span class="pre">y</span> <span class="pre">:=</span> <span class="pre">alpha</span> <span class="pre">*</span> <span class="pre">X</span> <span class="pre">+</span> <span class="pre">beta</span> <span class="pre">*</span> <span class="pre">y</span></code> on BSR matrices <code class="docutils literal notranslate"><span class="pre">x</span></code> and <code class="docutils literal notranslate"><span class="pre">y</span></code> and return <code class="docutils literal notranslate"><span class="pre">y</span></code>.</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">x</span></code> and <code class="docutils literal notranslate"><span class="pre">y</span></code> matrices are allowed to alias.</p>
 <dl class="field-list simple">
@@ -517,10 +518,16 @@
 <li><p><strong>y</strong> (<a class="reference internal" href="warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a><em>[</em><em>_MatrixBlockType</em><em>[</em><em>Rows</em><em>, </em><em>Cols</em><em>, </em><em>Scalar</em><em>] </em><em>| </em><em>_ScalarBlockType</em><em>[</em><em>Scalar</em><em>]</em><em>] </em><em>| </em><em>None</em>) – Mutable second operand and output matrix. If <code class="docutils literal notranslate"><span class="pre">y</span></code> is not provided, it will be allocated and treated as zero.</p></li>
 <li><p><strong>alpha</strong> (<em>Scalar</em>) – Uniform scaling factor for <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p></li>
 <li><p><strong>beta</strong> (<em>Scalar</em>) – Uniform scaling factor for <code class="docutils literal notranslate"><span class="pre">y</span></code>.</p></li>
-<li><p><strong>masked</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, keep the non-zero topology of <code class="docutils literal notranslate"><span class="pre">y</span></code> unchanged.</p></li>
+<li><p><strong>masked</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Deprecated. Use <code class="docutils literal notranslate"><span class="pre">topology=&quot;masked&quot;</span></code> instead. If <code class="docutils literal notranslate"><span class="pre">True</span></code>,
+keep the non-zero topology of <code class="docutils literal notranslate"><span class="pre">y</span></code> unchanged.</p></li>
 <li><p><strong>work_arrays</strong> (<a class="reference internal" href="warp.sparse.bsr_axpy_work_arrays.html#warp.sparse.bsr_axpy_work_arrays" title="warp._src.sparse.bsr_axpy_work_arrays"><em>bsr_axpy_work_arrays</em></a><em> | </em><em>None</em>) – In most cases, this function will require the use of temporary storage.
 This storage can be reused across calls by passing an instance of
 <a class="reference internal" href="warp.sparse.bsr_axpy_work_arrays.html#warp.sparse.bsr_axpy_work_arrays" title="warp.sparse.bsr_axpy_work_arrays"><code class="xref py py-class docutils literal notranslate"><span class="pre">bsr_axpy_work_arrays</span></code></a> in <code class="docutils literal notranslate"><span class="pre">work_arrays</span></code>.</p></li>
+<li><p><strong>topology</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><em>Literal</em></a><em>[</em><em>'compact'</em><em>, </em><em>'masked'</em><em>, </em><em>'padded'</em><em>] </em><em>| </em><em>None</em>) – Optional topology policy. <code class="docutils literal notranslate"><span class="pre">&quot;compact&quot;</span></code> keeps the existing
+compact rebuild behavior, <code class="docutils literal notranslate"><span class="pre">&quot;masked&quot;</span></code> is equivalent to
+the deprecated <code class="docutils literal notranslate"><span class="pre">masked=True</span></code>, and <code class="docutils literal notranslate"><span class="pre">&quot;padded&quot;</span></code> writes the result topology into
+existing destination row capacity and records capacity overflow in
+<code class="docutils literal notranslate"><span class="pre">y.status_sync()</span></code>.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>

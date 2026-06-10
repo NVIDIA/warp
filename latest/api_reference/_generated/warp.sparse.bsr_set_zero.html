@@ -496,14 +496,39 @@
 <h1>warp.sparse.bsr_set_zero<a class="headerlink" href="#warp-sparse-bsr-set-zero" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.sparse.bsr_set_zero">
-<span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_set_zero</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bsr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rows_of_blocks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cols_of_blocks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/sparse.py#L400-L412"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_set_zero" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_set_zero</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">bsr</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">rows_of_blocks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">cols_of_blocks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">topology</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'compact'</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">row_capacity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">nnz_capacity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/sparse.py#L650-L694"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_set_zero" title="Link to this definition">#</a></dt>
 <dd><p>Set a BSR matrix to zero, possibly changing its size.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>bsr</strong> (<a class="reference internal" href="warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a>) – The BSR or CSR matrix to set to zero.</p></li>
+<li><p><strong>bsr</strong> (<a class="reference internal" href="warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix" title="warp.sparse.BsrMatrix"><em>BsrMatrix</em></a>) – The BSR or CSR matrix to set to zero.</p></li>
 <li><p><strong>rows_of_blocks</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – If not <code class="docutils literal notranslate"><span class="pre">None</span></code>, the new number of rows of blocks.</p></li>
 <li><p><strong>cols_of_blocks</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – If not <code class="docutils literal notranslate"><span class="pre">None</span></code>, the new number of columns of blocks.</p></li>
+<li><p><strong>topology</strong> (<em>Literal</em><em>[</em><em>'compact'</em><em>, </em><em>'padded'</em><em>, </em><em>'masked'</em><em>]</em>) – Topology policy. <code class="docutils literal notranslate"><span class="pre">&quot;compact&quot;</span></code> discards the active and
+capacity topology, <code class="docutils literal notranslate"><span class="pre">&quot;padded&quot;</span></code> keeps row capacity and makes every
+row empty when the matrix size is unchanged, and <code class="docutils literal notranslate"><span class="pre">&quot;masked&quot;</span></code> keeps
+active topology and zeroes values.</p></li>
+<li><p><strong>row_capacity</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>Array</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>] </em><em>| </em><em>None</em>) – Optional reserved block capacity for each row when
+<code class="docutils literal notranslate"><span class="pre">topology=&quot;padded&quot;</span></code>. May be a nonnegative integer for uniform row
+capacity, or an integer Warp array of shape <code class="docutils literal notranslate"><span class="pre">(rows_of_blocks,)</span></code> for
+per-row capacity. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, existing row capacity is preserved for
+retained rows, and added rows get zero capacity.</p></li>
+<li><p><strong>nnz_capacity</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Optional storage allocation upper bound for <code class="docutils literal notranslate"><span class="pre">columns</span></code>
+and <code class="docutils literal notranslate"><span class="pre">values</span></code>. When <code class="docutils literal notranslate"><span class="pre">row_capacity</span></code> is an array, the caller is
+responsible for ensuring <code class="docutils literal notranslate"><span class="pre">nnz_capacity</span></code> is at least the total row
+capacity. Ignored with <code class="docutils literal notranslate"><span class="pre">topology=&quot;masked&quot;</span></code>.</p></li>
 </ul>
 </dd>
 </dl>

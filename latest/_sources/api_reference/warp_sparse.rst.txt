@@ -19,6 +19,7 @@ API
    bsr_assign
    bsr_axpy
    bsr_block_index
+   bsr_compress
    bsr_copy
    bsr_diag
    bsr_from_triplets
@@ -36,3 +37,5 @@ API
    bsr_set_zero
    bsr_transposed
    bsr_zeros
+   BSR_STATUS_ROW_CAPACITY_EXCEEDED
+   BSR_STATUS_SUCCESS

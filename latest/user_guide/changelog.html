@@ -508,6 +508,9 @@ into a <code class="docutils literal notranslate"><span class="pre">wp.array</sp
 <li><p>Extend <code class="docutils literal notranslate"><span class="pre">wp.utils.array_scan()</span></code> to 64-bit scalar and vector types, and extend <code class="docutils literal notranslate"><span class="pre">wp.utils.radix_sort_pairs()</span></code> to 32- and
 64-bit signed, unsigned, and floating-point keys with 4- or 8-byte values
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1538">GH-1538</a>).</p></li>
+<li><p>Add row-capacity support to <code class="docutils literal notranslate"><span class="pre">warp.sparse</span></code> BSR matrices, including padded topology policies for topology-changing
+sparse operations, <code class="docutils literal notranslate"><span class="pre">bsr_zeros(row_capacity=...)</span></code> for reserving row capacity, <code class="docutils literal notranslate"><span class="pre">bsr_compress()</span></code> for inplace compaction of sparse matrices, and sparse status constants for overflow checks (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1537">GH-1537</a>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">fem.integrate()</span></code> and <code class="docutils literal notranslate"><span class="pre">fem.interpolate()</span></code> can now leverage <code class="docutils literal notranslate"><span class="pre">sparse.bsr_compress()</span></code> to perform inplace matrix assembly, reducing peak memory usage (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1537">GH-1537</a>).</p></li>
 </ul>
 </section>
 <section id="removed">
@@ -521,6 +524,9 @@ into a <code class="docutils literal notranslate"><span class="pre">wp.array</sp
 </section>
 <section id="deprecated">
 <h3>Deprecated<a class="headerlink" href="#deprecated" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>Deprecate <code class="docutils literal notranslate"><span class="pre">masked=True</span></code> arguments in <code class="docutils literal notranslate"><span class="pre">warp.sparse</span></code> topology-changing operations; use <code class="docutils literal notranslate"><span class="pre">topology=&quot;masked&quot;</span></code> instead.</p></li>
+</ul>
 </section>
 <section id="changed">
 <h3>Changed<a class="headerlink" href="#changed" title="Link to this heading">#</a></h3>

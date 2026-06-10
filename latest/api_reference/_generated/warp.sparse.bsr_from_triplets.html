@@ -507,9 +507,12 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">prune_numerical_zeros</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/sparse.py#L614-L647"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_from_triplets" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/sparse.py#L1343-L1379"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_from_triplets" title="Link to this definition">#</a></dt>
 <dd><p>Construct a BSR matrix with values defined by coordinate-oriented (COO) triplets.</p>
-<p>The first dimension of the three input arrays must match and indicates the number of COO triplets.</p>
+<p>The first dimension of the three input arrays must match and indicates the number of COO triplets.
+This convenience constructor always builds compact storage. To build into reserved row capacity,
+allocate with <a class="reference internal" href="warp.sparse.bsr_zeros.html#warp.sparse.bsr_zeros" title="warp.sparse.bsr_zeros"><code class="xref py py-func docutils literal notranslate"><span class="pre">bsr_zeros()</span></code></a> using <code class="docutils literal notranslate"><span class="pre">row_capacity</span></code> and then call <a class="reference internal" href="warp.sparse.bsr_set_from_triplets.html#warp.sparse.bsr_set_from_triplets" title="warp.sparse.bsr_set_from_triplets"><code class="xref py py-func docutils literal notranslate"><span class="pre">bsr_set_from_triplets()</span></code></a>
+with <code class="docutils literal notranslate"><span class="pre">topology=&quot;padded&quot;</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">

@@ -584,25 +584,104 @@
 <section id="non-zero-block-count">
 <h3>Non-Zero Block Count<a class="headerlink" href="#non-zero-block-count" title="Link to this heading">#</a></h3>
 <p>The number of non-zero blocks in a BSR matrix is computed on the device and not automatically synchronized to the host to avoid performance overhead and allow graph capture.
-The <a class="reference internal" href="../api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.nnz" title="warp.sparse.BsrMatrix.nnz"><code class="xref py py-attr docutils literal notranslate"><span class="pre">BsrMatrix.nnz</span></code></a> attribute of a BSR matrix is always an upper bound for the number of non-zero blocks,
-but the actual count is stored on the device at <code class="docutils literal notranslate"><span class="pre">offsets[nrow]</span></code>.</p>
+The <a class="reference internal" href="../api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.nnz" title="warp.sparse.BsrMatrix.nnz"><code class="xref py py-attr docutils literal notranslate"><span class="pre">BsrMatrix.nnz</span></code></a> attribute of a BSR matrix is always an upper bound for the stored block array size.
+For compact matrices, the actual active count is stored on the device at <code class="docutils literal notranslate"><span class="pre">offsets[nrow]</span></code>.</p>
 <p>To get the exact count on host, you can explicitly synchronize using <a class="reference internal" href="../api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.nnz_sync" title="warp.sparse.BsrMatrix.nnz_sync"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BsrMatrix.nnz_sync()</span></code></a>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># The nnz attribute is an upper bound</span>
 <span class="n">upper_bound</span> <span class="o">=</span> <span class="n">A</span><span class="o">.</span><span class="n">nnz</span>
 
-<span class="c1"># Get the exact number of non-zero blocks</span>
-<span class="n">exact_nnz</span> <span class="o">=</span> <span class="n">A</span><span class="o">.</span><span class="n">nnz_sync</span><span class="p">()</span>
+<span class="c1"># Get offsets[nrow] on host</span>
+<span class="n">storage_nnz</span> <span class="o">=</span> <span class="n">A</span><span class="o">.</span><span class="n">nnz_sync</span><span class="p">()</span>
 </pre></div>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>The <a class="reference internal" href="../api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.nnz_sync" title="warp.sparse.BsrMatrix.nnz_sync"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BsrMatrix.nnz_sync()</span></code></a> method ensures that any ongoing transfer
-of the exact nnz number from the device offsets array to the host has completed
-and updates the nnz upper bound.
-This synchronization is only necessary when you need the exact count -
-for most operations, the upper bound is sufficient.</p>
+of <code class="docutils literal notranslate"><span class="pre">offsets[nrow]</span></code> from the device offsets array to the host has completed
+and updates the nnz upper bound. For compact matrices, this is the active
+non-zero block count. For padded matrices, this is the total row-capacity
+storage size, not necessarily the active block count.</p>
 </div>
 <p>If the number of non-zeros has been changed from outside of the <a class="reference internal" href="../api_reference/warp_sparse.html#module-warp.sparse" title="warp.sparse"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warp.sparse</span></code></a> builtin functions, for instance by direct modifications to the offsets array, use the <a class="reference internal" href="../api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.notify_nnz_changed" title="warp.sparse.BsrMatrix.notify_nnz_changed"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BsrMatrix.notify_nnz_changed()</span></code></a> method to ensure consistency.</p>
+</section>
+<section id="row-capacity-and-padded-topology">
+<h3>Row Capacity and Padded Topology<a class="headerlink" href="#row-capacity-and-padded-topology" title="Link to this heading">#</a></h3>
+<p>By default, sparse constructors and topology-changing operations produce compact BSR/CSR matrices. In a compact matrix, row <code class="docutils literal notranslate"><span class="pre">r</span></code> stores its active blocks in <code class="docutils literal notranslate"><span class="pre">offsets[r]:offsets[r</span> <span class="pre">+</span> <span class="pre">1]</span></code>.</p>
+<p>Warp also supports matrices with reserved row capacity. These matrices use <code class="docutils literal notranslate"><span class="pre">row_counts</span></code> to mark the active block count of each row:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>offsets[row]                       : offsets[row] + row_counts[row]  active blocks
+offsets[row] + row_counts[row]     : offsets[row + 1]                slack capacity
+offsets[row]                       : offsets[row + 1]                total row capacity
+</pre></div>
+</div>
+<p>The required invariant is:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>0 &lt;= row_counts[row] &lt;= offsets[row + 1] - offsets[row]
+</pre></div>
+</div>
+<p>For compact matrices, <code class="docutils literal notranslate"><span class="pre">row_counts</span></code> may be unset. In that case sparse operations infer active row counts from adjacent offsets. For padded matrices, <a class="reference internal" href="../api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.nnz" title="warp.sparse.BsrMatrix.nnz"><code class="xref py py-attr docutils literal notranslate"><span class="pre">BsrMatrix.nnz</span></code></a> remains the storage upper bound, not necessarily the active block count. Slack entries are ignored by sparse operations, and their column and value data is not part of the matrix contract. Use <code class="docutils literal notranslate"><span class="pre">row_counts</span></code> to identify the active entries in padded rows.</p>
+<p>Use <code class="docutils literal notranslate"><span class="pre">row_capacity</span></code> with <a class="reference internal" href="../api_reference/_generated/warp.sparse.bsr_zeros.html#warp.sparse.bsr_zeros" title="warp.sparse.bsr_zeros"><code class="xref py py-func docutils literal notranslate"><span class="pre">bsr_zeros()</span></code></a> to allocate an empty padded matrix with reserved storage:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Reserve eight block slots per row.</span>
+<span class="n">A</span> <span class="o">=</span> <span class="n">bsr_zeros</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">cols</span><span class="p">,</span> <span class="n">block_type</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">row_capacity</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+
+<span class="c1"># Or reserve per-row capacity from a Warp array.</span>
+<span class="n">row_capacity</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+<span class="n">A</span> <span class="o">=</span> <span class="n">bsr_zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">cols</span><span class="p">,</span> <span class="n">block_type</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">row_capacity</span><span class="o">=</span><span class="n">row_capacity</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Providing <code class="docutils literal notranslate"><span class="pre">row_capacity</span></code> implies <code class="docutils literal notranslate"><span class="pre">topology=&quot;padded&quot;</span></code> unless an explicit topology is passed. Passing <code class="docutils literal notranslate"><span class="pre">row_capacity</span></code> with <code class="docutils literal notranslate"><span class="pre">topology=&quot;compact&quot;</span></code> raises <code class="docutils literal notranslate"><span class="pre">ValueError</span></code>.
+The convenience constructor <a class="reference internal" href="../api_reference/_generated/warp.sparse.bsr_from_triplets.html#warp.sparse.bsr_from_triplets" title="warp.sparse.bsr_from_triplets"><code class="xref py py-func docutils literal notranslate"><span class="pre">bsr_from_triplets()</span></code></a> always builds compact storage. To build COO triplets into reserved row capacity, allocate with <a class="reference internal" href="../api_reference/_generated/warp.sparse.bsr_zeros.html#warp.sparse.bsr_zeros" title="warp.sparse.bsr_zeros"><code class="xref py py-func docutils literal notranslate"><span class="pre">bsr_zeros()</span></code></a> using <code class="docutils literal notranslate"><span class="pre">row_capacity</span></code> and then call <a class="reference internal" href="../api_reference/_generated/warp.sparse.bsr_set_from_triplets.html#warp.sparse.bsr_set_from_triplets" title="warp.sparse.bsr_set_from_triplets"><code class="xref py py-func docutils literal notranslate"><span class="pre">bsr_set_from_triplets()</span></code></a> with <code class="docutils literal notranslate"><span class="pre">topology=&quot;padded&quot;</span></code>.</p>
+<p>Operations that may change topology accept a <code class="docutils literal notranslate"><span class="pre">topology</span></code> policy where supported:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>compact  rebuild compact topology, discarding row padding
+masked   keep the current active topology and update values only
+padded   write into existing per-row capacity
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">&quot;compact&quot;</span></code> policy is the default for builders and unmasked arithmetic. The <code class="docutils literal notranslate"><span class="pre">&quot;padded&quot;</span></code> policy is an allocation contract: each destination row must already have enough capacity for the result.
+For <a class="reference internal" href="../api_reference/_generated/warp.sparse.bsr_mm.html#warp.sparse.bsr_mm" title="warp.sparse.bsr_mm"><code class="xref py py-func docutils literal notranslate"><span class="pre">bsr_mm()</span></code></a>, <code class="docutils literal notranslate"><span class="pre">reuse_topology=True</span></code> is a compact-topology optimization that reuses product topology data stored in <code class="docutils literal notranslate"><span class="pre">work_arrays</span></code> from a previous call; it is only supported with <code class="docutils literal notranslate"><span class="pre">topology=&quot;compact&quot;</span></code>.
+The older <code class="docutils literal notranslate"><span class="pre">masked=True</span></code> arguments are deprecated; pass <code class="docutils literal notranslate"><span class="pre">topology=&quot;masked&quot;</span></code> instead.</p>
+<p>For example, a compact source can be copied into an already padded destination:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">warp.sparse</span><span class="w"> </span><span class="kn">import</span> <span class="n">bsr_assign</span><span class="p">,</span> <span class="n">bsr_set_zero</span><span class="p">,</span> <span class="n">bsr_zeros</span>
+
+<span class="n">dest</span> <span class="o">=</span> <span class="n">bsr_zeros</span><span class="p">(</span><span class="n">src</span><span class="o">.</span><span class="n">nrow</span><span class="p">,</span> <span class="n">src</span><span class="o">.</span><span class="n">ncol</span><span class="p">,</span> <span class="n">src</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">src</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">row_capacity</span><span class="o">=</span><span class="n">src</span><span class="o">.</span><span class="n">ncol</span><span class="p">)</span>
+<span class="n">bsr_set_zero</span><span class="p">(</span><span class="n">dest</span><span class="p">,</span> <span class="n">topology</span><span class="o">=</span><span class="s2">&quot;padded&quot;</span><span class="p">)</span>       <span class="c1"># keep row capacity, clear active rows</span>
+<span class="n">bsr_assign</span><span class="p">(</span><span class="n">dest</span><span class="o">=</span><span class="n">dest</span><span class="p">,</span> <span class="n">src</span><span class="o">=</span><span class="n">src</span><span class="p">,</span> <span class="n">topology</span><span class="o">=</span><span class="s2">&quot;padded&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">bsr_set_zero(...,</span> <span class="pre">topology=&quot;padded&quot;)</span></code> keeps row capacity only when the matrix size is unchanged. If a new size is provided, the resized empty matrix starts with no row capacity.</p>
+<p>Padded topology-changing operations ignore row-capacity overflow by default and record status on the destination matrix.
+The status is sticky until cleared, so clear it before a checked operation when the caller needs to detect
+insufficient row capacity from that operation:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">warp.sparse</span><span class="w"> </span><span class="kn">import</span> <span class="n">BSR_STATUS_SUCCESS</span><span class="p">,</span> <span class="n">bsr_axpy</span><span class="p">,</span> <span class="n">bsr_axpy_work_arrays</span>
+
+<span class="n">work</span> <span class="o">=</span> <span class="n">bsr_axpy_work_arrays</span><span class="p">()</span>
+<span class="n">y</span><span class="o">.</span><span class="n">clear_status</span><span class="p">()</span>
+<span class="n">bsr_axpy</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">topology</span><span class="o">=</span><span class="s2">&quot;padded&quot;</span><span class="p">,</span> <span class="n">work_arrays</span><span class="o">=</span><span class="n">work</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">y</span><span class="o">.</span><span class="n">status_sync</span><span class="p">()</span> <span class="o">!=</span> <span class="n">BSR_STATUS_SUCCESS</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">y</span><span class="o">.</span><span class="n">status_message</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>Functions such as <a class="reference internal" href="../api_reference/_generated/warp.sparse.bsr_assign.html#warp.sparse.bsr_assign" title="warp.sparse.bsr_assign"><code class="xref py py-func docutils literal notranslate"><span class="pre">bsr_assign()</span></code></a>, <a class="reference internal" href="../api_reference/_generated/warp.sparse.bsr_set_from_triplets.html#warp.sparse.bsr_set_from_triplets" title="warp.sparse.bsr_set_from_triplets"><code class="xref py py-func docutils literal notranslate"><span class="pre">bsr_set_from_triplets()</span></code></a>, and <a class="reference internal" href="../api_reference/_generated/warp.sparse.bsr_set_transpose.html#warp.sparse.bsr_set_transpose" title="warp.sparse.bsr_set_transpose"><code class="xref py py-func docutils literal notranslate"><span class="pre">bsr_set_transpose()</span></code></a> report status on their destination matrix the same way:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">warp.sparse</span><span class="w"> </span><span class="kn">import</span> <span class="n">BSR_STATUS_SUCCESS</span><span class="p">,</span> <span class="n">bsr_set_transpose</span>
+
+<span class="n">dest</span><span class="o">.</span><span class="n">clear_status</span><span class="p">()</span>
+<span class="n">bsr_set_transpose</span><span class="p">(</span><span class="n">dest</span><span class="p">,</span> <span class="n">src</span><span class="p">,</span> <span class="n">topology</span><span class="o">=</span><span class="s2">&quot;padded&quot;</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">dest</span><span class="o">.</span><span class="n">status_sync</span><span class="p">()</span> <span class="o">!=</span> <span class="n">BSR_STATUS_SUCCESS</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">dest</span><span class="o">.</span><span class="n">status_message</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>Row-ordered candidate entries can be compressed with <a class="reference internal" href="../api_reference/_generated/warp.sparse.bsr_compress.html#warp.sparse.bsr_compress" title="warp.sparse.bsr_compress"><code class="xref py py-func docutils literal notranslate"><span class="pre">bsr_compress()</span></code></a>. With <code class="docutils literal notranslate"><span class="pre">inplace=True</span></code>, matrices whose scalar type is <code class="docutils literal notranslate"><span class="pre">float32</span></code> or <code class="docutils literal notranslate"><span class="pre">float64</span></code> have each active row range sorted, duplicate columns accumulated, optional numerical zero blocks pruned, and <code class="docutils literal notranslate"><span class="pre">row_counts</span></code> updated in place using native compression support without <code class="docutils literal notranslate"><span class="pre">O(nnz)</span></code> temporary allocation. This path is not differentiable. Pass <code class="docutils literal notranslate"><span class="pre">topology=&quot;compact&quot;</span></code> to additionally pack active blocks into compact row storage:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">warp.sparse</span><span class="w"> </span><span class="kn">import</span> <span class="n">bsr_compress</span>
+
+<span class="n">bsr_compress</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">bsr_compress</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">topology</span><span class="o">=</span><span class="s2">&quot;compact&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>With the default <code class="docutils literal notranslate"><span class="pre">inplace=False</span></code>, <a class="reference internal" href="../api_reference/_generated/warp.sparse.bsr_compress.html#warp.sparse.bsr_compress" title="warp.sparse.bsr_compress"><code class="xref py py-func docutils literal notranslate"><span class="pre">bsr_compress()</span></code></a> rebuilds the topology natively from the active row and column data, then accumulates values with differentiable Warp kernels. By default it packs active entries into compact row storage. Pass <code class="docutils literal notranslate"><span class="pre">topology=&quot;padded&quot;</span></code> to preserve per-row capacity; compression cannot increase the active block count, so this padded mode does not report row-capacity overflow. The API does not guarantee that existing storage buffers are preserved.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">warp.sparse</span><span class="w"> </span><span class="kn">import</span> <span class="n">bsr_compress</span>
+
+<span class="n">bsr_compress</span><span class="p">(</span><span class="n">A</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>When entries are generated directly into existing padded BSR row capacity, call <a class="reference internal" href="../api_reference/_generated/warp.sparse.bsr_compress.html#warp.sparse.bsr_compress" title="warp.sparse.bsr_compress"><code class="xref py py-func docutils literal notranslate"><span class="pre">bsr_compress()</span></code></a> with <code class="docutils literal notranslate"><span class="pre">inplace=True</span></code> to sort and coalesce each active row range.</p>
 </section>
 <section id="converting-back-to-coo-format">
 <h3>Converting back to COO Format<a class="headerlink" href="#converting-back-to-coo-format" title="Link to this heading">#</a></h3>
@@ -619,6 +698,16 @@ for most operations, the upper bound is sufficient.</p>
 <span class="c1"># - rows[i] is the row index of block i</span>
 <span class="c1"># - cols[i] is the column index of block i</span>
 <span class="c1"># - vals[i] is the value of block i</span>
+</pre></div>
+</div>
+<p>For matrices with row padding, <a class="reference internal" href="../api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.uncompress_rows" title="warp.sparse.BsrMatrix.uncompress_rows"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BsrMatrix.uncompress_rows()</span></code></a> returns an array sized to <a class="reference internal" href="../api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.nnz" title="warp.sparse.BsrMatrix.nnz"><code class="xref py py-attr docutils literal notranslate"><span class="pre">BsrMatrix.nnz</span></code></a> and uses <code class="docutils literal notranslate"><span class="pre">-1</span></code> for slack entries. Use <a class="reference internal" href="../api_reference/_generated/warp.sparse.bsr_compress.html#warp.sparse.bsr_compress" title="warp.sparse.bsr_compress"><code class="xref py py-func docutils literal notranslate"><span class="pre">bsr_compress()</span></code></a> first when a compact COO export is required:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">warp.sparse</span><span class="w"> </span><span class="kn">import</span> <span class="n">bsr_compress</span>
+
+<span class="n">bsr_compress</span><span class="p">(</span><span class="n">A</span><span class="p">)</span>
+<span class="n">nnz</span> <span class="o">=</span> <span class="n">A</span><span class="o">.</span><span class="n">nnz_sync</span><span class="p">()</span>
+<span class="n">rows</span> <span class="o">=</span> <span class="n">A</span><span class="o">.</span><span class="n">uncompress_rows</span><span class="p">()[:</span><span class="n">nnz</span><span class="p">]</span>
+<span class="n">cols</span> <span class="o">=</span> <span class="n">A</span><span class="o">.</span><span class="n">columns</span><span class="p">[:</span><span class="n">nnz</span><span class="p">]</span>
+<span class="n">vals</span> <span class="o">=</span> <span class="n">A</span><span class="o">.</span><span class="n">values</span><span class="p">[:</span><span class="n">nnz</span><span class="p">]</span>
 </pre></div>
 </div>
 </section>
@@ -693,6 +782,9 @@ for most operations, the upper bound is sufficient.</p>
 <li><p><a class="reference internal" href="../api_reference/_generated/warp.sparse.bsr_row_index.html#warp.sparse.bsr_row_index" title="warp.sparse.bsr_row_index"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.sparse.bsr_row_index()</span></code></a></p></li>
 <li><p><a class="reference internal" href="../api_reference/_generated/warp.sparse.bsr_block_index.html#warp.sparse.bsr_block_index" title="warp.sparse.bsr_block_index"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.sparse.bsr_block_index()</span></code></a></p></li>
 </ul>
+<p>The <code class="docutils literal notranslate"><span class="pre">bsr_row_index</span></code> and <code class="docutils literal notranslate"><span class="pre">bsr_block_index</span></code> helpers search compact storage
+rows by default. Pass <code class="docutils literal notranslate"><span class="pre">row_counts</span></code> to their row-capacity overloads to ignore
+padded slack storage.</p>
 </section>
 </section>
 <section id="iterative-linear-solvers">
@@ -769,6 +861,7 @@ Custom operators can be implemented using the <a class="reference internal" href
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#creating-sparse-matrices">Creating Sparse Matrices</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#block-sizes">Block Sizes</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#non-zero-block-count">Non-Zero Block Count</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#row-capacity-and-padded-topology">Row Capacity and Padded Topology</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#converting-back-to-coo-format">Converting back to COO Format</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#matrix-operations">Matrix Operations</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#kernel-level-utilities">Kernel-level utilities</a></li>

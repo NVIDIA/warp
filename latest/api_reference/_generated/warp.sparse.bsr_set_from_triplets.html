@@ -506,9 +506,10 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">prune_numerical_zeros</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">masked</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">topology</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/sparse.py#L472-L612"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_set_from_triplets" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/sparse.py#L1099-L1341"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_set_from_triplets" title="Link to this definition">#</a></dt>
 <dd><p>Fill a BSR matrix with values defined by coordinate-oriented (COO) triplets, discarding existing blocks.</p>
 <p>The first dimension of the three input arrays must match and indicates the number of COO triplets.</p>
 <dl class="field-list simple">
@@ -523,7 +524,13 @@ If <code class="docutils literal notranslate"><span class="pre">None</span></cod
 <li><p><strong>count</strong> (<em>Array</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>] </em><em>| </em><em>None</em>) – Single-element array indicating the number of triplets. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, the number of triplets is determined from the shape of
 <code class="docutils literal notranslate"><span class="pre">rows</span></code> and <code class="docutils literal notranslate"><span class="pre">columns</span></code> arrays.</p></li>
 <li><p><strong>prune_numerical_zeros</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, will ignore the zero-valued blocks.</p></li>
-<li><p><strong>masked</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, ignore blocks that are not existing non-zeros of <code class="docutils literal notranslate"><span class="pre">dest</span></code>.</p></li>
+<li><p><strong>masked</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Deprecated. Use <code class="docutils literal notranslate"><span class="pre">topology=&quot;masked&quot;</span></code> instead. If <code class="docutils literal notranslate"><span class="pre">True</span></code>,
+ignore blocks that are not existing non-zeros of <code class="docutils literal notranslate"><span class="pre">dest</span></code>.</p></li>
+<li><p><strong>topology</strong> (<em>Literal</em><em>[</em><em>'compact'</em><em>, </em><em>'masked'</em><em>, </em><em>'padded'</em><em>] </em><em>| </em><em>None</em>) – Optional topology policy. <code class="docutils literal notranslate"><span class="pre">&quot;compact&quot;</span></code> keeps the existing
+compact rebuild behavior, <code class="docutils literal notranslate"><span class="pre">&quot;masked&quot;</span></code> is equivalent to
+the deprecated <code class="docutils literal notranslate"><span class="pre">masked=True</span></code>, and <code class="docutils literal notranslate"><span class="pre">&quot;padded&quot;</span></code> writes the compacted triplet
+topology into existing destination row capacity and records capacity
+overflow in <code class="docutils literal notranslate"><span class="pre">dest.status_sync()</span></code>.</p></li>
 </ul>
 </dd>
 </dl>

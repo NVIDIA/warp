@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.wait_event &#8212; Warp 1.15.0.dev0</title>
+    <title>warp.sparse.BSR_STATUS_SUCCESS &#8212; Warp 1.15.0.dev0</title>
   
   
   
@@ -49,7 +49,7 @@
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.wait_event';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.sparse.BSR_STATUS_SUCCESS';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
@@ -62,8 +62,8 @@
 
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="warp.Allocator" href="warp.Allocator.html" />
-    <link rel="prev" title="warp.synchronize_event" href="warp.synchronize_event.html" />
+    <link rel="next" title="warp.types" href="../warp_types.html" />
+    <link rel="prev" title="warp.sparse.BSR_STATUS_ROW_CAPACITY_EXCEEDED" href="warp.sparse.BSR_STATUS_ROW_CAPACITY_EXCEEDED.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -460,9 +460,9 @@
       </a>
     </li>
     
-    <li class="breadcrumb-item"><a href="../warp.html" class="nav-link">warp</a></li>
+    <li class="breadcrumb-item"><a href="../warp_sparse.html" class="nav-link">warp.sparse</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.wait_event</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.sparse.BSR_STATUS_SUCCESS</span></li>
   </ul>
 </nav>
 </div>
@@ -475,7 +475,7 @@
         <div class="header-article-item">
 
 <div class="d-flex justify-content-end w-100">
-  <a href="../../_sources/api_reference/_generated/warp.wait_event.rst.txt">
+  <a href="../../_sources/api_reference/_generated/warp.sparse.BSR_STATUS_SUCCESS.rst.txt">
     <i class="fa-solid fa-file-code"></i> View page source
   </a>
 </div>
@@ -492,21 +492,12 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="warp-wait-event">
-<h1>warp.wait_event<a class="headerlink" href="#warp-wait-event" title="Link to this heading">#</a></h1>
-<dl class="py function">
-<dt class="sig sig-object py" id="warp.wait_event">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">wait_event</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">external</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L7586-L7596"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.wait_event" title="Link to this definition">#</a></dt>
-<dd><p>Convenience function for calling <a class="reference internal" href="warp.Stream.html#warp.Stream.wait_event" title="warp.Stream.wait_event"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Stream.wait_event()</span></code></a> on the current stream.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>event</strong> (<a class="reference internal" href="warp.Event.html#warp.Event" title="warp._src.context.Event"><em>Event</em></a>) – <a class="reference internal" href="warp.Event.html#warp.Event" title="warp.Event"><code class="xref py py-class docutils literal notranslate"><span class="pre">Event</span></code></a> instance to wait for.</p></li>
-<li><p><strong>external</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether this is an external event during graph capture. This
-argument has no effect outside of graph capture.</p></li>
-</ul>
-</dd>
-</dl>
+  <section id="warp-sparse-bsr-status-success">
+<h1>warp.sparse.BSR_STATUS_SUCCESS<a class="headerlink" href="#warp-sparse-bsr-status-success" title="Link to this heading">#</a></h1>
+<dl class="py data">
+<dt class="sig sig-object py" id="warp.sparse.BSR_STATUS_SUCCESS">
+<span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">BSR_STATUS_SUCCESS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></em><a class="headerlink" href="#warp.sparse.BSR_STATUS_SUCCESS" title="Link to this definition">#</a></dt>
+<dd><p>Sparse operation status code for success.</p>
 </dd></dl>
 
 </section>
@@ -522,20 +513,20 @@ argument has no effect outside of graph capture.</p></li>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.synchronize_event.html"
+       href="warp.sparse.BSR_STATUS_ROW_CAPACITY_EXCEEDED.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.synchronize_event</p>
+        <p class="prev-next-title">warp.sparse.BSR_STATUS_ROW_CAPACITY_EXCEEDED</p>
       </div>
     </a>
     <a class="right-next"
-       href="warp.Allocator.html"
+       href="../warp_types.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.Allocator</p>
+        <p class="prev-next-title">warp.types</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -560,7 +551,7 @@ argument has no effect outside of graph capture.</p></li>
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.wait_event"><code class="docutils literal notranslate"><span class="pre">wait_event()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.sparse.BSR_STATUS_SUCCESS"><code class="docutils literal notranslate"><span class="pre">BSR_STATUS_SUCCESS</span></code></a></li>
 </ul>
   </nav></div>
 
@@ -568,7 +559,7 @@ argument has no effect outside of graph capture.</p></li>
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/_generated/warp.wait_event.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/_generated/warp.sparse.BSR_STATUS_SUCCESS.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

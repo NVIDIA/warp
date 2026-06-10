@@ -62,7 +62,7 @@
 
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="warp.types" href="../warp_types.html" />
+    <link rel="next" title="warp.sparse.BSR_STATUS_ROW_CAPACITY_EXCEEDED" href="warp.sparse.BSR_STATUS_ROW_CAPACITY_EXCEEDED.html" />
     <link rel="prev" title="warp.sparse.bsr_transposed" href="warp.sparse.bsr_transposed.html" />
 
 
@@ -496,22 +496,46 @@
 <h1>warp.sparse.bsr_zeros<a class="headerlink" href="#warp-sparse-bsr-zeros" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.sparse.bsr_zeros">
-<span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_zeros</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rows_of_blocks</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cols_of_blocks</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">block_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/sparse.py#L345-L373"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_zeros" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.sparse.</span></span><span class="sig-name descname"><span class="pre">bsr_zeros</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">rows_of_blocks</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">cols_of_blocks</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">block_type</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">topology</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">row_capacity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">nnz_capacity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/sparse.py#L522-L572"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_zeros" title="Link to this definition">#</a></dt>
 <dd><p>Construct and return an empty BSR or CSR matrix with the given shape.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>bsr</strong> – The BSR or CSR matrix to set to zero.</p></li>
 <li><p><strong>rows_of_blocks</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of rows of blocks.</p></li>
 <li><p><strong>cols_of_blocks</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of columns of blocks.</p></li>
-<li><p><strong>block_type</strong> (<em>_MatrixBlockType</em><em>[</em><em>Rows</em><em>, </em><em>Cols</em><em>, </em><em>Scalar</em><em>] </em><em>| </em><em>_ScalarBlockType</em><em>[</em><em>Scalar</em><em>]</em>) – Type of individual blocks.
+<li><p><strong>block_type</strong> (<em>BlockType</em>) – Type of individual blocks.
 For CSR matrices, this should be a scalar type.
 For BSR matrices, this should be a matrix type (e.g. from <a class="reference internal" href="warp.types.matrix.html#warp.types.matrix" title="warp.types.matrix"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.types.matrix()</span></code></a>).</p></li>
-<li><p><strong>device</strong> (<a class="reference internal" href="warp.Device.html#warp.Device" title="warp._src.context.Device"><em>Device</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Device on which to allocate the matrix arrays.</p></li>
+<li><p><strong>device</strong> (<em>wp.DeviceLike</em>) – Device on which to allocate the matrix arrays.</p></li>
+<li><p><strong>topology</strong> (<em>Literal</em><em>[</em><em>'compact'</em><em>, </em><em>'padded'</em><em>] </em><em>| </em><em>None</em>) – Topology policy. Defaults to <code class="docutils literal notranslate"><span class="pre">&quot;compact&quot;</span></code> unless
+<code class="docutils literal notranslate"><span class="pre">row_capacity</span></code> is provided, in which case it defaults to
+<code class="docutils literal notranslate"><span class="pre">&quot;padded&quot;</span></code>.</p></li>
+<li><p><strong>row_capacity</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>Array</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>] </em><em>| </em><em>None</em>) – Optional row capacity for padded matrices. May be a
+nonnegative integer for uniform capacity, or an integer Warp array of
+shape <code class="docutils literal notranslate"><span class="pre">(rows_of_blocks,)</span></code> for per-row capacity. Providing this
+implies padded topology when <code class="docutils literal notranslate"><span class="pre">topology</span></code> is omitted.</p></li>
+<li><p><strong>nnz_capacity</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Optional storage allocation upper bound for <code class="docutils literal notranslate"><span class="pre">columns</span></code>
+and <code class="docutils literal notranslate"><span class="pre">values</span></code>. This is mainly useful with per-row <code class="docutils literal notranslate"><span class="pre">row_capacity</span></code>
+arrays when an upper bound is already known. When <code class="docutils literal notranslate"><span class="pre">row_capacity</span></code> is
+an array, the caller is responsible for ensuring <code class="docutils literal notranslate"><span class="pre">nnz_capacity</span></code> is
+at least the total row capacity.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference internal" href="warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a></p>
+<dd class="field-even"><p><a class="reference internal" href="warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix" title="warp.sparse.BsrMatrix">BsrMatrix</a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -538,11 +562,11 @@ For BSR matrices, this should be a matrix type (e.g. from <a class="reference in
       </div>
     </a>
     <a class="right-next"
-       href="../warp_types.html"
+       href="warp.sparse.BSR_STATUS_ROW_CAPACITY_EXCEEDED.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.types</p>
+        <p class="prev-next-title">warp.sparse.BSR_STATUS_ROW_CAPACITY_EXCEEDED</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
