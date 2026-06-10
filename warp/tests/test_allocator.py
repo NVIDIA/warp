@@ -147,6 +147,36 @@ class TestAllocatorProtocol(unittest.TestCase):
         self.assertIsInstance(cpu.default_allocator, Allocator)
         self.assertIsInstance(cpu.pinned_allocator, Allocator)
 
+    def test_public_memory_kind_for_cpu_arrays(self):
+        """array.memory_kind reports observed CPU memory kind."""
+
+        a = wp.empty(4, dtype=wp.float32, device="cpu")
+        self.assertIs(a.memory_kind, wp.MemoryKind.HOST)
+        self.assertIs(a[1:].memory_kind, wp.MemoryKind.HOST)
+
+        zero_size = wp.empty(0, dtype=wp.float32, device="cpu")
+        self.assertIs(zero_size.memory_kind, wp.MemoryKind.HOST)
+
+        if wp.is_cuda_available():
+            pinned = wp.empty(4, dtype=wp.float32, device="cpu", pinned=True)
+            self.assertIs(pinned.memory_kind, wp.MemoryKind.PINNED_HOST)
+
+            zero_size_pinned = wp.empty(0, dtype=wp.float32, device="cpu", pinned=True)
+            self.assertIs(zero_size_pinned.memory_kind, wp.MemoryKind.PINNED_HOST)
+
+        data = np.empty(4, dtype=np.float32)
+        wrapped = wp.array(data, dtype=wp.float32, device="cpu", copy=False)
+        self.assertEqual(wrapped.ptr, data.ctypes.data)
+        self.assertIs(wrapped.memory_kind, wp.MemoryKind.HOST)
+
+        annotation = wp.array(dtype=wp.float32)
+        self.assertIs(annotation.memory_kind, wp.MemoryKind.UNKNOWN)
+
+        indices = wp.array([0, 1], dtype=wp.int32, device="cpu")
+        indexed = wp.indexedarray(a, indices)
+        self.assertFalse(hasattr(indexed, "memory_kind"))
+        self.assertFalse(hasattr(wp.indexedarray[wp.float32], "memory_kind"))
+
 
 def test_protocol_conformance_cuda(test, device):
     """Built-in CUDA allocators satisfy the Allocator protocol."""
@@ -154,6 +184,7 @@ def test_protocol_conformance_cuda(test, device):
     test.assertIsInstance(device.default_allocator, Allocator)
     if device.is_mempool_supported:
         test.assertIsInstance(device.mempool_allocator, Allocator)
+    test.assertIsInstance(wp.ManagedAllocator(), Allocator)
 
 
 add_function_test(
@@ -265,6 +296,46 @@ def test_scoped_allocator(test, device):
     test.assertIs(wp.get_device_allocator(device), original)
 
 
+def test_managed_allocator_allocates_on_selected_device(test, device):
+    """ManagedAllocator uses the CUDA device selected by ScopedAllocator."""
+
+    if not device.is_managed_memory_supported:
+        test.skipTest(f"{device} does not support CUDA managed memory")
+
+    managed = wp.ManagedAllocator()
+
+    with wp.ScopedAllocator(device, managed):
+        a = wp.zeros(8, dtype=wp.float32, device=device)
+
+    test.assertEqual(a.device, device)
+    test.assertFalse(a.pinned)
+    test.assertIs(a.memory_kind, wp.MemoryKind.CUDA_MANAGED)
+    np.testing.assert_allclose(a.numpy(), np.zeros(8, dtype=np.float32))
+
+
+@unittest.skipUnless(wp.get_cuda_device_count() >= 2, "Multi-GPU not available")
+def test_managed_allocator_deallocates_from_recorded_context(test, device):
+    """ManagedAllocator frees with the pointer's owner context, not the current one."""
+
+    if not device.is_managed_memory_supported:
+        test.skipTest(f"{device} does not support CUDA managed memory")
+
+    other = wp.get_device(f"cuda:{(device.ordinal + 1) % wp.get_cuda_device_count()}")
+
+    managed = wp.ManagedAllocator()
+    with device.context_guard:
+        ptr = managed.allocate(16)
+
+    try:
+        with other.context_guard:
+            managed.deallocate(ptr, 16)
+            ptr = None
+    finally:
+        if ptr:
+            with device.context_guard:
+                managed.deallocate(ptr, 16)
+
+
 def test_scoped_allocator_restores_on_exception(test, device):
     """ScopedAllocator restores allocator even if body raises."""
     device = wp.get_device(device)
@@ -326,6 +397,19 @@ for fn in [
 ]:
     add_function_test(TestCustomAllocator, fn.__name__, fn, devices=cuda_test_devices)
 
+add_function_test(
+    TestCustomAllocator,
+    "test_managed_allocator_allocates_on_selected_device",
+    test_managed_allocator_allocates_on_selected_device,
+    devices=cuda_test_devices,
+)
+
+add_function_test(
+    TestCustomAllocator,
+    "test_managed_allocator_deallocates_from_recorded_context",
+    test_managed_allocator_deallocates_from_recorded_context,
+    devices=cuda_test_devices,
+)
 
 # -- RMM allocator ----------------------------------------------------------
 
