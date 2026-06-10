@@ -22,7 +22,8 @@ import numpy as np
 from asv_runner.benchmarks.mark import skip_benchmark_if
 
 import warp as wp
-import warp.examples
+
+from .benchmarks_utils import get_asset_directory
 
 pxr = importlib.util.find_spec("pxr")
 USD_AVAILABLE = pxr is not None
@@ -62,7 +63,7 @@ class BvhBuild:
         # Load and parse USD assets once, compute AABBs, cache as numpy arrays
         asset_data = {}
         for asset_name in self.assets:
-            asset_stage = Usd.Stage.Open(os.path.join(warp.examples.get_asset_directory(), f"{asset_name}.usd"))
+            asset_stage = Usd.Stage.Open(os.path.join(get_asset_directory(), f"{asset_name}.usd"))
             mesh_geom = UsdGeom.Mesh(asset_stage.GetPrimAtPath(f"/root/{asset_name}"))
 
             points_np = np.array(mesh_geom.GetPointsAttr().Get())

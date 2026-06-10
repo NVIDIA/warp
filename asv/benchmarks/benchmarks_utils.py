@@ -13,7 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from pathlib import Path
+
 import warp as wp
+
+
+def get_asset_directory():
+    return str(Path(__file__).resolve().parents[2] / "warp" / "examples" / "assets")
 
 
 def clear_kernel_cache():

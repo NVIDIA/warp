@@ -23,7 +23,8 @@ from asv_runner.benchmarks.mark import skip_benchmark_if
 from numpy.random import default_rng
 
 import warp as wp
-import warp.examples
+
+from .benchmarks_utils import get_asset_directory
 
 pxr = importlib.util.find_spec("pxr")
 USD_AVAILABLE = pxr is not None
@@ -83,7 +84,7 @@ class MeshQuery:
         self.device = wp.get_device("cuda:0")
         wp.load_module(device=self.device)
 
-        asset_stage = Usd.Stage.Open(os.path.join(warp.examples.get_asset_directory(), f"{asset}.usd"))
+        asset_stage = Usd.Stage.Open(os.path.join(get_asset_directory(), f"{asset}.usd"))
         mesh_geom = UsdGeom.Mesh(asset_stage.GetPrimAtPath(f"/root/{asset}"))
 
         points = np.array(mesh_geom.GetPointsAttr().Get())
@@ -378,7 +379,7 @@ class BvhAABBQuery:
             self.device = wp.get_device(device)
             wp.load_module(device=self.device)
 
-            asset_stage = Usd.Stage.Open(os.path.join(warp.examples.get_asset_directory(), "bunny.usd"))
+            asset_stage = Usd.Stage.Open(os.path.join(get_asset_directory(), "bunny.usd"))
             mesh_geom = UsdGeom.Mesh(asset_stage.GetPrimAtPath("/root/bunny"))
 
             points_base = np.array(mesh_geom.GetPointsAttr().Get())
@@ -515,7 +516,7 @@ class BvhRayQuery:
             wp.init()
             wp.load_module(device=self.device)
 
-            asset_stage = Usd.Stage.Open(os.path.join(warp.examples.get_asset_directory(), "bunny.usd"))
+            asset_stage = Usd.Stage.Open(os.path.join(get_asset_directory(), "bunny.usd"))
             mesh_geom = UsdGeom.Mesh(asset_stage.GetPrimAtPath("/root/bunny"))
 
             points_base = np.array(mesh_geom.GetPointsAttr().Get())

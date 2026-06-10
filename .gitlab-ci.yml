@@ -811,8 +811,19 @@ asv benchmarks:
         - .gitlab/ci/asv.yml
         - asv/**/*
         - asv.conf.json
-        - warp/**/*
+        - warp/*.py
+        - warp/*.pyi
+        - warp/py.typed
+        - warp/_src/**/*
+        - warp/examples/assets/**/*
+        - warp/examples/fem/utils.py
+        - warp/fem/**/*
+        - warp/jax_experimental/**/*
+        - warp/native/**/*
+        - warp/optim/**/*
+        - warp/render/**/*
         - pyproject.toml
+        - setup.py
         - deps/*
         - build_lib.py
         - build_llvm.py

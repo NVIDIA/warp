@@ -22,12 +22,10 @@ from asv_runner.benchmarks.mark import skip_benchmark_if
 
 import warp as wp
 
+from ..benchmarks_utils import get_asset_directory
+
 pxr = importlib.util.find_spec("pxr")
 USD_AVAILABLE = pxr is not None
-
-
-def get_asset_directory():
-    return os.path.join(os.path.realpath(os.path.dirname(__file__)), "..", "..", "..", "warp", "examples", "assets")
 
 
 @wp.func
