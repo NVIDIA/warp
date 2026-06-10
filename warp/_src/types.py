@@ -3057,6 +3057,15 @@ class array(Array[DType, NDim]):
         is_contiguous (bool): Indicates whether this array has a contiguous memory layout.
         deleter (Callable[[int, int], None]): A function to be called when the array is deleted,
             taking two arguments: pointer and size. If ``None``, then no function is called.
+
+    Notes:
+        At Python scope, slicing returns a zero-copy view into the same
+        allocation and may produce a non-contiguous array. Scalar item indexing
+        is intentionally unsupported on ``wp.array`` objects; use slices to
+        create views, or call :meth:`numpy` or :meth:`list` to read values on
+        the host. Inside kernels, arrays support element-wise indexing.
+        This keeps host-side behavior consistent across CPU and GPU arrays and
+        avoids encouraging per-element device synchronization or copies.
     """
 
     @classmethod
