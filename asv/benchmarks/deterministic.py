@@ -20,7 +20,7 @@ if DETERMINISM_SUPPORTED:
         "enable_backward": False,
         "module": "unique",
         "module_options": {
-            "deterministic": "run_to_run",
+            "deterministic": wp.DeterministicMode.RUN_TO_RUN,
             "deterministic_max_records": 1,
         },
     }

@@ -59,7 +59,7 @@ class DeterministicTestBase(unittest.TestCase):
     def setUpClass(cls):
         cls._old_deterministic = wp.config.deterministic
         cls._old_module_deterministic = []
-        wp.config.deterministic = wp.config.DeterministicMode.RUN_TO_RUN
+        wp.config.deterministic = wp.DeterministicMode.RUN_TO_RUN
 
         modules = cls.deterministic_modules
         if modules is None:
@@ -68,7 +68,7 @@ class DeterministicTestBase(unittest.TestCase):
         for module in modules:
             old_options = wp.get_module_options(module=module)
             cls._old_module_deterministic.append((module, old_options["deterministic"]))
-            wp.set_module_options({"deterministic": "run_to_run"}, module=module)
+            wp.set_module_options({"deterministic": wp.DeterministicMode.RUN_TO_RUN}, module=module)
 
     @classmethod
     def tearDownClass(cls):

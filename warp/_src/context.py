@@ -2838,9 +2838,8 @@ class Module:
         if options["enable_mathdx_fft"] is None:
             options["enable_mathdx_fft"] = config.enable_mathdx_fft
 
-        from warp._src.deterministic import normalize_deterministic_mode  # noqa: PLC0415
-
-        options["deterministic"] = normalize_deterministic_mode(options["deterministic"])
+        if not isinstance(options["deterministic"], warp.config.DeterministicMode):
+            raise ValueError(f"deterministic must be a warp.DeterministicMode value, got {options['deterministic']!r}")
 
         deterministic_max_records = options["deterministic_max_records"]
         if isinstance(deterministic_max_records, bool):
@@ -3082,9 +3081,7 @@ class Module:
 
     def _refresh_deterministic_launch_metadata(self, block_dim: int, options: dict) -> None:
         """Repopulate ``det_meta`` after a cache hit without firing tile LTO compilation."""
-        from warp._src.deterministic import is_deterministic_mode_enabled  # noqa: PLC0415
-
-        if not is_deterministic_mode_enabled(options.get("deterministic")):
+        if options.get("deterministic") == warp.config.DeterministicMode.NOT_GUARANTEED:
             return
 
         hasher = self.hashers.get(block_dim)
@@ -10308,7 +10305,7 @@ def set_module_options(options: dict[str, Any], module: Any = None):
     * **mode**: The compilation mode to use, can be ``"debug"`` or ``"release"``, defaults to the value of ``warp.config.mode``.
     * **optimization_level**: Compiler optimization level (0-3). When ``None``, falls back to ``warp.config.optimization_level``; if that is also ``None``, uses target-specific defaults (``-O2`` for CPU, ``-O3`` for CUDA).
     * **cpu_compiler_flags**: CPU compiler flags (see ``warp.config.cpu_compiler_flags``), defaults to the global config value when ``None``.
-    * **deterministic**: Determinism guarantee for supported atomic operations. Accepted values are ``"not_guaranteed"``, ``"run_to_run"``, and ``"gpu_to_gpu"``. Defaults to the value of ``warp.config.deterministic`` when the module is created.
+    * **deterministic**: Determinism guarantee for supported atomic operations. Accepted values are ``warp.DeterministicMode.NOT_GUARANTEED``, ``warp.DeterministicMode.RUN_TO_RUN``, and ``warp.DeterministicMode.GPU_TO_GPU``. Defaults to the value of ``warp.config.deterministic`` when the module is created.
     * **deterministic_max_records**: Per-target, per-thread upper bound for deterministic scatter records. Defaults to ``0``, which means use the code-generated lower bound only. This is useful when dynamic loops or repeated visits to the same atomic site can emit more records than static analysis can prove.
     * **block_dim**: The default number of threads to assign to each block, defaults to ``256``.
     * **compile_time_trace**: Enable compile-time tracing, defaults to the value of ``warp.config.compile_time_trace``.

@@ -21,7 +21,7 @@ deterministic without algorithm rewrites.
 
 | ID  | Requirement | Priority | Notes |
 | --- | --- | --- | --- |
-| R1  | ``wp.config.deterministic = "run_to_run"`` makes float atomic accumulations bit-exact reproducible across runs | Must | Core value proposition |
+| R1  | ``wp.config.deterministic = wp.DeterministicMode.RUN_TO_RUN`` makes float atomic accumulations bit-exact reproducible across runs | Must | Core value proposition |
 | R2  | Counter/allocator pattern (``slot = wp.atomic_add(counter, index, 1)``) produces deterministic slot assignments | Must | Common in compaction, particle emission |
 | R3  | Both patterns work in the same kernel simultaneously | Must | Real workloads mix accumulation and allocation |
 | R4  | Integer atomics with unused return values incur no overhead | Must | Already associative+commutative |
@@ -42,14 +42,14 @@ deterministic without algorithm rewrites.
 Deterministic mode can be enabled through module-level options:
 
 - **Global**: set ``wp.config.deterministic`` to one of:
-  - ``"not_guaranteed"``: default behavior, no deterministic transform.
-  - ``"run_to_run"``: bit-exact reproducibility across repeated runs on the
+  - ``wp.DeterministicMode.NOT_GUARANTEED``: default behavior, no deterministic transform.
+  - ``wp.DeterministicMode.RUN_TO_RUN``: bit-exact reproducibility across repeated runs on the
     same GPU architecture.
-  - ``"gpu_to_gpu"``: stronger reduction path intended to preserve identical
+  - ``wp.DeterministicMode.GPU_TO_GPU``: stronger reduction path intended to preserve identical
     results across GPU architectures as well.
 - **Global diagnostics**: set ``wp.config.deterministic_debug = True`` to emit
   debug diagnostics for deterministic scatter overflow.
-- **Per shared module**: call ``wp.set_module_options({"deterministic": "run_to_run"})``
+- **Per shared module**: call ``wp.set_module_options({"deterministic": wp.DeterministicMode.RUN_TO_RUN})``
   in the Python module that defines the kernels, just like other module-level
   options such as ``enable_backward``.
 - **Unique module**: use ``@wp.kernel(module="unique", module_options={...})``
@@ -109,9 +109,9 @@ Warp reads the emitted record count outside CUDA graph capture and a CUB radix
 sort orders the valid scatter record prefix by key and record index. The
 post-sort reduction depends on the selected determinism guarantee:
 
-- ``"run_to_run"``: scalar reductions use CUB ``DeviceReduce::ReduceByKey`` on
+- ``wp.DeterministicMode.RUN_TO_RUN``: scalar reductions use CUB ``DeviceReduce::ReduceByKey`` on
   destination indices for better performance.
-- ``"gpu_to_gpu"``: reductions use the simple sequential segmented kernel so
+- ``wp.DeterministicMode.GPU_TO_GPU``: reductions use the simple sequential segmented kernel so
   the left-to-right accumulation order is explicit in Warp's own code.
 - Composite leaf types always use the segmented kernel.
 
@@ -347,10 +347,10 @@ in-kernel counter resets.
 - Deterministic scatter buffer capacity is limited to ``2**31 - 1`` records
   because the native scatter buffer metadata and CUB sort/reduce counts use
   32-bit signed integers.
-- ``"gpu_to_gpu"`` mode currently falls back to Warp's explicit segmented
+- ``wp.DeterministicMode.GPU_TO_GPU`` currently falls back to Warp's explicit segmented
   reduction path for scalar scatter reductions. Each segment head accumulates
   its segment serially so the accumulation order is fully controlled by Warp.
-  This is correct but much slower than the ``"run_to_run"`` CUB ``ReduceByKey``
+  This is correct but much slower than the ``wp.DeterministicMode.RUN_TO_RUN`` CUB ``ReduceByKey``
   fast path in high-contention cases.
 - Deterministic scatter overflow detection is disabled for CUDA graph capture
   and replay to keep graph launches asynchronous. Graph workloads should size
@@ -381,7 +381,7 @@ in-kernel counter resets.
 The suite in ``warp/tests/test_deterministic.py`` covers:
 
 - **Bit-exact reproducibility** (Pattern A): launch the same kernel 10 times
-  with the module ``deterministic`` option set to ``"run_to_run"``, assert
+  with the module ``deterministic`` option set to ``wp.DeterministicMode.RUN_TO_RUN``, assert
   ``np.array_equal`` across all runs for
   float32 scatter-add, ``+=`` syntax, float64, and atomic-sub.
 - **Composite leaf types**: deterministic ``wp.vec3`` atomic-add and
@@ -417,7 +417,7 @@ The suite in ``warp/tests/test_deterministic.py`` covers:
 - **Mixed pattern**: both counter and accumulation in one kernel.
 - **Integer passthrough**: integer ``atomic_add`` with unused return incurs no
   transformation; result matches ``np.bincount``.
-- **Per-module override**: ``@wp.kernel(module_options={"deterministic": "gpu_to_gpu"},
+- **Per-module override**: ``@wp.kernel(module_options={"deterministic": wp.DeterministicMode.GPU_TO_GPU},
   module="unique")`` works with global config off.
 - **Recorded launch support**: ``wp.launch(..., record_cmd=True)`` works for
   deterministic CUDA kernels.

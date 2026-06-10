@@ -178,7 +178,7 @@ class TestUniqueModule(unittest.TestCase):
 
         @wp.kernel(
             module="unique",
-            module_options={"deterministic": "run_to_run", "deterministic_max_records": 1},
+            module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN, "deterministic_max_records": 1},
         )
         def _scatter_deterministic(
             values: wp.array(dtype=wp.float32), indices: wp.array(dtype=wp.int32), out: wp.array(dtype=float)
@@ -215,7 +215,7 @@ class TestUniqueModule(unittest.TestCase):
 
         @wp.kernel(
             module="unique",
-            module_options={"deterministic": "run_to_run", "deterministic_max_records": 1},
+            module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN, "deterministic_max_records": 1},
         )
         def _scatter_deterministic(
             values: wp.array(dtype=wp.float32), indices: wp.array(dtype=wp.int32), out: wp.array(dtype=float)
@@ -234,7 +234,7 @@ class TestUniqueModule(unittest.TestCase):
 
         self.assertTrue(hasattr(_scatter_deterministic.adj, "det_meta"))
         self.assertTrue(_scatter_deterministic.adj.det_meta.needs_deterministic)
-        self.assertEqual(_scatter_deterministic.adj.det_meta.determinism_mode, "run_to_run")
+        self.assertEqual(_scatter_deterministic.adj.det_meta.determinism_mode, wp.DeterministicMode.RUN_TO_RUN)
         self.assertEqual(_scatter_deterministic.adj.det_meta.max_records, 1)
 
     def test_global_deterministic_captured_at_module_creation(self):
@@ -242,7 +242,7 @@ class TestUniqueModule(unittest.TestCase):
 
         old_det = wp.config.deterministic
         try:
-            wp.config.deterministic = wp.config.DeterministicMode.NOT_GUARANTEED
+            wp.config.deterministic = wp.DeterministicMode.NOT_GUARANTEED
 
             @wp.kernel(module="unique")
             def _config_capture_kernel(out: wp.array(dtype=float)):
@@ -251,16 +251,16 @@ class TestUniqueModule(unittest.TestCase):
 
             self.assertEqual(
                 _config_capture_kernel.module.options["deterministic"],
-                wp.config.DeterministicMode.NOT_GUARANTEED,
+                wp.DeterministicMode.NOT_GUARANTEED,
             )
             hash_before = _config_capture_kernel.module.get_module_hash()
 
-            wp.config.deterministic = wp.config.DeterministicMode.RUN_TO_RUN
+            wp.config.deterministic = wp.DeterministicMode.RUN_TO_RUN
             hash_after = _config_capture_kernel.module.get_module_hash()
 
             self.assertEqual(
                 _config_capture_kernel.module.options["deterministic"],
-                wp.config.DeterministicMode.NOT_GUARANTEED,
+                wp.DeterministicMode.NOT_GUARANTEED,
             )
             self.assertEqual(hash_before, hash_after)
         finally:

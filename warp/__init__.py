@@ -488,6 +488,11 @@ from . import types as types
 from . import utils as utils
 
 
+# category: Configuration Modes
+
+from warp.config import DeterministicMode as DeterministicMode
+
+
 # category: Misc
 
 from warp._src.math import *

@@ -30,7 +30,7 @@ file that defines your kernels, before the kernels are defined:
 
     import warp as wp
 
-    wp.set_module_options({"deterministic": wp.config.DeterministicMode.RUN_TO_RUN})
+    wp.set_module_options({"deterministic": wp.DeterministicMode.RUN_TO_RUN})
 
 
     @wp.kernel
@@ -61,34 +61,29 @@ For a process-wide default, set :attr:`wp.config.deterministic
 
     import warp as wp
 
-    wp.config.deterministic = wp.config.DeterministicMode.RUN_TO_RUN
+    wp.config.deterministic = wp.DeterministicMode.RUN_TO_RUN
 
 If you only want to experiment with one kernel in an otherwise shared Python
 module, put that kernel in a unique module and pass module options:
 
 .. code:: python
 
-    @wp.kernel(module="unique", module_options={"deterministic": wp.config.DeterministicMode.RUN_TO_RUN})
+    @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
     def accumulate(...):
         ...
 
 The accepted modes are:
 
-``wp.config.DeterministicMode.NOT_GUARANTEED``
+``wp.DeterministicMode.NOT_GUARANTEED``
     The default.  Warp uses normal atomics.
 
-``wp.config.DeterministicMode.RUN_TO_RUN``
+``wp.DeterministicMode.RUN_TO_RUN``
     Results are reproducible across repeated runs on the same GPU architecture.
     This is the usual setting for debugging and regression tests.
 
-``wp.config.DeterministicMode.GPU_TO_GPU``
+``wp.DeterministicMode.GPU_TO_GPU``
     Uses a stronger reduction path intended to preserve the same result across
     GPU architectures.  It is more conservative and can be slower.
-
-String values such as ``"run_to_run"`` are also accepted in module options, but
-the process-wide :attr:`wp.config.deterministic <warp.config.deterministic>`
-setting expects a :class:`wp.config.DeterministicMode
-<warp.config.DeterministicMode>` value.
 
 Choosing a Scope
 ----------------
@@ -139,7 +134,7 @@ output arrays, and the atomic return value is ignored:
 
 .. code:: python
 
-    @wp.kernel(module="unique", module_options={"deterministic": wp.config.DeterministicMode.RUN_TO_RUN})
+    @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
     def bin_values(
         values: wp.array[wp.float32],
         bins: wp.array[wp.int32],
@@ -158,9 +153,10 @@ After the kernel finishes, Warp sorts those records into a stable order and
 then reduces each group.  This is similar to the "sort then reduce by key"
 pattern used in CUDA programming.  Internally, Warp uses CUB device-wide
 primitives from NVIDIA CCCL, including `CUB DeviceRadixSort`_ and
-`CUB DeviceReduce`_, for the fast ``"run_to_run"`` scalar path.  Composite
-types and the stronger ``"gpu_to_gpu"`` path use a Warp-controlled segmented
-reduction so the accumulation order is explicit.
+`CUB DeviceReduce`_, for the fast ``wp.DeterministicMode.RUN_TO_RUN`` scalar
+path.  Composite types and the stronger ``wp.DeterministicMode.GPU_TO_GPU``
+path use a Warp-controlled segmented reduction so the accumulation order is
+explicit.
 
 The following operations are handled by this pattern:
 
@@ -190,7 +186,7 @@ Some kernels use an atomic return value as a slot number:
 
 .. code:: python
 
-    @wp.kernel(module="unique", module_options={"deterministic": wp.config.DeterministicMode.RUN_TO_RUN})
+    @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
     def compact_positive(
         values: wp.array[wp.float32],
         count: wp.array[wp.int32],
@@ -241,7 +237,7 @@ The most common example is a gather in the forward pass:
 
 .. code:: python
 
-    @wp.kernel(module="unique", module_options={"deterministic": wp.config.DeterministicMode.RUN_TO_RUN})
+    @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
     def gather(
         values: wp.array[wp.float32],
         indices: wp.array[wp.int32],
@@ -362,27 +358,28 @@ counts[n - 1]``.
 Picking the Right Mode
 ----------------------
 
-Start with ``"run_to_run"``.  It gives bit-exact repeated runs on the same GPU
-architecture and is the fastest deterministic mode.  For scalar accumulation
-atomics, Warp writes scatter records, sorts them by destination and linear
-thread index, and then uses `CUB DeviceReduce`_ reduce-by-key to combine
-records with the same destination.  This is stable for repeated runs on the
-same GPU architecture, but the internal reduction tree may vary across
-architectures.
+Start with ``wp.DeterministicMode.RUN_TO_RUN``.  It gives bit-exact repeated
+runs on the same GPU architecture and is the fastest deterministic mode.  For
+scalar accumulation atomics, Warp writes scatter records, sorts them by
+destination and linear thread index, and then uses `CUB DeviceReduce`_
+reduce-by-key to combine records with the same destination.  This is stable for
+repeated runs on the same GPU architecture, but the internal reduction tree may
+vary across architectures.
 
-Use ``"gpu_to_gpu"`` when the same kernel should produce the same result across
-GPU architectures.  Warp still uses CUB radix sort to group records, but it
-does not use CUB's scalar reduce-by-key path.  Instead, Warp launches a
-segmented reduction kernel that walks each sorted destination segment in
-thread-index order.  That fixed accumulation order is more conservative and can
-be slower, especially when many threads contribute to the same destination.
+Use ``wp.DeterministicMode.GPU_TO_GPU`` when the same kernel should produce the
+same result across GPU architectures.  Warp still uses CUB radix sort to group
+records, but it does not use CUB's scalar reduce-by-key path.  Instead, Warp
+launches a segmented reduction kernel that walks each sorted destination
+segment in thread-index order.  That fixed accumulation order is more
+conservative and can be slower, especially when many threads contribute to the
+same destination.
 
 Composite values such as vectors, matrices, quaternions, transforms, and
 ``wp.Struct`` fields already use Warp's segmented reduction path in both modes.
 Pattern 2 slot allocation uses the same count-scan-write algorithm in both
 enabled modes.
 
-The mode names match the determinism vocabulary used by NVIDIA CCCL.  Recent
+The enum values correspond to determinism levels used by NVIDIA CCCL.  Recent
 CCCL releases also expose determinism controls for some CUB reductions; see
 `Controlling Floating-Point Determinism in NVIDIA CCCL`_ for background.  Warp's
 feature is different in scope: it targets Warp kernel atomics and automatically
@@ -410,7 +407,7 @@ option directly:
     @wp.kernel(
         module="unique",
         module_options={
-            "deterministic": wp.config.DeterministicMode.RUN_TO_RUN,
+            "deterministic": wp.DeterministicMode.RUN_TO_RUN,
             "deterministic_max_records": 8,
         },
     )
@@ -493,10 +490,10 @@ Pattern A: Accumulation Atomics
 
 Accumulation atomics can get faster when many threads write to the
 same output element.  Normal floating-point atomics serialize at the hot
-address.  Deterministic ``"run_to_run"`` mode instead writes temporary records,
-sorts them by destination, and reduces each group.  That extra work is not free,
-but it can remove enough atomic contention to win.  Sparse atomics usually slow
-down because there is little contention to remove.
+address.  Deterministic ``wp.DeterministicMode.RUN_TO_RUN`` mode instead writes
+temporary records, sorts them by destination, and reduces each group.  That
+extra work is not free, but it can remove enough atomic contention to win.
+Sparse atomics usually slow down because there is little contention to remove.
 
 The benchmark kernel for Pattern A is deliberately small:
 
@@ -522,8 +519,8 @@ The benchmark kernel for Pattern A is deliberately small:
     )
 
 To compare modes, the benchmark uses the same kernel body compiled normally,
-with ``module_options={"deterministic": wp.config.DeterministicMode.RUN_TO_RUN}``,
-and with ``module_options={"deterministic": wp.config.DeterministicMode.GPU_TO_GPU}``.
+with ``module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN}``,
+and with ``module_options={"deterministic": wp.DeterministicMode.GPU_TO_GPU}``.
 The timed path is CUDA graph replay of the output zeroing plus the kernel launch,
 measured with CUDA events.
 
@@ -538,10 +535,10 @@ contention.
 
    * - Writes
      - Outputs
-     - ``"not_guaranteed"``
-     - ``"run_to_run"``
-     - ``"gpu_to_gpu"``
-     - ``"run_to_run"`` ratio
+     - ``NOT_GUARANTEED``
+     - ``RUN_TO_RUN``
+     - ``GPU_TO_GPU``
+     - ``RUN_TO_RUN`` ratio
    * - 65,536
      - 1
      - 0.099 ms
@@ -579,11 +576,12 @@ contention.
      - 0.228 ms
      - 10.0x
 
-The first three rows are the high-contention case: ``"run_to_run"`` gets faster
-as the number of writes to the one output grows.  The last three rows are the
-low-contention case: normal atomics are already cheap, so sorting dominates.
-The ``"gpu_to_gpu"`` mode preserves a stricter order and is intentionally more
-expensive for one long destination segment.
+The first three rows are the high-contention case:
+``wp.DeterministicMode.RUN_TO_RUN`` gets faster as the number of writes to the
+one output grows.  The last three rows are the low-contention case: normal
+atomics are already cheap, so sorting dominates.
+``wp.DeterministicMode.GPU_TO_GPU`` preserves a stricter order and is
+intentionally more expensive for one long destination segment.
 
 Pattern B: Slot Allocation Counters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -608,14 +606,15 @@ Slot allocation has a different shape.  The kernel is:
 
 Deterministic mode turns this into a counting pass, a sort by counter element
 and deterministic reservation order, a segmented prefix scan, and an execution
-pass.  ``"run_to_run"`` and ``"gpu_to_gpu"`` use the same slot allocation
-algorithm.  This table uses direct launches measured with CUDA events.
+pass.  ``wp.DeterministicMode.RUN_TO_RUN`` and
+``wp.DeterministicMode.GPU_TO_GPU`` use the same slot allocation algorithm.
+This table uses direct launches measured with CUDA events.
 
 .. list-table::
    :header-rows: 1
 
    * - Writes
-     - ``"not_guaranteed"``
+     - ``NOT_GUARANTEED``
      - Deterministic
      - Ratio
    * - 65,536
@@ -650,7 +649,7 @@ Unsupported atomics
 
     .. code:: python
 
-        @wp.kernel(module="unique", module_options={"deterministic": wp.config.DeterministicMode.RUN_TO_RUN})
+        @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
         def not_rewritten(lock: wp.array[wp.int32]):
             # Compare-and-swap is still the ordinary Warp atomic.
             wp.atomic_cas(lock, 0, 0, 1)
@@ -670,7 +669,7 @@ One reduction family per target
 
     .. code:: python
 
-        @wp.kernel(module="unique", module_options={"deterministic": wp.config.DeterministicMode.RUN_TO_RUN})
+        @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
         def rejected(values: wp.array[wp.float32], out: wp.array[wp.float32]):
             tid = wp.tid()
             wp.atomic_add(out, 0, values[tid])
@@ -680,7 +679,7 @@ One reduction family per target
 
     .. code:: python
 
-        @wp.kernel(module="unique", module_options={"deterministic": wp.config.DeterministicMode.RUN_TO_RUN})
+        @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
         def allowed(
             values: wp.array[wp.float32],
             sum_out: wp.array[wp.float32],
@@ -699,7 +698,7 @@ Side effects in the counting pass
 
     .. code:: python
 
-        @wp.kernel(module="unique", module_options={"deterministic": wp.config.DeterministicMode.RUN_TO_RUN})
+        @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
         def avoid_scratch_dependency(
             values: wp.array[wp.float32],
             scratch: wp.array[wp.float32],
@@ -724,7 +723,7 @@ Fixed scatter capacity
         @wp.kernel(
             module="unique",
             module_options={
-                "deterministic": wp.config.DeterministicMode.RUN_TO_RUN,
+                "deterministic": wp.DeterministicMode.RUN_TO_RUN,
                 "deterministic_max_records": 4,
             },
         )
@@ -750,7 +749,7 @@ Checklist
 
 When enabling deterministic mode in a new kernel:
 
-1. Start with ``wp.set_module_options({"deterministic": wp.config.DeterministicMode.RUN_TO_RUN})``
+1. Start with ``wp.set_module_options({"deterministic": wp.DeterministicMode.RUN_TO_RUN})``
    for an existing module, or a unique module with ``module_options`` for one
    targeted kernel.
 2. Run the kernel several times and compare outputs with
@@ -780,8 +779,10 @@ familiar in NVIDIA libraries:
   group equal destinations, then reduce each group.
 * Pattern 2 follows the standard count-scan-write pattern and uses scan
   primitives conceptually like CUB ``DeviceScan``.
-* The ``"not_guaranteed"``, ``"run_to_run"``, and ``"gpu_to_gpu"`` names match
-  the determinism levels described for CCCL reductions.
+* ``wp.DeterministicMode.NOT_GUARANTEED``,
+  ``wp.DeterministicMode.RUN_TO_RUN``, and
+  ``wp.DeterministicMode.GPU_TO_GPU`` correspond to the determinism levels
+  described for CCCL reductions.
 
 These references are useful if you want to understand the lower-level CUDA
 building blocks behind Warp's higher-level switch.

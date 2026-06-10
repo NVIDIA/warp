@@ -259,7 +259,7 @@ def _det_increment_array(output: wp.array[wp.float32], index: int):
 
 
 def _make_deterministic_closure_kernel(transform_func):
-    @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
+    @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
     def _deterministic_closure_kernel(
         data: wp.array[wp.float32],
         output: wp.array[wp.float32],
@@ -270,7 +270,7 @@ def _make_deterministic_closure_kernel(transform_func):
     return _deterministic_closure_kernel
 
 
-@wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
+@wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
 def helper_name_collision_kernel(
     a_b: wp.array[wp.float32],
     a: _DetNameCollisionStruct,
@@ -314,7 +314,9 @@ def triple_scatter_add_kernel(
     wp.atomic_add(output, 0, val * 3.0)
 
 
-@wp.kernel(module="unique", module_options={"deterministic": "run_to_run", "deterministic_max_records": 4})
+@wp.kernel(
+    module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN, "deterministic_max_records": 4}
+)
 def loop_scatter_add_kernel(
     data: wp.array[wp.float32],
     counts: wp.array[wp.int32],
@@ -328,7 +330,9 @@ def loop_scatter_add_kernel(
         wp.atomic_add(output, 0, val)
 
 
-@wp.kernel(module="unique", module_options={"deterministic": "run_to_run", "deterministic_max_records": 1})
+@wp.kernel(
+    module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN, "deterministic_max_records": 1}
+)
 def underprovisioned_loop_scatter_kernel(
     data: wp.array[wp.float32],
     counts: wp.array[wp.int32],
@@ -381,7 +385,7 @@ def test_gpu_to_gpu_matches_canonical_float32_reference(test, device):
 
     old_det = _get_test_module_options()["deterministic"]
     try:
-        _set_test_module_options({"deterministic": "gpu_to_gpu"})
+        _set_test_module_options({"deterministic": wp.DeterministicMode.GPU_TO_GPU})
         result = assert_equal_repeated(
             lambda: _launch_scatter_once(scatter_add_kernel, data_np.shape[0], data, indices, out_size, device)
         )
@@ -959,7 +963,7 @@ def test_mixed_reduce_ops_same_array(test, device):
 
     with test.assertRaisesRegex(Exception, "does not support mixing"):
 
-        @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
+        @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
         def mixed_reduce_op_same_array_local_kernel(
             data: wp.array[wp.float32],
             output: wp.array[wp.float32],

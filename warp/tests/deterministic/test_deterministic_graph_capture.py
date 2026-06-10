@@ -101,7 +101,7 @@ def test_graph_capture_sliced_array(test, device):
     """Verify deterministic sliced-array atomics can be captured and replayed."""
     # The graph suite enables run-to-run deterministic mode for the module that
     # defines the sliced-array kernel.
-    test.assertEqual(wp.get_module_options(module=scatter_module)["deterministic"], "run_to_run")
+    test.assertEqual(wp.get_module_options(module=scatter_module)["deterministic"], wp.DeterministicMode.RUN_TO_RUN)
 
     n = 256
     rows, cols = 8, 8

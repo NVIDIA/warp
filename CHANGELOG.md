@@ -79,10 +79,11 @@
   parameters of any size, and `@wp.struct` / `wp.indexedarray` launch arguments that reference Warp array data,
   gradient buffers, or `wp.indexedarray` indices
   ([GH-1431](https://github.com/NVIDIA/warp/issues/1431)).
-- Add deterministic execution mode for atomic operations via `wp.config.deterministic = "run_to_run"`. Supported atomic
-  accumulation and slot-allocation patterns can produce bit-exact repeated results. Configurable at the global and module
-  level. Use `wp.config.deterministic_max_records` to raise the default per-thread record bound for deterministic atomics
-  in modules created after the config is set ([GH-1443](https://github.com/NVIDIA/warp/issues/1443)).
+- Add deterministic execution mode for atomic operations via
+  `wp.config.deterministic = wp.DeterministicMode.RUN_TO_RUN`. Supported atomic accumulation and slot-allocation patterns
+  can produce bit-exact repeated results. Configurable at the global and module level. Use
+  `wp.config.deterministic_max_records` to raise the default per-thread record bound for deterministic atomics in modules
+  created after the config is set ([GH-1443](https://github.com/NVIDIA/warp/issues/1443)).
 - Expose CUDA graph capture mode via `ScopedCapture` / `capture_begin()`
   ([GH-1410](https://github.com/NVIDIA/warp/issues/1410)).
 - Add pre-allocated functors for `warp.optim.linear` solvers. Passing `run=False` to `cg`, `cr`, `bicgstab`, or `gmres`

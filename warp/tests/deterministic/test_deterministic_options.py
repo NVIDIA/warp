@@ -33,7 +33,7 @@ class _DetTileStackEntry:
     weight: wp.float32
 
 
-@wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
+@wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
 def struct_tile_stack_kernel(out: wp.array[wp.int32]):
     _i, j = wp.tid()
     stack = wp.tile_stack(capacity=16, dtype=_DetTileStackEntry)
@@ -76,7 +76,7 @@ def test_module_option_override(test, device):
     """Verify per-module deterministic option works."""
 
     # Create a kernel with a per-module deterministic override.
-    @wp.kernel(module_options={"deterministic": "gpu_to_gpu"}, module="unique")
+    @wp.kernel(module_options={"deterministic": wp.DeterministicMode.GPU_TO_GPU}, module="unique")
     def per_kernel_det(
         data: wp.array[wp.float32],
         output: wp.array[wp.float32],
@@ -92,7 +92,7 @@ def test_module_option_override(test, device):
     # Ensure the shared module is disabled but the unique module option still works.
     old_det = _get_test_module_options()["deterministic"]
     try:
-        _set_test_module_options({"deterministic": "not_guaranteed"})
+        _set_test_module_options({"deterministic": wp.DeterministicMode.NOT_GUARANTEED})
         output = wp.zeros(4, dtype=wp.float32, device=device)
         wp.launch(per_kernel_det, dim=n, inputs=[data], outputs=[output], device=device)
         result = output.numpy()
@@ -106,29 +106,24 @@ def test_module_option_override(test, device):
 
 
 def test_deterministic_mode_validation(test, device):
-    """Verify deterministic mode accepts explicit modes and rejects boolean shorthands."""
+    """Verify deterministic mode accepts explicit enum values only."""
     del device
 
-    test.assertEqual(
-        wp_deterministic.normalize_deterministic_mode(wp.config.DeterministicMode.RUN_TO_RUN),
-        wp_deterministic.DETERMINISTIC_RUN_TO_RUN,
-    )
-    test.assertEqual(
-        wp_deterministic.normalize_deterministic_mode("gpu_to_gpu"),
-        wp_deterministic.DETERMINISTIC_GPU_TO_GPU,
-    )
+    test.assertEqual(wp_deterministic.DETERMINISTIC_NOT_GUARANTEED, wp.DeterministicMode.NOT_GUARANTEED)
+    test.assertEqual(wp_deterministic.DETERMINISTIC_RUN_TO_RUN, wp.DeterministicMode.RUN_TO_RUN)
+    test.assertEqual(wp_deterministic.DETERMINISTIC_GPU_TO_GPU, wp.DeterministicMode.GPU_TO_GPU)
 
-    @wp.kernel(module="unique", module_options={"deterministic": wp.config.DeterministicMode.RUN_TO_RUN})
+    @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
     def _enum_mode_kernel(output: wp.array[wp.float32]):
         output[0] = 1.0
 
     options = _enum_mode_kernel.module.resolve_options(wp.config)
-    test.assertEqual(options["deterministic"], wp_deterministic.DETERMINISTIC_RUN_TO_RUN)
+    test.assertEqual(options["deterministic"], wp.DeterministicMode.RUN_TO_RUN)
 
     old_det = wp.config.deterministic
     try:
-        wp.config.deterministic = wp.config.DeterministicMode.GPU_TO_GPU
-        test.assertEqual(wp.config.deterministic, wp.config.DeterministicMode.GPU_TO_GPU)
+        wp.config.deterministic = wp.DeterministicMode.GPU_TO_GPU
+        test.assertEqual(wp.config.deterministic, wp.DeterministicMode.GPU_TO_GPU)
 
         with test.assertRaisesRegex(ValueError, "DeterministicMode"):
             wp.config.deterministic = "run_to_run"
@@ -138,15 +133,16 @@ def test_deterministic_mode_validation(test, device):
     finally:
         wp.config.deterministic = old_det
 
-    for value in (True, False, "deterministic"):
-        with test.subTest(value=value), test.assertRaisesRegex(ValueError, "deterministic must be"):
-            wp_deterministic.normalize_deterministic_mode(value)
-
-    with test.assertRaisesRegex(ValueError, "got bool"):
-
-        @wp.kernel(module="unique", module_options={"deterministic": True})
-        def _bool_mode_kernel(output: wp.array[wp.float32]):
+    def make_bad_kernel(value):
+        @wp.kernel(module="unique", module_options={"deterministic": value})
+        def _bad_mode_kernel(output: wp.array[wp.float32]):
             output[0] = 1.0
+
+        _bad_mode_kernel.module.resolve_options(wp.config)
+
+    for value in (True, False, "run_to_run", "deterministic"):
+        with test.subTest(value=value), test.assertRaisesRegex(ValueError, "DeterministicMode"):
+            make_bad_kernel(value)
 
 
 def test_deterministic_enum_parity(test, device):
@@ -185,15 +181,9 @@ def test_deterministic_enum_parity(test, device):
     test.assertEqual(
         native_deterministic_levels,
         {
-            "DETERMINISTIC_NOT_GUARANTEED": wp_deterministic._DETERMINISTIC_MODE_IDS[
-                wp_deterministic.DETERMINISTIC_NOT_GUARANTEED
-            ],
-            "DETERMINISTIC_RUN_TO_RUN": wp_deterministic._DETERMINISTIC_MODE_IDS[
-                wp_deterministic.DETERMINISTIC_RUN_TO_RUN
-            ],
-            "DETERMINISTIC_GPU_TO_GPU": wp_deterministic._DETERMINISTIC_MODE_IDS[
-                wp_deterministic.DETERMINISTIC_GPU_TO_GPU
-            ],
+            "DETERMINISTIC_NOT_GUARANTEED": int(wp_deterministic.DETERMINISTIC_NOT_GUARANTEED),
+            "DETERMINISTIC_RUN_TO_RUN": int(wp_deterministic.DETERMINISTIC_RUN_TO_RUN),
+            "DETERMINISTIC_GPU_TO_GPU": int(wp_deterministic.DETERMINISTIC_GPU_TO_GPU),
         },
     )
     test.assertEqual(

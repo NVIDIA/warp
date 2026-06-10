@@ -33,6 +33,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from warp._src.types import float_types, int32, is_array, type_repr, type_size_in_bytes
+from warp.config import DeterministicMode
 
 if TYPE_CHECKING:
     from warp._src.context import Device, KernelHooks, Stream
@@ -67,69 +68,14 @@ REDUCE_OP_ADD = 0
 REDUCE_OP_MIN = 1
 REDUCE_OP_MAX = 2
 
-DETERMINISTIC_NOT_GUARANTEED = "not_guaranteed"
-DETERMINISTIC_RUN_TO_RUN = "run_to_run"
-DETERMINISTIC_GPU_TO_GPU = "gpu_to_gpu"
+DETERMINISTIC_NOT_GUARANTEED = DeterministicMode.NOT_GUARANTEED
+DETERMINISTIC_RUN_TO_RUN = DeterministicMode.RUN_TO_RUN
+DETERMINISTIC_GPU_TO_GPU = DeterministicMode.GPU_TO_GPU
 
 DETERMINISTIC_FAMILY_ADD = "add"
 DETERMINISTIC_FAMILY_MIN = "min"
 DETERMINISTIC_FAMILY_MAX = "max"
 DETERMINISTIC_FAMILY_COUNTER = "counter"
-
-_VALID_DETERMINISTIC_MODES = {
-    DETERMINISTIC_NOT_GUARANTEED,
-    DETERMINISTIC_RUN_TO_RUN,
-    DETERMINISTIC_GPU_TO_GPU,
-}
-
-_DETERMINISTIC_MODE_IDS = {
-    DETERMINISTIC_NOT_GUARANTEED: 0,
-    DETERMINISTIC_RUN_TO_RUN: 1,
-    DETERMINISTIC_GPU_TO_GPU: 2,
-}
-
-
-def _format_valid_deterministic_modes() -> str:
-    return ", ".join(repr(mode) for mode in sorted(_VALID_DETERMINISTIC_MODES))
-
-
-def normalize_deterministic_mode(value) -> str:
-    """Return the string value for a deterministic mode.
-
-    Module options accept the public ``warp.config.DeterministicMode`` enum and
-    the existing string values. Booleans are rejected so the mode selection stays
-    explicit.
-    """
-    if isinstance(value, bool):
-        raise ValueError(
-            "deterministic must be a warp.config.DeterministicMode value or one of "
-            f"{_format_valid_deterministic_modes()}, got bool"
-        )
-
-    enum_value = getattr(value, "value", None)
-    if enum_value in _VALID_DETERMINISTIC_MODES:
-        return enum_value
-
-    if isinstance(value, str) and value in _VALID_DETERMINISTIC_MODES:
-        return value
-
-    raise ValueError(
-        "deterministic must be a warp.config.DeterministicMode value or one of "
-        f"{_format_valid_deterministic_modes()}, got {value!r}"
-    )
-
-
-def is_deterministic_mode_enabled(value) -> bool:
-    """Return ``True`` if a deterministic mode stronger than default is enabled."""
-    if value is None:
-        return False
-    value = normalize_deterministic_mode(value)
-    return value != DETERMINISTIC_NOT_GUARANTEED
-
-
-def deterministic_mode_to_id(value) -> int:
-    """Map a deterministic mode to the native enum id."""
-    return _DETERMINISTIC_MODE_IDS[normalize_deterministic_mode(value)]
 
 
 def reduce_op_to_family(reduce_op: int) -> str:
@@ -246,7 +192,7 @@ class DeterministicMeta:
     remap and merge those requirements when emitting the call site.
     """
 
-    determinism_mode: str = DETERMINISTIC_NOT_GUARANTEED
+    determinism_mode: DeterministicMode = DeterministicMode.NOT_GUARANTEED
     max_records: int = 0
     scatter_targets: list[ScatterTarget] = field(default_factory=list)
     counter_targets: list[CounterTarget] = field(default_factory=list)
@@ -1412,7 +1358,7 @@ def run_sort_reduce(
     import warp  # noqa: PLC0415
 
     workspaces = []
-    determinism_mode_id = deterministic_mode_to_id(determinism_mode)
+    determinism_mode_id = int(determinism_mode)
 
     for i, target in enumerate(scatter_targets):
         keys, values, _counter, capacity = scatter_buffers[i]

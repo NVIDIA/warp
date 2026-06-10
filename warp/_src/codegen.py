@@ -1390,11 +1390,11 @@ class Adjoint:
         from warp._src.deterministic import (  # noqa: PLC0415
             DeterministicMeta,
             DeterministicRegistry,
-            is_deterministic_mode_enabled,
         )
+        from warp.config import DeterministicMode  # noqa: PLC0415
 
         deterministic_mode = adj.builder_options.get("deterministic")
-        if is_deterministic_mode_enabled(deterministic_mode):
+        if deterministic_mode != DeterministicMode.NOT_GUARANTEED:
             adj.det_meta = DeterministicMeta(
                 determinism_mode=deterministic_mode,
                 max_records=adj.builder_options.get("deterministic_max_records", 0),

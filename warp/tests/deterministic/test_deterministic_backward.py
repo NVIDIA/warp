@@ -81,7 +81,7 @@ def _replay_det_custom_replay_counter(counter: wp.array[wp.int32], tids: wp.arra
     return tids[tid]
 
 
-@wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
+@wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
 def custom_replay_counter_kernel(
     data: wp.array[wp.float32],
     counter: wp.array[wp.int32],
@@ -215,7 +215,7 @@ def test_deterministic_backward_address_scatter(test, device):
 
     old_det = _get_test_module_options()["deterministic"]
     try:
-        _set_test_module_options({"deterministic": "gpu_to_gpu"})
+        _set_test_module_options({"deterministic": wp.DeterministicMode.GPU_TO_GPU})
         results = []
         for _ in range(3):
             values.grad.zero_()
@@ -250,7 +250,7 @@ def test_deterministic_backward_vec3_address_scatter(test, device):
 
     old_det = _get_test_module_options()["deterministic"]
     try:
-        _set_test_module_options({"deterministic": "gpu_to_gpu"})
+        _set_test_module_options({"deterministic": wp.DeterministicMode.GPU_TO_GPU})
         results = []
         for _ in range(3):
             values.grad.zero_()
@@ -286,7 +286,7 @@ def test_deterministic_backward_missing_adjoint_target(test, device):
 
     old_det = _get_test_module_options()["deterministic"]
     try:
-        _set_test_module_options({"deterministic": "gpu_to_gpu"})
+        _set_test_module_options({"deterministic": wp.DeterministicMode.GPU_TO_GPU})
         results = []
         for _ in range(3):
             scale.grad.zero_()
@@ -383,7 +383,7 @@ def test_deterministic_custom_adjoint_gather_atomic(test, device):
 
     old_det = _get_test_module_options()["deterministic"]
     try:
-        _set_test_module_options({"deterministic": "gpu_to_gpu"})
+        _set_test_module_options({"deterministic": wp.DeterministicMode.GPU_TO_GPU})
         results = []
         for _ in range(3):
             values.grad.zero_()
@@ -431,7 +431,7 @@ def test_custom_adjoint_not_guaranteed_mode(test, device):
 
     old_det = _get_test_module_options()["deterministic"]
     try:
-        _set_test_module_options({"deterministic": "not_guaranteed"})
+        _set_test_module_options({"deterministic": wp.DeterministicMode.NOT_GUARANTEED})
 
         values = wp.array(values_np, dtype=wp.float32, device=device, requires_grad=True)
         indices = wp.array(indices_np, dtype=wp.int32, device=device)
@@ -447,7 +447,7 @@ def test_custom_adjoint_not_guaranteed_mode(test, device):
         result = tape.gradients[values].numpy()
 
         if not device.is_cpu:
-            _set_test_module_options({"deterministic": "run_to_run"})
+            _set_test_module_options({"deterministic": wp.DeterministicMode.RUN_TO_RUN})
 
             store_n = 32
             store_values_np = np.linspace(0.5, 2.0, store_n, dtype=np.float32)

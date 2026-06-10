@@ -16,7 +16,6 @@ For information on module-level and kernel-level settings, see :doc:`/user_guide
 
 import sys as _sys
 import types as _types
-from enum import Enum as _Enum
 from enum import IntEnum as _IntEnum
 
 from warp._src.logger import LOG_INFO as _LOG_INFO
@@ -81,7 +80,7 @@ class _ConfigModule(_types.ModuleType):
                 f"warp.config.launch_array_access_mode must be a warp.config.LaunchArrayAccessMode value, got {value!r}"
             )
         if name == "deterministic" and not isinstance(value, DeterministicMode):
-            raise ValueError(f"warp.config.deterministic must be a warp.config.DeterministicMode value, got {value!r}")
+            raise ValueError(f"warp.config.deterministic must be a warp.DeterministicMode value, got {value!r}")
         super().__setattr__(name, value)
 
 
@@ -102,16 +101,16 @@ class LaunchArrayAccessMode(_IntEnum):
     """Require every Warp array argument to be allocated on the launch device."""
 
 
-class DeterministicMode(str, _Enum):
+class DeterministicMode(_IntEnum):
     """Deterministic execution modes for supported atomic operations."""
 
-    NOT_GUARANTEED = "not_guaranteed"
+    NOT_GUARANTEED = 0
     """Use normal atomic execution without constraining atomic ordering."""
 
-    RUN_TO_RUN = "run_to_run"
+    RUN_TO_RUN = 1
     """Produce bit-exact repeated results on the same GPU architecture."""
 
-    GPU_TO_GPU = "gpu_to_gpu"
+    GPU_TO_GPU = 2
     """Use a stronger path intended to preserve results across GPU architectures."""
 
 
@@ -457,10 +456,10 @@ deterministic: DeterministicMode = DeterministicMode.NOT_GUARANTEED
 
 Accepted values are:
 
-- ``DeterministicMode.NOT_GUARANTEED``: Default behavior.
-- ``DeterministicMode.RUN_TO_RUN``: Bit-exact repeated results on the same GPU
+- ``wp.DeterministicMode.NOT_GUARANTEED``: Default behavior.
+- ``wp.DeterministicMode.RUN_TO_RUN``: Bit-exact repeated results on the same GPU
   architecture.
-- ``DeterministicMode.GPU_TO_GPU``: Stronger cross-GPU reproducibility path.
+- ``wp.DeterministicMode.GPU_TO_GPU``: Stronger cross-GPU reproducibility path.
 
 Set this before module creation/import for it to apply broadly. Existing
 modules can be changed by setting the ``"deterministic"`` module option.

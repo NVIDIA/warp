@@ -39,7 +39,7 @@ def _det_increment_array(scratch: wp.array[wp.float32], index: int):
     scratch[index] = scratch[index] + 1.0
 
 
-@wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
+@wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
 def struct_field_counter_kernel(
     data: wp.array[wp.float32],
     counts: wp.array[wp.int32],
@@ -53,7 +53,7 @@ def struct_field_counter_kernel(
             writer.output[base + i] = data[tid] + wp.float32(i) * wp.float32(0.5)
 
 
-@wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
+@wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
 def struct_field_helper_counter_kernel(
     data: wp.array[wp.float32],
     flags: wp.array[wp.int32],
@@ -64,7 +64,7 @@ def struct_field_helper_counter_kernel(
         _det_struct_counter_write(writer, data[tid])
 
 
-@wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
+@wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
 def helper_counter_side_effect_kernel(
     counter: wp.array[wp.int32],
     output: wp.array[wp.float32],
@@ -76,7 +76,7 @@ def helper_counter_side_effect_kernel(
     _det_counter_write(counter, output, float(tid))
 
 
-@wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
+@wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
 def counter_with_helper_store_kernel(
     counter: wp.array[wp.int32],
     output: wp.array[wp.float32],
@@ -170,7 +170,9 @@ def sliced_counter_kernel(
     output[bin, slot] = values[tid]
 
 
-@wp.kernel(module="unique", module_options={"deterministic": "run_to_run", "deterministic_max_records": 4})
+@wp.kernel(
+    module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN, "deterministic_max_records": 4}
+)
 def loop_indexed_counter_kernel(
     counts: wp.array[wp.int32],
     bins: wp.array[wp.int32],
@@ -200,7 +202,7 @@ def counter_side_effect_kernel(
     output[slot] = float(tid)
 
 
-@wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
+@wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
 def local_scratch_counter_kernel(
     counter: wp.array[wp.int32],
     output: wp.array[wp.int32],
@@ -217,7 +219,7 @@ def local_scratch_counter_kernel(
             output[slot] = tid * 2 + i
 
 
-@wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
+@wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
 def counter_with_atomic_xor_kernel(
     counter: wp.array[wp.int32],
     flag: wp.array[wp.int32],
@@ -235,7 +237,7 @@ def _det_set_flag(flag: wp.array[wp.int32], mask: wp.int32):
     wp.atomic_xor(flag, 0, mask)
 
 
-@wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
+@wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
 def counter_with_helper_atomic_xor_kernel(
     counter: wp.array[wp.int32],
     flag: wp.array[wp.int32],
@@ -248,7 +250,7 @@ def counter_with_helper_atomic_xor_kernel(
     output[slot] = tid
 
 
-@wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
+@wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
 def counter_with_consumed_atomic_xor_kernel(
     flag: wp.array[wp.int32],
     counter: wp.array[wp.int32],
@@ -262,7 +264,7 @@ def counter_with_consumed_atomic_xor_kernel(
         output[slot] = tid
 
 
-@wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
+@wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
 def counter_with_component_store_kernel(
     counter: wp.array[wp.int32],
     values: wp.array[wp.vec3],
@@ -680,7 +682,7 @@ def test_counter_int64_rejected(test, device):
     """Verify unsupported non-int32 consumed-return counters fail clearly."""
     with test.assertRaisesRegex(Exception, "int32 counter arrays"):
 
-        @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
+        @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
         def counter_int64_kernel(
             counter: wp.array[wp.int64],
             output: wp.array[wp.float32],
@@ -699,7 +701,7 @@ def test_counter_non_add_atomic_rejected(test, device):
     """Verify consumed-return deterministic counters only accept ``atomic_add``."""
     with test.assertRaisesRegex(Exception, "only for atomic_add"):
 
-        @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
+        @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
         def counter_sub_kernel(
             counter: wp.array[wp.int32],
             output: wp.array[wp.float32],
@@ -715,7 +717,7 @@ def test_counter_non_add_atomic_rejected(test, device):
 
     with test.assertRaisesRegex(Exception, "only for atomic_add"):
 
-        @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
+        @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
         def counter_max_kernel(
             counter: wp.array[wp.int32],
             output: wp.array[wp.float32],
@@ -736,7 +738,7 @@ def test_float_atomic_consumed_return_rejected(test, device):
 
     with test.assertRaisesRegex(Exception, pattern):
 
-        @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
+        @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
         def float_leader_if_kernel(
             total: wp.array[wp.float32],
             log: wp.array[wp.int32],
@@ -752,7 +754,7 @@ def test_float_atomic_consumed_return_rejected(test, device):
 
     with test.assertRaisesRegex(Exception, pattern):
 
-        @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
+        @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
         def float_nested_call_in_if_kernel(
             total: wp.array[wp.float32],
             out: wp.array[wp.float32],
@@ -768,7 +770,7 @@ def test_float_atomic_consumed_return_rejected(test, device):
 
     with test.assertRaisesRegex(Exception, pattern):
 
-        @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
+        @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
         def float_nested_bare_atomic_kernel(
             total: wp.array[wp.float32],
             other: wp.array[wp.float32],
@@ -784,7 +786,7 @@ def test_float_atomic_consumed_return_rejected(test, device):
 def test_float_atomic_bare_statement_allowed(test, device):
     """Verify bare-statement float atomics still lower to the scatter path."""
 
-    @wp.kernel(module="unique", module_options={"deterministic": "run_to_run"})
+    @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
     def bare_float_accum_kernel(
         contribs: wp.array[wp.float32],
         accum: wp.array[wp.float32],
