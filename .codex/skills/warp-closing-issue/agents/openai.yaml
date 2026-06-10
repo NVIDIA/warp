@@ -1,0 +1,4 @@
+interface:
+  display_name: "Warp Closing Issue"
+  short_description: "Assess supplied Warp commits"
+  default_prompt: "Use $warp-closing-issue to assess these Warp commits against these GitHub issues."
