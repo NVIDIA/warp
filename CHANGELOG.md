@@ -78,6 +78,9 @@
   can round away in float32. Parallel slabs are now handled explicitly, and the
   per-traversal epsilon expansion is removed
   ([GH-1530](https://github.com/NVIDIA/warp/issues/1530)).
+- Fix parameterized `@wp.func(...)` decorators, such as `@wp.func(module="unique")`, in directly executed scripts to
+  register successfully instead of raising `AttributeError` during decoration
+  ([GH-1544](https://github.com/NVIDIA/warp/issues/1544)).
 
 ### Documentation
 

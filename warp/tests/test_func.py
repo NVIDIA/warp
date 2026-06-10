@@ -3,8 +3,11 @@
 
 import inspect
 import math
+import subprocess
 import sys
+import tempfile
 import unittest
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -615,6 +618,25 @@ class TestFunc(unittest.TestCase):
         self.assertIn("offsets", params)
         self.assertIn("row_count", params)
         self.assertIn("block_index", params)
+
+    def test_parameterized_func_decorator_script_scope(self):
+        """Verify @wp.func(module="unique") registers in directly executed scripts."""
+
+        script = """\
+import warp as wp
+
+@wp.func(module="unique")
+def f(x: float):
+    return x + 1.0
+"""
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            script_path = Path(temp_dir) / "repro_wp_func_unique.py"
+            script_path.write_text(script, encoding="utf-8")
+
+            result = subprocess.run([sys.executable, script_path], capture_output=True, text=True, check=False)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
 
 devices = get_test_devices()

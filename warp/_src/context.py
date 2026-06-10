@@ -958,13 +958,17 @@ def func(
         :func:`warp.kernel` for defining kernels that can be launched on devices.
     """
 
+    frame = inspect.currentframe()
+    if frame is None or frame.f_back is None:
+        scope_locals = {}
+    else:
+        scope_locals = frame.f_back.f_locals
+
     def wrapper(f, *args, **kwargs):
         if name is None:
             key = warp._src.codegen.make_full_qualified_name(f)
         else:
             key = name
-
-        scope_locals = inspect.currentframe().f_back.f_back.f_locals
 
         if module is None:
             m = get_module(f.__module__)
