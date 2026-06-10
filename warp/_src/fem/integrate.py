@@ -49,13 +49,64 @@ from warp._src.fem.types import (
 )
 from warp._src.fem.utils import type_zero_element
 from warp._src.logger import log_warning
-from warp._src.sparse import BsrMatrix, bsr_set_from_triplets, bsr_zeros
 from warp._src.types import is_array, type_length, type_repr, type_scalar_type, type_size, type_to_warp
-from warp._src.utils import array_cast
+from warp._src.utils import array_cast, array_scan
+from warp.sparse import BsrMatrix, bsr_axpy, bsr_compress, bsr_set_from_triplets, bsr_set_zero, bsr_zeros
 
 __all__ = ["integrate", "interpolate"]
 
 _wp_module_name_ = "warp.fem.integrate"
+
+_BSR_CAPACITY_AUTO = "auto"
+_BSR_CAPACITY_REUSE = "reuse"
+
+_BSR_CONSTRUCTION_AUTO = "auto"
+_BSR_CONSTRUCTION_TRIPLETS = "triplets"
+_BSR_CONSTRUCTION_ROW_COMPRESS = "row_compress"
+
+
+def _bsr_values_as_3d_array(values: wp.array, block_shape: tuple[int, int]) -> wp.array:
+    return wp.array(
+        ptr=values.ptr,
+        capacity=values.capacity,
+        device=values.device,
+        dtype=type_scalar_type(values.dtype),
+        shape=(values.shape[0], *block_shape),
+        grad=None if values.grad is None else _bsr_values_as_3d_array(values.grad, block_shape),
+    )
+
+
+def _normalize_fem_bsr_options(bsr_options: dict[str, Any] | None) -> tuple[dict[str, Any], str, str]:
+    sparse_options = dict(bsr_options or {})
+
+    capacity = sparse_options.pop("capacity", _BSR_CAPACITY_AUTO)
+    if capacity not in (_BSR_CAPACITY_AUTO, _BSR_CAPACITY_REUSE):
+        raise ValueError(
+            f"Unsupported BSR capacity policy: {capacity}. Expected '{_BSR_CAPACITY_AUTO}' or '{_BSR_CAPACITY_REUSE}'"
+        )
+
+    construction = sparse_options.pop("construction", _BSR_CONSTRUCTION_TRIPLETS)
+    if construction not in (_BSR_CONSTRUCTION_AUTO, _BSR_CONSTRUCTION_TRIPLETS, _BSR_CONSTRUCTION_ROW_COMPRESS):
+        raise ValueError(
+            f"Unsupported BSR construction policy: {construction}. Expected '{_BSR_CONSTRUCTION_AUTO}', "
+            f"'{_BSR_CONSTRUCTION_TRIPLETS}', or '{_BSR_CONSTRUCTION_ROW_COMPRESS}'"
+        )
+
+    if "inplace" in sparse_options:
+        raise ValueError(
+            "fem.integrate() and fem.interpolate() choose bsr_compress(inplace=...) from output values "
+            "gradient requirements; use bsr_options['construction'] to select row compression"
+        )
+
+    return sparse_options, capacity, construction
+
+
+def _require_bsr_capacity(bsr: BsrMatrix, nnz: int, operation: str):
+    if bsr.columns.size < nnz or bsr.values.size < nnz:
+        raise RuntimeError(
+            f"{operation} with bsr_options['capacity']='reuse' requires existing BSR storage for at least "
+            f"{nnz} blocks, got columns={bsr.columns.size} and values={bsr.values.size}"
+        )
 
 
 def _resolve_path(func, node):
@@ -962,7 +1013,8 @@ def get_integrate_bilinear_kernel(
                     )
                 else:
                     trial_node_index = NULL_NODE_INDEX  # will get ignored when converting to bsr
-                triplet_rows[block_offset] = test_node_index
+                if triplet_rows:
+                    triplet_rows[block_offset] = test_node_index
                 triplet_cols[block_offset] = trial_node_index
 
     return integrate_kernel_fn
@@ -993,7 +1045,8 @@ def get_integrate_bilinear_nodal_kernel(
 
         partition_node_index = test.space_restriction.node_partition_index(test_restriction_arg, local_node_index)
         if partition_node_index == NULL_NODE_INDEX:
-            triplet_rows[local_node_index] = -1
+            if triplet_rows:
+                triplet_rows[local_node_index] = -1
             triplet_cols[local_node_index] = -1
             return
 
@@ -1047,7 +1100,8 @@ def get_integrate_bilinear_nodal_kernel(
                 val_sum += accumulate_dtype(node_weight * vol) * accumulate_dtype(val)
 
         triplet_values[local_node_index, test_dof, trial_dof] = output_dtype(val_sum)
-        triplet_rows[local_node_index] = partition_node_index
+        if triplet_rows:
+            triplet_rows[local_node_index] = partition_node_index
         triplet_cols[local_node_index] = partition_node_index
 
     return integrate_kernel_fn
@@ -1288,6 +1342,67 @@ def _as_2d_array(array, shape, dtype):
     )
 
 
+@wp.kernel(enable_backward=False)
+def _fill_integrate_bsr_offsets_from_row_groups(
+    row_count: int,
+    row_offsets: wp.array(dtype=int),
+    row_capacity: int,
+    dest_offsets: wp.array(dtype=int),
+    dest_row_counts: wp.array(dtype=int),
+):
+    row = wp.tid()
+
+    offset = row_offsets[row] * row_capacity
+    dest_offsets[row] = offset
+    if row > 0:
+        dest_row_counts[row - 1] = offset - row_offsets[row - 1] * row_capacity
+
+
+@wp.kernel(enable_backward=False)
+def _fill_bsr_offsets_with_uniform_capacity(
+    row_count: int,
+    row_capacity: int,
+    dest_offsets: wp.array(dtype=int),
+    dest_row_counts: wp.array(dtype=int),
+):
+    row = wp.tid()
+
+    offset = row * row_capacity
+    dest_offsets[row] = offset
+    if row > 0:
+        dest_row_counts[row - 1] = row_capacity
+
+
+@wp.kernel(enable_backward=False)
+def _count_integrate_bsr_rows_from_sorted_rows(
+    row_count: int,
+    valid_row_count: int,
+    rows: wp.array(dtype=int),
+    row_counts: wp.array(dtype=int),
+):
+    row = wp.tid()
+
+    if row == row_count:
+        row_counts[row] = 0
+        return
+
+    row_limit = valid_row_count
+    if row_limit > rows.shape[0]:
+        row_limit = rows.shape[0]
+
+    if row_limit == 0:
+        row_counts[row] = 0
+        return
+
+    # wp.lower_bound() clamps to arr_end - 1; bump the result to row_limit when
+    # the value is larger than all in-range elements.
+    beg_idx = wp.lower_bound(rows, 0, row_limit, row)
+    row_beg = wp.where(rows[beg_idx] < row, row_limit, beg_idx)
+    end_idx = wp.lower_bound(rows, 0, row_limit, row + 1)
+    row_end = wp.where(rows[end_idx] < row + 1, row_limit, end_idx)
+    row_counts[row] = row_end - row_beg
+
+
 def _launch_integrate_kernel(
     integrand: Integrand,
     kernel: wp.Kernel,
@@ -1523,18 +1638,96 @@ def _launch_integrate_kernel(
     else:
         nnz = test.space_restriction.total_node_element_count() * trial.space.topology.MAX_NODES_PER_ELEMENT
 
-    triplet_rows = cache.borrow_temporary(temporary_store, shape=(nnz,), dtype=int, device=device)
-    triplet_cols = cache.borrow_temporary(temporary_store, shape=(nnz,), dtype=int, device=device)
-    triplet_values = cache.borrow_temporary(
-        temporary_store,
-        shape=(
-            nnz,
-            test.node_dof_count,
-            trial.node_dof_count,
-        ),
-        dtype=output_dtype,
-        device=device,
-    )
+    if output is not None:
+        if output.nrow != test.space_partition.node_count() or output.ncol != trial.space_partition.node_count():
+            raise RuntimeError(
+                f"Output matrix must have {test.space_partition.node_count()} rows and {trial.space_partition.node_count()} columns of blocks"
+            )
+        if output.block_shape != getattr(block_type, "_shape_", (1, 1)):
+            raise RuntimeError(f"Output matrix blocks must have shape {getattr(block_type, '_shape_', (1, 1))}")
+
+    sparse_bsr_options, capacity_policy, construction_policy = _normalize_fem_bsr_options(bsr_options)
+    topology = sparse_bsr_options.get("topology", "compact")
+    padded_bsr = topology == "padded"
+
+    if capacity_policy == _BSR_CAPACITY_REUSE:
+        if add_to_output:
+            raise RuntimeError("fem.integrate() does not support bsr_options['capacity']='reuse' with add=True")
+        if output is None:
+            raise RuntimeError("fem.integrate() with bsr_options['capacity']='reuse' requires an output matrix")
+
+    output_values_require_grad = isinstance(output, BsrMatrix) and output.values.requires_grad
+    row_compress_bsr = construction_policy in (_BSR_CONSTRUCTION_ROW_COMPRESS, _BSR_CONSTRUCTION_AUTO)
+
+    # If we're doing row-local compression or padded assembly,
+    # we need to pre-compute per-row capacity.
+    bsr_result = None if add_to_output else output
+
+    if row_compress_bsr or padded_bsr:
+        precomputed_offsets_topology = "compact" if nodal else "padded"
+
+        if bsr_result is None:
+            bsr_result = bsr_zeros(
+                rows_of_blocks=test.space_partition.node_count(),
+                cols_of_blocks=trial.space_partition.node_count(),
+                block_type=block_type,
+                device=device,
+                topology=precomputed_offsets_topology,
+            )
+        else:
+            bsr_set_zero(bsr_result, topology=precomputed_offsets_topology)
+
+        if nodal:
+            wp.launch(
+                _count_integrate_bsr_rows_from_sorted_rows,
+                dim=bsr_result.nrow + 1,
+                device=bsr_result.device,
+                inputs=[bsr_result.nrow, nnz, test.space_restriction.node_partition_indices(), bsr_result.offsets],
+            )
+            array_scan(in_array=bsr_result.offsets, out_array=bsr_result.offsets, inclusive=False)
+        else:
+            wp.launch(
+                _fill_integrate_bsr_offsets_from_row_groups,
+                dim=bsr_result.nrow + 1,
+                device=bsr_result.device,
+                inputs=[
+                    bsr_result.nrow,
+                    test.space_restriction.partition_element_offsets(),
+                    trial.space.topology.MAX_NODES_PER_ELEMENT,
+                    bsr_result.offsets,
+                    bsr_result.row_counts,
+                ],
+            )
+        if capacity_policy == _BSR_CAPACITY_AUTO:
+            bsr_result.notify_nnz_changed(nnz=nnz)
+        else:
+            _require_bsr_capacity(bsr_result, nnz, "fem.integrate()")
+            bsr_result.nnz = nnz
+    elif bsr_result is None:
+        bsr_result = bsr_zeros(
+            rows_of_blocks=test.space_partition.node_count(),
+            cols_of_blocks=trial.space_partition.node_count(),
+            block_type=block_type,
+            device=device,
+        )
+
+    if row_compress_bsr:
+        triplet_rows = None
+        triplet_cols = bsr_result.columns[:nnz]
+        triplet_values = _bsr_values_as_3d_array(bsr_result.values[:nnz], bsr_result.block_shape)
+    else:
+        triplet_rows = cache.borrow_temporary(temporary_store, shape=(nnz,), dtype=int, device=device)
+        triplet_cols = cache.borrow_temporary(temporary_store, shape=(nnz,), dtype=int, device=device)
+        triplet_values = cache.borrow_temporary(
+            temporary_store,
+            shape=(
+                nnz,
+                test.node_dof_count,
+                trial.node_dof_count,
+            ),
+            dtype=output_dtype,
+            device=device,
+        )
 
     if nodal:
         wp.launch(
@@ -1594,7 +1787,10 @@ def _launch_integrate_kernel(
                 category=UserWarning,
                 stacklevel=2,
             )
-            triplet_rows.fill_(-1)
+            if triplet_rows:
+                triplet_rows.fill_(-1)
+            else:
+                triplet_cols.fill_(-1)
         else:
             dispatch_kernel, dispatch_tile_size = auxiliary_kernels[0]
             trial_partition_arg = trial.space_partition.partition_arg_value(device)
@@ -1653,31 +1849,20 @@ def _launch_integrate_kernel(
             device=device,
         )
 
-    if output is not None:
-        if output.nrow != test.space_partition.node_count() or output.ncol != trial.space_partition.node_count():
-            raise RuntimeError(
-                f"Output matrix must have {test.space_partition.node_count()} rows and {trial.space_partition.node_count()} columns of blocks"
-            )
-
-    if output is None or add_to_output:
-        bsr_result = bsr_zeros(
-            rows_of_blocks=test.space_partition.node_count(),
-            cols_of_blocks=trial.space_partition.node_count(),
-            block_type=block_type,
-            device=device,
-        )
+    if row_compress_bsr:
+        bsr_compress(bsr_result, inplace=not output_values_require_grad, **sparse_bsr_options)
     else:
-        bsr_result = output
-
-    bsr_set_from_triplets(bsr_result, triplet_rows, triplet_cols, triplet_values, **(bsr_options or {}))
-
-    # Do not wait for garbage collection
-    triplet_values.release()
-    triplet_rows.release()
-    triplet_cols.release()
+        if capacity_policy == _BSR_CAPACITY_REUSE and topology == "compact":
+            _require_bsr_capacity(bsr_result, nnz, "fem.integrate()")
+        bsr_set_from_triplets(
+            bsr_result, rows=triplet_rows, columns=triplet_cols, values=triplet_values, **sparse_bsr_options
+        )
+        triplet_rows.release()
+        triplet_values.release()
+        triplet_cols.release()
 
     if add_to_output:
-        output += bsr_result
+        bsr_axpy(y=output, x=bsr_result, topology=topology)
     else:
         output = bsr_result
 
@@ -1746,7 +1931,18 @@ def integrate(
             - "dispatch": For linear or bilinear forms, first evaluate the form at quadrature points then dispatch to nodes in a second pass. More efficient for integrands that are expensive to evaluate. Incompatible with `at_node` and `node_index` operators on test or trial functions.
             - `None` (default): Automatically picks a suitable assembly strategy (either "generic" or "dispatch")
         add: If True and `output` is provided, add the integration result to `output` instead of replacing its content
-        bsr_options: Additional options to be passed to the sparse matrix construction algorithm. See :func:`warp.sparse.bsr_set_from_triplets()`
+        bsr_options: Additional options to be passed to the sparse matrix construction algorithm.
+          See :func:`warp.sparse.bsr_set_from_triplets()` and :func:`warp.sparse.bsr_compress()`.
+          In addition to sparse options, ``capacity="auto"`` allows FEM to grow sparse storage as needed, while
+          ``capacity="reuse"`` requires existing ``output`` arrays to be large enough and does not grow them.
+          Omitting ``construction`` uses ``"triplets"``. ``construction="auto"`` opts into automatic
+          selection of a suitable construction method, whose choices may change in future releases;
+          currently it uses row compression for bilinear assembly when possible.
+          ``construction="triplets"`` forces temporary COO triplet construction, while
+          ``construction="row_compress"`` forces row-ordered candidate writes followed by
+          :func:`warp.sparse.bsr_compress()`. For row compression, :func:`warp.sparse.bsr_compress()`
+          uses ``inplace=False`` when ``output.values.requires_grad`` is true; non-differentiable outputs use
+          in-place compression for the lowest memory overhead.
     """
     if fields is None:
         fields = {}
@@ -2272,7 +2468,8 @@ def get_interpolate_jacobian_at_nodes_kernel(
                     trial_partition_arg,
                     trial.space.topology.element_node_index(domain_arg, trial_topo_arg, element_index, trial_node),
                 )
-                triplet_rows[block_offset] = partition_node_index
+                if triplet_rows:
+                    triplet_rows[block_offset] = partition_node_index
                 triplet_cols[block_offset] = trial_node_index
 
             if wp.static(reduction == "first"):
@@ -2389,7 +2586,8 @@ def get_interpolate_jacobian_at_quadrature_kernel(
                 )
             else:
                 trial_node_index = NULL_NODE_INDEX  # will get ignored when converting to bsr
-            triplet_rows[block_offset] = qp_index
+            if triplet_rows:
+                triplet_rows[block_offset] = qp_index
             triplet_cols[block_offset] = trial_node_index
 
     return interpolate_jacobian_kernel_fn
@@ -2613,14 +2811,13 @@ def _allocate_interpolate_jacobian_triplets(
     dest: BsrMatrix,
     temporary_store: cache.TemporaryStore | None,
 ):
-    nnz = evaluation_point_count * trial.space.topology.MAX_NODES_PER_ELEMENT
+    _validate_interpolate_jacobian_dest(
+        point_index_count=point_index_count,
+        trial=trial,
+        dest=dest,
+    )
 
-    if dest.nrow != point_index_count or dest.ncol != trial.space_partition.node_count():
-        raise RuntimeError(
-            f"'dest' matrix must have {point_index_count} rows and {trial.space_partition.node_count()} columns of blocks"
-        )
-    if dest.block_shape[1] != trial.node_dof_count:
-        raise RuntimeError(f"'dest' matrix blocks must have {trial.node_dof_count} columns")
+    nnz = evaluation_point_count * trial.space.topology.MAX_NODES_PER_ELEMENT
 
     device = dest.device
     triplet_rows = cache.borrow_temporary(temporary_store, shape=(nnz,), dtype=int, device=device)
@@ -2633,6 +2830,36 @@ def _allocate_interpolate_jacobian_triplets(
     )
     triplet_rows.fill_(-1)
     return triplet_rows, triplet_cols, triplet_values
+
+
+def _validate_interpolate_jacobian_dest(
+    point_index_count: int,
+    trial: TrialField,
+    dest: BsrMatrix,
+):
+    if dest.nrow != point_index_count or dest.ncol != trial.space_partition.node_count():
+        raise RuntimeError(
+            f"'dest' matrix must have {point_index_count} rows and {trial.space_partition.node_count()} columns of blocks"
+        )
+    if dest.block_shape[1] != trial.node_dof_count:
+        raise RuntimeError(f"'dest' matrix blocks must have {trial.node_dof_count} columns")
+
+
+def _interpolate_jacobian_row_compress_storage(
+    dest: BsrMatrix,
+    capacity_nnz: int,
+    capacity_policy: str,
+):
+    if capacity_policy == _BSR_CAPACITY_AUTO:
+        dest.notify_nnz_changed(nnz=capacity_nnz)
+    else:
+        _require_bsr_capacity(dest, capacity_nnz, "fem.interpolate()")
+        dest.nnz = capacity_nnz
+
+    candidate_columns = dest.columns[:capacity_nnz]
+    candidate_columns.fill_(-1)
+    candidate_values = _bsr_values_as_3d_array(dest.values[:capacity_nnz], dest.block_shape)
+    return None, candidate_columns, candidate_values
 
 
 def _launch_interpolate_kernel(
@@ -2657,6 +2884,12 @@ def _launch_interpolate_kernel(
     # Set-up launch arguments
     elt_arg = domain.element_arg_value(device=device)
     elt_index_arg = domain.element_index_arg_value(device=device)
+
+    sparse_bsr_options, capacity_policy, construction_policy = _normalize_fem_bsr_options(bsr_options)
+    topology = sparse_bsr_options.get("topology", "compact")
+    padded_bsr = topology == "padded"
+    dest_values_require_grad = isinstance(dest, BsrMatrix) and dest.values.requires_grad
+    row_compress_bsr = construction_policy in (_BSR_CONSTRUCTION_ROW_COMPRESS, _BSR_CONSTRUCTION_AUTO)
 
     for k, v in fields.items():
         if not isinstance(v, GeometryDomain):
@@ -2694,25 +2927,85 @@ def _launch_interpolate_kernel(
         else:
             trial_partition_arg = trial.space_partition.partition_arg_value(device)
             trial_topology_arg = trial.space_partition.space_topology.topo_arg_value(device)
-
-            triplet_rows, triplet_cols, triplet_values = _allocate_interpolate_jacobian_triplets(
-                evaluation_point_count=space_restriction.node_count()
-                if reduction == "first"
-                else space_restriction.total_node_element_count(),
-                point_index_count=space_restriction.space_partition.node_count(),
-                trial=trial,
-                dest=dest,
-                temporary_store=temporary_store,
+            max_nodes_per_element = trial.space.topology.MAX_NODES_PER_ELEMENT
+            evaluation_point_count = (
+                space_restriction.node_count() if reduction == "first" else space_restriction.total_node_element_count()
             )
+
+            if row_compress_bsr and reduction == "first":
+                if construction_policy == _BSR_CONSTRUCTION_AUTO:
+                    row_compress_bsr = False
+                else:
+                    raise RuntimeError(
+                        "fem.interpolate() with bsr_options['construction']='row_compress' does not support "
+                        "reduction='first' with a space restriction"
+                    )
+
+            if row_compress_bsr:
+                _validate_interpolate_jacobian_dest(
+                    point_index_count=space_restriction.space_partition.node_count(),
+                    trial=trial,
+                    dest=dest,
+                )
+                capacity_nnz = evaluation_point_count * max_nodes_per_element
+                bsr_set_zero(dest, topology="padded")
+                wp.launch(
+                    _fill_integrate_bsr_offsets_from_row_groups,
+                    dim=dest.nrow + 1,
+                    device=dest.device,
+                    inputs=[
+                        dest.nrow,
+                        space_restriction.partition_element_offsets(),
+                        max_nodes_per_element,
+                        dest.offsets,
+                        dest.row_counts,
+                    ],
+                )
+                triplet_rows, triplet_cols, triplet_values = _interpolate_jacobian_row_compress_storage(
+                    dest=dest,
+                    capacity_nnz=capacity_nnz,
+                    capacity_policy=capacity_policy,
+                )
+            else:
+                triplet_rows, triplet_cols, triplet_values = _allocate_interpolate_jacobian_triplets(
+                    evaluation_point_count=evaluation_point_count,
+                    point_index_count=space_restriction.space_partition.node_count(),
+                    trial=trial,
+                    dest=dest,
+                    temporary_store=temporary_store,
+                )
+
+                if padded_bsr:
+                    capacity_nnz = space_restriction.total_node_element_count() * max_nodes_per_element
+                    bsr_set_zero(dest, topology="padded")
+                    wp.launch(
+                        _fill_integrate_bsr_offsets_from_row_groups,
+                        dim=dest.nrow + 1,
+                        device=dest.device,
+                        inputs=[
+                            dest.nrow,
+                            space_restriction.partition_element_offsets(),
+                            max_nodes_per_element,
+                            dest.offsets,
+                            dest.row_counts,
+                        ],
+                    )
+                    if capacity_policy == _BSR_CAPACITY_AUTO:
+                        dest.notify_nnz_changed(nnz=capacity_nnz)
+                    else:
+                        _require_bsr_capacity(dest, capacity_nnz, "fem.interpolate()")
+                        dest.nnz = capacity_nnz
+                elif capacity_policy == _BSR_CAPACITY_REUSE:
+                    _require_bsr_capacity(dest, evaluation_point_count * max_nodes_per_element, "fem.interpolate()")
 
             wp.launch(
                 kernel=kernel,
-                dim=(interpolation_point_count, trial.space.topology.MAX_NODES_PER_ELEMENT, trial.node_dof_count),
+                dim=(interpolation_point_count, max_nodes_per_element, trial.node_dof_count),
                 inputs=[
                     elt_arg,
                     elt_index_arg,
                     trial_partition_arg,
-                    trial.space.topology.MAX_NODES_PER_ELEMENT,
+                    max_nodes_per_element,
                     dest_space_restriction_arg,
                     dest_basis_arg,
                     dest_topo_arg,
@@ -2725,7 +3018,14 @@ def _launch_interpolate_kernel(
                 device=device,
             )
 
-            bsr_set_from_triplets(dest, triplet_rows, triplet_cols, triplet_values, **(bsr_options or {}))
+            if row_compress_bsr:
+                bsr_compress(dest, inplace=not dest_values_require_grad, **sparse_bsr_options)
+            else:
+                bsr_set_from_triplets(dest, triplet_rows, triplet_cols, triplet_values, **sparse_bsr_options)
+
+                triplet_rows.release()
+                triplet_values.release()
+                triplet_cols.release()
 
         return
 
@@ -2767,18 +3067,67 @@ def _launch_interpolate_kernel(
 
     trial_partition_arg = trial.space_partition.partition_arg_value(device)
     trial_topology_arg = trial.space_partition.space_topology.topo_arg_value(device)
+    max_nodes_per_element = trial.space.topology.MAX_NODES_PER_ELEMENT
 
-    triplet_rows, triplet_cols, triplet_values = _allocate_interpolate_jacobian_triplets(
-        evaluation_point_count=quadrature.evaluation_point_count(),
-        point_index_count=qp_index_count,
-        trial=trial,
-        dest=dest,
-        temporary_store=temporary_store,
-    )
+    if row_compress_bsr and qp_eval_count != qp_index_count and not padded_bsr:
+        if construction_policy == _BSR_CONSTRUCTION_AUTO:
+            row_compress_bsr = False
+        else:
+            raise RuntimeError(
+                "fem.interpolate() with bsr_options['construction']='row_compress' requires a quadrature with "
+                "matching evaluation and indexed point counts"
+            )
+
+    if padded_bsr and qp_eval_count != qp_index_count:
+        raise RuntimeError(
+            "fem.interpolate() with bsr_options['topology']='padded' requires a quadrature with matching evaluation "
+            "and indexed point counts"
+        )
+
+    if row_compress_bsr:
+        _validate_interpolate_jacobian_dest(point_index_count=qp_index_count, trial=trial, dest=dest)
+        capacity_nnz = qp_index_count * max_nodes_per_element
+        bsr_set_zero(dest, topology="padded")
+        wp.launch(
+            _fill_bsr_offsets_with_uniform_capacity,
+            dim=dest.nrow + 1,
+            device=dest.device,
+            inputs=[dest.nrow, max_nodes_per_element, dest.offsets, dest.row_counts],
+        )
+        triplet_rows, triplet_cols, triplet_values = _interpolate_jacobian_row_compress_storage(
+            dest=dest,
+            capacity_nnz=capacity_nnz,
+            capacity_policy=capacity_policy,
+        )
+    else:
+        triplet_rows, triplet_cols, triplet_values = _allocate_interpolate_jacobian_triplets(
+            evaluation_point_count=qp_eval_count,
+            point_index_count=qp_index_count,
+            trial=trial,
+            dest=dest,
+            temporary_store=temporary_store,
+        )
+
+        if padded_bsr:
+            capacity_nnz = qp_index_count * max_nodes_per_element
+            bsr_set_zero(dest, topology="padded")
+            wp.launch(
+                _fill_bsr_offsets_with_uniform_capacity,
+                dim=dest.nrow + 1,
+                device=dest.device,
+                inputs=[dest.nrow, max_nodes_per_element, dest.offsets, dest.row_counts],
+            )
+            if capacity_policy == _BSR_CAPACITY_AUTO:
+                dest.notify_nnz_changed(nnz=capacity_nnz)
+            else:
+                _require_bsr_capacity(dest, capacity_nnz, "fem.interpolate()")
+                dest.nnz = capacity_nnz
+        elif capacity_policy == _BSR_CAPACITY_REUSE:
+            _require_bsr_capacity(dest, qp_eval_count * max_nodes_per_element, "fem.interpolate()")
 
     wp.launch(
         kernel=kernel,
-        dim=(quadrature.evaluation_point_count(), trial.space.topology.MAX_NODES_PER_ELEMENT, trial.node_dof_count),
+        dim=(qp_eval_count, max_nodes_per_element, trial.node_dof_count),
         inputs=[
             qp_arg,
             qp_element_index_arg,
@@ -2786,7 +3135,7 @@ def _launch_interpolate_kernel(
             elt_index_arg,
             trial_partition_arg,
             trial_topology_arg,
-            trial.space.topology.MAX_NODES_PER_ELEMENT,
+            max_nodes_per_element,
             field_arg_values,
             value_struct_values,
             triplet_rows,
@@ -2796,11 +3145,14 @@ def _launch_interpolate_kernel(
         device=device,
     )
 
-    bsr_set_from_triplets(dest, triplet_rows, triplet_cols, triplet_values, **(bsr_options or {}))
+    if row_compress_bsr:
+        bsr_compress(dest, inplace=not dest_values_require_grad, **sparse_bsr_options)
+    else:
+        bsr_set_from_triplets(dest, triplet_rows, triplet_cols, triplet_values, **sparse_bsr_options)
 
-    triplet_values.release()
-    triplet_rows.release()
-    triplet_cols.release()
+        triplet_rows.release()
+        triplet_values.release()
+        triplet_cols.release()
 
 
 @integrand
@@ -2834,7 +3186,7 @@ def interpolate(
 
          - a :class:`DiscreteField`, or restriction of a discrete field to a domain (from :func:`make_restriction`);
          - a normal warp ``array``;
-         - a sparse matrix (:class:`warp.sparse.BsrMatrix`). This will compute the jacooian of `integrand`, assuming one of the passed fields is a trial field,
+         - a sparse matrix (:class:`warp.sparse.BsrMatrix`). This will compute the Jacobian of `integrand`, assuming one of the passed fields is a trial field,
             and that the result is a linear function of the trial field;
          - ``None``, meaning the integrand will be evaluated at the interpolation sample points, but the result will be discarded.
         at: Location of the interpolation samples. Can be either
@@ -2859,7 +3211,19 @@ def interpolate(
         device: Device on which to perform the interpolation
         kernel_options: Overloaded options to be passed to the kernel builder (e.g, ``{"enable_backward": True}``)
         temporary_store: shared pool from which to allocate temporary arrays
-        bsr_options: Additional options to be passed to the sparse matrix construction algorithm. See :func:`warp.sparse.bsr_set_from_triplets()`
+        bsr_options: Additional options to be passed to the sparse matrix construction algorithm.
+          See :func:`warp.sparse.bsr_set_from_triplets()` and :func:`warp.sparse.bsr_compress()`.
+          In addition to sparse options, ``capacity="auto"`` allows FEM to grow sparse storage as needed, while
+          ``capacity="reuse"`` requires existing ``dest`` arrays to be large enough and does not grow them.
+          Omitting ``construction`` uses ``"triplets"``. ``construction="auto"`` opts into automatic
+          selection of a suitable construction method, whose choices may change in future releases;
+          currently it uses row compression when supported and falls back to triplets for unsupported
+          interpolation cases.
+          ``construction="triplets"`` forces temporary COO triplet construction, while
+          ``construction="row_compress"`` forces row-ordered candidate writes followed by
+          :func:`warp.sparse.bsr_compress()`. Non-differentiable outputs use in-place compression for the
+          lowest memory overhead. Row compression for quadrature interpolation requires matching evaluation and
+          indexed point counts.
     """
 
     if isinstance(integrand, FieldLike):

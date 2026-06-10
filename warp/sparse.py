@@ -6,7 +6,8 @@
 This module provides GPU-accelerated sparse matrix operations for simulation, including
 matrix-matrix multiplication, matrix-vector multiplication, addition, scaling, and
 transpose operations. BSR format supports arbitrary block sizes, with Compressed Sparse
-Row (CSR) format supported as a special case using 1x1 blocks.
+Row (CSR) format supported as a special case using 1x1 blocks. Matrices may use
+compact row storage or padded row-capacity storage with explicit active row counts.
 
 The :class:`BsrMatrix` class supports operator overloading for intuitive matrix operations
 (``+``, ``-``, ``*``, ``@``), and lower-level functions are available for fine-grained
@@ -25,10 +26,13 @@ See Also:
 
 from warp._src.sparse import bsr_axpy_work_arrays as bsr_axpy_work_arrays
 from warp._src.sparse import bsr_mm_work_arrays as bsr_mm_work_arrays
+from warp._src.sparse import BSR_STATUS_ROW_CAPACITY_EXCEEDED as BSR_STATUS_ROW_CAPACITY_EXCEEDED
+from warp._src.sparse import BSR_STATUS_SUCCESS as BSR_STATUS_SUCCESS
 from warp._src.sparse import BsrMatrix as BsrMatrix
 from warp._src.sparse import bsr_assign as bsr_assign
 from warp._src.sparse import bsr_axpy as bsr_axpy
 from warp._src.sparse import bsr_block_index as bsr_block_index
+from warp._src.sparse import bsr_compress as bsr_compress
 from warp._src.sparse import bsr_copy as bsr_copy
 from warp._src.sparse import bsr_diag as bsr_diag
 from warp._src.sparse import bsr_from_triplets as bsr_from_triplets

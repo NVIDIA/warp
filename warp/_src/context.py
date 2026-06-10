@@ -5791,10 +5791,11 @@ class Runtime:
                 ctypes.c_void_p,  # tpl_values
                 ctypes.c_uint64,  # zero_value_mask
                 ctypes.c_bool,  # masked
-                ctypes.POINTER(ctypes.c_int),  # bsr_offsets
-                ctypes.POINTER(ctypes.c_int),  # bsr_columns
                 ctypes.POINTER(ctypes.c_int),  # prefix sum of block count to sum for each bsr block
                 ctypes.POINTER(ctypes.c_int),  # indices to ptriplet blocks to sum for each bsr block
+                ctypes.POINTER(ctypes.c_int),  # bsr_offsets
+                ctypes.POINTER(ctypes.c_int),  # bsr_row_counts
+                ctypes.POINTER(ctypes.c_int),  # bsr_columns
                 ctypes.POINTER(ctypes.c_int),  # bsr_nnz
                 ctypes.c_void_p,  # bsr_nnz_event
             ]
@@ -5806,14 +5807,37 @@ class Runtime:
                 ctypes.c_int,  # row_count
                 ctypes.c_int,  # col count
                 ctypes.c_int,  # nnz
+                ctypes.POINTER(ctypes.c_int),  # bsr_offsets
+                ctypes.POINTER(ctypes.c_int),  # bsr_row_counts
+                ctypes.POINTER(ctypes.c_int),  # bsr_columns
                 ctypes.POINTER(ctypes.c_int),  # transposed_bsr_offsets
-                ctypes.POINTER(ctypes.c_int),  # transposed_bsr_columns
-                ctypes.POINTER(ctypes.c_int),  # transposed_bsr_offsets
+                ctypes.POINTER(ctypes.c_int),  # transposed_bsr_row_counts
                 ctypes.POINTER(ctypes.c_int),  # transposed_bsr_columns
                 ctypes.POINTER(ctypes.c_int),  # src to dest block map
+                ctypes.POINTER(ctypes.c_int),  # status
             ]
             self.core.wp_bsr_transpose_host.argtypes = bsr_transpose_argtypes
             self.core.wp_bsr_transpose_device.argtypes = bsr_transpose_argtypes
+
+            bsr_compress_inplace_argtypes = [
+                ctypes.c_int,  # row_count
+                ctypes.c_int,  # block_size
+                ctypes.c_int,  # scalar size in bytes
+                ctypes.c_int,  # scalar type code
+                ctypes.c_int,  # nnz_upper_bound
+                ctypes.c_bool,  # prune_numerical_zeros
+                ctypes.c_uint64,  # zero_value_mask
+                ctypes.c_bool,  # make_compact
+                ctypes.POINTER(ctypes.c_int),  # bsr_offsets
+                ctypes.POINTER(ctypes.c_int),  # bsr_row_counts
+                ctypes.POINTER(ctypes.c_int),  # bsr_columns
+                ctypes.c_void_p,  # bsr_values
+                ctypes.c_bool,  # compress_values
+                ctypes.POINTER(ctypes.c_int),  # bsr_nnz
+                ctypes.c_void_p,  # bsr_nnz_event
+            ]
+            self.core.wp_bsr_compress_inplace_host.argtypes = bsr_compress_inplace_argtypes
+            self.core.wp_bsr_compress_inplace_device.argtypes = bsr_compress_inplace_argtypes
 
             self.core.wp_is_cuda_enabled.argtypes = None
             self.core.wp_is_cuda_enabled.restype = ctypes.c_int

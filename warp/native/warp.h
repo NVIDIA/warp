@@ -400,6 +400,7 @@ WP_API void wp_bsr_matrix_from_triplets_host(
     int* summed_block_offsets,
     int* summed_block_indices,
     int* bsr_offsets,
+    const int* bsr_row_counts,
     int* bsr_columns,
     int* bsr_nnz,
     void* bsr_nnz_event
@@ -419,6 +420,7 @@ WP_API void wp_bsr_matrix_from_triplets_device(
     int* summed_block_offsets,
     int* summed_block_indices,
     int* bsr_offsets,
+    const int* bsr_row_counts,
     int* bsr_columns,
     int* bsr_nnz,
     void* bsr_nnz_event
@@ -429,20 +431,61 @@ WP_API void wp_bsr_transpose_host(
     int col_count,
     int nnz,
     const int* bsr_offsets,
+    const int* bsr_row_counts,
     const int* bsr_columns,
     int* transposed_bsr_offsets,
+    int* transposed_bsr_row_counts,
     int* transposed_bsr_columns,
-    int* src_block_indices
+    int* src_block_indices,
+    int* status
 );
 WP_API void wp_bsr_transpose_device(
     int row_count,
     int col_count,
     int nnz,
     const int* bsr_offsets,
+    const int* bsr_row_counts,
     const int* bsr_columns,
     int* transposed_bsr_offsets,
+    int* transposed_bsr_row_counts,
     int* transposed_bsr_columns,
-    int* src_block_indices
+    int* src_block_indices,
+    int* status
+);
+
+WP_API void wp_bsr_compress_inplace_host(
+    int row_count,
+    int block_size,
+    int scalar_size_in_bytes,
+    int scalar_type,
+    int nnz_upper_bound,
+    bool prune_numerical_zeros,
+    uint64_t scalar_zero_mask,
+    bool make_compact,
+    int* bsr_offsets,
+    int* bsr_row_counts,
+    int* bsr_columns,
+    void* bsr_values,
+    bool compress_values,
+    int* bsr_nnz,
+    void* bsr_nnz_event
+);
+WP_API void wp_bsr_compress_inplace_device(
+    int row_count,
+    int block_size,
+    int scalar_size_in_bytes,
+    int scalar_type,
+    int nnz_upper_bound,
+    bool prune_numerical_zeros,
+    uint64_t scalar_zero_mask,
+    bool make_compact,
+    int* bsr_offsets,
+    int* bsr_row_counts,
+    int* bsr_columns,
+    void* bsr_values,
+    bool compress_values,
+    int* bsr_nnz,
+    void* bsr_nnz_event
 );
 
 
