@@ -213,6 +213,40 @@ copy the array back to CPU memory where it is passed to NumPy.
 Calling :func:`array.numpy` on a CPU array will return a zero-copy NumPy view
 onto the Warp data.
 
+At Python scope, slicing a Warp array returns a zero-copy view into the same
+allocation. Views can be non-contiguous when the slice changes the memory
+stride:
+
+.. testcode::
+
+    a = wp.array(np.arange(12, dtype=np.float32).reshape(3, 4), dtype=wp.float32, device="cpu")
+
+    view = a[:, ::2]
+    print(view)
+    print(view.is_contiguous)
+
+    view.fill_(-1.0)
+    print(a)
+
+.. testoutput::
+
+    [[ 0.  2.]
+     [ 4.  6.]
+     [ 8. 10.]]
+    False
+    [[-1.  1. -1.  3.]
+     [-1.  5. -1.  7.]
+     [-1.  9. -1. 11.]]
+
+Scalar item indexing is intentionally not supported on ``wp.array`` objects at
+Python scope, so ``a[0, 0]`` raises an error. Use slicing to create array views,
+or convert to NumPy with :meth:`array.numpy <warp.array.numpy>` when reading
+individual values on the host. Inside kernels, arrays still support element-wise
+indexing.
+
+This keeps host-side behavior consistent across CPU and GPU arrays and avoids
+encouraging per-element device synchronization or copies.
+
 Common operators such as ``+``, ``-``, ``*``, and ``/`` are overloaded for Warp arrays.
 For example, we can add two arrays together using the ``+`` operator:
 

@@ -684,6 +684,35 @@ section for more details on sharing memory with external frameworks.</p>
 copy the array back to CPU memory where it is passed to NumPy.
 Calling <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.numpy" title="warp.array.numpy"><code class="xref py py-func docutils literal notranslate"><span class="pre">array.numpy()</span></code></a> on a CPU array will return a zero-copy NumPy view
 onto the Warp data.</p>
+<p>At Python scope, slicing a Warp array returns a zero-copy view into the same
+allocation. Views can be non-contiguous when the slice changes the memory
+stride:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+
+<span class="n">view</span> <span class="o">=</span> <span class="n">a</span><span class="p">[:,</span> <span class="p">::</span><span class="mi">2</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">view</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">view</span><span class="o">.</span><span class="n">is_contiguous</span><span class="p">)</span>
+
+<span class="n">view</span><span class="o">.</span><span class="n">fill_</span><span class="p">(</span><span class="o">-</span><span class="mf">1.0</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[[ 0.  2.]
+ [ 4.  6.]
+ [ 8. 10.]]
+False
+[[-1.  1. -1.  3.]
+ [-1.  5. -1.  7.]
+ [-1.  9. -1. 11.]]
+</pre></div>
+</div>
+<p>Scalar item indexing is intentionally not supported on <code class="docutils literal notranslate"><span class="pre">wp.array</span></code> objects at
+Python scope, so <code class="docutils literal notranslate"><span class="pre">a[0,</span> <span class="pre">0]</span></code> raises an error. Use slicing to create array views,
+or convert to NumPy with <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.numpy" title="warp.array.numpy"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.numpy</span></code></a> when reading
+individual values on the host. Inside kernels, arrays still support element-wise
+indexing.</p>
+<p>This keeps host-side behavior consistent across CPU and GPU arrays and avoids
+encouraging per-element device synchronization or copies.</p>
 <p>Common operators such as <code class="docutils literal notranslate"><span class="pre">+</span></code>, <code class="docutils literal notranslate"><span class="pre">-</span></code>, <code class="docutils literal notranslate"><span class="pre">*</span></code>, and <code class="docutils literal notranslate"><span class="pre">/</span></code> are overloaded for Warp arrays.
 For example, we can add two arrays together using the <code class="docutils literal notranslate"><span class="pre">+</span></code> operator:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">10</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
