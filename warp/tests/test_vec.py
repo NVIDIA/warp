@@ -78,28 +78,28 @@ def test_negation(test, device, dtype, register_kernels=False):
     vec5 = wp.types.vector(length=5, dtype=wptype)
 
     def check_negation(
-        v2: wp.array(dtype=vec2),
-        v3: wp.array(dtype=vec3),
-        v4: wp.array(dtype=vec4),
-        v5: wp.array(dtype=vec5),
-        v2out: wp.array(dtype=vec2),
-        v3out: wp.array(dtype=vec3),
-        v4out: wp.array(dtype=vec4),
-        v5out: wp.array(dtype=vec5),
-        v20: wp.array(dtype=wptype),
-        v21: wp.array(dtype=wptype),
-        v30: wp.array(dtype=wptype),
-        v31: wp.array(dtype=wptype),
-        v32: wp.array(dtype=wptype),
-        v40: wp.array(dtype=wptype),
-        v41: wp.array(dtype=wptype),
-        v42: wp.array(dtype=wptype),
-        v43: wp.array(dtype=wptype),
-        v50: wp.array(dtype=wptype),
-        v51: wp.array(dtype=wptype),
-        v52: wp.array(dtype=wptype),
-        v53: wp.array(dtype=wptype),
-        v54: wp.array(dtype=wptype),
+        v2: wp.array[vec2],
+        v3: wp.array[vec3],
+        v4: wp.array[vec4],
+        v5: wp.array[vec5],
+        v2out: wp.array[vec2],
+        v3out: wp.array[vec3],
+        v4out: wp.array[vec4],
+        v5out: wp.array[vec5],
+        v20: wp.array[wptype],
+        v21: wp.array[wptype],
+        v30: wp.array[wptype],
+        v31: wp.array[wptype],
+        v32: wp.array[wptype],
+        v40: wp.array[wptype],
+        v41: wp.array[wptype],
+        v42: wp.array[wptype],
+        v43: wp.array[wptype],
+        v50: wp.array[wptype],
+        v51: wp.array[wptype],
+        v52: wp.array[wptype],
+        v53: wp.array[wptype],
+        v54: wp.array[wptype],
     ):
         v2result = -v2[0]
         v3result = -v3[0]
@@ -232,28 +232,28 @@ def test_subtraction(test, device, dtype, register_kernels=False):
     vec5 = wp.types.vector(length=5, dtype=wptype)
 
     def check_subtraction(
-        s2: wp.array(dtype=vec2),
-        s3: wp.array(dtype=vec3),
-        s4: wp.array(dtype=vec4),
-        s5: wp.array(dtype=vec5),
-        v2: wp.array(dtype=vec2),
-        v3: wp.array(dtype=vec3),
-        v4: wp.array(dtype=vec4),
-        v5: wp.array(dtype=vec5),
-        v20: wp.array(dtype=wptype),
-        v21: wp.array(dtype=wptype),
-        v30: wp.array(dtype=wptype),
-        v31: wp.array(dtype=wptype),
-        v32: wp.array(dtype=wptype),
-        v40: wp.array(dtype=wptype),
-        v41: wp.array(dtype=wptype),
-        v42: wp.array(dtype=wptype),
-        v43: wp.array(dtype=wptype),
-        v50: wp.array(dtype=wptype),
-        v51: wp.array(dtype=wptype),
-        v52: wp.array(dtype=wptype),
-        v53: wp.array(dtype=wptype),
-        v54: wp.array(dtype=wptype),
+        s2: wp.array[vec2],
+        s3: wp.array[vec3],
+        s4: wp.array[vec4],
+        s5: wp.array[vec5],
+        v2: wp.array[vec2],
+        v3: wp.array[vec3],
+        v4: wp.array[vec4],
+        v5: wp.array[vec5],
+        v20: wp.array[wptype],
+        v21: wp.array[wptype],
+        v30: wp.array[wptype],
+        v31: wp.array[wptype],
+        v32: wp.array[wptype],
+        v40: wp.array[wptype],
+        v41: wp.array[wptype],
+        v42: wp.array[wptype],
+        v43: wp.array[wptype],
+        v50: wp.array[wptype],
+        v51: wp.array[wptype],
+        v52: wp.array[wptype],
+        v53: wp.array[wptype],
+        v54: wp.array[wptype],
     ):
         v2result = v2[0] - s2[0]
         v3result = v3[0] - s3[0]
@@ -369,18 +369,18 @@ def test_length(test, device, dtype, register_kernels=False):
     vec5 = wp.types.vector(length=5, dtype=wptype)
 
     def check_length(
-        v2: wp.array(dtype=vec2),
-        v3: wp.array(dtype=vec3),
-        v4: wp.array(dtype=vec4),
-        v5: wp.array(dtype=vec5),
-        l2: wp.array(dtype=wptype),
-        l3: wp.array(dtype=wptype),
-        l4: wp.array(dtype=wptype),
-        l5: wp.array(dtype=wptype),
-        l22: wp.array(dtype=wptype),
-        l23: wp.array(dtype=wptype),
-        l24: wp.array(dtype=wptype),
-        l25: wp.array(dtype=wptype),
+        v2: wp.array[vec2],
+        v3: wp.array[vec3],
+        v4: wp.array[vec4],
+        v5: wp.array[vec5],
+        l2: wp.array[wptype],
+        l3: wp.array[wptype],
+        l4: wp.array[wptype],
+        l5: wp.array[wptype],
+        l22: wp.array[wptype],
+        l23: wp.array[wptype],
+        l24: wp.array[wptype],
+        l25: wp.array[wptype],
     ):
         l2[0] = wptype(2) * wp.length(v2[0])
         l3[0] = wptype(2) * wp.length(v3[0])
@@ -491,24 +491,24 @@ def test_normalize(test, device, dtype, register_kernels=False):
     vec5 = wp.types.vector(length=5, dtype=wptype)
 
     def check_normalize(
-        v2: wp.array(dtype=vec2),
-        v3: wp.array(dtype=vec3),
-        v4: wp.array(dtype=vec4),
-        v5: wp.array(dtype=vec5),
-        n20: wp.array(dtype=wptype),
-        n21: wp.array(dtype=wptype),
-        n30: wp.array(dtype=wptype),
-        n31: wp.array(dtype=wptype),
-        n32: wp.array(dtype=wptype),
-        n40: wp.array(dtype=wptype),
-        n41: wp.array(dtype=wptype),
-        n42: wp.array(dtype=wptype),
-        n43: wp.array(dtype=wptype),
-        n50: wp.array(dtype=wptype),
-        n51: wp.array(dtype=wptype),
-        n52: wp.array(dtype=wptype),
-        n53: wp.array(dtype=wptype),
-        n54: wp.array(dtype=wptype),
+        v2: wp.array[vec2],
+        v3: wp.array[vec3],
+        v4: wp.array[vec4],
+        v5: wp.array[vec5],
+        n20: wp.array[wptype],
+        n21: wp.array[wptype],
+        n30: wp.array[wptype],
+        n31: wp.array[wptype],
+        n32: wp.array[wptype],
+        n40: wp.array[wptype],
+        n41: wp.array[wptype],
+        n42: wp.array[wptype],
+        n43: wp.array[wptype],
+        n50: wp.array[wptype],
+        n51: wp.array[wptype],
+        n52: wp.array[wptype],
+        n53: wp.array[wptype],
+        n54: wp.array[wptype],
     ):
         n2 = wptype(2) * wp.normalize(v2[0])
         n3 = wptype(2) * wp.normalize(v3[0])
@@ -534,24 +534,24 @@ def test_normalize(test, device, dtype, register_kernels=False):
         n54[0] = n5[4]
 
     def check_normalize_alt(
-        v2: wp.array(dtype=vec2),
-        v3: wp.array(dtype=vec3),
-        v4: wp.array(dtype=vec4),
-        v5: wp.array(dtype=vec5),
-        n20: wp.array(dtype=wptype),
-        n21: wp.array(dtype=wptype),
-        n30: wp.array(dtype=wptype),
-        n31: wp.array(dtype=wptype),
-        n32: wp.array(dtype=wptype),
-        n40: wp.array(dtype=wptype),
-        n41: wp.array(dtype=wptype),
-        n42: wp.array(dtype=wptype),
-        n43: wp.array(dtype=wptype),
-        n50: wp.array(dtype=wptype),
-        n51: wp.array(dtype=wptype),
-        n52: wp.array(dtype=wptype),
-        n53: wp.array(dtype=wptype),
-        n54: wp.array(dtype=wptype),
+        v2: wp.array[vec2],
+        v3: wp.array[vec3],
+        v4: wp.array[vec4],
+        v5: wp.array[vec5],
+        n20: wp.array[wptype],
+        n21: wp.array[wptype],
+        n30: wp.array[wptype],
+        n31: wp.array[wptype],
+        n32: wp.array[wptype],
+        n40: wp.array[wptype],
+        n41: wp.array[wptype],
+        n42: wp.array[wptype],
+        n43: wp.array[wptype],
+        n50: wp.array[wptype],
+        n51: wp.array[wptype],
+        n52: wp.array[wptype],
+        n53: wp.array[wptype],
+        n54: wp.array[wptype],
     ):
         n2 = wptype(2) * v2[0] / wp.length(v2[0])
         n3 = wptype(2) * v3[0] / wp.length(v3[0])
@@ -695,11 +695,11 @@ def test_crossproduct(test, device, dtype, register_kernels=False):
     vec3 = wp.types.vector(length=3, dtype=wptype)
 
     def check_cross(
-        s3: wp.array(dtype=vec3),
-        v3: wp.array(dtype=vec3),
-        c0: wp.array(dtype=wptype),
-        c1: wp.array(dtype=wptype),
-        c2: wp.array(dtype=wptype),
+        s3: wp.array[vec3],
+        v3: wp.array[vec3],
+        c0: wp.array[wptype],
+        c1: wp.array[wptype],
+        c2: wp.array[wptype],
     ):
         c = wp.cross(s3[0], v3[0])
 
@@ -795,7 +795,7 @@ Vec123 = wp.types.vector(123, dtype=wp.float16)
 
 @wp.kernel(module="unique")
 def vector_len_kernel(
-    v1: wp.vec2, v2: wp.types.vector(3, float), v3: wp.types.vector(Any, float), v4: Vec123, out: wp.array(dtype=int)
+    v1: wp.vec2, v2: wp.types.vector(3, float), v3: wp.types.vector(Any, float), v4: Vec123, out: wp.array[int]
 ):
     length = wp.static(len(v1))
     wp.expect_eq(len(v1), 2)
@@ -835,7 +835,7 @@ def test_vector_len(test, device):
 
 
 @wp.kernel
-def vec_extract_subscript(x: wp.array(dtype=wp.vec3), y: wp.array(dtype=float)):
+def vec_extract_subscript(x: wp.array[wp.vec3], y: wp.array[float]):
     tid = wp.tid()
 
     a = x[tid]
@@ -844,7 +844,7 @@ def vec_extract_subscript(x: wp.array(dtype=wp.vec3), y: wp.array(dtype=float)):
 
 
 @wp.kernel
-def vec_extract_attribute(x: wp.array(dtype=wp.vec3), y: wp.array(dtype=float)):
+def vec_extract_attribute(x: wp.array[wp.vec3], y: wp.array[float]):
     tid = wp.tid()
 
     a = x[tid]
@@ -872,7 +872,7 @@ def test_vec_extract(test, device):
 
 
 @wp.kernel
-def vec_assign_subscript(x: wp.array(dtype=float), y: wp.array(dtype=wp.vec3)):
+def vec_assign_subscript(x: wp.array[float], y: wp.array[wp.vec3]):
     i = wp.tid()
 
     a = wp.vec3()
@@ -883,7 +883,7 @@ def vec_assign_subscript(x: wp.array(dtype=float), y: wp.array(dtype=wp.vec3)):
 
 
 @wp.kernel
-def vec_assign_attribute(x: wp.array(dtype=float), y: wp.array(dtype=wp.vec3)):
+def vec_assign_attribute(x: wp.array[float], y: wp.array[wp.vec3]):
     i = wp.tid()
 
     a = wp.vec3()
@@ -913,7 +913,7 @@ def test_vec_assign(test, device):
 
 
 @wp.kernel
-def vec_array_extract_subscript(x: wp.array2d(dtype=wp.vec3), y: wp.array2d(dtype=float)):
+def vec_array_extract_subscript(x: wp.array2d[wp.vec3], y: wp.array2d[float]):
     i, j = wp.tid()
     a = x[i, j][0]
     b = x[i, j][1]
@@ -922,7 +922,7 @@ def vec_array_extract_subscript(x: wp.array2d(dtype=wp.vec3), y: wp.array2d(dtyp
 
 
 @wp.kernel
-def vec_array_extract_attribute(x: wp.array2d(dtype=wp.vec3), y: wp.array2d(dtype=float)):
+def vec_array_extract_attribute(x: wp.array2d[wp.vec3], y: wp.array2d[float]):
     i, j = wp.tid()
     a = x[i, j].x
     b = x[i, j].y
@@ -950,7 +950,7 @@ def test_vec_array_extract(test, device):
 
 
 @wp.kernel
-def vec_array_assign_subscript(x: wp.array2d(dtype=float), y: wp.array2d(dtype=wp.vec3)):
+def vec_array_assign_subscript(x: wp.array2d[float], y: wp.array2d[wp.vec3]):
     i, j = wp.tid()
 
     y[i, j][0] = 1.0 * x[i, j]
@@ -959,7 +959,7 @@ def vec_array_assign_subscript(x: wp.array2d(dtype=float), y: wp.array2d(dtype=w
 
 
 @wp.kernel
-def vec_array_assign_attribute(x: wp.array2d(dtype=float), y: wp.array2d(dtype=wp.vec3)):
+def vec_array_assign_attribute(x: wp.array2d[float], y: wp.array2d[wp.vec3]):
     i, j = wp.tid()
 
     y[i, j].x = 1.0 * x[i, j]
@@ -987,7 +987,7 @@ def test_vec_array_assign(test, device):
 
 
 @wp.kernel(module="unique")
-def vec_add_inplace_subscript(x: wp.array(dtype=wp.vec3), y: wp.array(dtype=wp.vec3)):
+def vec_add_inplace_subscript(x: wp.array[wp.vec3], y: wp.array[wp.vec3]):
     i = wp.tid()
 
     a = wp.vec3()
@@ -1001,7 +1001,7 @@ def vec_add_inplace_subscript(x: wp.array(dtype=wp.vec3), y: wp.array(dtype=wp.v
 
 
 @wp.kernel(module="unique")
-def vec_add_inplace_attribute(x: wp.array(dtype=wp.vec3), y: wp.array(dtype=wp.vec3)):
+def vec_add_inplace_attribute(x: wp.array[wp.vec3], y: wp.array[wp.vec3]):
     i = wp.tid()
 
     a = wp.vec3()
@@ -1034,7 +1034,7 @@ def test_vec_add_inplace(test, device):
 
 
 @wp.kernel
-def vec_sub_inplace_subscript(x: wp.array(dtype=wp.vec3), y: wp.array(dtype=wp.vec3)):
+def vec_sub_inplace_subscript(x: wp.array[wp.vec3], y: wp.array[wp.vec3]):
     i = wp.tid()
 
     a = wp.vec3()
@@ -1048,7 +1048,7 @@ def vec_sub_inplace_subscript(x: wp.array(dtype=wp.vec3), y: wp.array(dtype=wp.v
 
 
 @wp.kernel
-def vec_sub_inplace_attribute(x: wp.array(dtype=wp.vec3), y: wp.array(dtype=wp.vec3)):
+def vec_sub_inplace_attribute(x: wp.array[wp.vec3], y: wp.array[wp.vec3]):
     i = wp.tid()
 
     a = wp.vec3()
@@ -1081,7 +1081,7 @@ def test_vec_sub_inplace(test, device):
 
 
 @wp.kernel(module="unique")
-def vec_array_add_inplace(x: wp.array(dtype=wp.vec3), y: wp.array(dtype=wp.vec3)):
+def vec_array_add_inplace(x: wp.array[wp.vec3], y: wp.array[wp.vec3]):
     i = wp.tid()
 
     y[i] += x[i]
@@ -1103,7 +1103,7 @@ def test_vec_array_add_inplace(test, device):
 
 
 @wp.kernel
-def vec_array_sub_inplace(x: wp.array(dtype=wp.vec3), y: wp.array(dtype=wp.vec3)):
+def vec_array_sub_inplace(x: wp.array[wp.vec3], y: wp.array[wp.vec3]):
     i = wp.tid()
 
     y[i] -= x[i]
@@ -1125,7 +1125,7 @@ def test_vec_array_sub_inplace(test, device):
 
 
 @wp.kernel
-def scalar_vec_div(x: wp.array(dtype=wp.vec3), y: wp.array(dtype=wp.vec3)):
+def scalar_vec_div(x: wp.array[wp.vec3], y: wp.array[wp.vec3]):
     i = wp.tid()
     y[i] = 1.0 / x[i]
 
@@ -1295,7 +1295,7 @@ def test_vec_assign_inplace_errors(test, device):
 
 def test_vec_slicing_assign_backward(test, device):
     @wp.kernel(module="unique")
-    def kernel(arr_x: wp.array(dtype=wp.vec2), arr_y: wp.array(dtype=wp.vec4)):
+    def kernel(arr_x: wp.array[wp.vec2], arr_y: wp.array[wp.vec4]):
         i = wp.tid()
 
         y = arr_y[i]

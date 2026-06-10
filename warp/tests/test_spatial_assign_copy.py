@@ -18,7 +18,7 @@ def tearDownModule():
 
 
 @wp.kernel
-def transform_assign_subscript(x: wp.array(dtype=float), y: wp.array(dtype=wp.transform)):
+def transform_assign_subscript(x: wp.array[float], y: wp.array[wp.transform]):
     i = wp.tid()
 
     a = wp.transform()
@@ -33,7 +33,7 @@ def transform_assign_subscript(x: wp.array(dtype=float), y: wp.array(dtype=wp.tr
 
 
 @wp.kernel
-def transform_assign_attribute(x: wp.array(dtype=wp.vec3), y: wp.array(dtype=wp.quat), z: wp.array(dtype=wp.transform)):
+def transform_assign_attribute(x: wp.array[wp.vec3], y: wp.array[wp.quat], z: wp.array[wp.transform]):
     i = wp.tid()
 
     a = wp.transform()
@@ -74,7 +74,7 @@ def test_transform_assign(test, device):
 
 def test_transform_assign_copy(test, device):
     @wp.kernel(module="unique")
-    def transform_assign_overwrite(x: wp.array(dtype=wp.transform), y: wp.array(dtype=wp.transform)):
+    def transform_assign_overwrite(x: wp.array[wp.transform], y: wp.array[wp.transform]):
         tid = wp.tid()
 
         a = wp.transform()
@@ -100,7 +100,7 @@ def test_transform_assign_copy(test, device):
 
 def test_transform_slicing_assign_backward(test, device):
     @wp.kernel(module="unique")
-    def kernel(arr_x: wp.array(dtype=wp.vec2), arr_y: wp.array(dtype=wp.transform)):
+    def kernel(arr_x: wp.array[wp.vec2], arr_y: wp.array[wp.transform]):
         i = wp.tid()
 
         x = arr_x[i]

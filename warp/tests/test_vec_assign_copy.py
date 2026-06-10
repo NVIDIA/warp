@@ -18,7 +18,7 @@ def tearDownModule():
 
 
 @wp.kernel
-def vec_assign_subscript(x: wp.array(dtype=float), y: wp.array(dtype=wp.vec3)):
+def vec_assign_subscript(x: wp.array[float], y: wp.array[wp.vec3]):
     i = wp.tid()
 
     a = wp.vec3()
@@ -29,7 +29,7 @@ def vec_assign_subscript(x: wp.array(dtype=float), y: wp.array(dtype=wp.vec3)):
 
 
 @wp.kernel
-def vec_assign_attribute(x: wp.array(dtype=float), y: wp.array(dtype=wp.vec3)):
+def vec_assign_attribute(x: wp.array[float], y: wp.array[wp.vec3]):
     i = wp.tid()
 
     a = wp.vec3()
@@ -60,7 +60,7 @@ def test_vec_assign(test, device):
 
 def test_vec_assign_copy(test, device):
     @wp.kernel(module="unique")
-    def vec_assign_overwrite(x: wp.array(dtype=wp.vec3), y: wp.array(dtype=wp.vec3)):
+    def vec_assign_overwrite(x: wp.array[wp.vec3], y: wp.array[wp.vec3]):
         tid = wp.tid()
 
         a = wp.vec3()
@@ -86,7 +86,7 @@ def test_vec_assign_copy(test, device):
 
 def test_vec_slicing_assign_backward(test, device):
     @wp.kernel(module="unique")
-    def kernel(arr_x: wp.array(dtype=wp.vec2), arr_y: wp.array(dtype=wp.vec4)):
+    def kernel(arr_x: wp.array[wp.vec2], arr_y: wp.array[wp.vec4]):
         i = wp.tid()
 
         x = arr_x[i]

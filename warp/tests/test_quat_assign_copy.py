@@ -18,7 +18,7 @@ def tearDownModule():
 
 
 @wp.kernel
-def quat_assign_subscript(x: wp.array(dtype=float), y: wp.array(dtype=wp.quat)):
+def quat_assign_subscript(x: wp.array[float], y: wp.array[wp.quat]):
     i = wp.tid()
 
     a = wp.quat()
@@ -30,7 +30,7 @@ def quat_assign_subscript(x: wp.array(dtype=float), y: wp.array(dtype=wp.quat)):
 
 
 @wp.kernel
-def quat_assign_attribute(x: wp.array(dtype=float), y: wp.array(dtype=wp.quat)):
+def quat_assign_attribute(x: wp.array[float], y: wp.array[wp.quat]):
     i = wp.tid()
 
     a = wp.quat()
@@ -62,7 +62,7 @@ def test_quat_assign(test, device):
 
 def test_quat_assign_copy(test, device):
     @wp.kernel(module="unique")
-    def quat_assign_overwrite(x: wp.array(dtype=wp.quat), y: wp.array(dtype=wp.quat)):
+    def quat_assign_overwrite(x: wp.array[wp.quat], y: wp.array[wp.quat]):
         tid = wp.tid()
 
         a = wp.quat()
@@ -88,7 +88,7 @@ def test_quat_assign_copy(test, device):
 
 def test_quat_slicing_assign_backward(test, device):
     @wp.kernel(module="unique")
-    def kernel(arr_x: wp.array(dtype=wp.vec2), arr_y: wp.array(dtype=wp.quat)):
+    def kernel(arr_x: wp.array[wp.vec2], arr_y: wp.array[wp.quat]):
         i = wp.tid()
 
         x = arr_x[i]
