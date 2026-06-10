@@ -385,6 +385,8 @@ CUDA Memory Management
    :toctree: _generated
 
    Allocator
+   ManagedAllocator
+   MemoryKind
    ScopedAllocator
    ScopedMempool
    ScopedMempoolAccess

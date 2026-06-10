@@ -15,6 +15,12 @@
 - Extend `wp.utils.array_scan()` to 64-bit scalar and vector types, and extend `wp.utils.radix_sort_pairs()` to 32- and
   64-bit signed, unsigned, and floating-point keys with 4- or 8-byte values
   ([GH-1538](https://github.com/NVIDIA/warp/issues/1538)).
+- Add `wp.ManagedAllocator()` for explicit CUDA managed-memory arrays. CPU kernels can use managed arrays as an
+  opt-in path to read and write CUDA managed-memory allocations through Unified Memory on systems where CUDA reports
+  compatible managed-memory access, while Warp CUDA arrays backed by non-managed memory still need explicit CPU
+  copies. Use `array.memory_kind` to inspect whether an array is backed by host, pinned host, CUDA device, CUDA
+  mempool, or CUDA managed memory. Preallocated managed arrays work in CUDA graph captures, but capture-time allocation
+  is a current limitation ([GH-1523](https://github.com/NVIDIA/warp/issues/1523)).
 
 ### Removed
 
