@@ -68,6 +68,12 @@ REDUCE_OP_ADD = 0
 REDUCE_OP_MIN = 1
 REDUCE_OP_MAX = 2
 
+UNSUPPORTED_CONSUMED_COUNTER_BACKWARD_MESSAGE = (
+    "Deterministic mode does not support consumed-return counter atomics in generated backward "
+    "or custom adjoint code. Move the slot allocation to a forward kernel and replay the stored "
+    "slot mapping, or disable deterministic mode for this kernel."
+)
+
 DETERMINISTIC_NOT_GUARANTEED = DeterministicMode.NOT_GUARANTEED
 DETERMINISTIC_RUN_TO_RUN = DeterministicMode.RUN_TO_RUN
 DETERMINISTIC_GPU_TO_GPU = DeterministicMode.GPU_TO_GPU
@@ -198,10 +204,12 @@ class DeterministicMeta:
     counter_targets: list[CounterTarget] = field(default_factory=list)
     scatter_records_per_thread: dict[ScatterTarget, int] = field(default_factory=dict)
     counter_records_per_thread: dict[CounterTarget, int] = field(default_factory=dict)
+    counter_replay_targets: set[CounterTarget] = field(default_factory=set)
     needs_context: bool = False
     # Set by Adjoint.build() once the body has been pre-scanned.
     has_consumed_atomic: bool = False
     has_side_effect_store: bool = False
+    has_unsupported_consumed_counter_backward: bool = False
 
     def add_scatter_target(self, target: ScatterTarget, records_per_thread: int = 1):
         """Record a scatter target requirement for this function or kernel."""
@@ -715,6 +723,10 @@ def emit_deterministic_atomic(adj, func, bound_args, return_type, output, output
                 "Deterministic mode currently supports consumed-return counter atomics only for int32 counter arrays."
             )
 
+        if adj.custom_reverse_mode or target_is_adjoint:
+            adj.det_meta.has_unsupported_consumed_counter_backward = True
+            raise WarpCodegenError(UNSUPPORTED_CONSUMED_COUNTER_BACKWARD_MESSAGE)
+
         try:
             target = get_or_create_counter_target(
                 adj.det_registry,
@@ -729,6 +741,7 @@ def emit_deterministic_atomic(adj, func, bound_args, return_type, output, output
         except ValueError as e:
             raise WarpCodegenError(str(e)) from e
         helper_name = target.helper_name
+        adj.det_meta.counter_replay_targets.add(target)
 
         val_loaded = loaded_args[-1]  # already loaded above
         loaded_prefix = [adj.load(var) for var in view_prefix_vars]
@@ -741,11 +754,11 @@ def emit_deterministic_atomic(adj, func, bound_args, return_type, output, output
             )
         flat_idx_expr = _deterministic_flat_index_expr(adj, target_expr, idx_loaded_list, func.key, target.value_ctype)
 
-        adj.add_forward(
+        counter_call = (
             f"WP_DET_COUNTER_OR_FALLBACK(var_{output}, det_ctx, {helper_name}, {flat_idx_expr}, "
-            f"{val_loaded.emit()}, {cpu_call});",
-            replay="// deterministic counter replay (skipped)",
+            f"{val_loaded.emit()}, {cpu_call});"
         )
+        adj.add_forward(counter_call, replay=counter_call)
         return output
 
     # Return value unused: record the update and reduce it after the kernel.
@@ -1138,7 +1151,7 @@ def _deterministic_find_target(targets, array_var_label, attr_path, *, adjoint=F
     return None
 
 
-def _include_deterministic_call_meta(adj, meta, bound_args):
+def _include_deterministic_call_meta(adj, meta, bound_args, *, include_replay_targets=True):
     """Merge deterministic requirements from a called ``@wp.func`` into ``adj``."""
     if adj.det_meta is None or adj.det_registry is None or meta is None or not meta.needs_deterministic:
         return
@@ -1175,6 +1188,8 @@ def _include_deterministic_call_meta(adj, meta, bound_args):
             use_backward=getattr(target, "use_backward", False),
         )
         adj.det_meta.counter_records_per_thread[mapped_target] += count - 1
+        if include_replay_targets and target in meta.counter_replay_targets:
+            adj.det_meta.counter_replay_targets.add(mapped_target)
 
 
 def _deterministic_call_args(adj, meta, bound_args):
@@ -1711,8 +1726,6 @@ def launch_deterministic(
     active_counter_targets = []
     for target in det_meta.counter_targets:
         if not (target.use_backward if adjoint else target.use_forward):
-            continue
-        if adjoint and not target_has_resolvable_destination(target):
             continue
         active_counter_targets.append(target)
 

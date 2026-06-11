@@ -26,6 +26,7 @@ import warp.config
 from warp._src.deterministic import (
     _DET_INTERCEPTABLE_ATOMICS,
     _DET_UNINTERCEPTED_SIDE_EFFECT_ATOMICS,
+    UNSUPPORTED_CONSUMED_COUNTER_BACKWARD_MESSAGE,
     _add_deterministic_array_store,
     _det_needs_store_guard,
     _det_wrap_side_effect_call,
@@ -1900,7 +1901,9 @@ class Adjoint:
             func_det_meta = getattr(func.adj, "det_meta", None)
             if adj.det_meta is not None and func_det_meta is not None:
                 try:
-                    _include_deterministic_call_meta(adj, func_det_meta, bound_args)
+                    _include_deterministic_call_meta(
+                        adj, func_det_meta, bound_args, include_replay_targets=func.custom_replay_func is None
+                    )
                 except ValueError as e:
                     raise WarpCodegenError(str(e)) from e
             if adj.det_meta is not None and func.custom_grad_func is not None:
@@ -1909,6 +1912,8 @@ class Adjoint:
                     func.custom_grad_func.build(None, adj.builder_options)
                 custom_grad_det_meta = getattr(func.custom_grad_func.adj, "det_meta", None)
                 if custom_grad_det_meta is not None:
+                    if getattr(custom_grad_det_meta, "has_unsupported_consumed_counter_backward", False):
+                        raise WarpCodegenError(UNSUPPORTED_CONSUMED_COUNTER_BACKWARD_MESSAGE)
                     try:
                         _include_deterministic_call_meta(adj, custom_grad_det_meta, bound_args)
                     except ValueError as e:

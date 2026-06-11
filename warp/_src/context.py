@@ -9340,6 +9340,15 @@ def launch(
         # deterministic buffers. Backward kernels use the same path so generated
         # tape adjoints can reduce gradient atomics in a fixed order.
         det_meta = getattr(kernel.adj, "det_meta", None)
+        counter_replay_targets = getattr(det_meta, "counter_replay_targets", ())
+        if adjoint and det_meta is not None and det_meta.needs_deterministic and counter_replay_targets:
+            target_names = ", ".join(target.target_label for target in counter_replay_targets)
+            raise RuntimeError(
+                "Deterministic mode does not support generated backward replay of consumed-return counter atomics "
+                f"in kernel '{kernel.key}' for target(s): {target_names}. Store and replay the slot mapping "
+                "explicitly with @wp.func_replay, mark the kernel with enable_backward=False if it is not "
+                "differentiable, or disable deterministic mode for this kernel."
+            )
         if det_meta is not None and det_meta.needs_deterministic and device.is_cuda:
             from warp._src.deterministic import create_deterministic_launch, launch_deterministic  # noqa: PLC0415
 

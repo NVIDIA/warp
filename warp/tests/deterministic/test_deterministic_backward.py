@@ -178,6 +178,40 @@ def custom_adjoint_not_guaranteed_kernel(
     output[tid] = _not_guaranteed_lookup_value(values, indices[tid])
 
 
+@wp.func
+def _det_counter_grad_value(
+    values: wp.array[wp.float32],
+    counter: wp.array[wp.int32],
+    slots: wp.array[wp.int32],
+    tid: int,
+) -> wp.float32:
+    return values[tid]
+
+
+@wp.func_grad(_det_counter_grad_value)
+def _adj_det_counter_grad_value(
+    values: wp.array[wp.float32],
+    counter: wp.array[wp.int32],
+    slots: wp.array[wp.int32],
+    tid: int,
+    adj_ret: wp.float32,
+):
+    slot = wp.atomic_add(counter, 0, 1)
+    slots[slot] = tid
+    wp.adjoint[values][tid] += adj_ret
+
+
+@wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
+def custom_adjoint_counter_kernel(
+    values: wp.array[wp.float32],
+    counter: wp.array[wp.int32],
+    slots: wp.array[wp.int32],
+    output: wp.array[wp.float32],
+):
+    tid = wp.tid()
+    output[tid] = _det_counter_grad_value(values, counter, slots, tid)
+
+
 def test_deterministic_backward_scatter_add(test, device):
     """Verify deterministic scatter-add kernels launch backward and propagate value gradients."""
     n = 512
@@ -309,8 +343,8 @@ def test_deterministic_backward_missing_adjoint_target(test, device):
         np.testing.assert_array_equal(result, expected)
 
 
-def test_deterministic_backward_counter_store(test, device):
-    """Verify counter-mode array stores preserve ``array_store`` adjoints."""
+def test_deterministic_backward_counter_store_rejected(test, device):
+    """Verify generated backward replay of consumed-return counters fails closed."""
     n = 64
     data_np = np.arange(n, dtype=np.float32)
 
@@ -322,9 +356,31 @@ def test_deterministic_backward_counter_store(test, device):
     with tape:
         wp.launch(counter_kernel, dim=n, inputs=[data, counter], outputs=[output], device=device)
 
-    tape.backward(grads={output: wp.ones_like(output)})
+    with test.assertRaisesRegex(RuntimeError, "generated backward replay of consumed-return counter atomics"):
+        tape.backward(grads={output: wp.ones_like(output)})
 
-    np.testing.assert_allclose(tape.gradients[data].numpy(), np.ones(n, dtype=np.float32), rtol=0, atol=0)
+
+def test_deterministic_backward_counter_manual_launch_rejected(test, device):
+    """Verify manual adjoint launches fail closed for generated counter replay."""
+    n = 8
+    data = wp.array(np.arange(n, dtype=np.float32), dtype=wp.float32, device=device, requires_grad=True)
+    counter = wp.zeros(1, dtype=wp.int32, device=device)
+    output = wp.zeros(n, dtype=wp.float32, device=device, requires_grad=True)
+    output_grad = wp.ones(n, dtype=wp.float32, device=device)
+
+    wp.launch(counter_kernel, dim=n, inputs=[data, counter], outputs=[output], device=device)
+
+    with test.assertRaisesRegex(RuntimeError, "generated backward replay of consumed-return counter atomics"):
+        wp.launch(
+            counter_kernel,
+            dim=n,
+            inputs=[data, counter],
+            outputs=[output],
+            adj_inputs=[data.grad, None],
+            adj_outputs=[output_grad],
+            device=device,
+            adjoint=True,
+        )
 
 
 def test_deterministic_custom_replay_counter(test, device):
@@ -480,6 +536,23 @@ def test_custom_adjoint_not_guaranteed_mode(test, device):
         np.testing.assert_allclose(store_gradient_result, 2.0 * store_values_np, rtol=0, atol=0)
 
 
+def test_deterministic_custom_adjoint_consumed_counter_rejected(test, device):
+    """Verify consumed-return counters in custom adjoints fail closed."""
+    n = 16
+    values = wp.ones(n, dtype=wp.float32, device=device, requires_grad=True)
+    counter = wp.zeros(1, dtype=wp.int32, device=device)
+    slots = wp.zeros(n, dtype=wp.int32, device=device)
+    output = wp.zeros(n, dtype=wp.float32, device=device, requires_grad=True)
+
+    with test.assertRaisesRegex(RuntimeError, "consumed-return counter atomics"):
+        tape = wp.Tape()
+        with tape:
+            wp.launch(
+                custom_adjoint_counter_kernel, dim=n, inputs=[values, counter, slots], outputs=[output], device=device
+            )
+        tape.backward(grads={output: wp.ones_like(output)})
+
+
 class TestDeterministicBackward(DeterministicTestBase):
     """Test deterministic lowering through backward launches and custom adjoints."""
 
@@ -495,7 +568,6 @@ for _name in (
     "test_deterministic_backward_address_scatter",
     "test_deterministic_backward_vec3_address_scatter",
     "test_deterministic_backward_missing_adjoint_target",
-    "test_deterministic_backward_counter_store",
     "test_deterministic_custom_replay_counter",
     "test_deterministic_custom_adjoint_array_atomic",
     "test_deterministic_custom_adjoint_gather_atomic",
@@ -503,6 +575,9 @@ for _name in (
 ):
     _add(_name)
 
+_add("test_deterministic_backward_counter_store_rejected", devices=all_devices)
+_add("test_deterministic_backward_counter_manual_launch_rejected", devices=all_devices)
+_add("test_deterministic_custom_adjoint_consumed_counter_rejected", devices=all_devices)
 _add("test_custom_adjoint_not_guaranteed_mode", devices=all_devices)
 
 

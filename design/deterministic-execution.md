@@ -246,6 +246,19 @@ the forward pass, the backward pass, or both. Backward-only targets still appear
 in the hidden ABI so the compiled signatures are stable, but forward launches
 receive null helper buffers for them and skip the sort/reduce postpass.
 
+Consumed-return counter atomics need extra care under autodiff because the
+generated backward kernel replays the forward control flow before executing the
+reverse statements. Recomputing counter slots from the user's counter array
+during backward is incorrect: the forward pass has already mutated the counter,
+and later forward launches may have appended more records. When a deterministic
+counter target is reachable from generated backward replay, Warp raises before
+launching the adjoint instead of guessing slot numbers. Users who need
+gradients through the slot value must store the forward slot mapping explicitly
+and provide a ``@wp.func_replay`` implementation that returns the saved slot
+without running the counter atomic again. Consumed-return counter atomics inside
+custom adjoint/backward code are also rejected because the reverse pass would
+require a separate side-effect-suppressed counter phase.
+
 Generated array-read adjoints such as ``values[index]`` normally accumulate
 into ``values.grad[index]`` through native floating-point atomics during
 ``Tape.backward()``. Deterministic mode lowers those reverse accumulations into
@@ -326,6 +339,13 @@ in-kernel counter resets.
 - The consumed-return counter path currently supports only ``atomic_add`` on
   ``int32`` counter arrays. Counter indices may be constant, data-dependent, or
   supplied through sliced counter views.
+- Consumed-return counter atomics are rejected in generated backward replay.
+  The replay phase cannot safely recompute slots from a counter array that the
+  forward pass already mutated. Users who need gradients through the slot value
+  must store the forward slot mapping explicitly and provide a
+  ``@wp.func_replay`` implementation. Consumed-return counter atomics inside
+  custom adjoint/backward code are also rejected because the reverse pass would
+  require a separate side-effect-suppressed counter phase.
 - User-authored custom adjoints are deterministic when their contended gradient
   accumulation is expressed in Warp code with supported atomic patterns, such
   as ``wp.adjoint[arr][i] += value``. Native C++ adjoint helpers or unsupported
@@ -426,6 +446,8 @@ The suite in ``warp/tests/test_deterministic.py`` covers:
   reductions and consumed-return counter atomics.
 - **Tape/backward support**: generated backward kernels launch through the
   deterministic path, including scalar and ``wp.vec3`` gather-style gradient
-  scatters and custom ``wp.adjoint[...]`` accumulation.
+  scatters and custom ``wp.adjoint[...]`` accumulation. Generated backward
+  replay of consumed-return counter atomics is tested as a rejected case, while
+  explicit ``@wp.func_replay`` slot mapping is tested as the supported path.
 - All tests run on both CPU and CUDA where applicable.  Existing
   ``test_atomic.py`` (158 tests) passes with zero regressions.

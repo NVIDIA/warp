@@ -225,6 +225,16 @@ This pattern currently supports:
 Consumed-return ``atomic_sub``, ``atomic_min``, and ``atomic_max`` are rejected
 because their semantics are not prefix-sum slot allocation.
 
+When this pattern appears in differentiable code, generated backward replay is
+not supported automatically.  The backward pass would need the exact slot that
+each thread received in the forward pass, but the counter array has already
+been mutated and later launches may have appended more records.  Warp therefore
+raises an error before launching the generated adjoint instead of recomputing a
+possibly wrong slot.  If gradients need the slot, store the mapping explicitly
+and provide a custom replay function, as shown in
+:ref:`custom-replay-function`.  If the kernel is only bookkeeping, mark it with
+``enable_backward=False`` or disable deterministic mode for that kernel.
+
 Tape and Backward Passes
 ------------------------
 
@@ -274,6 +284,16 @@ the forward pass but does not require gradients, deterministic mode treats the
 corresponding backward target as inactive and leaves the generated helper as a
 no-op.  Other gradients from the same backward kernel are still reduced
 deterministically.
+
+The unsupported autodiff case is Pattern 2 slot allocation with a consumed
+counter return.  A generated backward pass normally replays the original
+forward code before running reverse statements.  Replaying
+``slot = wp.atomic_add(counter, index, value)`` would allocate new slots from
+the already-mutated counter, which can silently send adjoints to the wrong
+elements.  Deterministic mode rejects that launch instead.  The supported fix
+is to save the forward slot mapping yourself and use ``@wp.func_replay`` so the
+backward replay reads the saved slot rather than running the counter atomic
+again.
 
 Writing Manual Deterministic Code
 ---------------------------------
@@ -733,11 +753,20 @@ Fixed scatter capacity
             for i in range(loop_counts[tid]):
                 wp.atomic_add(out, 0, 1.0)
 
+Consumed counters in backward replay
+    Generated backward replay of Pattern 2 is rejected.  Warp cannot safely
+    recompute the consumed slot from a counter array that the forward pass
+    already changed.  Store the forward slot mapping yourself and provide a
+    ``@wp.func_replay`` implementation when gradients need that slot.  Consumed
+    counter atomics inside custom adjoint code are also rejected; move slot
+    allocation to the forward pass and replay an explicit slot mapping instead.
+
 Counter arrays are allocation counters
-    Pattern 2 is intended for counters that are initialized for the launch,
-    usually to zero.  The deterministic postpass writes each touched counter
-    element to the total number of reserved slots.  It does not add that total
-    to a pre-existing nonzero counter value.
+    Pattern 2 snapshots the counter values before the counting pass and writes
+    final totals after the execution pass.  This supports pre-existing
+    nonzero counters and append-style multi-launch workflows.  It is still an
+    allocation-counter pattern, not a general way to make arbitrary
+    order-dependent counter mutations deterministic.
 
 Large launches
     Deterministic scatter and counter launches are limited to at most
@@ -759,7 +788,9 @@ When enabling deterministic mode in a new kernel:
 4. If the kernel uses ``slot = wp.atomic_add(counter, index, value)``, check
    that the counter is an ``int32`` array initialized for that launch.
 5. For differentiable kernels, run ``Tape.backward()`` several times and compare
-   the gradients that matter with ``np.testing.assert_array_equal()``.
+   the gradients that matter with ``np.testing.assert_array_equal()``.  If the
+   kernel consumes a counter return, provide an explicit ``@wp.func_replay``
+   slot mapping or keep that kernel out of the generated backward pass.
 6. If you capture the kernel in a CUDA graph, validate both capture and replay.
    Ordinary CUDA graph capture is supported for both Pattern 1 and Pattern 2;
    Warp keeps the temporary deterministic buffers alive on the captured graph
