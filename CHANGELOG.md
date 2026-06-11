@@ -15,6 +15,13 @@
 - Extend `wp.utils.array_scan()` to 64-bit scalar and vector types, and extend `wp.utils.radix_sort_pairs()` to 32- and
   64-bit signed, unsigned, and floating-point keys with 4- or 8-byte values
   ([GH-1538](https://github.com/NVIDIA/warp/issues/1538)).
+- Add deterministic execution mode for atomic operations via
+  `wp.config.deterministic = wp.DeterministicMode.RUN_TO_RUN`. Supported atomic accumulation and slot-allocation patterns
+  can produce bit-exact repeated results. Configurable at the global and module level. Use
+  `wp.config.deterministic_max_records` to raise the default per-thread record bound for deterministic atomics in modules
+  created after the config is set. Deterministic backward reductions are supported for generated and custom-adjoint
+  accumulation patterns; consumed-return counter atomics require explicit replay functions and are rejected in generated
+  backward replay to avoid incorrect gradients ([GH-1443](https://github.com/NVIDIA/warp/issues/1443)).
 
 ### Removed
 
@@ -79,37 +86,6 @@
   parameters of any size, and `@wp.struct` / `wp.indexedarray` launch arguments that reference Warp array data,
   gradient buffers, or `wp.indexedarray` indices
   ([GH-1431](https://github.com/NVIDIA/warp/issues/1431)).
-- Add deterministic execution mode for atomic operations via
-  `wp.config.deterministic = wp.DeterministicMode.RUN_TO_RUN`. Supported atomic accumulation and slot-allocation patterns
-  can produce bit-exact repeated results. Configurable at the global and module level. Use
-  `wp.config.deterministic_max_records` to raise the default per-thread record bound for deterministic atomics in modules
-  created after the config is set ([GH-1443](https://github.com/NVIDIA/warp/issues/1443)).
-- Expose CUDA graph capture mode via `ScopedCapture` / `capture_begin()`
-  ([GH-1410](https://github.com/NVIDIA/warp/issues/1410)).
-- Add pre-allocated functors for `warp.optim.linear` solvers. Passing `run=False` to `cg`, `cr`, `bicgstab`, or `gmres`
-  returns a state object that holds all temporary buffers and can be invoked repeatedly on compatible systems
-  (same shape, batch count, dtype, and device), avoiding per-call allocation overhead and allowing usage in CUDA subgraphs
-  ([GH-1391](https://github.com/NVIDIA/warp/issues/1391)).
-- Add batched-input support to `warp.optim.linear` solvers: a `LinearOperator` built with `batch_offsets`
-  partitions the DOF vector into independent subproblems that are all solved in a single launch sequence,
-  with per-batch convergence checks ([GH-1391](https://github.com/NVIDIA/warp/issues/1391)).
-- Add `--sanitize=<name>` build option to `build_lib.py`, enabling AddressSanitizer builds of
-  `warp.dll` and `warp-clang.dll` on Windows, Linux, and macOS
-  ([GH-1387](https://github.com/NVIDIA/warp/issues/1387)).
-- Extend AddressSanitizer support to JIT-compiled CPU kernels: when `warp-clang` is built with
-  `--sanitize=address`, CPU kernels are automatically instrumented and share the host's single
-  in-process ASan runtime, so out-of-bounds accesses into a `wp.array` are reported as
-  `heap-buffer-overflow` ([GH-1387](https://github.com/NVIDIA/warp/issues/1387)).
-- Add analytic backward passes for `wp.curlnoise()` (2D, 3D, 4D). Previously
-  the adjoints were stubbed as no-ops and `is_differentiable=False`, so
-  gradients silently dropped through curl-noise force fields in
-  differentiable simulations
-  ([GH-1012](https://github.com/NVIDIA/warp/issues/1012)).
-- Add cooperative GPU scalar fallbacks for `tile_cholesky`, `tile_cholesky_solve`,
-  `tile_lower_solve`, and `tile_upper_solve` (and their inplace variants) and for the
-  `tile_cholesky` adjoint, so they run on GPU when libmathdx is unavailable. Add the
-  `enable_mathdx_solver` config flag and module option (parity with `enable_mathdx_gemm`)
-  to route these ops through the fallback when libmathdx is available
 - Add multi-environment support to `warp.fem`: colocated `Grid2D`/`Grid3D` and packed `Nanogrid`/`AdaptiveNanogrid`
   geometries with environment-aware lookup and `PicQuadrature` environment indices, per-cell environment metadata for
   unstructured FEM meshes with grouped-BVH lookup and nonconforming field evaluation, and environment-first space
