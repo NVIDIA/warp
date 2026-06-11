@@ -114,6 +114,18 @@ def atomic_add_2d_kernel(
 
 
 @wp.kernel
+def negative_index_atomic_add_kernel(output: wp.array[wp.float32]):
+    """Atomic add using a negative 1D index."""
+    wp.atomic_add(output, -1, 1.0)
+
+
+@wp.kernel
+def negative_index_atomic_add_2d_kernel(output: wp.array2d[wp.float32]):
+    """Atomic add using negative 2D indices."""
+    wp.atomic_add(output, -1, -1, 1.0)
+
+
+@wp.kernel
 def sliced_2d_atomic_add_kernel(
     data: wp.array[wp.float32],
     row_indices: wp.array[wp.int32],
@@ -493,6 +505,19 @@ def test_atomic_add_2d(test, device):
         return output.numpy().copy()
 
     assert_equal_repeated(launch_once)
+
+
+def test_atomic_add_negative_indices(test, device):
+    """Verify deterministic flat indices match Warp negative-index semantics."""
+    output = wp.zeros(4, dtype=wp.float32, device=device)
+    wp.launch(negative_index_atomic_add_kernel, dim=1, outputs=[output], device=device)
+    np.testing.assert_array_equal(output.numpy(), np.array([0.0, 0.0, 0.0, 1.0], dtype=np.float32))
+
+    output_2d = wp.zeros((3, 4), dtype=wp.float32, device=device)
+    wp.launch(negative_index_atomic_add_2d_kernel, dim=1, outputs=[output_2d], device=device)
+    expected = np.zeros((3, 4), dtype=np.float32)
+    expected[-1, -1] = 1.0
+    np.testing.assert_array_equal(output_2d.numpy(), expected)
 
 
 def test_sliced_2d_array_atomic_add(test, device):
@@ -1050,6 +1075,7 @@ for _name in (
     "test_multi_array_atomic",
     "test_atomic_sub_deterministic",
     "test_atomic_add_2d",
+    "test_atomic_add_negative_indices",
     "test_sliced_2d_array_atomic_add",
     "test_sliced_3d_array_atomic_add",
     "test_strided_1d_view_atomic_add",

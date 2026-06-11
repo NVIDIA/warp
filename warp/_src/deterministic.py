@@ -1082,7 +1082,11 @@ def _deterministic_flat_index_expr(adj, target_expr, idx_loaded_list, func_key, 
             f"{func_key} on {target_expr}."
         )
 
-    terms = " + ".join(f"var_{idx_loaded_list[k]} * {target_expr}.strides[{k}]" for k in range(ndim))
+    terms = " + ".join(
+        f"((var_{idx_loaded_list[k]} < 0) ? (var_{idx_loaded_list[k]} + {target_expr}.shape[{k}]) : "
+        f"var_{idx_loaded_list[k]}) * {target_expr}.strides[{k}]"
+        for k in range(ndim)
+    )
     return f"(({terms}) / static_cast<int>(sizeof({value_ctype})))"
 
 
