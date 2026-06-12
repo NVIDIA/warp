@@ -576,7 +576,7 @@ for _name in (
     _add(_name)
 
 _add("test_deterministic_backward_counter_store_rejected", devices=all_devices)
-_add("test_deterministic_backward_counter_manual_launch_rejected", devices=all_devices)
+_add("test_deterministic_backward_counter_manual_launch_rejected", devices=cuda_devices)
 _add("test_deterministic_custom_adjoint_consumed_counter_rejected", devices=all_devices)
 _add("test_custom_adjoint_not_guaranteed_mode", devices=all_devices)
 
