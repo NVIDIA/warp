@@ -88,6 +88,8 @@
   ([GH-1544](https://github.com/NVIDIA/warp/issues/1544)).
 - Fix LTO cache collisions and stale FFT metadata handling by using longer cache keys and rebuilding invalid metadata
   ([GH-1511](https://github.com/NVIDIA/warp/issues/1511)).
+- Fix `wp.array[...]`-style subscript annotations to return lightweight annotation types instead of instances, so
+  PEP 604 unions (for example, `wp.array[float] | float`) work at runtime ([GH-1548](https://github.com/NVIDIA/warp/issues/1548)).
 
 ### Documentation
 

@@ -2591,7 +2591,7 @@ def type_repr(t) -> str:
         return "Any"
     if is_array(t):
         cls_name = concrete_array_type(t).__name__
-        if isinstance(t, _ArrayAnnotationBase) or (hasattr(t, "device") and t.device is None):
+        if is_array_annotation(t) or (hasattr(t, "device") and t.device is None):
             # array is used as a type annotation - display ndim instead of shape
             ndim_repr = "Any" if t.ndim is Any else t.ndim
             return f"{cls_name}(ndim={ndim_repr}, dtype={type_repr(t.dtype)})"
@@ -2769,19 +2769,30 @@ def is_struct(x) -> builtins.bool:
 
 def is_array(x) -> builtins.bool:
     """Return ``True`` if the value is one of the Warp array type instances or annotations."""
-    return isinstance(x, (array_types, _ArrayAnnotationBase))
+    return isinstance(x, array_types) or is_array_annotation(x)
+
+
+def is_array_annotation(t: Any) -> builtins.bool:
+    """Return True if *t* is a parameterized array annotation type (e.g. ``wp.array[float]``)."""
+    return (
+        isinstance(t, type)
+        and issubclass(t, _ArrayAnnotationBase)
+        and hasattr(t, "dtype")
+        and hasattr(t, "ndim")
+        and hasattr(t, "_concrete_cls")
+    )
 
 
 def matches_array_class(t, cls) -> builtins.bool:
     """True if ``t`` is an instance of ``cls`` or an annotation for ``cls``."""
-    if isinstance(t, _ArrayAnnotationBase):
+    if is_array_annotation(t):
         return t._concrete_cls is cls
     return isinstance(t, cls)
 
 
 def concrete_array_type(t) -> type:
     """Return the concrete array class for an annotation or instance."""
-    if isinstance(t, _ArrayAnnotationBase):
+    if is_array_annotation(t):
         return t._concrete_cls
     return type(t)
 
@@ -4548,7 +4559,7 @@ class array1d(Array[DType, NDim]):
         """Support wp.array1d[dtype] syntax."""
         if isinstance(dtype, tuple):
             raise TypeError(f"wp.{cls.__name__} expects a single type parameter (dtype), got {len(dtype)}")
-        return _ArrayAnnotation(dtype=dtype, ndim=1)
+        return _make_array_annotation_type(_ArrayAnnotation, dtype=dtype, ndim=1)
 
 
 class array2d(Array[DType, NDim]):
@@ -4563,7 +4574,7 @@ class array2d(Array[DType, NDim]):
         """Support wp.array2d[dtype] syntax."""
         if isinstance(dtype, tuple):
             raise TypeError(f"wp.{cls.__name__} expects a single type parameter (dtype), got {len(dtype)}")
-        return _ArrayAnnotation(dtype=dtype, ndim=2)
+        return _make_array_annotation_type(_ArrayAnnotation, dtype=dtype, ndim=2)
 
 
 class array3d(Array[DType, NDim]):
@@ -4578,7 +4589,7 @@ class array3d(Array[DType, NDim]):
         """Support wp.array3d[dtype] syntax."""
         if isinstance(dtype, tuple):
             raise TypeError(f"wp.{cls.__name__} expects a single type parameter (dtype), got {len(dtype)}")
-        return _ArrayAnnotation(dtype=dtype, ndim=3)
+        return _make_array_annotation_type(_ArrayAnnotation, dtype=dtype, ndim=3)
 
 
 class array4d(Array[DType, NDim]):
@@ -4593,7 +4604,7 @@ class array4d(Array[DType, NDim]):
         """Support wp.array4d[dtype] syntax."""
         if isinstance(dtype, tuple):
             raise TypeError(f"wp.{cls.__name__} expects a single type parameter (dtype), got {len(dtype)}")
-        return _ArrayAnnotation(dtype=dtype, ndim=4)
+        return _make_array_annotation_type(_ArrayAnnotation, dtype=dtype, ndim=4)
 
 
 def from_ptr(ptr, length, dtype=None, shape=None, device=None):
@@ -4980,130 +4991,116 @@ array_types = (array, indexedarray, fabricarray, indexedfabricarray, fixedarray)
 # rather than requiring deferred wiring.
 
 
-class _ArrayAnnotationBase:
-    """Lightweight descriptor for array type annotations.
+class _ArrayAnnotationTypeMeta(type):
+    """Metaclass for parameterized array annotation *types*.
 
-    Unlike full ``array``/``indexedarray`` instances, these carry only the
-    metadata that codegen needs (``.dtype``, ``.ndim``, ``.vars``,
-    ``.__ctype__()``), with no device management overhead.
+    `wp.array[...]` returns a type (not an instance) so it can participate in
+    PEP 604 unions (e.g. ``wp.array[float] | float``) while still exposing the
+    metadata codegen expects (``.dtype``, ``.ndim``, ``.vars``, ``.__ctype__()``).
     """
 
-    __slots__ = ("dtype", "ndim")
-    # Subclasses must set _concrete_cls to the corresponding array class.
+    def __repr__(cls):
+        dtype = getattr(cls, "dtype", Any)
+        ndim = getattr(cls, "ndim", Any)
 
-    def __init__(self, dtype, ndim=1):
-        self.dtype = dtype if dtype is Any else type_to_warp(dtype)
-        self.ndim = ndim
-
-    def __repr__(self):
-        if self.dtype is Any:
+        if dtype is Any:
             dtype_str = "Any"
-        elif hasattr(self.dtype, "key"):
+        elif hasattr(dtype, "key"):
             # Struct instances use .key instead of __name__
-            dtype_str = self.dtype.key
+            dtype_str = dtype.key
         else:
-            name = getattr(self.dtype, "__name__", None)
-            if name and getattr(warp, name, None) is self.dtype:
+            name = getattr(dtype, "__name__", None)
+            if name and getattr(warp, name, None) is dtype:
                 dtype_str = f"wp.{name}"
             else:
                 # Custom vector/matrix/quaternion/transformation types
-                repr_name = type_repr(self.dtype)
+                repr_name = type_repr(dtype)
                 if getattr(warp, repr_name, None) is not None:
                     dtype_str = f"wp.{repr_name}"
                 else:
                     dtype_str = repr_name
-        ndim_str = "Any" if self.ndim is Any else self.ndim
-        return f"wp.{self._concrete_cls.__name__}(dtype={dtype_str}, ndim={ndim_str})"
 
-    def __eq__(self, other):
-        if isinstance(other, _ArrayAnnotationBase):
-            return self._concrete_cls is other._concrete_cls and self.dtype == other.dtype and self.ndim == other.ndim
-        return NotImplemented
+        ndim_str = "Any" if ndim is Any else ndim
+        concrete = getattr(cls, "_concrete_cls", None)
+        concrete_name = concrete.__name__ if concrete is not None else "array"
+        return f"wp.{concrete_name}(dtype={dtype_str}, ndim={ndim_str})"
 
-    def __hash__(self):
-        return hash((self._concrete_cls, self.dtype, self.ndim))
+    def __eq__(cls, other):
+        if not isinstance(other, type):
+            return NotImplemented
+        if not issubclass(other, _ArrayAnnotationBase):
+            return False
+        return (
+            cls._concrete_cls is other._concrete_cls
+            and getattr(cls, "dtype", Any) == getattr(other, "dtype", Any)
+            and getattr(cls, "ndim", Any) == getattr(other, "ndim", Any)
+        )
+
+    def __hash__(cls):
+        return hash((cls._concrete_cls, getattr(cls, "dtype", Any), getattr(cls, "ndim", Any)))
+
+    @property
+    def vars(cls):
+        cached = cls.__dict__.get("_vars_cache")
+        if cached is not None:
+            return cached
+
+        concrete = cls._concrete_cls
+        if concrete is array or concrete is fixedarray:
+            cached = {
+                "shape": warp._src.codegen.Var("shape", shape_t),
+                "ptr": warp._src.codegen.Var("data", pointer_t(getattr(cls, "dtype", Any))),
+            }
+        elif concrete is indexedarray:
+            cached = {"shape": warp._src.codegen.Var("shape", shape_t)}
+        elif concrete is fabricarray or concrete is indexedfabricarray:
+            cached = {"size": warp._src.codegen.Var("size", uint64)}
+        else:
+            cached = {}
+
+        cls._vars_cache = cached
+        return cached
+
+    def __ctype__(cls):
+        concrete = cls._concrete_cls
+        if concrete is array or concrete is fixedarray:
+            return array_t()
+        if concrete is indexedarray:
+            ndim = 1 if getattr(cls, "ndim", Any) is Any else cls.ndim
+            return indexedarray_t(None, [None] * ARRAY_MAX_DIMS, (0,) * ndim)
+        if concrete is fabricarray:
+            return fabricarray_t()
+        if concrete is indexedfabricarray:
+            return indexedfabricarray_t()
+
+        raise TypeError(f"Unsupported array annotation concrete type: {concrete!r}")
+
+
+class _ArrayAnnotationBase(metaclass=_ArrayAnnotationTypeMeta):
+    """Base class for parameterized array annotation types."""
+
+    _concrete_cls: ClassVar[type]
+    dtype: ClassVar[Any]
+    ndim: ClassVar[Any]
 
 
 class _ArrayAnnotation(_ArrayAnnotationBase):
-    """Lightweight annotation for :class:`array` types."""
-
-    __slots__ = ("_vars_cache",)
     _concrete_cls = array
-
-    def __init__(self, dtype, ndim=1):
-        super().__init__(dtype, ndim)
-        self._vars_cache = None
-
-    @property
-    def vars(self):
-        if self._vars_cache is None:
-            self._vars_cache = {
-                "shape": warp._src.codegen.Var("shape", shape_t),
-                "ptr": warp._src.codegen.Var("data", pointer_t(self.dtype)),
-            }
-        return self._vars_cache
-
-    def __ctype__(self):
-        return array_t()
 
 
 class _IndexedArrayAnnotation(_ArrayAnnotationBase):
-    """Lightweight annotation for :class:`indexedarray` types."""
-
-    __slots__ = ()
     _concrete_cls = indexedarray
-    _vars = None
-
-    @property
-    def vars(self):
-        if _IndexedArrayAnnotation._vars is None:
-            _IndexedArrayAnnotation._vars = {"shape": warp._src.codegen.Var("shape", shape_t)}
-        return _IndexedArrayAnnotation._vars
-
-    def __ctype__(self):
-        ndim = 1 if self.ndim is Any else self.ndim
-        return indexedarray_t(None, [None] * ARRAY_MAX_DIMS, (0,) * ndim)
 
 
-class _FabricAnnotationBase(_ArrayAnnotationBase):
-    """Shared base for fabric array annotation classes.
-
-    Both :class:`fabricarray` and :class:`indexedfabricarray` expose only a
-    ``size`` var (unlike regular arrays which also expose ``shape`` and ``ptr``).
-    """
-
-    __slots__ = ()
-    _vars = None
-
-    @property
-    def vars(self):
-        cls = type(self)
-        if cls._vars is None:
-            cls._vars = {"size": warp._src.codegen.Var("size", uint64)}
-        return cls._vars
-
-
-class _FabricArrayAnnotation(_FabricAnnotationBase):
-    """Lightweight annotation for :class:`fabricarray` types."""
-
-    __slots__ = ()
+class _FabricArrayAnnotation(_ArrayAnnotationBase):
     _concrete_cls = fabricarray
 
-    def __ctype__(self):
-        return fabricarray_t()
 
-
-class _IndexedFabricArrayAnnotation(_FabricAnnotationBase):
-    """Lightweight annotation for :class:`indexedfabricarray` types."""
-
-    __slots__ = ()
+class _IndexedFabricArrayAnnotation(_ArrayAnnotationBase):
     _concrete_cls = indexedfabricarray
 
-    def __ctype__(self):
-        return indexedfabricarray_t()
 
-
-# Mapping from concrete array class → lightweight annotation class.
+# Mapping from concrete array class → lightweight annotation base type.
 _ARRAY_ANNOTATION_MAP = {
     array: _ArrayAnnotation,
     indexedarray: _IndexedArrayAnnotation,
@@ -5112,18 +5109,38 @@ _ARRAY_ANNOTATION_MAP = {
 }
 
 
+def _make_array_annotation_type(ann_base: type, dtype: Any, ndim: Any) -> type:
+    dtype = dtype if dtype is Any else type_to_warp(dtype)
+
+    # The type name is not user-facing (repr is handled by metaclass), but keep it descriptive.
+    ndim_name = "Any" if ndim is Any else str(ndim)
+    dtype_name = getattr(dtype, "__name__", None) or getattr(dtype, "key", None) or "dtype"
+    name = f"{ann_base._concrete_cls.__name__}[{dtype_name},{ndim_name}]"
+
+    ann_type = _ArrayAnnotationTypeMeta(
+        name,
+        (ann_base,),
+        {
+            "__module__": __name__,
+            "dtype": dtype,
+            "ndim": ndim,
+        },
+    )
+    return ann_type
+
+
 def _parse_array_subscript(cls, params):
     """Parse subscript parameters for array-like types.
 
     Supports ``cls[dtype]`` and ``cls[dtype, Literal[ndim]]`` syntax.
     Returns a lightweight annotation object (not a full ``cls`` instance).
     """
-    ann_cls = _ARRAY_ANNOTATION_MAP.get(cls)
-    if ann_cls is None:
+    ann_base = _ARRAY_ANNOTATION_MAP.get(cls)
+    if ann_base is None:
         raise TypeError(f"Subscript syntax not supported for {cls.__name__}")
 
     if not isinstance(params, tuple):
-        return ann_cls(dtype=params, ndim=1)
+        return _make_array_annotation_type(ann_base, dtype=params, ndim=1)
 
     if len(params) == 2:
         dtype, ndim = params
@@ -5133,7 +5150,7 @@ def _parse_array_subscript(cls, params):
                 raise TypeError(f"ndim must be an integer, got {ndim!r}")
             if ndim < 1 or ndim > ARRAY_MAX_DIMS:
                 raise ValueError(f"ndim must be between 1 and {ARRAY_MAX_DIMS}, got {ndim}")
-        return ann_cls(dtype=dtype, ndim=ndim)
+        return _make_array_annotation_type(ann_base, dtype=dtype, ndim=ndim)
 
     raise TypeError(f"wp.{cls.__name__} expects 1 or 2 type parameters, got {len(params)}")
 
@@ -7191,6 +7208,18 @@ def get_type_code(arg_type) -> str:
         # special case for generics
         # note: since Python 3.11 Any is a type, so we check for it first
         return "?"
+    elif is_array(arg_type):
+        ndim_code = "?" if arg_type.ndim is Any else str(arg_type.ndim)
+        dtype_code = "?" if arg_type.dtype is Any else get_type_code(arg_type.dtype)
+        # fixedarray is a subclass of array; map it to "a" like its parent
+        prefix = {
+            array: "a",
+            fixedarray: "a",
+            indexedarray: "ia",
+            fabricarray: "fa",
+            indexedfabricarray: "ifa",
+        }[concrete_array_type(arg_type)]
+        return f"{prefix}{ndim_code}{dtype_code}"
     elif (
         sys.version_info < (3, 11)
         and hasattr(types, "GenericAlias")
@@ -7234,18 +7263,6 @@ def get_type_code(arg_type) -> str:
                 return type_code
             else:
                 raise TypeError(f"Unrecognized type '{arg_type}'")
-    elif is_array(arg_type):
-        ndim_code = "?" if arg_type.ndim is Any else str(arg_type.ndim)
-        dtype_code = "?" if arg_type.dtype is Any else get_type_code(arg_type.dtype)
-        # fixedarray is a subclass of array; map it to "a" like its parent
-        prefix = {
-            array: "a",
-            fixedarray: "a",
-            indexedarray: "ia",
-            fabricarray: "fa",
-            indexedfabricarray: "ifa",
-        }[concrete_array_type(arg_type)]
-        return f"{prefix}{ndim_code}{dtype_code}"
     elif get_origin(arg_type) is tuple:
         arg_types = get_args(arg_type)
         return f"tpl{len(arg_types)}{''.join(get_type_code(x) for x in arg_types)}"
