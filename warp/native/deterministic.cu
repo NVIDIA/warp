@@ -475,6 +475,19 @@ struct FloatToBinnedAccumulator {
     }
 };
 
+struct IndexedComponentToBinnedAccumulator {
+    const float* values;
+    int components;
+    int component;
+
+    __host__ __device__ BinnedFloatAccumulator operator()(const int& record_index) const
+    {
+        BinnedFloatAccumulator accum;
+        accum.add(values[static_cast<int64_t>(record_index) * components + component]);
+        return accum;
+    }
+};
+
 struct BinnedAccumulatorAddOp {
     __host__ __device__ BinnedFloatAccumulator
     operator()(const BinnedFloatAccumulator& a, const BinnedFloatAccumulator& b) const
@@ -502,6 +515,27 @@ __global__ void apply_binned_float_runs_kernel(
         return;
 
     dest_array[dest] = dest_array[dest] + aggregates[tid].to_float();
+}
+
+__global__ void apply_binned_float_component_runs_kernel(
+    const int* __restrict__ unique_dests,
+    const BinnedFloatAccumulator* __restrict__ aggregates,
+    const int* __restrict__ num_runs,
+    float* __restrict__ dest_array,
+    int dest_size,
+    int components,
+    int component
+)
+{
+    int tid;
+    if (!deterministic_thread_index(*num_runs, tid))
+        return;
+
+    int dest = unique_dests[tid];
+    if (dest < 0 || dest >= dest_size)
+        return;
+
+    dest_array[static_cast<int64_t>(dest) * components + component] += aggregates[tid].to_float();
 }
 
 template <typename T>
@@ -605,6 +639,26 @@ void query_generic_sort_temp_size(int count, cudaStream_t stream, size_t& sort_t
     );
 }
 
+void query_binned_float_component_temp_sizes(
+    int count, cudaStream_t stream, size_t& sort_temp_size, size_t& reduce_temp_size
+)
+{
+    query_generic_sort_temp_size(count, stream, sort_temp_size);
+
+    reduce_temp_size = 0;
+    auto dest_keys = thrust::make_transform_iterator(static_cast<int64_t*>(nullptr), DestIndexTransform {});
+    auto accum_values = thrust::make_transform_iterator(
+        static_cast<int*>(nullptr), IndexedComponentToBinnedAccumulator { nullptr, 1, 0 }
+    );
+    BinnedAccumulatorAddOp reduce_op {};
+    check_cuda(
+        cub::DeviceReduce::ReduceByKey(
+            nullptr, reduce_temp_size, dest_keys, static_cast<int*>(nullptr), accum_values,
+            static_cast<BinnedFloatAccumulator*>(nullptr), static_cast<int*>(nullptr), reduce_op, count, stream
+        )
+    );
+}
+
 size_t generic_workspace_size(int count, cudaStream_t stream)
 {
     if (count <= 0)
@@ -618,6 +672,27 @@ size_t generic_workspace_size(int count, cudaStream_t stream)
     layout_array<int>(nullptr, offset, count);
     layout_array<int>(nullptr, offset, count);
     layout_bytes(nullptr, offset, sort_temp_size);
+    return offset;
+}
+
+size_t binned_float_components_workspace_size(int count, cudaStream_t stream)
+{
+    if (count <= 0)
+        return 0;
+
+    size_t sort_temp_size = 0;
+    size_t reduce_temp_size = 0;
+    query_binned_float_component_temp_sizes(count, stream, sort_temp_size, reduce_temp_size);
+
+    size_t offset = 0;
+    layout_array<int64_t>(nullptr, offset, count);
+    layout_array<int>(nullptr, offset, count);
+    layout_array<int>(nullptr, offset, count);
+    layout_bytes(nullptr, offset, sort_temp_size);
+    layout_array<int>(nullptr, offset, count);
+    layout_array<BinnedFloatAccumulator>(nullptr, offset, count);
+    layout_array<int>(nullptr, offset, 1);
+    layout_bytes(nullptr, offset, reduce_temp_size);
     return offset;
 }
 
@@ -655,13 +730,18 @@ size_t counter_workspace_size(int count, cudaStream_t stream)
 template <typename T>
 size_t deterministic_workspace_size(int count, int op, int components, int determinism_level, cudaStream_t stream)
 {
-    if (components == 1 && determinism_level == DETERMINISTIC_RUN_TO_RUN) {
+    if (determinism_level == DETERMINISTIC_RUN_TO_RUN) {
         if constexpr (std::is_same<T, float>::value) {
             if (op == REDUCE_OP_ADD) {
-                return binned_float_workspace_size(count, stream);
+                if (components == 1) {
+                    return binned_float_workspace_size(count, stream);
+                }
+                return binned_float_components_workspace_size(count, stream);
             }
         }
-        return scalar_run_to_run_workspace_size<T>(count, op, stream);
+        if (components == 1) {
+            return scalar_run_to_run_workspace_size<T>(count, op, stream);
+        }
     }
     return generic_workspace_size(count, stream);
 }
@@ -886,6 +966,80 @@ void deterministic_sort_reduce_device_binned_float_run_to_run(
     check_kernel_launch();
 }
 
+void deterministic_sort_reduce_device_binned_float_components_run_to_run(
+    int64_t* keys,
+    float* values,
+    int count,
+    float* dest_array,
+    int dest_size,
+    int components,
+    void* workspace,
+    size_t workspace_size
+)
+{
+    if (count <= 0)
+        return;
+
+    ContextGuard guard(wp_cuda_context_get_current());
+    cudaStream_t stream = static_cast<cudaStream_t>(wp_cuda_stream_get_current());
+
+    size_t required_workspace_size = binned_float_components_workspace_size(count, stream);
+    if (workspace == nullptr || workspace_size < required_workspace_size) {
+        check_cuda(cudaErrorInvalidValue);
+        return;
+    }
+
+    size_t sort_temp_size = 0;
+    size_t reduce_temp_size = 0;
+    query_binned_float_component_temp_sizes(count, stream, sort_temp_size, reduce_temp_size);
+
+    char* workspace_bytes = static_cast<char*>(workspace);
+    size_t offset = 0;
+    int64_t* alt_keys = layout_array<int64_t>(workspace_bytes, offset, count);
+    int* record_indices = layout_array<int>(workspace_bytes, offset, count);
+    int* alt_record_indices = layout_array<int>(workspace_bytes, offset, count);
+    void* sort_temp = layout_bytes(workspace_bytes, offset, sort_temp_size);
+    int* unique_dests = layout_array<int>(workspace_bytes, offset, count);
+    BinnedFloatAccumulator* aggregates = layout_array<BinnedFloatAccumulator>(workspace_bytes, offset, count);
+    int* num_runs = layout_array<int>(workspace_bytes, offset, 1);
+    void* reduce_temp = layout_bytes(workspace_bytes, offset, reduce_temp_size);
+
+    const int num_blocks = deterministic_num_blocks(count);
+    init_record_indices_kernel<<<num_blocks, DETERMINISTIC_BLOCK_SIZE, 0, stream>>>(record_indices, count);
+    if (!check_kernel_launch())
+        return;
+
+    cub::DoubleBuffer<int64_t> d_keys(keys, alt_keys);
+    cub::DoubleBuffer<int> d_indices(record_indices, alt_record_indices);
+
+    check_cuda(
+        cub::DeviceRadixSort::SortPairs(
+            sort_temp, sort_temp_size, d_keys, d_indices, count, 0, sizeof(int64_t) * 8, stream
+        )
+    );
+
+    auto dest_keys = thrust::make_transform_iterator(d_keys.Current(), DestIndexTransform {});
+    BinnedAccumulatorAddOp reduce_op {};
+
+    for (int component = 0; component < components; ++component) {
+        auto accum_values = thrust::make_transform_iterator(
+            d_indices.Current(), IndexedComponentToBinnedAccumulator { values, components, component }
+        );
+        check_cuda(
+            cub::DeviceReduce::ReduceByKey(
+                reduce_temp, reduce_temp_size, dest_keys, unique_dests, accum_values, aggregates, num_runs, reduce_op,
+                count, stream
+            )
+        );
+
+        apply_binned_float_component_runs_kernel<<<num_blocks, DETERMINISTIC_BLOCK_SIZE, 0, stream>>>(
+            unique_dests, aggregates, num_runs, dest_array, dest_size, components, component
+        );
+        if (!check_kernel_launch())
+            return;
+    }
+}
+
 // Sort the scatter buffer by key using CUB radix sort, then launch the
 // reduce kernel.
 template <typename T>
@@ -905,19 +1059,27 @@ void deterministic_sort_reduce_device(
     if (count <= 0)
         return;
 
-    if (components == 1 && determinism_level == DETERMINISTIC_RUN_TO_RUN) {
+    if (determinism_level == DETERMINISTIC_RUN_TO_RUN) {
         if constexpr (std::is_same<T, float>::value) {
             if (op == REDUCE_OP_ADD) {
-                deterministic_sort_reduce_device_binned_float_run_to_run(
-                    keys, values, count, dest_array, dest_size, workspace, workspace_size
-                );
+                if (components == 1) {
+                    deterministic_sort_reduce_device_binned_float_run_to_run(
+                        keys, values, count, dest_array, dest_size, workspace, workspace_size
+                    );
+                } else {
+                    deterministic_sort_reduce_device_binned_float_components_run_to_run(
+                        keys, values, count, dest_array, dest_size, components, workspace, workspace_size
+                    );
+                }
                 return;
             }
         }
-        deterministic_sort_reduce_device_scalar_run_to_run(
-            keys, values, count, dest_array, dest_size, op, workspace, workspace_size
-        );
-        return;
+        if (components == 1) {
+            deterministic_sort_reduce_device_scalar_run_to_run(
+                keys, values, count, dest_array, dest_size, op, workspace, workspace_size
+            );
+            return;
+        }
     }
 
     ContextGuard guard(wp_cuda_context_get_current());
