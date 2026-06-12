@@ -1959,6 +1959,39 @@ mesh_query_ray_count_intersections_cubql(const Mesh& mesh, const vec3& start, co
     return cubql_ray_traversal<CuBQLRayMode::CountAll>(mesh, start, dir, FLT_MAX, t, u, v, s, n, f);
 }
 
+CUDA_CALLABLE inline vec3 mesh_query_ray_safe_dir(const vec3& dir)
+{
+    vec3 ray_dir = dir;
+    if (ray_dir[0] == 0.0f)
+        ray_dir[0] = 1.0e-20f;
+    if (ray_dir[1] == 0.0f)
+        ray_dir[1] = 1.0e-20f;
+    if (ray_dir[2] == 0.0f)
+        ray_dir[2] = 1.0e-20f;
+    return ray_dir;
+}
+
+CUDA_CALLABLE inline bool mesh_query_ray_use_fast_aabb(const vec3& dir)
+{
+    return dir[0] != 0.0f && dir[1] != 0.0f && dir[2] != 0.0f;
+}
+
+CUDA_CALLABLE inline bool mesh_query_ray_intersect_aabb(
+    const vec3& start,
+    const vec3& dir,
+    const vec3& rcp_dir,
+    bool fast_aabb,
+    const vec3& lower,
+    const vec3& upper,
+    float& t
+)
+{
+    if (fast_aabb)
+        return intersect_ray_aabb(start, rcp_dir, lower, upper, t);
+    else
+        return intersect_ray_aabb_robust(start, dir, rcp_dir, lower, upper, t);
+}
+
 CUDA_CALLABLE inline bool mesh_query_ray(
     uint64_t id,
     const vec3& start,
@@ -1977,11 +2010,13 @@ CUDA_CALLABLE inline bool mesh_query_ray(
     if (mesh_uses_cubql(mesh))
         return mesh_query_ray_cubql(mesh, start, dir, max_t, t, u, v, sign, normal, face, root);
 
-    int stack[BVH_QUERY_STACK_SIZE];
+    uint64_t stack[BVH_QUERY_STACK_SIZE];
     int stack_size = 0;
-    int node_index = (root == -1) ? *mesh.bvh.root : root;
+    uint64_t cur_node = bvh_query_node_load(mesh.bvh, (root == -1) ? *mesh.bvh.root : root);
 
-    vec3 rcp_dir(1.0f / dir[0], 1.0f / dir[1], 1.0f / dir[2]);
+    vec3 ray_dir = mesh_query_ray_safe_dir(dir);
+    vec3 rcp_dir(1.0f / ray_dir[0], 1.0f / ray_dir[1], 1.0f / ray_dir[2]);
+    const bool fast_aabb = mesh_query_ray_use_fast_aabb(dir);
 
     float min_t = max_t;
     int min_face;
@@ -1991,18 +2026,12 @@ CUDA_CALLABLE inline bool mesh_query_ray(
     vec3 min_normal;
     bool hit = false;
 
-    // Nearest-child-first traversal. At each inner node we load both children,
-    // test their AABBs, and descend into the nearer one first while pushing the
-    // farther one. cur_lower/cur_upper carry the current node's data through the
-    // loop so that when we descend we re-use already-loaded data rather than
-    // fetching it again at the top of the next iteration.
-    BVHPackedNodeHalf cur_lower = bvh_load_node(mesh.bvh.node_lowers, node_index);
-    BVHPackedNodeHalf cur_upper = bvh_load_node(mesh.bvh.node_uppers, node_index);
-
     while (true) {
-        if (cur_lower.b) {
+        if (bvh_query_node_is_leaf(cur_node)) {
+            const int primitive_begin = bvh_query_node_lower_payload(cur_node);
+            const int primitive_end = bvh_query_node_upper_payload(cur_node);
             // Leaf: test all primitives in the leaf.
-            for (int pc = cur_lower.i; pc < cur_upper.i; ++pc) {
+            for (int pc = primitive_begin; pc < primitive_end; ++pc) {
                 int primitive_index = mesh.bvh.primitive_indices[pc];
                 int i = mesh.indices[primitive_index * 3 + 0];
                 int j = mesh.indices[primitive_index * 3 + 1];
@@ -2027,18 +2056,15 @@ CUDA_CALLABLE inline bool mesh_query_ray(
                     }
                 }
             }
-            // Pop the next pending node; reload its data.
             if (stack_size == 0)
                 break;
-            node_index = stack[--stack_size];
-            cur_lower = bvh_load_node(mesh.bvh.node_lowers, node_index);
-            cur_upper = bvh_load_node(mesh.bvh.node_uppers, node_index);
+            cur_node = stack[--stack_size];
             continue;
         }
 
         // Inner node: load both children so we can sort by entry distance.
-        const int left_index = cur_lower.i;
-        const int right_index = cur_upper.i;
+        const int left_index = bvh_query_node_lower_payload(cur_node);
+        const int right_index = bvh_query_node_upper_payload(cur_node);
 
         BVHPackedNodeHalf left_lower = bvh_load_node(mesh.bvh.node_lowers, left_index);
         BVHPackedNodeHalf left_upper = bvh_load_node(mesh.bvh.node_uppers, left_index);
@@ -2047,13 +2073,13 @@ CUDA_CALLABLE inline bool mesh_query_ray(
 
         float t0 = FLT_MAX;
         float t1 = FLT_MAX;
-        const bool h0 = intersect_ray_aabb_robust(
-                            start, dir, rcp_dir, vec3(left_lower.x, left_lower.y, left_lower.z),
+        const bool h0 = mesh_query_ray_intersect_aabb(
+                            start, dir, rcp_dir, fast_aabb, vec3(left_lower.x, left_lower.y, left_lower.z),
                             vec3(left_upper.x, left_upper.y, left_upper.z), t0
                         )
             && t0 < min_t;
-        const bool h1 = intersect_ray_aabb_robust(
-                            start, dir, rcp_dir, vec3(right_lower.x, right_lower.y, right_lower.z),
+        const bool h1 = mesh_query_ray_intersect_aabb(
+                            start, dir, rcp_dir, fast_aabb, vec3(right_lower.x, right_lower.y, right_lower.z),
                             vec3(right_upper.x, right_upper.y, right_upper.z), t1
                         )
             && t1 < min_t;
@@ -2062,24 +2088,19 @@ CUDA_CALLABLE inline bool mesh_query_ray(
             const bool near_left = (t0 < t1);
             if (stack_size >= BVH_QUERY_STACK_SIZE)
                 break;
-            // Push the far child (index only; reloaded on pop).
-            stack[stack_size++] = near_left ? right_index : left_index;
-            // Descend into the near child using already-loaded data.
-            cur_lower = near_left ? left_lower : right_lower;
-            cur_upper = near_left ? left_upper : right_upper;
+            const uint64_t left_node = bvh_query_node_pack(left_lower, left_upper);
+            const uint64_t right_node = bvh_query_node_pack(right_lower, right_upper);
+            stack[stack_size++] = near_left ? right_node : left_node;
+            cur_node = near_left ? left_node : right_node;
         } else if (h0) {
-            cur_lower = left_lower;
-            cur_upper = left_upper;
+            cur_node = bvh_query_node_pack(left_lower, left_upper);
         } else if (h1) {
-            cur_lower = right_lower;
-            cur_upper = right_upper;
+            cur_node = bvh_query_node_pack(right_lower, right_upper);
         } else {
             // Neither child reachable; pop.
             if (stack_size == 0)
                 break;
-            node_index = stack[--stack_size];
-            cur_lower = bvh_load_node(mesh.bvh.node_lowers, node_index);
-            cur_upper = bvh_load_node(mesh.bvh.node_uppers, node_index);
+            cur_node = stack[--stack_size];
         }
     }
 
@@ -2105,18 +2126,19 @@ mesh_query_ray_anyhit(uint64_t id, const vec3& start, const vec3& dir, float max
     if (mesh_uses_cubql(mesh))
         return mesh_query_ray_anyhit_cubql(mesh, start, dir, max_t, root);
 
-    int stack[BVH_QUERY_STACK_SIZE];
+    uint64_t stack[BVH_QUERY_STACK_SIZE];
     int stack_size = 0;
-    int node_index = (root == -1) ? *mesh.bvh.root : root;
+    uint64_t cur_node = bvh_query_node_load(mesh.bvh, (root == -1) ? *mesh.bvh.root : root);
 
-    vec3 rcp_dir(1.0f / dir[0], 1.0f / dir[1], 1.0f / dir[2]);
-
-    BVHPackedNodeHalf cur_lower = bvh_load_node(mesh.bvh.node_lowers, node_index);
-    BVHPackedNodeHalf cur_upper = bvh_load_node(mesh.bvh.node_uppers, node_index);
+    vec3 ray_dir = mesh_query_ray_safe_dir(dir);
+    vec3 rcp_dir(1.0f / ray_dir[0], 1.0f / ray_dir[1], 1.0f / ray_dir[2]);
+    const bool fast_aabb = mesh_query_ray_use_fast_aabb(dir);
 
     while (true) {
-        if (cur_lower.b) {
-            for (int pc = cur_lower.i; pc < cur_upper.i; ++pc) {
+        if (bvh_query_node_is_leaf(cur_node)) {
+            const int primitive_begin = bvh_query_node_lower_payload(cur_node);
+            const int primitive_end = bvh_query_node_upper_payload(cur_node);
+            for (int pc = primitive_begin; pc < primitive_end; ++pc) {
                 int primitive_index = mesh.bvh.primitive_indices[pc];
                 int i = mesh.indices[primitive_index * 3 + 0];
                 int j = mesh.indices[primitive_index * 3 + 1];
@@ -2137,14 +2159,12 @@ mesh_query_ray_anyhit(uint64_t id, const vec3& start, const vec3& dir, float max
             }
             if (stack_size == 0)
                 return false;
-            node_index = stack[--stack_size];
-            cur_lower = bvh_load_node(mesh.bvh.node_lowers, node_index);
-            cur_upper = bvh_load_node(mesh.bvh.node_uppers, node_index);
+            cur_node = stack[--stack_size];
             continue;
         }
 
-        const int left_index = cur_lower.i;
-        const int right_index = cur_upper.i;
+        const int left_index = bvh_query_node_lower_payload(cur_node);
+        const int right_index = bvh_query_node_upper_payload(cur_node);
 
         BVHPackedNodeHalf left_lower = bvh_load_node(mesh.bvh.node_lowers, left_index);
         BVHPackedNodeHalf left_upper = bvh_load_node(mesh.bvh.node_uppers, left_index);
@@ -2153,13 +2173,13 @@ mesh_query_ray_anyhit(uint64_t id, const vec3& start, const vec3& dir, float max
 
         float t0 = FLT_MAX;
         float t1 = FLT_MAX;
-        const bool h0 = intersect_ray_aabb_robust(
-                            start, dir, rcp_dir, vec3(left_lower.x, left_lower.y, left_lower.z),
+        const bool h0 = mesh_query_ray_intersect_aabb(
+                            start, dir, rcp_dir, fast_aabb, vec3(left_lower.x, left_lower.y, left_lower.z),
                             vec3(left_upper.x, left_upper.y, left_upper.z), t0
                         )
             && t0 < max_t;
-        const bool h1 = intersect_ray_aabb_robust(
-                            start, dir, rcp_dir, vec3(right_lower.x, right_lower.y, right_lower.z),
+        const bool h1 = mesh_query_ray_intersect_aabb(
+                            start, dir, rcp_dir, fast_aabb, vec3(right_lower.x, right_lower.y, right_lower.z),
                             vec3(right_upper.x, right_upper.y, right_upper.z), t1
                         )
             && t1 < max_t;
@@ -2168,21 +2188,18 @@ mesh_query_ray_anyhit(uint64_t id, const vec3& start, const vec3& dir, float max
             const bool near_left = (t0 < t1);
             if (stack_size >= BVH_QUERY_STACK_SIZE)
                 return false;
-            stack[stack_size++] = near_left ? right_index : left_index;
-            cur_lower = near_left ? left_lower : right_lower;
-            cur_upper = near_left ? left_upper : right_upper;
+            const uint64_t left_node = bvh_query_node_pack(left_lower, left_upper);
+            const uint64_t right_node = bvh_query_node_pack(right_lower, right_upper);
+            stack[stack_size++] = near_left ? right_node : left_node;
+            cur_node = near_left ? left_node : right_node;
         } else if (h0) {
-            cur_lower = left_lower;
-            cur_upper = left_upper;
+            cur_node = bvh_query_node_pack(left_lower, left_upper);
         } else if (h1) {
-            cur_lower = right_lower;
-            cur_upper = right_upper;
+            cur_node = bvh_query_node_pack(right_lower, right_upper);
         } else {
             if (stack_size == 0)
                 return false;
-            node_index = stack[--stack_size];
-            cur_lower = bvh_load_node(mesh.bvh.node_lowers, node_index);
-            cur_upper = bvh_load_node(mesh.bvh.node_uppers, node_index);
+            cur_node = stack[--stack_size];
         }
     }
 }

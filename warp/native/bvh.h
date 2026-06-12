@@ -350,6 +350,24 @@ CUDA_CALLABLE inline int lower_bound_group(const BVH& bvh, int group)
     return lo;
 }
 
+CUDA_CALLABLE inline uint64_t bvh_query_node_pack(const BVHPackedNodeHalf& lower, const BVHPackedNodeHalf& upper)
+{
+    return (uint64_t(lower.b) << 62) | (uint64_t(upper.i) << 31) | uint64_t(lower.i);
+}
+
+CUDA_CALLABLE inline uint64_t bvh_query_node_load(const BVH& bvh, int node_index)
+{
+    const BVHPackedNodeHalf lower = bvh_load_node(bvh.node_lowers, node_index);
+    const BVHPackedNodeHalf upper = bvh_load_node(bvh.node_uppers, node_index);
+    return bvh_query_node_pack(lower, upper);
+}
+
+CUDA_CALLABLE inline bool bvh_query_node_is_leaf(uint64_t node) { return (node >> 62) != 0; }
+
+CUDA_CALLABLE inline int bvh_query_node_lower_payload(uint64_t node) { return int(node & 0x7fffffffu); }
+
+CUDA_CALLABLE inline int bvh_query_node_upper_payload(uint64_t node) { return int((node >> 31) & 0x7fffffffu); }
+
 CUDA_CALLABLE inline int lca(int node_a, int node_b, const int* parent)
 {
     int da = 0, db = 0;
