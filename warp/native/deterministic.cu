@@ -15,6 +15,8 @@
 
 #define THRUST_IGNORE_CUB_VERSION_CHECK
 
+#include <type_traits>
+
 #include <cub/cub.cuh>
 #include <thrust/iterator/transform_iterator.h>
 
@@ -209,6 +211,299 @@ struct DestIndexTransform {
     __host__ __device__ int operator()(const int64_t& key) const { return dest_index_from_key(key); }
 };
 
+// Compact float-only fold-3 binned accumulator for deterministic summation.
+// Based on an MIT-licensed binned summation implementation by Richard Barnes,
+// Peter Ahrens, and James Demmel (2022).
+//
+// CUB may choose different reduction trees from launch to launch. Reducing
+// binned accumulators instead of raw floats makes scalar float addition stable
+// across those trees.
+struct BinnedFloatAccumulator {
+    static constexpr int FOLD = 3;
+    static constexpr int BIN_WIDTH = 13;
+    static constexpr int MIN_EXP = -125;
+    static constexpr int MAX_EXP = 128;
+    static constexpr int MANT_DIG = 24;
+    static constexpr int MAXINDEX = ((MAX_EXP - MIN_EXP + MANT_DIG - 1) / BIN_WIDTH) - 1;
+    static constexpr int EXP_BIAS = MAX_EXP - 2;
+    static constexpr float COMPRESSION = 1.0f / 4096.0f;
+    static constexpr float EXPANSION = 4096.0f;
+
+    float primary[FOLD];
+    float carry[FOLD];
+
+    __host__ __device__ BinnedFloatAccumulator()
+    {
+        primary[0] = primary[1] = primary[2] = 0.0f;
+        carry[0] = carry[1] = carry[2] = 0.0f;
+    }
+
+    __host__ __device__ static uint32_t float_bits(float x)
+    {
+        union {
+            float f;
+            uint32_t u;
+        } v;
+        v.f = x;
+        return v.u;
+    }
+
+    __host__ __device__ static float bits_float(uint32_t x)
+    {
+        union {
+            uint32_t u;
+            float f;
+        } v;
+        v.u = x;
+        return v.f;
+    }
+
+    __host__ __device__ static int exp_bits(float x) { return (float_bits(x) >> (MANT_DIG - 1)) & 0xff; }
+
+    __host__ __device__ static bool is_nan_or_inf(float x) { return (float_bits(x) & 0x7f800000u) == 0x7f800000u; }
+
+    __host__ __device__ static float reference_bin(int index)
+    {
+        if (index <= 0)
+            return ldexpf(0.75f, MAX_EXP);
+        if (index > MAXINDEX)
+            index = MAXINDEX;
+        return ldexpf(0.75f, MAX_EXP + MANT_DIG - BIN_WIDTH + 1 - index * BIN_WIDTH);
+    }
+
+    __host__ __device__ static int value_index(float x)
+    {
+        int exp = exp_bits(x);
+        if (exp == 0) {
+            if (x == 0.0f)
+                return MAXINDEX;
+            frexpf(x, &exp);
+            int index = (MAX_EXP - exp) / BIN_WIDTH;
+            return index < MAXINDEX ? index : MAXINDEX;
+        }
+        return ((MAX_EXP + EXP_BIAS) - exp) / BIN_WIDTH;
+    }
+
+    __host__ __device__ int accumulator_index() const
+    {
+        return ((MAX_EXP + MANT_DIG - BIN_WIDTH + 1 + EXP_BIAS) - exp_bits(primary[0])) / BIN_WIDTH;
+    }
+
+    __host__ __device__ bool accumulator_index0() const { return exp_bits(primary[0]) == MAX_EXP + EXP_BIAS; }
+
+    __host__ __device__ void update(float max_abs_val)
+    {
+        if (is_nan_or_inf(primary[0]))
+            return;
+
+        int x_index = value_index(fabsf(max_abs_val));
+        if (primary[0] == 0.0f) {
+            for (int i = 0; i < FOLD; ++i) {
+                primary[i] = reference_bin(x_index + i);
+                carry[i] = 0.0f;
+            }
+            return;
+        }
+
+        int shift = accumulator_index() - x_index;
+        if (shift <= 0)
+            return;
+
+        for (int i = FOLD - 1; i >= 1; --i) {
+            if (i < shift)
+                break;
+            primary[i] = primary[i - shift];
+            carry[i] = carry[i - shift];
+        }
+        for (int i = 0; i < FOLD; ++i) {
+            if (i >= shift)
+                break;
+            primary[i] = reference_bin(x_index + i);
+            carry[i] = 0.0f;
+        }
+    }
+
+    __host__ __device__ void deposit(float value)
+    {
+        if (is_nan_or_inf(value) || is_nan_or_inf(primary[0])) {
+            primary[0] += value;
+            return;
+        }
+
+        float x = value;
+        if (accumulator_index0()) {
+            float m = primary[0];
+            float qd = x * COMPRESSION;
+            qd = bits_float(float_bits(qd) | 1u);
+            qd += m;
+            primary[0] = qd;
+            m -= qd;
+            m *= EXPANSION * 0.5f;
+            x += m;
+            x += m;
+
+            for (int i = 1; i < FOLD - 1; ++i) {
+                m = primary[i];
+                qd = bits_float(float_bits(x) | 1u);
+                qd += m;
+                primary[i] = qd;
+                m -= qd;
+                x += m;
+            }
+            qd = bits_float(float_bits(x) | 1u);
+            primary[FOLD - 1] += qd;
+        } else {
+            for (int i = 0; i < FOLD - 1; ++i) {
+                float m = primary[i];
+                float qd = bits_float(float_bits(x) | 1u);
+                qd += m;
+                primary[i] = qd;
+                m -= qd;
+                x += m;
+            }
+            float qd = bits_float(float_bits(x) | 1u);
+            primary[FOLD - 1] += qd;
+        }
+    }
+
+    __host__ __device__ void renorm()
+    {
+        if (primary[0] == 0.0f || is_nan_or_inf(primary[0]))
+            return;
+
+        for (int i = 0; i < FOLD; ++i) {
+            uint32_t bits = float_bits(primary[i]);
+            carry[i] += static_cast<float>(static_cast<int>((bits >> (MANT_DIG - 3)) & 3u) - 2);
+            bits &= ~(1u << (MANT_DIG - 3));
+            bits |= 1u << (MANT_DIG - 2);
+            primary[i] = bits_float(bits);
+        }
+    }
+
+    __host__ __device__ void add(float value)
+    {
+        if (is_nan_or_inf(value)) {
+            primary[0] += value;
+            return;
+        }
+        update(value);
+        deposit(value);
+        renorm();
+    }
+
+    __host__ __device__ void add(const BinnedFloatAccumulator& other)
+    {
+        if (other.primary[0] == 0.0f)
+            return;
+        if (primary[0] == 0.0f) {
+            for (int i = 0; i < FOLD; ++i) {
+                primary[i] = other.primary[i];
+                carry[i] = other.carry[i];
+            }
+            return;
+        }
+        if (is_nan_or_inf(other.primary[0]) || is_nan_or_inf(primary[0])) {
+            primary[0] += other.primary[0];
+            return;
+        }
+
+        const int x_index = other.accumulator_index();
+        const int y_index = accumulator_index();
+        const int shift = y_index - x_index;
+        if (shift > 0) {
+            for (int i = FOLD - 1; i >= 1; --i) {
+                if (i < shift)
+                    break;
+                primary[i] = other.primary[i] + (primary[i - shift] - reference_bin(y_index + i - shift));
+                carry[i] = other.carry[i] + carry[i - shift];
+            }
+            for (int i = 0; i < FOLD; ++i) {
+                if (i == shift)
+                    break;
+                primary[i] = other.primary[i];
+                carry[i] = other.carry[i];
+            }
+        } else if (shift < 0) {
+            for (int i = 0; i < FOLD; ++i) {
+                if (i < -shift)
+                    continue;
+                primary[i] += other.primary[i + shift] - reference_bin(x_index + i + shift);
+                carry[i] += other.carry[i + shift];
+            }
+        } else {
+            for (int i = 0; i < FOLD; ++i) {
+                primary[i] += other.primary[i] - reference_bin(x_index + i);
+                carry[i] += other.carry[i];
+            }
+        }
+        renorm();
+    }
+
+    __host__ __device__ float to_float() const
+    {
+        if (is_nan_or_inf(primary[0]) || primary[0] == 0.0f)
+            return primary[0];
+
+        int i = 0;
+        double y = 0.0;
+        const int x_index = accumulator_index();
+        if (x_index == 0) {
+            y += static_cast<double>(carry[0]) * static_cast<double>(reference_bin(0) / 6.0f)
+                * static_cast<double>(EXPANSION);
+            y += static_cast<double>(carry[1]) * static_cast<double>(reference_bin(1) / 6.0f);
+            y += static_cast<double>(primary[0] - reference_bin(0)) * static_cast<double>(EXPANSION);
+            i = 2;
+        } else {
+            y += static_cast<double>(carry[0]) * static_cast<double>(reference_bin(x_index) / 6.0f);
+            i = 1;
+        }
+        for (; i < FOLD; ++i) {
+            y += static_cast<double>(carry[i]) * static_cast<double>(reference_bin(x_index + i) / 6.0f);
+            y += static_cast<double>(primary[i - 1] - reference_bin(x_index + i - 1));
+        }
+        y += static_cast<double>(primary[FOLD - 1] - reference_bin(x_index + FOLD - 1));
+        return static_cast<float>(y);
+    }
+};
+
+struct FloatToBinnedAccumulator {
+    __host__ __device__ BinnedFloatAccumulator operator()(const float& value) const
+    {
+        BinnedFloatAccumulator accum;
+        accum.add(value);
+        return accum;
+    }
+};
+
+struct BinnedAccumulatorAddOp {
+    __host__ __device__ BinnedFloatAccumulator
+    operator()(const BinnedFloatAccumulator& a, const BinnedFloatAccumulator& b) const
+    {
+        BinnedFloatAccumulator result = a;
+        result.add(b);
+        return result;
+    }
+};
+
+__global__ void apply_binned_float_runs_kernel(
+    const int* __restrict__ unique_dests,
+    const BinnedFloatAccumulator* __restrict__ aggregates,
+    const int* __restrict__ num_runs,
+    float* __restrict__ dest_array,
+    int dest_size
+)
+{
+    int tid;
+    if (!deterministic_thread_index(*num_runs, tid))
+        return;
+
+    int dest = unique_dests[tid];
+    if (dest < 0 || dest >= dest_size)
+        return;
+
+    dest_array[dest] = dest_array[dest] + aggregates[tid].to_float();
+}
+
 template <typename T>
 void query_scalar_temp_sizes(int count, int op, cudaStream_t stream, size_t& sort_temp_size, size_t& reduce_temp_size)
 {
@@ -233,6 +528,30 @@ void query_scalar_temp_sizes(int count, int op, cudaStream_t stream, size_t& sor
     );
 }
 
+void query_binned_float_temp_sizes(int count, cudaStream_t stream, size_t& sort_temp_size, size_t& reduce_temp_size)
+{
+    sort_temp_size = 0;
+    reduce_temp_size = 0;
+
+    cub::DoubleBuffer<int64_t> d_keys(nullptr, nullptr);
+    cub::DoubleBuffer<float> d_values(nullptr, nullptr);
+    check_cuda(
+        cub::DeviceRadixSort::SortPairs(
+            nullptr, sort_temp_size, d_keys, d_values, count, 0, sizeof(int64_t) * 8, stream
+        )
+    );
+
+    auto dest_keys = thrust::make_transform_iterator(static_cast<int64_t*>(nullptr), DestIndexTransform {});
+    auto accum_values = thrust::make_transform_iterator(static_cast<float*>(nullptr), FloatToBinnedAccumulator {});
+    BinnedAccumulatorAddOp reduce_op {};
+    check_cuda(
+        cub::DeviceReduce::ReduceByKey(
+            nullptr, reduce_temp_size, dest_keys, static_cast<int*>(nullptr), accum_values,
+            static_cast<BinnedFloatAccumulator*>(nullptr), static_cast<int*>(nullptr), reduce_op, count, stream
+        )
+    );
+}
+
 template <typename T> size_t scalar_run_to_run_workspace_size(int count, int op, cudaStream_t stream)
 {
     if (count <= 0)
@@ -248,6 +567,26 @@ template <typename T> size_t scalar_run_to_run_workspace_size(int count, int op,
     layout_bytes(nullptr, offset, sort_temp_size);
     layout_array<int>(nullptr, offset, count);
     layout_array<T>(nullptr, offset, count);
+    layout_array<int>(nullptr, offset, 1);
+    layout_bytes(nullptr, offset, reduce_temp_size);
+    return offset;
+}
+
+size_t binned_float_workspace_size(int count, cudaStream_t stream)
+{
+    if (count <= 0)
+        return 0;
+
+    size_t sort_temp_size = 0;
+    size_t reduce_temp_size = 0;
+    query_binned_float_temp_sizes(count, stream, sort_temp_size, reduce_temp_size);
+
+    size_t offset = 0;
+    layout_array<int64_t>(nullptr, offset, count);
+    layout_array<float>(nullptr, offset, count);
+    layout_bytes(nullptr, offset, sort_temp_size);
+    layout_array<int>(nullptr, offset, count);
+    layout_array<BinnedFloatAccumulator>(nullptr, offset, count);
     layout_array<int>(nullptr, offset, 1);
     layout_bytes(nullptr, offset, reduce_temp_size);
     return offset;
@@ -317,6 +656,11 @@ template <typename T>
 size_t deterministic_workspace_size(int count, int op, int components, int determinism_level, cudaStream_t stream)
 {
     if (components == 1 && determinism_level == DETERMINISTIC_RUN_TO_RUN) {
+        if constexpr (std::is_same<T, float>::value) {
+            if (op == REDUCE_OP_ADD) {
+                return binned_float_workspace_size(count, stream);
+            }
+        }
         return scalar_run_to_run_workspace_size<T>(count, op, stream);
     }
     return generic_workspace_size(count, stream);
@@ -393,7 +737,7 @@ __global__ void deterministic_reduce_kernel(
     int64_t dest_base = static_cast<int64_t>(my_dest) * components;
 
     // Accumulate each segment sequentially to preserve a deterministic
-    // left-to-right order. This intentionally favors reproducibility over
+    // left-to-right order. This intentionally favors determinism over
     // throughput for highly contended destinations in gpu_to_gpu mode.
     for (int c = 0; c < components; ++c) {
         T accum = values[base + c];
@@ -485,6 +829,63 @@ void deterministic_sort_reduce_device_scalar_run_to_run(
     check_kernel_launch();
 }
 
+void deterministic_sort_reduce_device_binned_float_run_to_run(
+    int64_t* keys, float* values, int count, float* dest_array, int dest_size, void* workspace, size_t workspace_size
+)
+{
+    if (count <= 0)
+        return;
+
+    ContextGuard guard(wp_cuda_context_get_current());
+    cudaStream_t stream = static_cast<cudaStream_t>(wp_cuda_stream_get_current());
+
+    size_t required_workspace_size = binned_float_workspace_size(count, stream);
+    if (workspace == nullptr || workspace_size < required_workspace_size) {
+        check_cuda(cudaErrorInvalidValue);
+        return;
+    }
+
+    size_t sort_temp_size = 0;
+    size_t reduce_temp_size = 0;
+    query_binned_float_temp_sizes(count, stream, sort_temp_size, reduce_temp_size);
+
+    char* workspace_bytes = static_cast<char*>(workspace);
+    size_t offset = 0;
+    int64_t* alt_keys = layout_array<int64_t>(workspace_bytes, offset, count);
+    float* alt_values = layout_array<float>(workspace_bytes, offset, count);
+    void* sort_temp = layout_bytes(workspace_bytes, offset, sort_temp_size);
+    int* unique_dests = layout_array<int>(workspace_bytes, offset, count);
+    BinnedFloatAccumulator* aggregates = layout_array<BinnedFloatAccumulator>(workspace_bytes, offset, count);
+    int* num_runs = layout_array<int>(workspace_bytes, offset, 1);
+    void* reduce_temp = layout_bytes(workspace_bytes, offset, reduce_temp_size);
+
+    cub::DoubleBuffer<int64_t> d_keys(keys, alt_keys);
+    cub::DoubleBuffer<float> d_values(values, alt_values);
+
+    check_cuda(
+        cub::DeviceRadixSort::SortPairs(
+            sort_temp, sort_temp_size, d_keys, d_values, count, 0, sizeof(int64_t) * 8, stream
+        )
+    );
+
+    auto dest_keys = thrust::make_transform_iterator(d_keys.Current(), DestIndexTransform {});
+    auto accum_values = thrust::make_transform_iterator(d_values.Current(), FloatToBinnedAccumulator {});
+
+    BinnedAccumulatorAddOp reduce_op {};
+    check_cuda(
+        cub::DeviceReduce::ReduceByKey(
+            reduce_temp, reduce_temp_size, dest_keys, unique_dests, accum_values, aggregates, num_runs, reduce_op,
+            count, stream
+        )
+    );
+
+    const int num_blocks = deterministic_num_blocks(count);
+    apply_binned_float_runs_kernel<<<num_blocks, DETERMINISTIC_BLOCK_SIZE, 0, stream>>>(
+        unique_dests, aggregates, num_runs, dest_array, dest_size
+    );
+    check_kernel_launch();
+}
+
 // Sort the scatter buffer by key using CUB radix sort, then launch the
 // reduce kernel.
 template <typename T>
@@ -505,6 +906,14 @@ void deterministic_sort_reduce_device(
         return;
 
     if (components == 1 && determinism_level == DETERMINISTIC_RUN_TO_RUN) {
+        if constexpr (std::is_same<T, float>::value) {
+            if (op == REDUCE_OP_ADD) {
+                deterministic_sort_reduce_device_binned_float_run_to_run(
+                    keys, values, count, dest_array, dest_size, workspace, workspace_size
+                );
+                return;
+            }
+        }
         deterministic_sort_reduce_device_scalar_run_to_run(
             keys, values, count, dest_array, dest_size, op, workspace, workspace_size
         );
