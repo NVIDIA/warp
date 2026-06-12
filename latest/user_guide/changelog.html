@@ -538,6 +538,9 @@ or unreadable native version symbols the same way (<a class="reference external"
 factory patterns) (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1486">GH-1486</a>).</p></li>
 <li><p>Improve <code class="docutils literal notranslate"><span class="pre">wp.mesh_query_ray()</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.mesh_query_ray_anyhit()</span></code> BVH traversal performance
 by visiting the nearer child first at each inner node, enabling earlier tightening of the
+closest-hit bound, more aggressive subtree pruning and by reusing loaded node payloads across traversal stack operations
+and using a faster AABB intersection path for non-parallel rays. The thread local stack for <code class="docutils literal notranslate"><span class="pre">mesh_query_ray</span></code> and
+<code class="docutils literal notranslate"><span class="pre">mesh_query_ray_anyhit</span></code> doubled in size (<code class="docutils literal notranslate"><span class="pre">uint32_t</span></code> to <code class="docutils literal notranslate"><span class="pre">uint64_t</span></code>) due to this. (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1529">GH-1529</a>)
 closest-hit bound and more aggressive subtree pruning. (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1529">GH-1529</a>)</p></li>
 <li><p>Report out-of-bounds shared and register tile indexing with coordinate-specific debug-mode diagnostics, including
 CUDA device-side assertions (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1483">GH-1483</a>).</p></li>
