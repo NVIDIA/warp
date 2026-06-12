@@ -40,6 +40,8 @@
 - Improve `wp.mesh_query_ray()` and `wp.mesh_query_ray_anyhit()` BVH traversal performance
   by visiting the nearer child first at each inner node, enabling earlier tightening of the
   closest-hit bound and more aggressive subtree pruning. ([GH-1529](https://github.com/NVIDIA/warp/issues/1529))
+- Report out-of-bounds shared and register tile indexing with coordinate-specific debug-mode diagnostics, including
+  CUDA device-side assertions ([GH-1483](https://github.com/NVIDIA/warp/issues/1483)).
 
 ### Fixed
 

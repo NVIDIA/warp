@@ -353,6 +353,41 @@ template <int... V> using tile_shape_t = tile_tuple_t<V...>;
 // alias of tuple to represent stride
 template <int... V> using tile_stride_t = tile_tuple_t<V...>;
 
+#ifndef NDEBUG
+template <typename Shape, typename Coord>
+inline CUDA_CALLABLE bool tile_check_coord_bounds(const Coord& c, const char* storage)
+{
+    WP_PRAGMA_UNROLL
+    for (int d = 0; d < Shape::N; ++d) {
+        const int index = c[d];
+        const int dim = Shape::dim(d);
+
+        if (index < 0 || index >= dim) {
+            printf(
+                "Warp tile index out of bounds in %s tile: coordinate dimension %d has index %d, outside valid range "
+                "[0, %d) (tile rank=%d)\n",
+                storage, d, index, dim, Shape::N
+            );
+            assert(0 && "Warp tile index out of bounds");
+            return false;
+        }
+    }
+
+    return true;
+}
+
+template <int Size> inline CUDA_CALLABLE bool tile_check_linear_bounds(int linear, const char* storage)
+{
+    if (linear < 0 || linear >= Size) {
+        printf("Warp tile index out of bounds in %s tile: linear index %d is outside [0, %d)\n", storage, linear, Size);
+        assert(0 && "Warp tile index out of bounds");
+        return false;
+    }
+
+    return true;
+}
+#endif  // NDEBUG
+
 
 // helper to remove a dimension from a shape (used for axis reductions)
 template <int Axis, typename Shape> struct tile_shape_remove_dim {
@@ -782,6 +817,11 @@ template <typename Shape_> struct tile_layout_register_t {
 
     static inline CUDA_CALLABLE int linear_from_coord(Coord c)
     {
+#ifndef NDEBUG
+        if (!tile_check_coord_bounds<Shape>(c, "register"))
+            return 0;
+#endif
+
         int linear = 0;
         int stride = 1;
 
@@ -1211,7 +1251,10 @@ template <typename Shape_, typename Stride_ = typename compute_strides<Shape_>::
 
     static inline CUDA_CALLABLE auto coord_from_linear(int linear)
     {
-        assert(linear < Size);
+#ifndef NDEBUG
+        if (!tile_check_linear_bounds<Size>(linear, "shared"))
+            return Coord {};
+#endif
 
         Coord c;
 
@@ -1226,12 +1269,15 @@ template <typename Shape_, typename Stride_ = typename compute_strides<Shape_>::
 
     static inline CUDA_CALLABLE int index_from_coord(Coord c)
     {
+#ifndef NDEBUG
+        if (!tile_check_coord_bounds<Shape>(c, "shared"))
+            return 0;
+#endif
+
         int index = 0;
 
         WP_PRAGMA_UNROLL
         for (int d = 0; d < Shape::N; ++d) {
-            assert(c[d] < Shape::dim(d));
-
             index += c[d] * Stride::dim(d);
         }
 
@@ -1340,7 +1386,6 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
         inline CUDA_CALLABLE T& operator()(int linear)
         {
             assert(ptr);
-            assert(Layout::valid(linear));
 
             auto c = Layout::coord_from_linear(linear);
             return (*this)(c);
@@ -1349,7 +1394,6 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
         inline CUDA_CALLABLE const T& operator()(int linear) const
         {
             assert(ptr);
-            assert(Layout::valid(linear));
 
             auto c = Layout::coord_from_linear(linear);
             return (*this)(c);

@@ -242,6 +242,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.tile.test_tile_mathdx import TestTileMathDx
     from warp.tests.tile.test_tile_matmul import TestTileMatmul
     from warp.tests.tile.test_tile_matmul_no_mathdx import TestTileMatmulNoMathDx
+    from warp.tests.tile.test_tile_oob import TestTileOOB
     from warp.tests.tile.test_tile_reduce import TestTileReduce
     from warp.tests.tile.test_tile_shared_memory import TestTileSharedMemory
     from warp.tests.tile.test_tile_solve import TestTileSolve
@@ -392,6 +393,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestTileMathDx,
         TestTileMatmul,
         TestTileMatmulNoMathDx,
+        TestTileOOB,
         TestTileReduce,
         TestTileSharedMemory,
         TestTileSolve,
@@ -480,6 +482,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.tile.test_tile_atomic_bitwise import TestTileAtomicBitwise
     from warp.tests.tile.test_tile_fft import TestTileFFT
     from warp.tests.tile.test_tile_fft_no_mathdx import TestTileFFTNoMathDx
+    from warp.tests.tile.test_tile_oob import TestTileOOB
     from warp.tests.tile.test_tile_reduce import TestTileReduce
     from warp.tests.tile.test_tile_sort import TestTileSort
     from warp.tests.tile.test_tile_view import TestTileView
@@ -519,6 +522,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestTileAtomicBitwise,
         TestTileFFT,
         TestTileFFTNoMathDx,
+        TestTileOOB,
         TestTileReduce,
         TestTileSort,
         TestTileView,
