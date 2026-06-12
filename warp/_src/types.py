@@ -6627,6 +6627,27 @@ class Volume:
     # Should be in sync with WP_VOLUME_BUILDER_INSTANTIATE_TYPES in volume_builder.h
     _supported_allocation_types = ("int32", "float", "Vec3f", "Vec4f")
 
+    REBUILD_SUCCESS: ClassVar[int] = 0
+    """Rebuild completed without setting a status flag."""
+
+    REBUILD_LEAF_CAPACITY_EXCEEDED: ClassVar[int] = 1 << 0
+    """Rebuild produced more leaf nodes than the volume capacity."""
+
+    REBUILD_LOWER_CAPACITY_EXCEEDED: ClassVar[int] = 1 << 1
+    """Rebuild produced more lower internal nodes than the volume capacity."""
+
+    REBUILD_UPPER_CAPACITY_EXCEEDED: ClassVar[int] = 1 << 2
+    """Rebuild produced more upper internal nodes than the volume capacity."""
+
+    REBUILD_VOXEL_CAPACITY_EXCEEDED: ClassVar[int] = 1 << 3
+    """Rebuild produced more active voxels than the volume capacity."""
+
+    REBUILD_COORDINATE_RANGE_EXCEEDED: ClassVar[int] = 1 << 4
+    """Rebuild input contained coordinates outside the rebuild key range."""
+
+    REBUILD_INVALID_INPUT: ClassVar[int] = 1 << 5
+    """Rebuild was called with invalid arguments or on a non-rebuildable volume."""
+
     @classmethod
     def allocate_by_tiles(
         cls,
@@ -6636,6 +6657,11 @@ class Volume:
         translation=(0.0, 0.0, 0.0),
         device: warp.DeviceLike = None,
         transform=None,
+        graph_rebuildable: bool = False,
+        max_tiles: int | None = None,
+        max_lower_nodes: int | None = None,
+        max_upper_nodes: int | None = None,
+        status: array | None = None,
     ) -> Volume:
         """Allocate a new :class:`Volume` with active tiles for each point ``tile_points``.
 
@@ -6661,6 +6687,11 @@ class Volume:
             translation: Translation between the index and world spaces.
             transform: Linear transform between the index and world spaces.
               If ``None``, deduced from ``voxel_size``.
+            graph_rebuildable: Whether to allocate persistent capacity for graph-capturable rebuilds.
+            max_tiles: Maximum number of NanoVDB leaf nodes for rebuilds. Defaults to ``len(tile_points)``.
+            max_lower_nodes: Maximum number of lower internal nodes for rebuilds. Defaults to ``max_tiles``.
+            max_upper_nodes: Maximum number of upper internal nodes for rebuilds. Defaults to ``max_lower_nodes``.
+            status: Optional one-element ``uint32`` CUDA array receiving rebuild status flags.
             device: The CUDA device to create the volume on, e.g. ``"cuda"`` or ``"cuda:0"``.
 
         """
@@ -6680,16 +6711,41 @@ class Volume:
         in_world_space = type_scalar_type(tile_points.dtype) is float32
 
         transform_buf, translation_buf = Volume._fill_transform_buffers(voxel_size, translation, transform)
+        graph_rebuildable = (
+            graph_rebuildable or max_tiles is not None or max_lower_nodes is not None or max_upper_nodes is not None
+        )
+        status = _volume_rebuild_status_array(status, device) if graph_rebuildable else None
+        max_tiles_c = _volume_rebuild_capacity(max_tiles, tile_points.shape[0], "max_tiles") if graph_rebuildable else 0
+        max_lower_nodes_c = (
+            _volume_rebuild_capacity(max_lower_nodes, max_tiles_c, "max_lower_nodes") if graph_rebuildable else 0
+        )
+        max_upper_nodes_c = (
+            _volume_rebuild_capacity(max_upper_nodes, max_lower_nodes_c, "max_upper_nodes") if graph_rebuildable else 0
+        )
 
         if bg_value is None:
-            volume.id = volume.runtime.core.wp_volume_index_from_tiles_device(
-                volume.device.context,
-                ctypes.c_void_p(tile_points.ptr),
-                tile_points.shape[0],
-                transform_buf,
-                translation_buf,
-                in_world_space,
-            )
+            if graph_rebuildable:
+                volume.id = volume.runtime.core.wp_volume_index_from_tiles_device_rebuildable(
+                    volume.device.context,
+                    ctypes.c_void_p(tile_points.ptr),
+                    tile_points.shape[0],
+                    transform_buf,
+                    translation_buf,
+                    in_world_space,
+                    max_tiles_c,
+                    max_lower_nodes_c,
+                    max_upper_nodes_c,
+                    ctypes.c_void_p(status.ptr),
+                )
+            else:
+                volume.id = volume.runtime.core.wp_volume_index_from_tiles_device(
+                    volume.device.context,
+                    ctypes.c_void_p(tile_points.ptr),
+                    tile_points.shape[0],
+                    transform_buf,
+                    translation_buf,
+                    in_world_space,
+                )
         else:
             # normalize background value type
             grid_type = type_to_warp(type(bg_value))
@@ -6721,20 +6777,48 @@ class Volume:
             cvalue_size = ctypes.sizeof(cvalue)
             cvalue_type = nvdb_type.encode("ascii")
 
-            volume.id = volume.runtime.core.wp_volume_from_tiles_device(
-                volume.device.context,
-                ctypes.c_void_p(tile_points.ptr),
-                tile_points.shape[0],
-                transform_buf,
-                translation_buf,
-                in_world_space,
-                cvalue_ptr,
-                cvalue_size,
-                cvalue_type,
-            )
+            if graph_rebuildable:
+                volume.id = volume.runtime.core.wp_volume_from_tiles_device_rebuildable(
+                    volume.device.context,
+                    ctypes.c_void_p(tile_points.ptr),
+                    tile_points.shape[0],
+                    transform_buf,
+                    translation_buf,
+                    in_world_space,
+                    cvalue_ptr,
+                    cvalue_size,
+                    cvalue_type,
+                    max_tiles_c,
+                    max_lower_nodes_c,
+                    max_upper_nodes_c,
+                    ctypes.c_void_p(status.ptr),
+                )
+            else:
+                volume.id = volume.runtime.core.wp_volume_from_tiles_device(
+                    volume.device.context,
+                    ctypes.c_void_p(tile_points.ptr),
+                    tile_points.shape[0],
+                    transform_buf,
+                    translation_buf,
+                    in_world_space,
+                    cvalue_ptr,
+                    cvalue_size,
+                    cvalue_type,
+                )
 
         if volume.id == 0:
             raise RuntimeError("Failed to create volume")
+
+        if graph_rebuildable:
+            volume._rebuild_kind = "tiles"
+            volume._rebuild_status = status
+            volume._rebuild_bg_value = bg_value
+            volume._rebuild_voxel_size = voxel_size
+            volume._rebuild_translation = translation
+            volume._rebuild_transform = transform
+            volume._rebuild_max_tiles = max_tiles_c
+            volume._rebuild_max_lower_nodes = max_lower_nodes_c
+            volume._rebuild_max_upper_nodes = max_upper_nodes_c
 
         return volume
 
@@ -6746,6 +6830,12 @@ class Volume:
         translation=(0.0, 0.0, 0.0),
         device: warp.DeviceLike = None,
         transform=None,
+        graph_rebuildable: bool = False,
+        max_active_voxels: int | None = None,
+        max_leaf_nodes: int | None = None,
+        max_lower_nodes: int | None = None,
+        max_upper_nodes: int | None = None,
+        status: array | None = None,
     ) -> Volume:
         """Allocate a new :class:`Volume` with active voxel for each point ``voxel_points``.
 
@@ -6764,6 +6854,12 @@ class Volume:
             translation: Translation between the index and world spaces.
             transform: Linear transform between the index and world spaces.
               If ``None``, deduced from ``voxel_size``.
+            graph_rebuildable: Whether to allocate persistent capacity for graph-capturable rebuilds.
+            max_active_voxels: Maximum number of active voxels for rebuilds. Defaults to ``len(voxel_points)``.
+            max_leaf_nodes: Maximum number of NanoVDB leaf nodes for rebuilds. Defaults to ``max_active_voxels``.
+            max_lower_nodes: Maximum number of lower internal nodes for rebuilds. Defaults to ``max_leaf_nodes``.
+            max_upper_nodes: Maximum number of upper internal nodes for rebuilds. Defaults to ``max_lower_nodes``.
+            status: Optional one-element ``uint32`` CUDA array receiving rebuild status flags.
             device: The CUDA device to create the volume on, e.g. ``"cuda"`` or ``"cuda:0"``.
 
         Raises:
@@ -6789,20 +6885,150 @@ class Volume:
         in_world_space = type_scalar_type(voxel_points.dtype) is float32
 
         transform_buf, translation_buf = Volume._fill_transform_buffers(voxel_size, translation, transform)
+        graph_rebuildable = (
+            graph_rebuildable
+            or max_active_voxels is not None
+            or max_leaf_nodes is not None
+            or max_lower_nodes is not None
+            or max_upper_nodes is not None
+        )
 
-        volume.id = volume.runtime.core.wp_volume_from_active_voxels_device(
-            volume.device.context,
+        if graph_rebuildable:
+            status = _volume_rebuild_status_array(status, device)
+            max_active_voxels_c = _volume_rebuild_capacity(
+                max_active_voxels, voxel_points.shape[0], "max_active_voxels"
+            )
+            max_leaf_nodes_c = _volume_rebuild_capacity(max_leaf_nodes, max_active_voxels_c, "max_leaf_nodes")
+            max_lower_nodes_c = _volume_rebuild_capacity(max_lower_nodes, max_leaf_nodes_c, "max_lower_nodes")
+            max_upper_nodes_c = _volume_rebuild_capacity(max_upper_nodes, max_lower_nodes_c, "max_upper_nodes")
+            volume.id = volume.runtime.core.wp_volume_from_active_voxels_device_rebuildable(
+                volume.device.context,
+                ctypes.c_void_p(voxel_points.ptr),
+                voxel_points.shape[0],
+                transform_buf,
+                translation_buf,
+                in_world_space,
+                max_active_voxels_c,
+                max_leaf_nodes_c,
+                max_lower_nodes_c,
+                max_upper_nodes_c,
+                ctypes.c_void_p(status.ptr),
+            )
+        else:
+            volume.id = volume.runtime.core.wp_volume_from_active_voxels_device(
+                volume.device.context,
+                ctypes.c_void_p(voxel_points.ptr),
+                voxel_points.shape[0],
+                transform_buf,
+                translation_buf,
+                in_world_space,
+            )
+
+        if volume.id == 0:
+            raise RuntimeError("Failed to create volume")
+
+        if graph_rebuildable:
+            volume._rebuild_kind = "voxels"
+            volume._rebuild_status = status
+            volume._rebuild_voxel_size = voxel_size
+            volume._rebuild_translation = translation
+            volume._rebuild_transform = transform
+            volume._rebuild_max_active_voxels = max_active_voxels_c
+            volume._rebuild_max_leaf_nodes = max_leaf_nodes_c
+            volume._rebuild_max_lower_nodes = max_lower_nodes_c
+            volume._rebuild_max_upper_nodes = max_upper_nodes_c
+
+        return volume
+
+    @property
+    def rebuild_status(self) -> array:
+        """Device array storing the latest rebuild status flags."""
+
+        try:
+            return self._rebuild_status
+        except AttributeError as err:
+            raise RuntimeError("Volume is not rebuildable") from err
+
+    def rebuild_by_tiles(self, tile_points: array, status: array | None = None) -> array:
+        """Rebuild this volume's tile topology from ``tile_points``.
+
+        The volume must have been created by ``allocate_by_tiles`` with
+        ``graph_rebuildable=True`` or explicit capacity arguments.
+        """
+
+        if getattr(self, "_rebuild_kind", None) != "tiles":
+            raise RuntimeError("Volume was not allocated as a rebuildable tile volume")
+
+        if not _is_contiguous_vec_like_array(tile_points, vec_length=3, scalar_types=(float32, int32)):
+            raise RuntimeError(
+                "tile_points must be contiguous and either a 1D Warp array of vec3f or vec3i or a 2D n-by-3 array of int32 or float32."
+            )
+        if not tile_points.device.is_cuda:
+            tile_points = tile_points.to(self.device)
+        status = _volume_rebuild_status_array(self._rebuild_status if status is None else status, self.device)
+        in_world_space = type_scalar_type(tile_points.dtype) is float32
+        transform_buf, translation_buf = Volume._fill_transform_buffers(
+            self._rebuild_voxel_size, self._rebuild_translation, self._rebuild_transform
+        )
+
+        bg_value = self._rebuild_bg_value
+        if bg_value is None:
+            self.runtime.core.wp_volume_index_rebuild_from_tiles_device(
+                self.id,
+                ctypes.c_void_p(tile_points.ptr),
+                tile_points.shape[0],
+                transform_buf,
+                translation_buf,
+                in_world_space,
+                ctypes.c_void_p(status.ptr),
+            )
+        else:
+            cvalue, cvalue_type = _volume_rebuild_ctype_value(bg_value)
+            cvalue_ptr = ctypes.pointer(cvalue)
+            self.runtime.core.wp_volume_rebuild_from_tiles_device(
+                self.id,
+                ctypes.c_void_p(tile_points.ptr),
+                tile_points.shape[0],
+                transform_buf,
+                translation_buf,
+                in_world_space,
+                cvalue_ptr,
+                ctypes.sizeof(cvalue),
+                cvalue_type,
+                ctypes.c_void_p(status.ptr),
+            )
+
+        return status
+
+    def rebuild_by_voxels(self, voxel_points: array, status: array | None = None) -> array:
+        """Rebuild this volume's active-voxel topology from ``voxel_points``."""
+
+        if getattr(self, "_rebuild_kind", None) != "voxels":
+            raise RuntimeError("Volume was not allocated as a rebuildable active-voxel volume")
+
+        if not _is_contiguous_vec_like_array(voxel_points, vec_length=3, scalar_types=(float32, int32)):
+            raise RuntimeError(
+                "voxel_points must be contiguous and either a 1D Warp array of vec3f or vec3i or a 2D n-by-3 array of int32 or float32."
+            )
+        if not voxel_points.device.is_cuda:
+            voxel_points = voxel_points.to(self.device)
+        status = _volume_rebuild_status_array(self._rebuild_status if status is None else status, self.device)
+        in_world_space = type_scalar_type(voxel_points.dtype) is float32
+        transform_buf, translation_buf = Volume._fill_transform_buffers(
+            self._rebuild_voxel_size, self._rebuild_translation, self._rebuild_transform
+        )
+
+        self.runtime.core.wp_volume_rebuild_from_active_voxels_device(
+            self.id,
             ctypes.c_void_p(voxel_points.ptr),
             voxel_points.shape[0],
             transform_buf,
             translation_buf,
             in_world_space,
+            ctypes.c_void_p(status.ptr),
         )
 
-        if volume.id == 0:
-            raise RuntimeError("Failed to create volume")
-
-        return volume
+        return status
 
 
 def _is_contiguous_vec_like_array(array, vec_length: int, scalar_types: tuple[type]) -> builtins.bool:
@@ -6813,6 +7039,57 @@ def _is_contiguous_vec_like_array(array, vec_length: int, scalar_types: tuple[ty
     return (array.ndim == 1 and type_size(array.dtype) == vec_length) or (
         array.ndim == 2 and array.shape[1] == vec_length and type_size(array.dtype) == 1
     )
+
+
+def _volume_rebuild_capacity(value: int | None, default: int, name: str) -> int:
+    capacity = default if value is None else value
+    try:
+        capacity = int(capacity)
+    except (TypeError, ValueError) as err:
+        raise TypeError(f"{name} must be an integer") from err
+
+    if capacity <= 0:
+        raise ValueError(f"{name} must be positive, got {capacity}")
+    if capacity >= 2**32:
+        raise ValueError(f"{name} must fit in uint32, got {capacity}")
+    return capacity
+
+
+def _volume_rebuild_status_array(status: array | None, device) -> array:
+    if status is None:
+        return warp.zeros(1, dtype=uint32, device=device)
+
+    if not is_array(status) or status.dtype != uint32 or status.size < 1:
+        raise RuntimeError("status must be a Warp array with dtype uint32 and at least one element")
+    if status.device != device:
+        raise RuntimeError(f"status must be on device {device}")
+    if not status.device.is_cuda:
+        raise RuntimeError("status must be a CUDA array")
+    return status
+
+
+def _volume_rebuild_ctype_value(bg_value):
+    grid_type = type_to_warp(type(bg_value))
+    if not (is_value(bg_value) or type_is_vector(grid_type)) and (
+        hasattr(bg_value, "__len__") and is_value(bg_value[0])
+    ):
+        grid_type = vector(len(bg_value), dtype=float)
+
+    try:
+        nvdb_type = next(
+            alloc_type
+            for alloc_type in Volume._supported_allocation_types
+            if types_equal(grid_type, Volume._nvdb_type_to_dtype[alloc_type])
+        )
+    except StopIteration as err:
+        raise TypeError(
+            f"Unsupported bg_value type for volume rebuild {type_repr(grid_type)}. Supported volume types are {', '.join(Volume._supported_allocation_types)}."
+        ) from err
+
+    if not type_is_vector(grid_type):
+        grid_type = vector(length=1, dtype=grid_type)
+
+    return grid_type(bg_value), nvdb_type.encode("ascii")
 
 
 # definition just for kernel type (cannot be a parameter), see mesh.h

@@ -38,3 +38,66 @@ void build_grid_from_points(
     bool points_in_world_space,
     const BuildGridParams<BuildT>& params
 );
+
+enum VolumeRebuildStatus : uint32_t {
+    WP_VOLUME_REBUILD_SUCCESS = 0u,
+    WP_VOLUME_REBUILD_LEAF_CAPACITY_EXCEEDED = 1u << 0u,
+    WP_VOLUME_REBUILD_LOWER_CAPACITY_EXCEEDED = 1u << 1u,
+    WP_VOLUME_REBUILD_UPPER_CAPACITY_EXCEEDED = 1u << 2u,
+    WP_VOLUME_REBUILD_VOXEL_CAPACITY_EXCEEDED = 1u << 3u,
+    WP_VOLUME_REBUILD_COORDINATE_RANGE_EXCEEDED = 1u << 4u,
+    WP_VOLUME_REBUILD_INVALID_INPUT = 1u << 5u,
+};
+
+struct VolumeRebuildCapacities {
+    uint32_t leaf_count = 0;
+    uint32_t lower_count = 0;
+    uint32_t upper_count = 0;
+    uint64_t voxel_count = 0;
+};
+
+template <typename BuildT>
+void allocate_rebuildable_grid_from_tiles(
+    nanovdb::Grid<nanovdb::NanoTree<BuildT>>*& out_grid,
+    size_t& out_grid_size,
+    const void* points,
+    size_t num_points,
+    bool points_in_world_space,
+    const VolumeRebuildCapacities& capacities,
+    const BuildGridParams<BuildT>& params,
+    uint32_t* status
+);
+
+template <typename BuildT>
+void rebuild_grid_from_tiles(
+    nanovdb::Grid<nanovdb::NanoTree<BuildT>>* grid,
+    size_t grid_size,
+    const void* points,
+    size_t num_points,
+    bool points_in_world_space,
+    const VolumeRebuildCapacities& capacities,
+    const BuildGridParams<BuildT>& params,
+    uint32_t* status
+);
+
+void allocate_rebuildable_grid_from_active_voxels(
+    nanovdb::Grid<nanovdb::NanoTree<nanovdb::ValueOnIndex>>*& out_grid,
+    size_t& out_grid_size,
+    const void* points,
+    size_t num_points,
+    bool points_in_world_space,
+    const VolumeRebuildCapacities& capacities,
+    const BuildGridParams<nanovdb::ValueOnIndex>& params,
+    uint32_t* status
+);
+
+void rebuild_grid_from_active_voxels(
+    nanovdb::Grid<nanovdb::NanoTree<nanovdb::ValueOnIndex>>* grid,
+    size_t grid_size,
+    const void* points,
+    size_t num_points,
+    bool points_in_world_space,
+    const VolumeRebuildCapacities& capacities,
+    const BuildGridParams<nanovdb::ValueOnIndex>& params,
+    uint32_t* status
+);

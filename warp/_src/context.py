@@ -5709,6 +5709,82 @@ class Runtime:
                 ctypes.c_bool,
             ]
             self.core.wp_volume_from_active_voxels_device.restype = ctypes.c_uint64
+            self.core.wp_volume_from_tiles_device_rebuildable.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_int,
+                ctypes.c_float * 9,
+                ctypes.c_float * 3,
+                ctypes.c_bool,
+                ctypes.c_void_p,
+                ctypes.c_uint32,
+                ctypes.c_char_p,
+                ctypes.c_uint32,
+                ctypes.c_uint32,
+                ctypes.c_uint32,
+                ctypes.c_void_p,
+            ]
+            self.core.wp_volume_from_tiles_device_rebuildable.restype = ctypes.c_uint64
+            self.core.wp_volume_index_from_tiles_device_rebuildable.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_int,
+                ctypes.c_float * 9,
+                ctypes.c_float * 3,
+                ctypes.c_bool,
+                ctypes.c_uint32,
+                ctypes.c_uint32,
+                ctypes.c_uint32,
+                ctypes.c_void_p,
+            ]
+            self.core.wp_volume_index_from_tiles_device_rebuildable.restype = ctypes.c_uint64
+            self.core.wp_volume_from_active_voxels_device_rebuildable.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_int,
+                ctypes.c_float * 9,
+                ctypes.c_float * 3,
+                ctypes.c_bool,
+                ctypes.c_uint32,
+                ctypes.c_uint32,
+                ctypes.c_uint32,
+                ctypes.c_uint32,
+                ctypes.c_void_p,
+            ]
+            self.core.wp_volume_from_active_voxels_device_rebuildable.restype = ctypes.c_uint64
+            self.core.wp_volume_rebuild_from_tiles_device.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_void_p,
+                ctypes.c_int,
+                ctypes.c_float * 9,
+                ctypes.c_float * 3,
+                ctypes.c_bool,
+                ctypes.c_void_p,
+                ctypes.c_uint32,
+                ctypes.c_char_p,
+                ctypes.c_void_p,
+            ]
+            self.core.wp_volume_rebuild_from_tiles_device.restype = None
+            self.core.wp_volume_index_rebuild_from_tiles_device.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_void_p,
+                ctypes.c_int,
+                ctypes.c_float * 9,
+                ctypes.c_float * 3,
+                ctypes.c_bool,
+                ctypes.c_void_p,
+            ]
+            self.core.wp_volume_index_rebuild_from_tiles_device.restype = None
+            self.core.wp_volume_rebuild_from_active_voxels_device.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_void_p,
+                ctypes.c_int,
+                ctypes.c_float * 9,
+                ctypes.c_float * 3,
+                ctypes.c_bool,
+                ctypes.c_void_p,
+            ]
+            self.core.wp_volume_rebuild_from_active_voxels_device.restype = None
 
             self.core.wp_volume_get_buffer_info.argtypes = [
                 ctypes.c_uint64,

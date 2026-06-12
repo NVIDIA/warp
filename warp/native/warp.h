@@ -177,6 +177,76 @@ WP_API uint64_t wp_volume_index_from_tiles_device(
 WP_API uint64_t wp_volume_from_active_voxels_device(
     void* context, void* points, int num_points, float transform[9], float translation[3], bool points_in_world_space
 );
+WP_API uint64_t wp_volume_from_tiles_device_rebuildable(
+    void* context,
+    void* points,
+    int num_points,
+    float transform[9],
+    float translation[3],
+    bool points_in_world_space,
+    const void* bg_value,
+    uint32_t bg_value_size,
+    const char* bg_value_type,
+    uint32_t max_tiles,
+    uint32_t max_lower_nodes,
+    uint32_t max_upper_nodes,
+    uint32_t* status
+);
+WP_API uint64_t wp_volume_index_from_tiles_device_rebuildable(
+    void* context,
+    void* points,
+    int num_points,
+    float transform[9],
+    float translation[3],
+    bool points_in_world_space,
+    uint32_t max_tiles,
+    uint32_t max_lower_nodes,
+    uint32_t max_upper_nodes,
+    uint32_t* status
+);
+WP_API uint64_t wp_volume_from_active_voxels_device_rebuildable(
+    void* context,
+    void* points,
+    int num_points,
+    float transform[9],
+    float translation[3],
+    bool points_in_world_space,
+    uint32_t max_active_voxels,
+    uint32_t max_leaf_nodes,
+    uint32_t max_lower_nodes,
+    uint32_t max_upper_nodes,
+    uint32_t* status
+);
+WP_API void wp_volume_rebuild_from_tiles_device(
+    uint64_t id,
+    void* points,
+    int num_points,
+    float transform[9],
+    float translation[3],
+    bool points_in_world_space,
+    const void* bg_value,
+    uint32_t bg_value_size,
+    const char* bg_value_type,
+    uint32_t* status
+);
+WP_API void wp_volume_index_rebuild_from_tiles_device(
+    uint64_t id,
+    void* points,
+    int num_points,
+    float transform[9],
+    float translation[3],
+    bool points_in_world_space,
+    uint32_t* status
+);
+WP_API void wp_volume_rebuild_from_active_voxels_device(
+    uint64_t id,
+    void* points,
+    int num_points,
+    float transform[9],
+    float translation[3],
+    bool points_in_world_space,
+    uint32_t* status
+);
 
 WP_API void wp_volume_get_buffer_info(uint64_t id, void** buf, uint64_t* size);
 WP_API void wp_volume_get_voxel_size(uint64_t id, float* dx, float* dy, float* dz);

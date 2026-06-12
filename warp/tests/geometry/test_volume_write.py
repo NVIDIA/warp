@@ -130,6 +130,103 @@ def test_volume_tile_readback_v(volume: wp.uint64, tiles: wp.array2d[wp.int32], 
         values[tid * 512 + r] = wp.volume_lookup_v(volume, ii, jj, kk)
 
 
+@wp.kernel
+def test_volume_tile_store_i(volume: wp.uint64, tiles: wp.array2d[wp.int32]):
+    tid = wp.tid()
+
+    ti = tiles[tid, 0]
+    tj = tiles[tid, 1]
+    tk = tiles[tid, 2]
+
+    for r in range(512):
+        ii = ti + (r / 64) % 8
+        jj = tj + (r / 8) % 8
+        kk = tk + r % 8
+        wp.volume_store_i(volume, ii, jj, kk, 100 * ii + 10 * jj + kk)
+
+
+@wp.kernel
+def test_volume_tile_readback_i(volume: wp.uint64, tiles: wp.array2d[wp.int32], values: wp.array[wp.int32]):
+    tid = wp.tid()
+
+    ti = tiles[tid, 0]
+    tj = tiles[tid, 1]
+    tk = tiles[tid, 2]
+
+    for r in range(512):
+        ii = ti + (r / 64) % 8
+        jj = tj + (r / 8) % 8
+        kk = tk + r % 8
+        values[tid * 512 + r] = wp.volume_lookup_i(volume, ii, jj, kk)
+
+
+@wp.kernel
+def test_volume_tile_store_v4(volume: wp.uint64, tiles: wp.array2d[wp.int32]):
+    tid = wp.tid()
+
+    ti = tiles[tid, 0]
+    tj = tiles[tid, 1]
+    tk = tiles[tid, 2]
+
+    for r in range(512):
+        ii = ti + (r / 64) % 8
+        jj = tj + (r / 8) % 8
+        kk = tk + r % 8
+        wp.volume_store(volume, ii, jj, kk, wp.vec4(float(ii), float(jj), float(kk), float(100 * ii + 10 * jj + kk)))
+
+
+@wp.kernel
+def test_volume_tile_readback_v4(volume: wp.uint64, tiles: wp.array2d[wp.int32], values: wp.array[wp.vec4]):
+    tid = wp.tid()
+
+    ti = tiles[tid, 0]
+    tj = tiles[tid, 1]
+    tk = tiles[tid, 2]
+
+    for r in range(512):
+        ii = ti + (r / 64) % 8
+        jj = tj + (r / 8) % 8
+        kk = tk + r % 8
+        values[tid * 512 + r] = wp.volume_lookup(volume, ii, jj, kk, dtype=wp.vec4)
+
+
+@wp.kernel
+def test_volume_readback_index(volume: wp.uint64, points: wp.array2d[wp.int32], values: wp.array[wp.int32]):
+    tid = wp.tid()
+
+    values[tid] = wp.volume_lookup_index(volume, points[tid, 0], points[tid, 1], points[tid, 2])
+
+
+def _sort_rows(values):
+    return values[np.lexsort(values.T[::-1])]
+
+
+def _unique_rows(values):
+    return np.unique(_sort_rows(values), axis=0)
+
+
+def _tile_voxels(tiles):
+    voxels = np.empty((tiles.shape[0] * 512, 3), dtype=np.int32)
+    for t, (ti, tj, tk) in enumerate(tiles):
+        for r in range(512):
+            voxels[t * 512 + r] = [ti + (r // 64) % 8, tj + (r // 8) % 8, tk + r % 8]
+    return voxels
+
+
+def _grid_parent_counts(voxels):
+    leaf_count = len(_unique_rows((voxels // 8) * 8))
+    lower_count = len(_unique_rows((voxels // 128) * 128))
+    upper_count = len(_unique_rows((voxels // 4096) * 4096))
+    return leaf_count, lower_count, upper_count
+
+
+def _lookup_indices(volume, points, device):
+    points_d = wp.array(points, dtype=wp.int32, device=device)
+    values = wp.empty(points.shape[0], dtype=wp.int32, device=device)
+    wp.launch(test_volume_readback_index, dim=points.shape[0], inputs=[volume.id, points_d, values], device=device)
+    return values.numpy()
+
+
 def test_volume_allocation(test, device):
     voxel_size = 0.125
     background_value = 123.456
@@ -306,7 +403,382 @@ def test_volume_allocation_from_voxels(test, device):
     np.testing.assert_equal(voxel_sorted, ijk_voxel_sorted)
 
 
+def test_volume_rebuildable_setup_matches_legacy_tiles(test, device):
+    points_np = np.array(
+        [
+            [-1, -2, -3],
+            [0, 0, 0],
+            [1, 2, 3],
+            [0, 8, 7],
+            [0, 0, 128],
+            [0, 0, 128],
+            [128, 0, 0],
+        ],
+        dtype=np.int32,
+    )
+    tile_count, lower_count, upper_count = _grid_parent_counts(points_np)
+    points_d = wp.array(points_np, dtype=wp.int32, device=device)
+
+    status_f = wp.zeros(1, dtype=wp.uint32, device=device)
+    volume_f_legacy = wp.Volume.allocate_by_tiles(points_d, 1.0, 123.456, device=device)
+    volume_f_rebuildable = wp.Volume.allocate_by_tiles(
+        points_d,
+        1.0,
+        123.456,
+        device=device,
+        graph_rebuildable=True,
+        max_tiles=tile_count,
+        max_lower_nodes=lower_count,
+        max_upper_nodes=upper_count,
+        status=status_f,
+    )
+    wp.synchronize_device(device)
+
+    test.assertEqual(int(status_f.numpy()[0]), wp.Volume.REBUILD_SUCCESS)
+
+    legacy_tiles = _sort_rows(volume_f_legacy.get_tiles().numpy())
+    rebuildable_tiles_out = wp.full((tile_count, 3), -999, dtype=wp.int32, device=device)
+    volume_f_rebuildable.get_tiles(out=rebuildable_tiles_out)
+    rebuildable_tiles = _sort_rows(_valid_coord_rows(rebuildable_tiles_out.numpy()))
+    np.testing.assert_array_equal(rebuildable_tiles, legacy_tiles)
+
+    tiles_d = wp.array(legacy_tiles, dtype=wp.int32, device=device)
+    legacy_values = wp.empty(tile_count * 512, dtype=wp.float32, device=device)
+    rebuildable_values = wp.empty(tile_count * 512, dtype=wp.float32, device=device)
+    wp.launch(test_volume_tile_store_f, dim=tile_count, inputs=[volume_f_legacy.id, tiles_d], device=device)
+    wp.launch(test_volume_tile_store_f, dim=tile_count, inputs=[volume_f_rebuildable.id, tiles_d], device=device)
+    wp.launch(
+        test_volume_tile_readback_f, dim=tile_count, inputs=[volume_f_legacy.id, tiles_d, legacy_values], device=device
+    )
+    wp.launch(
+        test_volume_tile_readback_f,
+        dim=tile_count,
+        inputs=[volume_f_rebuildable.id, tiles_d, rebuildable_values],
+        device=device,
+    )
+    np.testing.assert_array_equal(rebuildable_values.numpy(), legacy_values.numpy())
+
+    status_v = wp.zeros(1, dtype=wp.uint32, device=device)
+    volume_v_legacy = wp.Volume.allocate_by_tiles(points_d, 1.0, wp.vec3(1.0, 2.0, 3.0), device=device)
+    volume_v_rebuildable = wp.Volume.allocate_by_tiles(
+        points_d,
+        1.0,
+        wp.vec3(1.0, 2.0, 3.0),
+        device=device,
+        graph_rebuildable=True,
+        max_tiles=tile_count,
+        max_lower_nodes=lower_count,
+        max_upper_nodes=upper_count,
+        status=status_v,
+    )
+    wp.synchronize_device(device)
+
+    test.assertEqual(int(status_v.numpy()[0]), wp.Volume.REBUILD_SUCCESS)
+
+    legacy_vec_values = wp.empty(tile_count * 512, dtype=wp.vec3, device=device)
+    rebuildable_vec_values = wp.empty(tile_count * 512, dtype=wp.vec3, device=device)
+    wp.launch(test_volume_tile_store_v, dim=tile_count, inputs=[volume_v_legacy.id, tiles_d], device=device)
+    wp.launch(test_volume_tile_store_v, dim=tile_count, inputs=[volume_v_rebuildable.id, tiles_d], device=device)
+    wp.launch(
+        test_volume_tile_readback_v,
+        dim=tile_count,
+        inputs=[volume_v_legacy.id, tiles_d, legacy_vec_values],
+        device=device,
+    )
+    wp.launch(
+        test_volume_tile_readback_v,
+        dim=tile_count,
+        inputs=[volume_v_rebuildable.id, tiles_d, rebuildable_vec_values],
+        device=device,
+    )
+    np.testing.assert_array_equal(rebuildable_vec_values.numpy(), legacy_vec_values.numpy())
+
+    status_i = wp.zeros(1, dtype=wp.uint32, device=device)
+    volume_i_legacy = wp.Volume.allocate_by_tiles(points_d, 1.0, int(7), device=device)
+    volume_i_rebuildable = wp.Volume.allocate_by_tiles(
+        points_d,
+        1.0,
+        int(7),
+        device=device,
+        graph_rebuildable=True,
+        max_tiles=tile_count,
+        max_lower_nodes=lower_count,
+        max_upper_nodes=upper_count,
+        status=status_i,
+    )
+    wp.synchronize_device(device)
+
+    test.assertEqual(int(status_i.numpy()[0]), wp.Volume.REBUILD_SUCCESS)
+
+    legacy_int_values = wp.empty(tile_count * 512, dtype=wp.int32, device=device)
+    rebuildable_int_values = wp.empty(tile_count * 512, dtype=wp.int32, device=device)
+    wp.launch(test_volume_tile_store_i, dim=tile_count, inputs=[volume_i_legacy.id, tiles_d], device=device)
+    wp.launch(test_volume_tile_store_i, dim=tile_count, inputs=[volume_i_rebuildable.id, tiles_d], device=device)
+    wp.launch(
+        test_volume_tile_readback_i,
+        dim=tile_count,
+        inputs=[volume_i_legacy.id, tiles_d, legacy_int_values],
+        device=device,
+    )
+    wp.launch(
+        test_volume_tile_readback_i,
+        dim=tile_count,
+        inputs=[volume_i_rebuildable.id, tiles_d, rebuildable_int_values],
+        device=device,
+    )
+    np.testing.assert_array_equal(rebuildable_int_values.numpy(), legacy_int_values.numpy())
+
+    status_v4 = wp.zeros(1, dtype=wp.uint32, device=device)
+    volume_v4_legacy = wp.Volume.allocate_by_tiles(points_d, 1.0, wp.vec4(1.0, 2.0, 3.0, 4.0), device=device)
+    volume_v4_rebuildable = wp.Volume.allocate_by_tiles(
+        points_d,
+        1.0,
+        wp.vec4(1.0, 2.0, 3.0, 4.0),
+        device=device,
+        graph_rebuildable=True,
+        max_tiles=tile_count,
+        max_lower_nodes=lower_count,
+        max_upper_nodes=upper_count,
+        status=status_v4,
+    )
+    wp.synchronize_device(device)
+
+    test.assertEqual(int(status_v4.numpy()[0]), wp.Volume.REBUILD_SUCCESS)
+
+    legacy_vec4_values = wp.empty(tile_count * 512, dtype=wp.vec4, device=device)
+    rebuildable_vec4_values = wp.empty(tile_count * 512, dtype=wp.vec4, device=device)
+    wp.launch(test_volume_tile_store_v4, dim=tile_count, inputs=[volume_v4_legacy.id, tiles_d], device=device)
+    wp.launch(test_volume_tile_store_v4, dim=tile_count, inputs=[volume_v4_rebuildable.id, tiles_d], device=device)
+    wp.launch(
+        test_volume_tile_readback_v4,
+        dim=tile_count,
+        inputs=[volume_v4_legacy.id, tiles_d, legacy_vec4_values],
+        device=device,
+    )
+    wp.launch(
+        test_volume_tile_readback_v4,
+        dim=tile_count,
+        inputs=[volume_v4_rebuildable.id, tiles_d, rebuildable_vec4_values],
+        device=device,
+    )
+    np.testing.assert_array_equal(rebuildable_vec4_values.numpy(), legacy_vec4_values.numpy())
+
+    status_index = wp.zeros(1, dtype=wp.uint32, device=device)
+    volume_index_legacy = wp.Volume.allocate_by_tiles(points_d, 1.0, bg_value=None, device=device)
+    volume_index_rebuildable = wp.Volume.allocate_by_tiles(
+        points_d,
+        1.0,
+        bg_value=None,
+        device=device,
+        graph_rebuildable=True,
+        max_tiles=tile_count,
+        max_lower_nodes=lower_count,
+        max_upper_nodes=upper_count,
+        status=status_index,
+    )
+    wp.synchronize_device(device)
+
+    test.assertEqual(int(status_index.numpy()[0]), wp.Volume.REBUILD_SUCCESS)
+
+    tile_voxels = _tile_voxels(legacy_tiles)
+    inactive_voxels = np.array([[4096, 4096, 4096], [-4097, 0, 0], [0, 7, 128]], dtype=np.int32)
+    query_voxels = np.vstack((tile_voxels, inactive_voxels))
+    np.testing.assert_array_equal(
+        _lookup_indices(volume_index_rebuildable, query_voxels, device),
+        _lookup_indices(volume_index_legacy, query_voxels, device),
+    )
+
+
+def test_volume_rebuildable_setup_matches_legacy_voxels(test, device):
+    points_np = np.array(
+        [
+            [-1, -2, -3],
+            [0, 0, 0],
+            [1, 2, 3],
+            [0, 8, 7],
+            [0, 0, 128],
+            [0, 0, 128],
+            [128, 0, 0],
+            [129, 0, 0],
+        ],
+        dtype=np.int32,
+    )
+    active_voxels = _unique_rows(points_np)
+    leaf_count, lower_count, upper_count = _grid_parent_counts(active_voxels)
+    points_d = wp.array(points_np, dtype=wp.int32, device=device)
+    status = wp.zeros(1, dtype=wp.uint32, device=device)
+
+    volume_legacy = wp.Volume.allocate_by_voxels(points_d, 1.0, device=device)
+    volume_rebuildable = wp.Volume.allocate_by_voxels(
+        points_d,
+        1.0,
+        device=device,
+        graph_rebuildable=True,
+        max_active_voxels=len(active_voxels),
+        max_leaf_nodes=leaf_count,
+        max_lower_nodes=lower_count,
+        max_upper_nodes=upper_count,
+        status=status,
+    )
+    wp.synchronize_device(device)
+
+    test.assertEqual(int(status.numpy()[0]), wp.Volume.REBUILD_SUCCESS)
+
+    legacy_voxels = _sort_rows(volume_legacy.get_voxels().numpy())
+    rebuildable_voxels_out = wp.full((len(active_voxels), 3), -999, dtype=wp.int32, device=device)
+    volume_rebuildable.get_voxels(out=rebuildable_voxels_out)
+    rebuildable_voxels = _sort_rows(_valid_coord_rows(rebuildable_voxels_out.numpy()))
+    np.testing.assert_array_equal(rebuildable_voxels, legacy_voxels)
+
+    inactive_voxels = np.array([[4096, 4096, 4096], [-4097, 0, 0], [0, 7, 128]], dtype=np.int32)
+    query_voxels = np.vstack((active_voxels, inactive_voxels))
+    np.testing.assert_array_equal(
+        _lookup_indices(volume_rebuildable, query_voxels, device),
+        _lookup_indices(volume_legacy, query_voxels, device),
+    )
+
+
+def _valid_coord_rows(values, sentinel=-999):
+    return values[np.any(values != sentinel, axis=1)]
+
+
+def test_volume_rebuild_by_tiles_capture(test, device):
+    points_initial = wp.array([[0, 0, 0]], dtype=wp.int32, device=device)
+    points_rebuild = wp.array([[8, 0, 0], [8, 0, 0], [0, 8, 0]], dtype=wp.int32, device=device)
+    status = wp.zeros(1, dtype=wp.uint32, device=device)
+
+    volume = wp.Volume.allocate_by_tiles(
+        points_initial,
+        voxel_size=1.0,
+        bg_value=0.0,
+        device=device,
+        graph_rebuildable=True,
+        max_tiles=4,
+        max_lower_nodes=4,
+        max_upper_nodes=4,
+        status=status,
+    )
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+        volume.rebuild_by_tiles(points_rebuild)
+
+    wp.capture_launch(capture.graph)
+    wp.synchronize_device(device)
+
+    test.assertEqual(int(status.numpy()[0]), wp.Volume.REBUILD_SUCCESS)
+
+    tiles = wp.full((4, 3), -999, dtype=wp.int32, device=device)
+    volume.get_tiles(out=tiles)
+    tiles_np = _valid_coord_rows(tiles.numpy())
+    tiles_np = tiles_np[np.lexsort(tiles_np.T[::-1])]
+    np.testing.assert_array_equal(tiles_np, np.array([[0, 8, 0], [8, 0, 0]], dtype=np.int32))
+
+
+def test_volume_rebuild_by_tiles_parent_key_capture(test, device):
+    points_initial = wp.array([[0, 0, 0]], dtype=wp.int32, device=device)
+    points_rebuild = wp.array([[0, 0, 0], [0, 0, 128], [0, 8, 0], [0, 0, 128]], dtype=wp.int32, device=device)
+    status = wp.zeros(1, dtype=wp.uint32, device=device)
+
+    volume = wp.Volume.allocate_by_tiles(
+        points_initial,
+        voxel_size=1.0,
+        bg_value=0.0,
+        device=device,
+        graph_rebuildable=True,
+        max_tiles=3,
+        max_lower_nodes=2,
+        max_upper_nodes=1,
+        status=status,
+    )
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+        volume.rebuild_by_tiles(points_rebuild)
+
+    wp.capture_launch(capture.graph)
+    wp.synchronize_device(device)
+
+    test.assertEqual(int(status.numpy()[0]), wp.Volume.REBUILD_SUCCESS)
+
+
+def test_volume_rebuild_by_voxels_capture(test, device):
+    points_initial = wp.array([[0, 0, 0]], dtype=wp.int32, device=device)
+    points_rebuild = wp.array([[1, 2, 3], [1, 2, 3], [4, 5, 6]], dtype=wp.int32, device=device)
+    status = wp.zeros(1, dtype=wp.uint32, device=device)
+
+    volume = wp.Volume.allocate_by_voxels(
+        points_initial,
+        voxel_size=1.0,
+        device=device,
+        graph_rebuildable=True,
+        max_active_voxels=4,
+        max_leaf_nodes=4,
+        max_lower_nodes=4,
+        max_upper_nodes=4,
+        status=status,
+    )
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+        volume.rebuild_by_voxels(points_rebuild)
+
+    wp.capture_launch(capture.graph)
+    wp.synchronize_device(device)
+
+    test.assertEqual(int(status.numpy()[0]), wp.Volume.REBUILD_SUCCESS)
+
+    voxels = wp.full((4, 3), -999, dtype=wp.int32, device=device)
+    volume.get_voxels(out=voxels)
+    voxels_np = _valid_coord_rows(voxels.numpy())
+    voxels_np = voxels_np[np.lexsort(voxels_np.T[::-1])]
+    np.testing.assert_array_equal(voxels_np, np.array([[1, 2, 3], [4, 5, 6]], dtype=np.int32))
+
+
+def test_volume_rebuild_capacity_status_capture(test, device):
+    points_initial = wp.array([[0, 0, 0]], dtype=wp.int32, device=device)
+    tile_points_overflow = wp.array([[0, 0, 0], [8, 0, 0]], dtype=wp.int32, device=device)
+    voxel_points_overflow = wp.array([[1, 2, 3], [4, 5, 6]], dtype=wp.int32, device=device)
+    tile_status = wp.zeros(1, dtype=wp.uint32, device=device)
+    voxel_status = wp.zeros(1, dtype=wp.uint32, device=device)
+
+    tile_volume = wp.Volume.allocate_by_tiles(
+        points_initial,
+        voxel_size=1.0,
+        bg_value=0.0,
+        device=device,
+        graph_rebuildable=True,
+        max_tiles=1,
+        max_lower_nodes=1,
+        max_upper_nodes=1,
+        status=tile_status,
+    )
+    voxel_volume = wp.Volume.allocate_by_voxels(
+        points_initial,
+        voxel_size=1.0,
+        device=device,
+        graph_rebuildable=True,
+        max_active_voxels=1,
+        max_leaf_nodes=1,
+        max_lower_nodes=1,
+        max_upper_nodes=1,
+        status=voxel_status,
+    )
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+        tile_volume.rebuild_by_tiles(tile_points_overflow)
+        voxel_volume.rebuild_by_voxels(voxel_points_overflow)
+
+    wp.capture_launch(capture.graph)
+    wp.synchronize_device(device)
+
+    test.assertTrue(int(tile_status.numpy()[0]) & wp.Volume.REBUILD_LEAF_CAPACITY_EXCEEDED)
+    test.assertTrue(int(voxel_status.numpy()[0]) & wp.Volume.REBUILD_VOXEL_CAPACITY_EXCEEDED)
+
+
 devices = get_selected_cuda_test_devices()
+capture_devices = get_selected_cuda_test_devices_with_mempool()
 
 
 class TestVolumeWrite(unittest.TestCase):
@@ -324,6 +796,42 @@ add_function_test(
     "test_volume_allocation_from_voxels",
     test_volume_allocation_from_voxels,
     devices=devices,
+)
+add_function_test(
+    TestVolumeWrite,
+    "test_volume_rebuildable_setup_matches_legacy_tiles",
+    test_volume_rebuildable_setup_matches_legacy_tiles,
+    devices=devices,
+)
+add_function_test(
+    TestVolumeWrite,
+    "test_volume_rebuildable_setup_matches_legacy_voxels",
+    test_volume_rebuildable_setup_matches_legacy_voxels,
+    devices=devices,
+)
+add_function_test(
+    TestVolumeWrite,
+    "test_volume_rebuild_by_tiles_capture",
+    test_volume_rebuild_by_tiles_capture,
+    devices=capture_devices,
+)
+add_function_test(
+    TestVolumeWrite,
+    "test_volume_rebuild_by_tiles_parent_key_capture",
+    test_volume_rebuild_by_tiles_parent_key_capture,
+    devices=capture_devices,
+)
+add_function_test(
+    TestVolumeWrite,
+    "test_volume_rebuild_by_voxels_capture",
+    test_volume_rebuild_by_voxels_capture,
+    devices=capture_devices,
+)
+add_function_test(
+    TestVolumeWrite,
+    "test_volume_rebuild_capacity_status_capture",
+    test_volume_rebuild_capacity_status_capture,
+    devices=capture_devices,
 )
 
 
