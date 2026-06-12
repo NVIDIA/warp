@@ -539,6 +539,8 @@ factory patterns) (<a class="reference external" href="https://github.com/NVIDIA
 <li><p>Improve <code class="docutils literal notranslate"><span class="pre">wp.mesh_query_ray()</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.mesh_query_ray_anyhit()</span></code> BVH traversal performance
 by visiting the nearer child first at each inner node, enabling earlier tightening of the
 closest-hit bound and more aggressive subtree pruning. (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1529">GH-1529</a>)</p></li>
+<li><p>Report out-of-bounds shared and register tile indexing with coordinate-specific debug-mode diagnostics, including
+CUDA device-side assertions (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1483">GH-1483</a>).</p></li>
 </ul>
 </section>
 <section id="fixed">
