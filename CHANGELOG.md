@@ -42,6 +42,8 @@
   closest-hit bound and more aggressive subtree pruning. ([GH-1529](https://github.com/NVIDIA/warp/issues/1529))
 
 ### Fixed
+- Fix Raise a `WarpCodegenTypeError` when a kernel specifies a non-`None` return type annotation but contains only a bare return.
+  ([GH-1411](https://github.com/NVIDIA/warp/pull/1411)).
 
 - Fix `wp.load_module()` and `wp.ScopedCapture(force_module_load=True)` after CPU launches so CUDA graph capture
   precompiles the correct CUDA kernel variant. On CUDA drivers older than 12.3 this previously raised
