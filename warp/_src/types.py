@@ -5108,9 +5108,16 @@ _ARRAY_ANNOTATION_MAP = {
     indexedfabricarray: _IndexedFabricArrayAnnotation,
 }
 
+# Cache for parameterized annotation types.
+_annotation_type_cache: dict[tuple[type, Any, Any], type] = {}
+
 
 def _make_array_annotation_type(ann_base: type, dtype: Any, ndim: Any) -> type:
     dtype = dtype if dtype is Any else type_to_warp(dtype)
+    key = (ann_base, dtype, ndim)
+    cached = _annotation_type_cache.get(key)
+    if cached is not None:
+        return cached
 
     # The type name is not user-facing (repr is handled by metaclass), but keep it descriptive.
     ndim_name = "Any" if ndim is Any else str(ndim)
@@ -5126,6 +5133,7 @@ def _make_array_annotation_type(ann_base: type, dtype: Any, ndim: Any) -> type:
             "ndim": ndim,
         },
     )
+    _annotation_type_cache[key] = ann_type
     return ann_type
 
 

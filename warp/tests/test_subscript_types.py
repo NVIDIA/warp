@@ -377,6 +377,13 @@ class TestSubscriptTypes(unittest.TestCase):
 
     def test_subscript_identity(self):
         """Test that subscript and factory functions return identical cached types."""
+        # Array annotations are cached by (concrete class, dtype, ndim)
+        self.assertIs(wp.array[wp.float32], wp.array[wp.float32])
+        self.assertIs(wp.array2d[wp.float32], wp.array2d[wp.float32])
+        self.assertIs(wp.indexedarray[wp.float32], wp.indexedarray[wp.float32])
+        self.assertIs(wp.fabricarray[wp.float32], wp.fabricarray[wp.float32])
+        self.assertIs(wp.indexedfabricarray[wp.float32], wp.indexedfabricarray[wp.float32])
+
         # Literal and bare int return same cached type
         self.assertIs(Vector[wp.float32, Literal[3]], Vector[wp.float32, 3])
         self.assertIs(Vector[wp.float32, Literal[3]], wp.types.vector(3, wp.float32))
