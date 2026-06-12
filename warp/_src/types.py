@@ -5063,8 +5063,9 @@ class _ArrayAnnotationTypeMeta(type):
 
     def __ctype__(cls):
         concrete = cls._concrete_cls
+        ndim = 1 if getattr(cls, "ndim", Any) is Any else cls.ndim
         if concrete is array or concrete is fixedarray:
-            return array_t()
+            return array_t(data=0, grad=0, ndim=ndim, shape=(0,) * ndim, strides=(0,) * ndim)
         if concrete is indexedarray:
             ndim = 1 if getattr(cls, "ndim", Any) is Any else cls.ndim
             return indexedarray_t(None, [None] * ARRAY_MAX_DIMS, (0,) * ndim)
