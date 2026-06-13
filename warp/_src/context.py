@@ -11156,6 +11156,12 @@ def copy(
     if not warp._src.types.is_array(src) or not warp._src.types.is_array(dest):
         raise RuntimeError("Copy source and destination must be arrays")
 
+    if src_offset < 0:
+        raise RuntimeError(f"Source offset must be non-negative, got {src_offset}")
+
+    if dest_offset < 0:
+        raise RuntimeError(f"Destination offset must be non-negative, got {dest_offset}")
+
     # backwards compatibility, if count is zero then copy entire src array
     if count <= 0:
         count = src.size

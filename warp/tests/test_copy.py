@@ -264,6 +264,17 @@ def test_copy_adjoint(test, device):
     assert_np_equal(state_in.grad.numpy(), np.array([1.0, 1.0, 1.0]).astype(np.float32))
 
 
+def test_copy_negative_offsets(test, device):
+    src = wp.array([1, 2, 3, 4], dtype=wp.int32, device=device)
+    dest = wp.zeros_like(src)
+
+    with test.assertRaisesRegex(RuntimeError, "Source offset must be non-negative"):
+        wp.copy(dest, src, src_offset=-1)
+
+    with test.assertRaisesRegex(RuntimeError, "Destination offset must be non-negative"):
+        wp.copy(dest, src, dest_offset=-1)
+
+
 devices = get_test_devices()
 
 
@@ -301,6 +312,7 @@ for src_device in devices:
         )
 
 add_function_test(TestCopy, "test_copy_adjoint", test_copy_adjoint, devices=devices)
+add_function_test(TestCopy, "test_copy_negative_offsets", test_copy_negative_offsets, devices=devices)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
