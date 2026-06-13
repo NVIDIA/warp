@@ -99,6 +99,11 @@
 
 ### Documentation
 
+- Make `build_docs.py` lenient by default: warnings are no longer treated as errors unless the new
+  `--warnings-as-errors` flag is passed (CI passes it to keep strict checks). Local documentation builds
+  also skip external intersphinx resolution when the inventories are unreachable (or when
+  `WARP_DOCS_OFFLINE=1` is set), so an offline build no longer aborts with no output.
+
 ## [1.14.0] - 2026-06-01
 
 ### Added

@@ -25,6 +25,16 @@ parser.add_argument(
     default=False,
     help="Run doctest tests of code blocks",
 )
+parser.add_argument(
+    "--warnings-as-errors",
+    action=argparse.BooleanOptionalAction,
+    default=False,
+    help=(
+        "Treat Sphinx warnings as errors (passes -W). Off by default so local "
+        "builds stay lenient (e.g. unreachable intersphinx inventories when "
+        "offline do not abort the build). CI/CD opts in to enforce strictness."
+    ),
+)
 parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose logging")
 
 args = parser.parse_args()
@@ -81,7 +91,7 @@ def format_file_with_ruff(file_path):
         ) from err
 
 
-def build_sphinx_docs(source_dir, output_dir, builder="html"):
+def build_sphinx_docs(source_dir, output_dir, builder="html", warnings_as_errors=False):
     """Build Sphinx documentation programmatically."""
     logger.info(f"Building {builder} documentation: {source_dir} -> {output_dir}")
     try:
@@ -92,9 +102,24 @@ def build_sphinx_docs(source_dir, output_dir, builder="html"):
             logger.debug(f"Cleaning previous output directory: {output_dir}")
             shutil.rmtree(output_dir)
 
-        # sphinx-build -W -b html source_dir output_dir
-        logger.debug(f"Running sphinx-build -W -j auto -b {builder} {source_dir} {output_dir}")
-        result = build_main(["-W", "-j", "auto", "-b", builder, source_dir, output_dir])
+        # sphinx-build [-W] -j auto -b <builder> source_dir output_dir
+        sphinx_args = ["-j", "auto", "-b", builder, source_dir, output_dir]
+        if warnings_as_errors:
+            sphinx_args.insert(0, "-W")
+        logger.debug(f"Running sphinx-build {' '.join(sphinx_args)}")
+        previous_strict_env = os.environ.get("WARP_DOCS_WARNINGS_AS_ERRORS")
+        try:
+            if warnings_as_errors:
+                os.environ["WARP_DOCS_WARNINGS_AS_ERRORS"] = "1"
+            else:
+                os.environ.pop("WARP_DOCS_WARNINGS_AS_ERRORS", None)
+
+            result = build_main(sphinx_args)
+        finally:
+            if previous_strict_env is None:
+                os.environ.pop("WARP_DOCS_WARNINGS_AS_ERRORS", None)
+            else:
+                os.environ["WARP_DOCS_WARNINGS_AS_ERRORS"] = previous_strict_env
         if result != 0:
             raise RuntimeError(f"Sphinx build failed with exit code {result}")
 
@@ -124,12 +149,12 @@ source_dir = os.path.join(base_path, "docs")
 if args.html:
     # Build HTML docs
     html_output_dir = os.path.join(base_path, "docs", "_build", "html")
-    build_sphinx_docs(source_dir, html_output_dir, "html")
+    build_sphinx_docs(source_dir, html_output_dir, "html", warnings_as_errors=args.warnings_as_errors)
 
 if args.doctest:
     # Run doctest
     logger.info("Running doctest...")
     doctest_output_dir = os.path.join(base_path, "docs", "_build", "doctest")
-    build_sphinx_docs(source_dir, doctest_output_dir, "doctest")
+    build_sphinx_docs(source_dir, doctest_output_dir, "doctest", warnings_as_errors=args.warnings_as_errors)
 
 logger.info("Documentation build completed successfully")

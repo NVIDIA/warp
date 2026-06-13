@@ -17,6 +17,7 @@ import sys
 
 import docutils
 import sphinx
+import sphinx.util.logging
 from sphinx import addnodes
 from sphinx.environment.adapters.toctree import note_toctree
 from sphinx.ext.autosummary import autosummary_toc
@@ -396,13 +397,68 @@ extlinks = {
 
 # -- sphinx.ext.intersphinx --------------------------------------------------
 
-# Mapping to external documentation to enable cross-linking (e.g., :class:`numpy.ndarray`)
-intersphinx_mapping = {
+# Resolving intersphinx links requires fetching each project's remote inventory
+# (objects.inv) over the network. That matters for CI/CD, where we want external
+# cross-references (e.g. :class:`numpy.ndarray`) to resolve and stale inventory
+# URLs to fail loudly, but a local build should not hard-fail just because the
+# network is unavailable (offline machine, agent sandbox with no egress, flaky
+# DNS). Under -W an unreachable inventory is promoted to a fatal error and
+# aborts the whole build, producing no output.
+#
+# To keep local builds robust, skip intersphinx entirely when the inventories
+# are unreachable (or when WARP_DOCS_OFFLINE=1 is set to force it off). With the
+# mapping empty, external references are left unresolved: with nitpicky mode this
+# emits (non-fatal) warnings rather than aborting, so the build still succeeds.
+# CI runs with network access (and --warnings-as-errors) still asks Sphinx to
+# fetch inventories, so moved or invalid inventory URLs are caught there.
+_intersphinx_mapping = {
     "jax": ("https://docs.jax.dev/en/latest", None),
     "numpy": ("https://numpy.org/doc/stable", None),
     "python": ("https://docs.python.org/3", None),
     "pytorch": ("https://docs.pytorch.org/docs/stable", None),
 }
+
+
+def _inventories_reachable(mapping, timeout=2):
+    """Check whether configured intersphinx inventories can be fetched.
+
+    Args:
+        mapping: Intersphinx mapping dictionary.
+        timeout: Per-inventory probe timeout in seconds.
+
+    Returns:
+        ``True`` if every configured inventory returns a successful HTTP
+        response. ``False`` if any inventory cannot be fetched, including
+        connection-level failures and HTTP errors such as stale ``404`` URLs.
+    """
+    import urllib.error  # noqa: PLC0415
+    import urllib.request  # noqa: PLC0415
+
+    for base, _ in mapping.values():
+        url = base.rstrip("/") + "/objects.inv"
+        try:
+            with urllib.request.urlopen(url, timeout=timeout):
+                continue
+        except (urllib.error.HTTPError, urllib.error.URLError, OSError):
+            return False
+    return bool(mapping)
+
+
+_sphinx_logger = sphinx.util.logging.getLogger(__name__)
+if os.environ.get("WARP_DOCS_OFFLINE") == "1":
+    _sphinx_logger.info("intersphinx: WARP_DOCS_OFFLINE=1 set; skipping external cross-reference resolution.")
+    intersphinx_mapping = {}
+elif os.environ.get("WARP_DOCS_WARNINGS_AS_ERRORS") == "1":
+    intersphinx_mapping = _intersphinx_mapping
+elif not _inventories_reachable(_intersphinx_mapping):
+    _sphinx_logger.info(
+        "intersphinx: external inventories unreachable; skipping external cross-reference resolution "
+        "for this build. Set WARP_DOCS_OFFLINE=1 to silence this probe, or build with network access "
+        "to resolve external links."
+    )
+    intersphinx_mapping = {}
+else:
+    intersphinx_mapping = _intersphinx_mapping
 
 
 # -- sphinx.ext.linkcode -----------------------------------------------------
