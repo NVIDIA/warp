@@ -507,7 +507,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">source</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L788-L921"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Kernel" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L793-L929"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Kernel" title="Link to this definition">#</a></dt>
 <dd><p>Warp kernel object, typically created by decorating a Python function with <a class="reference internal" href="warp.kernel_decorator.html#warp.kernel" title="warp.kernel"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;warp.kernel</span></code></a>.</p>
 <p>Kernels can be launched on CPU or GPU devices using <a class="reference internal" href="warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.launch()</span></code></a>.</p>
 <dl class="py method">
@@ -523,7 +523,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">source</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L794-L844"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Kernel.__init__" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L799-L852"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Kernel.__init__" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <p class="rubric">Methods</p>
@@ -549,22 +549,22 @@
 </div>
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Kernel.infer_argument_types">
-<span class="sig-name descname"><span class="pre">infer_argument_types</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L845-L854"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Kernel.infer_argument_types" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">infer_argument_types</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L853-L862"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Kernel.infer_argument_types" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Kernel.add_overload">
-<span class="sig-name descname"><span class="pre">add_overload</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg_types</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L855-L899"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Kernel.add_overload" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">add_overload</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg_types</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L863-L907"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Kernel.add_overload" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Kernel.get_overload">
-<span class="sig-name descname"><span class="pre">get_overload</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg_types</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L900-L903"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Kernel.get_overload" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_overload</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg_types</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L908-L911"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Kernel.get_overload" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Kernel.get_mangled_name">
-<span class="sig-name descname"><span class="pre">get_mangled_name</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L904-L915"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Kernel.get_mangled_name" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_mangled_name</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L912-L923"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Kernel.get_mangled_name" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>

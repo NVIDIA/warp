@@ -566,6 +566,10 @@ Kernel cache:
     <span class="n">c</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">r</span>
 </pre></div>
 </div>
+<p>Warp kernels do not return values directly. Write results through array arguments
+or other explicit output parameters, and either omit the kernel return annotation
+or use <code class="docutils literal notranslate"><span class="pre">-&gt;</span> <span class="pre">None</span></code>. Non-<code class="docutils literal notranslate"><span class="pre">None</span></code> return annotations and <code class="docutils literal notranslate"><span class="pre">return</span> <span class="pre">&lt;value&gt;</span></code>
+statements are invalid for kernels.</p>
 <p>Conceptually, Warp kernels are similar to CUDA kernels. When a kernel is <em>launched</em> on a GPU,
 the body of the kernel is executed a certain number of times in parallel.</p>
 <p>Because Warp kernels are compiled to native C++/CUDA code, all the function input arguments must be statically typed. This allows
