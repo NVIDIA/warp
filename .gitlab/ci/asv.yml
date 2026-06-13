@@ -181,18 +181,12 @@ linux-x86_64 asv build:
     - |
       rc=0
       uvx asv continuous -v -e --interleave-rounds --append-samples --no-only-changed -f 1.10 --bench "$ASV_BENCH_FILTER" "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>&1 || rc=$?
-      if [ "$rc" -eq 1 ]; then
-        # asv continuous returns 1 for detected regressions; print the
-        # comparison, then keep the original regression exit status unless the
-        # compare command itself fails.
-        compare_rc=0
-        uvx asv compare -v --split "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>&1 || compare_rc=$?
-        if [ "$compare_rc" -ne 0 ]; then
-          exit "$compare_rc"
-        fi
-        exit "${rc:-1}"
-      fi
-      if [ "$rc" -gt 1 ]; then
+      if [ "$rc" -ne 0 ]; then
+        # rc=1: regressions detected. rc>1: benchmark failures (e.g. a new
+        # benchmark uses an API not yet on the compare ref). In both cases,
+        # print a comparison table for the benchmarks that did run successfully,
+        # then propagate the original exit status.
+        uvx asv compare -v --split "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>&1 || true
         exit "$rc"
       fi
     - 'date -u +"asv continuous end:   %FT%TZ"'
