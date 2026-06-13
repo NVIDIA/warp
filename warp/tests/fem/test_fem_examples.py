@@ -14,14 +14,17 @@ import sys
 import tempfile
 import unittest
 from typing import Any
+from unittest import mock
 
 import warp as wp
 import warp.tests.unittest_utils
 from warp._src.utils import check_p2p
 from warp.tests.unittest_utils import (
+    USD_AVAILABLE,
     add_function_test,
     get_selected_cuda_test_devices,
     get_selected_cuda_test_devices_with_mempool,
+    sanitize_identifier,
 )
 
 
@@ -57,6 +60,34 @@ def add_fem_example_test(
             options = test_options | test_options_cuda
         else:
             options = test_options | test_options_cpu
+
+        # Default any USD output into the gitignored warp/tests/outputs/ directory
+        # (mirroring the core example harness) and remove it after a passing run,
+        # so examples run via the suite never litter the working directory (e.g.
+        # the repo root). A test can still pass stage_path=None to disable output.
+        outputs_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "outputs")
+        short_name = name.rsplit(".", maxsplit=1)[-1]
+        if USD_AVAILABLE:
+            stage_path = options.pop(
+                "stage_path",
+                os.path.join(outputs_dir, f"{short_name}_{sanitize_identifier(device)}.usd"),
+            )
+        else:
+            options.pop("stage_path", None)
+            stage_path = "None"
+
+        if stage_path is None:
+            # Forward stage_path=None so the example disables USD output entirely
+            # (the example maps the literal "None" back to None).
+            options["stage_path"] = None
+        else:
+            options["stage_path"] = stage_path
+            if stage_path != "None":
+                os.makedirs(outputs_dir, exist_ok=True)
+                try:
+                    os.remove(stage_path)
+                except OSError:
+                    pass
 
         env_vars = os.environ.copy()
 
@@ -98,6 +129,13 @@ def add_fem_example_test(
             msg=f"Failed with return code {result.returncode}, command: {' '.join(command)}\n\nOutput:\n{result.stdout}\n{result.stderr}",
         )
 
+        # Clean up the output stage on success (mirrors the core example harness).
+        if stage_path not in (None, "None") and result.returncode == 0:
+            try:
+                os.remove(stage_path)
+            except OSError:
+                pass
+
     add_function_test(cls, f"test_{name}", run, devices=devices, check_output=False)
 
 
@@ -111,6 +149,39 @@ class TestFemExamples(unittest.TestCase):
 
 class TestFemDiffusionExamples(unittest.TestCase):
     pass
+
+
+class TestFemExampleHarness(unittest.TestCase):
+    def test_stage_path_none_when_usd_unavailable(self):
+        cls = type("HarnessCase", (unittest.TestCase,), {})
+        add_fem_example_test(
+            cls,
+            name="fem.example_apic_fluid",
+            devices=["cpu"],
+            test_options={"num_frames": 1},
+        )
+
+        commands = []
+
+        def fake_run(command, *args, **kwargs):
+            commands.append(command)
+            return subprocess.CompletedProcess(command, returncode=0, stdout="", stderr="")
+
+        module = sys.modules[__name__]
+        test_name = "test_fem.example_apic_fluid_cpu"
+        test = cls(methodName=test_name)
+        with (
+            mock.patch.object(module, "USD_AVAILABLE", False),
+            mock.patch.object(subprocess, "run", side_effect=fake_run),
+            mock.patch.object(os, "makedirs") as makedirs,
+            mock.patch.object(os, "remove"),
+        ):
+            getattr(test, test_name)()
+
+        self.assertEqual(len(commands), 1)
+        stage_path_index = commands[0].index("--stage-path") + 1
+        self.assertEqual(commands[0][stage_path_index], "None")
+        makedirs.assert_not_called()
 
 
 # MGPU tests may fail on systems where P2P transfers are misconfigured
