@@ -45,6 +45,8 @@
   closest-hit bound and more aggressive subtree pruning. ([GH-1529](https://github.com/NVIDIA/warp/issues/1529))
 - Report out-of-bounds shared and register tile indexing with coordinate-specific debug-mode diagnostics, including
   CUDA device-side assertions ([GH-1483](https://github.com/NVIDIA/warp/issues/1483)).
+- Reject non-`None` return annotations on kernels. Write results to output arguments and either omit the return annotation
+  or use `-> None` ([GH-1471](https://github.com/NVIDIA/warp/issues/1471)).
 
 ### Fixed
 

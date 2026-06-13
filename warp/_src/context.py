@@ -70,6 +70,11 @@ from warp._src.types import LAUNCH_MAX_DIMS, Array, LaunchBounds, launch_bounds_
 
 _wp_module_name_ = "warp.context"
 
+_KERNEL_RETURN_ERROR = (
+    "Warp kernels cannot return values. Write results to output arguments, "
+    "and omit the return annotation or use `-> None`."
+)
+
 warp_home = os.path.realpath(os.path.join(os.path.dirname(__file__), ".."))
 
 
@@ -810,6 +815,9 @@ class Kernel:
             code_transformers = []
 
         self.adj = warp._src.codegen.Adjoint(func, transformers=code_transformers, source=source)
+        self.return_annotation = self.adj.arg_types.pop("return", None)
+        if self.return_annotation is types.NoneType:
+            self.return_annotation = None
 
         # check if generic
         self.is_generic = False
@@ -1524,6 +1532,7 @@ def kernel(
                 ch.update(module_hash)
                 ch.update(bytes(k.key, "utf-8"))
                 ch.update(hasher.hash_adjoint(k.adj))
+                ch.update(hasher._hash_kernel_return_annotation(k))
                 module_hash = ch.digest()
 
             # module_hash may have been salted above for generic kernels with
@@ -1696,7 +1705,13 @@ def overload(kernel: Kernel | Callable, arg_types: dict[str, Any] | list[Any] | 
         # get type annotation list
         arg_list = []
         for arg_name, arg_type in argspec.annotations.items():
-            if arg_name != "return":
+            if arg_name == "return":
+                if arg_type is not None and arg_type is not types.NoneType:
+                    raise TypeError(
+                        "Return annotations are not allowed on @wp.overload stubs; "
+                        "omit the return annotation or use `-> None`."
+                    )
+            else:
                 arg_list.append(arg_type)
 
         # add new overload, but we must return the original kernel from @wp.overload decorator!
@@ -2260,12 +2275,28 @@ class ModuleHasher:
 
         ch.update(bytes(kernel.key, "utf-8"))
         ch.update(self.hash_adjoint(kernel.adj))
+        ch.update(self._hash_kernel_return_annotation(kernel))
 
         h = ch.digest()
 
         self.unique_kernels[h] = kernel
 
         return h
+
+    @staticmethod
+    def _hash_kernel_return_annotation(kernel: Kernel) -> bytes:
+        # Kernels still cannot return values. Hash non-None return annotations
+        # so an aliased invalid annotation cannot reuse a valid unique-module
+        # kernel before build-time validation rejects it.
+        if kernel.return_annotation is None:
+            return b""
+
+        try:
+            annotation = warp._src.types.get_type_code(kernel.return_annotation)
+        except TypeError:
+            annotation = repr(kernel.return_annotation)
+
+        return bytes(f"return:{annotation}", "utf-8")
 
     def hash_function(self, func: Function) -> bytes:
         # NOTE: This method hashes all possible overloads that a function call could resolve to.
@@ -2441,14 +2472,38 @@ class ModuleBuilder:
     def build_struct(self, struct):
         self.structs[struct] = None
 
+    @staticmethod
+    def _kernel_has_invalid_return_annotation(kernel):
+        return kernel.return_annotation is not None
+
+    @staticmethod
+    def _kernel_has_value_return(kernel):
+        func_def = kernel.adj.tree.body[0]
+        stack = list(func_def.body)
+        while stack:
+            node = stack.pop()
+            if isinstance(node, ast.Return):
+                if node.value is not None:
+                    return True
+                continue
+            elif isinstance(node, (ast.AsyncFunctionDef, ast.FunctionDef, ast.Lambda, ast.ClassDef)):
+                continue
+
+            stack.extend(ast.iter_child_nodes(node))
+
+        return False
+
     def build_kernel(self, kernel):
         if kernel.options.get("enable_backward", True):
             kernel.adj.used_by_backward_kernel = True
 
+        if self._kernel_has_invalid_return_annotation(kernel) or self._kernel_has_value_return(kernel):
+            raise WarpCodegenTypeError(f"'{kernel.key}': {_KERNEL_RETURN_ERROR}")
+
         kernel.adj.build(self)
 
         if kernel.adj.return_var is not None:
-            raise WarpCodegenTypeError(f"'{kernel.key}': Error, kernels can't have return values")
+            raise WarpCodegenTypeError(f"'{kernel.key}': {_KERNEL_RETURN_ERROR}")
 
     def build_function(self, func):
         if func in self.functions:

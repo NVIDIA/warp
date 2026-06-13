@@ -79,6 +79,11 @@ In Warp, compute kernels are defined as Python functions and annotated with the 
         # write result back to memory
         c[tid] = r
 
+Warp kernels do not return values directly. Write results through array arguments
+or other explicit output parameters, and either omit the kernel return annotation
+or use ``-> None``. Non-``None`` return annotations and ``return <value>``
+statements are invalid for kernels.
+
 Conceptually, Warp kernels are similar to CUDA kernels. When a kernel is *launched* on a GPU,
 the body of the kernel is executed a certain number of times in parallel.
 

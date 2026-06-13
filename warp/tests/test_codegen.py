@@ -6,11 +6,18 @@ import inspect
 import linecache
 import math
 import sys
+import types
 import unittest
+from typing import Any
 from unittest import mock
 
 import warp as wp
 from warp.tests.unittest_utils import *
+
+_KERNEL_RETURN_ERROR_PATTERN = (
+    r"Warp kernels cannot return values\. Write results to output arguments, "
+    r"and omit the return annotation or use `-> None`\."
+)
 
 
 @wp.kernel
@@ -545,12 +552,41 @@ def test_error_kernel_return_value(test, device):
 
     wp.launch(f0, dim=1, inputs=[3.0], device=device)
 
+    # kernels can explicitly annotate that they return nothing
+    @wp.kernel(module="unique")
+    def f0_none(x: float) -> None:
+        return
+
+    wp.launch(f0_none, dim=1, inputs=[3.0], device=device)
+
+    # Python's NoneType spelling is equivalent to a None return annotation
+    @wp.kernel(module="unique")
+    def f0_none_type(x: float) -> types.NoneType:
+        return
+
+    wp.launch(f0_none_type, dim=1, inputs=[3.0], device=device)
+
+    # return None is still a value-returning statement and is not valid in kernels
+    @wp.kernel(module="unique")
+    def f0_return_none(x: float):
+        return None
+
+    with test.assertRaisesRegex(wp.WarpCodegenTypeError, _KERNEL_RETURN_ERROR_PATTERN):
+        wp.launch(f0_return_none, dim=1, inputs=[3.0], device=device)
+
+    @wp.kernel(module="unique")
+    def f0_none_return_none(x: float) -> None:
+        return None
+
+    with test.assertRaisesRegex(wp.WarpCodegenTypeError, _KERNEL_RETURN_ERROR_PATTERN):
+        wp.launch(f0_none_return_none, dim=1, inputs=[3.0], device=device)
+
     # kernels can't return a value
     @wp.kernel(module="unique")
     def f1(x: float) -> float:
         return x
 
-    with test.assertRaisesRegex(wp.WarpCodegenTypeError, r".*Error, kernels can't have return values"):
+    with test.assertRaisesRegex(wp.WarpCodegenTypeError, _KERNEL_RETURN_ERROR_PATTERN):
         wp.launch(f1, dim=1, inputs=[3.0], device=device)
 
     # types that have no C-equivalent can't be returned from kernels either
@@ -558,7 +594,7 @@ def test_error_kernel_return_value(test, device):
     def f2(x: float) -> wp.vec4f:
         return wp.vec4f(x)
 
-    with test.assertRaisesRegex(wp.WarpCodegenTypeError, r".*Error, kernels can't have return values"):
+    with test.assertRaisesRegex(wp.WarpCodegenTypeError, _KERNEL_RETURN_ERROR_PATTERN):
         wp.launch(f2, dim=1, inputs=[3.0], device=device)
 
     # also when the return type is not defined, no value can be returned
@@ -566,16 +602,74 @@ def test_error_kernel_return_value(test, device):
     def f3(x: float):
         return x
 
-    with test.assertRaisesRegex(wp.WarpCodegenTypeError, r".*Error, kernels can't have return values"):
+    with test.assertRaisesRegex(wp.WarpCodegenTypeError, _KERNEL_RETURN_ERROR_PATTERN):
         wp.launch(f3, dim=1, inputs=[3.0], device=device)
 
-    # TODO: specifying a return type without returning a value is benign, but should be reported to avoid confusion
-    # @wp.kernel
-    # def f4(x: float) -> float:
-    #     return
+    # specifying a non-None return annotation is invalid even with a bare return
+    @wp.kernel(module="unique")
+    def f4(x: float) -> float:
+        return
 
-    # with test.assertRaisesRegex(wp.WarpCodegenTypeError, r".*Error, kernels can't have return values"):
-    #     wp.launch(f4, dim=1, inputs=[3.0], device=device)
+    with test.assertRaisesRegex(wp.WarpCodegenTypeError, _KERNEL_RETURN_ERROR_PATTERN):
+        wp.launch(f4, dim=1, inputs=[3.0], device=device)
+
+    # kernel diagnostics should win over function-style return type mismatch diagnostics
+    @wp.kernel(module="unique")
+    def f5(x: float) -> int:
+        return x
+
+    with test.assertRaisesRegex(wp.WarpCodegenTypeError, _KERNEL_RETURN_ERROR_PATTERN):
+        wp.launch(f5, dim=1, inputs=[3.0], device=device)
+
+    # generic kernel argument inference should ignore invalid return annotations
+    @wp.kernel(module="unique")
+    def f6(x: Any) -> float:
+        return
+
+    with test.assertRaisesRegex(wp.WarpCodegenTypeError, _KERNEL_RETURN_ERROR_PATTERN):
+        wp.launch(f6, dim=1, inputs=[3.0], device=device)
+
+
+def test_error_kernel_return_alias_unique_module_reuse(test, device):
+    """Verify aliased kernel return annotations prevent unique-module reuse."""
+
+    Ret = None
+
+    @wp.kernel(module="unique")
+    def aliased_return_kernel(x: float) -> Ret:
+        return
+
+    wp.launch(aliased_return_kernel, dim=1, inputs=[3.0], device=device)
+
+    Ret = float
+
+    @wp.kernel(module="unique")
+    def aliased_return_kernel(x: float) -> Ret:
+        return
+
+    with test.assertRaisesRegex(wp.WarpCodegenTypeError, _KERNEL_RETURN_ERROR_PATTERN):
+        wp.launch(aliased_return_kernel, dim=1, inputs=[3.0], device=device)
+
+
+def test_error_generic_kernel_return_alias_unique_module_reuse(test, device):
+    """Verify generic aliased kernel returns prevent unique-module reuse."""
+
+    Ret = None
+
+    @wp.kernel(module="unique")
+    def aliased_generic_return_kernel(x: Any) -> Ret:
+        return
+
+    wp.launch(aliased_generic_return_kernel, dim=1, inputs=[3.0], device=device)
+
+    Ret = float
+
+    @wp.kernel(module="unique")
+    def aliased_generic_return_kernel(x: Any) -> Ret:
+        return
+
+    with test.assertRaisesRegex(wp.WarpCodegenTypeError, _KERNEL_RETURN_ERROR_PATTERN):
+        wp.launch(aliased_generic_return_kernel, dim=1, inputs=[3.0], device=device)
 
 
 def test_error_mutating_constant_in_dynamic_loop(test, device):
@@ -1926,6 +2020,18 @@ add_function_test(
     TestCodeGen,
     func=test_error_kernel_return_value,
     name="test_error_kernel_return_value",
+    devices=devices,
+)
+add_function_test(
+    TestCodeGen,
+    func=test_error_kernel_return_alias_unique_module_reuse,
+    name="test_error_kernel_return_alias_unique_module_reuse",
+    devices=devices,
+)
+add_function_test(
+    TestCodeGen,
+    func=test_error_generic_kernel_return_alias_unique_module_reuse,
+    name="test_error_generic_kernel_return_alias_unique_module_reuse",
     devices=devices,
 )
 add_function_test(
