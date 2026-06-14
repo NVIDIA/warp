@@ -37,12 +37,11 @@
   or unreadable native version symbols the same way ([GH-1508](https://github.com/NVIDIA/warp/issues/1508)).
 - Speed up Warp kernel creation, particularly for workloads that declare many kernels programmatically (e.g. dynamic
   factory patterns) ([GH-1486](https://github.com/NVIDIA/warp/issues/1486)).
-- Improve `wp.mesh_query_ray()` and `wp.mesh_query_ray_anyhit()` BVH traversal performance
-  by visiting the nearer child first at each inner node, enabling earlier tightening of the
-  closest-hit bound, more aggressive subtree pruning and by reusing loaded node payloads across traversal stack operations
-  and using a faster AABB intersection path for non-parallel rays. The thread local stack for `mesh_query_ray` and
-  `mesh_query_ray_anyhit` doubled in size (`uint32_t` to `uint64_t`) due to this. ([GH-1529](https://github.com/NVIDIA/warp/issues/1529))
-  closest-hit bound and more aggressive subtree pruning. ([GH-1529](https://github.com/NVIDIA/warp/issues/1529))
+- Improve `wp.mesh_query_ray()` and `wp.mesh_query_ray_anyhit()` BVH traversal performance by visiting the nearer child
+  first at each inner node, enabling earlier tightening of the closest-hit bound and more aggressive subtree pruning;
+  reusing loaded node payloads across traversal stack operations; and using a faster AABB intersection path for
+  non-parallel rays. These traversal changes use additional per-thread temporary storage
+  ([GH-1529](https://github.com/NVIDIA/warp/issues/1529)).
 - Report out-of-bounds shared and register tile indexing with coordinate-specific debug-mode diagnostics, including
   CUDA device-side assertions ([GH-1483](https://github.com/NVIDIA/warp/issues/1483)).
 - Reject non-`None` return annotations on kernels. Write results to output arguments and either omit the return annotation
