@@ -32,6 +32,10 @@ Build docs (~1 min) with `uv run --extra docs build_docs.py 2>&1 | tee /tmp/buil
 
 ## Tests
 
+- Keep `warp/tests/**` for core Warp Python library unit tests. Do not add
+  meta-tests there for docs config, CI/release scripts, packaging, or test
+  harness machinery; verify those workflows directly instead.
+
 Always use `unittest`, not pytest.
 
 - Run all tests (~10-20 min): `uv run --extra dev -m warp.tests -s autodetect`
