@@ -9878,7 +9878,7 @@ def view_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]
         # fabric and fixed arrays: return array attribute as a regular array
         return array(dtype=dtype, ndim=ndim)
 
-    return type(arr_type)(dtype=dtype, ndim=ndim)
+    return concrete_array_type(arr_type)(dtype=dtype, ndim=ndim)
 
 
 for array_type in array_types:

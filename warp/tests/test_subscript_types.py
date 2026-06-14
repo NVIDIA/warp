@@ -377,6 +377,13 @@ class TestSubscriptTypes(unittest.TestCase):
 
     def test_subscript_identity(self):
         """Test that subscript and factory functions return identical cached types."""
+        # Array annotations are cached by (concrete class, dtype, ndim)
+        self.assertIs(wp.array[wp.float32], wp.array[wp.float32])
+        self.assertIs(wp.array2d[wp.float32], wp.array2d[wp.float32])
+        self.assertIs(wp.indexedarray[wp.float32], wp.indexedarray[wp.float32])
+        self.assertIs(wp.fabricarray[wp.float32], wp.fabricarray[wp.float32])
+        self.assertIs(wp.indexedfabricarray[wp.float32], wp.indexedfabricarray[wp.float32])
+
         # Literal and bare int return same cached type
         self.assertIs(Vector[wp.float32, Literal[3]], Vector[wp.float32, 3])
         self.assertIs(Vector[wp.float32, Literal[3]], wp.types.vector(3, wp.float32))
@@ -454,32 +461,34 @@ class TestSubscriptTypes(unittest.TestCase):
         self.assertTrue(hasattr(mat_type, "_wp_generic_type_hint_"))
 
     def test_annotation_is_lightweight(self):
-        """Subscript annotations are lightweight objects, not full array instances."""
+        """Subscript annotations are lightweight types, not full array instances."""
         arr_ann = wp.array[float]
-        self.assertIsInstance(arr_ann, _ArrayAnnotation)
-        self.assertIsInstance(arr_ann, _ArrayAnnotationBase)
-        self.assertNotIsInstance(arr_ann, wp.array)
+        self.assertIsInstance(arr_ann, type)
+        self.assertTrue(issubclass(arr_ann, _ArrayAnnotation))
+        self.assertTrue(issubclass(arr_ann, _ArrayAnnotationBase))
+        self.assertFalse(issubclass(arr_ann, wp.array))
+
+        # PEP 604 union should work now that the annotation is a type
+        _ = arr_ann | float
+        _ = float | arr_ann
 
         ia_ann = wp.indexedarray[float]
-        self.assertIsInstance(ia_ann, _IndexedArrayAnnotation)
-        self.assertIsInstance(ia_ann, _ArrayAnnotationBase)
-        self.assertNotIsInstance(ia_ann, wp.indexedarray)
+        self.assertIsInstance(ia_ann, type)
+        self.assertTrue(issubclass(ia_ann, _IndexedArrayAnnotation))
+        self.assertTrue(issubclass(ia_ann, _ArrayAnnotationBase))
+        self.assertFalse(issubclass(ia_ann, wp.indexedarray))
 
         # arrayNd subscripts also return lightweight annotations
-        self.assertIsInstance(wp.array2d[float], _ArrayAnnotation)
-        self.assertIsInstance(wp.array3d[float], _ArrayAnnotation)
-        self.assertIsInstance(wp.array4d[float], _ArrayAnnotation)
+        self.assertTrue(issubclass(wp.array2d[float], _ArrayAnnotation))
+        self.assertTrue(issubclass(wp.array3d[float], _ArrayAnnotation))
+        self.assertTrue(issubclass(wp.array4d[float], _ArrayAnnotation))
 
         # fabricarray and indexedfabricarray subscripts return lightweight annotations
-        self.assertNotIsInstance(wp.fabricarray[float], wp.fabricarray)
-        self.assertNotIsInstance(wp.indexedfabricarray[float], wp.indexedfabricarray)
-
-        # Annotations use __slots__ — no instance __dict__
-        self.assertFalse(hasattr(arr_ann, "__dict__"))
-        self.assertFalse(hasattr(ia_ann, "__dict__"))
+        self.assertFalse(issubclass(wp.fabricarray[float], wp.fabricarray))
+        self.assertFalse(issubclass(wp.indexedfabricarray[float], wp.indexedfabricarray))
 
     def test_annotation_vars_caching(self):
-        """Verify that annotation .vars property is cached per instance."""
+        """Verify that annotation .vars property is cached per type."""
         arr_ann = wp.array[float]
         vars1 = arr_ann.vars
         vars2 = arr_ann.vars
@@ -546,9 +555,9 @@ class TestSubscriptTypes(unittest.TestCase):
         )
 
         # Any dtype / ndim
-        ann = _ArrayAnnotation(dtype=Any, ndim=4)
+        ann = wp.array[Any, Literal[4]]
         self.assertEqual(repr(ann), "wp.array(dtype=Any, ndim=4)")
-        ann = _ArrayAnnotation(dtype=wp.float32, ndim=Any)
+        ann = wp.array[wp.float32, Any]
         self.assertEqual(repr(ann), "wp.array(dtype=wp.float32, ndim=Any)")
 
         # Custom vector/matrix dtypes with no wp.* alias use type_repr
@@ -583,7 +592,7 @@ class TestSubscriptTypes(unittest.TestCase):
         class float32:
             pass
 
-        ann = _ArrayAnnotation(dtype=float32, ndim=1)
+        ann = wp.array[float32]
         self.assertNotIn("wp.float32", repr(ann))
 
     def test_typevar_delegation(self):

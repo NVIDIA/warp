@@ -1185,6 +1185,10 @@ class Adjoint:
         # for unit testing errors being spit out from kernels.
         adj.skip_build = False
 
+        # Build initializes this field, but setting a default here prevents
+        # secondary errors when a subsequent build is skipped after an earlier failure.
+        adj.return_var = None
+
         # Cache of reference-candidate AST nodes, materialized once by ``reference_nodes()``.
         # Reset to None if ``adj.tree`` is ever mutated after the cache is populated.
         adj._reference_nodes = None
