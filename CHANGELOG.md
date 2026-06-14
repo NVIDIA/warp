@@ -18,6 +18,10 @@
 - Add row-capacity support to `warp.sparse` BSR matrices, including padded topology policies for topology-changing
   sparse operations, `bsr_zeros(row_capacity=...)` for reserving row capacity, `bsr_compress()` for inplace compaction of sparse matrices, and sparse status constants for overflow checks ([GH-1537](https://github.com/NVIDIA/warp/issues/1537)).
 - `fem.integrate()` and `fem.interpolate()` can now leverage `sparse.bsr_compress()` to perform inplace matrix assembly, reducing peak memory usage ([GH-1537](https://github.com/NVIDIA/warp/issues/1537)).
+- Add support for `Callable`-typed parameters in user-defined `@wp.func` functions, allowing user-defined Warp functions
+  and regular built-in Warp functions to be passed as arguments from kernels or other functions, including through
+  defaults and module-qualified references
+  ([GH-1424](https://github.com/NVIDIA/warp/issues/1424)).
 
 ### Removed
 

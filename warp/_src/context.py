@@ -483,6 +483,11 @@ class Function:
             args_matched = True
 
             for i in range(len(arg_types)):
+                # Callable annotations stay type-erased here; specialization
+                # handles the concrete function target.
+                if warp._src.types.is_callable_annotation(template_types[i]) and isinstance(arg_types[i], Function):
+                    continue
+
                 if not warp._src.types.type_matches_template(arg_types[i], template_types[i]):
                     args_matched = False
                     break
@@ -491,11 +496,22 @@ class Function:
                 # instantiate this function with the specified argument types
 
                 arg_names = f.input_types.keys()
-                overload_annotations = dict(zip(arg_names, arg_types, strict=False))
+                overload_annotations = {}
+                for name, arg_type, template_type in zip(arg_names, arg_types, template_types, strict=False):
+                    if warp._src.types.is_callable_annotation(template_type) and isinstance(arg_type, Function):
+                        overload_annotations[name] = template_type
+                    else:
+                        overload_annotations[name] = arg_type
+
                 # add defaults
                 for k, d in f.defaults.items():
                     if k not in overload_annotations:
-                        overload_annotations[k] = warp._src.codegen.strip_reference(warp._src.codegen.get_arg_type(d))
+                        template_type = f.input_types[k]
+                        default_type = warp._src.codegen.strip_reference(warp._src.codegen.get_arg_type(d))
+                        if warp._src.types.is_callable_annotation(template_type) and isinstance(default_type, Function):
+                            overload_annotations[k] = template_type
+                        else:
+                            overload_annotations[k] = default_type
 
                 ovl = shallowcopy(f)
                 ovl.adj = warp._src.codegen.Adjoint(f.func, overload_annotations, source=f.adj.source)
@@ -503,7 +519,9 @@ class Function:
                 ovl.value_func = None
                 ovl.generic_parent = f
 
-                sig = warp._src.types.get_signature(arg_types, func_name=self.key)
+                sig = warp._src.types.get_signature(
+                    list(overload_annotations.values()), func_name=self.key, arg_names=list(overload_annotations.keys())
+                )
                 self.user_overloads[sig] = ovl
 
                 return ovl
@@ -3006,6 +3024,8 @@ class Module:
                 self.references.add(ref)
                 ref.dependents.add(self)
 
+        callable_arg_values = getattr(adj, "callable_arg_values", None) or {}
+
         # scan for function calls and kernel-local function bindings. ``reference_nodes`` shares
         # a single AST traversal with Adjoint.get_references; it also yields Name/Attribute
         # nodes, which this dependency scan ignores.
@@ -3014,10 +3034,21 @@ class Module:
                 try:
                     # try to resolve the function
                     func, _ = adj.resolve_static_expression(node.func, eval_types=False)
+                    if func is None and isinstance(node.func, ast.Name):
+                        func = callable_arg_values.get(node.func.id)
 
                     # if this is a user-defined function, add a module reference
                     if isinstance(func, warp._src.context.Function) and func.module is not None:
                         add_ref(func.module)
+
+                    if isinstance(func, warp._src.context.Function) and not func.is_builtin():
+                        # Callable targets can come from arguments or defaults;
+                        # either way their modules must invalidate this module.
+                        for callable_func in warp._src.codegen.iter_call_callable_arg_targets(
+                            adj, func, node, callable_arg_values
+                        ):
+                            if not callable_func.is_builtin() and callable_func.module is not None:
+                                add_ref(callable_func.module)
 
                 except Exception:
                     # Lookups may fail for builtins, but that's ok.
