@@ -94,6 +94,8 @@
   ([GH-1544](https://github.com/NVIDIA/warp/issues/1544)).
 - Fix LTO cache collisions and stale FFT metadata handling by using longer cache keys and rebuilding invalid metadata
   ([GH-1511](https://github.com/NVIDIA/warp/issues/1511)).
+- Fix `@wp.overload` kernel stubs defined in nested scopes to register correctly instead of raising
+  `IndentationError` ([GH-1557](https://github.com/NVIDIA/warp/issues/1557)).
 
 ### Documentation
 

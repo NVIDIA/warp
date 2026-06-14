@@ -319,6 +319,17 @@ def test_generic_transform_kernel(test, device):
         wp.synchronize()
 
 
+def test_nested_overload_stub(test, device):
+    @wp.kernel
+    def nested_overload_stub_kernel(x: Any):
+        return
+
+    @wp.overload
+    def nested_overload_stub_kernel(x: float): ...
+
+    test.assertEqual(len(nested_overload_stub_kernel.overloads), 1)
+
+
 @wp.kernel
 def overload_stub_return_annotation_kernel(x: Any):
     return
@@ -610,6 +621,7 @@ add_function_test(TestGenerics, "test_generic_fill", test_generic_fill, devices=
 add_function_test(TestGenerics, "test_generic_fill_overloads", test_generic_fill_overloads, devices=devices)
 add_function_test(TestGenerics, "test_generic_conditional_setter", test_generic_conditional_setter, devices=devices)
 add_function_test(TestGenerics, "test_generic_transform_kernel", test_generic_transform_kernel, devices=devices)
+add_function_test(TestGenerics, "test_nested_overload_stub", test_nested_overload_stub, devices=devices)
 add_function_test(
     TestGenerics, "test_overload_stub_return_annotation", test_overload_stub_return_annotation, devices=devices
 )

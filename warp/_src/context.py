@@ -24,6 +24,7 @@ import re
 import shutil
 import sys
 import tempfile
+import textwrap
 import threading
 import types
 import weakref
@@ -1678,7 +1679,7 @@ def overload(kernel: Kernel | Callable, arg_types: dict[str, Any] | list[Any] | 
 
         # ensure the function is defined without a body, only ellipsis (...), pass, or a string expression
         # TODO: show we allow defining a new body for kernel overloads?
-        source = inspect.getsource(fn)
+        source = textwrap.dedent(inspect.getsource(fn))
         tree = ast.parse(source)
         assert isinstance(tree, ast.Module)
         assert isinstance(tree.body[0], ast.FunctionDef)
