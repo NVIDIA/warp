@@ -166,8 +166,10 @@ The initial API should be explicit:
 
 - ``Volume.allocate_by_tiles(..., max_tiles=..., rebuildable=True)``
 - ``Volume.allocate_by_voxels(..., max_active_voxels=..., rebuildable=True)``
-- ``volume.rebuild(tile_points, status=None)``
-- ``volume.rebuild(voxel_points, status=None)``
+- ``volume.rebuild(tile_points, status=None, point_mask=None)``
+- ``volume.rebuild(voxel_points, status=None, point_mask=None)``
+- ``fem.Nanogrid(volume, rebuildable=True)``
+- ``nanogrid.rebuild(points, status=None, point_mask=None, cell_env=None)``
 
 Exact allocation remains the default. A rebuildable volume is created when the
 user opts in with ``rebuildable=True`` or supplies a capacity.
@@ -175,6 +177,13 @@ user opts in with ``rebuildable=True`` or supplies a capacity.
 The optional ``status`` argument is a one-element ``uint32`` array on the same
 device as the volume. If omitted, Warp allocates and retains an internal status
 array that can be queried after synchronization.
+
+``fem.Nanogrid`` keeps rebuildable cell and vertex topology arrays sized by
+capacity. Device-side NanoVDB counts identify the current active cells and
+vertices. FEM callers that need to restrict work to the current active cell set
+should use the existing geometry partition APIs, such as
+``ExplicitGeometryPartition`` or sparse geometry partitions, with their own
+device-side masks or bounded counts.
 
 ### Alternatives Considered
 
@@ -211,7 +220,12 @@ Tests should cover:
   actual device entries.
 - CPU exact allocation and rebuildable allocation/rebuild, including
   ``point_mask`` and capacity status behavior.
+- ``fem.Nanogrid`` construction from rebuildable volumes, direct CPU/GPU
+  topology refresh, CUDA graph capture of ``nanogrid.rebuild()``, and use with
+  bounded geometry partitions over the active cell range.
+- ``example_apic_fluid`` should run its APIC step from a captured graph that
+  rebuilds the grid from updated particle positions each replay.
 
 Tests should use ``unittest`` and be registered in the default suite through the
-existing volume test module. CUDA graph tests should be restricted to devices
-with CUDA memory-pool support.
+existing volume and FEM geometry test modules. CUDA graph tests should be
+restricted to devices with CUDA memory-pool support.

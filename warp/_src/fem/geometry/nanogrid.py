@@ -617,6 +617,7 @@ class Nanogrid(NanogridBase):
         scalar_type: type = wp.float32,
         cell_env: wp.array | None = None,
         env_offsets: wp.array | None = None,
+        rebuildable: bool | None = None,
     ):
         """Construct a sparse grid geometry from an in-memory NanoVDB volume.
 
@@ -626,16 +627,31 @@ class Nanogrid(NanogridBase):
                 be created for all leaf voxels.
             temporary_store: shared pool from which to allocate temporary arrays
             scalar_type: Scalar type for grid coordinates (``wp.float32`` or ``wp.float64``)
+            rebuildable: Whether to retain capacity-sized topology buffers that can be refreshed with :meth:`rebuild`.
+                If omitted, this is inferred from ``grid``.
         """
 
         self._cell_grid = grid
         self._cell_grid_info = grid.get_grid_info()
 
+        grid_rebuildable = getattr(grid, "_rebuild_kind", None) is not None
+        if rebuildable is None:
+            rebuildable = grid_rebuildable
+        elif rebuildable and not grid_rebuildable:
+            raise RuntimeError("Rebuildable Nanogrids require a rebuildable Volume")
+        elif grid_rebuildable:
+            raise RuntimeError("Nanogrids built from rebuildable Volumes must use rebuildable=True")
+
         device = self._cell_grid.device
         cell_ijk = wp.array(dtype=wp.vec3i, shape=(grid.get_voxel_count(),), device=device)
         grid.get_voxels(out=cell_ijk)
 
-        node_grid = _build_node_grid(cell_ijk, grid, temporary_store)
+        node_candidates = None
+        node_candidate_mask = None
+        if rebuildable:
+            node_grid, node_candidates, node_candidate_mask = _build_rebuildable_node_grid(cell_ijk, grid)
+        else:
+            node_grid = _build_node_grid(cell_ijk, grid, temporary_store)
         node_count = node_grid.get_voxel_count()
         node_ijk = wp.array(shape=(node_count,), dtype=wp.vec3i, device=device)
         node_grid.get_voxels(out=node_ijk)
@@ -650,6 +666,10 @@ class Nanogrid(NanogridBase):
             env_offsets=env_offsets,
         )
 
+        self._rebuildable = rebuildable
+        self._node_candidates = node_candidates
+        self._node_candidate_mask = node_candidate_mask
+
         self._edge_count = 0
         self._edge_grid = None
 
@@ -658,6 +678,32 @@ class Nanogrid(NanogridBase):
         self.SideArg = _make_nanogrid_side_arg(self.CellArg, scalar_type)
 
         cache.setup_dynamic_attributes(self)
+
+    def rebuild(
+        self,
+        points: wp.array,
+        status: wp.array | None = None,
+        point_mask: wp.array | None = None,
+        cell_env: wp.array | None = None,
+    ) -> wp.array:
+        """Rebuild the underlying NanoVDB cell grid and refresh Nanogrid topology buffers.
+
+        Args:
+            points: Active voxel or tile points, matching the underlying rebuildable :class:`warp.Volume`.
+            status: Optional one-element ``uint32`` array receiving rebuild status flags.
+            point_mask: Optional ``int32`` array with one entry per point. Points with a zero mask value are ignored.
+            cell_env: Optional capacity-sized cell environment array for the rebuilt cell grid.
+
+        Returns:
+            The status array used by the underlying volume rebuild.
+        """
+
+        if not self._rebuildable:
+            raise RuntimeError("Nanogrid was not constructed in rebuildable mode")
+
+        status = self._cell_grid.rebuild(points, status=status, point_mask=point_mask)
+        self._refresh_rebuildable_topology(cell_env=cell_env)
+        return status
 
     @property
     def edge_grid(self) -> wp.Volume:
@@ -920,6 +966,34 @@ class Nanogrid(NanogridBase):
         if self._edge_grid is None:
             self._build_edge_grid()
 
+    def _refresh_rebuildable_topology(self, cell_env: wp.array | None = None):
+        self._cell_grid.get_voxels(out=self._cell_ijk)
+
+        if cell_env is not None:
+            if cell_env.device != self._cell_grid.device:
+                cell_env = cell_env.to(self._cell_grid.device)
+            if cell_env.shape[0] != self._cell_ijk.shape[0]:
+                raise ValueError("Cell environment array must have one entry per Nanogrid cell")
+            self._cell_env = cell_env
+
+        _fill_rebuildable_node_candidates(
+            self._cell_grid, self._cell_ijk, self._node_candidates, self._node_candidate_mask
+        )
+        self._node_grid.rebuild(self._node_candidates.flatten(), point_mask=self._node_candidate_mask)
+        self._node_grid.get_voxels(out=self._node_ijk)
+
+        self._face_grid = None
+        self._face_ijk = None
+        self._face_env = None
+        self._face_flags = None
+        self._boundary_face_indices = None
+        self._edge_grid = None
+        self._edge_count = 0
+
+        self.cell_arg_value.invalidate(self)
+        self.side_arg_value.invalidate(self)
+        self.side_index_arg_value.invalidate(self)
+
 
 def _normalize_environment_voxels(cell_ijks: Sequence[wp.array], device):
     if not cell_ijks:
@@ -1114,6 +1188,18 @@ def _cell_node_indices(cell_ijk: wp.array(dtype=wp.vec3i), node_ijk: wp.array2d(
 
 
 @wp.kernel
+def _rebuildable_cell_node_indices(
+    cell_grid: wp.uint64,
+    cell_ijk: wp.array(dtype=wp.vec3i),
+    node_ijk: wp.array2d(dtype=wp.vec3i),
+    node_mask: wp.array(dtype=wp.int32),
+):
+    cell, n = wp.tid()
+    node_ijk[cell, n] = cell_ijk[cell] + wp.vec3i((n & 4) >> 2, (n & 2) >> 1, n & 1)
+    node_mask[cell * 8 + n] = wp.where(cell < wp.volume_voxel_count(cell_grid), wp.int32(1), wp.int32(0))
+
+
+@wp.kernel
 def _cell_face_indices(cell_ijk: wp.array(dtype=wp.vec3i), node_ijk: wp.array2d(dtype=wp.vec3i)):
     cell = wp.tid()
     ijk = cell_ijk[cell]
@@ -1152,6 +1238,45 @@ def _build_node_grid(cell_ijk, grid: wp.Volume, temporary_store: cache.Temporary
     )
     cell_nodes.release()
     return node_grid
+
+
+def _fill_rebuildable_node_candidates(
+    cell_grid: wp.Volume,
+    cell_ijk: wp.array,
+    node_candidates: wp.array2d,
+    node_candidate_mask: wp.array,
+):
+    wp.launch(
+        _rebuildable_cell_node_indices,
+        dim=node_candidates.shape,
+        inputs=[cell_grid.id, cell_ijk, node_candidates, node_candidate_mask],
+        device=cell_ijk.device,
+    )
+
+
+def _build_rebuildable_node_grid(cell_ijk, grid: wp.Volume):
+    node_capacity = cell_ijk.shape[0] * 8
+    node_candidates = wp.empty(shape=(cell_ijk.shape[0], 8), dtype=wp.vec3i, device=cell_ijk.device)
+    node_candidate_mask = wp.empty(shape=(node_capacity,), dtype=wp.int32, device=cell_ijk.device)
+    _fill_rebuildable_node_candidates(grid, cell_ijk, node_candidates, node_candidate_mask)
+
+    max_leaf_nodes = min(node_capacity, getattr(grid, "_rebuild_max_leaf_nodes", node_capacity) * 8)
+    max_lower_nodes = min(max_leaf_nodes, getattr(grid, "_rebuild_max_lower_nodes", max_leaf_nodes) * 8)
+    max_upper_nodes = min(max_lower_nodes, getattr(grid, "_rebuild_max_upper_nodes", max_lower_nodes) * 8)
+
+    node_grid = wp.Volume.allocate_by_voxels(
+        node_candidates.flatten(),
+        voxel_size=grid.get_voxel_size(),
+        device=cell_ijk.device,
+        rebuildable=True,
+        max_active_voxels=node_capacity,
+        max_leaf_nodes=max_leaf_nodes,
+        max_lower_nodes=max_lower_nodes,
+        max_upper_nodes=max_upper_nodes,
+        point_mask=node_candidate_mask,
+    )
+
+    return node_grid, node_candidates, node_candidate_mask
 
 
 def _build_face_grid(cell_ijk, grid: wp.Volume, temporary_store: cache.TemporaryStore):

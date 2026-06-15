@@ -368,6 +368,102 @@ def test_nanogrid(test, device):
     assert_np_equal(cell_measures.numpy(), np.full(cell_measures.shape, 1.0 / (N**3)), tol=1.0e-4)
 
 
+@wp.kernel
+def _nanogrid_volume_counts(cell_grid: wp.uint64, vertex_grid: wp.uint64, counts: wp.array(dtype=wp.int64)):
+    counts[0] = wp.volume_voxel_count(cell_grid)
+    counts[1] = wp.volume_voxel_count(vertex_grid)
+
+
+def test_nanogrid_rebuild(test, device):
+    points_initial = wp.array([[0, 0, 0]], dtype=wp.int32, device=device)
+    points_rebuild = wp.array([[0, 0, 0], [1, 0, 0], [1, 0, 0], [3, 0, 0], [4, 0, 0]], dtype=wp.int32, device=device)
+    point_mask = wp.array([1, 1, 0, 1, 0], dtype=wp.int32, device=device)
+    status = wp.zeros(1, dtype=wp.uint32, device=device)
+    counts = wp.empty(2, dtype=wp.int64, device=device)
+
+    volume = wp.Volume.allocate_by_voxels(
+        points_initial,
+        voxel_size=1.0,
+        device=device,
+        rebuildable=True,
+        max_active_voxels=4,
+        max_leaf_nodes=4,
+        max_lower_nodes=4,
+        max_upper_nodes=4,
+        status=status,
+    )
+
+    with test.assertRaisesRegex(RuntimeError, "must use rebuildable=True"):
+        fem.Nanogrid(volume, rebuildable=False)
+
+    geo = fem.Nanogrid(volume)
+
+    status = geo.rebuild(points_rebuild, point_mask=point_mask)
+    wp.launch(_nanogrid_volume_counts, dim=1, inputs=[geo.cell_grid.id, geo.vertex_grid.id, counts], device=device)
+    wp.synchronize_device(device)
+
+    test.assertEqual(int(status.numpy()[0]), wp.Volume.REBUILD_SUCCESS)
+    test.assertEqual(geo.cell_count(), 4)
+    test.assertEqual(geo.vertex_count(), 32)
+    np.testing.assert_array_equal(counts.numpy(), np.array([3, 20]))
+
+
+def test_nanogrid_rebuild_capture(test, device):
+    points_initial = wp.array([[0, 0, 0]], dtype=wp.int32, device=device)
+    points_rebuild = wp.array([[0, 0, 0], [1, 0, 0], [1, 0, 0], [3, 0, 0], [4, 0, 0]], dtype=wp.int32, device=device)
+    point_mask = wp.array([1, 1, 0, 1, 0], dtype=wp.int32, device=device)
+    status = wp.zeros(1, dtype=wp.uint32, device=device)
+    counts = wp.empty(2, dtype=wp.int64, device=device)
+
+    volume = wp.Volume.allocate_by_voxels(
+        points_initial,
+        voxel_size=1.0,
+        device=device,
+        rebuildable=True,
+        max_active_voxels=4,
+        max_leaf_nodes=4,
+        max_lower_nodes=4,
+        max_upper_nodes=4,
+        status=status,
+    )
+    geo = fem.Nanogrid(volume)
+    space = fem.make_polynomial_space(geo, degree=1)
+    vertex_grid_id = geo.vertex_grid.id
+
+    test.assertEqual(geo.cell_count(), 4)
+    test.assertEqual(geo.vertex_count(), 32)
+    test.assertEqual(space.topology._vertex_grid, vertex_grid_id)
+
+    wp.launch(_nanogrid_volume_counts, dim=1, inputs=[geo.cell_grid.id, geo.vertex_grid.id, counts], device=device)
+    wp.synchronize_device(device)
+    np.testing.assert_array_equal(counts.numpy(), np.array([1, 8]))
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+        geo.rebuild(points_rebuild, point_mask=point_mask)
+        wp.launch(_nanogrid_volume_counts, dim=1, inputs=[geo.cell_grid.id, geo.vertex_grid.id, counts], device=device)
+
+    wp.capture_launch(capture.graph)
+    wp.synchronize_device(device)
+
+    test.assertEqual(int(status.numpy()[0]), wp.Volume.REBUILD_SUCCESS)
+    test.assertEqual(geo.vertex_grid.id, vertex_grid_id)
+    test.assertEqual(space.topology._vertex_grid, geo.vertex_grid.id)
+    np.testing.assert_array_equal(counts.numpy(), np.array([3, 20]))
+
+    cell_mask = wp.zeros(geo.cell_count(), dtype=int, device=device)
+    cell_mask[:3].fill_(1)
+    geo_partition = fem.ExplicitGeometryPartition(geo, cell_mask, max_cell_count=3, max_side_count=0)
+    test.assertEqual(geo_partition.cell_count(), 3)
+
+    voxels = wp.full((geo.cell_count(), 3), -999, dtype=wp.int32, device=device)
+    geo.cell_grid.get_voxels(out=voxels)
+    voxels_np = voxels.numpy()
+    voxels_np = voxels_np[np.any(voxels_np != -999, axis=1)]
+    voxels_np = voxels_np[np.lexsort(voxels_np.T[::-1])]
+    np.testing.assert_array_equal(voxels_np, np.array([[0, 0, 0], [1, 0, 0], [3, 0, 0]], dtype=np.int32))
+
+
 def test_nanogrid_guess_lookup_radius(test, device):
     with wp.ScopedDevice(device):
         voxel = wp.array([[0, 0, 0]], dtype=int, device=device)
@@ -673,6 +769,8 @@ add_function_test(TestFemGeometry, "test_grid_3d", test_grid_3d, devices=devices
 add_function_test(TestFemGeometry, "test_tet_mesh", test_tet_mesh, devices=devices)
 add_function_test(TestFemGeometry, "test_hex_mesh", test_hex_mesh, devices=devices)
 add_function_test(TestFemGeometry, "test_nanogrid", test_nanogrid, devices=cuda_devices)
+add_function_test(TestFemGeometry, "test_nanogrid_rebuild", test_nanogrid_rebuild, devices=devices)
+add_function_test(TestFemGeometry, "test_nanogrid_rebuild_capture", test_nanogrid_rebuild_capture, devices=cuda_devices)
 add_function_test(
     TestFemGeometry, "test_nanogrid_guess_lookup_radius", test_nanogrid_guess_lookup_radius, devices=cuda_devices
 )

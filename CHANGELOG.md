@@ -15,6 +15,9 @@
 - Extend `wp.utils.array_scan()` to 64-bit scalar and vector types, and extend `wp.utils.radix_sort_pairs()` to 32- and
   64-bit signed, unsigned, and floating-point keys with 4- or 8-byte values
   ([GH-1538](https://github.com/NVIDIA/warp/issues/1538)).
+- Add rebuildable NanoVDB volumes with capacity/status controls, point masks, CPU parity, CUDA graph-capturable
+  rebuilds, `warp.fem.Nanogrid` topology refresh support for rebuildable volumes, and an
+  `example_apic_fluid` path that exercises captured grid rebuilds.
 - Add row-capacity support to `warp.sparse` BSR matrices, including padded topology policies for topology-changing
   sparse operations, `bsr_zeros(row_capacity=...)` for reserving row capacity, `bsr_compress()` for inplace compaction of sparse matrices, and sparse status constants for overflow checks ([GH-1537](https://github.com/NVIDIA/warp/issues/1537)).
 - `fem.integrate()` and `fem.interpolate()` can now leverage `sparse.bsr_compress()` to perform inplace matrix assembly, reducing peak memory usage ([GH-1537](https://github.com/NVIDIA/warp/issues/1537)).
