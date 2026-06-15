@@ -207,6 +207,6 @@ default:
     # Cache directories - must be explicitly passed to ensure consistent paths
     PM_PACKAGES_ROOT: "$PARENT_PROJECT_DIR/packman-repo"
     PIP_CACHE_DIR: "$PARENT_PROJECT_DIR/.cache/pip"
-    WARP_CACHE_ROOT: "$PARENT_PROJECT_DIR/.cache/warp" # Used by the parallel test runner
+    WARP_CACHE_PATH: "$PARENT_PROJECT_DIR/.cache/warp" # Used by the parallel test runner
   trigger:
     strategy: depend

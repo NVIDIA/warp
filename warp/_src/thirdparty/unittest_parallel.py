@@ -41,6 +41,15 @@ START_DIRECTORY = os.path.join(os.path.dirname(__file__), "..")  # The directory
 _SUITE_TIMEOUT = (
     3600  # Timeout in seconds: total wall-clock limit for parallel execution, per-suite limit during isolated fallback
 )
+_WARP_CACHE_PATH_ENV = "WARP_CACHE_PATH"
+
+
+def _get_warp_cache_base_path():
+    cache_path = os.environ.get(_WARP_CACHE_PATH_ENV)
+    if cache_path is None:
+        return None
+    cache_path = cache_path.strip()
+    return cache_path or None
 
 
 def main(argv=None):
@@ -172,12 +181,13 @@ def main(argv=None):
 
     import warp as wp  # noqa: PLC0415 NVIDIA Modification
 
-    # Clear the Warp cache (NVIDIA Modification).  Honor WARP_CACHE_ROOT
+    # Clear the Warp cache (NVIDIA Modification).  Honor WARP_CACHE_PATH
     # before the clear so concurrent worktrees pinned to the same Warp
     # version do not wipe each other's default cache.  Workers key on the
     # same env var.
-    if "WARP_CACHE_ROOT" in os.environ:
-        wp.config.kernel_cache_dir = os.environ["WARP_CACHE_ROOT"]
+    warp_cache_base_path = _get_warp_cache_base_path()
+    if warp_cache_base_path is not None:
+        wp.config.kernel_cache_dir = warp_cache_base_path
 
     wp.clear_lto_cache()
     wp.clear_kernel_cache()
@@ -674,7 +684,7 @@ def initialize_test_process(lock, shared_index, args, temp_dir):
     """Necessary operations to be executed at the start of every test process.
 
     Currently this function can be used to set a separate Warp cache. (NVIDIA modification)
-    If the environment variable `WARP_CACHE_ROOT` is detected, the cache will be placed in the provided path.
+    If the environment variable `WARP_CACHE_PATH` is detected, the cache will be placed in the provided path.
 
     It also ensures that Warp is initialized prior to running any tests.
     """
@@ -689,11 +699,13 @@ def initialize_test_process(lock, shared_index, args, temp_dir):
         if args.warp_debug:
             wp.config.mode = "debug"
 
+        warp_cache_base_path = _get_warp_cache_base_path()
+
         # init_kernel_cache() appends warp.config.version, so we set
         # kernel_cache_dir to a base path and let Warp add the version segment.
         if args.no_shared_cache:
-            if "WARP_CACHE_ROOT" in os.environ:
-                cache_root_dir = os.path.join(os.getenv("WARP_CACHE_ROOT"), f"worker-{worker_index:03d}")
+            if warp_cache_base_path is not None:
+                cache_root_dir = os.path.join(warp_cache_base_path, f"worker-{worker_index:03d}")
             else:
                 cache_root_dir = appdirs.user_cache_dir(
                     appname="warp", appauthor="NVIDIA", version=f"worker-{worker_index:03d}"
@@ -703,9 +715,9 @@ def initialize_test_process(lock, shared_index, args, temp_dir):
 
             wp.clear_lto_cache()
             wp.clear_kernel_cache()
-        elif "WARP_CACHE_ROOT" in os.environ:
+        elif warp_cache_base_path is not None:
             # Using a shared cache for all test processes
-            wp.config.kernel_cache_dir = os.getenv("WARP_CACHE_ROOT")
+            wp.config.kernel_cache_dir = warp_cache_base_path
 
 
 if __name__ == "__main__":  # pragma: no cover

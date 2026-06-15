@@ -143,19 +143,19 @@ jobs:
             cuda-version: "13.0.2"
             cuda-sub-packages: '["cudart", "crt", "nvcc", "nvrtc_dev", "nvjitlink", "nvvm", "nvptxcompiler"]'
             cuda-non-cuda-packages: ''
-            warp-cache-root-suffix: '\warp-cache-cmake'
+            warp-cache-path-suffix: '\warp-cache-cmake'
           - os: ubuntu-24.04
             platform: ubuntu-x86_64
             cuda-version: "13.0.2"
             cuda-sub-packages: '["cudart-dev", "nvcc", "nvrtc-dev"]'
             cuda-non-cuda-packages: '["libnvjitlink-dev"]'
-            warp-cache-root-suffix: /warp-cache-cmake
+            warp-cache-path-suffix: /warp-cache-cmake
           - os: ubuntu-24.04-arm
             platform: ubuntu-aarch64
             cuda-version: "13.0.2"
             cuda-sub-packages: '["cudart-dev", "nvcc", "nvrtc-dev"]'
             cuda-non-cuda-packages: '["libnvjitlink-dev"]'
-            warp-cache-root-suffix: /warp-cache-cmake
+            warp-cache-path-suffix: /warp-cache-cmake
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
@@ -219,8 +219,7 @@ jobs:
       - name: Build Warp with CMake
         if: matrix.platform != 'windows'
         env:
-          WARP_CACHE_ROOT: ${{ runner.temp }}${{ matrix.warp-cache-root-suffix }}
-          WARP_CACHE_PATH: ${{ runner.temp }}${{ matrix.warp-cache-root-suffix }}
+          WARP_CACHE_PATH: ${{ runner.temp }}${{ matrix.warp-cache-path-suffix }}
         run: |
           cuda_path="${CUDA_HOME:-${CUDA_PATH:-}}"
           if [ -z "$cuda_path" ]; then
@@ -233,8 +232,7 @@ jobs:
       - name: Build Warp with CMake
         if: matrix.platform == 'windows'
         env:
-          WARP_CACHE_ROOT: ${{ runner.temp }}${{ matrix.warp-cache-root-suffix }}
-          WARP_CACHE_PATH: ${{ runner.temp }}${{ matrix.warp-cache-root-suffix }}
+          WARP_CACHE_PATH: ${{ runner.temp }}${{ matrix.warp-cache-path-suffix }}
         run: |
           if (!$env:CUDA_PATH) {
             throw "CUDA_PATH must be set"
@@ -248,8 +246,7 @@ jobs:
 
       - name: Verify Warp diagnostics
         env:
-          WARP_CACHE_ROOT: ${{ runner.temp }}${{ matrix.warp-cache-root-suffix }}
-          WARP_CACHE_PATH: ${{ runner.temp }}${{ matrix.warp-cache-root-suffix }}
+          WARP_CACHE_PATH: ${{ runner.temp }}${{ matrix.warp-cache-path-suffix }}
         run: |
           uv run python -c "import warp; info = warp.print_diagnostics(); assert not info['warp_native'].startswith('unknown'); assert not info['warp_clang'].startswith('unknown')"
 

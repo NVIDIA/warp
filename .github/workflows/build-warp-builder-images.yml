@@ -225,8 +225,7 @@ jobs:
               echo "=== Building Warp with CMake ==="
               rm -rf warp/bin _build/cmake-image
               uv sync --no-install-project
-              export WARP_CACHE_ROOT="/tmp/warp-cache-cmake-image-${{ github.run_id }}-${{ matrix.cuda_version }}-${{ matrix.arch }}"
-              export WARP_CACHE_PATH="${WARP_CACHE_ROOT}"
+              export WARP_CACHE_PATH="/tmp/warp-cache-cmake-image-${{ github.run_id }}-${{ matrix.cuda_version }}-${{ matrix.arch }}"
               cmake -S . -B _build/cmake-image -G Ninja -DWARP_LLVM_PATH=/opt/llvm
               cmake --build _build/cmake-image --parallel
               uv run python -c "import warp; info = warp.print_diagnostics(); assert not info[\"warp_native\"].startswith(\"unknown\"); assert not info[\"warp_clang\"].startswith(\"unknown\")"

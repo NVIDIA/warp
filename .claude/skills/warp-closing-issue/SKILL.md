@@ -25,7 +25,7 @@ confirmation after the user sees the exact target issues and comment body.
 - Never post comments or close issues before showing the assessment and exact draft.
 - Public comments use full 40-character SHAs as plain text for GitHub auto-linking.
 - Keep local execution noise out of public comments: no `WARP_CACHE_PATH`,
-  `WARP_CACHE_ROOT`, `/tmp/...`, local worktree paths, or shell setup.
+  `/tmp/...`, local worktree paths, or shell setup.
 - Do not use a local test command as the public test note. Public comments describe
   test coverage changes in the commit set: new tests, modified tests, or no tests.
 - Do not treat passing committed tests as sufficient behavioral verification when
@@ -72,7 +72,7 @@ fine for gaps or simple issue operations.
 
    You may still run committed tests when useful, but prefer probes that add issue
    specific signal beyond "the merged tests pass." Follow Warp policy locally:
-   unique `WARP_CACHE_PATH` and `WARP_CACHE_ROOT`, `uv run`, and rebuild native
+   unique `WARP_CACHE_PATH`, `uv run`, and rebuild native
    libraries when `warp/native/` changes require it. Do not put local verification
    commands in the public issue comment.
 
@@ -87,7 +87,7 @@ fine for gaps or simple issue operations.
    - Assert observable behavior, not just absence of a crash.
    - Run outside the test suite when the issue is about script, import, process,
      runtime, environment, cache, or packaging context.
-   - Use `uv run` and unique `WARP_CACHE_PATH` / `WARP_CACHE_ROOT` for Warp commands.
+   - Use `uv run` and a unique `WARP_CACHE_PATH` for Warp commands.
 
    Avoid probes that:
    - Merely rerun a committed test without adding issue-specific signal.
@@ -200,7 +200,7 @@ issue by guess.
 - The only evidence is the commit message.
 - The issue has a runnable repro but the assessment only reruns committed tests.
 - The private assessment omits behavioral probe results or a reason probes were not run.
-- The draft contains `/tmp/`, `WARP_CACHE_PATH`, `WARP_CACHE_ROOT`, or local paths.
+- The draft contains `/tmp/`, `WARP_CACHE_PATH`, or local paths.
 
 ## Maintenance
 

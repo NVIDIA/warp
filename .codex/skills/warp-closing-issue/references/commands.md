@@ -33,7 +33,6 @@ changes from the commits, not local verification commands.
 
 ```bash
 WARP_CACHE_PATH=/tmp/<unique-warp-cache> \
-WARP_CACHE_ROOT=/tmp/<unique-warp-cache> \
 uv run <focused-test-command>
 ```
 
