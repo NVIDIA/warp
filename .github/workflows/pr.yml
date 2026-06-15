@@ -103,3 +103,53 @@ jobs:
           name: cppcheck-report
           path: cppcheck-report.xml
           retention-days: ${{ github.repository == 'NVIDIA/warp' && 7 || 1 }}
+
+  # Non-blocking external link check for docs changed in this PR. Uses lychee
+  # (reads sources directly — no warp/Sphinx build needed) and the auto-provided
+  # GITHUB_TOKEN so github.com links are checked via the GitHub API (authenticated
+  # rate limit, no JS-anchor false positives). Scoped to changed docs source files
+  # to keep request volume tiny and avoid rate-limit flakiness.
+  #
+  # This job must NOT be added to main's required status checks: a broken link
+  # shows red for visibility but must never block a merge, since external links
+  # rot for reasons unrelated to the PR.
+  linkcheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10  # network-bound job; don't let a hung check hold a runner
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+
+      # Provide origin/main as the diff base (mirrors the gpu-changes job in ci.yml).
+      - name: Fetch main for diff base
+        run: git fetch --depth=1 origin main
+
+      # Detect changed docs sources with the same action ci.yml already uses. Its
+      # all_changed_files output is ACMR (added/copied/modified/renamed), so deleted
+      # files are excluded and lychee is never handed a path that no longer exists.
+      # docs/superpowers/ (agent working docs, also excluded from the Sphinx build
+      # via conf.py) holds placeholder URLs we must not check, so it is ignored.
+      - name: Detect changed docs files
+        id: detect
+        uses: step-security/changed-files@2e07db73e5ccdb319b9a6c7766bd46d39d304bad  # v47.0.5
+        with:
+          base_sha: origin/main
+          files: |
+            docs/**/*.rst
+            docs/**/*.md
+          files_ignore: |
+            docs/superpowers/**
+
+      - name: Check links in changed docs files
+        if: steps.detect.outputs.any_changed == 'true'
+        uses: lycheeverse/lychee-action@8646ba30535128ac92d33dfc9133794bfdd9b411  # v2.8.0
+        with:
+          args: >-
+            --no-progress
+            --accept 200,206,429
+            ${{ steps.detect.outputs.all_changed_files }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fail: true
+          failIfEmpty: false  # a docs edit with no external links must not fail
