@@ -96,6 +96,9 @@
   ([GH-1511](https://github.com/NVIDIA/warp/issues/1511)).
 - Fix `@wp.overload` kernel stubs defined in nested scopes to register correctly instead of raising
   `IndentationError` ([GH-1557](https://github.com/NVIDIA/warp/issues/1557)).
+- Fix `wp.copy()` ignoring `src_offset`, `dest_offset`, and `count` for 1D non-contiguous arrays such as strided slices
+  ([GH-1533](https://github.com/NVIDIA/warp/issues/1533)).
+- Fix the gradient of `wp.copy()` when `src_offset` and `dest_offset` differ.
 
 ### Documentation
 

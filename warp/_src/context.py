@@ -11206,6 +11206,10 @@ def copy(
     (2) Otherwise, if the source array is on a CUDA device, use the current stream on the source device.
 
     If neither source nor destination are on a CUDA device, no stream is used for the copy.
+
+    When the source or destination is non-contiguous (e.g. a strided slice), ``dest_offset``, ``src_offset``, and
+    ``count`` are only supported for one-dimensional arrays; using them with multi-dimensional non-contiguous,
+    indexed, or Fabric arrays raises an error.
     """
     from warp._src.context import runtime  # noqa: PLC0415
 
@@ -11330,28 +11334,60 @@ def copy(
     else:
         # handle non-contiguous arrays
 
-        if src.shape != dest.shape:
+        # Apply the element offsets and count by slicing into strided views.  The
+        # contiguous path above handles them via flat pointer arithmetic, but the
+        # native non-contiguous copy walks the full array shape and would
+        # otherwise ignore them.  The test below is True whenever the copy does
+        # not span the full extent of *both* arrays (note count has been
+        # defaulted to src.size above); a full-array copy of equally-shaped arrays
+        # leaves the historical behavior (and the gradient recursion) unchanged.
+        src_nc = src
+        dest_nc = dest
+        if src_offset != 0 or dest_offset != 0 or count != src.size or count != dest.size:
+            if not isinstance(src, warp.array) or not isinstance(dest, warp.array):
+                raise RuntimeError(
+                    "dest_offset, src_offset, and count are not supported when copying to/from "
+                    "non-contiguous indexed or Fabric arrays"
+                )
+            if src.ndim != 1 or dest.ndim != 1:
+                raise RuntimeError(
+                    "dest_offset, src_offset, and count are only supported for 1-D non-contiguous arrays"
+                )
+            if src_offset < 0 or count < 0 or src_offset + count > src.size:
+                raise RuntimeError(
+                    f"Trying to copy a range of {count} element(s) from source offset ({src_offset}) "
+                    f"exceeds the source size ({src.size})"
+                )
+            if dest_offset < 0 or dest_offset + count > dest.size:
+                raise RuntimeError(
+                    f"Trying to copy a range of {count} element(s) to destination offset ({dest_offset}) "
+                    f"exceeds the destination size ({dest.size})"
+                )
+            src_nc = src[src_offset : src_offset + count]
+            dest_nc = dest[dest_offset : dest_offset + count]
+
+        if src_nc.shape != dest_nc.shape:
             raise RuntimeError("Incompatible array shapes")
 
-        src_elem_size = warp._src.types.type_size_in_bytes(src.dtype)
-        dst_elem_size = warp._src.types.type_size_in_bytes(dest.dtype)
+        src_elem_size = warp._src.types.type_size_in_bytes(src_nc.dtype)
+        dst_elem_size = warp._src.types.type_size_in_bytes(dest_nc.dtype)
 
         if src_elem_size != dst_elem_size:
             raise RuntimeError("Incompatible array data types")
 
         # can't copy to/from fabric arrays of arrays, because they are jagged arrays of arbitrary lengths
         # TODO?
-        if (isinstance(src, (warp.fabricarray, warp.indexedfabricarray)) and src.ndim > 1) or (
-            isinstance(dest, (warp.fabricarray, warp.indexedfabricarray)) and dest.ndim > 1
+        if (isinstance(src_nc, (warp.fabricarray, warp.indexedfabricarray)) and src_nc.ndim > 1) or (
+            isinstance(dest_nc, (warp.fabricarray, warp.indexedfabricarray)) and dest_nc.ndim > 1
         ):
             raise RuntimeError("Copying to/from Fabric arrays of arrays is not supported")
 
-        src_desc = src.__ctype__()
-        dst_desc = dest.__ctype__()
+        src_desc = src_nc.__ctype__()
+        dst_desc = dest_nc.__ctype__()
         src_ptr = ctypes.pointer(src_desc)
         dst_ptr = ctypes.pointer(dst_desc)
-        src_type = warp._src.types.array_type_id(src)
-        dst_type = warp._src.types.array_type_id(dest)
+        src_type = warp._src.types.array_type_id(src_nc)
+        dst_type = warp._src.types.array_type_id(dest_nc)
 
         if dest.device.is_cuda:
             # This work involves a kernel launch, so it must run on the destination device.
@@ -11398,7 +11434,11 @@ def adj_copy(
         adj_src: Source array adjoint
         stream: The stream on which the copy was performed in the forward pass
     """
-    copy(adj_src, adj_dest, dest_offset=dest_offset, src_offset=src_offset, count=count, stream=stream)
+    # The forward copy writes dest[dest_offset:...] = src[src_offset:...], so the
+    # adjoint propagates adj_src[src_offset:...] = adj_dest[dest_offset:...].  The
+    # offsets must therefore be swapped relative to the forward call: reading from
+    # adj_dest uses dest_offset and writing to adj_src uses src_offset.
+    copy(adj_src, adj_dest, dest_offset=src_offset, src_offset=dest_offset, count=count, stream=stream)
 
 
 def type_str(t):
