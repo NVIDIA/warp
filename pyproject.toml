@@ -206,7 +206,9 @@ files.extend-exclude = ["/tools/packman", "/tools/repoman", "/PUBLICATIONS.md", 
 [tool.typos.default]
 extend-ignore-re = [
     # MSVC compiler flags like /Fo, /Fe, /Fd, etc.
-    "/F[oedpircaOAu]"
+    "/F[oedpircaOAu]",
+    # Short-SHA commit links in design/deprecations.md, e.g. [ba7a865](https://github.com/NVIDIA/warp/commit/<sha>)
+    "\\[[0-9a-f]{7,40}\\]\\(https://github\\.com/NVIDIA/warp/commit/[0-9a-f]{7,40}\\)",
 ]
 
 [tool.typos.default.extend-words]
