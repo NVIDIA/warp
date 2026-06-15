@@ -30,9 +30,10 @@ host synchronization and must keep actual topology counts on the device.
 | R1 | Rebuild a previously allocated CUDA NanoVDB volume from tile or voxel points during CUDA graph capture. | Must | Covers Warp's ``allocate_by_tiles`` and ``allocate_by_voxels`` use cases. |
 | R2 | Keep actual node and voxel counts on the device during rebuild. | Must | Host launches use capacities, not actual counts. |
 | R3 | Allow users to provide narrower persistent capacities. | Must | Avoid using ``num_points * 512`` as the persistent voxel bound for tile volumes. |
-| R4 | Report insufficient capacity without writing out of bounds. | Must | Rebuild sets a device status flag that the host can inspect after graph launch. |
+| R4 | Report insufficient capacity without writing out of bounds. | Must | Rebuild sets a status flag that the host can inspect after graph launch or CPU rebuild. |
 | R5 | Preserve public non-capture allocation behavior. | Should | Existing APIs and exact-count metadata continue to work through the shared builder. |
 | R6 | Use the same broad strategy as the current builder. | Should | Morton-like NanoVDB hierarchy keys plus radix sort and run-length encode. |
+| R7 | Keep CPU and CUDA point-mask and rebuild semantics aligned. | Should | CPU rebuilds are not graph-capturable, but should use the same public API and status bits. |
 
 **Non-goals**:
 
@@ -163,17 +164,17 @@ unwritten entries.
 
 The initial API should be explicit:
 
-- ``Volume.allocate_by_tiles(..., max_tiles=..., graph_rebuildable=True)``
-- ``Volume.allocate_by_voxels(..., max_active_voxels=..., graph_rebuildable=True)``
-- ``volume.rebuild_by_tiles(tile_points, status=None)``
-- ``volume.rebuild_by_voxels(voxel_points, status=None)``
+- ``Volume.allocate_by_tiles(..., max_tiles=..., rebuildable=True)``
+- ``Volume.allocate_by_voxels(..., max_active_voxels=..., rebuildable=True)``
+- ``volume.rebuild(tile_points, status=None)``
+- ``volume.rebuild(voxel_points, status=None)``
 
 Exact allocation remains the default. A rebuildable volume is created when the
-user opts in with ``graph_rebuildable=True`` or supplies a capacity.
+user opts in with ``rebuildable=True`` or supplies a capacity.
 
 The optional ``status`` argument is a one-element ``uint32`` array on the same
-CUDA device. If omitted, Warp allocates and retains an internal status array
-that can be queried after synchronization.
+device as the volume. If omitted, Warp allocates and retains an internal status
+array that can be queried after synchronization.
 
 ### Alternatives Considered
 
@@ -208,6 +209,8 @@ Tests should cover:
 - Index-space integer inputs and world-space floating-point inputs.
 - Device enumeration helpers launched over host capacities but returning only
   actual device entries.
+- CPU exact allocation and rebuildable allocation/rebuild, including
+  ``point_mask`` and capacity status behavior.
 
 Tests should use ``unittest`` and be registered in the default suite through the
 existing volume test module. CUDA graph tests should be restricted to devices

@@ -71,6 +71,7 @@ bool rebuild_count_points(
     HostRebuildScratch& scratch,
     const void* points,
     size_t num_points,
+    const int32_t* point_mask,
     bool points_in_world_space,
     bool active_voxel_grid,
     const nanovdb::Map& map
@@ -83,25 +84,38 @@ bool rebuild_count_points(
     scratch = {};
     scratch.active_voxel_grid = active_voxel_grid;
 
-    std::vector<uint64_t> keys(num_points);
+    std::vector<uint64_t> keys;
+    keys.reserve(num_points);
     for (size_t i = 0; i < num_points; ++i) {
-        keys[i] = rebuild_upper_key_from_coord(rebuild_point_to_coord(points, i, points_in_world_space, map));
+        if (point_mask && point_mask[i] == 0) {
+            continue;
+        }
+
+        keys.push_back(rebuild_upper_key_from_coord(rebuild_point_to_coord(points, i, points_in_world_space, map)));
+    }
+    if (keys.empty()) {
+        return false;
     }
     scratch.upper_keys = keys;
     rebuild_sort_unique(scratch.upper_keys);
 
+    keys.clear();
     for (size_t i = 0; i < num_points; ++i) {
+        if (point_mask && point_mask[i] == 0) {
+            continue;
+        }
+
         const nanovdb::Coord ijk = rebuild_point_to_coord(points, i, points_in_world_space, map);
         const uint64_t upper_key = rebuild_upper_key_from_coord(ijk);
         const auto iter = std::lower_bound(scratch.upper_keys.begin(), scratch.upper_keys.end(), upper_key);
         if (iter == scratch.upper_keys.end() || *iter != upper_key) {
-            keys[i] = REBUILD_INVALID_KEY;
+            keys.push_back(REBUILD_INVALID_KEY);
         } else {
-            keys[i] = rebuild_hierarchy_key(uint32_t(iter - scratch.upper_keys.begin()), ijk);
+            keys.push_back(rebuild_hierarchy_key(uint32_t(iter - scratch.upper_keys.begin()), ijk));
         }
     }
     std::sort(keys.begin(), keys.end());
-    if (!keys.empty() && keys.back() == REBUILD_INVALID_KEY) {
+    while (!keys.empty() && keys.back() == REBUILD_INVALID_KEY) {
         keys.pop_back();
     }
     if (keys.empty()) {
@@ -140,6 +154,24 @@ VolumeRebuildCapacities rebuild_exact_capacities(const HostRebuildScratch& scrat
     capacities.voxel_count = scratch.active_voxel_grid ? scratch.counts[REBUILD_COUNT_VOXEL]
                                                        : uint64_t(capacities.leaf_count) * PNANOVDB_LEAF_TABLE_COUNT;
     return capacities;
+}
+
+uint32_t rebuild_capacity_status(const HostRebuildScratch& scratch, const VolumeRebuildCapacities& capacities)
+{
+    uint32_t status = WP_VOLUME_REBUILD_SUCCESS;
+    if (scratch.counts[REBUILD_COUNT_LEAF] > capacities.leaf_count) {
+        status |= WP_VOLUME_REBUILD_LEAF_CAPACITY_EXCEEDED;
+    }
+    if (scratch.counts[REBUILD_COUNT_LOWER] > capacities.lower_count) {
+        status |= WP_VOLUME_REBUILD_LOWER_CAPACITY_EXCEEDED;
+    }
+    if (scratch.counts[REBUILD_COUNT_UPPER] > capacities.upper_count) {
+        status |= WP_VOLUME_REBUILD_UPPER_CAPACITY_EXCEEDED;
+    }
+    if (uint64_t(scratch.counts[REBUILD_COUNT_VOXEL]) > capacities.voxel_count) {
+        status |= WP_VOLUME_REBUILD_VOXEL_CAPACITY_EXCEEDED;
+    }
+    return status;
 }
 
 template <typename BuildT>
@@ -551,13 +583,16 @@ void allocate_exact_grid_from_points_host_impl(
     size_t& out_grid_size,
     const void* points,
     size_t num_points,
+    const int32_t* point_mask,
     bool points_in_world_space,
     bool active_voxel_grid,
     const BuildGridParams<BuildT>& params
 )
 {
     HostRebuildScratch scratch;
-    if (!rebuild_count_points(scratch, points, num_points, points_in_world_space, active_voxel_grid, params.map)) {
+    if (!rebuild_count_points(
+            scratch, points, num_points, point_mask, points_in_world_space, active_voxel_grid, params.map
+        )) {
         out_grid = nullptr;
         out_grid_size = 0u;
         return;
@@ -571,6 +606,95 @@ void allocate_exact_grid_from_points_host_impl(
     rebuild_populate_grid(out_grid, out_grid_size, scratch, capacities, params);
 }
 
+template <typename BuildT>
+void rebuild_grid_from_points_host_impl(
+    nanovdb::Grid<nanovdb::NanoTree<BuildT>>* grid,
+    size_t grid_size,
+    const void* points,
+    size_t num_points,
+    const int32_t* point_mask,
+    bool points_in_world_space,
+    bool active_voxel_grid,
+    const VolumeRebuildCapacities& capacities,
+    const BuildGridParams<BuildT>& params,
+    uint32_t* status
+)
+{
+    if (status) {
+        *status = WP_VOLUME_REBUILD_SUCCESS;
+    }
+
+    if (capacities.leaf_count == 0 || capacities.lower_count == 0 || capacities.upper_count == 0) {
+        if (status) {
+            *status = WP_VOLUME_REBUILD_INVALID_INPUT;
+        }
+        return;
+    }
+
+    HostRebuildScratch scratch;
+    if (!rebuild_count_points(
+            scratch, points, num_points, point_mask, points_in_world_space, active_voxel_grid, params.map
+        )) {
+        if (status) {
+            *status = WP_VOLUME_REBUILD_INVALID_INPUT;
+        }
+        return;
+    }
+
+    const uint32_t capacity_status = rebuild_capacity_status(scratch, capacities);
+    if (capacity_status != WP_VOLUME_REBUILD_SUCCESS) {
+        if (status) {
+            *status = capacity_status;
+        }
+        return;
+    }
+
+    rebuild_populate_grid(grid, grid_size, scratch, capacities, params);
+}
+
+template <typename BuildT>
+void allocate_rebuildable_grid_from_points_host_impl(
+    nanovdb::Grid<nanovdb::NanoTree<BuildT>>*& out_grid,
+    size_t& out_grid_size,
+    const void* points,
+    size_t num_points,
+    const int32_t* point_mask,
+    bool points_in_world_space,
+    bool active_voxel_grid,
+    const VolumeRebuildCapacities& capacities,
+    const BuildGridParams<BuildT>& params,
+    uint32_t* status
+)
+{
+    HostRebuildScratch scratch;
+    if (!rebuild_count_points(
+            scratch, points, num_points, point_mask, points_in_world_space, active_voxel_grid, params.map
+        )) {
+        if (status) {
+            *status = WP_VOLUME_REBUILD_INVALID_INPUT;
+        }
+        out_grid = nullptr;
+        out_grid_size = 0u;
+        return;
+    }
+
+    const uint32_t capacity_status = rebuild_capacity_status(scratch, capacities);
+    const VolumeRebuildCapacities exact_capacities = rebuild_exact_capacities(scratch);
+    const VolumeRebuildCapacities& layout_capacities
+        = capacity_status == WP_VOLUME_REBUILD_SUCCESS ? capacities : exact_capacities;
+
+    out_grid_size
+        = std::max(rebuildable_grid_size<BuildT>(capacities), rebuildable_grid_size<BuildT>(exact_capacities));
+    out_grid = static_cast<nanovdb::Grid<nanovdb::NanoTree<BuildT>>*>(
+        wp_alloc_host(out_grid_size, "(native:volume_builder_cpu)")
+    );
+    rebuild_populate_grid(out_grid, out_grid_size, scratch, layout_capacities, params);
+
+    if (status) {
+        *status = capacity_status;
+    }
+}
+
 }  // namespace
 
 template <typename BuildT>
@@ -580,17 +704,19 @@ void allocate_grid_from_tiles_host(
     const void* points,
     size_t num_points,
     bool points_in_world_space,
+    const int32_t* point_mask,
     const BuildGridParams<BuildT>& params
 )
 {
     allocate_exact_grid_from_points_host_impl(
-        out_grid, out_grid_size, points, num_points, points_in_world_space, false, params
+        out_grid, out_grid_size, points, num_points, point_mask, points_in_world_space, false, params
     );
 }
 
 #define EXPAND_BUILDER_TYPE(type)                                                                                      \
     template void allocate_grid_from_tiles_host(                                                                       \
-        nanovdb::Grid<nanovdb::NanoTree<type>>*&, size_t&, const void*, size_t, bool, const BuildGridParams<type>&     \
+        nanovdb::Grid<nanovdb::NanoTree<type>>*&, size_t&, const void*, size_t, bool, const int32_t*,                  \
+        const BuildGridParams<type>&                                                                                    \
     );
 
 WP_VOLUME_BUILDER_INSTANTIATE_TYPES
@@ -602,7 +728,82 @@ template void allocate_grid_from_tiles_host(
     const void*,
     size_t,
     bool,
+    const int32_t*,
     const BuildGridParams<nanovdb::ValueIndex>&
+);
+
+template <typename BuildT>
+void rebuild_grid_from_tiles_host(
+    nanovdb::Grid<nanovdb::NanoTree<BuildT>>* grid,
+    size_t grid_size,
+    const void* points,
+    size_t num_points,
+    bool points_in_world_space,
+    const int32_t* point_mask,
+    const VolumeRebuildCapacities& capacities,
+    const BuildGridParams<BuildT>& params,
+    uint32_t* status
+)
+{
+    rebuild_grid_from_points_host_impl(
+        grid, grid_size, points, num_points, point_mask, points_in_world_space, false, capacities, params, status
+    );
+}
+
+template <typename BuildT>
+void allocate_rebuildable_grid_from_tiles_host(
+    nanovdb::Grid<nanovdb::NanoTree<BuildT>>*& out_grid,
+    size_t& out_grid_size,
+    const void* points,
+    size_t num_points,
+    bool points_in_world_space,
+    const int32_t* point_mask,
+    const VolumeRebuildCapacities& capacities,
+    const BuildGridParams<BuildT>& params,
+    uint32_t* status
+)
+{
+    allocate_rebuildable_grid_from_points_host_impl(
+        out_grid, out_grid_size, points, num_points, point_mask, points_in_world_space, false, capacities, params,
+        status
+    );
+}
+
+#define EXPAND_BUILDER_TYPE(type)                                                                                      \
+    template void allocate_rebuildable_grid_from_tiles_host(                                                           \
+        nanovdb::Grid<nanovdb::NanoTree<type>>*&, size_t&, const void*, size_t, bool, const int32_t*,                  \
+        const VolumeRebuildCapacities&, const BuildGridParams<type>&, uint32_t*                                        \
+    );                                                                                                                 \
+    template void rebuild_grid_from_tiles_host(                                                                        \
+        nanovdb::Grid<nanovdb::NanoTree<type>>*, size_t, const void*, size_t, bool, const int32_t*,                    \
+        const VolumeRebuildCapacities&, const BuildGridParams<type>&, uint32_t*                                        \
+    );
+
+WP_VOLUME_BUILDER_INSTANTIATE_TYPES
+#undef EXPAND_BUILDER_TYPE
+
+template void allocate_rebuildable_grid_from_tiles_host(
+    nanovdb::Grid<nanovdb::NanoTree<nanovdb::ValueIndex>>*&,
+    size_t&,
+    const void*,
+    size_t,
+    bool,
+    const int32_t*,
+    const VolumeRebuildCapacities&,
+    const BuildGridParams<nanovdb::ValueIndex>&,
+    uint32_t*
+);
+
+template void rebuild_grid_from_tiles_host(
+    nanovdb::Grid<nanovdb::NanoTree<nanovdb::ValueIndex>>*,
+    size_t,
+    const void*,
+    size_t,
+    bool,
+    const int32_t*,
+    const VolumeRebuildCapacities&,
+    const BuildGridParams<nanovdb::ValueIndex>&,
+    uint32_t*
 );
 
 void allocate_grid_from_active_voxels_host(
@@ -611,10 +812,45 @@ void allocate_grid_from_active_voxels_host(
     const void* points,
     size_t num_points,
     bool points_in_world_space,
+    const int32_t* point_mask,
     const BuildGridParams<nanovdb::ValueOnIndex>& params
 )
 {
     allocate_exact_grid_from_points_host_impl(
-        out_grid, out_grid_size, points, num_points, points_in_world_space, true, params
+        out_grid, out_grid_size, points, num_points, point_mask, points_in_world_space, true, params
+    );
+}
+
+void rebuild_grid_from_active_voxels_host(
+    nanovdb::Grid<nanovdb::NanoTree<nanovdb::ValueOnIndex>>* grid,
+    size_t grid_size,
+    const void* points,
+    size_t num_points,
+    bool points_in_world_space,
+    const int32_t* point_mask,
+    const VolumeRebuildCapacities& capacities,
+    const BuildGridParams<nanovdb::ValueOnIndex>& params,
+    uint32_t* status
+)
+{
+    rebuild_grid_from_points_host_impl(
+        grid, grid_size, points, num_points, point_mask, points_in_world_space, true, capacities, params, status
+    );
+}
+
+void allocate_rebuildable_grid_from_active_voxels_host(
+    nanovdb::Grid<nanovdb::NanoTree<nanovdb::ValueOnIndex>>*& out_grid,
+    size_t& out_grid_size,
+    const void* points,
+    size_t num_points,
+    bool points_in_world_space,
+    const int32_t* point_mask,
+    const VolumeRebuildCapacities& capacities,
+    const BuildGridParams<nanovdb::ValueOnIndex>& params,
+    uint32_t* status
+)
+{
+    allocate_rebuildable_grid_from_points_host_impl(
+        out_grid, out_grid_size, points, num_points, point_mask, points_in_world_space, true, capacities, params, status
     );
 }

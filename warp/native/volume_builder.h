@@ -56,6 +56,7 @@ void allocate_grid_from_tiles_host(
     const void* points,
     size_t num_points,
     bool points_in_world_space,
+    const int32_t* point_mask,
     const BuildGridParams<BuildT>& params
 );
 
@@ -75,6 +76,7 @@ void allocate_grid_from_active_voxels_host(
     const void* points,
     size_t num_points,
     bool points_in_world_space,
+    const int32_t* point_mask,
     const BuildGridParams<nanovdb::ValueOnIndex>& params
 );
 
@@ -412,7 +414,33 @@ void allocate_rebuildable_grid_from_tiles(
 );
 
 template <typename BuildT>
+void allocate_rebuildable_grid_from_tiles_host(
+    nanovdb::Grid<nanovdb::NanoTree<BuildT>>*& out_grid,
+    size_t& out_grid_size,
+    const void* points,
+    size_t num_points,
+    bool points_in_world_space,
+    const int32_t* point_mask,
+    const VolumeRebuildCapacities& capacities,
+    const BuildGridParams<BuildT>& params,
+    uint32_t* status
+);
+
+template <typename BuildT>
 void rebuild_grid_from_tiles(
+    nanovdb::Grid<nanovdb::NanoTree<BuildT>>* grid,
+    size_t grid_size,
+    const void* points,
+    size_t num_points,
+    bool points_in_world_space,
+    const int32_t* point_mask,
+    const VolumeRebuildCapacities& capacities,
+    const BuildGridParams<BuildT>& params,
+    uint32_t* status
+);
+
+template <typename BuildT>
+void rebuild_grid_from_tiles_host(
     nanovdb::Grid<nanovdb::NanoTree<BuildT>>* grid,
     size_t grid_size,
     const void* points,
@@ -436,7 +464,31 @@ void allocate_rebuildable_grid_from_active_voxels(
     uint32_t* status
 );
 
+void allocate_rebuildable_grid_from_active_voxels_host(
+    nanovdb::Grid<nanovdb::NanoTree<nanovdb::ValueOnIndex>>*& out_grid,
+    size_t& out_grid_size,
+    const void* points,
+    size_t num_points,
+    bool points_in_world_space,
+    const int32_t* point_mask,
+    const VolumeRebuildCapacities& capacities,
+    const BuildGridParams<nanovdb::ValueOnIndex>& params,
+    uint32_t* status
+);
+
 void rebuild_grid_from_active_voxels(
+    nanovdb::Grid<nanovdb::NanoTree<nanovdb::ValueOnIndex>>* grid,
+    size_t grid_size,
+    const void* points,
+    size_t num_points,
+    bool points_in_world_space,
+    const int32_t* point_mask,
+    const VolumeRebuildCapacities& capacities,
+    const BuildGridParams<nanovdb::ValueOnIndex>& params,
+    uint32_t* status
+);
+
+void rebuild_grid_from_active_voxels_host(
     nanovdb::Grid<nanovdb::NanoTree<nanovdb::ValueOnIndex>>* grid,
     size_t grid_size,
     const void* points,

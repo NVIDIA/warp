@@ -518,7 +518,7 @@ def test_volume_allocate_by_tiles_additional_types(test, device):
             1.0,
             bg_value,
             device=device,
-            graph_rebuildable=True,
+            rebuildable=True,
             max_tiles=tile_count,
             max_lower_nodes=lower_count,
             max_upper_nodes=upper_count,
@@ -654,7 +654,7 @@ def test_volume_voxel_count(test, device):
         points,
         voxel_size=1.0,
         device=device,
-        graph_rebuildable=True,
+        rebuildable=True,
         max_active_voxels=8,
         max_leaf_nodes=max(leaf_count, 2),
         max_lower_nodes=max(lower_count, 2),
@@ -692,7 +692,7 @@ def test_volume_rebuildable_setup_matches_exact_tiles(test, device):
         1.0,
         123.456,
         device=device,
-        graph_rebuildable=True,
+        rebuildable=True,
         max_tiles=tile_count,
         max_lower_nodes=lower_count,
         max_upper_nodes=upper_count,
@@ -731,7 +731,7 @@ def test_volume_rebuildable_setup_matches_exact_tiles(test, device):
         1.0,
         wp.vec3(1.0, 2.0, 3.0),
         device=device,
-        graph_rebuildable=True,
+        rebuildable=True,
         max_tiles=tile_count,
         max_lower_nodes=lower_count,
         max_upper_nodes=upper_count,
@@ -766,7 +766,7 @@ def test_volume_rebuildable_setup_matches_exact_tiles(test, device):
         1.0,
         int(7),
         device=device,
-        graph_rebuildable=True,
+        rebuildable=True,
         max_tiles=tile_count,
         max_lower_nodes=lower_count,
         max_upper_nodes=upper_count,
@@ -801,7 +801,7 @@ def test_volume_rebuildable_setup_matches_exact_tiles(test, device):
         1.0,
         wp.vec4(1.0, 2.0, 3.0, 4.0),
         device=device,
-        graph_rebuildable=True,
+        rebuildable=True,
         max_tiles=tile_count,
         max_lower_nodes=lower_count,
         max_upper_nodes=upper_count,
@@ -836,7 +836,7 @@ def test_volume_rebuildable_setup_matches_exact_tiles(test, device):
         1.0,
         bg_value=None,
         device=device,
-        graph_rebuildable=True,
+        rebuildable=True,
         max_tiles=tile_count,
         max_lower_nodes=lower_count,
         max_upper_nodes=upper_count,
@@ -879,7 +879,7 @@ def test_volume_rebuildable_setup_matches_exact_voxels(test, device):
         points_d,
         1.0,
         device=device,
-        graph_rebuildable=True,
+        rebuildable=True,
         max_active_voxels=len(active_voxels),
         max_leaf_nodes=leaf_count,
         max_lower_nodes=lower_count,
@@ -908,7 +908,7 @@ def _valid_coord_rows(values, sentinel=-999):
     return values[np.any(values != sentinel, axis=1)]
 
 
-def test_volume_rebuild_by_tiles_capture(test, device):
+def test_volume_rebuild_tiles_capture(test, device):
     points_initial = wp.array([[0, 0, 0]], dtype=wp.int32, device=device)
     points_rebuild = wp.array([[8, 0, 0], [8, 0, 0], [0, 8, 0]], dtype=wp.int32, device=device)
     status = wp.zeros(1, dtype=wp.uint32, device=device)
@@ -918,7 +918,7 @@ def test_volume_rebuild_by_tiles_capture(test, device):
         voxel_size=1.0,
         bg_value=0.0,
         device=device,
-        graph_rebuildable=True,
+        rebuildable=True,
         max_tiles=4,
         max_lower_nodes=4,
         max_upper_nodes=4,
@@ -927,7 +927,7 @@ def test_volume_rebuild_by_tiles_capture(test, device):
 
     wp.load_module(device=device)
     with wp.ScopedCapture(device=device, force_module_load=False) as capture:
-        volume.rebuild_by_tiles(points_rebuild)
+        volume.rebuild(points_rebuild)
 
     wp.capture_launch(capture.graph)
     wp.synchronize_device(device)
@@ -941,7 +941,7 @@ def test_volume_rebuild_by_tiles_capture(test, device):
     np.testing.assert_array_equal(tiles_np, np.array([[0, 8, 0], [8, 0, 0]], dtype=np.int32))
 
 
-def test_volume_rebuild_by_tiles_parent_key_capture(test, device):
+def test_volume_rebuild_tiles_parent_key_capture(test, device):
     points_initial = wp.array([[0, 0, 0]], dtype=wp.int32, device=device)
     points_rebuild = wp.array([[0, 0, 0], [0, 0, 128], [0, 8, 0], [0, 0, 128]], dtype=wp.int32, device=device)
     status = wp.zeros(1, dtype=wp.uint32, device=device)
@@ -951,7 +951,7 @@ def test_volume_rebuild_by_tiles_parent_key_capture(test, device):
         voxel_size=1.0,
         bg_value=0.0,
         device=device,
-        graph_rebuildable=True,
+        rebuildable=True,
         max_tiles=3,
         max_lower_nodes=2,
         max_upper_nodes=1,
@@ -960,7 +960,7 @@ def test_volume_rebuild_by_tiles_parent_key_capture(test, device):
 
     wp.load_module(device=device)
     with wp.ScopedCapture(device=device, force_module_load=False) as capture:
-        volume.rebuild_by_tiles(points_rebuild)
+        volume.rebuild(points_rebuild)
 
     wp.capture_launch(capture.graph)
     wp.synchronize_device(device)
@@ -968,7 +968,7 @@ def test_volume_rebuild_by_tiles_parent_key_capture(test, device):
     test.assertEqual(int(status.numpy()[0]), wp.Volume.REBUILD_SUCCESS)
 
 
-def test_volume_rebuild_by_voxels_capture(test, device):
+def test_volume_rebuild_voxels_capture(test, device):
     points_initial = wp.array([[0, 0, 0]], dtype=wp.int32, device=device)
     points_rebuild = wp.array([[1, 2, 3], [1, 2, 3], [4, 5, 6]], dtype=wp.int32, device=device)
     status = wp.zeros(1, dtype=wp.uint32, device=device)
@@ -977,7 +977,7 @@ def test_volume_rebuild_by_voxels_capture(test, device):
         points_initial,
         voxel_size=1.0,
         device=device,
-        graph_rebuildable=True,
+        rebuildable=True,
         max_active_voxels=4,
         max_leaf_nodes=4,
         max_lower_nodes=4,
@@ -987,7 +987,7 @@ def test_volume_rebuild_by_voxels_capture(test, device):
 
     wp.load_module(device=device)
     with wp.ScopedCapture(device=device, force_module_load=False) as capture:
-        volume.rebuild_by_voxels(points_rebuild)
+        volume.rebuild(points_rebuild)
 
     wp.capture_launch(capture.graph)
     wp.synchronize_device(device)
@@ -1001,7 +1001,7 @@ def test_volume_rebuild_by_voxels_capture(test, device):
     np.testing.assert_array_equal(voxels_np, np.array([[1, 2, 3], [4, 5, 6]], dtype=np.int32))
 
 
-def test_volume_rebuild_by_voxels_point_mask_capture(test, device):
+def test_volume_rebuild_voxels_point_mask_capture(test, device):
     points_initial = wp.array([[0, 0, 0]], dtype=wp.int32, device=device)
     points_rebuild = wp.array([[1, 2, 3], [1, 2, 3], [4, 5, 6], [7, 8, 9], [11, 12, 13]], dtype=wp.int32, device=device)
     point_mask = wp.array([1, 1, 0, 1, 0], dtype=wp.int32, device=device)
@@ -1012,7 +1012,7 @@ def test_volume_rebuild_by_voxels_point_mask_capture(test, device):
         points_initial,
         voxel_size=1.0,
         device=device,
-        graph_rebuildable=True,
+        rebuildable=True,
         max_active_voxels=4,
         max_leaf_nodes=4,
         max_lower_nodes=4,
@@ -1022,7 +1022,7 @@ def test_volume_rebuild_by_voxels_point_mask_capture(test, device):
 
     wp.load_module(device=device)
     with wp.ScopedCapture(device=device, force_module_load=False) as capture:
-        volume.rebuild_by_voxels(points_rebuild, point_mask=point_mask)
+        volume.rebuild(points_rebuild, point_mask=point_mask)
         wp.launch(test_volume_voxel_count_kernel, dim=1, inputs=[volume.id, voxel_count], device=device)
 
     wp.capture_launch(capture.graph)
@@ -1050,7 +1050,7 @@ def test_volume_rebuild_capacity_status_capture(test, device):
         voxel_size=1.0,
         bg_value=0.0,
         device=device,
-        graph_rebuildable=True,
+        rebuildable=True,
         max_tiles=1,
         max_lower_nodes=1,
         max_upper_nodes=1,
@@ -1060,7 +1060,7 @@ def test_volume_rebuild_capacity_status_capture(test, device):
         points_initial,
         voxel_size=1.0,
         device=device,
-        graph_rebuildable=True,
+        rebuildable=True,
         max_active_voxels=1,
         max_leaf_nodes=1,
         max_lower_nodes=1,
@@ -1070,8 +1070,8 @@ def test_volume_rebuild_capacity_status_capture(test, device):
 
     wp.load_module(device=device)
     with wp.ScopedCapture(device=device, force_module_load=False) as capture:
-        tile_volume.rebuild_by_tiles(tile_points_overflow)
-        voxel_volume.rebuild_by_voxels(voxel_points_overflow)
+        tile_volume.rebuild(tile_points_overflow)
+        voxel_volume.rebuild(voxel_points_overflow)
 
     wp.capture_launch(capture.graph)
     wp.synchronize_device(device)
@@ -1154,16 +1154,116 @@ class TestVolumeWrite(unittest.TestCase):
         )
         np.testing.assert_array_equal(_sort_rows(world_volume.get_voxels().numpy()), expected_voxels)
 
-    def test_volume_graph_rebuildable_requires_cuda(self):
-        points = wp.array([[0, 0, 0]], dtype=wp.int32, device="cpu")
-        with self.assertRaisesRegex(RuntimeError, "CUDA device"):
-            wp.Volume.allocate_by_tiles(points, voxel_size=1.0, bg_value=0.0, graph_rebuildable=True, device="cpu")
-        with self.assertRaisesRegex(RuntimeError, "CUDA device"):
-            wp.Volume.allocate_by_tiles(points, voxel_size=1.0, bg_value=0.0, max_tiles=1, device="cpu")
-        with self.assertRaisesRegex(RuntimeError, "CUDA device"):
-            wp.Volume.allocate_by_voxels(points, voxel_size=1.0, graph_rebuildable=True, device="cpu")
-        with self.assertRaisesRegex(RuntimeError, "CUDA device"):
-            wp.Volume.allocate_by_voxels(points, voxel_size=1.0, max_active_voxels=1, device="cpu")
+    def test_volume_point_mask_cpu(self):
+        voxel_points_np = np.array([[0, 0, 0], [1, 2, 3], [1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype=np.int32)
+        voxel_mask_np = np.array([1, 1, 0, 0, 1], dtype=np.int32)
+        expected_voxels = _sort_rows(np.array([[0, 0, 0], [1, 2, 3], [7, 8, 9]], dtype=np.int32))
+        voxel_points = wp.array(voxel_points_np, dtype=wp.int32, device="cpu")
+        voxel_mask = wp.array(voxel_mask_np, dtype=wp.int32, device="cpu")
+
+        voxel_volume = wp.Volume.allocate_by_voxels(voxel_points, voxel_size=1.0, device="cpu", point_mask=voxel_mask)
+        self.assertEqual(voxel_volume.get_voxel_count(), expected_voxels.shape[0])
+        np.testing.assert_array_equal(_sort_rows(voxel_volume.get_voxels().numpy()), expected_voxels)
+
+        tile_points_np = np.array([[0, 0, 0], [8, 0, 0], [16, 0, 0], [16, 0, 0]], dtype=np.int32)
+        tile_mask_np = np.array([1, 0, 1, 0], dtype=np.int32)
+        expected_tiles = _sort_rows(np.array([[0, 0, 0], [16, 0, 0]], dtype=np.int32))
+        tile_points = wp.array(tile_points_np, dtype=wp.int32, device="cpu")
+        tile_mask = wp.array(tile_mask_np, dtype=wp.int32, device="cpu")
+
+        tile_volume = wp.Volume.allocate_by_tiles(
+            tile_points, voxel_size=1.0, bg_value=None, device="cpu", point_mask=tile_mask
+        )
+        self.assertEqual(tile_volume.get_voxel_count(), expected_tiles.shape[0] * 512)
+        np.testing.assert_array_equal(_sort_rows(tile_volume.get_tiles().numpy()), expected_tiles)
+
+    def test_volume_rebuildable_cpu(self):
+        initial_tiles = wp.array([[0, 0, 0]], dtype=wp.int32, device="cpu")
+        rebuild_tiles = wp.array(
+            [[8, 0, 0], [8, 0, 0], [0, 16, 0], [0, 0, 128], [128, 0, 0]], dtype=wp.int32, device="cpu"
+        )
+        tile_mask = wp.array([1, 0, 1, 0, 1], dtype=wp.int32, device="cpu")
+        expected_tiles = _sort_rows(np.array([[0, 16, 0], [8, 0, 0], [128, 0, 0]], dtype=np.int32))
+
+        index_status = wp.zeros(1, dtype=wp.uint32, device="cpu")
+        index_volume = wp.Volume.allocate_by_tiles(
+            initial_tiles,
+            voxel_size=1.0,
+            bg_value=None,
+            device="cpu",
+            rebuildable=True,
+            max_tiles=4,
+            max_lower_nodes=4,
+            max_upper_nodes=4,
+            status=index_status,
+        )
+        self.assertEqual(int(index_status.numpy()[0]), wp.Volume.REBUILD_SUCCESS)
+        self.assertEqual(index_volume.get_voxel_count(), 4 * 512)
+        index_volume.rebuild(rebuild_tiles, point_mask=tile_mask)
+        self.assertEqual(int(index_status.numpy()[0]), wp.Volume.REBUILD_SUCCESS)
+        tiles = wp.full((4, 3), -999, dtype=wp.int32, device="cpu")
+        index_volume.get_tiles(out=tiles)
+        np.testing.assert_array_equal(_sort_rows(_valid_coord_rows(tiles.numpy())), expected_tiles)
+
+        value_status = wp.zeros(1, dtype=wp.uint32, device="cpu")
+        value_volume = wp.Volume.allocate_by_tiles(
+            initial_tiles,
+            voxel_size=1.0,
+            bg_value=wp.float64(3.0),
+            device="cpu",
+            rebuildable=True,
+            max_tiles=4,
+            max_lower_nodes=4,
+            max_upper_nodes=4,
+            status=value_status,
+        )
+        self.assertTrue(wp.types.types_equal(value_volume.dtype, wp.float64))
+        value_volume.rebuild(rebuild_tiles, point_mask=tile_mask)
+        self.assertEqual(int(value_status.numpy()[0]), wp.Volume.REBUILD_SUCCESS)
+        value_tiles = wp.full((4, 3), -999, dtype=wp.int32, device="cpu")
+        value_volume.get_tiles(out=value_tiles)
+        np.testing.assert_array_equal(_sort_rows(_valid_coord_rows(value_tiles.numpy())), expected_tiles)
+
+        initial_voxels = wp.array([[0, 0, 0]], dtype=wp.int32, device="cpu")
+        rebuild_voxels = wp.array(
+            [[1, 2, 3], [1, 2, 3], [4, 5, 6], [7, 8, 9], [11, 12, 13]], dtype=wp.int32, device="cpu"
+        )
+        voxel_mask = wp.array([1, 1, 0, 1, 0], dtype=wp.int32, device="cpu")
+        expected_voxels = _sort_rows(np.array([[1, 2, 3], [7, 8, 9]], dtype=np.int32))
+        voxel_status = wp.zeros(1, dtype=wp.uint32, device="cpu")
+        voxel_volume = wp.Volume.allocate_by_voxels(
+            initial_voxels,
+            voxel_size=1.0,
+            device="cpu",
+            rebuildable=True,
+            max_active_voxels=4,
+            max_leaf_nodes=4,
+            max_lower_nodes=4,
+            max_upper_nodes=4,
+            status=voxel_status,
+        )
+        self.assertEqual(int(voxel_status.numpy()[0]), wp.Volume.REBUILD_SUCCESS)
+        self.assertEqual(voxel_volume.get_voxel_count(), 4)
+        voxel_volume.rebuild(rebuild_voxels, point_mask=voxel_mask)
+        self.assertEqual(int(voxel_status.numpy()[0]), wp.Volume.REBUILD_SUCCESS)
+        voxels = wp.full((4, 3), -999, dtype=wp.int32, device="cpu")
+        voxel_volume.get_voxels(out=voxels)
+        np.testing.assert_array_equal(_sort_rows(_valid_coord_rows(voxels.numpy())), expected_voxels)
+
+        overflow_status = wp.zeros(1, dtype=wp.uint32, device="cpu")
+        overflow_volume = wp.Volume.allocate_by_voxels(
+            initial_voxels,
+            voxel_size=1.0,
+            device="cpu",
+            rebuildable=True,
+            max_active_voxels=1,
+            max_leaf_nodes=1,
+            max_lower_nodes=1,
+            max_upper_nodes=1,
+            status=overflow_status,
+        )
+        overflow_volume.rebuild(wp.array([[1, 2, 3], [4, 5, 6]], dtype=wp.int32, device="cpu"))
+        self.assertTrue(int(overflow_status.numpy()[0]) & wp.Volume.REBUILD_VOXEL_CAPACITY_EXCEEDED)
 
 
 add_function_test(TestVolumeWrite, "test_volume_allocation", test_volume_allocation, devices=devices)
@@ -1200,26 +1300,26 @@ add_function_test(
 )
 add_function_test(
     TestVolumeWrite,
-    "test_volume_rebuild_by_tiles_capture",
-    test_volume_rebuild_by_tiles_capture,
+    "test_volume_rebuild_tiles_capture",
+    test_volume_rebuild_tiles_capture,
     devices=capture_devices,
 )
 add_function_test(
     TestVolumeWrite,
-    "test_volume_rebuild_by_tiles_parent_key_capture",
-    test_volume_rebuild_by_tiles_parent_key_capture,
+    "test_volume_rebuild_tiles_parent_key_capture",
+    test_volume_rebuild_tiles_parent_key_capture,
     devices=capture_devices,
 )
 add_function_test(
     TestVolumeWrite,
-    "test_volume_rebuild_by_voxels_capture",
-    test_volume_rebuild_by_voxels_capture,
+    "test_volume_rebuild_voxels_capture",
+    test_volume_rebuild_voxels_capture,
     devices=capture_devices,
 )
 add_function_test(
     TestVolumeWrite,
-    "test_volume_rebuild_by_voxels_point_mask_capture",
-    test_volume_rebuild_by_voxels_point_mask_capture,
+    "test_volume_rebuild_voxels_point_mask_capture",
+    test_volume_rebuild_voxels_point_mask_capture,
     devices=capture_devices,
 )
 add_function_test(

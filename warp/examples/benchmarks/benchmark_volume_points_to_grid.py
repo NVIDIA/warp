@@ -202,7 +202,7 @@ def allocate_rebuildable(kind: str, data: BenchmarkData, status: wp.array, devic
             voxel_size=1.0,
             bg_value=0.0,
             device=device,
-            graph_rebuildable=True,
+            rebuildable=True,
             max_tiles=capacities.leaf_nodes,
             max_lower_nodes=capacities.lower_nodes,
             max_upper_nodes=capacities.upper_nodes,
@@ -213,7 +213,7 @@ def allocate_rebuildable(kind: str, data: BenchmarkData, status: wp.array, devic
         data.points,
         voxel_size=1.0,
         device=device,
-        graph_rebuildable=True,
+        rebuildable=True,
         max_active_voxels=capacities.active_voxels,
         max_leaf_nodes=capacities.leaf_nodes,
         max_lower_nodes=capacities.lower_nodes,
@@ -224,9 +224,9 @@ def allocate_rebuildable(kind: str, data: BenchmarkData, status: wp.array, devic
 
 def rebuild_volume(kind: str, volume: wp.Volume, data: BenchmarkData, status: wp.array) -> None:
     if kind == "tiles":
-        volume.rebuild_by_tiles(data.points, status=status)
+        volume.rebuild(data.points, status=status)
     else:
-        volume.rebuild_by_voxels(data.points, status=status)
+        volume.rebuild(data.points, status=status)
 
 
 def check_status(label: str, status: wp.array) -> None:
