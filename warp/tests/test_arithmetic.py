@@ -51,9 +51,9 @@ def getkernel(func, suffix=""):
 
 def get_select_kernel(dtype):
     def output_select_kernel_fn(
-        input: wp.array(dtype=dtype),
+        input: wp.array[dtype],
         index: int,
-        out: wp.array(dtype=dtype),
+        out: wp.array[dtype],
     ):
         out[0] = input[index]
 
@@ -62,10 +62,10 @@ def get_select_kernel(dtype):
 
 def get_select_kernel2(dtype):
     def output_select_kernel2_fn(
-        input: wp.array(dtype=dtype, ndim=2),
+        input: wp.array2d[dtype],
         index0: int,
         index1: int,
-        out: wp.array(dtype=dtype),
+        out: wp.array[dtype],
     ):
         out[0] = input[index0, index1]
 
@@ -100,8 +100,8 @@ def test_unary_ops(test, device, dtype, register_kernels=False):
     wptype = wp.dtype_from_numpy(np.dtype(dtype))
 
     def check_unary(
-        inputs: wp.array(dtype=wptype, ndim=2),
-        outputs: wp.array(dtype=wptype, ndim=2),
+        inputs: wp.array2d[wptype],
+        outputs: wp.array2d[wptype],
     ):
         for i in range(10):
             i0 = inputs[0, i]
@@ -216,8 +216,8 @@ def test_nonzero(test, device, dtype, register_kernels=False):
     wptype = wp.dtype_from_numpy(np.dtype(dtype))
 
     def check_nonzero(
-        inputs: wp.array(dtype=wptype),
-        outputs: wp.array(dtype=wptype),
+        inputs: wp.array[wptype],
+        outputs: wp.array[wptype],
     ):
         for i in range(10):
             i0 = inputs[i]
@@ -262,9 +262,9 @@ def test_binary_ops(test, device, dtype, register_kernels=False):
     wptype = wp.dtype_from_numpy(np.dtype(dtype))
 
     def check_binary_ops(
-        in1: wp.array(dtype=wptype, ndim=2),
-        in2: wp.array(dtype=wptype, ndim=2),
-        outputs: wp.array(dtype=wptype, ndim=2),
+        in1: wp.array2d[wptype],
+        in2: wp.array2d[wptype],
+        outputs: wp.array2d[wptype],
     ):
         for i in range(10):
             i0 = in1[0, i]
@@ -467,8 +467,8 @@ def test_special_funcs(test, device, dtype, register_kernels=False):
     wptype = wp.dtype_from_numpy(np.dtype(dtype))
 
     def check_special_funcs(
-        inputs: wp.array(dtype=wptype, ndim=2),
-        outputs: wp.array(dtype=wptype, ndim=2),
+        inputs: wp.array2d[wptype],
+        outputs: wp.array2d[wptype],
     ):
         # multiply outputs by 2 so we've got something to backpropagate:
         for i in range(10):
@@ -720,9 +720,9 @@ def test_special_funcs_2arg(test, device, dtype, register_kernels=False):
     wptype = wp.dtype_from_numpy(np.dtype(dtype))
 
     def check_special_funcs_2arg(
-        in1: wp.array(dtype=wptype, ndim=2),
-        in2: wp.array(dtype=wptype, ndim=2),
-        outputs: wp.array(dtype=wptype, ndim=2),
+        in1: wp.array2d[wptype],
+        in2: wp.array2d[wptype],
+        outputs: wp.array2d[wptype],
     ):
         # multiply outputs by 2 so we've got something to backpropagate:
         for i in range(10):
@@ -787,8 +787,8 @@ def test_float_to_int(test, device, dtype, register_kernels=False):
     wptype = wp.dtype_from_numpy(np.dtype(dtype))
 
     def check_float_to_int(
-        inputs: wp.array(dtype=wptype, ndim=2),
-        outputs: wp.array(dtype=wptype, ndim=2),
+        inputs: wp.array2d[wptype],
+        outputs: wp.array2d[wptype],
     ):
         for i in range(10):
             outputs[0, i] = wp.round(inputs[0, i])
@@ -843,10 +843,10 @@ def test_interp(test, device, dtype, register_kernels=False):
     wptype = wp.dtype_from_numpy(np.dtype(dtype))
 
     def check_interp(
-        in1: wp.array(dtype=wptype, ndim=2),
-        in2: wp.array(dtype=wptype, ndim=2),
-        in3: wp.array(dtype=wptype, ndim=2),
-        outputs: wp.array(dtype=wptype, ndim=2),
+        in1: wp.array2d[wptype],
+        in2: wp.array2d[wptype],
+        in3: wp.array2d[wptype],
+        outputs: wp.array2d[wptype],
     ):
         # multiply outputs by 2 so we've got something to backpropagate:
         for i in range(10):
@@ -974,10 +974,10 @@ def test_clamp(test, device, dtype, register_kernels=False):
     wptype = wp.dtype_from_numpy(np.dtype(dtype))
 
     def check_clamp(
-        in1: wp.array(dtype=wptype),
-        in2: wp.array(dtype=wptype),
-        in3: wp.array(dtype=wptype),
-        outputs: wp.array(dtype=wptype),
+        in1: wp.array[wptype],
+        in2: wp.array[wptype],
+        in3: wp.array[wptype],
+        outputs: wp.array[wptype],
     ):
         for i in range(100):
             # multiply output by 2 so we've got something to backpropagate:

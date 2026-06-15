@@ -20,7 +20,7 @@ def getkernel(func, suffix=""):
 
 
 def test_infinity_scalar(test, device, dtype, register_kernels=False):
-    def check_infinity(outputs: wp.array(dtype=dtype), bool_outputs: wp.array(dtype=wp.bool)):
+    def check_infinity(outputs: wp.array[dtype], bool_outputs: wp.array[wp.bool]):
         outputs[0] = dtype(wp.inf)
         outputs[1] = dtype(-wp.inf)
         outputs[2] = dtype(2.0 * wp.inf)
@@ -70,7 +70,7 @@ def test_infinity_scalar(test, device, dtype, register_kernels=False):
 
 
 def test_nan_scalar(test, device, dtype, register_kernels=False):
-    def check_nan(outputs: wp.array(dtype=dtype), bool_outputs: wp.array(dtype=wp.bool)):
+    def check_nan(outputs: wp.array[dtype], bool_outputs: wp.array[wp.bool]):
         outputs[0] = dtype(wp.nan)
         outputs[1] = dtype(-wp.nan)
         outputs[2] = dtype(2.0 * wp.nan)
@@ -144,7 +144,7 @@ def test_nan_scalar(test, device, dtype, register_kernels=False):
 def test_is_special_vec(test, device, dtype, register_kernels=False):
     vector_type = wp.types.vector(5, dtype)
 
-    def check_special_vec(bool_outputs: wp.array(dtype=wp.bool)):
+    def check_special_vec(bool_outputs: wp.array[wp.bool]):
         zeros_vector = vector_type()
         bool_outputs[0] = wp.isfinite(zeros_vector)
         bool_outputs[1] = wp.isinf(zeros_vector)
@@ -189,7 +189,7 @@ def test_is_special_vec(test, device, dtype, register_kernels=False):
 def test_is_special_mat(test, device, dtype, register_kernels=False):
     mat_type = wp.types.matrix((5, 5), dtype)
 
-    def check_special_mat(bool_outputs: wp.array(dtype=wp.bool)):
+    def check_special_mat(bool_outputs: wp.array[wp.bool]):
         zeros_mat = mat_type()
         bool_outputs[0] = wp.isfinite(zeros_mat)
         bool_outputs[1] = wp.isinf(zeros_mat)
@@ -256,12 +256,12 @@ def test_minmax_scalar(test, device, dtype, register_kernels=False):
     # exactly for the NaN cases.
 
     def check_minmax(
-        a: wp.array(dtype=dtype),
-        b: wp.array(dtype=dtype),
-        mn: wp.array(dtype=dtype),
-        mx: wp.array(dtype=dtype),
-        cmn: wp.array(dtype=dtype),
-        cmx: wp.array(dtype=dtype),
+        a: wp.array[dtype],
+        b: wp.array[dtype],
+        mn: wp.array[dtype],
+        mx: wp.array[dtype],
+        cmn: wp.array[dtype],
+        cmx: wp.array[dtype],
     ):
         i = wp.tid()
         mn[i] = wp.min(a[i], b[i])
@@ -317,19 +317,19 @@ def test_minmax_vec(test, device, dtype, register_kernels=False):
     vec3_t = wp.types.vector(3, dtype)
 
     def check_vec_elementwise(
-        a: wp.array(dtype=vec3_t),
-        b: wp.array(dtype=vec3_t),
-        mn: wp.array(dtype=vec3_t),
-        mx: wp.array(dtype=vec3_t),
+        a: wp.array[vec3_t],
+        b: wp.array[vec3_t],
+        mn: wp.array[vec3_t],
+        mx: wp.array[vec3_t],
     ):
         i = wp.tid()
         mn[i] = wp.min(a[i], b[i])
         mx[i] = wp.max(a[i], b[i])
 
     def check_vec_reduce(
-        a: wp.array(dtype=vec3_t),
-        red_mn: wp.array(dtype=dtype),
-        red_mx: wp.array(dtype=dtype),
+        a: wp.array[vec3_t],
+        red_mn: wp.array[dtype],
+        red_mx: wp.array[dtype],
     ):
         i = wp.tid()
         red_mn[i] = wp.min(a[i])
@@ -400,10 +400,10 @@ def test_clamp_adjoint(test, device, dtype, register_kernels=False):
     # returns min(a, b), so the gradient flows to that surviving bound.
 
     def kern(
-        x: wp.array(dtype=dtype),
-        a: wp.array(dtype=dtype),
-        b: wp.array(dtype=dtype),
-        out: wp.array(dtype=dtype),
+        x: wp.array[dtype],
+        a: wp.array[dtype],
+        b: wp.array[dtype],
+        out: wp.array[dtype],
     ):
         i = wp.tid()
         out[i] = wp.clamp(x[i], a[i], b[i])
@@ -452,9 +452,9 @@ def test_minmax_reduction_adjoint(test, device, dtype, register_kernels=False):
     vec3_t = wp.types.vector(3, dtype)
 
     def reduce_kern(
-        v: wp.array(dtype=vec3_t),
-        out_min: wp.array(dtype=dtype),
-        out_max: wp.array(dtype=dtype),
+        v: wp.array[vec3_t],
+        out_min: wp.array[dtype],
+        out_max: wp.array[dtype],
     ):
         i = wp.tid()
         out_min[i] = wp.min(v[i])
@@ -512,9 +512,9 @@ def test_atomic_minmax_adjoint(test, device, dtype, register_kernels=False):
     # has an explicit both-NaN branch to catch that case.
 
     def kern(
-        slot: wp.array(dtype=dtype),
-        value: wp.array(dtype=dtype),
-        out: wp.array(dtype=dtype),
+        slot: wp.array[dtype],
+        value: wp.array[dtype],
+        out: wp.array[dtype],
     ):
         i = wp.tid()
         out[i] = wp.atomic_min(slot, i, value[i])
@@ -563,12 +563,12 @@ def test_atomic_minmax(test, device, dtype, register_kernels=False):
     # float32 / float64 only.
 
     def kern(
-        a: wp.array(dtype=dtype),
-        b: wp.array(dtype=dtype),
-        in_min: wp.array(dtype=dtype),
-        in_max: wp.array(dtype=dtype),
-        ret_min: wp.array(dtype=dtype),
-        ret_max: wp.array(dtype=dtype),
+        a: wp.array[dtype],
+        b: wp.array[dtype],
+        in_min: wp.array[dtype],
+        in_max: wp.array[dtype],
+        ret_min: wp.array[dtype],
+        ret_max: wp.array[dtype],
     ):
         i = wp.tid()
         # a[i] is the array slot, b[i] is the value passed to atomic_min/max.
@@ -618,7 +618,7 @@ def test_atomic_minmax(test, device, dtype, register_kernels=False):
 def test_is_special_quat(test, device, dtype, register_kernels=False):
     quat_type = wp.types.quaternion(dtype)
 
-    def check_special_quat(bool_outputs: wp.array(dtype=wp.bool)):
+    def check_special_quat(bool_outputs: wp.array[wp.bool]):
         zeros_quat = quat_type()
         bool_outputs[0] = wp.isfinite(zeros_quat)
         bool_outputs[1] = wp.isinf(zeros_quat)
@@ -666,9 +666,9 @@ def test_copysign(test, device, dtype, register_kernels=False):
     # not exercised here.
 
     def kern(
-        x: wp.array(dtype=dtype),
-        y: wp.array(dtype=dtype),
-        out: wp.array(dtype=dtype),
+        x: wp.array[dtype],
+        y: wp.array[dtype],
+        out: wp.array[dtype],
     ):
         i = wp.tid()
         out[i] = wp.copysign(x[i], y[i])
@@ -714,9 +714,9 @@ def test_copysign_adjoint(test, device, dtype, register_kernels=False):
     # is 0 almost everywhere (result depends on y only through its sign).
 
     def kern(
-        x: wp.array(dtype=dtype),
-        y: wp.array(dtype=dtype),
-        out: wp.array(dtype=dtype),
+        x: wp.array[dtype],
+        y: wp.array[dtype],
+        out: wp.array[dtype],
     ):
         i = wp.tid()
         out[i] = wp.copysign(x[i], y[i])

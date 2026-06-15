@@ -14,14 +14,14 @@ print_results = False
 
 @wp.kernel
 def test_kernel(
-    x: wp.array(dtype=float),
-    x_round: wp.array(dtype=float),
-    x_rint: wp.array(dtype=float),
-    x_trunc: wp.array(dtype=float),
-    x_cast: wp.array(dtype=float),
-    x_floor: wp.array(dtype=float),
-    x_ceil: wp.array(dtype=float),
-    x_frac: wp.array(dtype=float),
+    x: wp.array[float],
+    x_round: wp.array[float],
+    x_rint: wp.array[float],
+    x_trunc: wp.array[float],
+    x_cast: wp.array[float],
+    x_floor: wp.array[float],
+    x_ceil: wp.array[float],
+    x_frac: wp.array[float],
 ):
     tid = wp.tid()
 

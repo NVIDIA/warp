@@ -27,8 +27,8 @@ class ScalarFloatValues(NamedTuple):
 @wp.kernel
 def scalar_float_kernel(
     i: int,
-    x: wp.array(dtype=wp.float32),
-    out: wp.array(dtype=wp.float32),
+    x: wp.array[wp.float32],
+    out: wp.array[wp.float32],
 ):
     if i == 0:
         out[0] = wp.degrees(x[0])
@@ -56,7 +56,7 @@ def test_scalar_math(test, device):
 
 
 @wp.kernel
-def erf_kernel(x: wp.array(dtype=Any), out: wp.array(dtype=Any)):
+def erf_kernel(x: wp.array[Any], out: wp.array[Any]):
     i = wp.tid()
 
     if i == 0:
@@ -89,7 +89,7 @@ def test_erf_math(test, device):
 
 
 @wp.kernel
-def test_vec_norm_kernel(vs: wp.array(dtype=Any), out: wp.array(dtype=float, ndim=2)):
+def test_vec_norm_kernel(vs: wp.array[Any], out: wp.array2d[float]):
     tid = wp.tid()
     out[tid, 0] = wp.norm_l1(vs[tid])
     out[tid, 1] = wp.norm_l2(vs[tid])
@@ -134,7 +134,7 @@ def test_vec_norm(test, device):
 
 
 @wp.kernel
-def smooth_normalize_kernel(out: wp.array(dtype=float)):
+def smooth_normalize_kernel(out: wp.array[float]):
     zero = wp.vec3(0.0, 0.0, 0.0)
     zero_n = wp.smooth_normalize(zero)
 
@@ -153,7 +153,7 @@ def test_smooth_normalize(test, device):
 
 
 @wp.kernel
-def quat_helpers_kernel(out: wp.array(dtype=float, ndim=2)):
+def quat_helpers_kernel(out: wp.array2d[float]):
     tid = wp.tid()
 
     rpy = wp.vec3(0.3, -0.25, 0.7)
@@ -234,7 +234,7 @@ def euler_roundtrip_error(e: wp.vec3, i: int, j: int, k: int) -> float:
 
 
 @wp.kernel
-def quat_euler_roundtrip_kernel(out: wp.array(dtype=float, ndim=2)):
+def quat_euler_roundtrip_kernel(out: wp.array2d[float]):
     tid = wp.tid()
 
     i = 0
@@ -279,7 +279,7 @@ def quat_euler_roundtrip(test, device):
 
 
 @wp.kernel
-def spatial_helpers_kernel(out: wp.array(dtype=float, ndim=2)):
+def spatial_helpers_kernel(out: wp.array2d[float]):
     tid = wp.tid()
 
     q = wp.quat_from_axis_angle(wp.vec3(0.0, 0.0, 1.0), wp.pi * 0.5)

@@ -105,7 +105,7 @@ def test_casting_constructors(test, device, dtype, register_kernels=False):
     np64 = np.dtype(np.float64)
     wp64 = wp.dtype_from_numpy(np64)
 
-    def cast_float16(a: wp.array(dtype=wp_type, ndim=2), b: wp.array(dtype=wp16, ndim=2)):
+    def cast_float16(a: wp.array2d[wp_type], b: wp.array2d[wp16]):
         tid = wp.tid()
 
         v1 = vec3(a[tid, 0], a[tid, 1], a[tid, 2])
@@ -115,7 +115,7 @@ def test_casting_constructors(test, device, dtype, register_kernels=False):
         b[tid, 1] = v2[1]
         b[tid, 2] = v2[2]
 
-    def cast_float32(a: wp.array(dtype=wp_type, ndim=2), b: wp.array(dtype=wp32, ndim=2)):
+    def cast_float32(a: wp.array2d[wp_type], b: wp.array2d[wp32]):
         tid = wp.tid()
 
         v1 = vec3(a[tid, 0], a[tid, 1], a[tid, 2])
@@ -125,7 +125,7 @@ def test_casting_constructors(test, device, dtype, register_kernels=False):
         b[tid, 1] = v2[1]
         b[tid, 2] = v2[2]
 
-    def cast_float64(a: wp.array(dtype=wp_type, ndim=2), b: wp.array(dtype=wp64, ndim=2)):
+    def cast_float64(a: wp.array2d[wp_type], b: wp.array2d[wp64]):
         tid = wp.tid()
 
         v1 = vec3(a[tid, 0], a[tid, 1], a[tid, 2])

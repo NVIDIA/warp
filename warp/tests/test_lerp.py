@@ -88,10 +88,10 @@ TEST_DATA = {
 
 def _make_lerp_kernel_fn(data_type):
     def fn(
-        a: wp.array(dtype=data_type),
-        b: wp.array(dtype=data_type),
-        t: wp.array(dtype=float),
-        out: wp.array(dtype=data_type),
+        a: wp.array[data_type],
+        b: wp.array[data_type],
+        t: wp.array[float],
+        out: wp.array[data_type],
     ):
         out[0] = wp.lerp(a[0], b[0], t[0])
 

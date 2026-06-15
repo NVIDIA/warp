@@ -17,7 +17,7 @@ def identity_function(input_bool: wp.bool, plain_bool: bool):
 
 
 @wp.kernel
-def identity_test(data: wp.array(dtype=wp.bool)):
+def identity_test(data: wp.array[wp.bool]):
     i = wp.tid()
 
     data[i] = data[i] and True
@@ -66,7 +66,7 @@ def test_bool_identity_ops(test, device):
 
 
 @wp.kernel
-def check_compile_constant(result: wp.array(dtype=wp.bool)):
+def check_compile_constant(result: wp.array[wp.bool]):
     if TRUE_CONSTANT:
         result[0] = TRUE_CONSTANT
     else:
@@ -89,7 +89,7 @@ bool_selector_vec = wp.constant(vec3bool([True, False, True]))
 
 
 @wp.kernel
-def sum_from_bool_vec(sum_array: wp.array(dtype=wp.int32)):
+def sum_from_bool_vec(sum_array: wp.array[wp.int32]):
     i = wp.tid()
 
     if bool_selector_vec[0]:
@@ -113,7 +113,7 @@ bool_selector_mat = wp.constant(mat22bool([True, False, False, True]))
 
 
 @wp.kernel
-def sum_from_bool_mat(sum_array: wp.array(dtype=wp.int32)):
+def sum_from_bool_mat(sum_array: wp.array[wp.int32]):
     i = wp.tid()
 
     if bool_selector_mat[0, 0]:

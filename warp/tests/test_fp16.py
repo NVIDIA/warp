@@ -10,7 +10,7 @@ from warp.tests.unittest_utils import *
 
 
 @wp.kernel
-def load_store_half(f32: wp.array(dtype=wp.float32), f16: wp.array(dtype=wp.float16)):
+def load_store_half(f32: wp.array[wp.float32], f16: wp.array[wp.float16]):
     tid = wp.tid()
 
     # check conversion from f32->f16
@@ -42,7 +42,7 @@ def test_fp16_conversion(test, device):
 
 
 @wp.kernel
-def value_load_store_half(f16_value: wp.float16, f16_array: wp.array(dtype=wp.float16)):
+def value_load_store_half(f16_value: wp.float16, f16_array: wp.array[wp.float16]):
     wp.expect_eq(f16_value, f16_array[0])
 
     # check stores
@@ -70,7 +70,7 @@ def test_fp16_kernel_parameter(test, device):
 
 
 @wp.kernel
-def mul_half(input: wp.array(dtype=wp.float16), output: wp.array(dtype=wp.float16)):
+def mul_half(input: wp.array[wp.float16], output: wp.array[wp.float16]):
     tid = wp.tid()
 
     # convert to compute type fp32

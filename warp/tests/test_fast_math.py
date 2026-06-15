@@ -45,20 +45,18 @@ def test_fast_math_cuda(test, device):
 
 
 @wp.kernel
-def approx_div_kernel(a: wp.array(dtype=Any), b: wp.array(dtype=Any), out: wp.array(dtype=Any)):
+def approx_div_kernel(a: wp.array[Any], b: wp.array[Any], out: wp.array[Any]):
     i = wp.tid()
     out[i] = wp.div_approx(a[i], b[i])
 
 
 # Pre-instantiate overloads to avoid module recompilation during tests
 for scalar_type in (wp.float16, wp.float32, wp.float64):
-    wp.overload(
-        approx_div_kernel, [wp.array(dtype=scalar_type), wp.array(dtype=scalar_type), wp.array(dtype=scalar_type)]
-    )
+    wp.overload(approx_div_kernel, [wp.array[scalar_type], wp.array[scalar_type], wp.array[scalar_type]])
 
 
 @wp.kernel
-def approx_div_compound_kernel(a: wp.array(dtype=Any), b: wp.array(dtype=Any), out: wp.array(dtype=Any)):
+def approx_div_compound_kernel(a: wp.array[Any], b: wp.array[Any], out: wp.array[Any]):
     i = wp.tid()
     out[i] = wp.div_approx(a[i], b[i])
 
@@ -70,14 +68,14 @@ for _compound_type, _scalar_type in [
 ]:
     wp.overload(
         approx_div_compound_kernel,
-        [wp.array(dtype=_compound_type), wp.array(dtype=_scalar_type), wp.array(dtype=_compound_type)],
+        [wp.array[_compound_type], wp.array[_scalar_type], wp.array[_compound_type]],
     )
 
 
 @wp.kernel
 def approx_inverse_kernel(
-    m: wp.array(dtype=Any),
-    out: wp.array(dtype=Any),
+    m: wp.array[Any],
+    out: wp.array[Any],
 ):
     i = wp.tid()
     out[i] = wp.inverse_approx(m[i])
@@ -85,11 +83,11 @@ def approx_inverse_kernel(
 
 # Pre-instantiate overloads to avoid module recompilation during tests
 for mat_type in (wp.mat22, wp.mat33, wp.mat44, wp.mat22d, wp.mat33d, wp.mat44d):
-    wp.overload(approx_inverse_kernel, [wp.array(dtype=mat_type), wp.array(dtype=mat_type)])
+    wp.overload(approx_inverse_kernel, [wp.array[mat_type], wp.array[mat_type]])
 
 
 @wp.kernel
-def approx_inverse_backward_kernel_22(m: wp.array(dtype=wp.mat22), loss: wp.array(dtype=float)):
+def approx_inverse_backward_kernel_22(m: wp.array[wp.mat22], loss: wp.array[float]):
     i = wp.tid()
     inv = wp.inverse_approx(m[i])
     for r in range(2):
@@ -98,7 +96,7 @@ def approx_inverse_backward_kernel_22(m: wp.array(dtype=wp.mat22), loss: wp.arra
 
 
 @wp.kernel
-def approx_inverse_backward_kernel_33(m: wp.array(dtype=wp.mat33), loss: wp.array(dtype=float)):
+def approx_inverse_backward_kernel_33(m: wp.array[wp.mat33], loss: wp.array[float]):
     i = wp.tid()
     inv = wp.inverse_approx(m[i])
     for r in range(3):
@@ -107,7 +105,7 @@ def approx_inverse_backward_kernel_33(m: wp.array(dtype=wp.mat33), loss: wp.arra
 
 
 @wp.kernel
-def approx_inverse_backward_kernel_44(m: wp.array(dtype=wp.mat44), loss: wp.array(dtype=float)):
+def approx_inverse_backward_kernel_44(m: wp.array[wp.mat44], loss: wp.array[float]):
     i = wp.tid()
     inv = wp.inverse_approx(m[i])
     for r in range(4):
@@ -116,16 +114,14 @@ def approx_inverse_backward_kernel_44(m: wp.array(dtype=wp.mat44), loss: wp.arra
 
 
 @wp.kernel
-def approx_div_backward_kernel(
-    a: wp.array(dtype=Any), b: wp.array(dtype=Any), out: wp.array(dtype=Any), loss: wp.array(dtype=Any)
-):
+def approx_div_backward_kernel(a: wp.array[Any], b: wp.array[Any], out: wp.array[Any], loss: wp.array[Any]):
     i = wp.tid()
     out[i] = wp.div_approx(a[i], b[i])
     wp.atomic_add(loss, 0, out[i])
 
 
 for _backward_scalar_type in (wp.float16, wp.float32, wp.float64):
-    wp.overload(approx_div_backward_kernel, [wp.array(dtype=_backward_scalar_type)] * 4)
+    wp.overload(approx_div_backward_kernel, [wp.array[_backward_scalar_type]] * 4)
 
 
 def test_approx_div_div(test, device):
