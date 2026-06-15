@@ -5053,6 +5053,13 @@ def volume_lookup_index(id: uint64, i: int32, j: int32, k: int32) -> int32:
     This function is available for both index grids and classical volumes."""
     ...
 
+def volume_voxel_count(id: uint64) -> int64:
+    """Return the number of indexable voxels in the volume given by ``id``.
+
+    For active-voxel index grids, this is the active voxel count. For dense tile grids, this is the number of
+    allocated leaf nodes multiplied by 512."""
+    ...
+
 @over
 def volume_index_to_world(id: uint64, uvw: vec3f) -> vec3f:
     """Transform a point ``uvw`` defined in volume index space to world space given the volume's intrinsic affine transformation."""

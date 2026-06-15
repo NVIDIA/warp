@@ -45,6 +45,7 @@ void allocate_grid_from_tiles(
     const void* points,
     size_t num_points,
     bool points_in_world_space,
+    const int32_t* point_mask,
     const BuildGridParams<BuildT>& params
 );
 
@@ -64,6 +65,7 @@ void allocate_grid_from_active_voxels(
     const void* points,
     size_t num_points,
     bool points_in_world_space,
+    const int32_t* point_mask,
     const BuildGridParams<nanovdb::ValueOnIndex>& params
 );
 
@@ -403,6 +405,7 @@ void allocate_rebuildable_grid_from_tiles(
     const void* points,
     size_t num_points,
     bool points_in_world_space,
+    const int32_t* point_mask,
     const VolumeRebuildCapacities& capacities,
     const BuildGridParams<BuildT>& params,
     uint32_t* status
@@ -415,6 +418,7 @@ void rebuild_grid_from_tiles(
     const void* points,
     size_t num_points,
     bool points_in_world_space,
+    const int32_t* point_mask,
     const VolumeRebuildCapacities& capacities,
     const BuildGridParams<BuildT>& params,
     uint32_t* status
@@ -426,6 +430,7 @@ void allocate_rebuildable_grid_from_active_voxels(
     const void* points,
     size_t num_points,
     bool points_in_world_space,
+    const int32_t* point_mask,
     const VolumeRebuildCapacities& capacities,
     const BuildGridParams<nanovdb::ValueOnIndex>& params,
     uint32_t* status
@@ -437,6 +442,7 @@ void rebuild_grid_from_active_voxels(
     const void* points,
     size_t num_points,
     bool points_in_world_space,
+    const int32_t* point_mask,
     const VolumeRebuildCapacities& capacities,
     const BuildGridParams<nanovdb::ValueOnIndex>& params,
     uint32_t* status

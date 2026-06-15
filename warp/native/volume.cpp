@@ -469,6 +469,7 @@ uint64_t wp_volume_from_tiles_device(
     void* context,
     void* points,
     int num_points,
+    const int32_t* point_mask,
     float transform[9],
     float translation[3],
     bool points_in_world_space,
@@ -498,13 +499,13 @@ uint64_t wp_volume_from_tiles_device(
         if (graph_rebuildable)                                                                                         \
         {                                                                                                              \
             allocate_rebuildable_grid_from_tiles(                                                                      \
-                grid, gridSize, points, num_points, points_in_world_space, capacities, params, status                   \
+                grid, gridSize, points, num_points, points_in_world_space, point_mask, capacities, params, status       \
             );                                                                                                         \
             uint64_t id = wp_volume_create_device(context, grid, gridSize, false, true);                               \
             volume_mark_rebuildable(id, capacities);                                                                   \
             return id;                                                                                                 \
         }                                                                                                              \
-        allocate_grid_from_tiles(grid, gridSize, points, num_points, points_in_world_space, params);                    \
+        allocate_grid_from_tiles(grid, gridSize, points, num_points, points_in_world_space, point_mask, params);        \
         return wp_volume_create_device(context, grid, gridSize, false, true);                                           \
     }
 
@@ -518,6 +519,7 @@ uint64_t wp_volume_index_from_tiles_device(
     void* context,
     void* points,
     int num_points,
+    const int32_t* point_mask,
     float transform[9],
     float translation[3],
     bool points_in_world_space,
@@ -537,7 +539,7 @@ uint64_t wp_volume_index_from_tiles_device(
         const VolumeRebuildCapacities capacities
             = volume_tile_rebuild_capacities(max_tiles, max_lower_nodes, max_upper_nodes);
         allocate_rebuildable_grid_from_tiles(
-            grid, gridSize, points, num_points, points_in_world_space, capacities, params, status
+            grid, gridSize, points, num_points, points_in_world_space, point_mask, capacities, params, status
         );
 
         uint64_t id = wp_volume_create_device(context, grid, gridSize, false, true);
@@ -545,7 +547,7 @@ uint64_t wp_volume_index_from_tiles_device(
         return id;
     }
 
-    allocate_grid_from_tiles(grid, gridSize, points, num_points, points_in_world_space, params);
+    allocate_grid_from_tiles(grid, gridSize, points, num_points, points_in_world_space, point_mask, params);
     return wp_volume_create_device(context, grid, gridSize, false, true);
 }
 
@@ -553,6 +555,7 @@ uint64_t wp_volume_from_active_voxels_device(
     void* context,
     void* points,
     int num_points,
+    const int32_t* point_mask,
     float transform[9],
     float translation[3],
     bool points_in_world_space,
@@ -573,7 +576,7 @@ uint64_t wp_volume_from_active_voxels_device(
         const VolumeRebuildCapacities capacities
             = volume_voxel_rebuild_capacities(max_active_voxels, max_leaf_nodes, max_lower_nodes, max_upper_nodes);
         allocate_rebuildable_grid_from_active_voxels(
-            grid, gridSize, points, num_points, points_in_world_space, capacities, params, status
+            grid, gridSize, points, num_points, points_in_world_space, point_mask, capacities, params, status
         );
 
         uint64_t id = wp_volume_create_device(context, grid, gridSize, false, true);
@@ -581,7 +584,7 @@ uint64_t wp_volume_from_active_voxels_device(
         return id;
     }
 
-    allocate_grid_from_active_voxels(grid, gridSize, points, num_points, points_in_world_space, params);
+    allocate_grid_from_active_voxels(grid, gridSize, points, num_points, points_in_world_space, point_mask, params);
     return wp_volume_create_device(context, grid, gridSize, false, true);
 }
 
@@ -589,6 +592,7 @@ void wp_volume_rebuild_from_tiles_device(
     uint64_t id,
     void* points,
     int num_points,
+    const int32_t* point_mask,
     float transform[9],
     float translation[3],
     bool points_in_world_space,
@@ -620,7 +624,7 @@ void wp_volume_rebuild_from_tiles_device(
         volume_set_map(params.map, transform, translation);                                                            \
         rebuild_grid_from_tiles(                                                                                       \
             reinterpret_cast<nanovdb::Grid<nanovdb::NanoTree<type>>*>(volume->buffer), volume->size_in_bytes, points,  \
-            num_points, points_in_world_space, volume->capacities, params, status                                      \
+            num_points, points_in_world_space, point_mask, volume->capacities, params, status                          \
         );                                                                                                             \
         return;                                                                                                        \
     }
@@ -633,6 +637,7 @@ void wp_volume_index_rebuild_from_tiles_device(
     uint64_t id,
     void* points,
     int num_points,
+    const int32_t* point_mask,
     float transform[9],
     float translation[3],
     bool points_in_world_space,
@@ -654,7 +659,7 @@ void wp_volume_index_rebuild_from_tiles_device(
     volume_set_map(params.map, transform, translation);
     rebuild_grid_from_tiles(
         reinterpret_cast<nanovdb::IndexGrid*>(volume->buffer), volume->size_in_bytes, points, num_points,
-        points_in_world_space, volume->capacities, params, status
+        points_in_world_space, point_mask, volume->capacities, params, status
     );
 }
 
@@ -662,6 +667,7 @@ void wp_volume_rebuild_from_active_voxels_device(
     uint64_t id,
     void* points,
     int num_points,
+    const int32_t* point_mask,
     float transform[9],
     float translation[3],
     bool points_in_world_space,
@@ -683,7 +689,7 @@ void wp_volume_rebuild_from_active_voxels_device(
     volume_set_map(params.map, transform, translation);
     rebuild_grid_from_active_voxels(
         reinterpret_cast<nanovdb::OnIndexGrid*>(volume->buffer), volume->size_in_bytes, points, num_points,
-        points_in_world_space, volume->capacities, params, status
+        points_in_world_space, point_mask, volume->capacities, params, status
     );
 }
 
@@ -730,6 +736,7 @@ uint64_t wp_volume_from_tiles_device(
     void* context,
     void* points,
     int num_points,
+    const int32_t* point_mask,
     float transform[9],
     float translation[3],
     bool points_in_world_space,
@@ -750,6 +757,7 @@ uint64_t wp_volume_index_from_tiles_device(
     void* context,
     void* points,
     int num_points,
+    const int32_t* point_mask,
     float transform[9],
     float translation[3],
     bool points_in_world_space,
@@ -767,6 +775,7 @@ uint64_t wp_volume_from_active_voxels_device(
     void* context,
     void* points,
     int num_points,
+    const int32_t* point_mask,
     float transform[9],
     float translation[3],
     bool points_in_world_space,
@@ -785,6 +794,7 @@ void wp_volume_rebuild_from_tiles_device(
     uint64_t id,
     void* points,
     int num_points,
+    const int32_t* point_mask,
     float transform[9],
     float translation[3],
     bool points_in_world_space,
@@ -800,6 +810,7 @@ void wp_volume_index_rebuild_from_tiles_device(
     uint64_t id,
     void* points,
     int num_points,
+    const int32_t* point_mask,
     float transform[9],
     float translation[3],
     bool points_in_world_space,
@@ -812,6 +823,7 @@ void wp_volume_rebuild_from_active_voxels_device(
     uint64_t id,
     void* points,
     int num_points,
+    const int32_t* point_mask,
     float transform[9],
     float translation[3],
     bool points_in_world_space,

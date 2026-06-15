@@ -323,6 +323,11 @@ def test_volume_readback_index(volume: wp.uint64, points: wp.array2d[wp.int32], 
     values[tid] = wp.volume_lookup_index(volume, points[tid, 0], points[tid, 1], points[tid, 2])
 
 
+@wp.kernel
+def test_volume_voxel_count_kernel(volume: wp.uint64, values: wp.array[wp.int64]):
+    values[0] = wp.volume_voxel_count(volume)
+
+
 def _sort_rows(values):
     return values[np.lexsort(values.T[::-1])]
 
@@ -351,6 +356,12 @@ def _lookup_indices(volume, points, device):
     values = wp.empty(points.shape[0], dtype=wp.int32, device=device)
     wp.launch(test_volume_readback_index, dim=points.shape[0], inputs=[volume.id, points_d, values], device=device)
     return values.numpy()
+
+
+def _device_voxel_count(volume, device):
+    values = wp.empty(1, dtype=wp.int64, device=device)
+    wp.launch(test_volume_voxel_count_kernel, dim=1, inputs=[volume.id, values], device=device)
+    return int(values.numpy()[0])
 
 
 def test_volume_allocation(test, device):
@@ -605,6 +616,57 @@ def test_volume_allocation_from_voxels(test, device):
     ijk_voxel_sorted = ijk_voxels[np.lexsort(ijk_voxels.T[::-1])]
 
     np.testing.assert_equal(voxel_sorted, ijk_voxel_sorted)
+
+
+def test_volume_point_mask(test, device):
+    voxel_points_np = np.array([[0, 0, 0], [1, 2, 3], [1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype=np.int32)
+    voxel_mask_np = np.array([1, 1, 0, 0, 1], dtype=np.int32)
+    expected_voxels = _sort_rows(np.array([[0, 0, 0], [1, 2, 3], [7, 8, 9]], dtype=np.int32))
+    voxel_points = wp.array(voxel_points_np, dtype=wp.int32, device=device)
+    voxel_mask = wp.array(voxel_mask_np, dtype=wp.int32, device=device)
+
+    voxel_volume = wp.Volume.allocate_by_voxels(voxel_points, voxel_size=1.0, device=device, point_mask=voxel_mask)
+    np.testing.assert_array_equal(_sort_rows(voxel_volume.get_voxels().numpy()), expected_voxels)
+    test.assertEqual(_device_voxel_count(voxel_volume, device), expected_voxels.shape[0])
+
+    tile_points_np = np.array([[0, 0, 0], [8, 0, 0], [16, 0, 0], [16, 0, 0]], dtype=np.int32)
+    tile_mask_np = np.array([1, 0, 1, 0], dtype=np.int32)
+    expected_tiles = _sort_rows(np.array([[0, 0, 0], [16, 0, 0]], dtype=np.int32))
+    tile_points = wp.array(tile_points_np, dtype=wp.int32, device=device)
+    tile_mask = wp.array(tile_mask_np, dtype=wp.int32, device=device)
+
+    tile_volume = wp.Volume.allocate_by_tiles(
+        tile_points, voxel_size=1.0, bg_value=None, device=device, point_mask=tile_mask
+    )
+    np.testing.assert_array_equal(_sort_rows(tile_volume.get_tiles().numpy()), expected_tiles)
+    test.assertEqual(_device_voxel_count(tile_volume, device), expected_tiles.shape[0] * 512)
+
+
+def test_volume_voxel_count(test, device):
+    points_np = np.array([[0, 0, 0], [1, 2, 3], [1, 2, 3], [4, 5, 6]], dtype=np.int32)
+    active_voxels = _unique_rows(points_np)
+    leaf_count, lower_count, upper_count = _grid_parent_counts(active_voxels)
+    points = wp.array(points_np, dtype=wp.int32, device=device)
+    status = wp.zeros(1, dtype=wp.uint32, device=device)
+
+    exact_volume = wp.Volume.allocate_by_voxels(points, voxel_size=1.0, device=device)
+    rebuildable_volume = wp.Volume.allocate_by_voxels(
+        points,
+        voxel_size=1.0,
+        device=device,
+        graph_rebuildable=True,
+        max_active_voxels=8,
+        max_leaf_nodes=max(leaf_count, 2),
+        max_lower_nodes=max(lower_count, 2),
+        max_upper_nodes=max(upper_count, 2),
+        status=status,
+    )
+    wp.synchronize_device(device)
+
+    test.assertEqual(exact_volume.get_voxel_count(), active_voxels.shape[0])
+    test.assertEqual(rebuildable_volume.get_voxel_count(), 8)
+    test.assertEqual(_device_voxel_count(exact_volume, device), active_voxels.shape[0])
+    test.assertEqual(_device_voxel_count(rebuildable_volume, device), active_voxels.shape[0])
 
 
 def test_volume_rebuildable_setup_matches_exact_tiles(test, device):
@@ -939,6 +1001,43 @@ def test_volume_rebuild_by_voxels_capture(test, device):
     np.testing.assert_array_equal(voxels_np, np.array([[1, 2, 3], [4, 5, 6]], dtype=np.int32))
 
 
+def test_volume_rebuild_by_voxels_point_mask_capture(test, device):
+    points_initial = wp.array([[0, 0, 0]], dtype=wp.int32, device=device)
+    points_rebuild = wp.array([[1, 2, 3], [1, 2, 3], [4, 5, 6], [7, 8, 9], [11, 12, 13]], dtype=wp.int32, device=device)
+    point_mask = wp.array([1, 1, 0, 1, 0], dtype=wp.int32, device=device)
+    status = wp.zeros(1, dtype=wp.uint32, device=device)
+    voxel_count = wp.empty(1, dtype=wp.int64, device=device)
+
+    volume = wp.Volume.allocate_by_voxels(
+        points_initial,
+        voxel_size=1.0,
+        device=device,
+        graph_rebuildable=True,
+        max_active_voxels=4,
+        max_leaf_nodes=4,
+        max_lower_nodes=4,
+        max_upper_nodes=4,
+        status=status,
+    )
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+        volume.rebuild_by_voxels(points_rebuild, point_mask=point_mask)
+        wp.launch(test_volume_voxel_count_kernel, dim=1, inputs=[volume.id, voxel_count], device=device)
+
+    wp.capture_launch(capture.graph)
+    wp.synchronize_device(device)
+
+    test.assertEqual(int(status.numpy()[0]), wp.Volume.REBUILD_SUCCESS)
+    test.assertEqual(int(voxel_count.numpy()[0]), 2)
+
+    voxels = wp.full((4, 3), -999, dtype=wp.int32, device=device)
+    volume.get_voxels(out=voxels)
+    voxels_np = _valid_coord_rows(voxels.numpy())
+    voxels_np = voxels_np[np.lexsort(voxels_np.T[::-1])]
+    np.testing.assert_array_equal(voxels_np, np.array([[1, 2, 3], [7, 8, 9]], dtype=np.int32))
+
+
 def test_volume_rebuild_capacity_status_capture(test, device):
     points_initial = wp.array([[0, 0, 0]], dtype=wp.int32, device=device)
     tile_points_overflow = wp.array([[0, 0, 0], [8, 0, 0]], dtype=wp.int32, device=device)
@@ -1085,6 +1184,8 @@ add_function_test(
     test_volume_allocation_from_voxels,
     devices=devices,
 )
+add_function_test(TestVolumeWrite, "test_volume_point_mask", test_volume_point_mask, devices=devices)
+add_function_test(TestVolumeWrite, "test_volume_voxel_count", test_volume_voxel_count, devices=devices)
 add_function_test(
     TestVolumeWrite,
     "test_volume_rebuildable_setup_matches_exact_tiles",
@@ -1113,6 +1214,12 @@ add_function_test(
     TestVolumeWrite,
     "test_volume_rebuild_by_voxels_capture",
     test_volume_rebuild_by_voxels_capture,
+    devices=capture_devices,
+)
+add_function_test(
+    TestVolumeWrite,
+    "test_volume_rebuild_by_voxels_point_mask_capture",
+    test_volume_rebuild_by_voxels_point_mask_capture,
     devices=capture_devices,
 )
 add_function_test(

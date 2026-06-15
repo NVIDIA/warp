@@ -798,6 +798,21 @@ CUDA_CALLABLE inline int32_t volume_lookup_index(uint64_t id, int32_t i, int32_t
     return -1;
 }
 
+CUDA_CALLABLE inline int64_t volume_voxel_count(uint64_t id)
+{
+    const pnanovdb_buf_t buf = volume::id_to_buffer(id);
+    const pnanovdb_tree_handle_t tree = volume::get_tree(buf);
+    const pnanovdb_grid_type_t grid_type = volume::get_grid_type(buf);
+
+    switch (grid_type) {
+    case PNANOVDB_GRID_TYPE_ONINDEX:
+    case PNANOVDB_GRID_TYPE_ONINDEXMASK:
+        return int64_t(pnanovdb_tree_get_voxel_count(buf, tree));
+    default:
+        return int64_t(pnanovdb_tree_get_node_count_leaf(buf, tree)) * PNANOVDB_LEAF_TABLE_COUNT;
+    }
+}
+
 // volume_store
 
 template <typename T>

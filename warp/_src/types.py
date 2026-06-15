@@ -6659,6 +6659,7 @@ class Volume:
         max_lower_nodes: int | None = None,
         max_upper_nodes: int | None = None,
         status: array | None = None,
+        point_mask: array | None = None,
     ) -> Volume:
         """Allocate a new :class:`Volume` with active tiles for each point ``tile_points``.
 
@@ -6689,6 +6690,7 @@ class Volume:
             max_lower_nodes: Maximum number of lower internal nodes for rebuilds. Defaults to ``max_tiles``.
             max_upper_nodes: Maximum number of upper internal nodes for rebuilds. Defaults to ``max_lower_nodes``.
             status: Optional one-element ``uint32`` CUDA array receiving rebuild status flags.
+            point_mask: Optional CUDA ``int32`` array with one entry per point. Points with a zero mask value are ignored.
             device: The device to create the volume on, e.g. ``"cpu"``, ``"cuda"``, or ``"cuda:0"``.
 
         """
@@ -6720,6 +6722,8 @@ class Volume:
             _volume_rebuild_capacity(max_upper_nodes, max_lower_nodes_c, "max_upper_nodes") if graph_rebuildable else 0
         )
         status_ptr = ctypes.c_void_p(status.ptr) if graph_rebuildable else ctypes.c_void_p(0)
+        point_mask = _volume_point_mask_array(point_mask, tile_points.shape[0], device)
+        point_mask_ptr = ctypes.c_void_p(0 if point_mask is None else point_mask.ptr)
 
         if bg_value is None:
             if volume.device.is_cuda:
@@ -6727,6 +6731,7 @@ class Volume:
                     volume.device.context,
                     ctypes.c_void_p(tile_points.ptr),
                     tile_points.shape[0],
+                    point_mask_ptr,
                     transform_buf,
                     translation_buf,
                     in_world_space,
@@ -6780,6 +6785,7 @@ class Volume:
                     volume.device.context,
                     ctypes.c_void_p(tile_points.ptr),
                     tile_points.shape[0],
+                    point_mask_ptr,
                     transform_buf,
                     translation_buf,
                     in_world_space,
@@ -6834,6 +6840,7 @@ class Volume:
         max_lower_nodes: int | None = None,
         max_upper_nodes: int | None = None,
         status: array | None = None,
+        point_mask: array | None = None,
     ) -> Volume:
         """Allocate a new :class:`Volume` with active voxel for each point ``voxel_points``.
 
@@ -6856,6 +6863,7 @@ class Volume:
             max_lower_nodes: Maximum number of lower internal nodes for rebuilds. Defaults to ``max_leaf_nodes``.
             max_upper_nodes: Maximum number of upper internal nodes for rebuilds. Defaults to ``max_lower_nodes``.
             status: Optional one-element ``uint32`` CUDA array receiving rebuild status flags.
+            point_mask: Optional CUDA ``int32`` array with one entry per point. Points with a zero mask value are ignored.
             device: The device to create the volume on, e.g. ``"cpu"``, ``"cuda"``, or ``"cuda:0"``.
 
         Raises:
@@ -6904,12 +6912,15 @@ class Volume:
             _volume_rebuild_capacity(max_upper_nodes, max_lower_nodes_c, "max_upper_nodes") if graph_rebuildable else 0
         )
         status_ptr = ctypes.c_void_p(status.ptr) if graph_rebuildable else ctypes.c_void_p(0)
+        point_mask = _volume_point_mask_array(point_mask, voxel_points.shape[0], device)
+        point_mask_ptr = ctypes.c_void_p(0 if point_mask is None else point_mask.ptr)
 
         if volume.device.is_cuda:
             volume.id = volume.runtime.core.wp_volume_from_active_voxels_device(
                 volume.device.context,
                 ctypes.c_void_p(voxel_points.ptr),
                 voxel_points.shape[0],
+                point_mask_ptr,
                 transform_buf,
                 translation_buf,
                 in_world_space,
@@ -6954,7 +6965,9 @@ class Volume:
         except AttributeError as err:
             raise RuntimeError("Volume is not rebuildable") from err
 
-    def rebuild_by_tiles(self, tile_points: array, status: array | None = None) -> array:
+    def rebuild_by_tiles(
+        self, tile_points: array, status: array | None = None, point_mask: array | None = None
+    ) -> array:
         """Rebuild this volume's tile topology from ``tile_points``.
 
         The volume must have been created by ``allocate_by_tiles`` with
@@ -6971,6 +6984,8 @@ class Volume:
         if not tile_points.device.is_cuda:
             tile_points = tile_points.to(self.device)
         status = _volume_rebuild_status_array(self._rebuild_status if status is None else status, self.device)
+        point_mask = _volume_point_mask_array(point_mask, tile_points.shape[0], self.device)
+        point_mask_ptr = ctypes.c_void_p(0 if point_mask is None else point_mask.ptr)
         in_world_space = type_scalar_type(tile_points.dtype) is float32
         transform_buf, translation_buf = Volume._fill_transform_buffers(
             self._rebuild_voxel_size, self._rebuild_translation, self._rebuild_transform
@@ -6982,6 +6997,7 @@ class Volume:
                 self.id,
                 ctypes.c_void_p(tile_points.ptr),
                 tile_points.shape[0],
+                point_mask_ptr,
                 transform_buf,
                 translation_buf,
                 in_world_space,
@@ -6994,6 +7010,7 @@ class Volume:
                 self.id,
                 ctypes.c_void_p(tile_points.ptr),
                 tile_points.shape[0],
+                point_mask_ptr,
                 transform_buf,
                 translation_buf,
                 in_world_space,
@@ -7005,7 +7022,9 @@ class Volume:
 
         return status
 
-    def rebuild_by_voxels(self, voxel_points: array, status: array | None = None) -> array:
+    def rebuild_by_voxels(
+        self, voxel_points: array, status: array | None = None, point_mask: array | None = None
+    ) -> array:
         """Rebuild this volume's active-voxel topology from ``voxel_points``."""
 
         if getattr(self, "_rebuild_kind", None) != "voxels":
@@ -7018,6 +7037,8 @@ class Volume:
         if not voxel_points.device.is_cuda:
             voxel_points = voxel_points.to(self.device)
         status = _volume_rebuild_status_array(self._rebuild_status if status is None else status, self.device)
+        point_mask = _volume_point_mask_array(point_mask, voxel_points.shape[0], self.device)
+        point_mask_ptr = ctypes.c_void_p(0 if point_mask is None else point_mask.ptr)
         in_world_space = type_scalar_type(voxel_points.dtype) is float32
         transform_buf, translation_buf = Volume._fill_transform_buffers(
             self._rebuild_voxel_size, self._rebuild_translation, self._rebuild_transform
@@ -7027,6 +7048,7 @@ class Volume:
             self.id,
             ctypes.c_void_p(voxel_points.ptr),
             voxel_points.shape[0],
+            point_mask_ptr,
             transform_buf,
             translation_buf,
             in_world_space,
@@ -7071,6 +7093,22 @@ def _volume_rebuild_status_array(status: array | None, device) -> array:
     if not status.device.is_cuda:
         raise RuntimeError("status must be a CUDA array")
     return status
+
+
+def _volume_point_mask_array(point_mask: array | None, point_count: int, device) -> array | None:
+    if point_mask is None:
+        return None
+
+    if not device.is_cuda:
+        raise RuntimeError("point_mask is only supported on CUDA devices")
+    if not is_array(point_mask) or point_mask.dtype != int32 or point_mask.ndim != 1 or not point_mask.is_contiguous:
+        raise RuntimeError("point_mask must be a contiguous 1D Warp array with dtype int32")
+    if point_mask.shape[0] < point_count:
+        raise RuntimeError(f"point_mask must have at least {point_count} entries")
+    if point_mask.device != device:
+        point_mask = point_mask.to(device)
+
+    return point_mask
 
 
 def _volume_rebuild_ctype_value(bg_value):
