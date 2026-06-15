@@ -4,6 +4,7 @@
 #include "warp.h"
 
 #include "cuda_util.h"
+#include "temp_buffer.h"
 #include "volume_builder.h"
 
 #include <algorithm>
@@ -769,23 +770,12 @@ RebuildGridData make_rebuild_data(
     return data;
 }
 
-template <typename Func> void rebuild_cub_temp_call(size_t& temp_size, Func&& func)
-{
-    void* temp = nullptr;
-    check_cuda(func(temp, temp_size));
-    if (temp_size > 0) {
-        temp = wp_alloc_device(WP_CURRENT_CONTEXT, temp_size, "(native:volume_builder)");
-        check_cuda(func(temp, temp_size));
-        wp_free_device(WP_CURRENT_CONTEXT, temp);
-    }
-}
-
 void rebuild_sort_keys(uint64_t* keys_in, uint64_t* keys_out, int count, cudaStream_t stream)
 {
     size_t temp_size = 0;
-    rebuild_cub_temp_call(temp_size, [&](void* temp, size_t& size) {
-        return cub::DeviceRadixSort::SortKeys(temp, size, keys_in, keys_out, count, 0, 64, stream);
-    });
+    check_cuda(cub::DeviceRadixSort::SortKeys(nullptr, temp_size, keys_in, keys_out, count, 0, 64, stream));
+    ScopedTemporary<> temp(WP_CURRENT_CONTEXT, temp_size);
+    check_cuda(cub::DeviceRadixSort::SortKeys(temp.buffer(), temp_size, keys_in, keys_out, count, 0, 64, stream));
 }
 
 template <typename InputIt>
@@ -794,27 +784,33 @@ void rebuild_encode_runs(
 )
 {
     size_t temp_size = 0;
-    rebuild_cub_temp_call(temp_size, [&](void* temp, size_t& size) {
-        return cub::DeviceRunLengthEncode::Encode(
-            temp, size, keys_in, unique_keys, run_counts, run_count, count, stream
-        );
-    });
+    check_cuda(
+        cub::DeviceRunLengthEncode::Encode(
+            nullptr, temp_size, keys_in, unique_keys, run_counts, run_count, count, stream
+        )
+    );
+    ScopedTemporary<> temp(WP_CURRENT_CONTEXT, temp_size);
+    check_cuda(
+        cub::DeviceRunLengthEncode::Encode(
+            temp.buffer(), temp_size, keys_in, unique_keys, run_counts, run_count, count, stream
+        )
+    );
 }
 
 template <typename T> void rebuild_exclusive_sum(T* in, T* out, int count, cudaStream_t stream)
 {
     size_t temp_size = 0;
-    rebuild_cub_temp_call(temp_size, [&](void* temp, size_t& size) {
-        return cub::DeviceScan::ExclusiveSum(temp, size, in, out, count, stream);
-    });
+    check_cuda(cub::DeviceScan::ExclusiveSum(nullptr, temp_size, in, out, count, stream));
+    ScopedTemporary<> temp(WP_CURRENT_CONTEXT, temp_size);
+    check_cuda(cub::DeviceScan::ExclusiveSum(temp.buffer(), temp_size, in, out, count, stream));
 }
 
 void rebuild_exclusive_sum_u32_to_u64(uint32_t* in, uint64_t* out, int count, cudaStream_t stream)
 {
     size_t temp_size = 0;
-    rebuild_cub_temp_call(temp_size, [&](void* temp, size_t& size) {
-        return cub::DeviceScan::ExclusiveSum(temp, size, in, out, count, stream);
-    });
+    check_cuda(cub::DeviceScan::ExclusiveSum(nullptr, temp_size, in, out, count, stream));
+    ScopedTemporary<> temp(WP_CURRENT_CONTEXT, temp_size);
+    check_cuda(cub::DeviceScan::ExclusiveSum(temp.buffer(), temp_size, in, out, count, stream));
 }
 
 template <typename PtrT>
