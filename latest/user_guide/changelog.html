@@ -597,6 +597,9 @@ register successfully instead of raising <code class="docutils literal notransla
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1511">GH-1511</a>).</p></li>
 <li><p>Fix <code class="docutils literal notranslate"><span class="pre">&#64;wp.overload</span></code> kernel stubs defined in nested scopes to register correctly instead of raising
 <code class="docutils literal notranslate"><span class="pre">IndentationError</span></code> (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1557">GH-1557</a>).</p></li>
+<li><p>Fix <code class="docutils literal notranslate"><span class="pre">wp.copy()</span></code> ignoring <code class="docutils literal notranslate"><span class="pre">src_offset</span></code>, <code class="docutils literal notranslate"><span class="pre">dest_offset</span></code>, and <code class="docutils literal notranslate"><span class="pre">count</span></code> for 1D non-contiguous arrays such as strided slices
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1533">GH-1533</a>).</p></li>
+<li><p>Fix the gradient of <code class="docutils literal notranslate"><span class="pre">wp.copy()</span></code> when <code class="docutils literal notranslate"><span class="pre">src_offset</span></code> and <code class="docutils literal notranslate"><span class="pre">dest_offset</span></code> differ.</p></li>
 </ul>
 </section>
 <section id="documentation">
