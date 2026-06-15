@@ -7,10 +7,10 @@
 ## Motivation
 
 Warp can allocate NanoVDB volumes from point arrays with
-``Volume.allocate_by_tiles()`` and ``Volume.allocate_by_voxels()``. The current
-CUDA implementation delegates topology construction to NanoVDB's
-``PointsToGrid`` helper. That helper is efficient, but it repeatedly copies
-actual topology counts from the device to the host and synchronizes the stream
+``Volume.allocate_by_tiles()`` and ``Volume.allocate_by_voxels()``. The previous
+CUDA implementation delegated topology construction to NanoVDB's
+``PointsToGrid`` helper. That helper is efficient, but it repeatedly copied
+actual topology counts from the device to the host and synchronized the stream
 before allocating exact-sized buffers and launching count-dependent work.
 
 Those host round trips make volume construction unusable inside CUDA graph
@@ -31,7 +31,7 @@ host synchronization and must keep actual topology counts on the device.
 | R2 | Keep actual node and voxel counts on the device during rebuild. | Must | Host launches use capacities, not actual counts. |
 | R3 | Allow users to provide narrower persistent capacities. | Must | Avoid using ``num_points * 512`` as the persistent voxel bound for tile volumes. |
 | R4 | Report insufficient capacity without writing out of bounds. | Must | Rebuild sets a device status flag that the host can inspect after graph launch. |
-| R5 | Preserve existing non-capture allocation behavior. | Should | Existing APIs and exact-count metadata should continue to work outside the new rebuild path. |
+| R5 | Preserve public non-capture allocation behavior. | Should | Existing APIs and exact-count metadata continue to work through the shared builder. |
 | R6 | Use the same broad strategy as the current builder. | Should | Morton-like NanoVDB hierarchy keys plus radix sort and run-length encode. |
 
 **Non-goals**:
@@ -39,7 +39,7 @@ host synchronization and must keep actual topology counts on the device.
 - Implement NanoVDB ``Point`` blind-data grids.
 - Implement adaptive point-density search.
 - Implement grid merging or multi-grid buffers.
-- Replace all existing non-capture volume construction immediately.
+- Make first-time allocation graph-capturable.
 - Provide exact host counts during captured rebuild without an explicit
   synchronization requested by the caller.
 
@@ -47,13 +47,18 @@ host synchronization and must keep actual topology counts on the device.
 
 ### Approach
 
-Construction is split into two phases.
+Construction is split into exact allocation and bounded rebuild paths that share
+the same device-side counting and grid population implementation.
 
-1. **Allocation/setup** creates a persistent NanoVDB buffer with fixed
-   capacities. This phase may synchronize. If the caller does not provide
+1. **Exact allocation** counts topology on the device, copies only the final
+   counts to the host, allocates an exact-sized NanoVDB buffer, and populates it
+   from the already-computed key arrays. This is the default non-capture path and
+   may synchronize.
+2. **Rebuildable allocation/setup** creates a persistent NanoVDB buffer with
+   fixed capacities. This phase may synchronize. If the caller does not provide
    capacities, Warp may count the initial topology and use those exact counts as
    capacities.
-2. **Rebuild** overwrites the existing buffer from a new point array. This phase
+3. **Rebuild** overwrites the existing buffer from a new point array. This phase
    is graph-capturable. It never copies actual counts to the host and never
    synchronizes the stream.
 
@@ -89,7 +94,6 @@ Each rebuild clears and then updates a device-side status word. Status bits are:
 - lower-node capacity exceeded
 - upper-node capacity exceeded
 - active-voxel capacity exceeded
-- coordinate range exceeded
 - invalid input or unsupported mode
 
 When a capacity is exceeded, rebuild truncates device writes to the relevant
@@ -97,20 +101,18 @@ capacity. The resulting volume is memory-safe but incomplete. The caller can
 copy the status after graph launch to decide whether to increase capacities and
 recreate the volume.
 
-The first implementation uses 64-bit global hierarchy keys with 21 signed bits
-per component after applying the hierarchy shift. Active voxel coordinates are
-therefore limited to roughly ``[-2**20, 2**20)`` per component, while tile
-coordinates get the same bound after division by eight. Inputs outside that
-range set the coordinate-range status bit and are discarded. Supporting the full
-NanoVDB ``int32`` coordinate domain would require switching this path to the
-more involved root-key plus local-offset representation used by NanoVDB's
-general builder.
+The implementation uses NanoVDB-compatible upper-root-tile keys plus local
+upper, lower, and leaf offsets. This preserves the public ``int32`` coordinate
+domain while still allowing a compact 64-bit key for sorting within the Warp
+builder.
 
 ### Rebuild Algorithm
 
-The rebuild algorithm keeps the current strategy: derive hierarchy keys, radix
-sort, run-length encode unique topology, and then build NanoVDB nodes from the
-sorted keys.
+The builder keeps the current strategy: derive hierarchy keys, radix sort,
+run-length encode unique topology, and then build NanoVDB nodes from the sorted
+keys. Exact allocation and rebuildable setup both reuse the same key/count pass;
+only exact allocation copies the final counts back to the host before allocating
+the grid buffer.
 
 For tile volumes:
 
@@ -152,9 +154,10 @@ The existing ``VolumeDesc`` mirrors selected NanoVDB header/tree fields on the
 host. Captured rebuilds cannot keep these exact host fields current without a
 host round trip, so rebuildable volumes need descriptor fields for capacities.
 
-Host count APIs may return capacities for rebuildable volumes. Device kernels
-that enumerate tiles or voxels must use the device grid/tree actual counts to
-avoid exposing stale or unwritten entries.
+Exact allocation keeps host metadata exact. Host count APIs may return
+capacities for rebuildable volumes. Device kernels that enumerate tiles or
+voxels must use the device grid/tree actual counts to avoid exposing stale or
+unwritten entries.
 
 ### Public API
 
@@ -165,9 +168,8 @@ The initial API should be explicit:
 - ``volume.rebuild_by_tiles(tile_points, status=None)``
 - ``volume.rebuild_by_voxels(voxel_points, status=None)``
 
-The existing allocation behavior remains the default. A rebuildable volume is
-created when the user opts in with ``graph_rebuildable=True`` or supplies a
-capacity.
+Exact allocation remains the default. A rebuildable volume is created when the
+user opts in with ``graph_rebuildable=True`` or supplies a capacity.
 
 The optional ``status`` argument is a one-element ``uint32`` array on the same
 CUDA device. If omitted, Warp allocates and retains an internal status array
@@ -176,10 +178,11 @@ that can be queried after synchronization.
 ### Alternatives Considered
 
 **Patch NanoVDB ``PointsToGrid`` directly.** This would reduce duplicate code,
-but the current helper is deeply exact-count oriented. It uses host counts for
+but the helper is deeply exact-count oriented. It uses host counts for
 allocation sizes, host loops over tile runs, host-side density iteration, and a
-final stream synchronization. A Warp-owned rebuild path can be narrower and does
-not need to preserve the full upstream helper feature set.
+final stream synchronization. A Warp-owned builder can be narrower, serve both
+exact allocation and graph-capturable rebuild, and does not need to preserve the
+full upstream helper feature set.
 
 **Use ``num_points`` as every persistent capacity.** This is simple and safe for
 node counts, but for tile volumes it implies ``num_points * 512`` indexable
@@ -196,6 +199,7 @@ the API and implementation simpler.
 
 Tests should cover:
 
+- Exact non-capture allocation of tile and active-voxel volumes.
 - Non-capture creation of rebuildable tile and active-voxel volumes.
 - Rebuilding inside ``wp.ScopedCapture`` and replaying the captured graph.
 - Duplicate input points, verifying deduplication and status success.

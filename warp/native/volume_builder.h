@@ -30,7 +30,7 @@ template <> struct BuildGridParams<nanovdb::ValueOnIndex> {
 };
 
 template <typename BuildT>
-void build_grid_from_points(
+void allocate_grid_from_tiles(
     nanovdb::Grid<nanovdb::NanoTree<BuildT>>*& out_grid,
     size_t& out_grid_size,
     const void* points,
@@ -39,14 +39,22 @@ void build_grid_from_points(
     const BuildGridParams<BuildT>& params
 );
 
+void allocate_grid_from_active_voxels(
+    nanovdb::Grid<nanovdb::NanoTree<nanovdb::ValueOnIndex>>*& out_grid,
+    size_t& out_grid_size,
+    const void* points,
+    size_t num_points,
+    bool points_in_world_space,
+    const BuildGridParams<nanovdb::ValueOnIndex>& params
+);
+
 enum VolumeRebuildStatus : uint32_t {
     WP_VOLUME_REBUILD_SUCCESS = 0u,
     WP_VOLUME_REBUILD_LEAF_CAPACITY_EXCEEDED = 1u << 0u,
     WP_VOLUME_REBUILD_LOWER_CAPACITY_EXCEEDED = 1u << 1u,
     WP_VOLUME_REBUILD_UPPER_CAPACITY_EXCEEDED = 1u << 2u,
     WP_VOLUME_REBUILD_VOXEL_CAPACITY_EXCEEDED = 1u << 3u,
-    WP_VOLUME_REBUILD_COORDINATE_RANGE_EXCEEDED = 1u << 4u,
-    WP_VOLUME_REBUILD_INVALID_INPUT = 1u << 5u,
+    WP_VOLUME_REBUILD_INVALID_INPUT = 1u << 4u,
 };
 
 struct VolumeRebuildCapacities {

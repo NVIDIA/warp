@@ -6642,10 +6642,7 @@ class Volume:
     REBUILD_VOXEL_CAPACITY_EXCEEDED: ClassVar[int] = 1 << 3
     """Rebuild produced more active voxels than the volume capacity."""
 
-    REBUILD_COORDINATE_RANGE_EXCEEDED: ClassVar[int] = 1 << 4
-    """Rebuild input contained coordinates outside the rebuild key range."""
-
-    REBUILD_INVALID_INPUT: ClassVar[int] = 1 << 5
+    REBUILD_INVALID_INPUT: ClassVar[int] = 1 << 4
     """Rebuild was called with invalid arguments or on a non-rebuildable volume."""
 
     @classmethod
@@ -6722,30 +6719,22 @@ class Volume:
         max_upper_nodes_c = (
             _volume_rebuild_capacity(max_upper_nodes, max_lower_nodes_c, "max_upper_nodes") if graph_rebuildable else 0
         )
+        status_ptr = ctypes.c_void_p(status.ptr) if graph_rebuildable else ctypes.c_void_p(0)
 
         if bg_value is None:
-            if graph_rebuildable:
-                volume.id = volume.runtime.core.wp_volume_index_from_tiles_device_rebuildable(
-                    volume.device.context,
-                    ctypes.c_void_p(tile_points.ptr),
-                    tile_points.shape[0],
-                    transform_buf,
-                    translation_buf,
-                    in_world_space,
-                    max_tiles_c,
-                    max_lower_nodes_c,
-                    max_upper_nodes_c,
-                    ctypes.c_void_p(status.ptr),
-                )
-            else:
-                volume.id = volume.runtime.core.wp_volume_index_from_tiles_device(
-                    volume.device.context,
-                    ctypes.c_void_p(tile_points.ptr),
-                    tile_points.shape[0],
-                    transform_buf,
-                    translation_buf,
-                    in_world_space,
-                )
+            volume.id = volume.runtime.core.wp_volume_index_from_tiles_device(
+                volume.device.context,
+                ctypes.c_void_p(tile_points.ptr),
+                tile_points.shape[0],
+                transform_buf,
+                translation_buf,
+                in_world_space,
+                graph_rebuildable,
+                max_tiles_c,
+                max_lower_nodes_c,
+                max_upper_nodes_c,
+                status_ptr,
+            )
         else:
             # normalize background value type
             grid_type = type_to_warp(type(bg_value))
@@ -6777,34 +6766,22 @@ class Volume:
             cvalue_size = ctypes.sizeof(cvalue)
             cvalue_type = nvdb_type.encode("ascii")
 
-            if graph_rebuildable:
-                volume.id = volume.runtime.core.wp_volume_from_tiles_device_rebuildable(
-                    volume.device.context,
-                    ctypes.c_void_p(tile_points.ptr),
-                    tile_points.shape[0],
-                    transform_buf,
-                    translation_buf,
-                    in_world_space,
-                    cvalue_ptr,
-                    cvalue_size,
-                    cvalue_type,
-                    max_tiles_c,
-                    max_lower_nodes_c,
-                    max_upper_nodes_c,
-                    ctypes.c_void_p(status.ptr),
-                )
-            else:
-                volume.id = volume.runtime.core.wp_volume_from_tiles_device(
-                    volume.device.context,
-                    ctypes.c_void_p(tile_points.ptr),
-                    tile_points.shape[0],
-                    transform_buf,
-                    translation_buf,
-                    in_world_space,
-                    cvalue_ptr,
-                    cvalue_size,
-                    cvalue_type,
-                )
+            volume.id = volume.runtime.core.wp_volume_from_tiles_device(
+                volume.device.context,
+                ctypes.c_void_p(tile_points.ptr),
+                tile_points.shape[0],
+                transform_buf,
+                translation_buf,
+                in_world_space,
+                cvalue_ptr,
+                cvalue_size,
+                cvalue_type,
+                graph_rebuildable,
+                max_tiles_c,
+                max_lower_nodes_c,
+                max_upper_nodes_c,
+                status_ptr,
+            )
 
         if volume.id == 0:
             raise RuntimeError("Failed to create volume")
@@ -6893,36 +6870,37 @@ class Volume:
             or max_upper_nodes is not None
         )
 
-        if graph_rebuildable:
-            status = _volume_rebuild_status_array(status, device)
-            max_active_voxels_c = _volume_rebuild_capacity(
-                max_active_voxels, voxel_points.shape[0], "max_active_voxels"
-            )
-            max_leaf_nodes_c = _volume_rebuild_capacity(max_leaf_nodes, max_active_voxels_c, "max_leaf_nodes")
-            max_lower_nodes_c = _volume_rebuild_capacity(max_lower_nodes, max_leaf_nodes_c, "max_lower_nodes")
-            max_upper_nodes_c = _volume_rebuild_capacity(max_upper_nodes, max_lower_nodes_c, "max_upper_nodes")
-            volume.id = volume.runtime.core.wp_volume_from_active_voxels_device_rebuildable(
-                volume.device.context,
-                ctypes.c_void_p(voxel_points.ptr),
-                voxel_points.shape[0],
-                transform_buf,
-                translation_buf,
-                in_world_space,
-                max_active_voxels_c,
-                max_leaf_nodes_c,
-                max_lower_nodes_c,
-                max_upper_nodes_c,
-                ctypes.c_void_p(status.ptr),
-            )
-        else:
-            volume.id = volume.runtime.core.wp_volume_from_active_voxels_device(
-                volume.device.context,
-                ctypes.c_void_p(voxel_points.ptr),
-                voxel_points.shape[0],
-                transform_buf,
-                translation_buf,
-                in_world_space,
-            )
+        status = _volume_rebuild_status_array(status, device) if graph_rebuildable else None
+        max_active_voxels_c = (
+            _volume_rebuild_capacity(max_active_voxels, voxel_points.shape[0], "max_active_voxels")
+            if graph_rebuildable
+            else 0
+        )
+        max_leaf_nodes_c = (
+            _volume_rebuild_capacity(max_leaf_nodes, max_active_voxels_c, "max_leaf_nodes") if graph_rebuildable else 0
+        )
+        max_lower_nodes_c = (
+            _volume_rebuild_capacity(max_lower_nodes, max_leaf_nodes_c, "max_lower_nodes") if graph_rebuildable else 0
+        )
+        max_upper_nodes_c = (
+            _volume_rebuild_capacity(max_upper_nodes, max_lower_nodes_c, "max_upper_nodes") if graph_rebuildable else 0
+        )
+        status_ptr = ctypes.c_void_p(status.ptr) if graph_rebuildable else ctypes.c_void_p(0)
+
+        volume.id = volume.runtime.core.wp_volume_from_active_voxels_device(
+            volume.device.context,
+            ctypes.c_void_p(voxel_points.ptr),
+            voxel_points.shape[0],
+            transform_buf,
+            translation_buf,
+            in_world_space,
+            graph_rebuildable,
+            max_active_voxels_c,
+            max_leaf_nodes_c,
+            max_lower_nodes_c,
+            max_upper_nodes_c,
+            status_ptr,
+        )
 
         if volume.id == 0:
             raise RuntimeError("Failed to create volume")

@@ -403,7 +403,7 @@ def test_volume_allocation_from_voxels(test, device):
     np.testing.assert_equal(voxel_sorted, ijk_voxel_sorted)
 
 
-def test_volume_rebuildable_setup_matches_legacy_tiles(test, device):
+def test_volume_rebuildable_setup_matches_exact_tiles(test, device):
     points_np = np.array(
         [
             [-1, -2, -3],
@@ -420,7 +420,7 @@ def test_volume_rebuildable_setup_matches_legacy_tiles(test, device):
     points_d = wp.array(points_np, dtype=wp.int32, device=device)
 
     status_f = wp.zeros(1, dtype=wp.uint32, device=device)
-    volume_f_legacy = wp.Volume.allocate_by_tiles(points_d, 1.0, 123.456, device=device)
+    volume_f_exact = wp.Volume.allocate_by_tiles(points_d, 1.0, 123.456, device=device)
     volume_f_rebuildable = wp.Volume.allocate_by_tiles(
         points_d,
         1.0,
@@ -436,19 +436,19 @@ def test_volume_rebuildable_setup_matches_legacy_tiles(test, device):
 
     test.assertEqual(int(status_f.numpy()[0]), wp.Volume.REBUILD_SUCCESS)
 
-    legacy_tiles = _sort_rows(volume_f_legacy.get_tiles().numpy())
+    exact_tiles = _sort_rows(volume_f_exact.get_tiles().numpy())
     rebuildable_tiles_out = wp.full((tile_count, 3), -999, dtype=wp.int32, device=device)
     volume_f_rebuildable.get_tiles(out=rebuildable_tiles_out)
     rebuildable_tiles = _sort_rows(_valid_coord_rows(rebuildable_tiles_out.numpy()))
-    np.testing.assert_array_equal(rebuildable_tiles, legacy_tiles)
+    np.testing.assert_array_equal(rebuildable_tiles, exact_tiles)
 
-    tiles_d = wp.array(legacy_tiles, dtype=wp.int32, device=device)
-    legacy_values = wp.empty(tile_count * 512, dtype=wp.float32, device=device)
+    tiles_d = wp.array(exact_tiles, dtype=wp.int32, device=device)
+    exact_values = wp.empty(tile_count * 512, dtype=wp.float32, device=device)
     rebuildable_values = wp.empty(tile_count * 512, dtype=wp.float32, device=device)
-    wp.launch(test_volume_tile_store_f, dim=tile_count, inputs=[volume_f_legacy.id, tiles_d], device=device)
+    wp.launch(test_volume_tile_store_f, dim=tile_count, inputs=[volume_f_exact.id, tiles_d], device=device)
     wp.launch(test_volume_tile_store_f, dim=tile_count, inputs=[volume_f_rebuildable.id, tiles_d], device=device)
     wp.launch(
-        test_volume_tile_readback_f, dim=tile_count, inputs=[volume_f_legacy.id, tiles_d, legacy_values], device=device
+        test_volume_tile_readback_f, dim=tile_count, inputs=[volume_f_exact.id, tiles_d, exact_values], device=device
     )
     wp.launch(
         test_volume_tile_readback_f,
@@ -456,10 +456,10 @@ def test_volume_rebuildable_setup_matches_legacy_tiles(test, device):
         inputs=[volume_f_rebuildable.id, tiles_d, rebuildable_values],
         device=device,
     )
-    np.testing.assert_array_equal(rebuildable_values.numpy(), legacy_values.numpy())
+    np.testing.assert_array_equal(rebuildable_values.numpy(), exact_values.numpy())
 
     status_v = wp.zeros(1, dtype=wp.uint32, device=device)
-    volume_v_legacy = wp.Volume.allocate_by_tiles(points_d, 1.0, wp.vec3(1.0, 2.0, 3.0), device=device)
+    volume_v_exact = wp.Volume.allocate_by_tiles(points_d, 1.0, wp.vec3(1.0, 2.0, 3.0), device=device)
     volume_v_rebuildable = wp.Volume.allocate_by_tiles(
         points_d,
         1.0,
@@ -475,14 +475,14 @@ def test_volume_rebuildable_setup_matches_legacy_tiles(test, device):
 
     test.assertEqual(int(status_v.numpy()[0]), wp.Volume.REBUILD_SUCCESS)
 
-    legacy_vec_values = wp.empty(tile_count * 512, dtype=wp.vec3, device=device)
+    exact_vec_values = wp.empty(tile_count * 512, dtype=wp.vec3, device=device)
     rebuildable_vec_values = wp.empty(tile_count * 512, dtype=wp.vec3, device=device)
-    wp.launch(test_volume_tile_store_v, dim=tile_count, inputs=[volume_v_legacy.id, tiles_d], device=device)
+    wp.launch(test_volume_tile_store_v, dim=tile_count, inputs=[volume_v_exact.id, tiles_d], device=device)
     wp.launch(test_volume_tile_store_v, dim=tile_count, inputs=[volume_v_rebuildable.id, tiles_d], device=device)
     wp.launch(
         test_volume_tile_readback_v,
         dim=tile_count,
-        inputs=[volume_v_legacy.id, tiles_d, legacy_vec_values],
+        inputs=[volume_v_exact.id, tiles_d, exact_vec_values],
         device=device,
     )
     wp.launch(
@@ -491,10 +491,10 @@ def test_volume_rebuildable_setup_matches_legacy_tiles(test, device):
         inputs=[volume_v_rebuildable.id, tiles_d, rebuildable_vec_values],
         device=device,
     )
-    np.testing.assert_array_equal(rebuildable_vec_values.numpy(), legacy_vec_values.numpy())
+    np.testing.assert_array_equal(rebuildable_vec_values.numpy(), exact_vec_values.numpy())
 
     status_i = wp.zeros(1, dtype=wp.uint32, device=device)
-    volume_i_legacy = wp.Volume.allocate_by_tiles(points_d, 1.0, int(7), device=device)
+    volume_i_exact = wp.Volume.allocate_by_tiles(points_d, 1.0, int(7), device=device)
     volume_i_rebuildable = wp.Volume.allocate_by_tiles(
         points_d,
         1.0,
@@ -510,14 +510,14 @@ def test_volume_rebuildable_setup_matches_legacy_tiles(test, device):
 
     test.assertEqual(int(status_i.numpy()[0]), wp.Volume.REBUILD_SUCCESS)
 
-    legacy_int_values = wp.empty(tile_count * 512, dtype=wp.int32, device=device)
+    exact_int_values = wp.empty(tile_count * 512, dtype=wp.int32, device=device)
     rebuildable_int_values = wp.empty(tile_count * 512, dtype=wp.int32, device=device)
-    wp.launch(test_volume_tile_store_i, dim=tile_count, inputs=[volume_i_legacy.id, tiles_d], device=device)
+    wp.launch(test_volume_tile_store_i, dim=tile_count, inputs=[volume_i_exact.id, tiles_d], device=device)
     wp.launch(test_volume_tile_store_i, dim=tile_count, inputs=[volume_i_rebuildable.id, tiles_d], device=device)
     wp.launch(
         test_volume_tile_readback_i,
         dim=tile_count,
-        inputs=[volume_i_legacy.id, tiles_d, legacy_int_values],
+        inputs=[volume_i_exact.id, tiles_d, exact_int_values],
         device=device,
     )
     wp.launch(
@@ -526,10 +526,10 @@ def test_volume_rebuildable_setup_matches_legacy_tiles(test, device):
         inputs=[volume_i_rebuildable.id, tiles_d, rebuildable_int_values],
         device=device,
     )
-    np.testing.assert_array_equal(rebuildable_int_values.numpy(), legacy_int_values.numpy())
+    np.testing.assert_array_equal(rebuildable_int_values.numpy(), exact_int_values.numpy())
 
     status_v4 = wp.zeros(1, dtype=wp.uint32, device=device)
-    volume_v4_legacy = wp.Volume.allocate_by_tiles(points_d, 1.0, wp.vec4(1.0, 2.0, 3.0, 4.0), device=device)
+    volume_v4_exact = wp.Volume.allocate_by_tiles(points_d, 1.0, wp.vec4(1.0, 2.0, 3.0, 4.0), device=device)
     volume_v4_rebuildable = wp.Volume.allocate_by_tiles(
         points_d,
         1.0,
@@ -545,14 +545,14 @@ def test_volume_rebuildable_setup_matches_legacy_tiles(test, device):
 
     test.assertEqual(int(status_v4.numpy()[0]), wp.Volume.REBUILD_SUCCESS)
 
-    legacy_vec4_values = wp.empty(tile_count * 512, dtype=wp.vec4, device=device)
+    exact_vec4_values = wp.empty(tile_count * 512, dtype=wp.vec4, device=device)
     rebuildable_vec4_values = wp.empty(tile_count * 512, dtype=wp.vec4, device=device)
-    wp.launch(test_volume_tile_store_v4, dim=tile_count, inputs=[volume_v4_legacy.id, tiles_d], device=device)
+    wp.launch(test_volume_tile_store_v4, dim=tile_count, inputs=[volume_v4_exact.id, tiles_d], device=device)
     wp.launch(test_volume_tile_store_v4, dim=tile_count, inputs=[volume_v4_rebuildable.id, tiles_d], device=device)
     wp.launch(
         test_volume_tile_readback_v4,
         dim=tile_count,
-        inputs=[volume_v4_legacy.id, tiles_d, legacy_vec4_values],
+        inputs=[volume_v4_exact.id, tiles_d, exact_vec4_values],
         device=device,
     )
     wp.launch(
@@ -561,10 +561,10 @@ def test_volume_rebuildable_setup_matches_legacy_tiles(test, device):
         inputs=[volume_v4_rebuildable.id, tiles_d, rebuildable_vec4_values],
         device=device,
     )
-    np.testing.assert_array_equal(rebuildable_vec4_values.numpy(), legacy_vec4_values.numpy())
+    np.testing.assert_array_equal(rebuildable_vec4_values.numpy(), exact_vec4_values.numpy())
 
     status_index = wp.zeros(1, dtype=wp.uint32, device=device)
-    volume_index_legacy = wp.Volume.allocate_by_tiles(points_d, 1.0, bg_value=None, device=device)
+    volume_index_exact = wp.Volume.allocate_by_tiles(points_d, 1.0, bg_value=None, device=device)
     volume_index_rebuildable = wp.Volume.allocate_by_tiles(
         points_d,
         1.0,
@@ -580,16 +580,16 @@ def test_volume_rebuildable_setup_matches_legacy_tiles(test, device):
 
     test.assertEqual(int(status_index.numpy()[0]), wp.Volume.REBUILD_SUCCESS)
 
-    tile_voxels = _tile_voxels(legacy_tiles)
+    tile_voxels = _tile_voxels(exact_tiles)
     inactive_voxels = np.array([[4096, 4096, 4096], [-4097, 0, 0], [0, 7, 128]], dtype=np.int32)
     query_voxels = np.vstack((tile_voxels, inactive_voxels))
     np.testing.assert_array_equal(
         _lookup_indices(volume_index_rebuildable, query_voxels, device),
-        _lookup_indices(volume_index_legacy, query_voxels, device),
+        _lookup_indices(volume_index_exact, query_voxels, device),
     )
 
 
-def test_volume_rebuildable_setup_matches_legacy_voxels(test, device):
+def test_volume_rebuildable_setup_matches_exact_voxels(test, device):
     points_np = np.array(
         [
             [-1, -2, -3],
@@ -608,7 +608,7 @@ def test_volume_rebuildable_setup_matches_legacy_voxels(test, device):
     points_d = wp.array(points_np, dtype=wp.int32, device=device)
     status = wp.zeros(1, dtype=wp.uint32, device=device)
 
-    volume_legacy = wp.Volume.allocate_by_voxels(points_d, 1.0, device=device)
+    volume_exact = wp.Volume.allocate_by_voxels(points_d, 1.0, device=device)
     volume_rebuildable = wp.Volume.allocate_by_voxels(
         points_d,
         1.0,
@@ -624,17 +624,17 @@ def test_volume_rebuildable_setup_matches_legacy_voxels(test, device):
 
     test.assertEqual(int(status.numpy()[0]), wp.Volume.REBUILD_SUCCESS)
 
-    legacy_voxels = _sort_rows(volume_legacy.get_voxels().numpy())
+    exact_voxels = _sort_rows(volume_exact.get_voxels().numpy())
     rebuildable_voxels_out = wp.full((len(active_voxels), 3), -999, dtype=wp.int32, device=device)
     volume_rebuildable.get_voxels(out=rebuildable_voxels_out)
     rebuildable_voxels = _sort_rows(_valid_coord_rows(rebuildable_voxels_out.numpy()))
-    np.testing.assert_array_equal(rebuildable_voxels, legacy_voxels)
+    np.testing.assert_array_equal(rebuildable_voxels, exact_voxels)
 
     inactive_voxels = np.array([[4096, 4096, 4096], [-4097, 0, 0], [0, 7, 128]], dtype=np.int32)
     query_voxels = np.vstack((active_voxels, inactive_voxels))
     np.testing.assert_array_equal(
         _lookup_indices(volume_rebuildable, query_voxels, device),
-        _lookup_indices(volume_legacy, query_voxels, device),
+        _lookup_indices(volume_exact, query_voxels, device),
     )
 
 
@@ -799,14 +799,14 @@ add_function_test(
 )
 add_function_test(
     TestVolumeWrite,
-    "test_volume_rebuildable_setup_matches_legacy_tiles",
-    test_volume_rebuildable_setup_matches_legacy_tiles,
+    "test_volume_rebuildable_setup_matches_exact_tiles",
+    test_volume_rebuildable_setup_matches_exact_tiles,
     devices=devices,
 )
 add_function_test(
     TestVolumeWrite,
-    "test_volume_rebuildable_setup_matches_legacy_voxels",
-    test_volume_rebuildable_setup_matches_legacy_voxels,
+    "test_volume_rebuildable_setup_matches_exact_voxels",
+    test_volume_rebuildable_setup_matches_exact_voxels,
     devices=devices,
 )
 add_function_test(

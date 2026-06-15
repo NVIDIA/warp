@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-"""Compare legacy NanoVDB point-to-grid allocation with rebuildable volumes.
+"""Compare exact NanoVDB point-to-grid allocation with rebuildable volumes.
 
 Example:
 
@@ -47,6 +47,12 @@ class TimingResult:
     mean_ms: float
     min_ms: float
     max_ms: float
+
+
+@dataclass(frozen=True)
+class AllocationSizes:
+    exact_bytes: int
+    rebuildable_bytes: int
 
 
 def unique_rows(values: np.ndarray) -> np.ndarray:
@@ -182,7 +188,7 @@ def timed_enqueued_loop(
     )
 
 
-def allocate_legacy(kind: str, data: BenchmarkData, device: wp.Device) -> wp.Volume:
+def allocate_exact(kind: str, data: BenchmarkData, device: wp.Device) -> wp.Volume:
     if kind == "tiles":
         return wp.Volume.allocate_by_tiles(data.points, voxel_size=1.0, bg_value=0.0, device=device)
     return wp.Volume.allocate_by_voxels(data.points, voxel_size=1.0, device=device)
@@ -233,14 +239,36 @@ def cleanup_volume(volume: wp.Volume) -> None:
     del volume
 
 
+def get_volume_size(volume: wp.Volume) -> int:
+    return volume.get_grid_info().size_in_bytes
+
+
+def measure_allocation_sizes(kind: str, data: BenchmarkData, device: wp.Device) -> AllocationSizes:
+    status = wp.zeros(1, dtype=wp.uint32, device=device)
+    exact_volume = allocate_exact(kind, data, device)
+    rebuildable_volume = allocate_rebuildable(kind, data, status, device)
+    synchronize(device)
+    check_status(f"{kind} rebuildable size probe", status)
+
+    sizes = AllocationSizes(
+        exact_bytes=get_volume_size(exact_volume),
+        rebuildable_bytes=get_volume_size(rebuildable_volume),
+    )
+    del exact_volume
+    del rebuildable_volume
+    gc.collect()
+    synchronize(device)
+    return sizes
+
+
 def benchmark_kind(kind: str, data: BenchmarkData, args: argparse.Namespace, device: wp.Device) -> list[TimingResult]:
     setup_status = wp.zeros(1, dtype=wp.uint32, device=device)
     rebuild_status = wp.zeros(1, dtype=wp.uint32, device=device)
 
     results = [
         timed_samples(
-            "legacy allocate",
-            lambda: allocate_legacy(kind, data, device),
+            "exact allocate",
+            lambda: allocate_exact(kind, data, device),
             iterations=args.iterations,
             warmup=args.warmup,
             device=device,
@@ -300,7 +328,18 @@ def benchmark_kind(kind: str, data: BenchmarkData, args: argparse.Namespace, dev
     return results
 
 
-def print_case_header(kind: str, data: BenchmarkData) -> None:
+def format_bytes(value: int) -> str:
+    units = ("B", "KiB", "MiB", "GiB")
+    scaled = float(value)
+    for unit in units:
+        if scaled < 1024.0 or unit == units[-1]:
+            return f"{scaled:.2f} {unit}" if unit != "B" else f"{value} B"
+        scaled /= 1024.0
+
+    raise AssertionError("unreachable")
+
+
+def print_case_header(kind: str, data: BenchmarkData, sizes: AllocationSizes) -> None:
     capacities = data.capacities
     print()
     print(f"{kind.upper()}: {data.point_count} points, {data.unique_count} unique generated points")
@@ -309,6 +348,7 @@ def print_case_header(kind: str, data: BenchmarkData) -> None:
         f"leaf={capacities.leaf_nodes}, lower={capacities.lower_nodes}, "
         f"upper={capacities.upper_nodes}, active_voxels={capacities.active_voxels}"
     )
+    print(f"grid bytes: exact={format_bytes(sizes.exact_bytes)}, rebuildable={format_bytes(sizes.rebuildable_bytes)}")
 
 
 def print_results(results: list[TimingResult]) -> None:
@@ -381,7 +421,8 @@ def main() -> None:
             seed=args.seed + index,
             device=device,
         )
-        print_case_header(kind, data)
+        sizes = measure_allocation_sizes(kind, data, device)
+        print_case_header(kind, data, sizes)
         print_results(benchmark_kind(kind, data, args, device))
 
 

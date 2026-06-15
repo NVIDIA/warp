@@ -12,214 +12,8 @@
 #include <cub/cub.cuh>
 #include <cuda.h>
 #include <cuda_runtime_api.h>
-#include <nanovdb/tools/cuda/PointsToGrid.cuh>
 
-#if defined(__NVCC_DIAG_PRAGMA_SUPPORT__)
-// dynamic initialization is not supported for a function-scope static __shared__ variable within a
-// __device__/__global__ function
-#pragma nv_diag_suppress 20054
-#elif defined(__NVCC__)
-#pragma diag_suppress 20054
-#endif
 namespace {
-/// Resource class following interface of nanovdb::DeviceResource as expected by nanovdb::PointsToGrid
-class Resource {
-public:
-    // cudaMalloc aligns memory to 256 bytes by default
-    static constexpr size_t DEFAULT_ALIGNMENT = 256;
-
-    static void* allocateAsync(size_t bytes, size_t, cudaStream_t stream)
-    {
-        void* d_ptr = wp_alloc_device(WP_CURRENT_CONTEXT, bytes, "(native:volume_builder)");
-        cudaCheckError();
-        return d_ptr;
-    }
-
-    static void deallocateAsync(void* d_ptr, size_t, size_t, cudaStream_t stream)
-    {
-        wp_free_device(WP_CURRENT_CONTEXT, d_ptr);
-    }
-};
-
-/// @brief  Implementation of NanoVDB's DeviceBuffer that uses warp allocators
-class DeviceBuffer {
-    uint64_t mSize;  // total number of bytes managed by this buffer (assumed to be identical for host and device)
-    void *mCpuData, *mGpuData;  // raw pointers to the host and device buffers
-    bool mManaged;
-
-public:
-    /// @brief Static factory method that return an instance of this buffer
-    /// @param size byte size of buffer to be initialized
-    /// @param dummy this argument is currently ignored but required to match the API of the HostBuffer
-    /// @param device id of the device on which to initialize the buffer
-    /// @param stream optional stream argument (defaults to stream NULL)
-    /// @return An instance of this class using move semantics
-    static DeviceBuffer create(
-        uint64_t size, const DeviceBuffer* dummy = nullptr, int device = cudaCpuDeviceId, cudaStream_t stream = nullptr
-    )
-    {
-        return DeviceBuffer(size, device, stream);
-    }
-
-    /// @brief Static factory method that return an instance of this buffer that wraps externally managed memory
-    /// @param size byte size of buffer specified by external memory
-    /// @param cpuData pointer to externally managed host memory
-    /// @param gpuData pointer to externally managed device memory
-    /// @return An instance of this class using move semantics
-#ifdef __NVCC__
-#pragma nv_diag_suppress 177
-#endif
-    static DeviceBuffer create(uint64_t size, void* cpuData, void* gpuData)
-    {
-        return DeviceBuffer(size, cpuData, gpuData);
-    }
-#ifdef __NVCC__
-#pragma nv_diag_default 177
-#endif
-
-    /// @brief Constructor
-    /// @param size byte size of buffer to be initialized
-    /// @param host If true buffer is initialized only on the host/CPU, else on the device/GPU
-    /// @param stream optional stream argument (defaults to stream NULL)
-    DeviceBuffer(uint64_t size = 0, int device = cudaCpuDeviceId, cudaStream_t stream = nullptr)
-        : mSize(0)
-        , mCpuData(nullptr)
-        , mGpuData(nullptr)
-        , mManaged(false)
-    {
-        if (size > 0)
-            this->init(size, device, stream);
-    }
-
-    DeviceBuffer(uint64_t size, void* cpuData, void* gpuData)
-        : mSize(size)
-        , mCpuData(cpuData)
-        , mGpuData(gpuData)
-        , mManaged(false)
-    {
-    }
-
-    /// @brief Disallow copy-construction
-    DeviceBuffer(const DeviceBuffer&) = delete;
-
-    /// @brief Move copy-constructor
-    DeviceBuffer(DeviceBuffer&& other) noexcept
-        : mSize(other.mSize)
-        , mCpuData(other.mCpuData)
-        , mGpuData(other.mGpuData)
-        , mManaged(other.mManaged)
-    {
-        other.mSize = 0;
-        other.mCpuData = nullptr;
-        other.mGpuData = nullptr;
-        other.mManaged = false;
-    }
-
-    /// @brief Disallow copy assignment operation
-    DeviceBuffer& operator=(const DeviceBuffer&) = delete;
-
-    /// @brief Move copy assignment operation
-    DeviceBuffer& operator=(DeviceBuffer&& other) noexcept
-    {
-        this->clear();
-        mSize = other.mSize;
-        mCpuData = other.mCpuData;
-        mGpuData = other.mGpuData;
-        mManaged = other.mManaged;
-        other.mSize = 0;
-        other.mCpuData = nullptr;
-        other.mGpuData = nullptr;
-        other.mManaged = false;
-        return *this;
-    }
-
-    /// @brief Destructor frees memory on both the host and device
-    ~DeviceBuffer() { this->clear(); };
-
-    /// @brief Initialize buffer
-    /// @param size byte size of buffer to be initialized
-    /// @param device id of the device on which to initialize the buffer
-    /// @note All existing buffers are first cleared
-    /// @warning size is expected to be non-zero. Use clear() clear buffer!
-    void init(uint64_t size, int device = cudaCpuDeviceId, void* stream = nullptr)
-    {
-        if (mSize > 0)
-            this->clear(stream);
-        NANOVDB_ASSERT(size > 0);
-        if (device == cudaCpuDeviceId) {
-            mCpuData = wp_alloc_pinned(size, "(native:volume_builder)");
-        } else {
-            mGpuData = wp_alloc_device(WP_CURRENT_CONTEXT, size, "(native:volume_builder)");
-        }
-        cudaCheckError();
-        mSize = size;
-        mManaged = true;
-    }
-
-    /// @brief Returns a raw pointer to the host/CPU buffer managed by this allocator.
-    /// @warning Note that the pointer can be NULL!
-    void* data() const { return mCpuData; }
-
-    /// @brief Returns a raw pointer to the device/GPU buffer managed by this allocator.
-    /// @warning Note that the pointer can be NULL!
-    void* deviceData() const { return mGpuData; }
-
-    /// @brief Returns the size in bytes of the raw memory buffer managed by this allocator.
-#ifdef __NVCC__
-#pragma nv_diag_suppress 177
-#endif
-    uint64_t size() const { return mSize; }
-
-    //@{
-    /// @brief Returns true if this allocator is empty, i.e. has no allocated memory
-    bool empty() const { return mSize == 0; }
-    bool isEmpty() const { return mSize == 0; }
-#ifdef __NVCC__
-#pragma nv_diag_default 177
-#endif
-    //@}
-
-    /// @brief Detach device data so it is not dealloced when this buffer is destroyed
-    void detachDeviceData()
-    {
-        mGpuData = nullptr;
-        if (!mCpuData) {
-            mSize = 0;
-        }
-    }
-
-    /// @brief De-allocate all memory managed by this allocator and set all pointers to NULL
-    void clear(void* stream = nullptr)
-    {
-        if (mManaged && mGpuData)
-            wp_free_device(WP_CURRENT_CONTEXT, mGpuData);
-        if (mManaged && mCpuData)
-            wp_free_pinned(mCpuData);
-        mCpuData = mGpuData = nullptr;
-        mSize = 0;
-        mManaged = false;
-    }
-
-};  // DeviceBuffer class
-
-template <typename Tree> __global__ void activateAllLeafVoxels(Tree* tree)
-{
-    const unsigned leaf_count = tree->mNodeCount[0];
-
-    const unsigned tid = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if (tid < leaf_count) {
-        // activate all leaf voxels
-        typename Tree::LeafNodeType* const leaf_nodes = tree->getFirstLeaf();
-        typename Tree::LeafNodeType& leaf = leaf_nodes[tid];
-        leaf.mValueMask.setOn();
-        leaf.updateBBox();
-    }
-
-    if (tid == 0) {
-        tree->mVoxelCount = Tree::LeafNodeType::SIZE * leaf_count;  // full leaves
-    }
-}
 
 template <typename Node>
 __device__ std::enable_if_t<!nanovdb::BuildTraits<typename Node::BuildType>::is_index>
@@ -247,135 +41,10 @@ setBackgroundValue(Node& node, const typename Node::BuildType background_value)
 {
 }
 
-template <typename T> struct alignas(alignof(T)) AlignedProxy {
-    char data[sizeof(T)];
-};
-
-template <typename Tree, typename NodeT>
-__global__ void setInternalBBoxAndBackgroundValue(Tree* tree, const typename Tree::BuildType background_value)
-{
-    using BBox = nanovdb::math::BBox<typename NodeT::CoordT>;
-    using BBoxProxy = AlignedProxy<BBox>;
-
-    __shared__ BBoxProxy bbox_mem;
-
-    BBox& bbox = reinterpret_cast<BBox&>(bbox_mem);
-
-    const unsigned node_count = tree->mNodeCount[NodeT::LEVEL];
-    const unsigned node_id = blockIdx.x;
-
-    if (node_id < node_count) {
-
-        if (threadIdx.x == 0) {
-            new (&bbox) BBox();
-        }
-
-        __syncthreads();
-
-        NodeT& node = tree->template getFirstNode<NodeT>()[node_id];
-        for (unsigned child_id = threadIdx.x; child_id < NodeT::SIZE; child_id += blockDim.x) {
-            if (node.isChild(child_id)) {
-                bbox.expandAtomic(node.getChild(child_id)->bbox());
-            } else {
-                setBackgroundValue(node, child_id, background_value);
-            }
-        }
-
-        __syncthreads();
-
-        if (threadIdx.x == 0) {
-            node.mBBox = bbox;
-        }
-    }
-}
-
-template <typename Tree>
-__global__ void
-setRootBBoxAndBackgroundValue(nanovdb::Grid<Tree>* grid, const typename Tree::BuildType background_value)
-{
-    using BBox = typename Tree::RootNodeType::BBoxType;
-    using BBoxProxy = AlignedProxy<BBox>;
-    __shared__ BBoxProxy bbox_mem;
-
-    BBox& bbox = reinterpret_cast<BBox&>(bbox_mem);
-
-    Tree& tree = grid->tree();
-    const unsigned upper_count = tree.mNodeCount[2];
-
-    if (threadIdx.x == 0) {
-        new (&bbox) BBox();
-    }
-
-    __syncthreads();
-
-    for (unsigned upper_id = threadIdx.x; upper_id < upper_count; upper_id += blockDim.x) {
-        typename Tree::UpperNodeType& upper = tree.getFirstUpper()[upper_id];
-        bbox.expandAtomic(upper.bbox());
-    }
-
-    __syncthreads();
-
-    if (threadIdx.x == 0) {
-        typename Tree::RootNodeType& root = tree.root();
-        setBackgroundValue(root, background_value);
-        root.mBBox = bbox;
-
-        grid->mWorldBBox = root.mBBox.transform(grid->map());
-    }
-}
-
-template <typename BuildT>
-void finalize_grid(nanovdb::Grid<nanovdb::NanoTree<BuildT>>& out_grid, const BuildGridParams<BuildT>& params)
-{
-    // set background value, activate all voxels for allocated tiles and update bbox
-
-    using Tree = nanovdb::NanoTree<BuildT>;
-    Tree* tree = &out_grid.tree();
-
-    int node_counts[3];
-    wp_memcpy_d2h(WP_CURRENT_CONTEXT, node_counts, tree->mNodeCount, sizeof(node_counts));
-    // synchronization below is unnecessary as node_counts is in pageable memory.
-    // keep it for clarity
-    cudaStream_t stream = static_cast<cudaStream_t>(wp_cuda_stream_get_current());
-    wp_cuda_stream_synchronize(stream);
-
-    const unsigned int leaf_count = node_counts[0];
-    const unsigned int lower_count = node_counts[1];
-    const unsigned int upper_count = node_counts[2];
-
-    constexpr unsigned NUM_THREADS = 256;
-    const unsigned leaf_blocks = (leaf_count + NUM_THREADS - 1) / NUM_THREADS;
-    activateAllLeafVoxels<Tree><<<leaf_blocks, NUM_THREADS, 0, stream>>>(tree);
-
-    setInternalBBoxAndBackgroundValue<Tree, typename Tree::LowerNodeType>
-        <<<lower_count, NUM_THREADS, 0, stream>>>(tree, params.background_value);
-    setInternalBBoxAndBackgroundValue<Tree, typename Tree::UpperNodeType>
-        <<<upper_count, NUM_THREADS, 0, stream>>>(tree, params.background_value);
-    setRootBBoxAndBackgroundValue<Tree><<<1, NUM_THREADS, 0, stream>>>(&out_grid, params.background_value);
-
-    check_cuda(wp_cuda_context_check(WP_CURRENT_CONTEXT));
-}
-
-template <>
-void finalize_grid(
-    nanovdb::Grid<nanovdb::NanoTree<nanovdb::ValueOnIndex>>& out_grid,
-    const BuildGridParams<nanovdb::ValueOnIndex>& params
-)
-{
-    // nothing to do for OnIndex grids
-}
-
-/// "fancy-pointer" that transforms from world to index coordinates
-struct WorldSpacePointsPtr {
-    const nanovdb::Vec3f* points;
-    const nanovdb::Map map;
-
-    __device__ nanovdb::Vec3f operator[](int idx) const { return map.applyInverseMapF(points[idx]); }
-
-    __device__ nanovdb::Vec3f operator*() const { return (*this)[0]; }
-};
-
 static constexpr uint64_t REBUILD_INVALID_KEY = ~uint64_t(0);
+static constexpr unsigned REBUILD_NUM_THREADS = 128;
+
+inline unsigned rebuild_num_blocks(uint64_t n) { return unsigned((n + REBUILD_NUM_THREADS - 1) / REBUILD_NUM_THREADS); }
 
 enum RebuildCountSlot : uint32_t {
     REBUILD_COUNT_LEAF = 0,
@@ -443,10 +112,110 @@ __global__ void rebuild_write_status(uint32_t* status, uint32_t bits)
     }
 }
 
+struct RebuildKeyScratch {
+    size_t num_points = 0;
+    int point_count = 0;
+    bool active_voxel_grid = false;
+    uint64_t* keys_a = nullptr;
+    uint64_t* keys_b = nullptr;
+    uint64_t* leaf_keys = nullptr;
+    uint64_t* lower_keys = nullptr;
+    uint64_t* upper_keys = nullptr;
+    uint64_t* voxel_keys = nullptr;
+    uint64_t* parent_keys = nullptr;
+    uint32_t* run_counts = nullptr;
+    uint32_t* counts = nullptr;
+};
+
+void rebuild_free_key_scratch(RebuildKeyScratch& scratch)
+{
+    if (scratch.keys_a)
+        wp_free_device(WP_CURRENT_CONTEXT, scratch.keys_a);
+    if (scratch.keys_b)
+        wp_free_device(WP_CURRENT_CONTEXT, scratch.keys_b);
+    if (scratch.leaf_keys)
+        wp_free_device(WP_CURRENT_CONTEXT, scratch.leaf_keys);
+    if (scratch.lower_keys)
+        wp_free_device(WP_CURRENT_CONTEXT, scratch.lower_keys);
+    if (scratch.upper_keys)
+        wp_free_device(WP_CURRENT_CONTEXT, scratch.upper_keys);
+    if (scratch.voxel_keys)
+        wp_free_device(WP_CURRENT_CONTEXT, scratch.voxel_keys);
+    if (scratch.parent_keys)
+        wp_free_device(WP_CURRENT_CONTEXT, scratch.parent_keys);
+    if (scratch.run_counts)
+        wp_free_device(WP_CURRENT_CONTEXT, scratch.run_counts);
+    if (scratch.counts)
+        wp_free_device(WP_CURRENT_CONTEXT, scratch.counts);
+
+    scratch = {};
+}
+
+bool rebuild_alloc_key_scratch(
+    RebuildKeyScratch& scratch, size_t num_points, bool active_voxel_grid, uint32_t* status, cudaStream_t stream
+)
+{
+    if (status) {
+        check_cuda(cudaMemsetAsync(status, 0, sizeof(uint32_t), stream));
+    }
+
+    if (num_points == 0 || num_points > size_t(std::numeric_limits<int>::max())) {
+        if (status) {
+            rebuild_write_status<<<1, 1, 0, stream>>>(status, WP_VOLUME_REBUILD_INVALID_INPUT);
+            check_cuda(cudaGetLastError());
+        }
+        return false;
+    }
+
+    scratch.num_points = num_points;
+    scratch.point_count = int(num_points);
+    scratch.active_voxel_grid = active_voxel_grid;
+    scratch.keys_a = static_cast<uint64_t*>(
+        wp_alloc_device(WP_CURRENT_CONTEXT, num_points * sizeof(uint64_t), "(native:volume_builder)")
+    );
+    scratch.keys_b = static_cast<uint64_t*>(
+        wp_alloc_device(WP_CURRENT_CONTEXT, num_points * sizeof(uint64_t), "(native:volume_builder)")
+    );
+    scratch.leaf_keys = static_cast<uint64_t*>(
+        wp_alloc_device(WP_CURRENT_CONTEXT, num_points * sizeof(uint64_t), "(native:volume_builder)")
+    );
+    scratch.lower_keys = static_cast<uint64_t*>(
+        wp_alloc_device(WP_CURRENT_CONTEXT, num_points * sizeof(uint64_t), "(native:volume_builder)")
+    );
+    scratch.upper_keys = static_cast<uint64_t*>(
+        wp_alloc_device(WP_CURRENT_CONTEXT, num_points * sizeof(uint64_t), "(native:volume_builder)")
+    );
+    scratch.voxel_keys = active_voxel_grid
+        ? static_cast<uint64_t*>(
+              wp_alloc_device(WP_CURRENT_CONTEXT, num_points * sizeof(uint64_t), "(native:volume_builder)")
+          )
+        : nullptr;
+    scratch.parent_keys = static_cast<uint64_t*>(
+        wp_alloc_device(WP_CURRENT_CONTEXT, num_points * sizeof(uint64_t), "(native:volume_builder)")
+    );
+    scratch.run_counts = static_cast<uint32_t*>(
+        wp_alloc_device(WP_CURRENT_CONTEXT, num_points * sizeof(uint32_t), "(native:volume_builder)")
+    );
+    scratch.counts = static_cast<uint32_t*>(
+        wp_alloc_device(WP_CURRENT_CONTEXT, REBUILD_COUNT_SLOT_COUNT * sizeof(uint32_t), "(native:volume_builder)")
+    );
+
+    check_cuda(cudaMemsetAsync(scratch.counts, 0, REBUILD_COUNT_SLOT_COUNT * sizeof(uint32_t), stream));
+    return true;
+}
+
+template <typename PtrT> struct RebuildPointerTraits {
+    using element_type = typename nanovdb::util::remove_reference<decltype(*nanovdb::util::declval<PtrT>())>::type;
+};
+
+template <typename T> struct RebuildPointerTraits<T*> {
+    using element_type = T;
+};
+
 template <typename PtrT>
 __device__ nanovdb::Coord rebuild_point_to_coord(const PtrT points, size_t tid, const nanovdb::Map& map)
 {
-    using Vec3T = typename nanovdb::util::remove_const<typename nanovdb::pointer_traits<PtrT>::element_type>::type;
+    using Vec3T = typename nanovdb::util::remove_const<typename RebuildPointerTraits<PtrT>::element_type>::type;
     if constexpr (nanovdb::util::is_same<Vec3T, nanovdb::Coord>::value) {
         return points[tid];
     } else if constexpr (nanovdb::util::is_same<Vec3T, nanovdb::Vec3f>::value) {
@@ -458,7 +227,7 @@ __device__ nanovdb::Coord rebuild_point_to_coord(const PtrT points, size_t tid, 
 
 __hostdev__ inline uint64_t rebuild_upper_key_from_coord(const nanovdb::Coord& ijk)
 {
-    // Match NanoVDB PointsToGrid::TileKeyFunctor ordering.
+    // Match NanoVDB's upper-root-tile key ordering.
     static constexpr int64_t kOffset = int64_t(1) << 31;
     return (uint64_t(uint32_t(int64_t(ijk[2]) + kOffset) >> 12))
         | (uint64_t(uint32_t(int64_t(ijk[1]) + kOffset) >> 12) << 21)
@@ -467,7 +236,7 @@ __hostdev__ inline uint64_t rebuild_upper_key_from_coord(const nanovdb::Coord& i
 
 __hostdev__ inline nanovdb::Coord rebuild_upper_key_to_coord(uint64_t key)
 {
-    // Match NanoVDB PointsToGrid::BuildUpperNodesFunctor decoding.
+    // Match NanoVDB's upper-node origin decoding.
     static constexpr int64_t kOffset = int64_t(1) << 31;
     static constexpr uint64_t mask = (uint64_t(1) << 21) - 1u;
     return nanovdb::Coord(
@@ -556,7 +325,8 @@ __global__ void rebuild_finalize_counts(
     uint32_t* counts,
     uint32_t* status,
     VolumeRebuildCapacities capacities,
-    bool active_voxel_grid
+    bool active_voxel_grid,
+    bool enforce_capacities
 )
 {
     uint32_t leaf_count = counts[REBUILD_COUNT_LEAF];
@@ -573,19 +343,19 @@ __global__ void rebuild_finalize_counts(
     if (voxel_count > 0 && voxel_keys && voxel_keys[voxel_count - 1] == REBUILD_INVALID_KEY)
         --voxel_count;
 
-    if (leaf_count > capacities.leaf_count) {
+    if (enforce_capacities && leaf_count > capacities.leaf_count) {
         rebuild_set_status(status, WP_VOLUME_REBUILD_LEAF_CAPACITY_EXCEEDED);
         leaf_count = capacities.leaf_count;
     }
-    if (lower_count > capacities.lower_count) {
+    if (enforce_capacities && lower_count > capacities.lower_count) {
         rebuild_set_status(status, WP_VOLUME_REBUILD_LOWER_CAPACITY_EXCEEDED);
         lower_count = capacities.lower_count;
     }
-    if (upper_count > capacities.upper_count) {
+    if (enforce_capacities && upper_count > capacities.upper_count) {
         rebuild_set_status(status, WP_VOLUME_REBUILD_UPPER_CAPACITY_EXCEEDED);
         upper_count = capacities.upper_count;
     }
-    if (uint64_t(voxel_count) > capacities.voxel_count) {
+    if (enforce_capacities && uint64_t(voxel_count) > capacities.voxel_count) {
         rebuild_set_status(status, WP_VOLUME_REBUILD_VOXEL_CAPACITY_EXCEEDED);
         voxel_count = uint32_t(capacities.voxel_count);
     }
@@ -952,10 +722,10 @@ RebuildGridData<BuildT> make_rebuild_data(
 template <typename Func> void rebuild_cub_temp_call(size_t& temp_size, Func&& func)
 {
     void* temp = nullptr;
-    cudaCheck(func(temp, temp_size));
+    check_cuda(func(temp, temp_size));
     if (temp_size > 0) {
         temp = wp_alloc_device(WP_CURRENT_CONTEXT, temp_size, "(native:volume_builder)");
-        cudaCheck(func(temp, temp_size));
+        check_cuda(func(temp, temp_size));
         wp_free_device(WP_CURRENT_CONTEXT, temp);
     }
 }
@@ -998,6 +768,163 @@ void rebuild_exclusive_sum_u32_to_u64(uint32_t* in, uint64_t* out, int count, cu
 }
 
 template <typename BuildT, typename PtrT>
+bool rebuild_count_points(
+    RebuildKeyScratch& scratch,
+    const PtrT points,
+    size_t num_points,
+    bool active_voxel_grid,
+    const VolumeRebuildCapacities& capacities,
+    const BuildGridParams<BuildT>& params,
+    bool enforce_capacities,
+    uint32_t* status,
+    cudaStream_t stream
+)
+{
+    if (!rebuild_alloc_key_scratch(scratch, num_points, active_voxel_grid, status, stream)) {
+        return false;
+    }
+
+    rebuild_emit_upper_keys<<<rebuild_num_blocks(num_points), REBUILD_NUM_THREADS, 0, stream>>>(
+        num_points, points, params.map, scratch.keys_a
+    );
+    check_cuda(cudaGetLastError());
+
+    rebuild_sort_keys(scratch.keys_a, scratch.keys_b, scratch.point_count, stream);
+    rebuild_encode_runs(
+        scratch.keys_b, scratch.upper_keys, scratch.run_counts, scratch.counts + REBUILD_COUNT_UPPER,
+        scratch.point_count, stream
+    );
+
+    rebuild_emit_hierarchy_keys<BuildT><<<rebuild_num_blocks(num_points), REBUILD_NUM_THREADS, 0, stream>>>(
+        num_points, points, params.map, scratch.upper_keys, scratch.counts, scratch.keys_a, status
+    );
+    check_cuda(cudaGetLastError());
+
+    rebuild_sort_keys(scratch.keys_a, scratch.keys_b, scratch.point_count, stream);
+    if (active_voxel_grid) {
+        rebuild_encode_runs(
+            scratch.keys_b, scratch.voxel_keys, scratch.run_counts, scratch.counts + REBUILD_COUNT_VOXEL,
+            scratch.point_count, stream
+        );
+    }
+
+    rebuild_shift_keys<9u><<<rebuild_num_blocks(num_points), REBUILD_NUM_THREADS, 0, stream>>>(
+        scratch.keys_b, scratch.parent_keys, num_points
+    );
+    rebuild_encode_runs(
+        scratch.parent_keys, scratch.leaf_keys, scratch.run_counts, scratch.counts + REBUILD_COUNT_LEAF,
+        scratch.point_count, stream
+    );
+
+    rebuild_shift_keys<21u><<<rebuild_num_blocks(num_points), REBUILD_NUM_THREADS, 0, stream>>>(
+        scratch.keys_b, scratch.parent_keys, num_points
+    );
+    rebuild_encode_runs(
+        scratch.parent_keys, scratch.lower_keys, scratch.run_counts, scratch.counts + REBUILD_COUNT_LOWER,
+        scratch.point_count, stream
+    );
+    check_cuda(cudaGetLastError());
+
+    rebuild_finalize_counts<<<1, 1, 0, stream>>>(
+        scratch.leaf_keys, scratch.lower_keys, scratch.upper_keys, scratch.voxel_keys, scratch.counts, status,
+        capacities, active_voxel_grid, enforce_capacities
+    );
+    check_cuda(cudaGetLastError());
+
+    return true;
+}
+
+VolumeRebuildCapacities rebuild_copy_exact_capacities(const RebuildKeyScratch& scratch, cudaStream_t stream)
+{
+    uint32_t counts[REBUILD_COUNT_SLOT_COUNT] = {};
+    wp_memcpy_d2h(WP_CURRENT_CONTEXT, counts, scratch.counts, sizeof(counts));
+    wp_cuda_stream_synchronize(stream);
+
+    VolumeRebuildCapacities capacities;
+    capacities.leaf_count = counts[REBUILD_COUNT_LEAF];
+    capacities.lower_count = counts[REBUILD_COUNT_LOWER];
+    capacities.upper_count = counts[REBUILD_COUNT_UPPER];
+    capacities.voxel_count = scratch.active_voxel_grid ? counts[REBUILD_COUNT_VOXEL]
+                                                       : uint64_t(capacities.leaf_count) * PNANOVDB_LEAF_TABLE_COUNT;
+    return capacities;
+}
+
+template <typename BuildT>
+void rebuild_populate_grid_from_scratch(
+    nanovdb::Grid<nanovdb::NanoTree<BuildT>>* grid,
+    size_t grid_size,
+    const RebuildKeyScratch& scratch,
+    const VolumeRebuildCapacities& capacities,
+    const BuildGridParams<BuildT>& params,
+    uint32_t* status,
+    cudaStream_t stream
+)
+{
+    uint32_t* leaf_active_counts = nullptr;
+    uint64_t* leaf_active_prefix = nullptr;
+    if (scratch.active_voxel_grid) {
+        leaf_active_counts = static_cast<uint32_t*>(
+            wp_alloc_device(WP_CURRENT_CONTEXT, capacities.leaf_count * sizeof(uint32_t), "(native:volume_builder)")
+        );
+        leaf_active_prefix = static_cast<uint64_t*>(
+            wp_alloc_device(WP_CURRENT_CONTEXT, capacities.leaf_count * sizeof(uint64_t), "(native:volume_builder)")
+        );
+        check_cuda(cudaMemsetAsync(leaf_active_counts, 0, capacities.leaf_count * sizeof(uint32_t), stream));
+    }
+
+    RebuildGridData<BuildT> data = make_rebuild_data(
+        grid, grid_size, capacities, params, scratch.leaf_keys, scratch.lower_keys, scratch.upper_keys,
+        scratch.voxel_keys, scratch.counts, leaf_active_counts, leaf_active_prefix, status
+    );
+
+    rebuild_init_grid_tree_root<<<1, 1, 0, stream>>>(data, scratch.active_voxel_grid);
+    rebuild_build_upper_nodes<<<rebuild_num_blocks(capacities.upper_count), REBUILD_NUM_THREADS, 0, stream>>>(data);
+    rebuild_set_upper_background_values<<<
+        rebuild_num_blocks(uint64_t(capacities.upper_count) << 15u), REBUILD_NUM_THREADS, 0, stream>>>(data);
+    rebuild_build_lower_nodes<<<rebuild_num_blocks(capacities.lower_count), REBUILD_NUM_THREADS, 0, stream>>>(data);
+    rebuild_set_lower_background_values<<<
+        rebuild_num_blocks(uint64_t(capacities.lower_count) << 12u), REBUILD_NUM_THREADS, 0, stream>>>(data);
+    rebuild_build_leaf_nodes<<<rebuild_num_blocks(capacities.leaf_count), REBUILD_NUM_THREADS, 0, stream>>>(
+        data, scratch.active_voxel_grid
+    );
+    check_cuda(cudaGetLastError());
+
+    if (scratch.active_voxel_grid) {
+        if constexpr (nanovdb::BuildTraits<BuildT>::is_onindex) {
+            rebuild_set_active_voxels<<<rebuild_num_blocks(capacities.voxel_count), REBUILD_NUM_THREADS, 0, stream>>>(
+                data
+            );
+            rebuild_exclusive_sum_u32_to_u64(
+                leaf_active_counts, leaf_active_prefix, int(capacities.leaf_count), stream
+            );
+            rebuild_finalize_onindex_leaves<<<
+                rebuild_num_blocks(capacities.leaf_count), REBUILD_NUM_THREADS, 0, stream>>>(data);
+        }
+    } else {
+        rebuild_set_leaf_values<<<
+            rebuild_num_blocks(uint64_t(capacities.leaf_count) << 9u), REBUILD_NUM_THREADS, 0, stream>>>(data);
+    }
+
+    const uint32_t bbox_capacity
+        = std::max(std::max(capacities.leaf_count, capacities.lower_count), capacities.upper_count);
+    rebuild_reset_bboxes<<<rebuild_num_blocks(bbox_capacity), REBUILD_NUM_THREADS, 0, stream>>>(data);
+    rebuild_propagate_leaf_bboxes<<<rebuild_num_blocks(capacities.leaf_count), REBUILD_NUM_THREADS, 0, stream>>>(data);
+    rebuild_propagate_lower_bboxes<<<rebuild_num_blocks(capacities.lower_count), REBUILD_NUM_THREADS, 0, stream>>>(
+        data
+    );
+    rebuild_propagate_upper_bboxes<<<rebuild_num_blocks(capacities.upper_count), REBUILD_NUM_THREADS, 0, stream>>>(
+        data
+    );
+    rebuild_finalize_world_bbox<<<1, 1, 0, stream>>>(data);
+    check_cuda(cudaGetLastError());
+
+    if (leaf_active_counts)
+        wp_free_device(WP_CURRENT_CONTEXT, leaf_active_counts);
+    if (leaf_active_prefix)
+        wp_free_device(WP_CURRENT_CONTEXT, leaf_active_prefix);
+}
+
+template <typename BuildT, typename PtrT>
 void rebuild_grid_from_points_impl(
     nanovdb::Grid<nanovdb::NanoTree<BuildT>>* grid,
     size_t grid_size,
@@ -1010,173 +937,66 @@ void rebuild_grid_from_points_impl(
 )
 {
     cudaStream_t stream = static_cast<cudaStream_t>(wp_cuda_stream_get_current());
-    constexpr unsigned NUM_THREADS = 128;
-    const auto num_blocks = [](uint64_t n) { return unsigned((n + NUM_THREADS - 1) / NUM_THREADS); };
-
-    if (status) {
-        cudaCheck(cudaMemsetAsync(status, 0, sizeof(uint32_t), stream));
-    }
-
-    if (num_points == 0 || capacities.leaf_count == 0 || capacities.lower_count == 0 || capacities.upper_count == 0) {
+    if (capacities.leaf_count == 0 || capacities.lower_count == 0 || capacities.upper_count == 0) {
         if (status) {
+            check_cuda(cudaMemsetAsync(status, 0, sizeof(uint32_t), stream));
             rebuild_write_status<<<1, 1, 0, stream>>>(status, WP_VOLUME_REBUILD_INVALID_INPUT);
-            cudaCheckError();
+            check_cuda(cudaGetLastError());
         }
         return;
     }
 
-    if (num_points > size_t(std::numeric_limits<int>::max())) {
-        if (status) {
-            rebuild_write_status<<<1, 1, 0, stream>>>(status, WP_VOLUME_REBUILD_INVALID_INPUT);
-            cudaCheckError();
-        }
+    RebuildKeyScratch scratch;
+    if (!rebuild_count_points(
+            scratch, points, num_points, active_voxel_grid, capacities, params, true, status, stream
+        )) {
         return;
     }
 
-    const int point_count = int(num_points);
-    uint64_t* keys_a = static_cast<uint64_t*>(
-        wp_alloc_device(WP_CURRENT_CONTEXT, num_points * sizeof(uint64_t), "(native:volume_builder)")
-    );
-    uint64_t* keys_b = static_cast<uint64_t*>(
-        wp_alloc_device(WP_CURRENT_CONTEXT, num_points * sizeof(uint64_t), "(native:volume_builder)")
-    );
-    uint64_t* leaf_keys = static_cast<uint64_t*>(
-        wp_alloc_device(WP_CURRENT_CONTEXT, num_points * sizeof(uint64_t), "(native:volume_builder)")
-    );
-    uint64_t* lower_keys = static_cast<uint64_t*>(
-        wp_alloc_device(WP_CURRENT_CONTEXT, num_points * sizeof(uint64_t), "(native:volume_builder)")
-    );
-    uint64_t* upper_keys = static_cast<uint64_t*>(
-        wp_alloc_device(WP_CURRENT_CONTEXT, num_points * sizeof(uint64_t), "(native:volume_builder)")
-    );
-    uint64_t* voxel_keys = active_voxel_grid
-        ? static_cast<uint64_t*>(
-              wp_alloc_device(WP_CURRENT_CONTEXT, num_points * sizeof(uint64_t), "(native:volume_builder)")
-          )
-        : nullptr;
-    uint64_t* parent_keys_a = static_cast<uint64_t*>(
-        wp_alloc_device(WP_CURRENT_CONTEXT, num_points * sizeof(uint64_t), "(native:volume_builder)")
-    );
-    uint32_t* run_counts = static_cast<uint32_t*>(
-        wp_alloc_device(WP_CURRENT_CONTEXT, num_points * sizeof(uint32_t), "(native:volume_builder)")
-    );
-    uint32_t* counts = static_cast<uint32_t*>(
-        wp_alloc_device(WP_CURRENT_CONTEXT, REBUILD_COUNT_SLOT_COUNT * sizeof(uint32_t), "(native:volume_builder)")
-    );
-    uint32_t* leaf_active_counts = active_voxel_grid
-        ? static_cast<uint32_t*>(
-              wp_alloc_device(WP_CURRENT_CONTEXT, capacities.leaf_count * sizeof(uint32_t), "(native:volume_builder)")
-          )
-        : nullptr;
-    uint64_t* leaf_active_prefix = active_voxel_grid
-        ? static_cast<uint64_t*>(
-              wp_alloc_device(WP_CURRENT_CONTEXT, capacities.leaf_count * sizeof(uint64_t), "(native:volume_builder)")
-          )
-        : nullptr;
+    rebuild_populate_grid_from_scratch(grid, grid_size, scratch, capacities, params, status, stream);
+    rebuild_free_key_scratch(scratch);
+}
 
-    cudaCheck(cudaMemsetAsync(counts, 0, REBUILD_COUNT_SLOT_COUNT * sizeof(uint32_t), stream));
-    if (active_voxel_grid) {
-        cudaCheck(cudaMemsetAsync(leaf_active_counts, 0, capacities.leaf_count * sizeof(uint32_t), stream));
+template <typename BuildT, typename PtrT>
+void allocate_exact_grid_from_points_impl(
+    nanovdb::Grid<nanovdb::NanoTree<BuildT>>*& out_grid,
+    size_t& out_grid_size,
+    const PtrT points,
+    size_t num_points,
+    bool active_voxel_grid,
+    const BuildGridParams<BuildT>& params
+)
+{
+    out_grid = nullptr;
+    out_grid_size = 0;
+
+    cudaStream_t stream = static_cast<cudaStream_t>(wp_cuda_stream_get_current());
+    RebuildKeyScratch scratch;
+    VolumeRebuildCapacities empty_capacities;
+    if (!rebuild_count_points(
+            scratch, points, num_points, active_voxel_grid, empty_capacities, params, false, nullptr, stream
+        )) {
+        return;
     }
 
-    rebuild_emit_upper_keys<<<num_blocks(num_points), NUM_THREADS, 0, stream>>>(num_points, points, params.map, keys_a);
-    cudaCheckError();
-
-    rebuild_sort_keys(keys_a, keys_b, point_count, stream);
-    rebuild_encode_runs(keys_b, upper_keys, run_counts, counts + REBUILD_COUNT_UPPER, point_count, stream);
-
-    rebuild_emit_hierarchy_keys<BuildT><<<num_blocks(num_points), NUM_THREADS, 0, stream>>>(
-        num_points, points, params.map, upper_keys, counts, keys_a, status
-    );
-    cudaCheckError();
-
-    if (active_voxel_grid) {
-        rebuild_sort_keys(keys_a, keys_b, point_count, stream);
-        rebuild_encode_runs(keys_b, voxel_keys, run_counts, counts + REBUILD_COUNT_VOXEL, point_count, stream);
-
-        rebuild_shift_keys<9u><<<num_blocks(num_points), NUM_THREADS, 0, stream>>>(keys_b, parent_keys_a, num_points);
-        rebuild_encode_runs(parent_keys_a, leaf_keys, run_counts, counts + REBUILD_COUNT_LEAF, point_count, stream);
-
-        rebuild_shift_keys<21u><<<num_blocks(num_points), NUM_THREADS, 0, stream>>>(keys_b, parent_keys_a, num_points);
-        rebuild_encode_runs(parent_keys_a, lower_keys, run_counts, counts + REBUILD_COUNT_LOWER, point_count, stream);
-    } else {
-        rebuild_sort_keys(keys_a, keys_b, point_count, stream);
-        rebuild_shift_keys<9u><<<num_blocks(num_points), NUM_THREADS, 0, stream>>>(keys_b, parent_keys_a, num_points);
-        rebuild_encode_runs(parent_keys_a, leaf_keys, run_counts, counts + REBUILD_COUNT_LEAF, point_count, stream);
-
-        rebuild_shift_keys<21u><<<num_blocks(num_points), NUM_THREADS, 0, stream>>>(keys_b, parent_keys_a, num_points);
-        rebuild_encode_runs(parent_keys_a, lower_keys, run_counts, counts + REBUILD_COUNT_LOWER, point_count, stream);
-    }
-    cudaCheckError();
-
-    rebuild_finalize_counts<<<1, 1, 0, stream>>>(
-        leaf_keys, lower_keys, upper_keys, voxel_keys, counts, status, capacities, active_voxel_grid
-    );
-    cudaCheckError();
-
-    RebuildGridData<BuildT> data = make_rebuild_data(
-        grid, grid_size, capacities, params, leaf_keys, lower_keys, upper_keys, voxel_keys, counts, leaf_active_counts,
-        leaf_active_prefix, status
-    );
-
-    rebuild_init_grid_tree_root<<<1, 1, 0, stream>>>(data, active_voxel_grid);
-    rebuild_build_upper_nodes<<<num_blocks(capacities.upper_count), NUM_THREADS, 0, stream>>>(data);
-    rebuild_set_upper_background_values<<<
-        num_blocks(uint64_t(capacities.upper_count) << 15u), NUM_THREADS, 0, stream>>>(data);
-    rebuild_build_lower_nodes<<<num_blocks(capacities.lower_count), NUM_THREADS, 0, stream>>>(data);
-    rebuild_set_lower_background_values<<<
-        num_blocks(uint64_t(capacities.lower_count) << 12u), NUM_THREADS, 0, stream>>>(data);
-    rebuild_build_leaf_nodes<<<num_blocks(capacities.leaf_count), NUM_THREADS, 0, stream>>>(data, active_voxel_grid);
-    cudaCheckError();
-
-    if (active_voxel_grid) {
-        if constexpr (nanovdb::BuildTraits<BuildT>::is_onindex) {
-            rebuild_set_active_voxels<<<num_blocks(capacities.voxel_count), NUM_THREADS, 0, stream>>>(data);
-            rebuild_exclusive_sum_u32_to_u64(
-                leaf_active_counts, leaf_active_prefix, int(capacities.leaf_count), stream
-            );
-            rebuild_finalize_onindex_leaves<<<num_blocks(capacities.leaf_count), NUM_THREADS, 0, stream>>>(data);
-        }
-    } else {
-        rebuild_set_leaf_values<<<num_blocks(uint64_t(capacities.leaf_count) << 9u), NUM_THREADS, 0, stream>>>(data);
+    const VolumeRebuildCapacities capacities = rebuild_copy_exact_capacities(scratch, stream);
+    if (capacities.leaf_count == 0 || capacities.lower_count == 0 || capacities.upper_count == 0) {
+        rebuild_free_key_scratch(scratch);
+        return;
     }
 
-    const uint32_t bbox_capacity
-        = std::max(std::max(capacities.leaf_count, capacities.lower_count), capacities.upper_count);
-    rebuild_reset_bboxes<<<num_blocks(bbox_capacity), NUM_THREADS, 0, stream>>>(data);
-    rebuild_propagate_leaf_bboxes<<<num_blocks(capacities.leaf_count), NUM_THREADS, 0, stream>>>(data);
-    rebuild_propagate_lower_bboxes<<<num_blocks(capacities.lower_count), NUM_THREADS, 0, stream>>>(data);
-    rebuild_propagate_upper_bboxes<<<num_blocks(capacities.upper_count), NUM_THREADS, 0, stream>>>(data);
-    rebuild_finalize_world_bbox<<<1, 1, 0, stream>>>(data);
-    cudaCheckError();
-
-    wp_free_device(WP_CURRENT_CONTEXT, keys_a);
-    wp_free_device(WP_CURRENT_CONTEXT, keys_b);
-    wp_free_device(WP_CURRENT_CONTEXT, leaf_keys);
-    wp_free_device(WP_CURRENT_CONTEXT, lower_keys);
-    wp_free_device(WP_CURRENT_CONTEXT, upper_keys);
-    if (voxel_keys)
-        wp_free_device(WP_CURRENT_CONTEXT, voxel_keys);
-    wp_free_device(WP_CURRENT_CONTEXT, parent_keys_a);
-    wp_free_device(WP_CURRENT_CONTEXT, run_counts);
-    wp_free_device(WP_CURRENT_CONTEXT, counts);
-    if (leaf_active_counts)
-        wp_free_device(WP_CURRENT_CONTEXT, leaf_active_counts);
-    if (leaf_active_prefix)
-        wp_free_device(WP_CURRENT_CONTEXT, leaf_active_prefix);
+    out_grid_size = rebuildable_grid_size<BuildT>(capacities);
+    out_grid = static_cast<nanovdb::Grid<nanovdb::NanoTree<BuildT>>*>(
+        wp_alloc_device(WP_CURRENT_CONTEXT, out_grid_size, "(native:volume_builder)")
+    );
+    rebuild_populate_grid_from_scratch(out_grid, out_grid_size, scratch, capacities, params, nullptr, stream);
+    rebuild_free_key_scratch(scratch);
 }
 
 }  // namespace
 
-namespace nanovdb {
-template <> struct BufferTraits<DeviceBuffer> {
-    static constexpr bool hasDeviceDual = true;
-};
-
-}  // namespace nanovdb
-
 template <typename BuildT>
-void build_grid_from_points(
+void allocate_grid_from_tiles(
     nanovdb::Grid<nanovdb::NanoTree<BuildT>>*& out_grid,
     size_t& out_grid_size,
     const void* points,
@@ -1185,69 +1005,52 @@ void build_grid_from_points(
     const BuildGridParams<BuildT>& params
 )
 {
-
-    out_grid = nullptr;
-    out_grid_size = 0;
-
-    try {
-
-        cudaStream_t stream = static_cast<cudaStream_t>(wp_cuda_stream_get_current());
-        nanovdb::tools::cuda::PointsToGrid<BuildT, Resource> p2g(params.map, stream);
-
-        // p2g.setVerbose(2);
-        p2g.setGridName(params.name);
-        p2g.setChecksum(nanovdb::CheckMode::Disable);
-
-        // Only compute bbox for OnIndex grids. Otherwise bbox will be computed after activating all leaf voxels
-        p2g.includeBBox(nanovdb::BuildTraits<BuildT>::is_onindex);
-
-        nanovdb::GridHandle<DeviceBuffer> grid_handle;
-
-        if (points_in_world_space) {
-            grid_handle = p2g.getHandle(
-                WorldSpacePointsPtr { static_cast<const nanovdb::Vec3f*>(points), params.map }, num_points,
-                DeviceBuffer()
-            );
-        } else {
-            grid_handle = p2g.getHandle(static_cast<const nanovdb::Coord*>(points), num_points, DeviceBuffer());
-        }
-
-        out_grid = grid_handle.deviceGrid<BuildT>();
-        out_grid_size = grid_handle.gridSize();
-
-        finalize_grid(*out_grid, params);
-
-        // So that buffer is not destroyed when handles goes out of scope
-        grid_handle.buffer().detachDeviceData();
-    } catch (const std::runtime_error& exc) {
-        out_grid = nullptr;
-        out_grid_size = 0;
+    if (points_in_world_space) {
+        allocate_exact_grid_from_points_impl(
+            out_grid, out_grid_size, static_cast<const nanovdb::Vec3f*>(points), num_points, false, params
+        );
+    } else {
+        allocate_exact_grid_from_points_impl(
+            out_grid, out_grid_size, static_cast<const nanovdb::Coord*>(points), num_points, false, params
+        );
     }
 }
 
+void allocate_grid_from_active_voxels(
+    nanovdb::Grid<nanovdb::NanoTree<nanovdb::ValueOnIndex>>*& out_grid,
+    size_t& out_grid_size,
+    const void* points,
+    size_t num_points,
+    bool points_in_world_space,
+    const BuildGridParams<nanovdb::ValueOnIndex>& params
+)
+{
+    if (points_in_world_space) {
+        allocate_exact_grid_from_points_impl(
+            out_grid, out_grid_size, static_cast<const nanovdb::Vec3f*>(points), num_points, true, params
+        );
+    } else {
+        allocate_exact_grid_from_points_impl(
+            out_grid, out_grid_size, static_cast<const nanovdb::Coord*>(points), num_points, true, params
+        );
+    }
+}
 
-#define EXPAND_BUILDER_TYPE(type) \
-template void build_grid_from_points(nanovdb::Grid<nanovdb::NanoTree<type>> *&, size_t &, const void *, size_t, bool, \
-                                     const BuildGridParams<type> &);
+#define EXPAND_BUILDER_TYPE(type)                                                                                      \
+    template void allocate_grid_from_tiles(                                                                            \
+        nanovdb::Grid<nanovdb::NanoTree<type>>*&, size_t&, const void*, size_t, bool, const BuildGridParams<type>&      \
+    );
 
 WP_VOLUME_BUILDER_INSTANTIATE_TYPES
 #undef EXPAND_BUILDER_TYPE
 
-template void build_grid_from_points(
+template void allocate_grid_from_tiles(
     nanovdb::Grid<nanovdb::NanoTree<nanovdb::ValueIndex>>*&,
     size_t&,
     const void*,
     size_t,
     bool,
     const BuildGridParams<nanovdb::ValueIndex>&
-);
-template void build_grid_from_points(
-    nanovdb::Grid<nanovdb::NanoTree<nanovdb::ValueOnIndex>>*&,
-    size_t&,
-    const void*,
-    size_t,
-    bool,
-    const BuildGridParams<nanovdb::ValueOnIndex>&
 );
 
 template <typename BuildT>
