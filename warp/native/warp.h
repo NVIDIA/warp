@@ -155,6 +155,23 @@ WP_API void wp_volume_get_tiles_host(uint64_t id, void* buf);
 WP_API void wp_volume_get_voxels_host(uint64_t id, void* buf);
 WP_API void wp_volume_destroy_host(uint64_t id);
 
+WP_API uint64_t wp_volume_from_tiles_host(
+    void* points,
+    int num_points,
+    float transform[9],
+    float translation[3],
+    bool points_in_world_space,
+    const void* bg_value,
+    uint32_t bg_value_size,
+    const char* bg_value_type
+);
+WP_API uint64_t wp_volume_index_from_tiles_host(
+    void* points, int num_points, float transform[9], float translation[3], bool points_in_world_space
+);
+WP_API uint64_t wp_volume_from_active_voxels_host(
+    void* points, int num_points, float transform[9], float translation[3], bool points_in_world_space
+);
+
 WP_API uint64_t wp_volume_create_device(void* context, void* buf, uint64_t size, bool copy, bool owner);
 WP_API void wp_volume_get_tiles_device(uint64_t id, void* buf);
 WP_API void wp_volume_get_voxels_device(uint64_t id, void* buf);

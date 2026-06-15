@@ -6689,18 +6689,16 @@ class Volume:
             max_lower_nodes: Maximum number of lower internal nodes for rebuilds. Defaults to ``max_tiles``.
             max_upper_nodes: Maximum number of upper internal nodes for rebuilds. Defaults to ``max_lower_nodes``.
             status: Optional one-element ``uint32`` CUDA array receiving rebuild status flags.
-            device: The CUDA device to create the volume on, e.g. ``"cuda"`` or ``"cuda:0"``.
+            device: The device to create the volume on, e.g. ``"cpu"``, ``"cuda"``, or ``"cuda:0"``.
 
         """
         device = warp.get_device(device)
 
-        if not device.is_cuda:
-            raise RuntimeError("Only CUDA devices are supported for allocate_by_tiles")
         if not _is_contiguous_vec_like_array(tile_points, vec_length=3, scalar_types=(float32, int32)):
             raise RuntimeError(
                 "tile_points must be contiguous and either a 1D warp array of vec3f or vec3i or a 2D n-by-3 array of int32 or float32."
             )
-        if not tile_points.device.is_cuda:
+        if tile_points.device != device:
             tile_points = tile_points.to(device)
 
         volume = cls(data=None)
@@ -6711,6 +6709,8 @@ class Volume:
         graph_rebuildable = (
             graph_rebuildable or max_tiles is not None or max_lower_nodes is not None or max_upper_nodes is not None
         )
+        if graph_rebuildable and not device.is_cuda:
+            raise RuntimeError("Graph-rebuildable volumes require a CUDA device")
         status = _volume_rebuild_status_array(status, device) if graph_rebuildable else None
         max_tiles_c = _volume_rebuild_capacity(max_tiles, tile_points.shape[0], "max_tiles") if graph_rebuildable else 0
         max_lower_nodes_c = (
@@ -6722,19 +6722,28 @@ class Volume:
         status_ptr = ctypes.c_void_p(status.ptr) if graph_rebuildable else ctypes.c_void_p(0)
 
         if bg_value is None:
-            volume.id = volume.runtime.core.wp_volume_index_from_tiles_device(
-                volume.device.context,
-                ctypes.c_void_p(tile_points.ptr),
-                tile_points.shape[0],
-                transform_buf,
-                translation_buf,
-                in_world_space,
-                graph_rebuildable,
-                max_tiles_c,
-                max_lower_nodes_c,
-                max_upper_nodes_c,
-                status_ptr,
-            )
+            if volume.device.is_cuda:
+                volume.id = volume.runtime.core.wp_volume_index_from_tiles_device(
+                    volume.device.context,
+                    ctypes.c_void_p(tile_points.ptr),
+                    tile_points.shape[0],
+                    transform_buf,
+                    translation_buf,
+                    in_world_space,
+                    graph_rebuildable,
+                    max_tiles_c,
+                    max_lower_nodes_c,
+                    max_upper_nodes_c,
+                    status_ptr,
+                )
+            else:
+                volume.id = volume.runtime.core.wp_volume_index_from_tiles_host(
+                    ctypes.c_void_p(tile_points.ptr),
+                    tile_points.shape[0],
+                    transform_buf,
+                    translation_buf,
+                    in_world_space,
+                )
         else:
             # normalize background value type
             grid_type = type_to_warp(type(bg_value))
@@ -6766,22 +6775,34 @@ class Volume:
             cvalue_size = ctypes.sizeof(cvalue)
             cvalue_type = nvdb_type.encode("ascii")
 
-            volume.id = volume.runtime.core.wp_volume_from_tiles_device(
-                volume.device.context,
-                ctypes.c_void_p(tile_points.ptr),
-                tile_points.shape[0],
-                transform_buf,
-                translation_buf,
-                in_world_space,
-                cvalue_ptr,
-                cvalue_size,
-                cvalue_type,
-                graph_rebuildable,
-                max_tiles_c,
-                max_lower_nodes_c,
-                max_upper_nodes_c,
-                status_ptr,
-            )
+            if volume.device.is_cuda:
+                volume.id = volume.runtime.core.wp_volume_from_tiles_device(
+                    volume.device.context,
+                    ctypes.c_void_p(tile_points.ptr),
+                    tile_points.shape[0],
+                    transform_buf,
+                    translation_buf,
+                    in_world_space,
+                    cvalue_ptr,
+                    cvalue_size,
+                    cvalue_type,
+                    graph_rebuildable,
+                    max_tiles_c,
+                    max_lower_nodes_c,
+                    max_upper_nodes_c,
+                    status_ptr,
+                )
+            else:
+                volume.id = volume.runtime.core.wp_volume_from_tiles_host(
+                    ctypes.c_void_p(tile_points.ptr),
+                    tile_points.shape[0],
+                    transform_buf,
+                    translation_buf,
+                    in_world_space,
+                    cvalue_ptr,
+                    cvalue_size,
+                    cvalue_type,
+                )
 
         if volume.id == 0:
             raise RuntimeError("Failed to create volume")
@@ -6820,8 +6841,6 @@ class Volume:
         explicit payload but encodes a linearized index for each active voxel, allowing to lookup and
         sample data from arbitrary external arrays.
 
-        This function is only supported for CUDA devices.
-
         Args:
             voxel_points (:class:`warp.array`): Array of positions that define the voxels to be allocated.
                 The array may use an integer scalar type (2D N-by-3 array of :class:`warp.int32` or 1D array of :class:`warp.vec3i` values), indicating index space positions,
@@ -6837,10 +6856,9 @@ class Volume:
             max_lower_nodes: Maximum number of lower internal nodes for rebuilds. Defaults to ``max_leaf_nodes``.
             max_upper_nodes: Maximum number of upper internal nodes for rebuilds. Defaults to ``max_lower_nodes``.
             status: Optional one-element ``uint32`` CUDA array receiving rebuild status flags.
-            device: The CUDA device to create the volume on, e.g. ``"cuda"`` or ``"cuda:0"``.
+            device: The device to create the volume on, e.g. ``"cpu"``, ``"cuda"``, or ``"cuda:0"``.
 
         Raises:
-            RuntimeError: If the ``device`` is not a CUDA device.
             RuntimeError: If ``voxel_points`` is not a contiguous array of the correct type and shape.
             RuntimeError: If :class:`Volume` creation fails.
             ValueError: If neither ``voxel_size`` nor ``transform`` is provided.
@@ -6848,13 +6866,11 @@ class Volume:
         """
         device = warp.get_device(device)
 
-        if not device.is_cuda:
-            raise RuntimeError("Only CUDA devices are supported for allocate_by_tiles")
         if not _is_contiguous_vec_like_array(voxel_points, vec_length=3, scalar_types=(float32, int32)):
             raise RuntimeError(
                 "voxel_points must be contiguous and either a 1D Warp array of vec3f or vec3i or a 2D n-by-3 array of int32 or float32."
             )
-        if not voxel_points.device.is_cuda:
+        if voxel_points.device != device:
             voxel_points = voxel_points.to(device)
 
         volume = cls(data=None)
@@ -6869,6 +6885,8 @@ class Volume:
             or max_lower_nodes is not None
             or max_upper_nodes is not None
         )
+        if graph_rebuildable and not device.is_cuda:
+            raise RuntimeError("Graph-rebuildable volumes require a CUDA device")
 
         status = _volume_rebuild_status_array(status, device) if graph_rebuildable else None
         max_active_voxels_c = (
@@ -6887,20 +6905,29 @@ class Volume:
         )
         status_ptr = ctypes.c_void_p(status.ptr) if graph_rebuildable else ctypes.c_void_p(0)
 
-        volume.id = volume.runtime.core.wp_volume_from_active_voxels_device(
-            volume.device.context,
-            ctypes.c_void_p(voxel_points.ptr),
-            voxel_points.shape[0],
-            transform_buf,
-            translation_buf,
-            in_world_space,
-            graph_rebuildable,
-            max_active_voxels_c,
-            max_leaf_nodes_c,
-            max_lower_nodes_c,
-            max_upper_nodes_c,
-            status_ptr,
-        )
+        if volume.device.is_cuda:
+            volume.id = volume.runtime.core.wp_volume_from_active_voxels_device(
+                volume.device.context,
+                ctypes.c_void_p(voxel_points.ptr),
+                voxel_points.shape[0],
+                transform_buf,
+                translation_buf,
+                in_world_space,
+                graph_rebuildable,
+                max_active_voxels_c,
+                max_leaf_nodes_c,
+                max_lower_nodes_c,
+                max_upper_nodes_c,
+                status_ptr,
+            )
+        else:
+            volume.id = volume.runtime.core.wp_volume_from_active_voxels_host(
+                ctypes.c_void_p(voxel_points.ptr),
+                voxel_points.shape[0],
+                transform_buf,
+                translation_buf,
+                in_world_space,
+            )
 
         if volume.id == 0:
             raise RuntimeError("Failed to create volume")

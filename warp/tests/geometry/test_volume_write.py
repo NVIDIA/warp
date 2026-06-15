@@ -986,7 +986,85 @@ capture_devices = get_selected_cuda_test_devices_with_mempool()
 
 
 class TestVolumeWrite(unittest.TestCase):
-    pass
+    def test_volume_allocate_by_tiles_cpu(self):
+        points_np = np.array(
+            [
+                [-1, -2, -3],
+                [0, 0, 0],
+                [1, 2, 3],
+                [8, 0, 0],
+                [0, 8, 0],
+                [0, 0, 128],
+                [0, 0, 128],
+                [128, 0, 0],
+            ],
+            dtype=np.int32,
+        )
+        expected_tiles = _sort_rows(_unique_rows((points_np // 8) * 8))
+
+        points = wp.array(points_np, dtype=wp.int32, device="cpu")
+        volume = wp.Volume.allocate_by_tiles(points, voxel_size=1.0, bg_value=wp.float64(3.0), device="cpu")
+        self.assertEqual(volume.device, wp.get_device("cpu"))
+        self.assertTrue(wp.types.types_equal(volume.dtype, wp.float64))
+        np.testing.assert_array_equal(_sort_rows(volume.get_tiles().numpy()), expected_tiles)
+        self.assertEqual(volume.get_voxel_count(), expected_tiles.shape[0] * 512)
+
+        index_volume = wp.Volume.allocate_by_tiles(points, voxel_size=1.0, bg_value=None, device="cpu")
+        self.assertTrue(index_volume.is_index)
+        np.testing.assert_array_equal(_sort_rows(index_volume.get_tiles().numpy()), expected_tiles)
+
+        voxel_size = 0.25
+        translation = wp.vec3(1.0, 2.0, 3.0)
+        points_ws = wp.array(
+            points_np.astype(np.float32) * voxel_size + np.array(translation), dtype=wp.vec3, device="cpu"
+        )
+        world_volume = wp.Volume.allocate_by_tiles(
+            points_ws, voxel_size=voxel_size, bg_value=wp.vec3d(1.0, 2.0, 3.0), translation=translation, device="cpu"
+        )
+        self.assertTrue(wp.types.types_equal(world_volume.dtype, wp.vec3d))
+        np.testing.assert_array_equal(_sort_rows(world_volume.get_tiles().numpy()), expected_tiles)
+
+    def test_volume_allocate_by_voxels_cpu(self):
+        points_np = np.array(
+            [
+                [-1, -2, -3],
+                [0, 0, 0],
+                [1, 2, 3],
+                [1, 2, 3],
+                [4, 5, 6],
+                [128, 0, 0],
+            ],
+            dtype=np.int32,
+        )
+        expected_voxels = _sort_rows(_unique_rows(points_np))
+
+        points = wp.array(points_np, dtype=wp.int32, device="cpu")
+        volume = wp.Volume.allocate_by_voxels(points, voxel_size=1.0, device="cpu")
+        self.assertEqual(volume.device, wp.get_device("cpu"))
+        self.assertTrue(volume.is_index)
+        self.assertEqual(volume.get_voxel_count(), expected_voxels.shape[0])
+        np.testing.assert_array_equal(_sort_rows(volume.get_voxels().numpy()), expected_voxels)
+
+        voxel_size = 0.5
+        translation = wp.vec3(-1.0, 2.0, -3.0)
+        points_ws = wp.array(
+            points_np.astype(np.float32) * voxel_size + np.array(translation), dtype=wp.vec3, device="cpu"
+        )
+        world_volume = wp.Volume.allocate_by_voxels(
+            points_ws, voxel_size=voxel_size, translation=translation, device="cpu"
+        )
+        np.testing.assert_array_equal(_sort_rows(world_volume.get_voxels().numpy()), expected_voxels)
+
+    def test_volume_graph_rebuildable_requires_cuda(self):
+        points = wp.array([[0, 0, 0]], dtype=wp.int32, device="cpu")
+        with self.assertRaisesRegex(RuntimeError, "CUDA device"):
+            wp.Volume.allocate_by_tiles(points, voxel_size=1.0, bg_value=0.0, graph_rebuildable=True, device="cpu")
+        with self.assertRaisesRegex(RuntimeError, "CUDA device"):
+            wp.Volume.allocate_by_tiles(points, voxel_size=1.0, bg_value=0.0, max_tiles=1, device="cpu")
+        with self.assertRaisesRegex(RuntimeError, "CUDA device"):
+            wp.Volume.allocate_by_voxels(points, voxel_size=1.0, graph_rebuildable=True, device="cpu")
+        with self.assertRaisesRegex(RuntimeError, "CUDA device"):
+            wp.Volume.allocate_by_voxels(points, voxel_size=1.0, max_active_voxels=1, device="cpu")
 
 
 add_function_test(TestVolumeWrite, "test_volume_allocation", test_volume_allocation, devices=devices)

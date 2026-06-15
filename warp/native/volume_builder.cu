@@ -7,7 +7,6 @@
 #include "volume_builder.h"
 
 #include <algorithm>
-#include <climits>
 #include <limits>
 
 #include <cub/cub.cuh>
@@ -21,24 +20,9 @@ static constexpr unsigned REBUILD_NUM_THREADS = 128;
 
 inline unsigned rebuild_num_blocks(uint64_t n) { return unsigned((n + REBUILD_NUM_THREADS - 1) / REBUILD_NUM_THREADS); }
 
-enum RebuildCountSlot : uint32_t {
-    REBUILD_COUNT_LEAF = 0,
-    REBUILD_COUNT_LOWER = 1,
-    REBUILD_COUNT_UPPER = 2,
-    REBUILD_COUNT_VOXEL = 3,
-    REBUILD_COUNT_SLOT_COUNT = 4,
-};
+using namespace wp::volume_builder::internal;
 
-struct RebuildGridData {
-    pnanovdb_buf_t buf;
-    uint64_t size;
-    uint64_t grid, tree, root, upper, lower, leaf;
-    uint32_t grid_type;
-    uint32_t grid_class;
-    uint32_t value_size;
-    uint32_t background_value[8];
-
-    VolumeRebuildCapacities capacities;
+struct RebuildGridData : RebuildGridDataBase {
     uint64_t* leaf_keys;
     uint64_t* lower_keys;
     uint64_t* upper_keys;
@@ -47,47 +31,7 @@ struct RebuildGridData {
     uint32_t* leaf_active_counts;
     uint64_t* leaf_active_prefix;
     uint32_t* status;
-
-    nanovdb::Map map;
-
-    __hostdev__ pnanovdb_address_t address(uint64_t byte_offset) const
-    {
-        pnanovdb_address_t addr;
-        addr.byte_offset = byte_offset;
-        return addr;
-    }
-
-    __hostdev__ pnanovdb_grid_handle_t getGrid() const { return { address(grid) }; }
-    __hostdev__ pnanovdb_tree_handle_t getTree() const { return { address(tree) }; }
-    __hostdev__ pnanovdb_root_handle_t getRoot() const { return { address(root) }; }
-    __hostdev__ pnanovdb_upper_handle_t getUpper(uint32_t i) const
-    {
-        return { address(upper + uint64_t(i) * PNANOVDB_GRID_TYPE_GET(grid_type, upper_size)) };
-    }
-    __hostdev__ pnanovdb_lower_handle_t getLower(uint32_t i) const
-    {
-        return { address(lower + uint64_t(i) * PNANOVDB_GRID_TYPE_GET(grid_type, lower_size)) };
-    }
-    __hostdev__ pnanovdb_leaf_handle_t getLeaf(uint32_t i) const
-    {
-        return { address(leaf + uint64_t(i) * PNANOVDB_GRID_TYPE_GET(grid_type, leaf_size)) };
-    }
 };
-
-__hostdev__ inline pnanovdb_coord_t rebuild_make_pnano_coord(const nanovdb::Coord& coord)
-{
-    return { coord[0], coord[1], coord[2] };
-}
-
-__hostdev__ inline nanovdb::Coord rebuild_make_coord(const pnanovdb_coord_t& coord)
-{
-    return nanovdb::Coord(coord.x, coord.y, coord.z);
-}
-
-__device__ inline uint8_t* rebuild_byte_ptr(const RebuildGridData& data, pnanovdb_address_t address)
-{
-    return reinterpret_cast<uint8_t*>(data.buf.data) + address.byte_offset;
-}
 
 __device__ inline int32_t* rebuild_int_ptr(const RebuildGridData& data, pnanovdb_address_t address)
 {
@@ -99,95 +43,12 @@ __device__ inline unsigned long long int* rebuild_u64_ptr(const RebuildGridData&
     return reinterpret_cast<unsigned long long int*>(rebuild_byte_ptr(data, address));
 }
 
-__device__ inline void rebuild_zero_bytes(const RebuildGridData& data, pnanovdb_address_t address, uint32_t byte_count)
-{
-    uint8_t* dst = rebuild_byte_ptr(data, address);
-    for (uint32_t i = 0; i < byte_count; ++i) {
-        dst[i] = 0u;
-    }
-}
-
-__device__ inline void
-rebuild_write_bytes(const RebuildGridData& data, pnanovdb_address_t address, const uint32_t* words, uint32_t byte_count)
-{
-    uint8_t* dst = rebuild_byte_ptr(data, address);
-    const uint8_t* src = reinterpret_cast<const uint8_t*>(words);
-    for (uint32_t i = 0; i < byte_count; ++i) {
-        dst[i] = src[i];
-    }
-}
-
-__device__ inline void rebuild_write_background(const RebuildGridData& data, pnanovdb_address_t address)
-{
-    rebuild_write_bytes(data, address, data.background_value, data.value_size);
-}
-
-__device__ inline bool rebuild_is_index_grid(uint32_t grid_type)
-{
-    return grid_type == PNANOVDB_GRID_TYPE_INDEX || grid_type == PNANOVDB_GRID_TYPE_ONINDEX;
-}
-
-__device__ inline bool rebuild_is_onindex_grid(uint32_t grid_type) { return grid_type == PNANOVDB_GRID_TYPE_ONINDEX; }
-
-__device__ inline bool rebuild_is_regular_value_grid(uint32_t grid_type) { return !rebuild_is_index_grid(grid_type); }
-
-__device__ inline pnanovdb_address_t
-rebuild_leaf_index_offset_address(const RebuildGridData& data, pnanovdb_leaf_handle_t leaf)
-{
-    return pnanovdb_address_offset(leaf.address, PNANOVDB_GRID_TYPE_GET(data.grid_type, leaf_off_table));
-}
-
-__device__ inline pnanovdb_address_t
-rebuild_leaf_index_prefix_address(const RebuildGridData& data, pnanovdb_leaf_handle_t leaf)
-{
-    return pnanovdb_address_offset(leaf.address, PNANOVDB_GRID_TYPE_GET(data.grid_type, leaf_off_table) + 8u);
-}
-
 __device__ inline void rebuild_set_mask_on_atomic(
     const RebuildGridData& data, pnanovdb_address_t node, uint32_t mask_offset, uint32_t bit_index
 )
 {
     const pnanovdb_address_t word_address = pnanovdb_address_offset(node, mask_offset + 8u * (bit_index >> 6u));
     atomicOr(rebuild_u64_ptr(data, word_address), 1ull << (bit_index & 63u));
-}
-
-__device__ inline void rebuild_clear_mask_words(
-    const RebuildGridData& data, pnanovdb_address_t node, uint32_t mask_offset, uint32_t word_count
-)
-{
-    for (uint32_t i = 0; i < word_count; ++i) {
-        pnanovdb_write_uint64(data.buf, pnanovdb_address_offset(node, mask_offset + 8u * i), 0u);
-    }
-}
-
-__hostdev__ inline pnanovdb_coord_t rebuild_invalid_bbox_min()
-{
-    return {
-        INT_MAX,
-        INT_MAX,
-        INT_MAX,
-    };
-}
-
-__hostdev__ inline pnanovdb_coord_t rebuild_invalid_bbox_max()
-{
-    return {
-        INT_MIN,
-        INT_MIN,
-        INT_MIN,
-    };
-}
-
-__device__ inline void
-rebuild_set_bbox(const RebuildGridData& data, pnanovdb_address_t node, pnanovdb_coord_t min, pnanovdb_coord_t max)
-{
-    pnanovdb_write_coord(data.buf, pnanovdb_address_offset(node, 0u), PNANOVDB_REF(min));
-    pnanovdb_write_coord(data.buf, pnanovdb_address_offset(node, 12u), PNANOVDB_REF(max));
-}
-
-__device__ inline void rebuild_set_invalid_bbox(const RebuildGridData& data, pnanovdb_address_t node)
-{
-    rebuild_set_bbox(data, node, rebuild_invalid_bbox_min(), rebuild_invalid_bbox_max());
 }
 
 __device__ inline void rebuild_expand_bbox_atomic(
@@ -200,63 +61,6 @@ __device__ inline void rebuild_expand_bbox_atomic(
     atomicMax(rebuild_int_ptr(data, pnanovdb_address_offset(node, 12u)), max.x);
     atomicMax(rebuild_int_ptr(data, pnanovdb_address_offset(node, 16u)), max.y);
     atomicMax(rebuild_int_ptr(data, pnanovdb_address_offset(node, 20u)), max.z);
-}
-
-__device__ inline uint32_t rebuild_find_lowest_on(uint64_t word) { return uint32_t(__ffsll(word) - 1); }
-
-__device__ inline uint32_t rebuild_find_highest_on(uint64_t word) { return 63u - uint32_t(__clzll(word)); }
-
-__device__ inline pnanovdb_coord_t rebuild_leaf_bbox_max(pnanovdb_buf_t buf, pnanovdb_leaf_handle_t leaf)
-{
-    const pnanovdb_coord_t min = pnanovdb_leaf_get_bbox_min(buf, leaf);
-    const uint32_t bbox_dif_and_flags = pnanovdb_leaf_get_bbox_dif_and_flags(buf, leaf);
-    return {
-        min.x + int32_t(bbox_dif_and_flags & 0xffu),
-        min.y + int32_t((bbox_dif_and_flags >> 8u) & 0xffu),
-        min.z + int32_t((bbox_dif_and_flags >> 16u) & 0xffu),
-    };
-}
-
-__device__ inline void rebuild_update_leaf_bbox(const RebuildGridData& data, pnanovdb_leaf_handle_t leaf)
-{
-    uint64_t words[8];
-    uint64_t union_word = 0u;
-    uint32_t x_min = 8u;
-    uint32_t x_max = 8u;
-    for (uint32_t i = 0; i < 8u; ++i) {
-        words[i] = pnanovdb_read_uint64(
-            data.buf, pnanovdb_address_offset(leaf.address, PNANOVDB_LEAF_OFF_VALUE_MASK + 8u * i)
-        );
-        if (words[i]) {
-            union_word |= words[i];
-            if (x_min == 8u) {
-                x_min = i;
-            }
-            x_max = i;
-        }
-    }
-
-    const uint32_t bbox_dif_and_flags = pnanovdb_leaf_get_bbox_dif_and_flags(data.buf, leaf);
-    uint32_t flags = bbox_dif_and_flags >> 24u;
-    if (!union_word) {
-        pnanovdb_leaf_set_bbox_dif_and_flags(data.buf, leaf, (flags & ~2u) << 24u);
-        return;
-    }
-
-    pnanovdb_coord_t min = pnanovdb_leaf_get_bbox_min(data.buf, leaf);
-    min.x = (min.x & ~7) + int32_t(x_min);
-    min.y = (min.y & ~7) + int32_t(rebuild_find_lowest_on(union_word) >> 3u);
-    const uint32_t word32 = uint32_t(union_word) | uint32_t(union_word >> 32u);
-    const uint32_t word16 = (word32 & 0xffffu) | (word32 >> 16u);
-    const uint32_t byte = (word16 & 0xffu) | (word16 >> 8u);
-    min.z = (min.z & ~7) + int32_t(rebuild_find_lowest_on(byte));
-    pnanovdb_leaf_set_bbox_min(data.buf, leaf, PNANOVDB_REF(min));
-
-    const uint32_t x_dif = x_max - x_min;
-    const uint32_t y_dif = (rebuild_find_highest_on(union_word) >> 3u) - (rebuild_find_lowest_on(union_word) >> 3u);
-    const uint32_t z_dif = rebuild_find_highest_on(byte) - rebuild_find_lowest_on(byte);
-    flags |= 2u;
-    pnanovdb_leaf_set_bbox_dif_and_flags(data.buf, leaf, x_dif | (y_dif << 8u) | (z_dif << 16u) | (flags << 24u));
 }
 
 __device__ inline void rebuild_set_status(uint32_t* status, uint32_t bits)
@@ -386,26 +190,6 @@ __device__ nanovdb::Coord rebuild_point_to_coord(const PtrT points, size_t tid, 
     }
 }
 
-__hostdev__ inline uint64_t rebuild_upper_key_from_coord(const nanovdb::Coord& ijk)
-{
-    // Match NanoVDB's upper-root-tile key ordering.
-    static constexpr int64_t kOffset = int64_t(1) << 31;
-    return (uint64_t(uint32_t(int64_t(ijk[2]) + kOffset) >> 12))
-        | (uint64_t(uint32_t(int64_t(ijk[1]) + kOffset) >> 12) << 21)
-        | (uint64_t(uint32_t(int64_t(ijk[0]) + kOffset) >> 12) << 42);
-}
-
-__hostdev__ inline nanovdb::Coord rebuild_upper_key_to_coord(uint64_t key)
-{
-    // Match NanoVDB's upper-node origin decoding.
-    static constexpr int64_t kOffset = int64_t(1) << 31;
-    static constexpr uint64_t mask = (uint64_t(1) << 21) - 1u;
-    return nanovdb::Coord(
-        int(int64_t(((key >> 42) & mask) << 12) - kOffset), int(int64_t(((key >> 21) & mask) << 12) - kOffset),
-        int(int64_t((key & mask) << 12) - kOffset)
-    );
-}
-
 __device__ inline int32_t rebuild_find_key_u64(const uint64_t* keys, uint32_t count, uint64_t key)
 {
     uint32_t first = 0;
@@ -420,14 +204,6 @@ __device__ inline int32_t rebuild_find_key_u64(const uint64_t* keys, uint32_t co
         }
     }
     return first < count && keys[first] == key ? int32_t(first) : -1;
-}
-
-__hostdev__ inline uint64_t rebuild_hierarchy_key(uint32_t upper_id, const nanovdb::Coord& ijk)
-{
-    const pnanovdb_coord_t coord = rebuild_make_pnano_coord(ijk);
-    return (uint64_t(upper_id) << 36) | (uint64_t(pnanovdb_upper_coord_to_offset(PNANOVDB_REF(coord))) << 21)
-        | (uint64_t(pnanovdb_lower_coord_to_offset(PNANOVDB_REF(coord))) << 9)
-        | uint64_t(pnanovdb_leaf_coord_to_offset(PNANOVDB_REF(coord)));
 }
 
 template <typename PtrT>
@@ -965,18 +741,6 @@ __global__ void rebuild_finalize_world_bbox(RebuildGridData data)
     pnanovdb_grid_set_world_bbox(data.buf, grid, 5u, world_bbox[1][2]);
 }
 
-template <typename BuildT> size_t rebuildable_grid_size(const VolumeRebuildCapacities& capacities)
-{
-    uint64_t offset = 0;
-    offset += nanovdb::NanoGrid<BuildT>::memUsage();
-    offset += nanovdb::NanoTree<BuildT>::memUsage();
-    offset += nanovdb::NanoRoot<BuildT>::memUsage(capacities.upper_count);
-    offset += nanovdb::NanoUpper<BuildT>::memUsage() * uint64_t(capacities.upper_count);
-    offset += nanovdb::NanoLower<BuildT>::memUsage() * uint64_t(capacities.lower_count);
-    offset += nanovdb::NanoLeaf<BuildT>::DataType::memUsage() * uint64_t(capacities.leaf_count);
-    return size_t(offset);
-}
-
 template <typename BuildT>
 RebuildGridData make_rebuild_data(
     nanovdb::Grid<nanovdb::NanoTree<BuildT>>* grid,
@@ -993,21 +757,7 @@ RebuildGridData make_rebuild_data(
     uint32_t* status
 )
 {
-    RebuildGridData data = {};
-    data.buf
-        = pnanovdb_make_buf(reinterpret_cast<uint32_t*>(grid), (grid_size + sizeof(uint32_t) - 1u) / sizeof(uint32_t));
-    data.size = grid_size;
-    data.grid = 0;
-    data.tree = nanovdb::NanoGrid<BuildT>::memUsage();
-    data.root = data.tree + nanovdb::NanoTree<BuildT>::memUsage();
-    data.upper = data.root + nanovdb::NanoRoot<BuildT>::memUsage(capacities.upper_count);
-    data.lower = data.upper + nanovdb::NanoUpper<BuildT>::memUsage() * uint64_t(capacities.upper_count);
-    data.leaf = data.lower + nanovdb::NanoLower<BuildT>::memUsage() * uint64_t(capacities.lower_count);
-    data.grid_type = uint32_t(nanovdb::toGridType<BuildT>());
-    data.grid_class = nanovdb::BuildTraits<BuildT>::is_index ? uint32_t(nanovdb::GridClass::IndexGrid)
-                                                             : uint32_t(nanovdb::GridClass::Unknown);
-    data.value_size = nanovdb::BuildTraits<BuildT>::is_index ? uint32_t(sizeof(uint64_t)) : uint32_t(sizeof(BuildT));
-    data.capacities = capacities;
+    RebuildGridData data = make_rebuild_data_base<BuildT, RebuildGridData>(grid, grid_size, capacities, params);
     data.leaf_keys = leaf_keys;
     data.lower_keys = lower_keys;
     data.upper_keys = upper_keys;
@@ -1016,11 +766,6 @@ RebuildGridData make_rebuild_data(
     data.leaf_active_counts = leaf_active_counts;
     data.leaf_active_prefix = leaf_active_prefix;
     data.status = status;
-    data.map = params.map;
-    if constexpr (!nanovdb::BuildTraits<BuildT>::is_index) {
-        static_assert(sizeof(BuildT) <= sizeof(data.background_value));
-        memcpy(data.background_value, &params.background_value, sizeof(BuildT));
-    }
     return data;
 }
 

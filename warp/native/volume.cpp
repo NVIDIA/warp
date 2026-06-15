@@ -394,6 +394,62 @@ void wp_volume_destroy_host(uint64_t id)
     }
 }
 
+uint64_t wp_volume_from_tiles_host(
+    void* points,
+    int num_points,
+    float transform[9],
+    float translation[3],
+    bool points_in_world_space,
+    const void* value_ptr,
+    uint32_t value_size,
+    const char* value_type
+)
+{
+    char gridTypeStr[12];
+
+#define EXPAND_BUILDER_TYPE(type)                                                                                      \
+    nanovdb::toStr(gridTypeStr, nanovdb::toGridType<type>());                                                          \
+    if (strncmp(gridTypeStr, value_type, sizeof(gridTypeStr)) == 0)                                                    \
+    {                                                                                                                  \
+        BuildGridParams<type> params;                                                                                  \
+        memcpy(&params.background_value, value_ptr, value_size);                                                       \
+        volume_set_map(params.map, transform, translation);                                                            \
+        size_t gridSize;                                                                                               \
+        nanovdb::Grid<nanovdb::NanoTree<type>>* grid;                                                                  \
+        allocate_grid_from_tiles_host(grid, gridSize, points, num_points, points_in_world_space, params);               \
+        return wp_volume_create_host(grid, gridSize, false, true);                                                     \
+    }
+
+    WP_VOLUME_BUILDER_INSTANTIATE_TYPES
+#undef EXPAND_BUILDER_TYPE
+
+    return 0;
+}
+
+uint64_t wp_volume_index_from_tiles_host(
+    void* points, int num_points, float transform[9], float translation[3], bool points_in_world_space
+)
+{
+    nanovdb::IndexGrid* grid;
+    size_t gridSize;
+    BuildGridParams<nanovdb::ValueIndex> params;
+    volume_set_map(params.map, transform, translation);
+    allocate_grid_from_tiles_host(grid, gridSize, points, num_points, points_in_world_space, params);
+    return wp_volume_create_host(grid, gridSize, false, true);
+}
+
+uint64_t wp_volume_from_active_voxels_host(
+    void* points, int num_points, float transform[9], float translation[3], bool points_in_world_space
+)
+{
+    nanovdb::OnIndexGrid* grid;
+    size_t gridSize;
+    BuildGridParams<nanovdb::ValueOnIndex> params;
+    volume_set_map(params.map, transform, translation);
+    allocate_grid_from_active_voxels_host(grid, gridSize, points, num_points, points_in_world_space, params);
+    return wp_volume_create_host(grid, gridSize, false, true);
+}
+
 void wp_volume_destroy_device(uint64_t id)
 {
     const VolumeDesc* volume;
