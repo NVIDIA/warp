@@ -11,6 +11,7 @@ import numpy as np
 
 import warp as wp
 import warp._src.context as wp_context
+from warp._src.apic.capture import APICapture
 from warp.tests.unittest_utils import (
     add_function_test,
     get_cuda_test_devices,
@@ -230,8 +231,6 @@ def test_save_load_memset(test, device):
 
 def test_array_slicing(test, device):
     """Array slices sharing a base allocation map to the same region."""
-    from warp._src.apic.capture import APICapture  # noqa: PLC0415
-
     n = 1024
     base_arr = wp.array(np.arange(n, dtype=np.float32), device=device)
     slice1 = base_arr[0:512]

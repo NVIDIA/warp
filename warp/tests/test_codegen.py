@@ -2,16 +2,24 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import ast
+import functools
+import importlib
 import inspect
 import linecache
 import math
+import os
 import sys
+import tempfile
+import textwrap
 import types
 import unittest
 from typing import Any
 from unittest import mock
 
 import warp as wp
+from warp._src import codegen
+from warp.tests import aux_test_extract_source_patterns as patterns
+from warp.tests.aux_test_extract_source_patterns import contains_truncating_string
 from warp.tests.unittest_utils import *
 
 _KERNEL_RETURN_ERROR_PATTERN = (
@@ -422,7 +430,10 @@ def test_range_expression():
 
 def test_unresolved_func(test, device):
     # kernel with unresolved function must be in a separate module, otherwise the current module would fail to load
-    from warp.tests.aux_test_unresolved_func import unresolved_func_kernel  # noqa: PLC0415
+    # Import the bad fixture only for this test so it can be removed from
+    # Warp's user module registry before later force-load checks.
+    unresolved_func_module = importlib.import_module("warp.tests.aux_test_unresolved_func")
+    unresolved_func_kernel = unresolved_func_module.unresolved_func_kernel
 
     # ensure that an appropriate exception is raised when the bad module gets loaded
     with test.assertRaisesRegex(AttributeError, "Could not find function wp.missing_func"):
@@ -436,7 +447,10 @@ def test_unresolved_func(test, device):
 
 def test_unresolved_symbol(test, device):
     # kernel with unresolved symbol must be in a separate module, otherwise the current module would fail to load
-    from warp.tests.aux_test_unresolved_symbol import unresolved_symbol_kernel  # noqa: PLC0415
+    # Import the bad fixture only for this test so it can be removed from
+    # Warp's user module registry before later force-load checks.
+    unresolved_symbol_module = importlib.import_module("warp.tests.aux_test_unresolved_symbol")
+    unresolved_symbol_kernel = unresolved_symbol_module.unresolved_symbol_kernel
 
     # ensure that an appropriate exception is raised when the bad module gets loaded
     with test.assertRaisesRegex(KeyError, "Referencing undefined symbol: missing_symbol"):
@@ -1609,9 +1623,6 @@ class TestCodeGen(unittest.TestCase):
             linecache.cache.pop(filename, None)
 
     def test_line_directive_escapes_filename(self):
-        import os  # noqa: PLC0415
-        import tempfile  # noqa: PLC0415
-
         with tempfile.TemporaryDirectory() as tmpdir:
             filename = os.path.join(tmpdir, 'warp_poc"\n\r\t\x00\x1f\x7fint injected_from_filename;\n//.py')
             adj = self._make_adjoint_with_filename(os.path.join(tmpdir, "warp_poc.py"))
@@ -1639,8 +1650,6 @@ class TestCodeGen(unittest.TestCase):
         ``exec``-defined function with no linecache entry), ``extract_function_source``
         falls through to ``inspect.getsourcelines`` exactly once and parses its result.
         """
-        from warp._src import codegen  # noqa: PLC0415
-
         slow_source = "def generated():\n    return 42\n"
 
         with mock.patch.object(codegen.Adjoint, "_try_extract_function_source", return_value=None):
@@ -1658,9 +1667,6 @@ class TestCodeGen(unittest.TestCase):
         called, so each ``subTest`` proves the corresponding branch of the forward
         walk produced a parseable slice on its own.
         """
-        from warp._src import codegen  # noqa: PLC0415
-        from warp.tests import aux_test_extract_source_patterns as patterns  # noqa: PLC0415
-
         fixtures = [
             patterns.plain,
             patterns.multiline_paren_return,
@@ -1700,10 +1706,6 @@ class TestCodeGen(unittest.TestCase):
         a true substitute for ``inspect.getsourcelines`` on ``functools.wraps``-style
         decorators.
         """
-        import functools  # noqa: PLC0415
-        import textwrap as _tw  # noqa: PLC0415
-
-        from warp._src import codegen  # noqa: PLC0415
 
         def real_kernel():
             return 42
@@ -1718,7 +1720,7 @@ class TestCodeGen(unittest.TestCase):
         self.assertIsNot(wrapper.__code__, real_kernel.__code__)
 
         reference_lines, _ = inspect.getsourcelines(wrapper)
-        reference_dedented = _tw.dedent("".join(reference_lines))
+        reference_dedented = textwrap.dedent("".join(reference_lines))
 
         with mock.patch.object(codegen.inspect, "getsourcelines", side_effect=AssertionError("fast path should run")):
             source, lineno, tree = codegen.Adjoint.extract_function_source(wrapper)
@@ -1732,9 +1734,6 @@ class TestCodeGen(unittest.TestCase):
         fallback inside :meth:`extract_function_source` recovers via
         ``inspect.getsourcelines``.
         """
-        from warp._src import codegen  # noqa: PLC0415
-        from warp.tests.aux_test_extract_source_patterns import contains_truncating_string  # noqa: PLC0415
-
         # Sanity: the fast path really does produce a truncated, unparsable slice
         # for this fixture (otherwise the test would silently pass without exercising
         # the fallback).
@@ -1747,23 +1746,17 @@ class TestCodeGen(unittest.TestCase):
         # constructed Adjoint must all reflect the inspect-recovered source.
         source, _lineno, tree = codegen.Adjoint.extract_function_source(contains_truncating_string)
         self.assertEqual(tree.body[0].name, "contains_truncating_string")
-        import textwrap as _tw  # noqa: PLC0415
 
-        self.assertEqual(source, _tw.dedent(inspect.getsource(contains_truncating_string)))
+        self.assertEqual(source, textwrap.dedent(inspect.getsource(contains_truncating_string)))
 
         adj = codegen.Adjoint(contains_truncating_string)
         self.assertEqual(adj.tree.body[0].name, "contains_truncating_string")
-        self.assertEqual(adj.source, _tw.dedent(inspect.getsource(contains_truncating_string)))
+        self.assertEqual(adj.source, textwrap.dedent(inspect.getsource(contains_truncating_string)))
 
     def test_extract_function_source_refreshes_stale_linecache(self):
         """The fast path must not accept stale ``linecache`` content for a file that
         was rewritten and recompiled in the same process.
         """
-        import linecache  # noqa: PLC0415
-        import os  # noqa: PLC0415
-        import tempfile  # noqa: PLC0415
-
-        from warp._src import codegen  # noqa: PLC0415
 
         def load_function(path, source):
             with open(path, "w", encoding="utf-8") as f:
@@ -1795,13 +1788,6 @@ class TestCodeGen(unittest.TestCase):
         the parse may still succeed. That slice must be rejected and recovered via
         ``inspect.getsourcelines``.
         """
-        import linecache  # noqa: PLC0415
-        import os  # noqa: PLC0415
-        import tempfile  # noqa: PLC0415
-        import types  # noqa: PLC0415
-
-        from warp._src import codegen  # noqa: PLC0415
-
         source = "def line_shifted():\n    x = 1\n"
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -1832,9 +1818,7 @@ class TestCodeGen(unittest.TestCase):
                 linecache.cache.pop(path, None)
 
     def test_extract_lambda_source_parenthesized_multiline_body(self):
-        from warp._src.codegen import Adjoint  # noqa: PLC0415
-
-        body = Adjoint.extract_lambda_source(parenthesized_multiline_lambda(), only_body=True)
+        body = codegen.Adjoint.extract_lambda_source(parenthesized_multiline_lambda(), only_body=True)
 
         self.assertIsNotNone(body)
         self.assertIn("\n", body)
@@ -1850,8 +1834,6 @@ class TestCodeGen(unittest.TestCase):
         which is the only behavioural difference vs upstream's in-flight
         replacement.
         """
-        from warp._src import codegen  # noqa: PLC0415
-
         _value_a = 7
         _value_b = 13
 
@@ -1881,7 +1863,6 @@ class TestCodeGen(unittest.TestCase):
         Call left in the AST for codegen-time resolution. This pins the
         loop-variable tracking in ``visit_For`` / ``visit_Call``.
         """
-        from warp._src import codegen  # noqa: PLC0415
 
         def _kernel_with_loop_var_static(out: wp.array(dtype=int)):
             for i in range(10):

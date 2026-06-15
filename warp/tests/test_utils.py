@@ -6,6 +6,7 @@ import io
 import unittest
 import warnings
 
+from warp._src import logger as _logger
 from warp._src.logger import log_warning
 from warp.tests.unittest_utils import *
 
@@ -575,8 +576,6 @@ class TestUtils(unittest.TestCase):
 
     def test_warn(self):
         # Clear any state from prior tests in the same process.
-        from warp._src import logger as _logger  # noqa: PLC0415
-
         _logger._warnings_seen.clear()
 
         # Multiple warnings get printed out each time.

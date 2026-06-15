@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import importlib
+import sys
 import unittest
 
 import numpy as np
@@ -241,7 +243,10 @@ def test_conditional_chain_mixed():
 
 def test_conditional_unequal_types(test: unittest.TestCase, device):
     # The bad kernel must be in a separate module, otherwise the current module would fail to load
-    from warp.tests.aux_test_conditional_unequal_types_kernels import unequal_types_kernel  # noqa: PLC0415
+    # Import the bad fixture only for this test so it can be removed from
+    # Warp's user module registry before later force-load checks.
+    unequal_types_module = importlib.import_module("warp.tests.aux_test_conditional_unequal_types_kernels")
+    unequal_types_kernel = unequal_types_module.unequal_types_kernel
 
     with test.assertRaises(TypeError):
         wp.launch(unequal_types_kernel, dim=(1,), inputs=[], device=device)

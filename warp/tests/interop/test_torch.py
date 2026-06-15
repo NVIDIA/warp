@@ -1,8 +1,6 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-# ruff: noqa: PLC0415
-
 import unittest
 
 import numpy as np
@@ -76,8 +74,14 @@ def copy2d_mat22_kernel(dst: wp.array2d[wp.mat22], src: wp.array2d[wp.mat22]):
     dst[i, j] = src[i, j]
 
 
+def _import_torch():
+    import torch  # noqa: PLC0415
+
+    return torch
+
+
 def test_dtype_from_torch(test, device):
-    import torch
+    torch = _import_torch()
 
     def test_conversions(torch_type, warp_type):
         test.assertEqual(wp.dtype_from_torch(torch_type), warp_type)
@@ -94,7 +98,7 @@ def test_dtype_from_torch(test, device):
 
 
 def test_dtype_to_torch(test, device):
-    import torch
+    torch = _import_torch()
 
     def test_conversions(warp_type, torch_type):
         test.assertEqual(wp.dtype_to_torch(warp_type), torch_type)
@@ -120,7 +124,7 @@ def test_device_conversion(test, device):
 
 
 def test_torch_zerocopy(test, device):
-    import torch
+    torch = _import_torch()
 
     a = wp.zeros(10, dtype=wp.float32, device=device)
     t = wp.to_torch(a)
@@ -134,7 +138,7 @@ def test_torch_zerocopy(test, device):
 
 
 def test_from_torch(test, device):
-    import torch
+    torch = _import_torch()
 
     torch_device = wp.device_to_torch(device)
 
@@ -227,7 +231,7 @@ def test_from_torch(test, device):
 
 
 def test_array_ctype_from_torch(test, device):
-    import torch
+    torch = _import_torch()
 
     torch_device = wp.device_to_torch(device)
 
@@ -434,7 +438,7 @@ def test_tensor_in_warp_kernel(test, device):
 
 
 def test_to_torch(test, device):
-    import torch
+    torch = _import_torch()
 
     def wrap_scalar_array(warp_dtype, expected_torch_dtype):
         a = wp.zeros(10, dtype=warp_dtype, device=device)
@@ -482,7 +486,7 @@ def test_to_torch(test, device):
 
 
 def test_from_torch_slices(test, device):
-    import torch
+    torch = _import_torch()
 
     torch_device = wp.device_to_torch(device)
 
@@ -557,7 +561,7 @@ def test_from_torch_slices(test, device):
 
 
 def test_from_torch_zero_strides(test, device):
-    import torch
+    torch = _import_torch()
 
     torch_device = wp.device_to_torch(device)
 
@@ -595,7 +599,7 @@ def test_from_torch_zero_strides(test, device):
 
 
 def test_torch_mgpu_from_torch(test, device):
-    import torch
+    torch = _import_torch()
 
     n = 32
 
@@ -640,7 +644,7 @@ def test_torch_mgpu_to_torch(test, device):
 
 
 def test_torch_mgpu_interop(test, device):
-    import torch
+    torch = _import_torch()
 
     n = 1024 * 1024
 
@@ -666,7 +670,7 @@ def test_torch_mgpu_interop(test, device):
 
 def test_torch_retain_grad_from_torch(test, device):
     """Test that retain_grad can be set when converting from PyTorch via from_torch"""
-    import torch
+    torch = _import_torch()
 
     torch_device = wp.device_to_torch(device)
 
@@ -682,7 +686,7 @@ def test_torch_retain_grad_from_torch(test, device):
 def test_torch_autograd(test, device):
     """Test torch autograd with a custom Warp op"""
 
-    import torch
+    torch = _import_torch()
 
     # custom autograd op
     class TestFunc(torch.autograd.Function):
@@ -744,7 +748,7 @@ def test_torch_graph_torch_stream(test, device):
 
     wp.load_module(device=device)
 
-    import torch
+    torch = _import_torch()
 
     torch_device = wp.device_to_torch(device)
 
@@ -784,7 +788,7 @@ def test_torch_graph_torch_stream(test, device):
 def test_torch_graph_warp_stream(test, device):
     """Capture Torch graph on Warp stream"""
 
-    import torch
+    torch = _import_torch()
 
     torch_device = wp.device_to_torch(device)
 
@@ -826,7 +830,7 @@ def test_torch_graph_warp_stream(test, device):
 def test_warp_graph_warp_stream(test, device):
     """Capture Warp graph on Warp stream"""
 
-    import torch
+    torch = _import_torch()
 
     torch_device = wp.device_to_torch(device)
 
@@ -862,7 +866,7 @@ def test_warp_graph_torch_stream(test, device):
 
     wp.load_module(device=device)
 
-    import torch
+    torch = _import_torch()
 
     torch_device = wp.device_to_torch(device)
 
@@ -900,7 +904,7 @@ def test_warp_graph_torch_stream(test, device):
 def test_direct(test, device):
     """Pass Torch tensors to Warp kernels directly"""
 
-    import torch
+    torch = _import_torch()
 
     torch_device = wp.device_to_torch(device)
     n = 12
@@ -923,7 +927,7 @@ def test_direct(test, device):
 def test_torch_to_warp_types(test, device):
     """Test constructing warp vectors, quaternions, matrices, and transforms from torch tensors."""
 
-    import torch
+    torch = _import_torch()
 
     v = wp.vec3(torch.tensor([1.0, 2.0, 3.0]))
     test.assertEqual(list(v), [1.0, 2.0, 3.0])
@@ -966,7 +970,7 @@ def bf16_to_f32_kernel(input: wp.array[wp.bfloat16], output: wp.array[wp.float32
 
 
 def test_bf16_interop_torch(test, device):
-    import torch
+    torch = _import_torch()
 
     wp_arr = wp.zeros(4, dtype=wp.bfloat16, device=device)
     torch_tensor = wp.to_torch(wp_arr)
@@ -992,7 +996,7 @@ def test_bf16_interop_torch(test, device):
 
 def test_bf16_torch_compound_types(test, device):
     """Test that compound bfloat16 types (vectors, matrices) round-trip correctly through Torch."""
-    import torch
+    torch = _import_torch()
 
     # Test vector type
     vec_data = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], dtype=np.float32)

@@ -3,6 +3,7 @@
 
 import ctypes
 import ctypes.util
+import gc
 import importlib.util
 import io
 import os
@@ -505,8 +506,6 @@ class ParallelJunitTestResult(unittest.TextTestResult):
         super().stopTest(test)
         # Force garbage collection of CPU-side allocations to reduce peak
         # host RSS in parallel test runs.
-        import gc  # noqa: PLC0415
-
         gc.collect()
 
     def _add_helper(self, test, dots_message, show_all_message):

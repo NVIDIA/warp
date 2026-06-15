@@ -1,8 +1,6 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-# ruff: noqa: PLC0415
-
 import contextlib
 import importlib
 import io
@@ -90,11 +88,23 @@ for T in [*vector_types, *matrix_types]:
 
 def _jax_version():
     try:
-        import jax
+        jax = _import_jax()
 
         return jax.__version_info__
     except ImportError:
         return (0, 0, 0)
+
+
+def _import_jax():
+    import jax  # noqa: PLC0415
+
+    return jax
+
+
+def _import_jax_numpy():
+    import jax.numpy as jp  # noqa: PLC0415
+
+    return jp
 
 
 _JAX_NAMESPACE_MODULES = ("warp.jax", "warp.jax_experimental")
@@ -127,8 +137,8 @@ def _get_experimental_custom_call_jax_kernel():
     try:
         with warnings.catch_warnings(), contextlib.redirect_stderr(io.StringIO()):
             warnings.simplefilter("ignore", DeprecationWarning)
-            from warp.jax_experimental.custom_call import jax_kernel
-        return jax_kernel
+            module = importlib.import_module("warp.jax_experimental.custom_call")
+        return module.jax_kernel
     finally:
         _clear_jax_experimental_warning_cache()
 
@@ -138,8 +148,8 @@ def _get_experimental_register_ffi_callback():
     try:
         with warnings.catch_warnings(), contextlib.redirect_stderr(io.StringIO()):
             warnings.simplefilter("ignore", DeprecationWarning)
-            from warp.jax_experimental.ffi import register_ffi_callback
-        return register_ffi_callback
+            module = importlib.import_module("warp.jax_experimental.ffi")
+        return module.register_ffi_callback
     finally:
         _clear_jax_experimental_warning_cache()
 
@@ -200,7 +210,7 @@ def test_jax_experimental_custom_call_import_deprecation(test, device):
 
 
 def test_dtype_from_jax(test, device):
-    import jax.numpy as jp
+    jp = _import_jax_numpy()
 
     def test_conversions(jax_type, warp_type):
         test.assertEqual(wp.dtype_from_jax(jax_type), warp_type)
@@ -221,7 +231,7 @@ def test_dtype_from_jax(test, device):
 
 
 def test_dtype_to_jax(test, device):
-    import jax.numpy as jp
+    jp = _import_jax_numpy()
 
     def test_conversions(warp_type, jax_type):
         test.assertEqual(wp.dtype_to_jax(warp_type), jax_type)
@@ -247,7 +257,7 @@ def test_device_conversion(test, device):
 
 
 def test_jax_kernel_basic(test, device, use_ffi=False):
-    import jax.numpy as jp
+    jp = _import_jax_numpy()
 
     if use_ffi:
         jax_kernel = wp.jax_kernel
@@ -278,7 +288,7 @@ def test_jax_kernel_basic(test, device, use_ffi=False):
 
 
 def test_jax_kernel_scalar(test, device, use_ffi=False):
-    import jax.numpy as jp
+    jp = _import_jax_numpy()
 
     if use_ffi:
         jax_kernel = wp.jax_kernel
@@ -320,7 +330,7 @@ def test_jax_kernel_scalar(test, device, use_ffi=False):
 
 
 def test_jax_kernel_vecmat(test, device, use_ffi=False):
-    import jax.numpy as jp
+    jp = _import_jax_numpy()
 
     if use_ffi:
         jax_kernel = wp.jax_kernel
@@ -364,7 +374,7 @@ def test_jax_kernel_vecmat(test, device, use_ffi=False):
 
 
 def test_jax_kernel_multiarg(test, device, use_ffi=False):
-    import jax.numpy as jp
+    jp = _import_jax_numpy()
 
     if use_ffi:
         jax_kernel = wp.jax_kernel
@@ -399,7 +409,7 @@ def test_jax_kernel_multiarg(test, device, use_ffi=False):
 
 
 def test_jax_kernel_launch_dims(test, device, use_ffi=False):
-    import jax.numpy as jp
+    jp = _import_jax_numpy()
 
     if use_ffi:
         jax_kernel = wp.jax_kernel
@@ -616,7 +626,7 @@ def double_func(
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_add(test, device):
     # two inputs and one output
-    import jax.numpy as jp
+    jp = _import_jax_numpy()
 
     jax_kernel = wp.jax_kernel
 
@@ -643,7 +653,7 @@ def test_ffi_jax_kernel_add(test, device):
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_sincos(test, device):
     # one input and two outputs
-    import jax.numpy as jp
+    jp = _import_jax_numpy()
 
     jax_kernel = wp.jax_kernel
 
@@ -706,7 +716,7 @@ def test_ffi_jax_kernel_diagonal(test, device):
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_in_out(test, device):
     # in-out args
-    import jax.numpy as jp
+    jp = _import_jax_numpy()
 
     jax_kernel = wp.jax_kernel
 
@@ -728,7 +738,7 @@ def test_ffi_jax_kernel_in_out(test, device):
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_scale_vec_constant(test, device):
     # multiply vectors by scalar (constant)
-    import jax.numpy as jp
+    jp = _import_jax_numpy()
 
     jax_kernel = wp.jax_kernel
 
@@ -756,7 +766,7 @@ def test_ffi_jax_kernel_scale_vec_static(test, device):
         test.skipTest("Flaky on device ordinal > 0: JAX FFI jit() returns zeros instead of scaled values")
 
     # multiply vectors by scalar (static arg)
-    import jax.numpy as jp
+    jp = _import_jax_numpy()
 
     jax_kernel = wp.jax_kernel
 
@@ -783,7 +793,7 @@ def test_ffi_jax_kernel_scale_vec_static(test, device):
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_launch_dims_default(test, device):
     # specify default launch dims
-    import jax.numpy as jp
+    jp = _import_jax_numpy()
 
     jax_kernel = wp.jax_kernel
 
@@ -813,7 +823,7 @@ def test_ffi_jax_kernel_launch_dims_default(test, device):
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_launch_dims_custom(test, device):
     # specify custom launch dims per call
-    import jax.numpy as jp
+    jp = _import_jax_numpy()
 
     jax_kernel = wp.jax_kernel
 
@@ -854,7 +864,7 @@ def test_ffi_jax_kernel_launch_dims_custom(test, device):
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_callable_scale_constant(test, device):
     # scale two arrays using a constant
-    import jax.numpy as jp
+    jp = _import_jax_numpy()
 
     jax_callable = wp.jax_callable
 
@@ -889,7 +899,7 @@ def test_ffi_jax_callable_scale_constant(test, device):
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_callable_scale_static(test, device):
     # scale two arrays using a static arg
-    import jax.numpy as jp
+    jp = _import_jax_numpy()
 
     jax_callable = wp.jax_callable
 
@@ -924,7 +934,7 @@ def test_ffi_jax_callable_scale_static(test, device):
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_callable_in_out(test, device):
     # in-out arguments
-    import jax.numpy as jp
+    jp = _import_jax_numpy()
 
     jax_callable = wp.jax_callable
 
@@ -946,15 +956,14 @@ def test_ffi_jax_callable_in_out(test, device):
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_callable_graph_cache(test, device):
     # test graph caching limits
-    import jax
-    import jax.numpy as jp
+    jax = _import_jax()
+    jp = _import_jax_numpy()
 
-    import warp._src.jax.ffi as ffi_module
-
+    ffi_module = importlib.import_module("warp._src.jax.ffi")
     default_graph_cache_max = ffi_module.JAX_CALLABLE_DEFAULT_GRAPH_CACHE_MAX
 
     with contextlib.redirect_stderr(io.StringIO()):
-        import warp.jax_experimental.ffi as experimental_ffi
+        experimental_ffi = importlib.import_module("warp.jax_experimental.ffi")
 
     _clear_jax_experimental_warning_cache()
     try:
@@ -1076,8 +1085,8 @@ def test_ffi_jax_callable_graph_cache(test, device):
     "Flaky: race condition in multi-device JAX pmap with FFI - second device output occasionally returns zeros"
 )
 def test_ffi_jax_callable_pmap_mul(test, device):
-    import jax
-    import jax.numpy as jp
+    jax = _import_jax()
+    jp = _import_jax_numpy()
 
     jax_callable = wp.jax_callable
 
@@ -1103,8 +1112,8 @@ def test_ffi_jax_callable_pmap_mul(test, device):
     "Flaky: race condition in multi-device JAX pmap with FFI - second device output occasionally returns zeros"
 )
 def test_ffi_jax_callable_pmap_multi_output(test, device):
-    import jax
-    import jax.numpy as jp
+    jax = _import_jax()
+    jp = _import_jax_numpy()
 
     jax_callable = wp.jax_callable
 
@@ -1144,8 +1153,8 @@ def test_ffi_jax_callable_pmap_multi_output(test, device):
     "Flaky: race condition in multi-device JAX pmap with FFI - second device output occasionally returns zeros"
 )
 def test_ffi_jax_callable_pmap_multi_stage(test, device):
-    import jax
-    import jax.numpy as jp
+    jax = _import_jax()
+    jp = _import_jax_numpy()
 
     jax_callable = wp.jax_callable
 
@@ -1189,7 +1198,7 @@ def test_ffi_callback(test, device):
         test.skipTest("Flaky on device ordinal > 0: JAX FFI segfaults intermittently")
 
     # in-out arguments
-    import jax.numpy as jp
+    jp = _import_jax_numpy()
 
     register_ffi_callback = _get_experimental_register_ffi_callback()
 
@@ -1249,8 +1258,8 @@ def test_ffi_jax_kernel_autodiff_simple(test, device):
     if device.ordinal > 0:
         test.skipTest("Flaky on device ordinal > 0: JAX FFI jit(grad()) returns zeros")
 
-    import jax
-    import jax.numpy as jp
+    jax = _import_jax()
+    jp = _import_jax_numpy()
 
     jax_kernel = wp.jax_kernel
 
@@ -1259,8 +1268,6 @@ def test_ffi_jax_kernel_autodiff_simple(test, device):
         num_outputs=1,
         enable_backward=True,
     )
-
-    from functools import partial
 
     @partial(jax.jit, static_argnames=["s"])
     def loss(a, b, s):
@@ -1294,8 +1301,8 @@ def test_ffi_jax_kernel_autodiff_jit_of_grad_simple(test, device):
     if device.ordinal > 0:
         test.skipTest("Flaky on device ordinal > 0: JAX FFI jit(grad()) returns zeros")
 
-    import jax
-    import jax.numpy as jp
+    jax = _import_jax()
+    jp = _import_jax_numpy()
 
     jax_kernel = wp.jax_kernel
 
@@ -1334,8 +1341,8 @@ def test_ffi_jax_kernel_autodiff_multi_output(test, device):
     if device.ordinal > 0:
         test.skipTest("Flaky on device ordinal > 0: JAX FFI jit(grad()) returns zeros")
 
-    import jax
-    import jax.numpy as jp
+    jax = _import_jax()
+    jp = _import_jax_numpy()
 
     jax_kernel = wp.jax_kernel
 
@@ -1379,8 +1386,8 @@ def test_ffi_jax_kernel_autodiff_jit_of_grad_multi_output(test, device):
     if device.ordinal > 0:
         test.skipTest("Flaky on device ordinal > 0: JAX FFI jit(grad()) returns zeros")
 
-    import jax
-    import jax.numpy as jp
+    jax = _import_jax()
+    jp = _import_jax_numpy()
 
     jax_kernel = wp.jax_kernel
 
@@ -1414,8 +1421,8 @@ def test_ffi_jax_kernel_autodiff_jit_of_grad_multi_output(test, device):
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_autodiff_2d(test, device):
-    import jax
-    import jax.numpy as jp
+    jax = _import_jax()
+    jp = _import_jax_numpy()
 
     jax_kernel = wp.jax_kernel
 
@@ -1440,14 +1447,12 @@ def test_ffi_jax_kernel_autodiff_2d(test, device):
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_autodiff_vec2(test, device):
-    import jax
-    import jax.numpy as jp
+    jax = _import_jax()
+    jp = _import_jax_numpy()
 
     jax_kernel = wp.jax_kernel
 
     jax_func = jax_kernel(scale_vec_kernel, num_outputs=1, enable_backward=True)
-
-    from functools import partial
 
     @partial(jax.jit, static_argnames=("s",))
     def loss(a, s):
@@ -1470,8 +1475,8 @@ def test_ffi_jax_kernel_autodiff_vec2(test, device):
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_autodiff_mat22(test, device):
-    import jax
-    import jax.numpy as jp
+    jax = _import_jax()
+    jp = _import_jax_numpy()
 
     jax_kernel = wp.jax_kernel
 
@@ -1481,8 +1486,6 @@ def test_ffi_jax_kernel_autodiff_mat22(test, device):
         out[tid] = a[tid] * s
 
     jax_func = jax_kernel(scale_mat_kernel, num_outputs=1, enable_backward=True)
-
-    from functools import partial
 
     @partial(jax.jit, static_argnames=("s",))
     def loss(a, s):
@@ -1507,8 +1510,8 @@ def test_ffi_jax_kernel_autodiff_static_required(test, device):
     if device.ordinal > 0:
         test.skipTest("Flaky on device ordinal > 0: JAX FFI jit(grad()) returns zeros")
 
-    import jax
-    import jax.numpy as jp
+    jax = _import_jax()
+    jp = _import_jax_numpy()
 
     jax_kernel = wp.jax_kernel
 
@@ -1540,8 +1543,8 @@ def test_ffi_jax_kernel_autodiff_static_required(test, device):
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_autodiff_pmap_triple(test, device):
-    import jax
-    import jax.numpy as jp
+    jax = _import_jax()
+    jp = _import_jax_numpy()
 
     jax_kernel = wp.jax_kernel
 
@@ -1567,8 +1570,8 @@ def test_ffi_jax_kernel_autodiff_pmap_triple(test, device):
     "Flaky: race condition in multi-device JAX pmap with FFI - second device output occasionally returns zeros"
 )
 def test_ffi_jax_kernel_autodiff_pmap_multi_output(test, device):
-    import jax
-    import jax.numpy as jp
+    jax = _import_jax()
+    jp = _import_jax_numpy()
 
     jax_kernel = wp.jax_kernel
 
@@ -1624,8 +1627,8 @@ def scale_outer_2d_kernel(
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_launch_dims_autodiff_basic(test, device):
     """launch_dims is accepted with enable_backward=True (GH-1380)."""
-    import jax
-    import jax.numpy as jnp
+    jax = _import_jax()
+    jnp = _import_jax_numpy()
 
     jax_kernel = wp.jax_kernel
 
@@ -1656,8 +1659,8 @@ def test_ffi_jax_kernel_launch_dims_autodiff_gradient(test, device):
     size via atomic_add. Explicit launch_dims, shared between forward and
     adjoint via the enclosing closure, prevents this.
     """
-    import jax
-    import jax.numpy as jnp
+    jax = _import_jax()
+    jnp = _import_jax_numpy()
 
     jax_kernel = wp.jax_kernel
 
@@ -1695,8 +1698,8 @@ def test_ffi_jax_kernel_launch_dims_autodiff_separate_cache(test, device):
     wrapper's closure, so the launch_dims passed to the second call is
     ignored at runtime.
     """
-    import jax
-    import jax.numpy as jnp
+    jax = _import_jax()
+    jnp = _import_jax_numpy()
 
     jax_kernel = wp.jax_kernel
 
@@ -1769,7 +1772,7 @@ def test_ffi_jax_kernel_launch_dims_autodiff_separate_cache(test, device):
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_autodiff_per_call_override_rejected(test, device):
     """Passing FfiKernel-style per-call kwargs to a differentiable wrapper raises TypeError."""
-    import jax.numpy as jnp
+    jnp = _import_jax_numpy()
 
     jax_kernel = wp.jax_kernel
 
@@ -1822,8 +1825,8 @@ def test_ffi_jax_kernel_launch_dims_autodiff_vmap(test, device):
     operate on disjoint axes, so forward values and gradients remain
     correct under vmap.
     """
-    import jax
-    import jax.numpy as jnp
+    jax = _import_jax()
+    jnp = _import_jax_numpy()
 
     jax_kernel = wp.jax_kernel
 
@@ -1859,8 +1862,8 @@ def test_ffi_jax_kernel_launch_dims_autodiff_vmap(test, device):
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_vmap_add(test, device, vmap_method):
     """Test basic batching over different input and output axes."""
-    import jax
-    import jax.numpy as jp
+    jax = _import_jax()
+    jp = _import_jax_numpy()
 
     jax_callable = wp.jax_callable
 
@@ -1928,8 +1931,8 @@ def rowsum_kernel(matrix: wp.array2d[float], sums: wp.array1d[float]):
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_vmap_rowsum(test, device, vmap_method):
     """Test in-out arguments with vmap."""
-    import jax
-    import jax.numpy as jp
+    jax = _import_jax()
+    jp = _import_jax_numpy()
 
     jax_callable = wp.jax_callable
 
@@ -2012,8 +2015,8 @@ def test_ffi_vmap_lookup(test, device, vmap_method):
     - Custom launch and output dimensions for kernels (not inferred from argument shape).
     - Custom output dimensions for callables.
     """
-    import jax
-    import jax.numpy as jp
+    jax = _import_jax()
+    jp = _import_jax_numpy()
 
     jax_callable = wp.jax_callable
 
@@ -2080,7 +2083,7 @@ def test_ffi_vmap_lookup(test, device, vmap_method):
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_subscript_scalar(test, device):
     """Test jax_kernel with wp.array[float] subscript syntax for scalar dtypes."""
-    import jax.numpy as jp
+    jp = _import_jax_numpy()
 
     jax_kernel = wp.jax_kernel
 
@@ -2107,7 +2110,7 @@ def test_ffi_jax_kernel_subscript_scalar(test, device):
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_subscript_vec(test, device):
     """Test jax_kernel with wp.array[wp.vec2] subscript syntax for vector dtypes."""
-    import jax.numpy as jp
+    jp = _import_jax_numpy()
 
     jax_kernel = wp.jax_kernel
 
@@ -2135,8 +2138,8 @@ def test_ffi_jax_kernel_subscript_autodiff(test, device):
     if device.ordinal > 0:
         test.skipTest("Flaky on device ordinal > 0: JAX FFI jit(grad()) returns zeros")
 
-    import jax
-    import jax.numpy as jp
+    jax = _import_jax()
+    jp = _import_jax_numpy()
 
     jax_kernel = wp.jax_kernel
 
@@ -2145,8 +2148,6 @@ def test_ffi_jax_kernel_subscript_autodiff(test, device):
         num_outputs=1,
         enable_backward=True,
     )
-
-    from functools import partial
 
     @partial(jax.jit, static_argnames=["s"])
     def loss(a, b, s):
@@ -2173,7 +2174,7 @@ def test_ffi_jax_kernel_subscript_autodiff(test, device):
 
 
 def test_bf16_interop_jax(test, device):
-    import jax.numpy as jnp
+    jnp = _import_jax_numpy()
 
     input_data = np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float32)
     wp_arr = wp.array(input_data, dtype=wp.bfloat16, device=device)

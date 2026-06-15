@@ -1,8 +1,6 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-# ruff: noqa: PLC0415
-
 import ctypes
 import os
 import unittest
@@ -22,11 +20,41 @@ N = 1024 * 1024
 
 def _jax_version():
     try:
-        import jax
+        jax = _import_jax()
 
         return jax.__version_info__
     except (ImportError, AttributeError):
         return (0, 0, 0)
+
+
+def _import_torch_with_dlpack():
+    import torch.utils.dlpack  # noqa: PLC0415
+
+    return torch
+
+
+def _import_paddle_with_dlpack():
+    import paddle.utils.dlpack  # noqa: PLC0415
+
+    return paddle
+
+
+def _import_jax():
+    import jax  # noqa: PLC0415
+
+    return jax
+
+
+def _import_jax_with_dlpack():
+    import jax.dlpack  # noqa: PLC0415
+
+    return jax
+
+
+def _import_jax_numpy():
+    import jax.numpy as jnp  # noqa: PLC0415
+
+    return jnp
 
 
 @wp.kernel
@@ -243,7 +271,7 @@ def test_dlpack_stream_arg(test, device):
 
 
 def test_dlpack_warp_to_torch(test, device):
-    import torch.utils.dlpack
+    torch = _import_torch_with_dlpack()
 
     a = wp.array(data=np.arange(N, dtype=np.float32), device=device)
 
@@ -270,7 +298,7 @@ def test_dlpack_warp_to_torch(test, device):
 
 def test_dlpack_warp_to_torch_v2(test, device):
     # same as original test, but uses newer __dlpack__() method
-    import torch.utils.dlpack
+    torch = _import_torch_with_dlpack()
 
     a = wp.array(data=np.arange(N, dtype=np.float32), device=device)
 
@@ -297,8 +325,7 @@ def test_dlpack_warp_to_torch_v2(test, device):
 
 
 def test_dlpack_torch_to_warp(test, device):
-    import torch
-    import torch.utils.dlpack
+    torch = _import_torch_with_dlpack()
 
     t = torch.arange(N, dtype=torch.float32, device=wp.device_to_torch(device))
 
@@ -325,7 +352,7 @@ def test_dlpack_torch_to_warp(test, device):
 
 def test_dlpack_torch_to_warp_v2(test, device):
     # same as original test, but uses newer __dlpack__() method
-    import torch
+    torch = _import_torch_with_dlpack()
 
     torch_device = torch.device(wp.device_to_torch(device))
     t = torch.arange(N, dtype=torch.float32, device=torch_device)
@@ -357,8 +384,7 @@ def test_dlpack_torch_to_warp_v2(test, device):
 
 
 def test_dlpack_paddle_to_warp(test, device):
-    import paddle
-    import paddle.utils.dlpack
+    paddle = _import_paddle_with_dlpack()
 
     t = paddle.arange(N, dtype=paddle.float32).to(device=wp.device_to_paddle(device))
 
@@ -385,9 +411,8 @@ def test_dlpack_paddle_to_warp(test, device):
 
 
 def test_dlpack_warp_to_jax(test, device):
-    import jax
-    import jax.dlpack
-    import jax.numpy as jnp
+    jax = _import_jax_with_dlpack()
+    jnp = _import_jax_numpy()
 
     cpu_device = jax.devices("cpu")[0]
 
@@ -433,9 +458,8 @@ def test_dlpack_warp_to_jax(test, device):
 @unittest.skipUnless(_jax_version() >= (0, 4, 15), "Jax version too old")
 def test_dlpack_warp_to_jax_v2(test, device):
     # same as original test, but uses newer __dlpack__() method
-    import jax
-    import jax.dlpack
-    import jax.numpy as jnp
+    jax = _import_jax_with_dlpack()
+    jnp = _import_jax_numpy()
 
     cpu_device = jax.devices("cpu")[0]
 
@@ -479,7 +503,7 @@ def test_dlpack_warp_to_jax_v2(test, device):
 
 
 def test_dlpack_warp_to_paddle(test, device):
-    import paddle.utils.dlpack
+    paddle = _import_paddle_with_dlpack()
 
     a = wp.array(data=np.arange(N, dtype=np.float32), device=device)
 
@@ -507,7 +531,7 @@ def test_dlpack_warp_to_paddle(test, device):
 def test_dlpack_warp_to_paddle_v2(test, device):
     # same as original test, but uses newer __dlpack__() method
 
-    import paddle.utils.dlpack
+    paddle = _import_paddle_with_dlpack()
 
     a = wp.array(data=np.arange(N, dtype=np.float32), device=device)
 
@@ -534,7 +558,7 @@ def test_dlpack_warp_to_paddle_v2(test, device):
 
 
 def test_dlpack_jax_to_warp(test, device):
-    import jax
+    jax = _import_jax()
 
     with jax.default_device(wp.device_to_jax(device)):
         j = jax.numpy.arange(N, dtype=jax.numpy.float32)
@@ -570,7 +594,7 @@ def test_dlpack_jax_to_warp(test, device):
 def test_dlpack_jax_to_warp_v2(test, device):
     # same as original test, but uses newer __dlpack__() method
 
-    import jax
+    jax = _import_jax()
 
     with jax.default_device(wp.device_to_jax(device)):
         j = jax.numpy.arange(N, dtype=jax.numpy.float32)

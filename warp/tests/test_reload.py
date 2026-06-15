@@ -14,6 +14,7 @@ import warp.tests.aux_test_class_kernel
 # dummy modules used for testing reload with dependencies
 import warp.tests.aux_test_dependent as test_dependent
 import warp.tests.aux_test_dependent_local as test_dependent_local
+import warp.tests.aux_test_module_unload as aux_module_unload
 import warp.tests.aux_test_reference as test_reference
 import warp.tests.aux_test_reference_reference as test_reference_reference
 import warp.tests.aux_test_square as test_square
@@ -273,9 +274,7 @@ def test_module_unload_during_graph_capture(test, device):
     # during capture exercises the retention path (on CPU, the APIC state
     # holds raw function pointers into the module's loaded object; on CUDA,
     # the captured graph retains the module_exec).
-    import warp.tests.aux_test_module_unload as aux  # noqa: PLC0415
-
-    other_module = wp.get_module(aux.__name__)
+    other_module = wp.get_module(aux_module_unload.__name__)
     other_module.load(device)
 
     with wp.ScopedDevice(device):
@@ -283,7 +282,7 @@ def test_module_unload_during_graph_capture(test, device):
 
         with wp.ScopedCapture(force_module_load=False) as capture:
             wp.launch(foo, dim=1, inputs=[a])
-            wp.launch(aux.k, dim=1, inputs=[])
+            wp.launch(aux_module_unload.k, dim=1, inputs=[])
 
             # Unloading a module whose kernel was captured should be deferred
             # until the graph is destroyed — the graph retains module_execs.

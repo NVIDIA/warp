@@ -7,6 +7,10 @@ This file is intended to define functions that return TestSuite objects, which
 can be used in parallel or serial unit tests (with optional code coverage)
 """
 
+# This module is a lazy suite manifest: importing it should not import and
+# register every Warp test module. Suite factories import only the selected
+# test modules after callers have configured modes and, for serial runs,
+# cleared Warp caches. Keep this exception local to this file.
 # ruff: noqa: PLC0415
 
 import os
@@ -85,6 +89,9 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
 
     Intended to be modified to create additional test suites
     """
+    # Keep suite member imports lazy. The serial runner clears Warp caches
+    # before building this suite, and importing all test modules here registers
+    # their kernels only after that point.
     from warp.tests.cuda.test_array_fill_capture import TestArrayFillCapture
     from warp.tests.cuda.test_async import TestAsync
     from warp.tests.cuda.test_capture_mode import TestCaptureMode
@@ -192,7 +199,10 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_math import TestMath
     from warp.tests.test_module_contamination import TestModuleContamination
     from warp.tests.test_module_hashing import TestModuleHashing
-    from warp.tests.test_module_parallel_load import TestModuleParallelLoad, TestParallelLoadSharedHelper
+    from warp.tests.test_module_parallel_load import (
+        TestModuleParallelLoad,
+        TestParallelLoadSharedHelper,
+    )
     from warp.tests.test_modules_lite import TestModuleLite
     from warp.tests.test_noise import TestNoise
     from warp.tests.test_operators import TestOperators
@@ -446,6 +456,8 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         - tile.test_tile_matmul_no_mathdx: nvJitLink NVVM_ERROR_COMPILATION
         - test_verify_fp: deliberately triggers assertions which fire in debug
     """
+    # Keep imports lazy so importing this helper does not register unrelated
+    # test kernels before a focused debug suite is selected.
     from warp.tests.geometry.test_bvh import TestBvh
     from warp.tests.geometry.test_mesh import TestMesh
     from warp.tests.matrix.test_mat_linalg import TestMatLinalg

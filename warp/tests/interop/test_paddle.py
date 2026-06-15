@@ -1,8 +1,6 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-# ruff: noqa: PLC0415
-
 import unittest
 
 import warp as wp
@@ -74,8 +72,14 @@ def copy2d_mat22_kernel(dst: wp.array2d[wp.mat22], src: wp.array2d[wp.mat22]):
     dst[i, j] = src[i, j]
 
 
+def _import_paddle():
+    import paddle  # noqa: PLC0415
+
+    return paddle
+
+
 def test_dtype_from_paddle(test, device):
-    import paddle
+    paddle = _import_paddle()
 
     def test_conversions(paddle_type, warp_type):
         test.assertEqual(wp.dtype_from_paddle(paddle_type), warp_type)
@@ -92,7 +96,7 @@ def test_dtype_from_paddle(test, device):
 
 
 def test_dtype_to_paddle(test, device):
-    import paddle
+    paddle = _import_paddle()
 
     def test_conversions(warp_type, paddle_type):
         test.assertEqual(wp.dtype_to_paddle(warp_type), paddle_type)
@@ -118,7 +122,7 @@ def test_device_conversion(test, device):
 
 
 def test_paddle_zerocopy(test, device):
-    import paddle
+    paddle = _import_paddle()
 
     a = wp.zeros(10, dtype=wp.float32, device=device)
     t = wp.to_paddle(a)
@@ -132,7 +136,7 @@ def test_paddle_zerocopy(test, device):
 
 
 def test_from_paddle(test, device):
-    import paddle
+    paddle = _import_paddle()
 
     paddle_device = wp.device_to_paddle(device)
 
@@ -226,7 +230,7 @@ def test_from_paddle(test, device):
 
 
 def test_array_ctype_from_paddle(test, device):
-    import paddle
+    paddle = _import_paddle()
 
     paddle_device = wp.device_to_paddle(device)
 
@@ -381,7 +385,7 @@ def test_array_ctype_from_paddle(test, device):
 
 
 def test_to_paddle(test, device):
-    import paddle
+    paddle = _import_paddle()
 
     def wrap_scalar_array(warp_dtype, expected_paddle_dtype):
         a = wp.zeros(10, dtype=warp_dtype, device=device)
@@ -429,7 +433,7 @@ def test_to_paddle(test, device):
 
 
 def test_from_paddle_slices(test, device):
-    import paddle
+    paddle = _import_paddle()
 
     paddle_device = wp.device_to_paddle(device)
 
@@ -504,7 +508,7 @@ def test_from_paddle_slices(test, device):
 
 
 def test_from_paddle_zero_strides(test, device):
-    import paddle
+    paddle = _import_paddle()
 
     paddle_device = wp.device_to_paddle(device)
 
@@ -543,7 +547,7 @@ def test_from_paddle_zero_strides(test, device):
 
 def test_paddle_retain_grad_from_paddle(test, device):
     """Test that retain_grad can be set when converting from Paddle via from_paddle"""
-    import paddle
+    paddle = _import_paddle()
 
     paddle_device = wp.device_to_paddle(device)
     t = paddle.zeros([10], dtype="float32").to(device=paddle_device)
@@ -559,7 +563,7 @@ def test_paddle_retain_grad_from_paddle(test, device):
 def test_paddle_autograd(test, device):
     """Test paddle autograd with a custom Warp op"""
 
-    import paddle
+    paddle = _import_paddle()
 
     # custom autograd op
     class TestFunc(paddle.autograd.PyLayer):
@@ -632,7 +636,7 @@ def test_paddle_autograd(test, device):
 def test_warp_graph_warp_stream(test, device):
     """Capture Warp graph on Warp stream"""
 
-    import paddle
+    paddle = _import_paddle()
 
     paddle_device = wp.device_to_paddle(device)
 
@@ -668,7 +672,7 @@ def test_warp_graph_paddle_stream(test, device):
 
     wp.load_module(device=device)
 
-    import paddle
+    paddle = _import_paddle()
 
     paddle_device = wp.device_to_paddle(device)
 
@@ -706,7 +710,7 @@ def test_warp_graph_paddle_stream(test, device):
 def test_direct(test, device):
     """Pass Paddle tensors to Warp kernels directly"""
 
-    import paddle
+    paddle = _import_paddle()
 
     paddle_device = wp.device_to_paddle(device)
     n = 12

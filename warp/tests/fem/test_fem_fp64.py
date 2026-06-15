@@ -15,6 +15,7 @@ import numpy as np
 
 import warp as wp
 import warp.fem as fem
+from warp.sparse import bsr_mv
 from warp.tests.unittest_utils import add_function_test, get_test_devices
 
 vec2d = wp.vec2d
@@ -226,7 +227,6 @@ def test_fp64_diffusion_matrix(test, device):
                     n = matrix.nrow
                     ones = wp.array(np.ones(n, dtype=np.float64), dtype=wp.float64)
                     row_sums = wp.zeros(n, dtype=wp.float64)
-                    from warp.sparse import bsr_mv  # noqa: PLC0415
 
                     bsr_mv(matrix, ones, row_sums)
                     np.testing.assert_allclose(

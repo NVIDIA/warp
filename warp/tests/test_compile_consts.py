@@ -6,6 +6,7 @@ import unittest
 
 import warp as wp
 import warp.tests.aux_test_compile_consts_dummy
+from warp._src.codegen import codegen_func_forward
 from warp.tests.unittest_utils import *
 
 LOCAL_ONE = wp.constant(1)
@@ -277,7 +278,6 @@ def test_float64_from_large_int(test, device):
 
 def test_negative_constant_codegen(test, device):
     """Verifies negative float/int constants emit as negative literals in C++."""
-    from warp._src.codegen import codegen_func_forward  # noqa: PLC0415
 
     @wp.kernel
     def neg_codegen_kernel(

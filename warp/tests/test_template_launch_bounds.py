@@ -9,6 +9,8 @@ from unittest import mock
 import numpy as np
 
 import warp as wp
+from warp._src import context
+from warp._src.types import _launch_bounds_classes, launch_bounds_t
 from warp.tests.unittest_utils import *
 
 BLOCK_DIM = 64
@@ -212,8 +214,6 @@ class IndexLike:
 
 
 def test_canonicalize_dim_contract(test, device):
-    from warp._src import context  # noqa: PLC0415
-
     dim = (1, 2, 3)
 
     with mock.patch.object(context.operator, "index", wraps=context.operator.index) as index:
@@ -232,8 +232,6 @@ def test_canonicalize_dim_contract(test, device):
 
 
 def test_build_launch_bounds_from_tuple_preserves_large_coord_mult(test, device):
-    from warp._src import context  # noqa: PLC0415
-
     large_mult = 2**33 + 3
     bounds = context._build_launch_bounds_from_tuple((1, large_mult), 1)
 
@@ -243,8 +241,6 @@ def test_build_launch_bounds_from_tuple_preserves_large_coord_mult(test, device)
 
 
 def test_launch_normalizes_dim_once(test, device):
-    from warp._src import context  # noqa: PLC0415
-
     out = wp.zeros(1, dtype=int, device=device)
 
     # Protect the launch-dim fast path: launch() should reuse the normalized
@@ -380,8 +376,6 @@ def test_launch_rejects_unsupported_rank(test, device):
 
 
 def test_launch_bounds_factory_specializes_dimensionality(test, device):
-    from warp._src.types import _launch_bounds_classes, launch_bounds_t  # noqa: PLC0415
-
     bounds_1d = launch_bounds_t((4,))
     bounds_2d = launch_bounds_t((4, 5))
 

@@ -6,6 +6,8 @@
 import ctypes
 import enum
 import gc
+import shutil
+import subprocess
 import time
 import unittest
 
@@ -618,9 +620,6 @@ def _alloc_freed(alloc, node):
 
 # show graph for debugging
 def _show_graph(graph):
-    import shutil  # noqa: PLC0415
-    import subprocess  # noqa: PLC0415
-
     basename = "graph"
     dotname = f"{basename}.dot"
     imgname = f"{basename}.png"

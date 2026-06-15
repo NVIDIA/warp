@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import struct
 import unittest
 
 import numpy as np
@@ -435,8 +436,6 @@ def test_bf16_comparisons(test, device):
 def test_bf16_nan_preservation(test, device):
     """Test that NaN values are preserved through bfloat16 conversion, including signaling NaNs
     whose top mantissa bits would be truncated to zero by a naive implementation."""
-    import struct  # noqa: PLC0415
-
     # Quiet NaN (standard): 0x7FC00000 — mantissa bits survive truncation
     # Signaling NaN with low mantissa: 0x7F800001 — top 7 mantissa bits are zero,
     # so a naive truncation (bits >> 16) produces 0x7F80 = infinity
