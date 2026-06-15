@@ -191,6 +191,132 @@ def test_volume_tile_readback_v4(volume: wp.uint64, tiles: wp.array2d[wp.int32],
 
 
 @wp.kernel
+def test_volume_tile_store_u32(volume: wp.uint64, tiles: wp.array2d[wp.int32]):
+    tid = wp.tid()
+
+    ti = tiles[tid, 0]
+    tj = tiles[tid, 1]
+    tk = tiles[tid, 2]
+
+    for r in range(512):
+        ii = ti + (r / 64) % 8
+        jj = tj + (r / 8) % 8
+        kk = tk + r % 8
+        wp.volume_store(volume, ii, jj, kk, wp.uint32(tid * 512 + r + 17))
+
+
+@wp.kernel
+def test_volume_tile_readback_u32(volume: wp.uint64, tiles: wp.array2d[wp.int32], values: wp.array[wp.uint32]):
+    tid = wp.tid()
+
+    ti = tiles[tid, 0]
+    tj = tiles[tid, 1]
+    tk = tiles[tid, 2]
+
+    for r in range(512):
+        ii = ti + (r / 64) % 8
+        jj = tj + (r / 8) % 8
+        kk = tk + r % 8
+        values[tid * 512 + r] = wp.volume_lookup(volume, ii, jj, kk, dtype=wp.uint32)
+
+
+@wp.kernel
+def test_volume_tile_store_i64(volume: wp.uint64, tiles: wp.array2d[wp.int32]):
+    tid = wp.tid()
+
+    ti = tiles[tid, 0]
+    tj = tiles[tid, 1]
+    tk = tiles[tid, 2]
+
+    for r in range(512):
+        ii = ti + (r / 64) % 8
+        jj = tj + (r / 8) % 8
+        kk = tk + r % 8
+        wp.volume_store(volume, ii, jj, kk, wp.int64(1000000000000) + wp.int64(tid * 512 + r))
+
+
+@wp.kernel
+def test_volume_tile_readback_i64(volume: wp.uint64, tiles: wp.array2d[wp.int32], values: wp.array[wp.int64]):
+    tid = wp.tid()
+
+    ti = tiles[tid, 0]
+    tj = tiles[tid, 1]
+    tk = tiles[tid, 2]
+
+    for r in range(512):
+        ii = ti + (r / 64) % 8
+        jj = tj + (r / 8) % 8
+        kk = tk + r % 8
+        values[tid * 512 + r] = wp.volume_lookup(volume, ii, jj, kk, dtype=wp.int64)
+
+
+@wp.kernel
+def test_volume_tile_store_f64(volume: wp.uint64, tiles: wp.array2d[wp.int32]):
+    tid = wp.tid()
+
+    ti = tiles[tid, 0]
+    tj = tiles[tid, 1]
+    tk = tiles[tid, 2]
+
+    for r in range(512):
+        ii = ti + (r / 64) % 8
+        jj = tj + (r / 8) % 8
+        kk = tk + r % 8
+        wp.volume_store(
+            volume,
+            ii,
+            jj,
+            kk,
+            wp.float64(ii) * wp.float64(0.25) + wp.float64(jj) * wp.float64(0.125) + wp.float64(kk),
+        )
+
+
+@wp.kernel
+def test_volume_tile_readback_f64(volume: wp.uint64, tiles: wp.array2d[wp.int32], values: wp.array[wp.float64]):
+    tid = wp.tid()
+
+    ti = tiles[tid, 0]
+    tj = tiles[tid, 1]
+    tk = tiles[tid, 2]
+
+    for r in range(512):
+        ii = ti + (r / 64) % 8
+        jj = tj + (r / 8) % 8
+        kk = tk + r % 8
+        values[tid * 512 + r] = wp.volume_lookup(volume, ii, jj, kk, dtype=wp.float64)
+
+
+@wp.kernel
+def test_volume_tile_store_v3d(volume: wp.uint64, tiles: wp.array2d[wp.int32]):
+    tid = wp.tid()
+
+    ti = tiles[tid, 0]
+    tj = tiles[tid, 1]
+    tk = tiles[tid, 2]
+
+    for r in range(512):
+        ii = ti + (r / 64) % 8
+        jj = tj + (r / 8) % 8
+        kk = tk + r % 8
+        wp.volume_store(volume, ii, jj, kk, wp.vec3d(wp.float64(ii), wp.float64(jj * 2), wp.float64(kk * 3)))
+
+
+@wp.kernel
+def test_volume_tile_readback_v3d(volume: wp.uint64, tiles: wp.array2d[wp.int32], values: wp.array[wp.vec3d]):
+    tid = wp.tid()
+
+    ti = tiles[tid, 0]
+    tj = tiles[tid, 1]
+    tk = tiles[tid, 2]
+
+    for r in range(512):
+        ii = ti + (r / 64) % 8
+        jj = tj + (r / 8) % 8
+        kk = tk + r % 8
+        values[tid * 512 + r] = wp.volume_lookup(volume, ii, jj, kk, dtype=wp.vec3d)
+
+
+@wp.kernel
 def test_volume_readback_index(volume: wp.uint64, points: wp.array2d[wp.int32], values: wp.array[wp.int32]):
     tid = wp.tid()
 
@@ -356,6 +482,84 @@ def test_volume_allocate_by_tiles_index(test, device):
     tile_unique = np.unique(tile_sorted, axis=0)
 
     np.testing.assert_equal(tile_unique, vol_tile_unique)
+
+
+def test_volume_allocate_by_tiles_additional_types(test, device):
+    points_np = np.array(
+        [
+            [0, 0, 0],
+            [8, 0, 0],
+            [0, 8, 0],
+            [0, 0, 128],
+            [0, 0, 128],
+            [128, 0, 0],
+        ],
+        dtype=np.int32,
+    )
+    tile_count, lower_count, upper_count = _grid_parent_counts(points_np)
+    points_d = wp.array(points_np, dtype=wp.int32, device=device)
+
+    def check_type(bg_value, dtype, store_kernel, readback_kernel, assert_values):
+        status = wp.zeros(1, dtype=wp.uint32, device=device)
+        volume_exact = wp.Volume.allocate_by_tiles(points_d, 1.0, bg_value, device=device)
+        volume_rebuildable = wp.Volume.allocate_by_tiles(
+            points_d,
+            1.0,
+            bg_value,
+            device=device,
+            graph_rebuildable=True,
+            max_tiles=tile_count,
+            max_lower_nodes=lower_count,
+            max_upper_nodes=upper_count,
+            status=status,
+        )
+        wp.synchronize_device(device)
+
+        test.assertEqual(int(status.numpy()[0]), wp.Volume.REBUILD_SUCCESS)
+        assert wp.types.types_equal(volume_exact.dtype, dtype)
+        assert wp.types.types_equal(volume_rebuildable.dtype, dtype)
+
+        tiles = _sort_rows(volume_exact.get_tiles().numpy())
+        tiles_d = wp.array(tiles, dtype=wp.int32, device=device)
+        exact_values = wp.empty(tile_count * 512, dtype=dtype, device=device)
+        rebuildable_values = wp.empty(tile_count * 512, dtype=dtype, device=device)
+
+        wp.launch(store_kernel, dim=tile_count, inputs=[volume_exact.id, tiles_d], device=device)
+        wp.launch(store_kernel, dim=tile_count, inputs=[volume_rebuildable.id, tiles_d], device=device)
+        wp.launch(readback_kernel, dim=tile_count, inputs=[volume_exact.id, tiles_d, exact_values], device=device)
+        wp.launch(
+            readback_kernel, dim=tile_count, inputs=[volume_rebuildable.id, tiles_d, rebuildable_values], device=device
+        )
+        assert_values(rebuildable_values.numpy(), exact_values.numpy())
+
+    check_type(
+        wp.uint32(7),
+        wp.uint32,
+        test_volume_tile_store_u32,
+        test_volume_tile_readback_u32,
+        np.testing.assert_array_equal,
+    )
+    check_type(
+        wp.int64(7),
+        wp.int64,
+        test_volume_tile_store_i64,
+        test_volume_tile_readback_i64,
+        np.testing.assert_array_equal,
+    )
+    check_type(
+        wp.float64(7.0),
+        wp.float64,
+        test_volume_tile_store_f64,
+        test_volume_tile_readback_f64,
+        np.testing.assert_allclose,
+    )
+    check_type(
+        wp.vec3d(1.0, 2.0, 3.0),
+        wp.vec3d,
+        test_volume_tile_store_v3d,
+        test_volume_tile_readback_v3d,
+        np.testing.assert_allclose,
+    )
 
 
 def test_volume_allocation_from_voxels(test, device):
@@ -790,6 +994,12 @@ add_function_test(TestVolumeWrite, "test_volume_allocate_by_tiles_f", test_volum
 add_function_test(TestVolumeWrite, "test_volume_allocate_by_tiles_v", test_volume_allocate_by_tiles_v, devices=devices)
 add_function_test(
     TestVolumeWrite, "test_volume_allocate_by_tiles_index", test_volume_allocate_by_tiles_index, devices=devices
+)
+add_function_test(
+    TestVolumeWrite,
+    "test_volume_allocate_by_tiles_additional_types",
+    test_volume_allocate_by_tiles_additional_types,
+    devices=devices,
 )
 add_function_test(
     TestVolumeWrite,

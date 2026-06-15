@@ -7,8 +7,12 @@
 
 #define WP_VOLUME_BUILDER_INSTANTIATE_TYPES                                                                            \
     EXPAND_BUILDER_TYPE(int32_t)                                                                                       \
+    EXPAND_BUILDER_TYPE(uint32_t)                                                                                      \
+    EXPAND_BUILDER_TYPE(int64_t)                                                                                       \
     EXPAND_BUILDER_TYPE(float)                                                                                         \
+    EXPAND_BUILDER_TYPE(double)                                                                                        \
     EXPAND_BUILDER_TYPE(nanovdb::Vec3f)                                                                                \
+    EXPAND_BUILDER_TYPE(nanovdb::Vec3d)                                                                                \
     EXPAND_BUILDER_TYPE(nanovdb::Vec4f)
 
 template <typename BuildT> struct BuildGridParams {
