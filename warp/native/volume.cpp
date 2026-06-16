@@ -369,7 +369,7 @@ void wp_volume_get_voxels_host(uint64_t id, void* buf)
         const pnanovdb_buf_t pnano_buf = volume->as_pnano();
         const pnanovdb_tree_handle_t tree = volume::get_tree(pnano_buf);
         const uint32_t actual_leaf_count = pnanovdb_tree_get_node_count_leaf(pnano_buf, tree);
-        const uint64_t actual_voxel_count = pnanovdb_tree_get_voxel_count(pnano_buf, tree);
+        const uint64_t actual_voxel_count = volume::effective_voxel_count(pnano_buf);
         leaf_count = std::min(leaf_count, actual_leaf_count);
         voxel_count = std::min(voxel_count, actual_voxel_count);
 

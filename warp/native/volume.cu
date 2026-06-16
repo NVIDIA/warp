@@ -26,7 +26,7 @@ volume_get_voxel_coords(const uint32_t voxel_count, pnanovdb_coord_t* voxel_coor
     const uint32_t leaf_index = blockIdx.x;
     const pnanovdb_tree_handle_t tree = wp::volume::get_tree(buf);
     const uint32_t actual_leaf_count = pnanovdb_tree_get_node_count_leaf(buf, tree);
-    const uint64_t actual_voxel_count = pnanovdb_tree_get_voxel_count(buf, tree);
+    const uint64_t actual_voxel_count = wp::volume::effective_voxel_count(buf);
 
     if (leaf_index >= actual_leaf_count)
         return;
