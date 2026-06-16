@@ -109,13 +109,13 @@ enum RebuildCountSlot : uint32_t {
 };
 
 struct RebuildGridDataBase {
-    pnanovdb_buf_t buf;
-    uint64_t size;
-    uint64_t grid, tree, root, upper, lower, leaf;
-    uint32_t grid_type;
-    uint32_t grid_class;
-    uint32_t value_size;
-    uint32_t background_value[8];
+    pnanovdb_buf_t buf {};
+    uint64_t size = 0;
+    uint64_t grid = 0, tree = 0, root = 0, upper = 0, lower = 0, leaf = 0;
+    uint32_t grid_type = 0;
+    uint32_t grid_class = 0;
+    uint32_t value_size = 0;
+    uint32_t background_value[8] = {};
 
     VolumeRebuildCapacities capacities;
     nanovdb::Map map;

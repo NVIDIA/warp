@@ -24,7 +24,7 @@ struct HostRebuildScratch {
 };
 
 struct HostRebuildGridData : RebuildGridDataBase {
-    const HostRebuildScratch* scratch;
+    const HostRebuildScratch* scratch = nullptr;
 };
 
 void rebuild_set_mask_on(

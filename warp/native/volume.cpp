@@ -17,18 +17,18 @@ namespace {
 
 struct VolumeDesc {
     // NanoVDB buffer either in device or host memory
-    void* buffer;
-    uint64_t size_in_bytes;
-    bool owner;  // whether the buffer should be deallocated when the volume is destroyed
+    void* buffer = nullptr;
+    uint64_t size_in_bytes = 0;
+    bool owner = false;  // whether the buffer should be deallocated when the volume is destroyed
 
-    pnanovdb_grid_t grid_data;
-    pnanovdb_tree_t tree_data;
+    pnanovdb_grid_t grid_data {};
+    pnanovdb_tree_t tree_data {};
 
     // Host-accessible version of the blind metadata (copy if GPU, alias if CPU)
-    pnanovdb_gridblindmetadata_t* blind_metadata;
+    pnanovdb_gridblindmetadata_t* blind_metadata = nullptr;
 
     // CUDA context for this volume (NULL if CPU)
-    void* context;
+    void* context = nullptr;
 
     // Rebuildable CUDA volumes keep actual counts on the device. The host descriptor
     // stores capacities so callers can allocate upper-bound output arrays without
