@@ -99,6 +99,8 @@
 - Fix `wp.copy()` ignoring `src_offset`, `dest_offset`, and `count` for 1D non-contiguous arrays such as strided slices
   ([GH-1533](https://github.com/NVIDIA/warp/issues/1533)).
 - Fix the gradient of `wp.copy()` when `src_offset` and `dest_offset` differ.
+- Fix `warp.init()` segfault while loading `warp-clang.so` on some Linux systems caused by aggressive symbol stripping.
+  ([GH-1554](https://github.com/NVIDIA/warp/issues/1554)).
 
 ### Documentation
 

@@ -965,9 +965,9 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
                 if sys.platform == "darwin":
                     run_cmd(f"strip -x {dll_path}")  # Strip all local symbols
                 else:  # Linux
-                    # Strip all symbols except for those needed to support debugging JIT-compiled code
+                    # Strip symbols not needed for dynamic linking, except those needed to support debugging JIT-compiled code
                     run_cmd(
-                        f"strip --strip-all --keep-symbol=__jit_debug_register_code --keep-symbol=__jit_debug_descriptor {dll_path}"
+                        f"strip --strip-unneeded --keep-symbol=__jit_debug_register_code --keep-symbol=__jit_debug_descriptor {dll_path}"
                     )
 
 
