@@ -393,10 +393,15 @@ def test_nanogrid_rebuild(test, device):
         status=status,
     )
 
-    with test.assertRaisesRegex(RuntimeError, "must use rebuildable=True"):
-        fem.Nanogrid(volume, rebuildable=False)
+    fixed_geo = fem.Nanogrid(volume, rebuildable=False)
+    test.assertEqual(fixed_geo.cell_count(), 1)
+    with test.assertRaisesRegex(RuntimeError, "not constructed in rebuildable mode"):
+        fixed_geo.rebuild_topology_from_cells()
 
-    geo = fem.Nanogrid(volume)
+    with test.assertRaisesRegex(RuntimeError, "require a rebuildable Volume"):
+        fem.Nanogrid(wp.Volume.allocate_by_voxels(points_initial, voxel_size=1.0, device=device), rebuildable=True)
+
+    geo = fem.Nanogrid(volume, rebuildable=True)
 
     geo.rebuild(points_rebuild, status=status, point_mask=point_mask)
     wp.launch(_nanogrid_volume_counts, dim=1, inputs=[geo.cell_grid.id, geo.vertex_grid.id, counts], device=device)
@@ -406,6 +411,50 @@ def test_nanogrid_rebuild(test, device):
     test.assertEqual(geo.cell_count(), 4)
     test.assertEqual(geo.vertex_count(), 32)
     np.testing.assert_array_equal(counts.numpy(), np.array([3, 20]))
+
+    env_offsets = wp.array([[0, 0, 0], [5, 0, 0]], dtype=wp.vec3i, device=device)
+    env_initial = wp.array([[0, 0, 0], [5, 0, 0]], dtype=wp.int32, device=device)
+    env_status = wp.zeros(1, dtype=wp.uint32, device=device)
+    env_volume = wp.Volume.allocate_by_voxels(
+        env_initial,
+        voxel_size=1.0,
+        device=device,
+        rebuildable=True,
+        max_active_voxels=4,
+        max_leaf_nodes=4,
+        max_lower_nodes=4,
+        max_upper_nodes=4,
+        status=env_status,
+    )
+    env_geo = fem.Nanogrid(
+        env_volume,
+        cell_env=wp.array([0, 1, 0, 0], dtype=int, device=device),
+        env_offsets=env_offsets,
+        rebuildable=True,
+    )
+    env_rebuild = wp.array([[1, 0, 0], [0, 0, 0], [1, 0, 0]], dtype=wp.int32, device=device)
+
+    with test.assertRaisesRegex(ValueError, "point_envs is required"):
+        env_geo.rebuild(env_rebuild, status=env_status)
+
+    env_geo.rebuild(
+        env_rebuild,
+        point_envs=wp.array([0, 1, 1], dtype=wp.int32, device=device),
+        status=env_status,
+    )
+    wp.synchronize_device(device)
+
+    test.assertEqual(int(env_status.numpy()[0]), wp.Volume.REBUILD_SUCCESS)
+    active_count = env_geo.cell_grid.get_active_stats().voxel_count
+    env_voxels = wp.full((env_geo.cell_count(), 3), -999, dtype=wp.int32, device=device)
+    env_geo.cell_grid.get_voxels(out=env_voxels)
+    env_by_voxel = {
+        tuple(voxel): int(env)
+        for voxel, env in zip(env_voxels.numpy()[:active_count], env_geo.cell_env.numpy()[:active_count], strict=True)
+    }
+    test.assertEqual(env_by_voxel[(1, 0, 0)], 0)
+    test.assertEqual(env_by_voxel[(5, 0, 0)], 1)
+    test.assertEqual(env_by_voxel[(6, 0, 0)], 1)
 
 
 def test_nanogrid_rebuild_capture(test, device):
@@ -426,7 +475,7 @@ def test_nanogrid_rebuild_capture(test, device):
         max_upper_nodes=4,
         status=status,
     )
-    geo = fem.Nanogrid(volume)
+    geo = fem.Nanogrid(volume, rebuildable=True)
     space = fem.make_polynomial_space(geo, degree=1)
     vertex_grid_id = geo.vertex_grid.id
 
@@ -440,7 +489,8 @@ def test_nanogrid_rebuild_capture(test, device):
 
     wp.load_module(device=device)
     with wp.ScopedCapture(device=device, force_module_load=False) as capture:
-        geo.rebuild(points_rebuild, status=status, point_mask=point_mask)
+        volume.rebuild(points_rebuild, status=status, point_mask=point_mask)
+        geo.rebuild_topology_from_cells()
         wp.launch(_nanogrid_volume_counts, dim=1, inputs=[geo.cell_grid.id, geo.vertex_grid.id, counts], device=device)
 
     wp.capture_launch(capture.graph)

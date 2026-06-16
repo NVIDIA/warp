@@ -230,14 +230,37 @@ def _make_env_offsets(offsets, device):
     return wp.array(np.array(offsets, dtype=np.int32), dtype=wp.vec3i, device=device)
 
 
-def _make_multi_env_nanogrid(device, env_offsets=None):
+def _pack_env_voxels(env_cells, device):
+    cell_np = np.concatenate([env_cell.numpy() for env_cell in env_cells], axis=0)
+    env_np = np.concatenate(
+        [np.full(env_cell.shape[0], env_index, dtype=np.int32) for env_index, env_cell in enumerate(env_cells)]
+    )
+    return (
+        wp.array(cell_np, dtype=env_cells[0].dtype, device=device),
+        wp.array(env_np, dtype=wp.int32, device=device),
+        len(env_cells),
+    )
+
+
+def _pack_env_voxels_with_levels(env_cells, env_levels, device):
+    points, point_envs, env_count = _pack_env_voxels(env_cells, device)
+    level_np = np.concatenate([env_level.numpy() for env_level in env_levels], axis=0)
+    return points, wp.array(level_np, dtype=wp.uint8, device=device), point_envs, env_count
+
+
+def _make_multi_env_nanogrid(device, env_offsets=None, point_dtype=wp.vec3i):
     env_cells = (
         wp.array([[i, j, k] for i in range(2) for j in range(2) for k in range(2)], dtype=wp.vec3i, device=device),
         wp.array([[0, 0, 0], [1, 0, 0]], dtype=wp.vec3i, device=device),
     )
+    points, point_envs, env_count = _pack_env_voxels(env_cells, device)
+    if point_dtype == wp.vec3f:
+        points = wp.array(points.numpy().astype(np.float32), dtype=wp.vec3f, device=device)
 
     geo = fem.Nanogrid.from_environment_voxels(
-        env_cells,
+        points,
+        point_envs,
+        env_count,
         env_offsets=env_offsets,
         voxel_size=1.0,
         device=device,
@@ -260,10 +283,13 @@ def _make_multi_env_adaptive_nanogrid(device, env_offsets=None):
         wp.array([1], dtype=wp.uint8, device=device),
         wp.array([0] * len(fine_cells), dtype=wp.uint8, device=device),
     )
+    points, cell_levels, point_envs, env_count = _pack_env_voxels_with_levels(env_cells, env_levels, device)
 
     geo = fem.AdaptiveNanogrid.from_environment_voxels(
-        env_cells,
-        env_levels,
+        points,
+        cell_levels,
+        point_envs,
+        env_count,
         level_count=2,
         env_offsets=env_offsets,
         voxel_size=0.5,
@@ -670,8 +696,11 @@ def _test_sparse_grid_lookup_with_adjacent_env_offsets(test, device):
             wp.array([[0, 0, 0]], dtype=wp.vec3i, device=device),
             wp.array([[0, 0, 0]], dtype=wp.vec3i, device=device),
         )
+        points, point_envs, env_count = _pack_env_voxels(env_cells, device)
         geo = fem.Nanogrid.from_environment_voxels(
-            env_cells,
+            points,
+            point_envs,
+            env_count,
             env_offsets=_make_env_offsets([[0, 0, 0], [1, 0, 0]], device),
             voxel_size=1.0,
             device=device,
@@ -848,6 +877,54 @@ def test_nanogrid_multi_env(test, device):
     bspline_space = fem.make_polynomial_space(geo, degree=2, element_basis=fem.ElementBasis.BSPLINE)
     _assert_sparse_multi_env_node_isolation(test, geo, bspline_space, cell_env, device)
 
+    world_geo, _ = _make_multi_env_nanogrid(device, point_dtype=wp.vec3f)
+    np.testing.assert_array_equal(world_geo.env_offsets.numpy(), np.array([[0, 0, 0], [5, 0, 0]], dtype=np.int32))
+    test.assertEqual(world_geo.cell_count(), 10)
+
+    masked_points = wp.array([[0, 0, 0], [9, 0, 0], [0, 0, 0]], dtype=wp.vec3i, device=device)
+    masked_envs = wp.array([0, 0, 1], dtype=wp.int32, device=device)
+    point_mask = wp.array([1, 0, 1], dtype=wp.int32, device=device)
+    masked_geo = fem.Nanogrid.from_environment_voxels(
+        masked_points,
+        masked_envs,
+        2,
+        point_mask=point_mask,
+        voxel_size=1.0,
+        device=device,
+    )
+    np.testing.assert_array_equal(masked_geo.env_offsets.numpy(), np.array([[0, 0, 0], [4, 0, 0]], dtype=np.int32))
+    test.assertEqual(masked_geo.cell_count(), 2)
+    test.assertEqual(masked_geo.cell_grid.get_active_stats().voxel_count, 2)
+
+
+def test_nanogrid_multi_env_rebuildable(test, device):
+    env_cells = (
+        wp.array([[0, 0, 0]], dtype=wp.vec3i, device=device),
+        wp.array([[0, 0, 0]], dtype=wp.vec3i, device=device),
+    )
+    points, point_envs, env_count = _pack_env_voxels(env_cells, device)
+    status = wp.zeros(1, dtype=wp.uint32, device=device)
+    geo = fem.Nanogrid.from_environment_voxels(
+        points,
+        point_envs,
+        env_count,
+        voxel_size=1.0,
+        device=device,
+        rebuildable=True,
+        max_active_voxels=4,
+        max_leaf_nodes=4,
+        max_lower_nodes=4,
+        max_upper_nodes=4,
+        status=status,
+    )
+    wp.synchronize_device(device)
+
+    test.assertEqual(int(status.numpy()[0]), wp.Volume.REBUILD_SUCCESS)
+    test.assertTrue(geo.cell_grid.is_rebuildable)
+    test.assertEqual(geo.cell_count(), 4)
+    test.assertEqual(geo.cell_grid.get_active_stats().voxel_count, 2)
+    test.assertEqual(geo.environment_count(), 2)
+
 
 def test_adaptive_nanogrid_multi_env(test, device):
     if platform.system() == "Windows":
@@ -867,6 +944,23 @@ def test_adaptive_nanogrid_multi_env(test, device):
     _test_sparse_grid_multi_env(test, device, geo, cell_env)
     _assert_environment_first_pressure_partition(test, geo, cell_env, device)
 
+    masked_points = wp.array([[0, 0, 0], [16, 0, 0], [0, 0, 0]], dtype=wp.vec3i, device=device)
+    masked_levels = wp.array([1, 0, 0], dtype=wp.uint8, device=device)
+    masked_envs = wp.array([0, 0, 1], dtype=wp.int32, device=device)
+    point_mask = wp.array([1, 0, 1], dtype=wp.int32, device=device)
+    masked_geo = fem.AdaptiveNanogrid.from_environment_voxels(
+        masked_points,
+        masked_levels,
+        masked_envs,
+        2,
+        level_count=2,
+        point_mask=point_mask,
+        voxel_size=0.5,
+        device=device,
+    )
+    np.testing.assert_array_equal(masked_geo.env_offsets.numpy(), np.array([[0, 0, 0], [4, 0, 0]], dtype=np.int32))
+    test.assertEqual(masked_geo.cell_count(), 2)
+
 
 # -- Device setup and test registration --
 
@@ -883,6 +977,9 @@ add_function_test(TestFemMultiEnv, "test_grid_3d_multi_env", test_grid_3d_multi_
 add_function_test(TestFemMultiEnv, "test_deformed_grid_3d_multi_env", test_deformed_grid_3d_multi_env, devices=devices)
 add_function_test(TestFemMultiEnv, "test_mesh_multi_env", test_mesh_multi_env, devices=devices)
 add_function_test(TestFemMultiEnv, "test_nanogrid_multi_env", test_nanogrid_multi_env, devices=cuda_devices)
+add_function_test(
+    TestFemMultiEnv, "test_nanogrid_multi_env_rebuildable", test_nanogrid_multi_env_rebuildable, devices=cuda_devices
+)
 add_function_test(
     TestFemMultiEnv, "test_adaptive_nanogrid_multi_env", test_adaptive_nanogrid_multi_env, devices=cuda_devices
 )

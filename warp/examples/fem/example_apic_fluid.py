@@ -304,7 +304,7 @@ class Example:
             **grid_capacity,
             status=self.grid_status,
         )
-        self.grid = fem.Nanogrid(self.volume)
+        self.grid = fem.Nanogrid(self.volume, rebuildable=True)
 
         self.linear_basis_space = fem.make_polynomial_basis_space(self.grid, degree=1)
         self.velocity_space = fem.make_collocated_function_space(self.linear_basis_space, dtype=wp.vec3)
