@@ -5863,6 +5863,14 @@ class Runtime:
                 ctypes.POINTER(ctypes.c_uint32),
                 ctypes.POINTER(ctypes.c_uint64),
             ]
+            self.core.wp_volume_get_active_stats.argtypes = [
+                ctypes.c_uint64,
+                ctypes.POINTER(ctypes.c_uint64),
+                ctypes.POINTER(ctypes.c_uint32),
+                ctypes.POINTER(ctypes.c_uint32),
+                ctypes.POINTER(ctypes.c_uint32),
+            ]
+            self.core.wp_volume_get_active_stats.restype = None
             self.core.wp_volume_get_grid_info.argtypes = [
                 ctypes.c_uint64,
                 ctypes.POINTER(ctypes.c_uint64),

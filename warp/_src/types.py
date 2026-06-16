@@ -5835,6 +5835,33 @@ class Volume:
     """Enum value to specify nearest-neighbor interpolation during sampling"""
     LINEAR = constant(1)
     """Enum value to specify trilinear interpolation during sampling"""
+    _NANOVDB_LEAF_TABLE_COUNT: ClassVar[int] = 512
+
+    class RebuildInfo(NamedTuple):
+        """Rebuild capacity metadata."""
+
+        kind: str | None
+        """Rebuild input type: ``"tiles"``, ``"voxels"``, or ``None`` when not rebuildable."""
+        max_voxel_count: int
+        """Maximum indexable voxel count reserved for rebuilds."""
+        max_leaf_node_count: int
+        """Maximum NanoVDB leaf node count reserved for rebuilds."""
+        max_lower_node_count: int
+        """Maximum NanoVDB lower internal node count reserved for rebuilds."""
+        max_upper_node_count: int
+        """Maximum NanoVDB upper internal node count reserved for rebuilds."""
+
+    class ActiveStats(NamedTuple):
+        """Active topology statistics from the current grid metadata."""
+
+        voxel_count: int
+        """Current indexable voxel count."""
+        leaf_node_count: int
+        """Current NanoVDB leaf node count."""
+        lower_node_count: int
+        """Current NanoVDB lower internal node count."""
+        upper_node_count: int
+        """Current NanoVDB upper internal node count."""
 
     def __new__(cls, *args, **kwargs):
         instance = super().__new__(cls)
@@ -5851,6 +5878,8 @@ class Volume:
 
         # keep a runtime reference for orderly destruction
         self.runtime = warp._src.context.runtime
+        self._rebuild_info = Volume.RebuildInfo(None, 0, 0, 0, 0)
+        self._rebuild_bg_value = None
 
         if data is None:
             return
@@ -5945,6 +5974,26 @@ class Volume:
             self.id, ctypes.byref(tile_count), ctypes.byref(voxel_count)
         )
         return voxel_count.value
+
+    def get_active_stats(self) -> Volume.ActiveStats:
+        """Return actual topology statistics from the current grid metadata.
+
+        Unlike :meth:`get_tile_count` and :meth:`get_voxel_count`, this reports the current active counts for
+        rebuildable volumes rather than their reserved rebuild capacities.
+        """
+
+        voxel_count = ctypes.c_uint64(0)
+        leaf_count = ctypes.c_uint32(0)
+        lower_count = ctypes.c_uint32(0)
+        upper_count = ctypes.c_uint32(0)
+        self.runtime.core.wp_volume_get_active_stats(
+            self.id,
+            ctypes.byref(voxel_count),
+            ctypes.byref(leaf_count),
+            ctypes.byref(lower_count),
+            ctypes.byref(upper_count),
+        )
+        return Volume.ActiveStats(voxel_count.value, leaf_count.value, lower_count.value, upper_count.value)
 
     def get_voxels(self, out: array | None = None) -> array:
         """Return the integer coordinates of all allocated voxels for this volume.
@@ -6074,6 +6123,17 @@ class Volume:
         """
 
         return self.get_grid_info().type_str in Volume._nvdb_index_types
+
+    @property
+    def is_rebuildable(self) -> bool:
+        """Whether this Volume was allocated with rebuild capacity."""
+
+        return self._rebuild_info.kind is not None
+
+    def get_rebuild_info(self) -> Volume.RebuildInfo:
+        """Return rebuild type and capacity metadata for this Volume."""
+
+        return self._rebuild_info
 
     def get_feature_array_count(self) -> int:
         """Return the number of supplemental data arrays stored alongside the grid"""
@@ -6623,6 +6683,10 @@ class Volume:
         translation_buf = (ctypes.c_float * 3)(translation[0], translation[1], translation[2])
         return transform_buf, translation_buf
 
+    def _grid_transform_buffers(self):
+        grid_info = self.get_grid_info()
+        return Volume._fill_transform_buffers(None, grid_info.translation, grid_info.transform_matrix)
+
     # nanovdb types for which we instantiate the grid builder
     # Should be in sync with WP_VOLUME_BUILDER_INSTANTIATE_TYPES in volume_builder.h
     _supported_allocation_types = ("int32", "uint32", "int64", "float", "double", "Vec3f", "Vec3d", "Vec4f")
@@ -6709,7 +6773,7 @@ class Volume:
 
         transform_buf, translation_buf = Volume._fill_transform_buffers(voxel_size, translation, transform)
         rebuildable = rebuildable or max_tiles is not None or max_lower_nodes is not None or max_upper_nodes is not None
-        status = _volume_rebuild_status_array(status, device) if rebuildable else None
+        status = _volume_rebuild_status_array(status, device) if rebuildable and status is not None else None
         max_tiles_c = _volume_rebuild_capacity(max_tiles, tile_points.shape[0], "max_tiles") if rebuildable else 0
         max_lower_nodes_c = (
             _volume_rebuild_capacity(max_lower_nodes, max_tiles_c, "max_lower_nodes") if rebuildable else 0
@@ -6717,7 +6781,7 @@ class Volume:
         max_upper_nodes_c = (
             _volume_rebuild_capacity(max_upper_nodes, max_lower_nodes_c, "max_upper_nodes") if rebuildable else 0
         )
-        status_ptr = ctypes.c_void_p(status.ptr) if rebuildable else ctypes.c_void_p(0)
+        status_ptr = ctypes.c_void_p(status.ptr) if status is not None else ctypes.c_void_p(0)
         point_mask = _volume_point_mask_array(point_mask, tile_points.shape[0], device)
         point_mask_ptr = ctypes.c_void_p(0 if point_mask is None else point_mask.ptr)
 
@@ -6822,15 +6886,14 @@ class Volume:
             raise RuntimeError("Failed to create volume")
 
         if rebuildable:
-            volume._rebuild_kind = "tiles"
-            volume._rebuild_status = status
+            volume._rebuild_info = Volume.RebuildInfo(
+                "tiles",
+                max_tiles_c * Volume._NANOVDB_LEAF_TABLE_COUNT,
+                max_tiles_c,
+                max_lower_nodes_c,
+                max_upper_nodes_c,
+            )
             volume._rebuild_bg_value = bg_value
-            volume._rebuild_voxel_size = voxel_size
-            volume._rebuild_translation = translation
-            volume._rebuild_transform = transform
-            volume._rebuild_max_tiles = max_tiles_c
-            volume._rebuild_max_lower_nodes = max_lower_nodes_c
-            volume._rebuild_max_upper_nodes = max_upper_nodes_c
 
         return volume
 
@@ -6902,7 +6965,7 @@ class Volume:
             or max_upper_nodes is not None
         )
 
-        status = _volume_rebuild_status_array(status, device) if rebuildable else None
+        status = _volume_rebuild_status_array(status, device) if rebuildable and status is not None else None
         max_active_voxels_c = (
             _volume_rebuild_capacity(max_active_voxels, voxel_points.shape[0], "max_active_voxels")
             if rebuildable
@@ -6917,7 +6980,7 @@ class Volume:
         max_upper_nodes_c = (
             _volume_rebuild_capacity(max_upper_nodes, max_lower_nodes_c, "max_upper_nodes") if rebuildable else 0
         )
-        status_ptr = ctypes.c_void_p(status.ptr) if rebuildable else ctypes.c_void_p(0)
+        status_ptr = ctypes.c_void_p(status.ptr) if status is not None else ctypes.c_void_p(0)
         point_mask = _volume_point_mask_array(point_mask, voxel_points.shape[0], device)
         point_mask_ptr = ctypes.c_void_p(0 if point_mask is None else point_mask.ptr)
 
@@ -6957,45 +7020,35 @@ class Volume:
             raise RuntimeError("Failed to create volume")
 
         if rebuildable:
-            volume._rebuild_kind = "voxels"
-            volume._rebuild_status = status
-            volume._rebuild_voxel_size = voxel_size
-            volume._rebuild_translation = translation
-            volume._rebuild_transform = transform
-            volume._rebuild_max_active_voxels = max_active_voxels_c
-            volume._rebuild_max_leaf_nodes = max_leaf_nodes_c
-            volume._rebuild_max_lower_nodes = max_lower_nodes_c
-            volume._rebuild_max_upper_nodes = max_upper_nodes_c
-
+            volume._rebuild_info = Volume.RebuildInfo(
+                "voxels",
+                max_active_voxels_c,
+                max_leaf_nodes_c,
+                max_lower_nodes_c,
+                max_upper_nodes_c,
+            )
         return volume
 
-    @property
-    def rebuild_status(self) -> array:
-        """Array storing the latest rebuild status flags."""
-
-        try:
-            return self._rebuild_status
-        except AttributeError as err:
-            raise RuntimeError("Volume is not rebuildable") from err
-
-    def rebuild(self, points: array, status: array | None = None, point_mask: array | None = None) -> array:
+    def rebuild(self, points: array, status: array | None = None, point_mask: array | None = None) -> array | None:
         """Rebuild this volume's topology from ``points``.
 
         The volume must have been created with ``rebuildable=True`` or explicit capacity arguments.
+        Pass ``status`` to receive rebuild status flags; otherwise no status is recorded.
         """
 
-        rebuild_kind = getattr(self, "_rebuild_kind", None)
-        if rebuild_kind == "tiles":
+        if self._rebuild_info.kind == "tiles":
             return self._rebuild_tiles(points, status=status, point_mask=point_mask)
-        if rebuild_kind == "voxels":
+        if self._rebuild_info.kind == "voxels":
             return self._rebuild_voxels(points, status=status, point_mask=point_mask)
 
         raise RuntimeError("Volume is not rebuildable")
 
-    def _rebuild_tiles(self, tile_points: array, status: array | None = None, point_mask: array | None = None) -> array:
+    def _rebuild_tiles(
+        self, tile_points: array, status: array | None = None, point_mask: array | None = None
+    ) -> array | None:
         """Rebuild this volume's tile topology from ``tile_points``."""
 
-        if getattr(self, "_rebuild_kind", None) != "tiles":
+        if self._rebuild_info.kind != "tiles":
             raise RuntimeError("Volume was not allocated as a rebuildable tile volume")
 
         if not _is_contiguous_vec_like_array(tile_points, vec_length=3, scalar_types=(float32, int32)):
@@ -7004,16 +7057,14 @@ class Volume:
             )
         if tile_points.device != self.device:
             tile_points = tile_points.to(self.device)
-        status = _volume_rebuild_status_array(self._rebuild_status if status is None else status, self.device)
+        status = _volume_rebuild_status_array(status, self.device) if status is not None else None
+        status_ptr = ctypes.c_void_p(status.ptr) if status is not None else ctypes.c_void_p(0)
         point_mask = _volume_point_mask_array(point_mask, tile_points.shape[0], self.device)
         point_mask_ptr = ctypes.c_void_p(0 if point_mask is None else point_mask.ptr)
         in_world_space = type_scalar_type(tile_points.dtype) is float32
-        transform_buf, translation_buf = Volume._fill_transform_buffers(
-            self._rebuild_voxel_size, self._rebuild_translation, self._rebuild_transform
-        )
+        transform_buf, translation_buf = self._grid_transform_buffers()
 
-        bg_value = self._rebuild_bg_value
-        if bg_value is None:
+        if self.is_index:
             if self.device.is_cuda:
                 self.runtime.core.wp_volume_index_rebuild_from_tiles_device(
                     self.id,
@@ -7023,7 +7074,7 @@ class Volume:
                     transform_buf,
                     translation_buf,
                     in_world_space,
-                    ctypes.c_void_p(status.ptr),
+                    status_ptr,
                 )
             else:
                 self.runtime.core.wp_volume_index_rebuild_from_tiles_host(
@@ -7034,9 +7085,10 @@ class Volume:
                     transform_buf,
                     translation_buf,
                     in_world_space,
-                    ctypes.c_void_p(status.ptr),
+                    status_ptr,
                 )
         else:
+            bg_value = self._rebuild_bg_value
             cvalue, cvalue_type = _volume_rebuild_ctype_value(bg_value)
             cvalue_ptr = ctypes.pointer(cvalue)
             if self.device.is_cuda:
@@ -7051,7 +7103,7 @@ class Volume:
                     cvalue_ptr,
                     ctypes.sizeof(cvalue),
                     cvalue_type,
-                    ctypes.c_void_p(status.ptr),
+                    status_ptr,
                 )
             else:
                 self.runtime.core.wp_volume_rebuild_from_tiles_host(
@@ -7065,17 +7117,17 @@ class Volume:
                     cvalue_ptr,
                     ctypes.sizeof(cvalue),
                     cvalue_type,
-                    ctypes.c_void_p(status.ptr),
+                    status_ptr,
                 )
 
         return status
 
     def _rebuild_voxels(
         self, voxel_points: array, status: array | None = None, point_mask: array | None = None
-    ) -> array:
+    ) -> array | None:
         """Rebuild this volume's active-voxel topology from ``voxel_points``."""
 
-        if getattr(self, "_rebuild_kind", None) != "voxels":
+        if self._rebuild_info.kind != "voxels":
             raise RuntimeError("Volume was not allocated as a rebuildable active-voxel volume")
 
         if not _is_contiguous_vec_like_array(voxel_points, vec_length=3, scalar_types=(float32, int32)):
@@ -7084,13 +7136,12 @@ class Volume:
             )
         if voxel_points.device != self.device:
             voxel_points = voxel_points.to(self.device)
-        status = _volume_rebuild_status_array(self._rebuild_status if status is None else status, self.device)
+        status = _volume_rebuild_status_array(status, self.device) if status is not None else None
+        status_ptr = ctypes.c_void_p(status.ptr) if status is not None else ctypes.c_void_p(0)
         point_mask = _volume_point_mask_array(point_mask, voxel_points.shape[0], self.device)
         point_mask_ptr = ctypes.c_void_p(0 if point_mask is None else point_mask.ptr)
         in_world_space = type_scalar_type(voxel_points.dtype) is float32
-        transform_buf, translation_buf = Volume._fill_transform_buffers(
-            self._rebuild_voxel_size, self._rebuild_translation, self._rebuild_transform
-        )
+        transform_buf, translation_buf = self._grid_transform_buffers()
 
         if self.device.is_cuda:
             self.runtime.core.wp_volume_rebuild_from_active_voxels_device(
@@ -7101,7 +7152,7 @@ class Volume:
                 transform_buf,
                 translation_buf,
                 in_world_space,
-                ctypes.c_void_p(status.ptr),
+                status_ptr,
             )
         else:
             self.runtime.core.wp_volume_rebuild_from_active_voxels_host(
@@ -7112,7 +7163,7 @@ class Volume:
                 transform_buf,
                 translation_buf,
                 in_world_space,
-                ctypes.c_void_p(status.ptr),
+                status_ptr,
             )
 
         return status
@@ -7142,10 +7193,7 @@ def _volume_rebuild_capacity(value: int | None, default: int, name: str) -> int:
     return capacity
 
 
-def _volume_rebuild_status_array(status: array | None, device) -> array:
-    if status is None:
-        return warp.zeros(1, dtype=uint32, device=device)
-
+def _volume_rebuild_status_array(status: array, device) -> array:
     if not is_array(status) or status.dtype != uint32 or status.size < 1:
         raise RuntimeError("status must be a Warp array with dtype uint32 and at least one element")
     if status.device != device:

@@ -558,23 +558,17 @@ class Example:
             voxel_size=voxel_size,
             device=voxel_points.device,
         )
-        active_voxels = initial_volume.get_voxel_count()
-        if active_voxels == 0:
-            first_counts = (1, 1, 1, 1)
-        else:
-            voxel_ijk = initial_volume.get_voxels().numpy()
-            leaf_ijk = np.unique(np.floor_divide(voxel_ijk, 8), axis=0)
-            lower_ijk = np.unique(np.floor_divide(leaf_ijk, 16), axis=0)
-            upper_ijk = np.unique(np.floor_divide(lower_ijk, 32), axis=0)
-            first_counts = (active_voxels, leaf_ijk.shape[0], lower_ijk.shape[0], upper_ijk.shape[0])
+        first_counts = initial_volume.get_active_stats()
+        if first_counts.voxel_count == 0:
+            first_counts = wp.Volume.ActiveStats(1, 1, 1, 1)
 
         def scale(count, ratio, limit):
             return max(1, min(limit, math.ceil(count * ratio)))
 
-        active_capacity = scale(first_counts[0], active_ratio, voxel_points.shape[0])
-        leaf_capacity = scale(first_counts[1], leaf_ratio, active_capacity)
-        lower_capacity = scale(first_counts[2], internal_ratio, leaf_capacity)
-        upper_capacity = scale(first_counts[3], internal_ratio, lower_capacity)
+        active_capacity = scale(first_counts.voxel_count, active_ratio, voxel_points.shape[0])
+        leaf_capacity = scale(first_counts.leaf_node_count, leaf_ratio, active_capacity)
+        lower_capacity = scale(first_counts.lower_node_count, internal_ratio, leaf_capacity)
+        upper_capacity = scale(first_counts.upper_node_count, internal_ratio, lower_capacity)
 
         return {
             "max_active_voxels": active_capacity,

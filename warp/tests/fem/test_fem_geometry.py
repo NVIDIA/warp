@@ -398,7 +398,7 @@ def test_nanogrid_rebuild(test, device):
 
     geo = fem.Nanogrid(volume)
 
-    status = geo.rebuild(points_rebuild, point_mask=point_mask)
+    geo.rebuild(points_rebuild, status=status, point_mask=point_mask)
     wp.launch(_nanogrid_volume_counts, dim=1, inputs=[geo.cell_grid.id, geo.vertex_grid.id, counts], device=device)
     wp.synchronize_device(device)
 
@@ -440,7 +440,7 @@ def test_nanogrid_rebuild_capture(test, device):
 
     wp.load_module(device=device)
     with wp.ScopedCapture(device=device, force_module_load=False) as capture:
-        geo.rebuild(points_rebuild, point_mask=point_mask)
+        geo.rebuild(points_rebuild, status=status, point_mask=point_mask)
         wp.launch(_nanogrid_volume_counts, dim=1, inputs=[geo.cell_grid.id, geo.vertex_grid.id, counts], device=device)
 
     wp.capture_launch(capture.graph)

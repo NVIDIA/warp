@@ -320,6 +320,9 @@ WP_API void wp_volume_rebuild_from_active_voxels_device(
 WP_API void wp_volume_get_buffer_info(uint64_t id, void** buf, uint64_t* size);
 WP_API void wp_volume_get_voxel_size(uint64_t id, float* dx, float* dy, float* dz);
 WP_API void wp_volume_get_tile_and_voxel_count(uint64_t id, uint32_t& tile_count, uint64_t& voxel_count);
+WP_API void wp_volume_get_active_stats(
+    uint64_t id, uint64_t* voxel_count, uint32_t* leaf_count, uint32_t* lower_count, uint32_t* upper_count
+);
 WP_API const char* wp_volume_get_grid_info(
     uint64_t id,
     uint64_t* grid_size,

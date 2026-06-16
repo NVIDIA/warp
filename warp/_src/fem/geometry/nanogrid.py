@@ -634,7 +634,7 @@ class Nanogrid(NanogridBase):
         self._cell_grid = grid
         self._cell_grid_info = grid.get_grid_info()
 
-        grid_rebuildable = getattr(grid, "_rebuild_kind", None) is not None
+        grid_rebuildable = grid.is_rebuildable
         if rebuildable is None:
             rebuildable = grid_rebuildable
         elif rebuildable and not grid_rebuildable:
@@ -685,7 +685,7 @@ class Nanogrid(NanogridBase):
         status: wp.array | None = None,
         point_mask: wp.array | None = None,
         cell_env: wp.array | None = None,
-    ) -> wp.array:
+    ) -> wp.array | None:
         """Rebuild the underlying NanoVDB cell grid and refresh Nanogrid topology buffers.
 
         Args:
@@ -695,7 +695,7 @@ class Nanogrid(NanogridBase):
             cell_env: Optional capacity-sized cell environment array for the rebuilt cell grid.
 
         Returns:
-            The status array used by the underlying volume rebuild.
+            The status array passed to ``status``, or ``None`` if no status array was provided.
         """
 
         if not self._rebuildable:
@@ -1260,9 +1260,10 @@ def _build_rebuildable_node_grid(cell_ijk, grid: wp.Volume):
     node_candidate_mask = wp.empty(shape=(node_capacity,), dtype=wp.int32, device=cell_ijk.device)
     _fill_rebuildable_node_candidates(grid, cell_ijk, node_candidates, node_candidate_mask)
 
-    max_leaf_nodes = min(node_capacity, getattr(grid, "_rebuild_max_leaf_nodes", node_capacity) * 8)
-    max_lower_nodes = min(max_leaf_nodes, getattr(grid, "_rebuild_max_lower_nodes", max_leaf_nodes) * 8)
-    max_upper_nodes = min(max_lower_nodes, getattr(grid, "_rebuild_max_upper_nodes", max_lower_nodes) * 8)
+    rebuild_info = grid.get_rebuild_info()
+    max_leaf_nodes = min(node_capacity, rebuild_info.max_leaf_node_count * 8)
+    max_lower_nodes = min(max_leaf_nodes, rebuild_info.max_lower_node_count * 8)
+    max_upper_nodes = min(max_lower_nodes, rebuild_info.max_upper_node_count * 8)
 
     node_grid = wp.Volume.allocate_by_voxels(
         node_candidates.flatten(),

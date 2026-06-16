@@ -65,6 +65,20 @@ void volume_add_descriptor(uint64_t id, VolumeDesc&& volumeDesc) { g_volume_desc
 
 void volume_rem_descriptor(uint64_t id) { g_volume_descriptors.erase(id); }
 
+void volume_copy_live_metadata(const VolumeDesc* volume, pnanovdb_grid_t& grid_data, pnanovdb_tree_t& tree_data)
+{
+    if (volume->context) {
+        ContextGuard guard(volume->context);
+        wp_memcpy_d2h(WP_CURRENT_CONTEXT, &grid_data, volume->buffer, sizeof(pnanovdb_grid_t));
+        wp_memcpy_d2h(
+            WP_CURRENT_CONTEXT, &tree_data, static_cast<pnanovdb_grid_t*>(volume->buffer) + 1, sizeof(pnanovdb_tree_t)
+        );
+    } else {
+        std::memcpy(&grid_data, volume->buffer, sizeof(pnanovdb_grid_t));
+        std::memcpy(&tree_data, static_cast<pnanovdb_grid_t*>(volume->buffer) + 1, sizeof(pnanovdb_tree_t));
+    }
+}
+
 void volume_mark_rebuildable(uint64_t id, const VolumeRebuildCapacities& capacities)
 {
     auto iter = g_volume_descriptors.find(id);
@@ -270,6 +284,39 @@ void wp_volume_get_tile_and_voxel_count(uint64_t id, uint32_t& tile_count, uint6
             // all leaf voxels are indexable
             voxel_count = uint64_t(tile_count) * PNANOVDB_LEAF_TABLE_COUNT;
         }
+    }
+}
+
+void wp_volume_get_active_stats(
+    uint64_t id, uint64_t* voxel_count, uint32_t* leaf_count, uint32_t* lower_count, uint32_t* upper_count
+)
+{
+    *voxel_count = 0;
+    *leaf_count = 0;
+    *lower_count = 0;
+    *upper_count = 0;
+
+    const VolumeDesc* volume;
+    if (!volume_get_descriptor(id, volume)) {
+        return;
+    }
+
+    pnanovdb_grid_t grid_data {};
+    pnanovdb_tree_t tree_data {};
+    volume_copy_live_metadata(volume, grid_data, tree_data);
+
+    *leaf_count = tree_data.node_count_leaf;
+    *lower_count = tree_data.node_count_lower;
+    *upper_count = tree_data.node_count_upper;
+
+    switch (grid_data.grid_type) {
+    case PNANOVDB_GRID_TYPE_ONINDEX:
+    case PNANOVDB_GRID_TYPE_ONINDEXMASK:
+        *voxel_count = tree_data.voxel_count;
+        break;
+    default:
+        *voxel_count = uint64_t(*leaf_count) * PNANOVDB_LEAF_TABLE_COUNT;
+        break;
     }
 }
 
