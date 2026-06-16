@@ -998,7 +998,7 @@ WP_API void wp_builtin_volume_lookup_v_uint64_int32_int32_int32(uint64 id, int32
 WP_API void wp_builtin_volume_sample_i_uint64_vec3f(uint64 id, vec3f& uvw, int* ret) { *ret = wp::volume_sample_i(id, uvw); }
 WP_API void wp_builtin_volume_lookup_i_uint64_int32_int32_int32(uint64 id, int32 i, int32 j, int32 k, int* ret) { *ret = wp::volume_lookup_i(id, i, j, k); }
 WP_API void wp_builtin_volume_lookup_index_uint64_int32_int32_int32(uint64 id, int32 i, int32 j, int32 k, int32* ret) { *ret = wp::volume_lookup_index(id, i, j, k); }
-WP_API void wp_builtin_volume_voxel_count_uint64(uint64 id, int64* ret) { *ret = wp::volume_voxel_count(id); }
+WP_API void wp_builtin_volume_voxel_count_uint64(uint64 id, int32* ret) { *ret = wp::volume_voxel_count(id); }
 WP_API void wp_builtin_volume_index_to_world_uint64_vec3f(uint64 id, vec3f& uvw, vec3f* ret) { *ret = wp::volume_index_to_world(id, uvw); }
 WP_API void wp_builtin_volume_index_to_world_uint64_vec3d(uint64 id, vec3d& uvw, vec3d* ret) { *ret = wp::volume_index_to_world(id, uvw); }
 WP_API void wp_builtin_volume_world_to_index_uint64_vec3f(uint64 id, vec3f& xyz, vec3f* ret) { *ret = wp::volume_world_to_index(id, xyz); }

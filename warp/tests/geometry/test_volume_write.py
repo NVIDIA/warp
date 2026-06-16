@@ -324,7 +324,7 @@ def test_volume_readback_index(volume: wp.uint64, points: wp.array2d[wp.int32], 
 
 
 @wp.kernel
-def test_volume_voxel_count_kernel(volume: wp.uint64, values: wp.array[wp.int64]):
+def test_volume_voxel_count_kernel(volume: wp.uint64, values: wp.array[wp.int32]):
     values[0] = wp.volume_voxel_count(volume)
 
 
@@ -359,7 +359,7 @@ def _lookup_indices(volume, points, device):
 
 
 def _device_voxel_count(volume, device):
-    values = wp.empty(1, dtype=wp.int64, device=device)
+    values = wp.empty(1, dtype=wp.int32, device=device)
     wp.launch(test_volume_voxel_count_kernel, dim=1, inputs=[volume.id, values], device=device)
     return int(values.numpy()[0])
 
@@ -1006,7 +1006,7 @@ def test_volume_rebuild_voxels_point_mask_capture(test, device):
     points_rebuild = wp.array([[1, 2, 3], [1, 2, 3], [4, 5, 6], [7, 8, 9], [11, 12, 13]], dtype=wp.int32, device=device)
     point_mask = wp.array([1, 1, 0, 1, 0], dtype=wp.int32, device=device)
     status = wp.zeros(1, dtype=wp.uint32, device=device)
-    voxel_count = wp.empty(1, dtype=wp.int64, device=device)
+    voxel_count = wp.empty(1, dtype=wp.int32, device=device)
 
     volume = wp.Volume.allocate_by_voxels(
         points_initial,

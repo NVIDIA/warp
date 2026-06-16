@@ -369,7 +369,7 @@ def test_nanogrid(test, device):
 
 
 @wp.kernel
-def _nanogrid_volume_counts(cell_grid: wp.uint64, vertex_grid: wp.uint64, counts: wp.array(dtype=wp.int64)):
+def _nanogrid_volume_counts(cell_grid: wp.uint64, vertex_grid: wp.uint64, counts: wp.array(dtype=wp.int32)):
     counts[0] = wp.volume_voxel_count(cell_grid)
     counts[1] = wp.volume_voxel_count(vertex_grid)
 
@@ -379,7 +379,7 @@ def test_nanogrid_rebuild(test, device):
     points_rebuild = wp.array([[0, 0, 0], [1, 0, 0], [1, 0, 0], [3, 0, 0], [4, 0, 0]], dtype=wp.int32, device=device)
     point_mask = wp.array([1, 1, 0, 1, 0], dtype=wp.int32, device=device)
     status = wp.zeros(1, dtype=wp.uint32, device=device)
-    counts = wp.empty(2, dtype=wp.int64, device=device)
+    counts = wp.empty(2, dtype=wp.int32, device=device)
 
     volume = wp.Volume.allocate_by_voxels(
         points_initial,
@@ -413,7 +413,7 @@ def test_nanogrid_rebuild_capture(test, device):
     points_rebuild = wp.array([[0, 0, 0], [1, 0, 0], [1, 0, 0], [3, 0, 0], [4, 0, 0]], dtype=wp.int32, device=device)
     point_mask = wp.array([1, 1, 0, 1, 0], dtype=wp.int32, device=device)
     status = wp.zeros(1, dtype=wp.uint32, device=device)
-    counts = wp.empty(2, dtype=wp.int64, device=device)
+    counts = wp.empty(2, dtype=wp.int32, device=device)
 
     volume = wp.Volume.allocate_by_voxels(
         points_initial,

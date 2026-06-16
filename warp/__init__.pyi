@@ -5053,11 +5053,12 @@ def volume_lookup_index(id: uint64, i: int32, j: int32, k: int32) -> int32:
     This function is available for both index grids and classical volumes."""
     ...
 
-def volume_voxel_count(id: uint64) -> int64:
+def volume_voxel_count(id: uint64) -> int32:
     """Return the number of indexable voxels in the volume given by ``id``.
 
     For active-voxel index grids, this is the active voxel count. For dense tile grids, this is the number of
-    allocated leaf nodes multiplied by 512."""
+    allocated leaf nodes multiplied by 512. The result is a 32-bit signed integer and is capped at ``2**31 - 1``
+    because voxel-index APIs use 32-bit indices."""
     ...
 
 @over
