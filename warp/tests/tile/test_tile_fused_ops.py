@@ -254,6 +254,35 @@ def test_tile_dot_basic(test, device):
     test.assertAlmostEqual(out.numpy()[0], expected, places=4)
 
 
+def test_tile_dot_float64_scalar(test, device):
+    """Scalar float64 tiles produce a float64 result tile."""
+    N = 64
+
+    @wp.kernel(enable_backward=False, module="unique")
+    def compute(
+        a_in: wp.array[wp.float64],
+        b_in: wp.array[wp.float64],
+        out: wp.array[wp.float64],
+    ):
+        i = wp.tid()
+        a = wp.tile_load(a_in, shape=N, offset=0, storage="register")
+        b = wp.tile_load(b_in, shape=N, offset=0, storage="register")
+        result = wp.tile_dot(a, b)
+        wp.tile_store(out, result)
+
+    a_np = np.arange(N, dtype=np.float64)
+    b_np = np.arange(N, dtype=np.float64) * 0.5
+
+    a_in = wp.array(a_np, dtype=wp.float64, device=device)
+    b_in = wp.array(b_np, dtype=wp.float64, device=device)
+    out = wp.zeros(1, dtype=wp.float64, device=device)
+
+    wp.launch_tiled(compute, dim=[1], inputs=[a_in, b_in, out], block_dim=BLOCK_DIM, device=device)
+
+    expected = np.dot(a_np, b_np)
+    test.assertAlmostEqual(out.numpy()[0], expected, places=8)
+
+
 def test_tile_dot_nonuniform(test, device):
     """Dot product with non-uniform values."""
     N = 32
@@ -642,6 +671,7 @@ add_function_test(TestTileFusedOps, "test_tile_axpy_zero_alpha", test_tile_axpy_
 add_function_test(TestTileFusedOps, "test_tile_axpy_1d", test_tile_axpy_1d, devices=devices)
 add_function_test(TestTileFusedOps, "test_tile_axpy_grad", test_tile_axpy_grad, devices=devices)
 add_function_test(TestTileFusedOps, "test_tile_dot_basic", test_tile_dot_basic, devices=devices)
+add_function_test(TestTileFusedOps, "test_tile_dot_float64_scalar", test_tile_dot_float64_scalar, devices=devices)
 add_function_test(TestTileFusedOps, "test_tile_dot_nonuniform", test_tile_dot_nonuniform, devices=devices)
 add_function_test(TestTileFusedOps, "test_tile_dot_shared_shared", test_tile_dot_shared_shared, devices=devices)
 add_function_test(TestTileFusedOps, "test_tile_dot_2d", test_tile_dot_2d, devices=devices)

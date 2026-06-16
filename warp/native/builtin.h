@@ -2576,6 +2576,7 @@ inline CUDA_CALLABLE void adj_dot(float a, float b, float& adj_a, float& adj_b, 
     adj_mul(a, b, adj_a, adj_b, adj_ret);
 }
 inline CUDA_CALLABLE float tensordot(float a, float b) { return mul(a, b); }
+inline CUDA_CALLABLE float64 tensordot(float64 a, float64 b) { return mul(a, b); }
 
 
 #define DECLARE_INTERP_FUNCS(T) \
