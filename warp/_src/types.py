@@ -5838,12 +5838,16 @@ class Volume:
     _NANOVDB_LEAF_TABLE_COUNT: ClassVar[int] = 512
 
     class RebuildInfo(NamedTuple):
-        """Rebuild capacity metadata."""
+        """Capacity metadata for a :class:`Volume` allocated with rebuild support.
+
+        The counts describe reserved storage, not the currently active topology.
+        Use :meth:`Volume.get_active_stats` to query the current grid metadata.
+        """
 
         kind: str | None
-        """Rebuild input type: ``"tiles"``, ``"voxels"``, or ``None`` when not rebuildable."""
+        """Rebuild input kind: ``"tiles"``, ``"voxels"``, or ``None`` when the volume is not rebuildable."""
         max_voxel_count: int
-        """Maximum indexable voxel count reserved for rebuilds."""
+        """Maximum active voxel or index count reserved for rebuilds."""
         max_leaf_node_count: int
         """Maximum NanoVDB leaf node count reserved for rebuilds."""
         max_lower_node_count: int
@@ -5852,10 +5856,10 @@ class Volume:
         """Maximum NanoVDB upper internal node count reserved for rebuilds."""
 
     class ActiveStats(NamedTuple):
-        """Active topology statistics from the current grid metadata."""
+        """Active topology statistics from the current :class:`Volume` grid metadata."""
 
         voxel_count: int
-        """Current indexable voxel count."""
+        """Current active voxel or index count."""
         leaf_node_count: int
         """Current NanoVDB leaf node count."""
         lower_node_count: int
@@ -5978,8 +5982,13 @@ class Volume:
     def get_active_stats(self) -> Volume.ActiveStats:
         """Return actual topology statistics from the current grid metadata.
 
-        Unlike :meth:`get_tile_count` and :meth:`get_voxel_count`, this reports the current active counts for
-        rebuildable volumes rather than their reserved rebuild capacities.
+        For rebuildable volumes, this reports the current active topology rather
+        than the reserved capacity returned by :meth:`get_rebuild_info`. For
+        non-rebuildable volumes, these counts match the allocated grid topology.
+
+        Returns:
+            A :class:`Volume.ActiveStats` tuple containing the active voxel,
+            leaf, lower, and upper node counts.
         """
 
         voxel_count = ctypes.c_uint64(0)
@@ -6126,12 +6135,20 @@ class Volume:
 
     @property
     def is_rebuildable(self) -> bool:
-        """Whether this Volume was allocated with rebuild capacity."""
+        """Whether this volume was allocated with persistent capacity for :meth:`rebuild`."""
 
         return self._rebuild_info.kind is not None
 
     def get_rebuild_info(self) -> Volume.RebuildInfo:
-        """Return rebuild type and capacity metadata for this Volume."""
+        """Return rebuild input kind and reserved capacity metadata.
+
+        Returns:
+            A :class:`Volume.RebuildInfo` tuple. ``kind`` is ``"tiles"`` for
+            volumes created by :meth:`allocate_by_tiles`, ``"voxels"`` for
+            volumes created by :meth:`allocate_by_voxels`, and ``None`` for
+            volumes that cannot be rebuilt. Capacity fields are zero when
+            ``kind`` is ``None``.
+        """
 
         return self._rebuild_info
 
@@ -6737,6 +6754,11 @@ class Volume:
             * ``tile_points`` can mark tiles directly in index space as in the case this method is called by :meth:`allocate`.
             * ``tile_points`` can be a list of points used in a simulation that needs to transfer data to a volume.
 
+        If ``rebuildable`` is ``True`` or any rebuild capacity argument is supplied, the returned volume reserves
+        persistent storage and can be updated in place with :meth:`rebuild`. The rebuild input kind is ``"tiles"``,
+        so later rebuilds must provide tile points rather than voxel points. Use :meth:`get_rebuild_info` to inspect
+        reserved capacities and :meth:`get_active_stats` to inspect the current active topology.
+
         Args:
             tile_points (:class:`warp.array`): Array of positions that define the tiles to be allocated.
               The array may use an integer scalar type (2D N-by-3 array of :class:`warp.int32` or 1D array of :class:`warp.vec3i` values), indicating index space positions,
@@ -6750,19 +6772,31 @@ class Volume:
             transform: Linear transform between the index and world spaces.
               If ``None``, deduced from ``voxel_size``.
             rebuildable: Whether to allocate persistent capacity for rebuilds.
-            max_tiles: Maximum number of NanoVDB leaf nodes for rebuilds. Defaults to ``len(tile_points)``.
-            max_lower_nodes: Maximum number of lower internal nodes for rebuilds. Defaults to ``max_tiles``.
-            max_upper_nodes: Maximum number of upper internal nodes for rebuilds. Defaults to ``max_lower_nodes``.
-            status: Optional one-element ``uint32`` array receiving rebuild status flags.
+            max_tiles: Maximum number of NanoVDB leaf nodes reserved for rebuilds. Supplying this makes the
+              volume rebuildable. Each tile can contain up to 512 voxels.
+            max_lower_nodes: Maximum number of lower internal nodes reserved for rebuilds. Supplying this makes
+              the volume rebuildable.
+            max_upper_nodes: Maximum number of upper internal nodes reserved for rebuilds. Supplying this makes
+              the volume rebuildable.
+            status: Optional one-element ``uint32`` array receiving ``Volume.REBUILD_*`` status flags from the
+              initial build. ``Volume.REBUILD_SUCCESS`` means the requested topology fit in the reserved capacity.
             point_mask: Optional ``int32`` array with one entry per point. Points with a zero mask value are ignored.
             device: The device to create the volume on, e.g. ``"cpu"``, ``"cuda"``, or ``"cuda:0"``.
+
+        Raises:
+            RuntimeError: If ``tile_points``, ``point_mask``, or ``status`` is not a contiguous array of the
+                required type and shape.
+            RuntimeError: If :class:`Volume` creation fails.
+            ValueError: If neither ``voxel_size`` nor ``transform`` is provided.
+            ValueError: If both ``voxel_size`` and ``transform`` are provided.
+            ValueError: If a rebuild capacity is not positive or does not fit in ``uint32``.
 
         """
         device = warp.get_device(device)
 
         if not _is_contiguous_vec_like_array(tile_points, vec_length=3, scalar_types=(float32, int32)):
             raise RuntimeError(
-                "tile_points must be contiguous and either a 1D warp array of vec3f or vec3i or a 2D n-by-3 array of int32 or float32."
+                "tile_points must be contiguous and either a 1D Warp array of vec3f or vec3i or a 2D n-by-3 array of int32 or float32."
             )
         if tile_points.device != device:
             tile_points = tile_points.to(device)
@@ -6913,35 +6947,47 @@ class Volume:
         status: array | None = None,
         point_mask: array | None = None,
     ) -> Volume:
-        """Allocate a new :class:`Volume` with active voxel for each point ``voxel_points``.
+        """Allocate a new :class:`Volume` with an active voxel for each point in ``voxel_points``.
 
-        This function creates an *index* volume, a special kind of volume that does not any store any
+        This function creates an *index* volume, a special kind of volume that does not store any
         explicit payload but encodes a linearized index for each active voxel, allowing to lookup and
         sample data from arbitrary external arrays.
+
+        If ``rebuildable`` is ``True`` or any rebuild capacity argument is supplied, the returned volume reserves
+        persistent storage and can be updated in place with :meth:`rebuild`. The rebuild input kind is ``"voxels"``,
+        so later rebuilds must provide voxel points rather than tile points. Use :meth:`get_rebuild_info` to inspect
+        reserved capacities and :meth:`get_active_stats` to inspect the current active topology.
 
         Args:
             voxel_points (:class:`warp.array`): Array of positions that define the voxels to be allocated.
                 The array may use an integer scalar type (2D N-by-3 array of :class:`warp.int32` or 1D array of :class:`warp.vec3i` values), indicating index space positions,
                 or a floating point scalar type (2D N-by-3 array of :class:`warp.float32` or 1D array of :class:`warp.vec3f` values), indicating world space positions.
-                Repeated points per tile are allowed and will be efficiently deduplicated.
+                Repeated points per voxel are allowed and will be efficiently deduplicated.
             voxel_size: Voxel size(s) of the new volume. Ignored if ``transform`` is given.
             translation: Translation between the index and world spaces.
             transform: Linear transform between the index and world spaces.
               If ``None``, deduced from ``voxel_size``.
             rebuildable: Whether to allocate persistent capacity for rebuilds.
-            max_active_voxels: Maximum number of active voxels for rebuilds. Defaults to ``len(voxel_points)``.
-            max_leaf_nodes: Maximum number of NanoVDB leaf nodes for rebuilds. Defaults to ``max_active_voxels``.
-            max_lower_nodes: Maximum number of lower internal nodes for rebuilds. Defaults to ``max_leaf_nodes``.
-            max_upper_nodes: Maximum number of upper internal nodes for rebuilds. Defaults to ``max_lower_nodes``.
-            status: Optional one-element ``uint32`` array receiving rebuild status flags.
+            max_active_voxels: Maximum number of active voxels reserved for rebuilds. Supplying this makes the
+                volume rebuildable.
+            max_leaf_nodes: Maximum number of NanoVDB leaf nodes reserved for rebuilds. Supplying this makes the
+                volume rebuildable.
+            max_lower_nodes: Maximum number of lower internal nodes reserved for rebuilds. Supplying this makes
+                the volume rebuildable.
+            max_upper_nodes: Maximum number of upper internal nodes reserved for rebuilds. Supplying this makes
+                the volume rebuildable.
+            status: Optional one-element ``uint32`` array receiving ``Volume.REBUILD_*`` status flags from the
+                initial build. ``Volume.REBUILD_SUCCESS`` means the requested topology fit in the reserved capacity.
             point_mask: Optional ``int32`` array with one entry per point. Points with a zero mask value are ignored.
             device: The device to create the volume on, e.g. ``"cpu"``, ``"cuda"``, or ``"cuda:0"``.
 
         Raises:
-            RuntimeError: If ``voxel_points`` is not a contiguous array of the correct type and shape.
+            RuntimeError: If ``voxel_points``, ``point_mask``, or ``status`` is not a contiguous array of the
+                required type and shape.
             RuntimeError: If :class:`Volume` creation fails.
             ValueError: If neither ``voxel_size`` nor ``transform`` is provided.
             ValueError: If both ``voxel_size`` and ``transform`` are provided.
+            ValueError: If a rebuild capacity is not positive or does not fit in ``uint32``.
         """
         device = warp.get_device(device)
 
@@ -7030,10 +7076,30 @@ class Volume:
         return volume
 
     def rebuild(self, points: array, status: array | None = None, point_mask: array | None = None) -> array | None:
-        """Rebuild this volume's topology from ``points``.
+        """Rebuild this volume's topology in place from ``points``.
 
-        The volume must have been created with ``rebuildable=True`` or explicit capacity arguments.
-        Pass ``status`` to receive rebuild status flags; otherwise no status is recorded.
+        The volume must have been created with ``rebuildable=True`` or explicit capacity arguments. The input kind
+        must match the allocation method: volumes created by :meth:`allocate_by_tiles` rebuild from tile points, and
+        volumes created by :meth:`allocate_by_voxels` rebuild from voxel points.
+
+        Rebuilds preserve the volume's transform, background value, grid type, and reserved capacity. Capacity does
+        not grow automatically; pass ``status`` to detect whether the requested topology fit in the reserved storage.
+
+        Args:
+            points: Contiguous array of tile or voxel positions. The array may be a 1D array of ``vec3i`` or
+                ``vec3f`` values, or a 2D ``N x 3`` array of ``int32`` or ``float32`` values. Integer points are
+                interpreted in index space, and floating-point points are interpreted in world space.
+            status: Optional one-element ``uint32`` array receiving ``Volume.REBUILD_*`` status flags.
+                ``Volume.REBUILD_SUCCESS`` means the requested topology fit in the reserved capacity.
+            point_mask: Optional ``int32`` array with one entry per point. Points with a zero mask value are ignored.
+
+        Returns:
+            The ``status`` array if one was provided, otherwise ``None``.
+
+        Raises:
+            RuntimeError: If the volume is not rebuildable.
+            RuntimeError: If ``points``, ``point_mask``, or ``status`` is not a contiguous array of the required
+                type and shape.
         """
 
         if self._rebuild_info.kind == "tiles":
