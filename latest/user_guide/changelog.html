@@ -600,6 +600,8 @@ register successfully instead of raising <code class="docutils literal notransla
 <li><p>Fix <code class="docutils literal notranslate"><span class="pre">wp.copy()</span></code> ignoring <code class="docutils literal notranslate"><span class="pre">src_offset</span></code>, <code class="docutils literal notranslate"><span class="pre">dest_offset</span></code>, and <code class="docutils literal notranslate"><span class="pre">count</span></code> for 1D non-contiguous arrays such as strided slices
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1533">GH-1533</a>).</p></li>
 <li><p>Fix the gradient of <code class="docutils literal notranslate"><span class="pre">wp.copy()</span></code> when <code class="docutils literal notranslate"><span class="pre">src_offset</span></code> and <code class="docutils literal notranslate"><span class="pre">dest_offset</span></code> differ.</p></li>
+<li><p>Fix <code class="docutils literal notranslate"><span class="pre">warp.init()</span></code> segfault while loading <code class="docutils literal notranslate"><span class="pre">warp-clang.so</span></code> on some Linux systems caused by aggressive symbol stripping.
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1554">GH-1554</a>).</p></li>
 </ul>
 </section>
 <section id="documentation">
