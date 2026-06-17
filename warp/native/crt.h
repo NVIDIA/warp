@@ -260,7 +260,6 @@ double log10(double);
 float expf(float);
 float exp2f(float);
 float ldexpf(float, int);
-double exp(double);
 double exp2(double);
 double ldexp(double, int);
 double exp(double);
