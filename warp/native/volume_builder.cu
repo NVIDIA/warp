@@ -16,7 +16,6 @@
 
 namespace {
 
-static constexpr uint64_t REBUILD_INVALID_KEY = ~uint64_t(0);
 static constexpr unsigned REBUILD_NUM_THREADS = 128;
 
 inline unsigned rebuild_num_blocks(uint64_t n) { return unsigned((n + REBUILD_NUM_THREADS - 1) / REBUILD_NUM_THREADS); }

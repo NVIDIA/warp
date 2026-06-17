@@ -6958,6 +6958,11 @@ class Volume:
         so later rebuilds must provide voxel points rather than tile points. Use :meth:`get_rebuild_info` to inspect
         reserved capacities and :meth:`get_active_stats` to inspect the current active topology.
 
+        Unspecified node capacities use conservative sparse-grid defaults. In particular, ``max_leaf_nodes`` defaults
+        to ``max_active_voxels`` because arbitrary voxel points can place one active voxel in each leaf node. For dense
+        voxel sets, pass tighter node capacities explicitly to reduce memory use. Non-index volumes are allocated and
+        rebuilt by tiles with :meth:`allocate_by_tiles`, where ``max_tiles`` directly controls leaf capacity.
+
         Args:
             voxel_points (:class:`warp.array`): Array of positions that define the voxels to be allocated.
                 The array may use an integer scalar type (2D N-by-3 array of :class:`warp.int32` or 1D array of :class:`warp.vec3i` values), indicating index space positions,

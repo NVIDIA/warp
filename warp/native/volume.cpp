@@ -847,6 +847,12 @@ void wp_volume_rebuild_from_tiles_device(
 
     WP_VOLUME_BUILDER_INSTANTIATE_TYPES
 #undef EXPAND_BUILDER_TYPE
+
+    if (status) {
+        uint32_t invalid = WP_VOLUME_REBUILD_INVALID_INPUT;
+        wp_memcpy_h2d(WP_CURRENT_CONTEXT, status, &invalid, sizeof(uint32_t));
+    }
+    return;
 }
 
 void wp_volume_index_rebuild_from_tiles_device(
