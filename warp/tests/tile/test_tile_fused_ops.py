@@ -264,7 +264,6 @@ def test_tile_dot_float64_scalar(test, device):
         b_in: wp.array[wp.float64],
         out: wp.array[wp.float64],
     ):
-        i = wp.tid()
         a = wp.tile_load(a_in, shape=N, offset=0, storage="register")
         b = wp.tile_load(b_in, shape=N, offset=0, storage="register")
         result = wp.tile_dot(a, b)
