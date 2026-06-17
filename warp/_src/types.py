@@ -5845,7 +5845,7 @@ class Volume:
         """
 
         kind: str | None
-        """Rebuild input kind: ``"tiles"``, ``"voxels"``, or ``None`` when the volume is not rebuildable."""
+        """Input kind used for rebuilds. One of ``"tiles"``, ``"voxels"``, or ``None`` when the volume is not rebuildable."""
         max_voxel_count: int
         """Maximum active voxel or index count reserved for rebuilds."""
         max_leaf_node_count: int
