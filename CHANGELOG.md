@@ -32,6 +32,8 @@
 ### Deprecated
 
 - Deprecate `masked=True` arguments in `warp.sparse` topology-changing operations; use `topology="masked"` instead.
+- Deprecate the per-environment sequence form of `warp.fem.Nanogrid.from_environment_voxels()`; pass flat `points`,
+  `point_envs`, and `env_count` instead.
 
 ### Changed
 

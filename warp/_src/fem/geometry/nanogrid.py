@@ -11,6 +11,7 @@ import warp as wp
 from warp._src.fem import cache, utils
 from warp._src.fem.cache import cached_vec_type
 from warp._src.fem.types import NULL_ELEMENT_INDEX, OUTSIDE, ElementIndex, Sample, make_coords, make_free_sample
+from warp._src.logger import log_warning
 
 from .element import Element
 from .geometry import Geometry, _array_load
@@ -555,9 +556,9 @@ class Nanogrid(NanogridBase):
     @classmethod
     def from_environment_voxels(
         cls,
-        points: wp.array,
-        point_envs: wp.array,
-        env_count: int,
+        points: wp.array | Sequence[wp.array] | None = None,
+        point_envs: wp.array | Sequence[Sequence[int]] | None = None,
+        env_count: int | None = None,
         env_offsets: wp.array | Sequence[Sequence[int]] | None = None,
         *,
         point_mask: wp.array | None = None,
@@ -574,6 +575,7 @@ class Nanogrid(NanogridBase):
         max_lower_nodes: int | None = None,
         max_upper_nodes: int | None = None,
         status: wp.array | None = None,
+        cell_ijks: Sequence[wp.array] | None = None,
     ):
         """Construct a sparse grid geometry from environment-tagged active voxel points.
 
@@ -584,6 +586,7 @@ class Nanogrid(NanogridBase):
 
         Args:
             points: Flat ``wp.vec3i`` or ``wp.vec3f`` array of active voxel points.
+                Deprecated: a sequence of per-environment ``wp.vec3i`` arrays is also accepted for compatibility.
             point_envs: Flat ``int32`` array with one environment index per point.
             env_count: Number of environments represented by ``point_envs``.
             env_offsets: Optional packed-grid offsets, one ``wp.vec3i`` per environment.
@@ -608,7 +611,20 @@ class Nanogrid(NanogridBase):
             max_lower_nodes: Maximum number of lower internal nodes for rebuilds. Defaults to ``max_leaf_nodes``.
             max_upper_nodes: Maximum number of upper internal nodes for rebuilds. Defaults to ``max_lower_nodes``.
             status: Optional one-element ``uint32`` array receiving rebuild status flags.
+            cell_ijks: Deprecated keyword alias for the old per-environment ``points`` sequence form.
         """
+
+        if cell_ijks is not None:
+            if points is not None:
+                raise TypeError("points and cell_ijks cannot both be provided")
+            points = cell_ijks
+        if points is None:
+            raise TypeError("points is required")
+
+        if not isinstance(points, wp.array):
+            points, point_envs, env_count, env_offsets = _environment_voxels_from_legacy_sequence(
+                points, point_envs, env_count, env_offsets, device
+            )
 
         grid, cell_env, env_offsets = _make_environment_cell_grid(
             points,
@@ -1055,6 +1071,63 @@ class Nanogrid(NanogridBase):
         self.cell_arg_value.invalidate(self)
         self.side_arg_value.invalidate(self)
         self.side_index_arg_value.invalidate(self)
+
+
+def _environment_voxels_from_legacy_sequence(
+    cell_ijks: Sequence[wp.array],
+    legacy_env_offsets: wp.array | Sequence[Sequence[int]] | None,
+    env_count: int | None,
+    env_offsets: wp.array | Sequence[Sequence[int]] | None,
+    device,
+):
+    log_warning(
+        "The sequence form Nanogrid.from_environment_voxels(cell_ijks, env_offsets=...) is deprecated; "
+        "pass flat points, point_envs, and env_count instead.",
+        category=DeprecationWarning,
+        stacklevel=2,
+    )
+
+    if env_count is not None:
+        raise TypeError("env_count is not accepted with the deprecated cell_ijks sequence form")
+    if env_offsets is not None and legacy_env_offsets is not None:
+        raise TypeError("env_offsets was provided both positionally and by keyword")
+    if env_offsets is None:
+        env_offsets = legacy_env_offsets
+
+    cell_ijks = tuple(cell_ijks)
+    if not cell_ijks:
+        raise ValueError("At least one environment cell array is required")
+
+    if device is None:
+        if not isinstance(cell_ijks[0], wp.array):
+            raise ValueError("Environment 0 cell coordinates must be a 1D wp.vec3i array")
+        device = cell_ijks[0].device
+    else:
+        device = wp.get_device(device)
+
+    normalized = []
+    point_count = 0
+    for env_index, env_cell_ijk in enumerate(cell_ijks):
+        if not isinstance(env_cell_ijk, wp.array) or env_cell_ijk.dtype != wp.vec3i or env_cell_ijk.ndim != 1:
+            raise ValueError(f"Environment {env_index} cell coordinates must be a 1D wp.vec3i array")
+        normalized_cell_ijk = env_cell_ijk
+        if env_cell_ijk.device != device:
+            normalized_cell_ijk = env_cell_ijk.to(device)
+        normalized.append(normalized_cell_ijk)
+        point_count += normalized_cell_ijk.shape[0]
+
+    points = wp.empty(shape=point_count, dtype=wp.vec3i, device=device)
+    point_envs = wp.empty(shape=point_count, dtype=wp.int32, device=device)
+
+    point_offset = 0
+    for env_index, env_cell_ijk in enumerate(normalized):
+        env_point_count = env_cell_ijk.shape[0]
+        if env_point_count:
+            wp.copy(points, env_cell_ijk, dest_offset=point_offset, count=env_point_count)
+            point_envs[point_offset : point_offset + env_point_count].fill_(env_index)
+        point_offset += env_point_count
+
+    return points, point_envs, len(normalized), env_offsets
 
 
 def _normalize_environment_voxels(points: wp.array, point_envs: wp.array, env_count: int, device):
