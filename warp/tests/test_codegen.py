@@ -1622,6 +1622,18 @@ class TestCodeGen(unittest.TestCase):
         finally:
             linecache.cache.pop(filename, None)
 
+    def test_get_arg_type_preserves_any(self):
+        """Verify ``get_arg_type`` returns ``Any`` for generic parameters.
+
+        ``Any`` marks an unspecialized generic parameter and must be returned
+        as-is, both when passed directly and when carried on a ``Var``. Before
+        Python 3.11 ``Any`` is a ``typing._SpecialForm`` instance rather than a
+        ``type``, so a regressed implementation falls through to ``type(arg)``
+        and yields ``typing._SpecialForm``, which has no type code.
+        """
+        self.assertIs(codegen.get_arg_type(Any), Any)
+        self.assertIs(codegen.get_arg_type(codegen.Var("coords", Any)), Any)
+
     def test_line_directive_escapes_filename(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             filename = os.path.join(tmpdir, 'warp_poc"\n\r\t\x00\x1f\x7fint injected_from_filename;\n//.py')

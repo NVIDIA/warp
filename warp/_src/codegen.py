@@ -966,6 +966,14 @@ def func_match_args(func, arg_types, kwarg_types):
 def get_arg_type(arg: Var | Any) -> type:
     arg = strip_reference(arg)
 
+    # `Any` marks an unspecialized generic parameter. Return it unchanged so
+    # downstream signature logic can treat it as generic. Before Python 3.11
+    # `Any` is a `typing._SpecialForm` instance rather than a `type`, so the
+    # `isinstance(arg, type)` check below would otherwise fall through to
+    # `type(arg)` and yield `typing._SpecialForm`.
+    if arg is Any:
+        return Any
+
     if isinstance(arg, str):
         return str
 
