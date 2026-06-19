@@ -1868,6 +1868,14 @@ class TestCodeGen(unittest.TestCase):
 
         self.assertEqual(directive, '#line 1 "C:/warp/kernels/example.py"')
 
+    def test_is_valid_c_identifier(self):
+        for name in ("foo", "_foo", "Foo123", "_", "a1_b2"):
+            with self.subTest(name=name):
+                self.assertTrue(codegen.is_valid_c_identifier(name))
+        for name in ("", "1leading_digit", "has space", "has-dash", "a.b", "a+b", "naïve"):
+            with self.subTest(name=name):
+                self.assertFalse(codegen.is_valid_c_identifier(name))
+
     def test_extract_function_source_slow_path_when_fast_returns_none(self):
         """When ``_try_extract_function_source`` returns ``None`` (e.g. for an
         ``exec``-defined function with no linecache entry), ``extract_function_source``

@@ -26,6 +26,8 @@
   ([GH-1378](https://github.com/NVIDIA/warp/issues/1378))
 - **Experimental:** Record `wp.utils.array_sum()` and `wp.utils.array_inner()` in APIC capture so saved and replayed
   graphs recompute them from current inputs on CPU and CUDA ([GH-1663](https://github.com/NVIDIA/warp/issues/1663)).
+- Add a `name` argument to `@wp.kernel` to override the kernel's generated key
+  ([GH-1561](https://github.com/NVIDIA/warp/issues/1561)).
 
 ### Removed
 

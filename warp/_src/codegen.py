@@ -6317,6 +6317,16 @@ def make_full_qualified_name(func: str | Callable) -> str:
     return re.sub("[^0-9a-zA-Z_]+", "", func.replace(".", "__"))
 
 
+# matches a valid C identifier: a letter or underscore followed by letters, digits, or underscores
+_C_IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def is_valid_c_identifier(name: str) -> bool:
+    # Note: This only validates the lexical shape. It does not reject reserved
+    # C/C++/CUDA keywords.
+    return _C_IDENTIFIER_RE.match(name) is not None
+
+
 def codegen_struct(struct, device="cpu", indent_size=4, include_tile_helpers=False):
     name = struct.native_name
 

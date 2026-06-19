@@ -663,7 +663,44 @@ def test_annotations_kernel():
 
 
 class TestGenerics(unittest.TestCase):
-    pass
+    def test_overload_with_renamed_kernel(self):
+        @wp.kernel(name="renamed_overload_kernel")
+        def scale(x: Any):
+            return
+
+        @wp.overload
+        def scale(x: float): ...
+
+        @wp.overload
+        def scale(x: int): ...
+
+        self.assertEqual(scale.key, "renamed_overload_kernel")
+        self.assertEqual(len(scale.overloads), 2)
+
+    def test_overload_renamed_kernel_closure(self):
+        # A closure that yields one renamed kernel per call produces several kernels
+        # sharing the same qualified name. Decorator-form @wp.overload is defined
+        # inline next to each kernel, so it must bind to that call's kernel.
+        def make(suffix):
+            @wp.kernel(name=f"closure_overload_kernel_{suffix}")
+            def scale(x: Any):
+                return
+
+            @wp.overload
+            def scale(x: float): ...
+
+            @wp.overload
+            def scale(x: int): ...
+
+            return scale
+
+        first = make("a")
+        second = make("b")
+
+        self.assertEqual(first.key, "closure_overload_kernel_a")
+        self.assertEqual(second.key, "closure_overload_kernel_b")
+        self.assertEqual(len(first.overloads), 2)
+        self.assertEqual(len(second.overloads), 2)
 
 
 devices = get_test_devices()

@@ -1041,8 +1041,13 @@ class Kernel:
         else:
             self.module = module
 
+        # Keep track of the qualified name of the Python function used to create
+        # this kernel, so it can still be identified even when the kernel is given
+        # a custom name (key).
+        self.qualname = warp._src.codegen.make_full_qualified_name(func)
+
         if key is None:
-            self.key = warp._src.codegen.make_full_qualified_name(func)
+            self.key = self.qualname
         else:
             self.key = key
 
@@ -1610,6 +1615,7 @@ def grad(func: Callable) -> GradWrapper:
 def kernel(
     f: Callable | None = None,
     *,
+    name: str | None = None,
     enable_backward: bool | None = None,
     launch_bounds: tuple[int, ...] | int | None = None,
     cluster_dim: int | None = None,
@@ -1660,6 +1666,9 @@ def kernel(
 
     Args:
         f: The function to be registered as a kernel.
+        name: Overrides the kernel's key. If ``None``, the function's
+            qualified name will be used as the key. The name must have the
+            shape of a valid C identifier; raises a ``ValueError`` otherwise.
         enable_backward: If False, the backward pass will not be
             generated.
         launch_bounds: CUDA ``__launch_bounds__`` attribute for the
@@ -1702,6 +1711,13 @@ def kernel(
 
     def wrapper(f, *args, **kwargs):
         kernel_options = {}
+
+        if name is None:
+            key = warp._src.codegen.make_full_qualified_name(f)
+        else:
+            if not warp._src.codegen.is_valid_c_identifier(name):
+                raise ValueError(f"@wp.kernel for '{f.__name__}': name '{name}' is not a valid C identifier.")
+            key = name
 
         if enable_backward is not None:
             kernel_options["enable_backward"] = enable_backward
@@ -1755,7 +1771,7 @@ def kernel(
         # Create the kernel object and register it with the module
         k = Kernel(
             func=f,
-            key=warp._src.codegen.make_full_qualified_name(f),
+            key=key,
             module=m,
             options=kernel_options,
         )
@@ -3536,7 +3552,28 @@ class Module:
     # find kernel corresponding to a Python function
     def _find_kernel(self, func):
         qualname = warp._src.codegen.make_full_qualified_name(func)
-        return self.kernels.get(qualname)
+
+        # A kernel's key matches the qualified name unless the user specifies a
+        # custom name for the kernel.
+        # First, check the fast path: kernels registered under their ``qualname``.
+        kernel = self.kernels.get(qualname)
+        if kernel is not None:
+            return kernel
+
+        # Otherwise, the kernel was renamed via ``@wp.kernel(name=...)``. Fall
+        # back to manually matching based on the ``qualname`` attribute.
+        # Several kernels may share the same qualified name (e.g. kernels
+        # generated in a closure). We return the most recently registered match.
+        # This should correspond to the correct kernel, since ``@wp.overload`` is
+        # defined just after the overloaded kernel, and ``self.kernels``
+        # preserves insertion order.
+        # For ambiguous cases, use the direct form ``wp.overload(kernel, [...])``.
+        match = None
+        for kernel in self.kernels.values():
+            if kernel.qualname == qualname:
+                match = kernel
+
+        return match
 
     # collect all referenced functions / structs
     # given the AST of a function or kernel
