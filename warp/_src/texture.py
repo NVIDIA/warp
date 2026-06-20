@@ -1054,10 +1054,12 @@ class Texture:
         """CUDA array handle backing this texture.
 
         Returns:
-            CUDA ``cudaArray_t`` handle for CUDA textures.
+            CUDA ``cudaArray_t`` handle for non-mipmapped CUDA textures.
         """
         if not self.device.is_cuda:
             raise RuntimeError("cuda_array is only supported for CUDA textures.")
+        if self._is_mipmapped:
+            raise RuntimeError("cuda_array is currently limited to non-mipmapped CUDA textures.")
         return self._array_handle
 
     @property

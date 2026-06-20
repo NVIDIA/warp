@@ -893,6 +893,31 @@ def test_texture2d_cuda_interop_handles(test, device):
     test.assertGreater(tex.cuda_array, 0)
 
 
+def test_texture2d_cuda_array_wraps_non_mipmapped(test, device):
+    """Verify Texture2D.cuda_array exposes a wrappable cudaArray_t for non-mipmapped textures."""
+    data = np.zeros((4, 4, 4), dtype=np.float32)
+    tex = wp.Texture2D(data, device=device)
+
+    wrapped = wp.Texture2D(cuda_array=tex.cuda_array, device=device)
+
+    test.assertEqual(wrapped.width, 4)
+    test.assertEqual(wrapped.height, 4)
+    test.assertEqual(wrapped.depth, 1)
+    test.assertEqual(wrapped.num_channels, 4)
+    test.assertEqual(wrapped.dtype, wp.float32)
+    test.assertFalse(wrapped.is_mipmapped)
+
+
+def test_texture2d_mipmapped_cuda_array_current_limitation(test, device):
+    """Verify Texture2D.cuda_array rejects mipmapped CUDA textures as a current limitation."""
+    data = np.zeros((4, 4, 4), dtype=np.float32)
+    tex = wp.Texture2D(data, num_mip_levels=2, device=device)
+
+    test.assertTrue(tex.is_mipmapped)
+    with test.assertRaisesRegex(RuntimeError, "currently limited to non-mipmapped CUDA textures"):
+        _ = tex.cuda_array
+
+
 def test_texture3d_cuda_interop_handles(test, device):
     """Test CUDA interop handles for 3D textures."""
     data = np.zeros((4, 4, 4), dtype=np.float32)
@@ -2822,6 +2847,18 @@ add_function_test(
 )
 add_function_test(
     TestTexture, "test_texture2d_cuda_interop_handles", test_texture2d_cuda_interop_handles, devices=cuda_devices
+)
+add_function_test(
+    TestTexture,
+    "test_texture2d_cuda_array_wraps_non_mipmapped",
+    test_texture2d_cuda_array_wraps_non_mipmapped,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestTexture,
+    "test_texture2d_mipmapped_cuda_array_current_limitation",
+    test_texture2d_mipmapped_cuda_array_current_limitation,
+    devices=cuda_devices,
 )
 add_function_test(
     TestTexture, "test_texture3d_cuda_interop_handles", test_texture3d_cuda_interop_handles, devices=cuda_devices
