@@ -15,9 +15,6 @@ concurrency:
   group: ${{ github.workflow }}-on-${{ github.event_name }}-from-${{ github.ref_name }}
   cancel-in-progress: true
 
-permissions:
-  contents: read
-
 jobs:
   # Call the main CI workflow which includes:
   # - Multi-platform build and test (Windows, Ubuntu x86_64, Ubuntu ARM64, macOS)
@@ -26,6 +23,8 @@ jobs:
   # - Generated files checks (exports.h, version.h)
   # - Symbol namespace validation
   ci:
+    permissions:
+      contents: read
     uses: ./.github/workflows/ci.yml
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
@@ -33,6 +32,8 @@ jobs:
   # Static analysis with cppcheck (runs independently, doesn't need build artifacts)
   cppcheck:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
@@ -116,6 +117,8 @@ jobs:
   linkcheck:
     runs-on: ubuntu-latest
     timeout-minutes: 10  # network-bound job; don't let a hung check hold a runner
+    permissions:
+      contents: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
