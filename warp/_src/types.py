@@ -5023,6 +5023,14 @@ class _ArrayAnnotationBase:
     def __hash__(self):
         return hash((self._concrete_cls, self.dtype, self.ndim))
 
+    def __or__(self, other):
+        from typing import Union
+        return Union[self, other]
+
+    def __ror__(self, other):
+        from typing import Union
+        return Union[other, self]
+
 
 class _ArrayAnnotation(_ArrayAnnotationBase):
     """Lightweight annotation for :class:`array` types."""
