@@ -4439,13 +4439,6 @@ size_t wp_cuda_compile_program(
     bool use_ptx = output_ext && strcmp(output_ext + 1, "ptx") == 0;
     const bool print_debug = (std::getenv("WARP_DEBUG") != nullptr);
 
-    // check include dir path len (path + option)
-    const int max_path = 4096 + 16;
-    if (strlen(include_dir) > max_path) {
-        fprintf(stderr, "Warp error: Include path too long\n");
-        return size_t(-1);
-    }
-
     if (print_debug) {
         // Not available in all nvJitLink versions
         // unsigned major = 0;
@@ -4458,9 +4451,10 @@ size_t wp_cuda_compile_program(
         printf("NVRTC version %d.%d\n", major, minor);
     }
 
-    char include_opt[max_path];
-    strcpy(include_opt, "--include-path=");
-    strcat(include_opt, include_dir);
+    // Vector to store dynamically created option strings
+    std::vector<std::string> stored_options;
+    stored_options.reserve(static_cast<size_t>(std::max(num_cuda_include_dirs, 0)) + 3);
+    stored_options.push_back(std::string("--include-path=") + include_dir);
 
     const int max_arch = 128;
     char arch_opt[max_arch];
@@ -4479,7 +4473,7 @@ size_t wp_cuda_compile_program(
 
     std::vector<const char*> opts;
     opts.push_back(arch_opt);
-    opts.push_back(include_opt);
+    opts.push_back(stored_options.back().c_str());
     opts.push_back("--std=c++17");
 
     // CUDA 12.9+ supports --Ofast-compile
@@ -4500,9 +4494,6 @@ size_t wp_cuda_compile_program(
         break;  // 3 and up
     }
 #endif
-
-    // Vector to store dynamically created option strings
-    std::vector<std::string> stored_options;
 
     if (precompiled_headers) {
         // CUDA 12.8+ supports precompiled headers
