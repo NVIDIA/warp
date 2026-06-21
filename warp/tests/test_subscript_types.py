@@ -690,6 +690,28 @@ class TestSubscriptTypes(unittest.TestCase):
 
 devices = get_test_devices()
 
+
+def test_union_syntax_with_array_annotation(test, device):
+    """Test that PEP 604 union syntax works with array annotations."""
+    import typing
+
+    # wp.array[float] | float should not raise
+    result = wp.array[float] | float
+    test.assertIsInstance(result, typing.UnionType if hasattr(typing, 'UnionType') else type)
+
+    # wp.array2d[float] | None should not raise
+    result = wp.array2d[float] | None
+    test.assertIsNotNone(result)
+
+    # float | wp.array[float] should also work ( __ror__)
+    result = float | wp.array[float]
+    test.assertIsNotNone(result)
+
+    # wp.array[float] | wp.array[int] should work
+    result = wp.array[float] | wp.array[int]
+    test.assertIsNotNone(result)
+
+
 add_function_test(
     TestSubscriptTypes, "test_subscript_kernel_actually_runs", test_subscript_kernel_actually_runs, devices=devices
 )
@@ -719,6 +741,9 @@ add_function_test(
     test_subscript_indexedarray_kernel,
     devices=devices,
 )
+
+
+add_function_test(TestSubscriptTypes, "test_union_syntax_with_array_annotation", test_union_syntax_with_array_annotation, devices=devices)
 
 
 if __name__ == "__main__":
