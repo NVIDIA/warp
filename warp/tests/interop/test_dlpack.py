@@ -97,7 +97,7 @@ def test_dlpack_from_dlpack_byte_offset(test, device):
     shape = (3,)
 
     managed_tensor_size = ctypes.sizeof(DLManagedTensor)
-    padding = managed_tensor_size & 7
+    padding = (-managed_tensor_size) & 7
     shape_size = len(shape) * ctypes.sizeof(ctypes.c_int64)
     mem_size = managed_tensor_size + padding + shape_size
     mem_ptr = wp._src.dlpack.PyMem_RawMalloc(mem_size)
