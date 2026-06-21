@@ -390,8 +390,10 @@ def _unpack_array(dlt: DLTensor, dtype=None):
         # incompatible dtype requested
         raise RuntimeError(f"Incompatible data types: {dlt.dtype} and {dtype}")
 
+    ptr = dlt.data + dlt.byte_offset if dlt.data is not None else None
+
     a = warp._src.types.array(
-        ptr=dlt.data, dtype=dtype, shape=shape, strides=strides, copy=False, device=device, pinned=pinned
+        ptr=ptr, dtype=dtype, shape=shape, strides=strides, copy=False, device=device, pinned=pinned
     )
 
     return a
