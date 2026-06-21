@@ -311,6 +311,132 @@ For temporary allocator changes, use the :class:`ScopedAllocator` context manage
         a = wp.zeros(1000, dtype=wp.float32, device="cuda:0")
     # Original allocator is restored here
 
+.. _managed_memory_allocation_options:
+
+Managed Memory Allocator
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Managed memory is CUDA-managed storage that can be addressed from CPU and GPU
+code. CUDA Unified Memory manages page placement and migration, so pages may move
+between CPU and GPU memory as different processors touch them. Unlike pinned CPU
+memory, which remains host memory that a GPU may access through a host mapping,
+managed memory gives Warp arrays a different tradeoff from the other allocation
+options:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 18 29 27 26
+
+   * - Allocation option
+     - Residency and migration
+     - CPU/GPU access
+     - Typical use
+   * - Default CUDA
+     - Device memory with no automatic CPU/GPU migration.
+     - CUDA kernels access it directly; CPU code uses explicit copies.
+     - General GPU arrays when CPU access is staged explicitly.
+   * - CUDA mempool
+     - Device memory from CUDA's stream-ordered pool, with no automatic CPU/GPU
+       migration.
+     - Same CPU/GPU access rules as default CUDA memory, with separate
+       memory-pool access controls for peer GPUs.
+     - Faster repeated CUDA allocations and graph-captured allocation when
+       supported.
+   * - Pinned CPU
+     - Host memory that does not migrate into device memory as an allocation.
+     - CPU code accesses it directly; CUDA devices with unified virtual
+       addressing can access it through a host mapping.
+     - Asynchronous CPU/GPU copies or zero-copy access to small host-resident
+       data.
+   * - CUDA managed
+     - CUDA Unified Memory whose pages may migrate between CPU and GPU memory.
+     - CPU and GPU access follow CUDA managed-memory support and synchronization
+       rules.
+     - Sharing data across CPU/GPU code when migration is preferable to manual
+       copies.
+
+:class:`ManagedAllocator` creates CUDA managed-memory arrays through Warp's
+allocator interface. Managed arrays keep their CUDA device metadata, but
+``wp.can_access()`` and checked launch validation use CUDA managed-memory access
+rules for them instead of peer-access or memory-pool-access rules.
+
+One major reason to choose this allocator is CPU/GPU shared work: on systems
+where CUDA reports compatible managed-memory access, CPU kernels can directly
+read and write managed CUDA arrays instead of maintaining a separate CPU copy.
+Standard Warp CUDA arrays remain non-managed and still require explicit copies
+before CPU code accesses them.
+
+The allocator object is not bound to one CUDA device and can be constructed
+before choosing a CUDA device. Warp invokes it under the target device's CUDA
+context, which must support CUDA managed memory, and records that context as
+the owner for each pointer:
+
+.. code:: python
+
+    managed = wp.ManagedAllocator()
+    device = wp.get_device("cuda:0")
+
+    with wp.ScopedAllocator(device, managed):
+        a = wp.zeros(1000, dtype=wp.float32, device=device)
+
+Constructing a :class:`ManagedAllocator` does not promise that pages initially
+reside in any device's physical memory, and it does not bypass the device's
+managed-memory capability check. The CUDA device used for each allocation
+identifies the owner context and array device metadata; CUDA Unified Memory
+manages physical placement and migration.
+
+Use :attr:`array.memory_kind <warp.array.memory_kind>` to inspect the observed
+memory class backing a concrete :class:`warp.array`:
+
+.. code:: python
+
+    if a.memory_kind is wp.MemoryKind.CUDA_MANAGED:
+        ...
+
+The memory kind describes the pointer's memory class as observed by Warp, and
+for CUDA arrays by CUDA pointer attributes. It does not describe the current
+physical residency of CUDA managed memory, and views report the memory kind of
+their owner array. Indexed arrays do not expose a single memory kind because
+their data and index arrays may have different backing allocations.
+
+To use managed memory as a persistent allocator for all CUDA devices, install one
+allocator instance with :func:`set_cuda_allocator`:
+
+.. code:: python
+
+    managed = wp.ManagedAllocator()
+    wp.set_cuda_allocator(managed)
+
+If only some CUDA devices should use managed memory, install the same allocator
+with :func:`set_device_allocator` on those devices. A single allocator instance
+can serve multiple CUDA devices, but allocation fails clearly on any target
+device that does not report CUDA managed-memory support.
+
+Direct calls to ``ManagedAllocator.allocate()`` require an active CUDA context.
+Array factory functions such as :func:`zeros` and :func:`empty` pass the target
+device context automatically and perform the same managed-memory support check.
+
+Managed allocations currently have a CUDA graph-capture limitation in Warp:
+:class:`ManagedAllocator` does not allocate a new array while CUDA graph capture
+is active. If you need managed arrays with CUDA graphs, allocate them before
+capture begins and reuse the existing arrays inside the captured work. This is
+an implementation limitation, not a restriction on using pre-existing managed
+arrays in captured work. Separately, :class:`ManagedAllocator`-managed arrays
+cannot be exported with ``array.ipc_handle()``; IPC export is unsupported for
+managed arrays. If IPC is required, choose a different allocator for shared data
+or pre-allocate and export device arrays before switching allocator state.
+
+CPU access to managed arrays is hardware-dependent. Use :func:`can_access` to
+check a specific managed array before CPU code reads or writes it directly:
+
+.. code:: python
+
+    if wp.can_access("cpu", a):
+        wp.launch(cpu_kernel, dim=a.size, inputs=[a], device="cpu")
+    else:
+        a_cpu = a.to("cpu")
+        wp.launch(cpu_kernel, dim=a_cpu.size, inputs=[a_cpu], device="cpu")
+
 Writing a Custom Allocator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -326,6 +452,11 @@ A custom allocator is any object that implements ``allocate`` and ``deallocate``
         def deallocate(self, ptr: int, size_in_bytes: int) -> None:
             # Free the device pointer
             ...
+
+By default, Warp enters the array's CUDA context before calling
+``deallocate()``. If an allocator records enough context to free its pointers
+independently, set ``deallocate_requires_array_context = False`` on the
+allocator object.
 
 Allocators that do not support stream-ordered allocation may not work correctly
 during CUDA graph capture.

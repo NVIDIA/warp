@@ -979,11 +979,20 @@ void* wp_alloc_device_default(void* context, size_t s, const char* tag) { return
 
 void* wp_alloc_device_async(void* context, size_t s, const char* tag) { return NULL; }
 
+void* wp_alloc_device_managed(void* context, size_t s, const char* tag) { return NULL; }
+
 void wp_free_device(void* context, void* ptr) { }
 
 void wp_free_device_default(void* context, void* ptr) { }
 
-void wp_free_device_async(void* context, void* ptr, void** dbg_node_ret) { }
+bool wp_free_device_async(void* context, void* ptr, void** dbg_node_ret) { return true; }
+
+bool wp_free_device_managed(void* context, void* ptr)
+{
+    // Match the other no-CUDA device free stubs: there is no device allocator
+    // state to release, so freeing any pointer is treated as a no-op.
+    return true;
+}
 
 bool wp_memcpy_h2d(void* context, void* dest, void* src, size_t n, void* stream) { return false; }
 
@@ -1031,6 +1040,9 @@ WP_API int wp_cuda_device_is_uva(int ordinal) { return 0; }
 WP_API int wp_cuda_device_get_pageable_memory_access(int ordinal) { return 0; }
 WP_API int wp_cuda_device_get_direct_managed_mem_access_from_host(int ordinal) { return 0; }
 WP_API int wp_cuda_device_get_host_native_atomic_supported(int ordinal) { return 0; }
+WP_API int wp_cuda_device_get_managed_memory(int ordinal) { return 0; }
+WP_API int wp_cuda_device_get_concurrent_managed_access(int ordinal) { return 0; }
+WP_API int wp_cuda_pointer_get_memory_kind(void* context, void* ptr) { return WP_MEMORY_KIND_UNKNOWN; }
 WP_API int wp_cuda_device_is_mempool_supported(int ordinal) { return 0; }
 WP_API int wp_cuda_device_is_ipc_supported(int ordinal) { return 0; }
 WP_API int wp_cuda_device_set_mempool_release_threshold(int ordinal, uint64_t threshold) { return 0; }
