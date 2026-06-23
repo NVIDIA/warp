@@ -357,26 +357,34 @@ def test_unified_memory_array_view_allocator_lookup_uses_parent_array(test, devi
 
 
 def test_unified_memory_cuda_memory_kind_queries(test, device):
-    """array.memory_kind is derived from CUDA pointer attributes."""
+    """array.memory_kind uses allocator metadata for Warp-owned CUDA arrays."""
 
     with wp.ScopedMempool(device, False):
         default_arr = wp.empty(4, dtype=wp.float32, device=device)
 
-    test.assertIs(default_arr.memory_kind, wp.MemoryKind.CUDA_DEVICE)
-    test.assertIs(default_arr[1:].memory_kind, wp.MemoryKind.CUDA_DEVICE)
+    native_get_memory_kind = warp_context.runtime.core.wp_cuda_pointer_get_memory_kind
+    with patch.object(
+        warp_context.runtime.core,
+        "wp_cuda_pointer_get_memory_kind",
+        wraps=native_get_memory_kind,
+    ) as get_memory_kind:
+        test.assertIs(default_arr.memory_kind, wp.MemoryKind.CUDA_DEVICE)
+        test.assertIs(default_arr[1:].memory_kind, wp.MemoryKind.CUDA_DEVICE)
 
-    if device.is_mempool_supported:
-        with wp.ScopedMempool(device, True):
-            mempool_arr = wp.empty(4, dtype=wp.float32, device=device)
-        test.assertIs(mempool_arr.memory_kind, wp.MemoryKind.CUDA_MEMPOOL)
-        test.assertIs(mempool_arr[1:].memory_kind, wp.MemoryKind.CUDA_MEMPOOL)
+        if device.is_mempool_supported:
+            with wp.ScopedMempool(device, True):
+                mempool_arr = wp.empty(4, dtype=wp.float32, device=device)
+            test.assertIs(mempool_arr.memory_kind, wp.MemoryKind.CUDA_MEMPOOL)
+            test.assertIs(mempool_arr[1:].memory_kind, wp.MemoryKind.CUDA_MEMPOOL)
 
-    if device.is_managed_memory_supported:
-        managed = wp.ManagedAllocator()
-        with wp.ScopedAllocator(device, managed):
-            managed_arr = wp.empty(4, dtype=wp.float32, device=device)
-        test.assertIs(managed_arr.memory_kind, wp.MemoryKind.CUDA_MANAGED)
-        test.assertIs(managed_arr[1:].memory_kind, wp.MemoryKind.CUDA_MANAGED)
+        if device.is_managed_memory_supported:
+            managed = wp.CudaManagedAllocator()
+            with wp.ScopedAllocator(device, managed):
+                managed_arr = wp.empty(4, dtype=wp.float32, device=device)
+            test.assertIs(managed_arr.memory_kind, wp.MemoryKind.CUDA_MANAGED)
+            test.assertIs(managed_arr[1:].memory_kind, wp.MemoryKind.CUDA_MANAGED)
+
+        test.assertEqual(get_memory_kind.call_count, 0)
 
 
 def test_unified_memory_wrapped_cuda_pointer_memory_kind(test, device):
@@ -386,17 +394,28 @@ def test_unified_memory_wrapped_cuda_pointer_memory_kind(test, device):
         test.skipTest(f"{device} does not support CUDA managed memory")
 
     cpu = wp.get_device("cpu")
-    managed = wp.ManagedAllocator()
+    managed = wp.CudaManagedAllocator()
     with wp.ScopedAllocator(device, managed):
         owner = wp.empty(4, dtype=wp.float32, device=device)
 
     wrapped = wp.array(ptr=owner.ptr, dtype=wp.float32, shape=owner.shape, device=device, copy=False)
 
-    test.assertIs(wrapped.memory_kind, wp.MemoryKind.CUDA_MANAGED)
-    expected_cpu_access = (
-        device.is_concurrent_managed_access_supported or device.is_gpu_memory_access_from_cpu_supported
-    )
-    test.assertEqual(wp.can_access(cpu, wrapped), expected_cpu_access)
+    native_get_memory_kind = warp_context.runtime.core.wp_cuda_pointer_get_memory_kind
+    with patch.object(
+        warp_context.runtime.core,
+        "wp_cuda_pointer_get_memory_kind",
+        wraps=native_get_memory_kind,
+    ) as get_memory_kind:
+        test.assertIs(wrapped.memory_kind, wp.MemoryKind.CUDA_MANAGED)
+        test.assertEqual(get_memory_kind.call_count, 1)
+        test.assertIs(wrapped.memory_kind, wp.MemoryKind.CUDA_MANAGED)
+        test.assertEqual(get_memory_kind.call_count, 1)
+
+        expected_cpu_access = (
+            device.is_concurrent_managed_access_supported or device.is_gpu_memory_access_from_cpu_supported
+        )
+        test.assertEqual(wp.can_access(cpu, wrapped), expected_cpu_access)
+        test.assertEqual(get_memory_kind.call_count, 1)
 
 
 def test_unified_memory_managed_allocator_can_access(test, device):
@@ -406,7 +425,7 @@ def test_unified_memory_managed_allocator_can_access(test, device):
         test.skipTest(f"{device} does not support CUDA managed memory")
 
     cpu = wp.get_device("cpu")
-    managed = wp.ManagedAllocator()
+    managed = wp.CudaManagedAllocator()
 
     with wp.ScopedAllocator(device, managed):
         arr = wp.empty(8, dtype=wp.float32, device=device)
@@ -427,7 +446,7 @@ def test_unified_memory_ipc_handle_rejects_unsupported_arrays(test, device):
     cases = []
 
     if device.is_managed_memory_supported:
-        managed = wp.ManagedAllocator()
+        managed = wp.CudaManagedAllocator()
         with wp.ScopedAllocator(device, managed):
             managed_arr = wp.empty(4, dtype=wp.float32, device=device)
 
@@ -467,7 +486,7 @@ def test_unified_memory_checked_cpu_launch_with_managed_array(test, device):
     if not device.is_managed_memory_supported:
         test.skipTest(f"{device} does not support CUDA managed memory")
 
-    managed = wp.ManagedAllocator()
+    managed = wp.CudaManagedAllocator()
     src_np = np.arange(4, dtype=np.float32)
     with wp.ScopedAllocator(device, managed):
         src = wp.array(src_np, dtype=wp.float32, device=device)
@@ -509,7 +528,7 @@ def test_unified_memory_managed_array_cross_device_graph_capture(test, device):
     if not target.is_managed_memory_supported:
         test.skipTest(f"{target} does not support CUDA managed memory")
 
-    managed = wp.ManagedAllocator()
+    managed = wp.CudaManagedAllocator()
     with wp.ScopedAllocator(device, managed):
         src = wp.array(np.arange(8, dtype=np.float32), dtype=wp.float32, device=device)
 
@@ -525,20 +544,6 @@ def test_unified_memory_managed_array_cross_device_graph_capture(test, device):
 
     wp.capture_launch(capture.graph)
     np.testing.assert_allclose(dst.numpy(), np.arange(8, dtype=np.float32) * 2.0)
-
-
-def test_unified_memory_managed_allocator_rejects_capture_allocation(test, device):
-    """ManagedAllocator rejects allocation during CUDA graph capture."""
-
-    if not device.is_managed_memory_supported:
-        test.skipTest(f"{device} does not support CUDA managed memory")
-
-    wp.load_module(device=device)
-    managed = wp.ManagedAllocator()
-    with wp.ScopedAllocator(device, managed):
-        with test.assertRaisesRegex(RuntimeError, "managed allocation during CUDA graph capture"):
-            with wp.ScopedCapture(device=device, force_module_load=False):
-                wp.empty(8, dtype=wp.float32, device=device)
 
 
 devices = get_test_devices()
@@ -1090,13 +1095,6 @@ add_function_test(
     "test_unified_memory_managed_array_cross_device_graph_capture",
     test_unified_memory_managed_array_cross_device_graph_capture,
     devices=cuda_devices,
-)
-add_function_test(
-    TestUnifiedMemory,
-    "test_unified_memory_managed_allocator_rejects_capture_allocation",
-    test_unified_memory_managed_allocator_rejects_capture_allocation,
-    devices=cuda_devices,
-    check_output=False,
 )
 if __name__ == "__main__":
     unittest.main(verbosity=2)

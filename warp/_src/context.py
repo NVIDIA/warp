@@ -3828,9 +3828,8 @@ class Allocator(Protocol):
     """Protocol for custom memory allocators.
 
     Any object with ``allocate`` and ``deallocate`` methods matching
-    these signatures can be used as a Warp allocator. Allocators that need the
-    CUDA allocation context during teardown may also implement
-    ``deallocate_with_context(ptr, size_in_bytes, context)``.
+    these signatures can be used as a Warp allocator. Allocators with a fixed
+    allocation memory class may expose a ``memory_kind`` attribute.
     """
 
     def allocate(self, size_in_bytes: int) -> int:
@@ -3848,7 +3847,7 @@ class _ArrayAccessStatus(enum.Enum):
     UNKNOWN = enum.auto()
 
 
-class MemoryKind(enum.Enum):
+class MemoryKind(enum.IntEnum):
     """Observed memory kind backing a Warp array.
 
     This describes the memory class reported by Warp and CUDA pointer
@@ -3857,33 +3856,24 @@ class MemoryKind(enum.Enum):
     array. Use :func:`can_access` for access checks.
     """
 
-    HOST = "host"
-    """Default host memory."""
-
-    PINNED_HOST = "pinned_host"
-    """Pinned or CUDA-registered host memory."""
-
-    CUDA_DEVICE = "cuda_device"
-    """CUDA device memory that is not classified as managed or mempool memory."""
-
-    CUDA_MEMPOOL = "cuda_mempool"
-    """CUDA memory-pool allocation."""
-
-    CUDA_MANAGED = "cuda_managed"
-    """CUDA managed-memory allocation."""
-
-    UNKNOWN = "unknown"
+    # Values must match wp_memory_kind in warp/native/warp.h.
+    UNKNOWN = 0
     """Memory kind that Warp cannot classify."""
 
+    HOST = 1
+    """Default host memory."""
 
-_NATIVE_MEMORY_KIND_TO_MEMORY_KIND = {
-    0: MemoryKind.UNKNOWN,
-    1: MemoryKind.HOST,
-    2: MemoryKind.PINNED_HOST,
-    3: MemoryKind.CUDA_DEVICE,
-    4: MemoryKind.CUDA_MEMPOOL,
-    5: MemoryKind.CUDA_MANAGED,
-}
+    PINNED = 2
+    """Pinned or CUDA-registered host memory."""
+
+    CUDA_DEVICE = 3
+    """CUDA device memory that is not classified as managed or mempool memory."""
+
+    CUDA_MEMPOOL = 4
+    """CUDA memory-pool allocation."""
+
+    CUDA_MANAGED = 5
+    """CUDA managed-memory allocation."""
 
 
 _LAUNCH_ARRAY_ACCESS_WARNING_CACHE_SIZE = 1024
@@ -3905,11 +3895,6 @@ def _validate_allocator(allocator):
             f"allocator must implement the Allocator protocol "
             f"(allocate(size_in_bytes) -> int, deallocate(ptr, size_in_bytes) -> None), "
             f"got {type(allocator)!r}"
-        )
-    deallocate_with_context = getattr(allocator, "deallocate_with_context", None)
-    if deallocate_with_context is not None and not callable(deallocate_with_context):
-        raise TypeError(
-            f"allocator deallocate_with_context attribute must be callable when provided, got {type(allocator)!r}"
         )
 
 
@@ -3970,7 +3955,8 @@ def _set_alloc_tag_if_tracking(ptr):
 
 
 class CpuDefaultAllocator:
-    deallocate_requires_context_guard = True
+    deallocate_requires_context_guard = False
+    memory_kind = MemoryKind.HOST
 
     def __init__(self, device):
         if not device.is_cpu:
@@ -3988,7 +3974,8 @@ class CpuDefaultAllocator:
 
 
 class CpuPinnedAllocator:
-    deallocate_requires_context_guard = True
+    deallocate_requires_context_guard = False
+    memory_kind = MemoryKind.PINNED
 
     def __init__(self, device):
         if not device.is_cpu:
@@ -4008,6 +3995,7 @@ class CpuPinnedAllocator:
 
 class CudaDefaultAllocator:
     deallocate_requires_context_guard = True
+    memory_kind = MemoryKind.CUDA_DEVICE
 
     def __init__(self, device):
         if not device.is_cuda:
@@ -4043,6 +4031,7 @@ class CudaDefaultAllocator:
 
 class CudaMempoolAllocator:
     deallocate_requires_context_guard = True
+    memory_kind = MemoryKind.CUDA_MEMPOOL
 
     def __init__(self, device):
         if not device.is_cuda:
@@ -4059,42 +4048,38 @@ class CudaMempoolAllocator:
         return ptr
 
     def deallocate(self, ptr, size_in_bytes):
-        if not runtime.core.wp_free_device_async(self.device.context, ptr, None):
-            native_error = runtime.get_error_string()
-            reason = f": {native_error}" if native_error else ""
-            raise RuntimeError(f"Failed to free memory on device '{self.device}'{reason}")
+        runtime.core.wp_free_device_async(self.device.context, ptr, None)
 
 
-class ManagedAllocator:
+class CudaManagedAllocator:
     """Allocator that creates CUDA managed-memory arrays.
 
     The allocator object is not bound to one CUDA device and can be reused
     across devices. Each allocation still happens under a specific CUDA context,
     and that context's device must support CUDA managed memory. Warp pushes the
-    target CUDA context before invoking ``allocate()`` and records that
-    allocation context on the resulting array so the allocator can free the
-    pointer through the same CUDA context later. Direct calls to ``allocate()``
-    require an active CUDA context.
+    target CUDA context before invoking ``allocate()``. Direct calls to
+    ``allocate()`` require an active CUDA context.
 
-    Managed allocation uses ``cudaMallocManaged()`` and cannot occur while CUDA
-    graph capture is active. Allocate managed arrays before capture begins and
-    reuse the existing arrays inside captured work.
+    Managed allocation uses ``cudaMallocManaged()``. Allocate managed arrays
+    before CUDA graph capture begins and reuse the existing arrays inside
+    captured work for maximum CUDA compatibility.
     """
 
     deallocate_requires_context_guard = False
+    memory_kind = MemoryKind.CUDA_MANAGED
 
     def allocate(self, size_in_bytes):
         init()
 
         context = runtime.core.wp_cuda_context_get_current()
         if not context:
-            raise RuntimeError("ManagedAllocator.allocate() requires an active CUDA context")
+            raise RuntimeError("CudaManagedAllocator.allocate() requires an active CUDA context")
 
         device = runtime.get_current_cuda_device()
         if not device.is_cuda:
-            raise RuntimeError("ManagedAllocator requires a current CUDA device")
+            raise RuntimeError("CudaManagedAllocator requires a current CUDA device")
         if not device.is_managed_memory_supported:
-            raise RuntimeError(f"ManagedAllocator requires CUDA managed memory support on device '{device}'")
+            raise RuntimeError(f"CudaManagedAllocator requires CUDA managed memory support on device '{device}'")
 
         ptr = runtime.core.wp_alloc_device_managed(context, size_in_bytes, None)
         if not ptr:
@@ -4102,13 +4087,8 @@ class ManagedAllocator:
             native_error = runtime.get_error_string()
             if native_error:
                 reason = f": {native_error}"
-            if not reason and device.is_capturing:
-                reason = (
-                    ": Warp error: managed allocation during CUDA graph capture is not supported. "
-                    "Allocate before capture on this device."
-                )
             raise RuntimeError(
-                f"Failed to allocate {size_in_bytes} bytes with ManagedAllocator on device '{device}'{reason}"
+                f"Failed to allocate {size_in_bytes} bytes with CudaManagedAllocator on device '{device}'{reason}"
             )
 
         _set_alloc_tag_if_tracking(ptr)
@@ -4120,23 +4100,9 @@ class ManagedAllocator:
         if not ptr:
             return
 
-        context = runtime.core.wp_cuda_context_get_current()
-        if not context:
-            raise RuntimeError("ManagedAllocator.deallocate() requires an active CUDA context")
-
-        self.deallocate_with_context(ptr, size_in_bytes, context)
-
-    def deallocate_with_context(self, ptr, size_in_bytes, context):
-        init()
-
-        if not ptr:
-            return
-        if not context:
-            raise RuntimeError("ManagedAllocator.deallocate_with_context() requires a CUDA context")
-        if not runtime.core.wp_free_device_managed(context, ptr):
-            native_error = runtime.get_error_string()
-            reason = f": {native_error}" if native_error else ""
-            raise RuntimeError(f"Failed to free {size_in_bytes} bytes with ManagedAllocator{reason}")
+        # cudaFree() is valid for cudaMallocManaged() allocations, so managed
+        # deallocation can use the same native path as default CUDA allocations.
+        runtime.core.wp_free_device_default(None, ptr)
 
 
 class ContextGuard:
@@ -4555,9 +4521,9 @@ class Device:
                 runtime.core.wp_cuda_device_get_direct_managed_mem_access_from_host(ordinal) > 0
             )
             self.is_cpu_gpu_atomic_supported = runtime.core.wp_cuda_device_get_host_native_atomic_supported(ordinal) > 0
-            self.is_managed_memory_supported = runtime.core.wp_cuda_device_get_managed_memory(ordinal) > 0
+            self.is_managed_memory_supported = runtime.core.wp_cuda_device_get_managed_memory_supported(ordinal) > 0
             self.is_concurrent_managed_access_supported = (
-                runtime.core.wp_cuda_device_get_concurrent_managed_access(ordinal) > 0
+                runtime.core.wp_cuda_device_get_concurrent_managed_access_supported(ordinal) > 0
             )
             self.is_mempool_supported = runtime.core.wp_cuda_device_is_mempool_supported(ordinal) > 0
             if platform.system() == "Linux":
@@ -5370,9 +5336,7 @@ class Runtime:
             self.core.wp_free_device_default.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
             self.core.wp_free_device_default.restype = None
             self.core.wp_free_device_async.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p]
-            self.core.wp_free_device_async.restype = ctypes.c_bool
-            self.core.wp_free_device_managed.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
-            self.core.wp_free_device_managed.restype = ctypes.c_bool
+            self.core.wp_free_device_async.restype = None
 
             self.core.wp_alloc_tracker_enable.argtypes = [ctypes.c_int]
             self.core.wp_alloc_tracker_enable.restype = None
@@ -6315,10 +6279,10 @@ class Runtime:
             self.core.wp_cuda_device_get_direct_managed_mem_access_from_host.restype = ctypes.c_int
             self.core.wp_cuda_device_get_host_native_atomic_supported.argtypes = [ctypes.c_int]
             self.core.wp_cuda_device_get_host_native_atomic_supported.restype = ctypes.c_int
-            self.core.wp_cuda_device_get_managed_memory.argtypes = [ctypes.c_int]
-            self.core.wp_cuda_device_get_managed_memory.restype = ctypes.c_int
-            self.core.wp_cuda_device_get_concurrent_managed_access.argtypes = [ctypes.c_int]
-            self.core.wp_cuda_device_get_concurrent_managed_access.restype = ctypes.c_int
+            self.core.wp_cuda_device_get_managed_memory_supported.argtypes = [ctypes.c_int]
+            self.core.wp_cuda_device_get_managed_memory_supported.restype = ctypes.c_int
+            self.core.wp_cuda_device_get_concurrent_managed_access_supported.argtypes = [ctypes.c_int]
+            self.core.wp_cuda_device_get_concurrent_managed_access_supported.restype = ctypes.c_int
             self.core.wp_cuda_pointer_get_memory_kind.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
             self.core.wp_cuda_pointer_get_memory_kind.restype = ctypes.c_int
             self.core.wp_cuda_device_is_mempool_supported.argtypes = [ctypes.c_int]
@@ -8709,12 +8673,18 @@ def _get_array_memory_kind(value: warp.array) -> MemoryKind:
             value = ref
             continue
 
+        cached_memory_kind = getattr(value, "_memory_kind", None)
+        if cached_memory_kind is not None:
+            return cached_memory_kind
+
         device = getattr(value, "device", None)
         if device is None:
             return MemoryKind.UNKNOWN
 
         if device.is_cpu:
-            return MemoryKind.PINNED_HOST if getattr(value, "pinned", False) else MemoryKind.HOST
+            memory_kind = MemoryKind.PINNED if getattr(value, "pinned", False) else MemoryKind.HOST
+            value._memory_kind = memory_kind
+            return memory_kind
 
         ptr = getattr(value, "ptr", None)
         if ptr is None:
@@ -8723,7 +8693,12 @@ def _get_array_memory_kind(value: warp.array) -> MemoryKind:
         if device.is_cuda:
             with device.context_guard:
                 native_kind = runtime.core.wp_cuda_pointer_get_memory_kind(device.context, ptr)
-            return _NATIVE_MEMORY_KIND_TO_MEMORY_KIND.get(native_kind, MemoryKind.UNKNOWN)
+            try:
+                memory_kind = MemoryKind(native_kind)
+            except ValueError:
+                memory_kind = MemoryKind.UNKNOWN
+            value._memory_kind = memory_kind
+            return memory_kind
 
         return MemoryKind.UNKNOWN
 

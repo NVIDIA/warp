@@ -68,30 +68,6 @@ class FailAllocator:
         pass
 
 
-class ContextAwareAllocator:
-    """Test allocator that receives the allocation context during deallocation."""
-
-    deallocate_requires_context_guard = True
-
-    def __init__(self, device):
-        self._inner = device.default_allocator
-        self.dealloc_count = 0
-        self.legacy_dealloc_count = 0
-        self.dealloc_contexts = []
-
-    def allocate(self, size_in_bytes):
-        return self._inner.allocate(size_in_bytes)
-
-    def deallocate(self, ptr, size_in_bytes):
-        self.legacy_dealloc_count += 1
-        self._inner.deallocate(ptr, size_in_bytes)
-
-    def deallocate_with_context(self, ptr, size_in_bytes, context):
-        self.dealloc_count += 1
-        self.dealloc_contexts.append(context)
-        warp_context.runtime.core.wp_free_device_default(context, ptr)
-
-
 class CountingContextGuard:
     """Context guard wrapper that records enter/exit calls."""
 
@@ -190,6 +166,16 @@ class TestAllocatorProtocol(unittest.TestCase):
         self.assertIsInstance(cpu.default_allocator, Allocator)
         self.assertIsInstance(cpu.pinned_allocator, Allocator)
 
+    def test_memory_kind_values_match_native_codes(self):
+        """MemoryKind values match the native wp_memory_kind enum."""
+
+        self.assertIs(wp.MemoryKind(0), wp.MemoryKind.UNKNOWN)
+        self.assertIs(wp.MemoryKind(1), wp.MemoryKind.HOST)
+        self.assertIs(wp.MemoryKind(2), wp.MemoryKind.PINNED)
+        self.assertIs(wp.MemoryKind(3), wp.MemoryKind.CUDA_DEVICE)
+        self.assertIs(wp.MemoryKind(4), wp.MemoryKind.CUDA_MEMPOOL)
+        self.assertIs(wp.MemoryKind(5), wp.MemoryKind.CUDA_MANAGED)
+
     def test_public_memory_kind_for_cpu_arrays(self):
         """array.memory_kind reports observed CPU memory kind."""
 
@@ -202,10 +188,10 @@ class TestAllocatorProtocol(unittest.TestCase):
 
         if wp.is_cuda_available():
             pinned = wp.empty(4, dtype=wp.float32, device="cpu", pinned=True)
-            self.assertIs(pinned.memory_kind, wp.MemoryKind.PINNED_HOST)
+            self.assertIs(pinned.memory_kind, wp.MemoryKind.PINNED)
 
             zero_size_pinned = wp.empty(0, dtype=wp.float32, device="cpu", pinned=True)
-            self.assertIs(zero_size_pinned.memory_kind, wp.MemoryKind.PINNED_HOST)
+            self.assertIs(zero_size_pinned.memory_kind, wp.MemoryKind.PINNED)
 
         data = np.empty(4, dtype=np.float32)
         wrapped = wp.array(data, dtype=wp.float32, device="cpu", copy=False)
@@ -227,7 +213,7 @@ def test_protocol_conformance_cuda(test, device):
     test.assertIsInstance(device.default_allocator, Allocator)
     if device.is_mempool_supported:
         test.assertIsInstance(device.mempool_allocator, Allocator)
-    test.assertIsInstance(wp.ManagedAllocator(), Allocator)
+    test.assertIsInstance(wp.CudaManagedAllocator(), Allocator)
 
 
 add_function_test(
@@ -239,19 +225,37 @@ add_function_test(
 
 
 class TestCustomAllocator(unittest.TestCase):
-    def test_managed_allocator_deallocate_with_context_reports_native_error(self):
-        alloc = wp.ManagedAllocator()
+    def test_managed_allocator_deallocate_uses_current_context_free(self):
+        alloc = wp.CudaManagedAllocator()
         ptr = 0x1234
-        context = 0x5678
 
         with (
-            mock.patch.object(warp_context.runtime.core, "wp_free_device_managed", return_value=False) as free,
-            mock.patch.object(warp_context.runtime, "get_error_string", return_value=""),
+            mock.patch.object(warp_context.runtime.core, "wp_cuda_context_get_current", return_value=None),
+            mock.patch.object(warp_context.runtime.core, "wp_free_device_default") as free,
         ):
-            with self.assertRaisesRegex(RuntimeError, "Failed to free 64 bytes with ManagedAllocator"):
-                alloc.deallocate_with_context(ptr, 64, context)
+            alloc.deallocate(ptr, 64)
 
-        free.assert_called_once_with(context, ptr)
+        free.assert_called_once_with(None, ptr)
+
+    @unittest.skipUnless(wp.is_cuda_available(), "CUDA not available")
+    def test_managed_allocator_failure_uses_native_error_only(self):
+        """CudaManagedAllocator does not synthesize capture-specific errors."""
+
+        alloc = wp.CudaManagedAllocator()
+        device = wp.get_device("cuda:0")
+
+        with (
+            device.context_guard,
+            mock.patch.object(warp_context.runtime.core, "wp_alloc_device_managed", return_value=None),
+            mock.patch.object(warp_context.runtime, "get_error_string", return_value=""),
+            mock.patch.object(type(device), "is_capturing", new_callable=mock.PropertyMock, return_value=True),
+        ):
+            with self.assertRaises(RuntimeError) as exception_context:
+                alloc.allocate(64)
+
+        message = str(exception_context.exception)
+        self.assertIn("Failed to allocate 64 bytes with CudaManagedAllocator", message)
+        self.assertNotIn("managed allocation during CUDA graph capture", message)
 
     @unittest.skipUnless(wp.get_cuda_device_count() >= 2, "Multi-GPU not available")
     def test_set_cuda_allocator_broadcasts_to_all_devices(self):
@@ -354,12 +358,12 @@ def test_scoped_allocator(test, device):
 
 
 def test_managed_allocator_allocates_on_selected_device(test, device):
-    """ManagedAllocator uses the CUDA device selected by ScopedAllocator."""
+    """CudaManagedAllocator uses the CUDA device selected by ScopedAllocator."""
 
     if not device.is_managed_memory_supported:
         test.skipTest(f"{device} does not support CUDA managed memory")
 
-    managed = wp.ManagedAllocator()
+    managed = wp.CudaManagedAllocator()
 
     with wp.ScopedAllocator(device, managed):
         a = wp.zeros(8, dtype=wp.float32, device=device)
@@ -393,33 +397,27 @@ def test_allocator_swap_with_live_arrays(test, device):
     test.assertEqual(alloc.dealloc_count, 1)
 
 
-def test_allocator_deallocate_receives_allocation_context(test, device):
-    """Context-aware allocator hooks receive the array allocation context."""
-
+def test_allocator_deallocate_uses_current_device_context_guard(test, device):
+    """Array teardown uses the device context guard at deallocation time."""
     device = wp.get_device(device)
-    alloc = ContextAwareAllocator(device)
+    alloc = CountingAllocator(device)
     original_guard = device.context_guard
-    counting_guard = CountingContextGuard(original_guard)
-    device.context_guard = counting_guard
+    replacement_guard = CountingContextGuard(original_guard)
 
     try:
-        with wp.ScopedAllocator(device, alloc):
-            a = wp.empty(100, dtype=wp.float32, device=device)
-
-        counting_guard.enter_count = 0
-        counting_guard.exit_count = 0
-        expected_context = device.context
+        wp.set_device_allocator(device, alloc)
+        a = wp.empty(100, dtype=wp.float32, device=device)
+        device.context_guard = replacement_guard
 
         del a
         gc.collect()
 
         test.assertEqual(alloc.dealloc_count, 1)
-        test.assertEqual(alloc.legacy_dealloc_count, 0)
-        test.assertEqual(alloc.dealloc_contexts, [expected_context])
-        test.assertEqual(counting_guard.enter_count, 0)
-        test.assertEqual(counting_guard.exit_count, 0)
+        test.assertEqual(replacement_guard.enter_count, 1)
+        test.assertEqual(replacement_guard.exit_count, 1)
     finally:
         device.context_guard = original_guard
+        wp.set_device_allocator(device, None)
 
 
 def test_allocate_failure(test, device):
@@ -455,7 +453,7 @@ for fn in [
     test_scoped_allocator,
     test_scoped_allocator_restores_on_exception,
     test_allocator_swap_with_live_arrays,
-    test_allocator_deallocate_receives_allocation_context,
+    test_allocator_deallocate_uses_current_device_context_guard,
     test_allocate_failure,
     test_zero_size_allocation,
 ]:

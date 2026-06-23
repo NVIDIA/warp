@@ -175,7 +175,6 @@ struct FreeInfo {
     void* context = NULL;
     void* ptr = NULL;
     bool is_async = false;
-    bool is_managed = false;
 };
 
 struct CaptureInfo {
@@ -247,14 +246,6 @@ static std::unordered_map<uint64_t, CaptureInfo*> g_captures;
 // Memory allocated during graph capture requires special handling.
 // See wp_alloc_device_async() and wp_free_device_async().
 static std::unordered_map<void*, GraphAllocInfo> g_graph_allocs;
-
-// cudaMallocManaged() memory belongs to the CUcontext that allocated it, not
-// necessarily the current context at deallocation time.
-static std::unordered_map<void*, CUcontext> g_managed_direct_allocs;
-// Tombstones for managed pointers CUDA already reclaimed while destroying their
-// owner context. Later array finalizers should treat these as already freed.
-static std::unordered_map<void*, CUcontext> g_destroyed_context_managed_direct_allocs;
-static std::mutex g_managed_alloc_mutex;
 
 // Memory that cannot be freed immediately gets queued here.
 // Call free_deferred_allocs() to release.
@@ -422,50 +413,6 @@ static ContextInfo* get_context_info(CUcontext ctx)
 
 static inline ContextInfo* get_context_info(void* context) { return get_context_info(static_cast<CUcontext>(context)); }
 
-static inline CUcontext get_managed_alloc_context(void* context)
-{
-    // Native callers may pass NULL to mean "current context"; normalize once
-    // so the managed-allocation maps always compare concrete CUcontext values.
-    CUcontext ctx = static_cast<CUcontext>(context);
-    return ctx ? ctx : get_current_context();
-}
-
-static void mark_context_managed_allocs_released(CUcontext ctx)
-{
-    std::vector<void*> released_ptrs;
-
-    {
-        std::lock_guard<std::mutex> lock(g_managed_alloc_mutex);
-        for (auto iter = g_managed_direct_allocs.begin(); iter != g_managed_direct_allocs.end();) {
-            if (iter->second == ctx) {
-                // CUDA implicitly releases managed allocations owned by a
-                // context as part of cuCtxDestroy().
-                void* ptr = iter->first;
-                g_destroyed_context_managed_direct_allocs[ptr] = ctx;
-                released_ptrs.push_back(ptr);
-                iter = g_managed_direct_allocs.erase(iter);
-            } else {
-                ++iter;
-            }
-        }
-    }
-
-    for (auto iter = g_deferred_free_list.begin(); iter != g_deferred_free_list.end();) {
-        if (iter->is_managed && iter->context == ctx) {
-            // A managed cudaFree() deferred during capture must not run after
-            // the owning context has already destroyed the allocation.
-            iter = g_deferred_free_list.erase(iter);
-        } else {
-            ++iter;
-        }
-    }
-
-    if (g_alloc_tracker.enabled) {
-        for (void* ptr : released_ptrs)
-            g_alloc_tracker.record_free(ptr);
-    }
-}
-
 static inline StreamInfo* get_stream_info(CUstream stream)
 {
     auto it = g_streams.find(stream);
@@ -584,13 +531,12 @@ static bool capturable_tmp_alloc(void* context, const void* data, size_t size, v
     return true;
 }
 
-static void deferred_free(void* ptr, void* context, bool is_async, bool is_managed = false)
+static void deferred_free(void* ptr, void* context, bool is_async)
 {
     FreeInfo free_info;
     free_info.ptr = ptr;
     free_info.context = context ? context : get_current_context();
     free_info.is_async = is_async;
-    free_info.is_managed = is_managed;
     g_deferred_free_list.push_back(free_info);
 }
 
@@ -605,27 +551,6 @@ static int free_deferred_allocs(void* context = NULL)
 
         // free the pointer if it matches the given context or if the context is unspecified
         if (free_info.context == context || !context) {
-            if (free_info.is_managed) {
-                // Context destruction can complete a managed free while the
-                // request is still queued behind an active CUDA graph capture.
-                bool already_released = false;
-                {
-                    std::lock_guard<std::mutex> lock(g_managed_alloc_mutex);
-                    auto destroyed_iter = g_destroyed_context_managed_direct_allocs.find(free_info.ptr);
-                    if (destroyed_iter != g_destroyed_context_managed_direct_allocs.end()
-                        && destroyed_iter->second == free_info.context) {
-                        g_destroyed_context_managed_direct_allocs.erase(destroyed_iter);
-                        already_released = true;
-                    }
-                }
-
-                if (already_released) {
-                    ++num_freed_allocs;
-                    it = g_deferred_free_list.erase(it);
-                    continue;
-                }
-            }
-
             ContextGuard guard(free_info.context);
 
             if (free_info.is_async) {
@@ -722,8 +647,7 @@ static int process_deferred_graph_destroy_callbacks(void* context = NULL)
                     GraphAllocInfo& alloc_info = alloc_iter->second;
                     alloc_info.graph_destroyed = true;
                     if (!alloc_info.ref_exists) {
-                        if (!wp_free_device_async(alloc_info.context, ptr))
-                            fprintf(stderr, "Warp warning: failed to free destroyed graph allocation asynchronously\n");
+                        wp_free_device_async(alloc_info.context, ptr);
                     }
                 }
             }
@@ -733,8 +657,7 @@ static int process_deferred_graph_destroy_callbacks(void* context = NULL)
                 if (tmp_info.context) {
                     // GPU alloc
                     if (tmp_info.is_async) {
-                        if (!wp_free_device_async(tmp_info.context, tmp_info.ptr))
-                            fprintf(stderr, "Warp warning: failed to free temporary graph allocation asynchronously\n");
+                        wp_free_device_async(tmp_info.context, tmp_info.ptr);
                     } else {
                         wp_free_device_default(tmp_info.context, tmp_info.ptr);
                     }
@@ -829,12 +752,10 @@ void wp_free_device(void* context, void* ptr)
     int ordinal = wp_cuda_context_get_device_ordinal(context);
 
     // use stream-ordered allocator if available
-    if (wp_cuda_device_is_mempool_supported(ordinal)) {
-        if (!wp_free_device_async(context, ptr))
-            fprintf(stderr, "Warp warning: failed to free device allocation asynchronously\n");
-    } else {
+    if (wp_cuda_device_is_mempool_supported(ordinal))
+        wp_free_device_async(context, ptr);
+    else
         wp_free_device_default(context, ptr);
-    }
 }
 
 void* wp_alloc_device_default(void* context, size_t s, const char* tag)
@@ -865,45 +786,6 @@ void wp_free_device_default(void* context, void* ptr)
     }
 }
 
-static void record_stream_ordered_graph_alloc(void* ptr, void* context, CUstream stream, const char* caller)
-{
-    if (!ptr || !wp_cuda_stream_is_capturing(stream))
-        return;
-
-    uint64_t capture_id = get_capture_id(stream);
-    auto capture_iter = g_captures.find(capture_id);
-    if (capture_iter == g_captures.end())
-        return;
-
-    GraphAllocInfo alloc_info;
-    alloc_info.capture_id = capture_id;
-    alloc_info.context = context ? context : get_current_context();
-    alloc_info.ref_exists = true;
-    alloc_info.graph_destroyed = false;
-
-    // cudaMallocAsync() becomes a MemAllocNode during capture. Remember that
-    // node so wp_free_device_async() can later insert a matching MemFreeNode
-    // after the allocation's dependent leaf nodes.
-    std::vector<cudaGraphNode_t> deps;
-    if (get_capture_dependencies(stream, deps)) {
-        for (cudaGraphNode_t node : deps) {
-            CUgraphNodeType node_type;
-            if (check_cu(cuGraphNodeGetType_f(node, &node_type)) && node_type == CU_GRAPH_NODE_TYPE_MEM_ALLOC) {
-                cudaMemAllocNodeParams params;
-                if (check_cuda(cudaGraphMemAllocNodeGetParams(node, &params)) && params.dptr == ptr) {
-                    alloc_info.node = node;
-                    break;
-                }
-            }
-        }
-    }
-
-    if (!alloc_info.node)
-        fprintf(stderr, "Warp warning: %s: failed to find memory allocation node\n", caller);
-
-    g_graph_allocs[ptr] = alloc_info;
-}
-
 void* wp_alloc_device_async(void* context, size_t s, const char* tag)
 {
     // stream-ordered allocations don't rely on the current context,
@@ -919,7 +801,49 @@ void* wp_alloc_device_async(void* context, size_t s, const char* tag)
     void* ptr = NULL;
     check_cuda(cudaMallocAsync(&ptr, s, stream));
 
-    record_stream_ordered_graph_alloc(ptr, context, stream, __FUNCTION__);
+    if (ptr) {
+        // if the stream is capturing, the allocation requires special handling
+        if (wp_cuda_stream_is_capturing(stream)) {
+            // check if this is a known capture
+            uint64_t capture_id = get_capture_id(stream);
+            auto capture_iter = g_captures.find(capture_id);
+            if (capture_iter != g_captures.end()) {
+                // remember graph allocation details
+                GraphAllocInfo alloc_info;
+                alloc_info.capture_id = capture_id;
+                alloc_info.context = context ? context : get_current_context();
+                alloc_info.ref_exists = true;  // user reference created and returned here
+                alloc_info.graph_destroyed = false;  // graph not destroyed yet
+
+                // find the MemAllocNode that was just added
+                std::vector<cudaGraphNode_t> deps;
+                if (get_capture_dependencies(stream, deps)) {
+                    for (cudaGraphNode_t node : deps) {
+                        CUgraphNodeType node_type;
+                        if (check_cu(cuGraphNodeGetType_f(node, &node_type))) {
+                            if (node_type == CU_GRAPH_NODE_TYPE_MEM_ALLOC) {
+                                cudaMemAllocNodeParams params;
+                                if (check_cuda(cudaGraphMemAllocNodeGetParams(node, &params))) {
+                                    if (params.dptr == ptr) {
+                                        alloc_info.node = node;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Warn if the node is not found. This is unlikely and it's not a critical error,
+                // but we must also handle this situation in wp_free_device_async().
+                if (!alloc_info.node) {
+                    fprintf(stderr, "Warp warning: %s: failed to find memory allocation node\n", __FUNCTION__);
+                }
+
+                g_graph_allocs[ptr] = alloc_info;
+            }
+        }
+    }
 
     if (g_alloc_tracker.enabled && ptr)
         g_alloc_tracker.record_alloc(ptr, s, ALLOC_KIND_DEVICE, wp_cuda_context_get_device_ordinal(context), tag);
@@ -935,35 +859,14 @@ void* wp_alloc_device_managed(void* context, size_t s, const char* tag)
     if (!context_info || !context_info->device_info)
         return NULL;
 
-    CUcontext owner_context = get_managed_alloc_context(context);
     DeviceInfo* device_info = context_info->device_info;
     if (!device_info->managed_memory)
         return NULL;
 
-    CUstream stream = context_info->stream;
     void* ptr = NULL;
-    bool is_capturing = wp_cuda_stream_is_capturing(stream);
-
-    if (is_capturing) {
-        // Managed memory allocations are not represented as graph allocation
-        // nodes, so Warp cannot safely pair them with a captured graph free.
-        wp::set_error_string(
-            "Warp error: managed allocation during CUDA graph capture is not supported. "
-            "Allocate before capture on this device."
-        );
-        return NULL;
-    }
 
     if (!check_cuda(cudaMallocManaged(&ptr, s, cudaMemAttachGlobal)))
         return NULL;
-
-    if (ptr) {
-        std::lock_guard<std::mutex> lock(g_managed_alloc_mutex);
-        g_destroyed_context_managed_direct_allocs.erase(ptr);
-        // Store the owner context immediately because the current context at
-        // array destruction may be unrelated to where this allocation came from.
-        g_managed_direct_allocs[ptr] = owner_context;
-    }
 
     if (g_alloc_tracker.enabled && ptr)
         g_alloc_tracker.record_alloc(ptr, s, ALLOC_KIND_DEVICE, wp_cuda_context_get_device_ordinal(context), tag);
@@ -971,74 +874,10 @@ void* wp_alloc_device_managed(void* context, size_t s, const char* tag)
     return ptr;
 }
 
-bool wp_free_device_managed(void* context, void* ptr)
+void wp_free_device_async(void* context, void* ptr, void** dbg_node_ret)
 {
-    if (!ptr)
-        return true;
-
-    CUcontext owner_context = get_managed_alloc_context(context);
-    {
-        std::lock_guard<std::mutex> lock(g_managed_alloc_mutex);
-
-        auto direct_iter = g_managed_direct_allocs.find(ptr);
-        if (direct_iter == g_managed_direct_allocs.end()) {
-            auto destroyed_iter = g_destroyed_context_managed_direct_allocs.find(ptr);
-            if (destroyed_iter != g_destroyed_context_managed_direct_allocs.end()) {
-                // The allocation was already reclaimed by cuCtxDestroy(); this
-                // consumes the tombstone for the later Python-side finalizer.
-                if (destroyed_iter->second != owner_context) {
-                    wp::set_error_string(
-                        "Warp error: managed device allocation %p owned by destroyed context %p, requested by %p", ptr,
-                        static_cast<void*>(destroyed_iter->second), static_cast<void*>(owner_context)
-                    );
-                    return false;
-                }
-
-                g_destroyed_context_managed_direct_allocs.erase(destroyed_iter);
-                return true;
-            }
-
-            wp::set_error_string("Warp error: unknown managed device allocation %p", ptr);
-            return false;
-        }
-
-        if (direct_iter->second != owner_context) {
-            wp::set_error_string(
-                "Warp error: managed device allocation %p owned by different context (owner=%p, requester=%p)", ptr,
-                static_cast<void*>(direct_iter->second), static_cast<void*>(owner_context)
-            );
-            return false;
-        }
-
-        // Remove the live record before cudaFree(). If the call has to be
-        // deferred, context destruction will look at the deferred queue instead.
-        g_managed_direct_allocs.erase(direct_iter);
-    }
-
-    ContextGuard guard(context);
-
-    if (g_captures.empty()) {
-        if (!check_cuda(cudaFree(ptr))) {
-            std::lock_guard<std::mutex> lock(g_managed_alloc_mutex);
-            g_managed_direct_allocs[ptr] = owner_context;
-            return false;
-        }
-    } else {
-        // Capture prevents cudaFree() now; preserve the managed bit so context
-        // teardown can drop the queued free instead of double-freeing later.
-        deferred_free(ptr, context, false, true);
-    }
-
-    if (g_alloc_tracker.enabled)
+    if (g_alloc_tracker.enabled && ptr)
         g_alloc_tracker.record_free(ptr);
-
-    return true;
-}
-
-static bool wp_free_device_async_impl(void* context, void* ptr, void** dbg_node_ret)
-{
-    if (!ptr)
-        return true;
 
     // stream-ordered allocators generally don't rely on the current context,
     // but we set the context here for consistent behaviour
@@ -1058,8 +897,7 @@ static bool wp_free_device_async_impl(void* context, void* ptr, void** dbg_node_
             // cudaFreeAsync on the null stream does not block or trigger synchronization, but it postpones
             // the deallocation until a synchronization point is reached, so preceding work on this pointer
             // should safely complete.
-            if (!check_cuda(cudaFreeAsync(ptr, NULL)))
-                return false;
+            check_cuda(cudaFreeAsync(ptr, NULL));
         } else {
             // We must defer the free operation until graph capture completes.
             deferred_free(ptr, context, true);
@@ -1068,7 +906,6 @@ static bool wp_free_device_async_impl(void* context, void* ptr, void** dbg_node_
         // get the graph allocation details
         GraphAllocInfo& alloc_info = alloc_iter->second;
         uint64_t capture_id = alloc_info.capture_id;
-        auto forget_graph_alloc = [&]() { g_graph_allocs.erase(alloc_iter); };
 
         // check if the capture is still active
         auto capture_iter = g_captures.find(capture_id);
@@ -1077,8 +914,8 @@ static bool wp_free_device_async_impl(void* context, void* ptr, void** dbg_node_
             cudaGraph_t graph = get_capture_graph(capture->stream);
             if (!graph) {
                 fprintf(stderr, "Warp warning: %s: failed to get capture graph\n", __FUNCTION__);
-                forget_graph_alloc();
-                return false;
+                g_graph_allocs.erase(alloc_iter);
+                return;
             }
 
             cudaGraphNode_t free_node = NULL;
@@ -1088,8 +925,8 @@ static bool wp_free_device_async_impl(void* context, void* ptr, void** dbg_node_
                 std::vector<cudaGraphNode_t> alloc_leaf_nodes;
                 if (!get_dependent_leaf_nodes(alloc_info.node, alloc_leaf_nodes)) {
                     fprintf(stderr, "Warp warning: %s: failed to get allocation-dependent nodes\n", __FUNCTION__);
-                    forget_graph_alloc();
-                    return false;
+                    g_graph_allocs.erase(alloc_iter);
+                    return;
                 }
 
                 // Add a mem free node. All graph leaf nodes that are descendants of the alloc node
@@ -1100,8 +937,8 @@ static bool wp_free_device_async_impl(void* context, void* ptr, void** dbg_node_
                         &free_node, graph, alloc_leaf_nodes.data(), alloc_leaf_nodes.size(), ptr
                     ))) {
                     fprintf(stderr, "Warp warning: %s: failed to add a memory free node\n", __FUNCTION__);
-                    forget_graph_alloc();
-                    return false;
+                    g_graph_allocs.erase(alloc_iter);
+                    return;
                 }
 
                 // Update the capture dependencies for affected child streams, if the streams are still alive.
@@ -1143,17 +980,9 @@ static bool wp_free_device_async_impl(void* context, void* ptr, void** dbg_node_
                                         new_deps.push_back(dep);
                                     }
                                 }
-                                if (!check_cu(cuStreamUpdateCaptureDependencies_f(
-                                        other_stream, new_deps.data(), new_deps.size(),
-                                        CU_STREAM_SET_CAPTURE_DEPENDENCIES
-                                    ))) {
-                                    fprintf(
-                                        stderr, "Warp warning: %s: failed to update capture dependencies\n",
-                                        __FUNCTION__
-                                    );
-                                    forget_graph_alloc();
-                                    return false;
-                                }
+                                check_cu(cuStreamUpdateCaptureDependencies_f(
+                                    other_stream, new_deps.data(), new_deps.size(), CU_STREAM_SET_CAPTURE_DEPENDENCIES
+                                ));
                             }
                         }
                     }
@@ -1164,24 +993,14 @@ static bool wp_free_device_async_impl(void* context, void* ptr, void** dbg_node_
                 // deallocating. This produces correct graphs, but may introduce unnecessary stream serialization with
                 // multi-stream captures.
                 std::vector<cudaGraphNode_t> leaf_nodes;
-                if (!get_graph_leaf_nodes(graph, leaf_nodes)) {
-                    fprintf(stderr, "Warp warning: %s: failed to get graph leaf nodes\n", __FUNCTION__);
-                    forget_graph_alloc();
-                    return false;
-                }
-                if (!check_cuda(
-                        cudaGraphAddMemFreeNode(&free_node, graph, leaf_nodes.data(), leaf_nodes.size(), ptr)
-                    )) {
-                    fprintf(stderr, "Warp warning: %s: failed to add a memory free node\n", __FUNCTION__);
-                    forget_graph_alloc();
-                    return false;
-                }
-                if (!check_cu(cuStreamUpdateCaptureDependencies_f(
-                        capture->stream, &free_node, 1, CU_STREAM_SET_CAPTURE_DEPENDENCIES
-                    ))) {
-                    fprintf(stderr, "Warp warning: %s: failed to update capture dependencies\n", __FUNCTION__);
-                    forget_graph_alloc();
-                    return false;
+                if (get_graph_leaf_nodes(graph, leaf_nodes)) {
+                    if (check_cuda(
+                            cudaGraphAddMemFreeNode(&free_node, graph, leaf_nodes.data(), leaf_nodes.size(), ptr)
+                        )) {
+                        check_cu(cuStreamUpdateCaptureDependencies_f(
+                            capture->stream, &free_node, 1, CU_STREAM_SET_CAPTURE_DEPENDENCIES
+                        ));
+                    }
                 }
             }
 
@@ -1205,8 +1024,7 @@ static bool wp_free_device_async_impl(void* context, void* ptr, void** dbg_node_
                         cudaGetLastError();
                     } else {
                         // check for other errors
-                        if (!check_cuda(res))
-                            return false;
+                        check_cuda(res);
                     }
                 } else {
                     // We must defer the operation until graph capture completes.
@@ -1222,16 +1040,6 @@ static bool wp_free_device_async_impl(void* context, void* ptr, void** dbg_node_
             }
         }
     }
-
-    if (g_alloc_tracker.enabled)
-        g_alloc_tracker.record_free(ptr);
-
-    return true;
-}
-
-bool wp_free_device_async(void* context, void* ptr, void** dbg_node_ret)
-{
-    return wp_free_device_async_impl(context, ptr, dbg_node_ret);
 }
 
 bool wp_memcpy_h2d(void* context, void* dest, void* src, size_t n, void* stream)
@@ -2712,14 +2520,14 @@ int wp_cuda_device_get_host_native_atomic_supported(int ordinal)
     return 0;
 }
 
-int wp_cuda_device_get_managed_memory(int ordinal)
+int wp_cuda_device_get_managed_memory_supported(int ordinal)
 {
     if (ordinal >= 0 && ordinal < int(g_devices.size()))
         return g_devices[ordinal].managed_memory;
     return 0;
 }
 
-int wp_cuda_device_get_concurrent_managed_access(int ordinal)
+int wp_cuda_device_get_concurrent_managed_access_supported(int ordinal)
 {
     if (ordinal >= 0 && ordinal < int(g_devices.size()))
         return g_devices[ordinal].concurrent_managed_access;
@@ -2748,7 +2556,7 @@ int wp_cuda_pointer_get_memory_kind(void* context, void* ptr)
         return WP_MEMORY_KIND_UNKNOWN;
 
     if (memory_type == CU_MEMORYTYPE_HOST)
-        return WP_MEMORY_KIND_PINNED_HOST;
+        return WP_MEMORY_KIND_PINNED;
 
     if (memory_type != CU_MEMORYTYPE_DEVICE)
         return WP_MEMORY_KIND_UNKNOWN;
@@ -2991,8 +2799,6 @@ void wp_cuda_context_destroy(void* context)
 
             if (info->conditional_module)
                 check_cu(cuModuleUnload_f(info->conditional_module));
-
-            mark_context_managed_allocs_released(ctx);
 
             g_contexts.erase(ctx);
         }
@@ -3912,10 +3718,7 @@ void* wp_cuda_graph_insert_free_node(void* context, void* alloc_node_)
 
     // use wp_free_device_async() and get the free node it added
     void* free_node = NULL;
-    if (!wp_free_device_async(context, ptr, &free_node) || !free_node) {
-        wp::set_error_string("Warp error: failed to insert MemFreeNode");
-        return NULL;
-    }
+    wp_free_device_async(context, ptr, &free_node);
 
     return free_node;
 }

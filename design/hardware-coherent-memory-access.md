@@ -217,16 +217,20 @@ This means the implementation must query capabilities independently instead of a
 | R4 | Provide `wp.prefetch()` API for explicit data migration hints | Should | Performance optimization for HMM / host-page-table ATS |
 | R5 | Optional automatic prefetch in `wp.launch()` for cross-device arrays on coherent systems | Could | Convenience, but needs careful defaults |
 | R6 | `wp.copy()` should skip staging buffers when direct access is available between devices | Could | Performance optimization, marked as TODO in current code |
-| R7 | Provide explicit managed-memory arrays through a built-in allocator | Should | `wp.ManagedAllocator()` integrates with existing allocator APIs and uses array-recorded owner-context metadata during deallocation |
-| R8 | Support graph-capturable managed allocation on CUDA 13+ builds when managed memory pools are available | Could | Future managed-pool backend for `wp.ManagedAllocator()`; CUDA 12.x remains direct `cudaMallocManaged()` outside capture only |
+| R7 | Provide explicit managed-memory arrays through a built-in allocator | Should | `wp.CudaManagedAllocator()` integrates with existing allocator APIs while keeping managed memory opt-in |
+| R8 | Apply user allocator policy to persistent Warp resources, not just Python-created arrays | Should | Meshes, hash grids, volumes, and similar persistent buffers should honor `ScopedAllocator`; internal temporary allocations need a separate policy |
+| R9 | Unify built-in CUDA allocator selection under `ScopedAllocator` | Could | Public built-in allocator accessors can make `ScopedAllocator` supersede `ScopedMempool` while preserving compatibility |
+| R10 | Support graph-capturable managed allocation on CUDA 13+ builds when managed memory pools are available | Could | Later managed-pool backend for `wp.CudaManagedAllocator()`; CUDA 12.x remains direct `cudaMallocManaged()` outside capture only |
 
 **Non-goals:**
-- Changing the default allocator strategy. Managed memory remains opt-in through `wp.ManagedAllocator()`; standard CUDA arrays continue to use Warp's default CUDA or CUDA memory-pool allocators.
-- Changing CUDA graph capture semantics for cross-device access checks. Phase 1 supports using `launch_array_access_mode` during graph capture, but does not add new cross-device synchronization, placement, or capture-time migration behavior beyond the same access checks used for ordinary launches. Phase 6 separately tracks a managed allocation backend that can be recorded in CUDA graphs.
+- Changing the default allocator strategy. Managed memory remains opt-in through `wp.CudaManagedAllocator()`; standard CUDA arrays continue to use Warp's default CUDA or CUDA memory-pool allocators.
+- Changing CUDA graph capture semantics for cross-device access checks. Phase 1 supports using `launch_array_access_mode` during graph capture, but does not add new cross-device synchronization, placement, or capture-time migration behavior beyond the same access checks used for ordinary launches. Phase 8 separately tracks a managed allocation backend that can be recorded in CUDA graphs.
 - Automatically determining the optimal physical placement for every array. This is a performance tuning concern best left to the user via hints.
 - Proactively detecting and warning about cross-device launches at `wp.launch()` time. The hardware enforces access rules; the verification mode is available for diagnosis when needed.
 - Providing a top-level device-to-device access wrapper. `wp.can_access(device, resource)` is a resource-oriented API; `wp.can_access(device, device)` is not supported. Device-level/default-allocation checks remain available as `Device.can_access(other_device)`.
 - Adding a custom/external allocation metadata protocol in the managed-memory phase. CUDA pointer attributes classify external pointers where possible, but unclassified pointers and unowned memory-pool pointers remain conservative until a later metadata phase.
+- Making all internal temporary allocations obey the user allocator. Persistent resource storage and temporary internal buffers have different lifetime, performance, and graph-capture requirements; Phase 6 defines that boundary before broadening allocator policy.
+- Removing `ScopedMempool` immediately. Phase 7 can make `ScopedAllocator` the preferred allocator selection API, but existing `ScopedMempool` users need a compatibility path.
 - Providing CPU/GPU interprocessor atomics through `wp.atomic_*`. Current CPU-side Warp atomics are ordinary updates under the serial CPU execution model, and CUDA-side Warp atomics are not specified as system-scope host/device operations. A future API or mode may add this once the required CPU lowering, GPU scope, and operation-level capability checks are designed.
 
 ## Design
@@ -262,9 +266,9 @@ Use a newer Driver API entry point only when Warp needs newer semantics, such as
 
 In CUDA 13.0 headers, `cuMemPrefetchAsync` is `#define`'d to `cuMemPrefetchAsync_v2`. Warp should avoid that macro-selected newer ABI and explicitly request the v1 entry point via `cuGetProcAddress` because v1 is sufficient for all planned use cases. The v2 API adds NUMA node targeting but is not required. See Phase 2 for the full dispatch implementation.
 
-**Managed allocation APIs (Phase 5):** `wp.ManagedAllocator()` uses `cudaMallocManaged(..., cudaMemAttachGlobal)` outside CUDA graph capture. The allocator must explicitly avoid calling `cudaMallocManaged` during stream capture: local testing on driver 580.126.20 showed `cudaMallocManaged` returns `cudaErrorStreamCaptureUnsupported` and invalidates capture. Managed arrays allocated before capture can still be used by captured kernels.
+**Managed allocation APIs (Phase 5):** `wp.CudaManagedAllocator()` uses `cudaMallocManaged(..., cudaMemAttachGlobal)`. Users should allocate managed arrays before CUDA graph capture begins because local testing on driver 580.126.20 showed `cudaMallocManaged` can return `cudaErrorStreamCaptureUnsupported` and invalidate capture even when the active capture is on another stream or CUDA device. Warp does not preflight and reject the call itself; CUDA reports any capture-time allocation failure. Managed arrays allocated before capture can still be used by captured kernels.
 
-**Managed memory-pool APIs (Phase 6):** CUDA 13.0 adds the managed memory-pool allocation type needed for graph-capturable managed allocation. On CUDA 13.0+ builds, devices with memory-pool support can use a private CUDA memory pool whose `cudaMemPoolProps.allocType` is `cudaMemAllocationTypeManaged`, with allocations made through `cudaMallocFromPoolAsync()` on the current Warp stream and freed through `cudaFreeAsync()`. This path is stream ordered and can be recorded in CUDA graphs.
+**Managed memory-pool APIs (Phase 8):** CUDA 13.0 adds the managed memory-pool allocation type needed for graph-capturable managed allocation. On CUDA 13.0+ builds, devices with memory-pool support can use a private CUDA memory pool whose `cudaMemPoolProps.allocType` is `cudaMemAllocationTypeManaged`, with allocations made through `cudaMallocFromPoolAsync()` on the current Warp stream and freed through `cudaFreeAsync()`. This path is stream ordered and can be recorded in CUDA graphs.
 
 CUDA 12.x builds, including the CUDA 12.9 PyPI build, must not compile or emulate the managed-pool path: `cudaMemAllocationTypeManaged` is not defined there, and CUDA 12.9 documents `cudaMemPoolProps::allocType` as pinned-only. `cudaMallocAsync()`, `cudaFreeAsync()`, CUDA memory pools, and `cudaMallocFromPoolAsync()` were introduced before Warp's CUDA 12.0 minimum, but the managed pool allocation type itself is CUDA 13-only. Runtime support still needs to be gated by the existing memory-pool support query and by successful creation of the managed pool.
 
@@ -278,10 +282,12 @@ Local testing on a Blackwell GPU with driver 580.126.20 showed `cudaMallocFromPo
 | Phase 2 (prefetch) | v1 API | v1 API; v2 available but not required | v1 API; v2 available but not required |
 | Phase 3 (auto-prefetch) | Full support (uses Phase 2 API) | Full support | Full support |
 | Phase 4 (`wp.copy()` optimization) | Full support | Full support | Full support |
-| Phase 5 (`wp.ManagedAllocator`) | Direct `cudaMallocManaged` outside capture; capture-time allocation unavailable | Direct `cudaMallocManaged` outside capture; capture-time allocation unavailable | Direct `cudaMallocManaged` outside capture; capture-time allocation unavailable |
-| Phase 6 (managed memory pools) | Not available; direct fallback outside capture only | Not available; direct fallback outside capture only | Managed pool when available; direct fallback outside capture otherwise |
+| Phase 5 (`wp.CudaManagedAllocator`) | Direct `cudaMallocManaged` outside capture; capture-time allocation unavailable | Direct `cudaMallocManaged` outside capture; capture-time allocation unavailable | Direct `cudaMallocManaged` outside capture; capture-time allocation unavailable |
+| Phase 6 (persistent resource allocator policy) | Full support | Full support | Full support |
+| Phase 7 (unified allocator selection) | Full support | Full support | Full support |
+| Phase 8 (managed memory pools) | Not available; direct fallback outside capture only | Not available; direct fallback outside capture only | Managed pool when available; direct fallback outside capture otherwise |
 
-No phase requires a minimum toolkit version beyond CUDA 12.0 to compile or expose its public API. The Phase 2 prefetch wrapper uses the v1 Driver API entry point for compatibility; v2 is only needed for future NUMA-node targeting. Phase 5 does not support managed allocation during CUDA graph capture on any toolkit version. Phase 6 adds a CUDA 13-only native backend guarded at compile time and runtime; older builds keep the Phase 5 behavior and reject managed allocation during capture.
+No phase requires a minimum toolkit version beyond CUDA 12.0 to compile or expose its public API. The Phase 2 prefetch wrapper uses the v1 Driver API entry point for compatibility; v2 is only needed for future NUMA-node targeting. Phase 5 uses direct `cudaMallocManaged()` and does not provide a graph-capturable managed allocation backend. Phase 8 adds a CUDA 13-only native backend guarded at compile time and runtime.
 
 ### Overview: What Each Phase Introduces
 
@@ -293,9 +299,11 @@ Each phase introduces only the device attributes, native functions, and Python A
 | 2 | Future | `wp.prefetch()` for explicit data placement | `pageable_memory_access_uses_host_page_tables` (to distinguish HMM from host-page-table ATS for warning/no-op behavior) | `wp_cuda_mem_prefetch_async` |
 | 3 | Future | Auto-prefetch in `wp.launch()` | `is_integrated` (to avoid pointless prefetches on shared-DRAM SoCs) | None |
 | 4 | Future | `wp.copy()` staging-buffer optimization | None (reuses Phase 1 access predicates) | None |
-| 5 | Implemented | `wp.ManagedAllocator()`, `wp.MemoryKind`, `array.memory_kind`, managed-memory-aware `wp.can_access()` and checked launches | `managed_memory`, `concurrent_managed_access` | `wp_alloc_device_managed`, `wp_free_device_managed`, `wp_cuda_pointer_get_memory_kind` |
-| 6 | Future | CUDA 13 managed memory-pool backend for graph-capturable `wp.ManagedAllocator()` allocations | None; reuses `managed_memory` and memory-pool support state | Extends `wp_alloc_device_managed` / `wp_free_device_managed` |
-| 7 | Future | Expand `wp.can_access()` to additional resources and custom/external allocation metadata | None expected initially | None |
+| 5 | Implemented | `wp.CudaManagedAllocator()`, `wp.MemoryKind`, `array.memory_kind`, managed-memory-aware `wp.can_access()` and checked launches | `managed_memory`, `concurrent_managed_access` | `wp_alloc_device_managed`, `wp_cuda_pointer_get_memory_kind` |
+| 6 | Future | Apply `ScopedAllocator` to persistent resource allocations while keeping temporary allocations under internal policy | None expected initially | Resource constructors may route persistent native buffers through allocator-aware helpers |
+| 7 | Future | Make `ScopedAllocator` the preferred interface for selecting built-in CUDA allocators and deprecate `ScopedMempool` when compatibility permits | None expected initially | Public built-in allocator accessors |
+| 8 | Future | CUDA 13 managed memory-pool backend for graph-capturable `wp.CudaManagedAllocator()` allocations | None; reuses `managed_memory` and memory-pool support state | Extends `wp_alloc_device_managed` |
+| 9 | Future | Expand `wp.can_access()` to additional resources and custom/external allocation metadata | None expected initially | None |
 
 ### Phase 1: Cross-Device Launch Support
 
@@ -981,14 +989,14 @@ This is a performance optimization and not required for correctness -- the exist
 
 **Goal:** Add an explicit managed-memory allocation path for Warp arrays without changing the meaning of `device` or the default CUDA allocator. Managed memory is a CUDA pointer memory kind, not a new device. A managed Warp array remains associated with the CUDA device used to allocate it, but `wp.can_access()` and `LaunchArrayAccessMode.CHECKED` can apply managed-memory access rules instead of treating the pointer as ordinary CUDA device memory or an unknown pointer.
 
-This phase introduces `wp.ManagedAllocator()`, `wp.MemoryKind`, `array.memory_kind`, two additional CUDA device attributes, managed native allocation wrappers, and a native CUDA pointer classifier.
+This phase introduces `wp.CudaManagedAllocator()`, `wp.MemoryKind`, `array.memory_kind`, two additional CUDA device attributes, a managed native allocation wrapper, and a native CUDA pointer classifier.
 
-#### Public API: `wp.ManagedAllocator`
+#### Public API: `wp.CudaManagedAllocator`
 
-`wp.ManagedAllocator` is a top-level allocator class that satisfies the existing `Allocator` protocol. It has no device argument and no public attach-flag argument. The allocator object is not bound to one CUDA device and can be constructed before any CUDA context is current. Each allocation still happens under the target device's CUDA context, and that device must report CUDA managed-memory support. It is used through the same APIs as other CUDA allocators:
+`wp.CudaManagedAllocator` is a top-level allocator class that satisfies the existing `Allocator` protocol. It has no device argument and no public attach-flag argument. The allocator object is not bound to one CUDA device and can be constructed before any CUDA context is current. Each allocation still happens under the target device's CUDA context, and that device must report CUDA managed-memory support. It is used through the same APIs as other CUDA allocators:
 
 ```python
-managed = wp.ManagedAllocator()
+managed = wp.CudaManagedAllocator()
 
 with wp.ScopedAllocator("cuda:0", managed):
     data = wp.empty(1024, dtype=wp.float32, device="cuda:0")
@@ -1000,33 +1008,34 @@ The array's `device` remains `cuda:0`:
 data.device == wp.get_device("cuda:0")
 ```
 
-The `ManagedAllocator` constructor intentionally does not take a device. A device argument would suggest that `cudaMallocManaged` immediately places pages in that device's physical memory, which CUDA does not guarantee. The target device/context still matters for allocation API calls: Warp's array constructors push the target CUDA context before invoking the allocator, and direct calls to `ManagedAllocator.allocate()` require the caller to have already made a managed-memory-capable CUDA context current. Warp arrays record the allocation context and pass it back through the optional `deallocate_with_context(ptr, size_in_bytes, context)` allocator hook, so one allocator instance can serve multiple CUDA devices without keeping a Python pointer-to-context side table. Physical placement is left to CUDA Unified Memory and can be guided explicitly through `wp.prefetch()` once Phase 2 exists.
+The `CudaManagedAllocator` constructor intentionally does not take a device. A device argument would suggest that `cudaMallocManaged` immediately places pages in that device's physical memory, which CUDA does not guarantee. The target device/context still matters for allocation API calls: Warp's array constructors push the target CUDA context before invoking the allocator, and direct calls to `CudaManagedAllocator.allocate()` require the caller to have already made a managed-memory-capable CUDA context current. Deallocation does not need to replay the allocation context because CUDA accepts `cudaFree()` for `cudaMallocManaged()` pointers from the current runtime context. Physical placement is left to CUDA Unified Memory and can be guided explicitly through `wp.prefetch()` once Phase 2 exists.
 
-`wp.ManagedAllocator()` always uses global managed-memory attach semantics. For the direct fallback path this means `cudaMallocManaged(..., cudaMemAttachGlobal)`. Warp does not expose `cudaMemAttachHost` or `cudaMemAttachSingle` in the initial API; those are specialized ownership/scheduling controls better left to custom allocators or a future explicit stream-attach API.
+`wp.CudaManagedAllocator()` always uses global managed-memory attach semantics. For the direct fallback path this means `cudaMallocManaged(..., cudaMemAttachGlobal)`. Warp does not expose `cudaMemAttachHost` or `cudaMemAttachSingle` in the initial API; those are specialized ownership/scheduling controls better left to custom allocators or a future explicit stream-attach API.
 
-Users may install one `ManagedAllocator` for all CUDA devices:
+Users may install one `CudaManagedAllocator` for all CUDA devices:
 
 ```python
-wp.set_cuda_allocator(wp.ManagedAllocator())
+wp.set_cuda_allocator(wp.CudaManagedAllocator())
 ```
 
-Because allocation happens under the target device context and the allocator object stores no device of its own, sharing one instance across multiple managed-memory-capable CUDA devices is valid. Arrays store the allocation context and use `ManagedAllocator.deallocate_with_context()` so deallocation uses the same context even if another CUDA context is current. Direct calls to `ManagedAllocator.allocate()` require an active CUDA context whose device supports managed memory; direct calls to `ManagedAllocator.deallocate()` use the current CUDA context. Array factory calls pass the target device context automatically.
+Because allocation happens under the target device context and the allocator object stores no device of its own, sharing one instance across multiple managed-memory-capable CUDA devices is valid. Direct calls to `CudaManagedAllocator.allocate()` require an active CUDA context whose device supports managed memory. Direct calls to `CudaManagedAllocator.deallocate()` release the pointer through CUDA's current runtime context. Array factory calls pass the target device context automatically for allocation.
 
 #### Memory-kind inspection
 
 Before this phase, access rules were inferred mostly from allocator class identity. Managed arrays and arrays received from another layer need a first-class memory-kind query so users can inspect what Warp can observe about the backing pointer without relying on a private allocator object. The public enum is:
 
 ```python
-class MemoryKind(enum.Enum):
-    HOST = "host"
-    PINNED_HOST = "pinned_host"
-    CUDA_DEVICE = "cuda_device"
-    CUDA_MEMPOOL = "cuda_mempool"
-    CUDA_MANAGED = "cuda_managed"
-    UNKNOWN = "unknown"
+class MemoryKind(enum.IntEnum):
+    # Values must match wp_memory_kind in warp/native/warp.h.
+    UNKNOWN = 0
+    HOST = 1
+    PINNED = 2
+    CUDA_DEVICE = 3
+    CUDA_MEMPOOL = 4
+    CUDA_MANAGED = 5
 ```
 
-Expose the query through `array.memory_kind` on concrete `wp.array` instances. The property returns a `wp.MemoryKind` value and follows views to their owner allocation. CPU arrays are classified from Warp array state, including zero-sized arrays. CUDA arrays are classified from CUDA Driver API pointer attributes:
+Expose the query through `array.memory_kind` on concrete `wp.array` instances. The property returns a `wp.MemoryKind` value and follows views to their owner allocation. Warp-owned arrays cache the memory kind reported by the allocator at creation time. CPU arrays and zero-sized arrays are classified from Warp array state. Externally wrapped CUDA pointers are classified once from CUDA Driver API pointer attributes, then cache the result:
 
 - `CU_POINTER_ATTRIBUTE_IS_MANAGED` identifies managed memory.
 - `CU_POINTER_ATTRIBUTE_MEMORY_TYPE` distinguishes host and device memory.
@@ -1067,35 +1076,38 @@ check_cu(cuDeviceGetAttribute_f(
 Expose accessors:
 
 ```cpp
-WP_API int wp_cuda_device_get_managed_memory(int ordinal);
-WP_API int wp_cuda_device_get_concurrent_managed_access(int ordinal);
+WP_API int wp_cuda_device_get_managed_memory_supported(int ordinal);
+WP_API int wp_cuda_device_get_concurrent_managed_access_supported(int ordinal);
 ```
 
 Register ctypes bindings in `Runtime.__init__`, then set the Python properties on CUDA devices. CPU devices set both to `False`.
 
 #### Native managed allocation backend
 
-The native managed allocation API exposes these wrappers:
+The native managed allocation API exposes this wrapper:
 
 ```cpp
 WP_API void* wp_alloc_device_managed(void* context, size_t size, const char* tag = nullptr);
-WP_API bool wp_free_device_managed(void* context, void* ptr);
 ```
 
 The native wrapper chooses the backend:
 
-1. If the context's CUDA device does not support managed memory, return `NULL` and set an error string.
-2. If CUDA stream capture is active, return `NULL` and set a clear error: managed allocation during CUDA graph capture is not supported. This avoids calling `cudaMallocManaged()` inside capture and invalidating the capture.
-3. Otherwise allocate with `cudaMallocManaged(&ptr, size, cudaMemAttachGlobal)`.
+1. If the context's CUDA device does not support managed memory, return `NULL`.
+2. Otherwise allocate with `cudaMallocManaged(&ptr, size, cudaMemAttachGlobal)`.
+   CUDA reports any capture-time allocation failure.
 
-Free managed allocations with `cudaFree()`, using the same deferred-free approach as `CudaDefaultAllocator` when graph captures are active.
+Managed allocations are released through the existing `wp_free_device_default()`
+path because CUDA documents `cudaFree()` as valid for `cudaMallocManaged()`
+allocations. This preserves the same deferred-free behavior as
+`CudaDefaultAllocator` when graph captures are active.
 
 Local verification on a Blackwell GPU with driver 580.126.20 confirmed:
 
 - `cudaMallocManaged` during global or thread-local stream capture returns `cudaErrorStreamCaptureUnsupported` and invalidates capture.
 - A pointer allocated by `cudaMallocManaged` before capture can be used by captured kernels successfully.
 
-The native wrapper must therefore guard the allocation path before calling `cudaMallocManaged` during capture.
+The native wrapper therefore lets CUDA report any capture-time allocation failure
+from `cudaMallocManaged()` rather than synthesizing a Python-side reason.
 
 #### Managed access rules
 
@@ -1120,15 +1132,118 @@ Managed arrays remain CUDA arrays in Warp:
 - `array.numpy()` keeps the existing copy-to-CPU behavior in Phase 5. Zero-copy NumPy views over managed CUDA arrays are a separate feature because they would change host synchronization and lifetime expectations.
 - CUDA IPC rejects managed allocations in Phase 5, matching the conservative handling for memory-pool allocations. IPC support for managed memory can be considered separately if a concrete use case appears.
 
-`wp.prefetch()` from Phase 2 accepts managed arrays and is the explicit physical-placement hint for users who want to move pages toward a GPU or back toward the CPU. `wp.ManagedAllocator()` itself does not promise initial residency.
+`wp.prefetch()` from Phase 2 accepts managed arrays and is the explicit physical-placement hint for users who want to move pages toward a GPU or back toward the CPU. `wp.CudaManagedAllocator()` itself does not promise initial residency.
 
-### Phase 6: CUDA 13 Managed Memory-Pool Allocation
+### Phase 6: Allocator Policy for Persistent Warp Resources
 
-**Goal:** Extend `wp.ManagedAllocator()` so CUDA 13.0+ builds can allocate managed arrays during CUDA graph capture when the device supports managed memory pools. This is a native backend extension, not a new public memory kind. Arrays still report `wp.MemoryKind.CUDA_MANAGED`, and CUDA 12.x builds keep the Phase 5 `cudaMallocManaged()` behavior.
+**Goal:** Make user allocator policy apply consistently to persistent Warp
+resources, not only arrays created directly by Python array factories. A user who enters
+`wp.ScopedAllocator(device, allocator)` expects persistent storage created by
+public constructors to use that allocator where the storage has the same lifetime
+and access semantics as a user array.
+
+This phase must first define the allocation boundary:
+
+- **Persistent storage** follows the device's user allocator policy. This
+  includes buffers owned by public-facing resources such as meshes, hash grids,
+  volumes, Fabric buffers, and similar data structures whose memory remains part
+  of the object after construction.
+- **Temporary internal storage** does not blindly follow the user allocator.
+  This includes workspaces for algorithms such as radix sort, run-length encode,
+  acceleration-structure builds, reductions, scans, tile operations, and other
+  short-lived implementation details where performance, graph-capture behavior,
+  or stream-ordering requirements may differ from the final resource storage.
+
+The first implementation step should be an audit, not a broad mechanical
+replacement. For each resource constructor, classify every allocation as
+persistent or temporary, then route only persistent storage through
+allocator-aware helpers. Temporary allocations should use an internal policy
+chosen for correctness and performance. If a temporary path needs customization
+later, add an explicit internal temporary allocator policy rather than reusing
+the user-facing allocator implicitly.
+
+This phase should also extend access inspection where resources have clear
+backing arrays or buffers. For example, `wp.can_access(device, mesh)` can inspect
+the mesh's persistent buffers and return a conservative aggregate result. It
+should not add `wp.can_access(device, device)`; device-to-device/default-allocation
+checks should remain on `Device.can_access(other_device)`.
+
+Open design questions:
+
+- Which existing native resources already allocate persistent storage through
+  Python arrays, and which bypass `Device.get_allocator()`?
+- Do resource constructors need an explicit `allocator=` argument, or is
+  `ScopedAllocator` / device allocator policy sufficient?
+- Should temporary allocation policy be exposed at all, or remain internal until
+  a concrete use case requires it?
+- How should resource-level `memory_kind` or access diagnostics represent
+  objects with multiple backing buffers that may differ?
+
+### Phase 7: Unified CUDA Allocator Selection
+
+**Goal:** Make `ScopedAllocator` the common API for selecting built-in and custom
+CUDA allocators, while keeping `ScopedMempool` as a compatibility layer until it
+can be deprecated safely.
+
+Today, memory-pool selection is controlled separately through
+`set_mempool_enabled()` / `ScopedMempool`, while custom allocator selection uses
+`set_cuda_allocator()` / `ScopedAllocator`. That split makes the built-in CUDA
+allocators feel different from custom allocators even though the runtime already
+models them as allocator objects (`CudaDefaultAllocator`,
+`CudaMempoolAllocator`, and `CudaManagedAllocator`).
+
+This phase should add public built-in allocator accessors with names based on
+memory behavior, not on historical defaults:
+
+```python
+wp.get_cuda_device_allocator(device)      # cudaMalloc / cudaFree device memory
+wp.get_cuda_mempool_allocator(device)     # cudaMallocAsync / cudaFreeAsync pool memory
+wp.get_cuda_managed_allocator()           # cudaMallocManaged managed memory
+```
+
+With those accessors, users can write:
+
+```python
+with wp.ScopedAllocator(device, wp.get_cuda_device_allocator(device)):
+    ...
+
+with wp.ScopedAllocator(device, wp.get_cuda_mempool_allocator(device)):
+    ...
+
+with wp.ScopedAllocator(device, wp.get_cuda_managed_allocator()):
+    ...
+```
+
+The public term "device allocator" is preferred over "default allocator" because
+Warp commonly uses memory pools by default on modern CUDA devices. The existing
+`CudaDefaultAllocator` class name can remain as an implementation detail or
+compatibility alias; new public docs and helper names should avoid implying that
+`cudaMalloc` / `cudaFree` is the usual default.
+
+`ScopedMempool` can then become a thin compatibility wrapper over
+`ScopedAllocator` and the built-in accessor pair:
+
+- `ScopedMempool(device, True)` selects `get_cuda_mempool_allocator(device)`.
+- `ScopedMempool(device, False)` selects `get_cuda_device_allocator(device)`.
+
+Deprecation should be staged. First document `ScopedAllocator` as the preferred
+interface, then optionally warn on `ScopedMempool` in a later release once the
+built-in accessors are established.
+
+### Phase 8: CUDA 13 Managed Memory-Pool Allocation
+
+**Goal:** Extend `wp.CudaManagedAllocator()` so CUDA 13.0+ builds can allocate
+managed arrays during CUDA graph capture when the device supports managed memory
+pools. This is a later native backend extension, not part of the current Phase 5
+implementation. It should not add a new public memory kind. Arrays still report
+`wp.MemoryKind.CUDA_MANAGED`, and CUDA 12.x builds keep the Phase 5
+`cudaMallocManaged()` behavior.
 
 #### Managed pool creation
 
-Phase 6 creates one private managed memory pool per CUDA context/device when the feature is available. The pool is not Warp's ordinary CUDA memory pool; it is a separate CUDA pool configured for managed memory:
+Phase 8 creates one private managed memory pool per CUDA context/device when the
+feature is available. The pool is not Warp's ordinary CUDA memory pool; it is a
+separate CUDA pool configured for managed memory:
 
 ```cpp
 #if CUDART_VERSION >= 13000
@@ -1141,41 +1256,90 @@ cudaMemPoolCreate(&managed_pool, &props);
 #endif
 ```
 
-The CUDA 13 compile-time guard is required because `cudaMemAllocationTypeManaged` is not defined in CUDA 12.x headers. Warp should not define a local stand-in enum value or try to emulate this on CUDA 12.9: CUDA 12.9 documents memory-pool allocation type support as pinned-only.
+The CUDA 13 compile-time guard is required because
+`cudaMemAllocationTypeManaged` is not defined in CUDA 12.x headers. Warp should
+not define a local stand-in enum value or try to emulate this on CUDA 12.9: CUDA
+12.9 documents memory-pool allocation type support as pinned-only.
 
-Managed pool creation should happen outside CUDA graph capture. During capture, the native allocator may use an already-created managed pool but must not attempt capture-unsafe pool creation or direct `cudaMallocManaged()` fallback. For captures started by Warp, initialization can happen before capture begins. For external captures, users may need to allocate one managed array before starting capture so Warp can initialize the pool for that device.
+Managed pool creation should happen outside CUDA graph capture. During capture,
+the native allocator may use an already-created managed pool but must not attempt
+capture-unsafe pool creation or direct `cudaMallocManaged()` fallback. For
+captures started by Warp, initialization can happen before capture begins. For
+external captures, users may need to allocate one managed array before starting
+capture so Warp can initialize the pool for that device.
 
 #### Allocation and free path
 
-The Phase 6 `wp_alloc_device_managed()` backend chooses the allocation path in this order:
+The Phase 8 `wp_alloc_device_managed()` backend chooses the allocation path in
+this order:
 
-1. If the context's CUDA device does not support managed memory, return `NULL` and set an error string.
-2. If Warp was compiled with CUDA 13.0+, the device supports CUDA memory pools, and the managed pool is available, allocate with `cudaMallocFromPoolAsync(&ptr, size, managed_pool, stream)` on the current Warp stream.
-3. If no managed pool is available and no CUDA stream capture is active, allocate with `cudaMallocManaged(&ptr, size, cudaMemAttachGlobal)`. This remains the only path on CUDA 12.x builds and is also the fallback on CUDA 13+ builds where managed pool creation fails.
-4. If no managed pool is available and capture is active, return `NULL` and set a clear error: managed allocation during CUDA graph capture requires an initialized managed memory pool.
+1. If the context's CUDA device does not support managed memory, return `NULL`.
+2. If Warp was compiled with CUDA 13.0+, the device supports CUDA memory pools,
+   and the managed pool is available, allocate with
+   `cudaMallocFromPoolAsync(&ptr, size, managed_pool, stream)` on the current
+   Warp stream.
+3. If no managed pool is available, allocate with
+   `cudaMallocManaged(&ptr, size, cudaMemAttachGlobal)`. This remains the only
+   path on CUDA 12.x builds and is also the fallback on CUDA 13+ builds where
+   managed pool creation fails. CUDA reports any capture-time failure from this
+   direct fallback.
 
-Managed-pool allocations should free with `cudaFreeAsync()` and reuse or generalize Warp's existing stream-ordered graph-allocation bookkeeping from `wp_alloc_device_async()` / `wp_free_device_async()`. Direct `cudaMallocManaged()` fallback allocations should continue to free with `cudaFree()`, using the same deferred-free approach as `CudaDefaultAllocator` when graph captures are active. The native layer must track whether each managed pointer came from the direct or pool path so it can choose the correct free API and reject unknown managed pointers clearly.
+Direct `cudaMallocManaged()` fallback allocations should continue to release via
+the default `cudaFree()` path used by Phase 5. Managed-pool allocations may need
+a different release path because stream-ordered pool allocations are naturally
+paired with `cudaFreeAsync()` and graph-allocation bookkeeping. A Phase 8 design
+must decide whether to reintroduce allocation-kind tracking, add an explicit
+managed-pool free entry point, or otherwise route pool-backed frees without
+adding Phase 5 complexity back to direct managed allocations.
 
 Local verification on a Blackwell GPU with driver 580.126.20 confirmed:
 
-- `cudaMallocManaged` during global or thread-local stream capture returns `cudaErrorStreamCaptureUnsupported` and invalidates capture.
-- `cudaMallocFromPoolAsync` from a pool with `cudaMemAllocationTypeManaged` captures, instantiates, launches, and synchronizes successfully.
-- A pointer allocated by `cudaMallocManaged` before capture can be used by captured kernels successfully.
+- `cudaMallocManaged` during global or thread-local stream capture returns
+  `cudaErrorStreamCaptureUnsupported` and invalidates capture.
+- `cudaMallocFromPoolAsync` from a pool with `cudaMemAllocationTypeManaged`
+  captures, instantiates, launches, and synchronizes successfully.
+- A pointer allocated by `cudaMallocManaged` before capture can be used by
+  captured kernels successfully.
 
-The native wrapper must therefore continue to guard the direct fallback path before calling `cudaMallocManaged` during capture, even after the managed-pool path exists.
+The native wrapper must therefore avoid falling back to direct
+`cudaMallocManaged()` during capture when a managed-pool allocation is required.
 
 #### Public API and docs
 
-Phase 6 should not add another public allocator class. `wp.ManagedAllocator()` remains the opt-in API for CUDA managed memory. The implementation may opportunistically use a managed pool when the build, driver, and device support it, but the public promise remains observed memory kind and access validation, not initial physical residency.
+Phase 8 should not add another public allocator class.
+`wp.CudaManagedAllocator()` remains the opt-in API for CUDA managed memory. The
+implementation may opportunistically use a managed pool when the build, driver,
+and device support it, but the public promise remains observed memory kind and
+access validation, not initial physical residency.
 
 Documentation should make the graph-capture distinction explicit:
 
-- Managed arrays allocated before capture can be used by captured kernels on all supported builds where managed allocation itself succeeds.
-- Managed allocation during capture requires CUDA 13.0+ and an initialized managed memory pool.
-- CUDA 12.x builds, including Warp's CUDA 12.9 PyPI build, reject capture-time managed allocation because their only supported backend is `cudaMallocManaged()`.
-- CUDA 13+ builds may still reject capture-time managed allocation when the device does not support CUDA memory pools or Warp cannot create the managed pool.
+- Managed arrays allocated before capture can be used by captured kernels on all
+  supported builds where managed allocation itself succeeds.
+- Managed allocation during capture requires CUDA 13.0+ and an initialized
+  managed memory pool.
+- CUDA 12.x builds, including Warp's CUDA 12.9 PyPI build, use direct
+  `cudaMallocManaged()` and rely on CUDA to report capture-time allocation
+  failures.
+- CUDA may still reject capture-time managed allocation on CUDA 13+ builds
+  when the device does not support CUDA memory pools or Warp cannot create the
+  managed pool.
 
-### Phase 7: Custom and External Allocation Metadata
+Open design questions:
+
+- What owns the managed pool lifetime, and when is it destroyed relative to live
+  arrays and CUDA contexts?
+- What free-routing mechanism should distinguish direct `cudaMallocManaged`
+  pointers from managed-pool pointers without reintroducing fragile global
+  side-table behavior into the Phase 5 path?
+- Can managed-pool graph allocation and free bookkeeping reuse `g_graph_allocs`,
+  or does it need managed-specific state or a new native free entry point?
+- What external-capture behavior is worth supporting, given that pool
+  initialization itself must happen before capture?
+- Is capture-time managed allocation valuable enough to justify the added
+  native complexity?
+
+### Phase 9: Custom and External Allocation Metadata
 
 Phase 5 classifies CUDA pointers through Driver API attributes, including externally wrapped managed, ordinary CUDA device, and CUDA memory-pool pointers. Classification is not the same as proving cross-device access:
 
@@ -1183,7 +1347,7 @@ Phase 5 classifies CUDA pointers through Driver API attributes, including extern
 - `wp.can_access(device, array)` remains conservative for externally wrapped or custom `wp.MemoryKind.CUDA_MEMPOOL` pointers because Warp cannot prove that the pointer belongs to the default pool whose access state it queried.
 - `LaunchArrayAccessMode.CHECKED` warns once per launch pattern and proceeds only for unknown access cases such as unclassified CUDA pointers or unowned memory-pool pointers.
 
-Phase 7 may add an explicit protocol so custom allocators or external wrappers can declare access predicates or additional allocation metadata. It can also extend `wp.can_access(device, resource)` to resources such as hash grids and meshes while preserving the resource-oriented API shape:
+Phase 9 may add an explicit protocol so custom allocators or external wrappers can declare access predicates or additional allocation metadata. It can also extend `wp.can_access(device, resource)` beyond the built-in persistent resources covered by Phase 6 while preserving the resource-oriented API shape:
 
 ```python
 wp.can_access(device, hash_grid)
@@ -1256,11 +1420,11 @@ Coverage lives in `warp/tests/cuda/test_unified_memory.py` (registered in `warp/
 
 **Capability and allocator tests (run on all CUDA hardware):**
 - Verify `is_managed_memory_supported` and `is_concurrent_managed_access_supported` are `bool` for CUDA devices and `False` for CPU devices.
-- Verify `wp.ManagedAllocator()` satisfies the `Allocator` protocol and can be constructed without an active CUDA context.
-- Verify direct `ManagedAllocator.allocate()` calls without an active CUDA context raise clearly.
-- On CUDA devices with managed-memory support, allocate with `wp.ManagedAllocator()` through `wp.ScopedAllocator()` and verify the resulting array has `device == cuda_device`, `pinned == False`, and `array.memory_kind == wp.MemoryKind.CUDA_MANAGED`.
-- On CUDA devices without managed-memory support, allocation through `wp.ManagedAllocator()` raises a clear `RuntimeError`.
-- Verify one shared `wp.ManagedAllocator()` instance works through `wp.set_cuda_allocator()` across multiple managed-memory-capable CUDA devices and frees each pointer through the recorded owner context.
+- Verify `wp.CudaManagedAllocator()` satisfies the `Allocator` protocol and can be constructed without an active CUDA context.
+- Verify direct `CudaManagedAllocator.allocate()` calls without an active CUDA context raise clearly.
+- On CUDA devices with managed-memory support, allocate with `wp.CudaManagedAllocator()` through `wp.ScopedAllocator()` and verify the resulting array has `device == cuda_device`, `pinned == False`, and `array.memory_kind == wp.MemoryKind.CUDA_MANAGED`.
+- On CUDA devices without managed-memory support, allocation through `wp.CudaManagedAllocator()` raises a clear `RuntimeError`.
+- Verify one shared `wp.CudaManagedAllocator()` instance works through `wp.set_cuda_allocator()` across multiple managed-memory-capable CUDA devices.
 
 **Managed access predicate tests:**
 - Same-device managed arrays return `True` from `wp.can_access(device, array)`.
@@ -1275,7 +1439,6 @@ Coverage lives in `warp/tests/cuda/test_unified_memory.py` (registered in `warp/
 - With `LaunchArrayAccessMode.CHECKED`, CUDA launches receiving managed arrays are accepted when the target CUDA device supports managed memory.
 - With `LaunchArrayAccessMode.CHECKED`, CPU launches receiving managed CUDA arrays are accepted only when the owner device supports concurrent managed access or direct managed host access.
 - Managed arrays allocated before CUDA graph capture can be used by captured kernels.
-- Managed allocation inside CUDA graph capture raises clearly in the Phase 5 implementation.
 - `cudaMallocManaged` allocation is tested outside capture on managed-memory-capable CUDA devices.
 
 **Interop tests:**
@@ -1286,37 +1449,101 @@ Coverage lives in `warp/tests/cuda/test_unified_memory.py` (registered in `warp/
 
 ### Phase 5 documentation
 
-- `wp.ManagedAllocator` is included in the CUDA memory-management API reference.
+- `wp.CudaManagedAllocator` is included in the CUDA memory-management API reference.
 - `wp.MemoryKind` and `array.memory_kind` documentation distinguish observed memory class from physical residency and accessibility.
 - `docs/deep_dive/allocators.rst` includes scoped and global managed-allocation examples.
-- `docs/deep_dive/memory_access.rst` distinguishes standard Warp CUDA arrays from managed arrays allocated through `wp.ManagedAllocator()`.
+- `docs/deep_dive/memory_access.rst` distinguishes standard Warp CUDA arrays from managed arrays allocated through `wp.CudaManagedAllocator()`.
 - Managed arrays are documented as not promising initial physical residency. `wp.prefetch()` is the explicit placement hint once Phase 2 exists.
-- Graph-capture behavior is documented: managed arrays may be used by captured kernels, but managed allocation must happen before capture.
+- Graph-capture behavior is documented: managed arrays may be used by captured kernels, but users should allocate managed arrays before capture.
 
-### Phase 6 test coverage (managed memory pools)
+### Phase 6 test coverage (allocator policy for persistent resources)
+
+**Resource allocator-policy tests:**
+- Audit meshes, hash grids, volumes, Fabric buffers, and other public resources
+  that allocate persistent CUDA storage under the hood.
+- For each resource classified as persistent, construct it under
+  `wp.ScopedAllocator(device, wp.CudaManagedAllocator())` on managed-memory
+  capable devices and verify its persistent buffers report
+  `wp.MemoryKind.CUDA_MANAGED` where those buffers are exposed as Warp arrays or
+  otherwise inspectable.
+- Construct the same resources under CUDA device and CUDA memory-pool allocator
+  policies and verify their persistent buffers follow the selected allocator.
+- Verify algorithm temporary allocations used during construction, sorting,
+  building, scanning, or reduction do not unexpectedly become managed memory
+  merely because the user selected `CudaManagedAllocator`.
+- Verify graph-capture behavior for resource constructors is explicit:
+  preconstructed managed resources can be used by captured kernels when their
+  backing buffers are accessible; resource construction that requires managed
+  allocation during capture relies on CUDA's direct `cudaMallocManaged()`
+  behavior in the Phase 5 backend.
+
+### Phase 7 test coverage (unified allocator selection)
+
+**Built-in allocator accessor tests:**
+- Verify public built-in accessor functions return allocator objects compatible
+  with `wp.ScopedAllocator`.
+- Verify `wp.get_cuda_device_allocator(device)` creates ordinary CUDA device
+  memory, `wp.get_cuda_mempool_allocator(device)` creates CUDA memory-pool
+  memory when supported, and `wp.get_cuda_managed_allocator()` creates CUDA
+  managed memory.
+- Verify `ScopedMempool(device, True)` and
+  `ScopedAllocator(device, wp.get_cuda_mempool_allocator(device))` produce the
+  same allocation memory kind on devices with memory-pool support.
+- Verify `ScopedMempool(device, False)` and
+  `ScopedAllocator(device, wp.get_cuda_device_allocator(device))` produce the
+  same allocation memory kind.
+- Verify `ScopedMempool` remains supported as a compatibility API until a later
+  release intentionally adds a deprecation warning.
+
+### Phase 8 test coverage (managed memory pools)
 
 **CUDA 13 managed-pool tests:**
-- On CUDA 13.0+ builds and devices that support CUDA memory pools, allocate a managed array through `wp.ManagedAllocator()` before capture to initialize the managed pool, then allocate another managed array during CUDA graph capture and verify replayed kernels can read and write it.
+- On CUDA 13.0+ builds and devices that support CUDA memory pools, allocate a managed array through `wp.CudaManagedAllocator()` before capture to initialize the managed pool, then allocate another managed array during CUDA graph capture and verify replayed kernels can read and write it.
 - Verify capture-time managed allocation uses the stream-ordered path by capturing allocation, kernel launch, and free/release-sensitive behavior without requiring host synchronization inside capture.
 - Verify the same `array.memory_kind == wp.MemoryKind.CUDA_MANAGED` value for direct and managed-pool allocations; no new public memory kind should appear.
-- Verify managed-pool allocations free through the stream-ordered path and direct fallback allocations still free through the direct managed path.
+- Verify managed-pool allocations free through the selected Phase 8 free-routing path and direct fallback allocations still free through the default `cudaFree()` path.
 
 **Fallback and rejection tests:**
-- On CUDA 12.x builds, including CUDA 12.9, managed allocation during capture still raises clearly because the managed-pool allocation type is unavailable.
-- On CUDA 13.0+ builds where managed pool creation fails or the device lacks memory-pool support, allocation outside capture may fall back to `cudaMallocManaged()`, but allocation during capture raises clearly.
-- For externally started CUDA captures, verify capture-time managed allocation raises when the managed pool was not initialized before capture; pre-initializing the pool before capture should allow the allocation path when the device supports it.
+- On CUDA 12.x builds, including CUDA 12.9, capture-time managed allocation uses
+  the direct `cudaMallocManaged()` path and may raise a CUDA runtime error.
+- On CUDA 13.0+ builds where managed pool creation fails or the device lacks
+  memory-pool support, allocation falls back to `cudaMallocManaged()` and CUDA
+  reports any capture-time failure.
+- For externally started CUDA captures, verify pre-initializing the pool before
+  capture allows the allocation path when the device supports it; otherwise the
+  direct fallback follows CUDA runtime behavior.
 
 ### Phase 6 documentation
 
+- `docs/deep_dive/allocators.rst` should distinguish user-facing persistent
+  resource allocations from internal temporary allocations.
+- Resource documentation should say which persistent buffers honor
+  `ScopedAllocator` and which construction-time workspaces remain internal.
+- Resource-level `wp.can_access(device, resource)` docs should explain that the
+  result is conservative and aggregates the resource's backing buffers.
+
+### Phase 7 documentation
+
+- `docs/deep_dive/allocators.rst` should describe `ScopedAllocator` as the
+  preferred interface for selecting built-in CUDA allocators and custom
+  allocators.
+- The docs should introduce built-in allocator accessors using memory-behavior
+  names such as `get_cuda_device_allocator`, `get_cuda_mempool_allocator`, and
+  `get_cuda_managed_allocator`.
+- `ScopedMempool` docs should point to the equivalent `ScopedAllocator` forms
+  while preserving compatibility guidance.
+
+### Phase 8 documentation
+
 - `docs/deep_dive/allocators.rst` should explain that capture-time managed allocation is a CUDA 13+ managed-pool feature, while CUDA 12.x builds require pre-allocation before capture.
-- The docs should state that `wp.ManagedAllocator()` remains the public allocator API and `wp.MemoryKind.CUDA_MANAGED` remains the observed memory kind for both direct and pool-backed managed allocations.
+- The docs should state that `wp.CudaManagedAllocator()` remains the public allocator API and `wp.MemoryKind.CUDA_MANAGED` remains the observed memory kind for both direct and pool-backed managed allocations.
 - Error messages should distinguish "managed allocation during capture is unsupported on this build/device" from "initialize the managed pool before capture."
 
 ### CI considerations
 
 - The existing CI may not have HMM, ATS, Jetson Thor, or DGX Spark / GB10 hardware. Tests that require specific paradigms should use `unittest.skipUnless` based on the device attributes queried in Phase 1.
 - Tests that only query attributes (Phase 1 / Phase 5 attributes and `Device.can_access()` / `wp.can_access()` invariant tests) should run on all hardware.
-- Phase 6 capture-allocation tests should skip unless the build uses CUDA 13.0+ and the target device reports memory-pool support; CUDA 12.x CI should continue to run the capture-time rejection tests.
+- Phase 8 capture-allocation tests should skip unless the build uses CUDA 13.0+ and the target device reports memory-pool support; CUDA 12.x CI should continue to run the capture-time rejection tests.
 - Consider adding a CI label or tag for "unified memory" tests so they can be selectively run on appropriate hardware.
 
 ### Device compatibility matrix for test expectations
@@ -1326,10 +1553,10 @@ Coverage lives in `warp/tests/cuda/test_unified_memory.py` (registered in `warp/
 | GPU can access CPU arrays | No | Yes | Yes | No | Yes | Yes |
 | CPU can access Warp default GPU arrays | No | No | No | No | No | No |
 | CPU direct access to GPU-resident CUDA managed memory | No | No | Yes | No | No | No |
-| `wp.can_access(cpu, ManagedAllocator array)` | Yes if concurrent managed access or direct managed host access | Yes | Yes | No on limited systems | Yes | Yes |
-| CUDA can access `ManagedAllocator` array | Yes if managed memory supported | Yes | Yes | Yes if managed memory supported | Yes | Yes |
+| `wp.can_access(cpu, CudaManagedAllocator array)` | Yes if concurrent managed access or direct managed host access | Yes | Yes | No on limited systems | Yes | Yes |
+| CUDA can access `CudaManagedAllocator` array | Yes if managed memory supported | Yes | Yes | Yes if managed memory supported | Yes | Yes |
 | Managed allocation during graph capture (Phase 5) | Not supported | Not supported | Not supported | Not supported | Not supported | Not supported |
-| Managed-pool allocation during graph capture (Phase 6) | CUDA 13+ managed-pool support required | CUDA 13+ managed-pool support required | CUDA 13+ managed-pool support required | CUDA 13+ managed-pool support required | CUDA 13+ managed-pool support required | CUDA 13+ managed-pool support required |
+| Managed-pool allocation during graph capture (Phase 8) | CUDA 13+ managed-pool support required | CUDA 13+ managed-pool support required | CUDA 13+ managed-pool support required | CUDA 13+ managed-pool support required | CUDA 13+ managed-pool support required | CUDA 13+ managed-pool support required |
 | Native CPU-GPU atomic hardware capability | No | No | Yes | Device-dependent | Reports yes | Reports yes |
 | Current Warp CPU/GPU `wp.atomic_*` overlap | Unsupported | Unsupported | Unsupported | Unsupported | Unsupported | Unsupported |
 | Cross-device launch GPU->CPU array (`RELAXED`) | CUDA fault | OK | OK | CUDA fault | OK | OK |

@@ -3179,7 +3179,7 @@ class array(Array[DType, NDim]):
     def __new__(cls, *args, **kwargs):
         instance = super().__new__(cls)
         instance.deleter = None
-        instance._deleter_context_guard = None
+        instance._memory_kind = None
         return instance
 
     def __init__(
@@ -3671,9 +3671,12 @@ class array(Array[DType, NDim]):
         self.pinned = pinned if device.is_cpu else False
         self.is_contiguous = is_contiguous
         self.deleter = deleter
-        self._deleter_context_guard = device.context_guard if deleter is not None else None
-        self._deleter_accepts_context = False
-        self._deallocation_context = None
+        if device.is_cpu:
+            self._memory_kind = (
+                warp._src.context.MemoryKind.PINNED if self.pinned else warp._src.context.MemoryKind.HOST
+            )
+        else:
+            self._memory_kind = None
 
     def _init_new(self, dtype, shape, strides, device, pinned):
         try:
@@ -3724,24 +3727,16 @@ class array(Array[DType, NDim]):
                 capacity = dtype_size
 
         allocator = device.get_allocator(pinned=pinned)
+        allocator_memory_kind = getattr(allocator, "memory_kind", None)
+        if not isinstance(allocator_memory_kind, warp._src.context.MemoryKind):
+            allocator_memory_kind = None
+
         # Resolve the deallocate callable before allocating so a bad descriptor/__getattr__
         # cannot leak a freshly-allocated pointer between allocate() and self.deleter assignment.
-        deallocate_with_context = getattr(allocator, "deallocate_with_context", None)
-        if deallocate_with_context is not None and callable(deallocate_with_context):
-            deleter = deallocate_with_context
-            deleter_accepts_context = True
-            deleter_context_guard = None
-        else:
-            deleter = allocator.deallocate
-            deleter_accepts_context = False
-            deleter_context_guard = (
-                device.context_guard if getattr(allocator, "deallocate_requires_context_guard", True) else None
-            )
+        deleter = allocator.deallocate
 
-        deallocation_context = None
         if capacity > 0:
             if device.is_cuda:
-                deallocation_context = device.context
                 with device.context_guard:
                     ptr = allocator.allocate(capacity)
             else:
@@ -3760,10 +3755,8 @@ class array(Array[DType, NDim]):
         self.pinned = pinned if device.is_cpu else False
         self.is_contiguous = is_contiguous
         self.deleter = deleter
-        self._deleter_context_guard = deleter_context_guard
-        self._deleter_accepts_context = deleter_accepts_context
-        self._deallocation_context = deallocation_context
         self._allocator = allocator
+        self._memory_kind = allocator_memory_kind
 
     def _init_annotation(self, dtype, ndim):
         self.dtype = dtype
@@ -3776,9 +3769,7 @@ class array(Array[DType, NDim]):
         self.device = None
         self.pinned = False
         self.is_contiguous = False
-        self._deleter_context_guard = None
-        self._deleter_accepts_context = False
-        self._deallocation_context = None
+        self._memory_kind = None
 
     def __del__(self):
         # Skip deallocation for partially-initialized arrays (e.g. when allocation failed)
@@ -3786,13 +3777,11 @@ class array(Array[DType, NDim]):
         if not hasattr(self, "device") or self.device is None or self.ptr is None or self.deleter is None:
             return
         try:
-            deleter_context_guard = self._deleter_context_guard
-            if self._deleter_accepts_context:
-                self.deleter(self.ptr, self.capacity, self._deallocation_context)
-            elif deleter_context_guard is None:
+            allocator = getattr(self, "_allocator", None)
+            if allocator is not None and not getattr(allocator, "deallocate_requires_context_guard", True):
                 self.deleter(self.ptr, self.capacity)
             else:
-                with deleter_context_guard:
+                with self.device.context_guard:
                     self.deleter(self.ptr, self.capacity)
         except (TypeError, AttributeError):
             # Suppress TypeError and AttributeError when callables become None during shutdown

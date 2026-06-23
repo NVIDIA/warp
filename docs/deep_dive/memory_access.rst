@@ -144,14 +144,14 @@ those arrays, use an explicit copy before CPU code reads or writes the data:
     a_cpu = a.to("cpu")
     wp.launch(cpu_kernel, dim=a_cpu.size, inputs=[a_cpu], device="cpu")
 
-For explicit CUDA managed-memory arrays, construct a :class:`ManagedAllocator`
+For explicit CUDA managed-memory arrays, construct a :class:`CudaManagedAllocator`
 and install it with the existing allocator APIs. The allocator instance is not
 bound to one CUDA device, but each allocation still happens under the target
 device's CUDA context and that device must report CUDA managed-memory support:
 
 .. code:: python
 
-    managed = wp.ManagedAllocator()
+    managed = wp.CudaManagedAllocator()
     device = wp.get_device("cuda:0")
 
     with wp.ScopedAllocator(device, managed):
@@ -352,7 +352,7 @@ allocation or access pattern to create:
 - CPU code reads or writes arrays backed by non-managed CUDA allocations: copy
   the data to ``"cpu"`` first.
 - CPU kernels read or write Warp CUDA arrays directly: allocate those arrays
-  with :class:`ManagedAllocator` and use ``wp.can_access("cpu", array)`` before
+  with :class:`CudaManagedAllocator` and use ``wp.can_access("cpu", array)`` before
   launching the CPU kernel.
 - CPU code accesses externally provided GPU-resident CUDA managed memory: check
   ``device.is_gpu_memory_access_from_cpu_supported``.
