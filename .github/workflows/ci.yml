@@ -727,7 +727,7 @@ jobs:
           path: warp/bin/
 
       - name: Run doctest
-        run: uv run --extra docs build_docs.py --doctest --no-html
+        run: uv run --extra docs build_docs.py --doctest --no-html --warnings-as-errors
 
   build-docs:
     if: github.event_name != 'schedule' || github.repository == 'NVIDIA/warp'
@@ -755,7 +755,7 @@ jobs:
           path: warp/bin/
       - name: Build Sphinx documentation
         run: |
-          uv run --extra docs build_docs.py
+          uv run --extra docs build_docs.py --warnings-as-errors
       - name: Upload artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         id: build-docs-output

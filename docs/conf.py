@@ -17,6 +17,7 @@ import sys
 
 import docutils
 import sphinx
+import sphinx.util.logging
 from sphinx import addnodes
 from sphinx.environment.adapters.toctree import note_toctree
 from sphinx.ext.autosummary import autosummary_toc
@@ -396,13 +397,28 @@ extlinks = {
 
 # -- sphinx.ext.intersphinx --------------------------------------------------
 
-# Mapping to external documentation to enable cross-linking (e.g., :class:`numpy.ndarray`)
-intersphinx_mapping = {
+# Intersphinx resolves external cross-references (e.g. :class:`numpy.ndarray`)
+# by fetching each project's objects.inv over the network. Builds are lenient by
+# default so an unreachable inventory doesn't hard-fail a local build; CI passes
+# --warnings-as-errors to promote stale/unreachable URLs to errors.
+_intersphinx_mapping = {
     "jax": ("https://docs.jax.dev/en/latest", None),
     "numpy": ("https://numpy.org/doc/stable", None),
     "python": ("https://docs.python.org/3", None),
     "pytorch": ("https://docs.pytorch.org/docs/stable", None),
 }
+
+# Fail fast on unreachable inventories instead of hanging on the default socket
+# timeout (seconds).
+intersphinx_timeout = 2
+
+_sphinx_logger = sphinx.util.logging.getLogger(__name__)
+# WARP_DOCS_OFFLINE=1 skips external resolution entirely for known-offline builds.
+if os.environ.get("WARP_DOCS_OFFLINE") == "1":
+    _sphinx_logger.info("intersphinx: WARP_DOCS_OFFLINE=1 set; skipping external cross-reference resolution.")
+    intersphinx_mapping = {}
+else:
+    intersphinx_mapping = _intersphinx_mapping
 
 
 # -- sphinx.ext.linkcode -----------------------------------------------------

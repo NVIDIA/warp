@@ -100,7 +100,7 @@ jobs:
       - name: Build Sphinx documentation
         if: steps.dv.outputs.metadata_only != 'true'
         run: |
-          DOC_VERSION=${{ steps.dv.outputs.version }} uv run --extra docs build_docs.py
+          DOC_VERSION=${{ steps.dv.outputs.version }} uv run --extra docs build_docs.py --warnings-as-errors
       - name: Upload artifacts
         if: steps.dv.outputs.metadata_only != 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1

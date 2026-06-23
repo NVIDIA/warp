@@ -333,6 +333,19 @@ The ``--no-html`` flag can also be used to skip building the HTML documentation,
     # Build the HTML documentation AND run the doctest tests
     uv run --extra docs build_docs.py --doctest
 
+By default, warnings are not treated as errors, so a local build still succeeds (and produces
+output) even when, for example, external `intersphinx <https://www.sphinx-doc.org/en/master/usage/extensions/intersphinx.html>`__
+inventories cannot be reached without network access. CI builds run with the ``--warnings-as-errors``
+flag to enforce strictness, so pass it locally to reproduce the CI build and catch warnings before
+opening a pull request:
+
+.. code-block:: bash
+
+    uv run --extra docs build_docs.py --warnings-as-errors
+
+If you are building offline and want to skip the external cross-reference resolution entirely
+(avoiding the fetch attempts and their warnings), set ``WARP_DOCS_OFFLINE=1``.
+
 Running ``build_docs.py`` also regenerates both the stub file (``warp/__init__.pyi``) and the reStructuredText files for the
 reference pages. After building the documentation, it is recommended to run a ``git status`` to
 check if your changes have modified these files. If so, please commit the modified files to your branch.
