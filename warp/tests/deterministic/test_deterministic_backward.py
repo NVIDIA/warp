@@ -266,6 +266,46 @@ def test_deterministic_backward_address_scatter(test, device):
         np.testing.assert_array_equal(result, expected)
 
 
+def test_deterministic_backward_strided_adjoint_address_scatter(test, device):
+    """Verify manual backward reductions use explicit adjoint-buffer strides."""
+    n = 1024
+    value_count = 19
+    rng = np.random.default_rng(307)
+    values_np = rng.random(value_count, dtype=np.float32)
+    indices_np = rng.integers(0, value_count, size=n, dtype=np.int32)
+    grad_np = rng.random(n, dtype=np.float32)
+    expected = _reference_scatter_add_float32(grad_np, indices_np, value_count)
+
+    values = wp.array(values_np, dtype=wp.float32, device=device, requires_grad=True)
+    indices = wp.array(indices_np, dtype=wp.int32, device=device)
+    output = wp.zeros(n, dtype=wp.float32, device=device, requires_grad=True)
+    output_grad = wp.array(grad_np, dtype=wp.float32, device=device)
+    base_grad = wp.zeros(value_count * 2, dtype=wp.float32, device=device)
+    grad_view = base_grad[::2]
+    test.assertFalse(grad_view.is_contiguous)
+
+    old_det = _get_test_module_options()["deterministic"]
+    try:
+        _set_test_module_options({"deterministic": wp.DeterministicMode.GPU_TO_GPU})
+        wp.launch(gather_address_kernel, dim=n, inputs=[values, indices], outputs=[output], device=device)
+        wp.launch(
+            gather_address_kernel,
+            dim=n,
+            inputs=[values, indices],
+            outputs=[output],
+            adj_inputs=[grad_view, None],
+            adj_outputs=[output_grad],
+            device=device,
+            adjoint=True,
+        )
+    finally:
+        _set_test_module_options({"deterministic": old_det})
+
+    result = base_grad.numpy()
+    np.testing.assert_array_equal(result[0::2], expected)
+    np.testing.assert_array_equal(result[1::2], np.zeros(value_count, dtype=np.float32))
+
+
 def test_deterministic_backward_vec3_address_scatter(test, device):
     """Verify vector-valued array-read adjoints are also reduced deterministically."""
     n = 2048
@@ -566,6 +606,7 @@ def _add(name, devices=cuda_devices):
 for _name in (
     "test_deterministic_backward_scatter_add",
     "test_deterministic_backward_address_scatter",
+    "test_deterministic_backward_strided_adjoint_address_scatter",
     "test_deterministic_backward_vec3_address_scatter",
     "test_deterministic_backward_missing_adjoint_target",
     "test_deterministic_custom_replay_counter",

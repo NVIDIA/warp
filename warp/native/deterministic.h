@@ -32,7 +32,7 @@ struct det_counter_buf_t {
     int* count;
     int capacity;
     int records_per_thread;
-    uint64_t target_ptr;
+    array_t<int> target;
     int target_size;
 };
 
@@ -41,8 +41,7 @@ struct det_ctx {
     int debug;
     size_t idx;
     int* overflow;
-    uint64_t* counter_target_ptrs;
-    int* counter_target_sizes;
+    array_t<int>* counter_targets;
     int counter_target_count;
 };
 
@@ -143,23 +142,84 @@ inline CUDA_CALLABLE int counter_add(det_ctx& ctx, det_counter_buf_t& buf, int d
 #endif
 }
 
-inline CUDA_CALLABLE bool is_counter_store_target(det_ctx& ctx, const void* ptr)
+inline CUDA_CALLABLE bool is_reachable_counter_element(const array_t<int>& target, const void* ptr)
 {
 #ifdef __CUDA_ARCH__
-    if (ctx.counter_target_ptrs == nullptr || ctx.counter_target_sizes == nullptr) {
+    if (target.data == nullptr || target.ndim <= 0) {
         return false;
     }
 
-    uint64_t addr = reinterpret_cast<uint64_t>(ptr);
-    for (int i = 0; i < ctx.counter_target_count; ++i) {
-        uint64_t start = ctx.counter_target_ptrs[i];
-        int size = ctx.counter_target_sizes[i];
-        if (start == 0 || size <= 0) {
+    const uint64_t addr = reinterpret_cast<uint64_t>(ptr);
+    const uint64_t start = reinterpret_cast<uint64_t>(target.data);
+    const int64_t offset = addr >= start ? static_cast<int64_t>(addr - start) : -static_cast<int64_t>(start - addr);
+    int64_t min_offset = 0;
+    int64_t max_offset = 0;
+
+    for (int i = 0; i < target.ndim; ++i) {
+        const int shape = target.shape[i];
+        if (shape <= 0) {
+            return false;
+        }
+
+        const int64_t extent = static_cast<int64_t>(shape - 1) * static_cast<int64_t>(target.strides[i]);
+        if (extent < 0) {
+            min_offset += extent;
+        } else {
+            max_offset += extent;
+        }
+    }
+
+    if (offset < min_offset || offset > max_offset) {
+        return false;
+    }
+
+    int dims[4] = { 0, 1, 2, 3 };
+    for (int i = 0; i < target.ndim; ++i) {
+        for (int j = i + 1; j < target.ndim; ++j) {
+            const int64_t lhs = static_cast<int64_t>(target.strides[dims[i]]);
+            const int64_t rhs = static_cast<int64_t>(target.strides[dims[j]]);
+            const uint64_t lhs_abs = static_cast<uint64_t>(lhs < 0 ? -lhs : lhs);
+            const uint64_t rhs_abs = static_cast<uint64_t>(rhs < 0 ? -rhs : rhs);
+            if (rhs_abs > lhs_abs) {
+                const int tmp = dims[i];
+                dims[i] = dims[j];
+                dims[j] = tmp;
+            }
+        }
+    }
+
+    int64_t remaining = offset;
+    for (int k = 0; k < target.ndim; ++k) {
+        const int dim = dims[k];
+        const int64_t stride = target.strides[dim];
+        if (stride == 0) {
             continue;
         }
 
-        uint64_t end = start + static_cast<uint64_t>(size) * sizeof(int);
-        if (addr >= start && addr < end) {
+        const int64_t index = remaining / stride;
+        if (index < 0 || index >= target.shape[dim]) {
+            return false;
+        }
+        remaining -= index * stride;
+    }
+
+    return remaining == 0;
+#else
+    (void)target;
+    (void)ptr;
+#endif
+    return false;
+}
+
+inline CUDA_CALLABLE bool is_counter_store_target(det_ctx& ctx, const void* ptr)
+{
+#ifdef __CUDA_ARCH__
+    if (ctx.counter_targets == nullptr) {
+        return false;
+    }
+
+    for (int i = 0; i < ctx.counter_target_count; ++i) {
+        if (is_reachable_counter_element(ctx.counter_targets[i], ptr)) {
             return true;
         }
     }

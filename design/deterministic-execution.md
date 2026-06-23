@@ -194,9 +194,9 @@ remains unchanged and sequentially deterministic.
 
 - **Raw kernel-entry parameters**: CUDA kernels still receive raw launch-time
   pointers and scalars appended after the user arguments. These include shared
-  execution state (phase, debug flag, one overflow flag), the counter-target
-  pointer/size table used by the Phase 0 store guard, plus the raw storage for
-  each deterministic target.
+  execution state (phase, debug flag, one overflow flag), counter-target
+  descriptors used by the Phase 0 store guard, plus the raw storage for each
+  deterministic target.
 - **Structured helper objects**: immediately inside the generated kernel body,
   Warp constructs small helper objects with readable names:
   - ``det_ctx`` for shared execution state
@@ -210,9 +210,10 @@ making generated function calls much easier to read and propagate.
 with a consumed-return counter atomic through ``WP_DET_STORE_IF_ACTIVE``. In
 Phase 1 this helper always performs the store. In Phase 0 it performs the
 store only when the destination is not CUDA global memory (for example local
-scratch storage) or when the destination pointer falls inside one of the known
-counter target arrays. Ordinary global output stores are skipped during Phase
-0 so the recording pass does not write user-visible outputs twice.
+scratch storage) or when the destination pointer is reachable through one of
+the known counter target array descriptors. Ordinary global output stores are
+skipped during Phase 0 so the recording pass does not write user-visible
+outputs twice.
 
 **Deterministic ``@wp.func`` support** is implemented by threading the helper
 objects through the generated function signature, similar in spirit to how Warp

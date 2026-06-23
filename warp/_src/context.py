@@ -66,7 +66,7 @@ import warp.config
 from warp._src.codegen import WarpCodegenTypeError, _codegen_lock, synchronized
 from warp._src.logger import LOG_DEBUG, LOG_WARNING, get_logger, log_debug, log_error, log_info, log_warning
 from warp._src.texture import Texture1D, Texture2D, Texture3D, texture1d_t, texture2d_t, texture3d_t
-from warp._src.types import LAUNCH_MAX_DIMS, Array, LaunchBounds, launch_bounds_t, type_repr
+from warp._src.types import LAUNCH_MAX_DIMS, Array, LaunchBounds, array_t, launch_bounds_t, type_repr
 
 _wp_module_name_ = "warp.context"
 
@@ -158,7 +158,7 @@ class det_counter_buf_t(ctypes.Structure):
         ("count", ctypes.c_void_p),
         ("capacity", ctypes.c_int),
         ("records_per_thread", ctypes.c_int),
-        ("target_ptr", ctypes.c_uint64),
+        ("target", array_t),
         ("target_size", ctypes.c_int),
     ]
 
@@ -3089,8 +3089,9 @@ class Module:
             return
 
         builder_options = options | {"output_arch": None}
-        for kernel in hasher.get_unique_kernels():
-            kernel.adj.build(None, builder_options)
+        with _codegen_lock:
+            for kernel in hasher.get_unique_kernels():
+                kernel.adj.build(None, builder_options)
 
     def _use_ptx(self, device) -> bool:
         return device.get_cuda_output_format(self.options.get("cuda_output")) == "ptx"

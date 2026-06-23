@@ -32,7 +32,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
-from warp._src.types import float_types, int32, is_array, type_repr, type_size_in_bytes
+from warp._src.types import array_t, float_types, int32, is_array, type_repr, type_size_in_bytes
 from warp.config import DeterministicMode
 
 if TYPE_CHECKING:
@@ -553,27 +553,34 @@ def _deterministic_call_path(node):
     return None
 
 
-def _deterministic_resolve_static_call(adj, node, local_names):
+def _deterministic_resolve_static_call(adj, node, local_names, local_aliases=None):
     if adj is None:
         return None
 
     path = _deterministic_call_path(node)
-    if not path or path[0] in local_names:
+    if not path:
         return None
 
-    obj = adj.resolve_external_reference(path[0])
+    local_aliases = {} if local_aliases is None else local_aliases
+    if path[0] in local_aliases:
+        obj = local_aliases[path[0]]
+    else:
+        if path[0] in local_names:
+            return None
 
-    if obj is None:
-        import warp  # noqa: PLC0415
+        obj = adj.resolve_external_reference(path[0])
 
-        obj = getattr(warp, path[0], None)
+        if obj is None:
+            import warp  # noqa: PLC0415
 
-    if obj is None:
-        builtins_obj = __builtins__
-        if isinstance(builtins_obj, dict):
-            obj = builtins_obj.get(path[0])
-        else:
-            obj = getattr(builtins_obj, path[0], None)
+            obj = getattr(warp, path[0], None)
+
+        if obj is None:
+            builtins_obj = __builtins__
+            if isinstance(builtins_obj, dict):
+                obj = builtins_obj.get(path[0])
+            else:
+                obj = getattr(builtins_obj, path[0], None)
 
     if obj is None:
         return None
@@ -586,12 +593,39 @@ def _deterministic_resolve_static_call(adj, node, local_names):
     return obj
 
 
+def _deterministic_function_aliases(adj, tree, local_names):
+    aliases = {}
+    if adj is None:
+        return aliases
+
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Assign):
+            continue
+
+        target_nodes = node.targets[0].elts if isinstance(node.targets[0], (ast.Tuple, ast.List)) else [node.targets[0]]
+        value_nodes = node.value.elts if isinstance(node.value, (ast.Tuple, ast.List)) else [node.value]
+        if len(target_nodes) != len(value_nodes):
+            continue
+
+        for target_node, value_node in zip(target_nodes, value_nodes, strict=True):
+            if not isinstance(target_node, ast.Name):
+                continue
+
+            func = _deterministic_resolve_static_call(adj, value_node, local_names, aliases)
+            is_warp_func = getattr(func, "adj", None) is not None and callable(getattr(func, "is_builtin", None))
+            if is_warp_func and not func.is_builtin():
+                aliases[target_node.id] = func
+
+    return aliases
+
+
 def _deterministic_has_consumed_atomic_impl(tree, adj, seen):
     """Return whether this AST or any statically called Warp function consumes an atomic return."""
     if seen is None:
         seen = set()
 
     local_names = _deterministic_local_names(tree)
+    local_aliases = _deterministic_function_aliases(adj, tree, local_names)
 
     stack = [(tree, None)]
     while stack:
@@ -602,7 +636,7 @@ def _deterministic_has_consumed_atomic_impl(tree, adj, seen):
                 if not (isinstance(parent, ast.Expr) and parent.value is node):
                     return True
             else:
-                func = _deterministic_resolve_static_call(adj, node.func, local_names)
+                func = _deterministic_resolve_static_call(adj, node.func, local_names, local_aliases)
                 is_warp_func = getattr(func, "adj", None) is not None and callable(getattr(func, "is_builtin", None))
                 if is_warp_func and not func.is_builtin():
                     func_id = id(func)
@@ -864,18 +898,14 @@ def _deterministic_kernel_locals(adj, device, *, use_launch_buffers=True):
             counter_buf_names = [
                 kernel_raw_counter_param_names(target)["buf"] for target in adj.det_meta.counter_targets
             ]
-            ptr_inits = ", ".join(f"{name}.target_ptr" for name in counter_buf_names)
-            size_inits = ", ".join(f"{name}.target_size" for name in counter_buf_names)
-            decls.append(f"uint64_t _wp_det_counter_target_ptrs[{n_counter_targets}] = {{{ptr_inits}}};")
-            decls.append(f"int _wp_det_counter_target_sizes[{n_counter_targets}] = {{{size_inits}}};")
+            target_inits = ", ".join(f"{name}.target" for name in counter_buf_names)
+            decls.append(f"wp::array_t<int> _wp_det_counter_targets[{n_counter_targets}] = {{{target_inits}}};")
             decls.append(
                 "wp::det_ctx det_ctx{_wp_det_phase, _wp_det_debug, _idx, _wp_det_overflow, "
-                f"_wp_det_counter_target_ptrs, _wp_det_counter_target_sizes, {n_counter_targets}}};"
+                f"_wp_det_counter_targets, {n_counter_targets}}};"
             )
         else:
-            decls.append(
-                "wp::det_ctx det_ctx{_wp_det_phase, _wp_det_debug, _idx, _wp_det_overflow, nullptr, nullptr, 0};"
-            )
+            decls.append("wp::det_ctx det_ctx{_wp_det_phase, _wp_det_debug, _idx, _wp_det_overflow, nullptr, 0};")
         for target in adj.det_meta.counter_targets:
             names = kernel_raw_counter_param_names(target)
             decls.append(f"auto& {target.helper_name} = {names['buf']};")
@@ -884,11 +914,11 @@ def _deterministic_kernel_locals(adj, device, *, use_launch_buffers=True):
             decls.append(f"auto& {target.helper_name} = {names['buf']};")
     else:
         decls = [
-            "wp::det_ctx det_ctx{1, 0, 0, nullptr, nullptr, nullptr, 0};",
+            "wp::det_ctx det_ctx{1, 0, 0, nullptr, nullptr, 0};",
         ]
         for target in adj.det_meta.counter_targets:
             decls.append(
-                f"wp::det_counter_buf_t {target.helper_name}{{nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0, 0, 0, 0}};"
+                f"wp::det_counter_buf_t {target.helper_name}{{nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0, 0, wp::array_t<int>{{}}, 0}};"
             )
         for target in adj.det_meta.scatter_targets:
             decls.append(
@@ -1073,7 +1103,7 @@ def _deterministic_adjoint_address_call(adj, fwd_args, output_list, fallback_cal
 
     loaded_prefix = [adj.load(var) for var in view_prefix_vars]
     idx_loaded_list = loaded_prefix + list(fwd_args[1:])
-    target_expr = _deterministic_array_expr(adj, target_root_label, target_attr_path)
+    target_expr = _deterministic_array_expr(adj, target_root_label, target_attr_path, adjoint=True)
     if target_expr is None:
         return fallback_call
 
@@ -1793,10 +1823,10 @@ def launch_deterministic(
         for ct in det_meta.counter_targets:
             counter_buf = counter_bufs_by_target.get(ct)
             counter_arr = counter_arr_by_target.get(ct)
-            target_ptr = counter_arr.ptr if counter_arr is not None else 0
+            target_desc = counter_arr.__ctype__() if counter_arr is not None else array_t()
             target_size = _det_dest_size_elements(counter_arr) if counter_arr is not None else 0
             if counter_buf is None:
-                det_params.append(det_counter_buf_t(0, 0, 0, 0, 0, 0, 0, 0, target_ptr, target_size))
+                det_params.append(det_counter_buf_t(0, 0, 0, 0, 0, 0, 0, 0, target_desc, target_size))
                 continue
 
             keys, values, prefixes, record_slots, cursors, count, capacity, records_per_thread = counter_buf
@@ -1810,7 +1840,7 @@ def launch_deterministic(
                     count.ptr,
                     capacity,
                     records_per_thread,
-                    target_ptr,
+                    target_desc,
                     target_size,
                 )
             )

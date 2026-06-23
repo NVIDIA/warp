@@ -77,6 +77,19 @@ def helper_counter_side_effect_kernel(
 
 
 @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
+def aliased_helper_counter_side_effect_kernel(
+    counter: wp.array[wp.int32],
+    output: wp.array[wp.float32],
+    scratch: wp.array[wp.float32],
+):
+    """Function-valued local aliases must still trigger Phase 0 store guards."""
+    tid = wp.tid()
+    helper = _det_counter_write
+    scratch[tid] = scratch[tid] + 1.0
+    helper(counter, output, float(tid))
+
+
+@wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
 def counter_with_helper_store_kernel(
     counter: wp.array[wp.int32],
     output: wp.array[wp.float32],
@@ -309,6 +322,19 @@ def mixed_counter_int_atomic_kernel(
     output[slot] = tid
 
 
+@wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
+def strided_counter_gap_kernel(
+    counter: wp.array[wp.int32],
+    gaps: wp.array[wp.int32],
+    output: wp.array[wp.int32],
+):
+    """Stores to a neighboring strided view must be skipped during Phase 0."""
+    tid = wp.tid()
+    gaps[tid] = gaps[tid] + 1
+    slot = wp.atomic_add(counter, 0, 1)
+    output[slot] = tid
+
+
 @wp.kernel
 def int_atomic_add_kernel(
     dest_indices: wp.array[wp.int32],
@@ -396,6 +422,7 @@ def test_counter_phase0_suppresses_array_writes(test, device):
     for kernel in (
         counter_side_effect_kernel,
         helper_counter_side_effect_kernel,
+        aliased_helper_counter_side_effect_kernel,
         counter_with_helper_store_kernel,
     ):
         with test.subTest(kernel=kernel.key):
@@ -649,6 +676,23 @@ def test_counter_sliced_destinations(test, device):
 
     np.testing.assert_array_equal(counters.numpy(), expected_counts)
     np.testing.assert_array_equal(output.numpy(), expected_output)
+
+
+def test_counter_phase0_suppresses_strided_gap_view(test, device):
+    """Verify Phase 0 store guards distinguish strided counter views from gaps."""
+    n = 4
+    base = wp.zeros(2 * n, dtype=wp.int32, device=device)
+    counter = base[::2]
+    gaps = base[1::2]
+    output = wp.full(n, value=-1, dtype=wp.int32, device=device)
+
+    test.assertFalse(counter.is_contiguous)
+    test.assertFalse(gaps.is_contiguous)
+    wp.launch(strided_counter_gap_kernel, dim=n, inputs=[counter, gaps], outputs=[output], device=device)
+
+    np.testing.assert_array_equal(counter.numpy(), np.array([n, 0, 0, 0], dtype=np.int32))
+    np.testing.assert_array_equal(gaps.numpy(), np.ones(n, dtype=np.int32))
+    np.testing.assert_array_equal(output.numpy(), np.arange(n, dtype=np.int32))
 
 
 def test_counter_indexed_dynamic_loop(test, device):
@@ -917,6 +961,7 @@ for _name in (
     "test_counter_nonzero_index",
     "test_counter_indexed_destinations",
     "test_counter_sliced_destinations",
+    "test_counter_phase0_suppresses_strided_gap_view",
     "test_counter_indexed_dynamic_loop",
     "test_counter_int64_rejected",
     "test_counter_non_add_atomic_rejected",
