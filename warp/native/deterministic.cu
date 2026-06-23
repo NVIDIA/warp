@@ -212,7 +212,10 @@ struct DestIndexTransform {
 };
 
 // Compact float-only fold-3 binned accumulator for deterministic summation.
-// Based on the Ahrens, Demmel, and Nguyen (2020) binned summation method,
+// Adapted from the MIT-licensed r-barnes/reproducible_floating_sums
+// implementation, copyright 2022 Richard Barnes, Peter Ahrens, and James
+// Demmel. See licenses/reproducible_floating_sums-LICENSE.txt. The accumulator
+// implements the Ahrens, Demmel, and Nguyen (2020) binned summation method,
 // "Algorithms for Efficient Reproducible Floating Point Summation".
 //
 // CUB may choose different reduction trees from launch to launch. Reducing
