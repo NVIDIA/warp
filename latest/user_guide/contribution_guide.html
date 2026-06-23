@@ -787,6 +787,16 @@ uv<span class="w"> </span>run<span class="w"> </span>--extra<span class="w"> </s
 uv<span class="w"> </span>run<span class="w"> </span>--extra<span class="w"> </span>docs<span class="w"> </span>build_docs.py<span class="w"> </span>--doctest
 </pre></div>
 </div>
+<p>By default, warnings are not treated as errors, so a local build still succeeds (and produces
+output) even when, for example, external <a class="reference external" href="https://www.sphinx-doc.org/en/master/usage/extensions/intersphinx.html">intersphinx</a>
+inventories cannot be reached without network access. CI builds run with the <code class="docutils literal notranslate"><span class="pre">--warnings-as-errors</span></code>
+flag to enforce strictness, so pass it locally to reproduce the CI build and catch warnings before
+opening a pull request:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>--extra<span class="w"> </span>docs<span class="w"> </span>build_docs.py<span class="w"> </span>--warnings-as-errors
+</pre></div>
+</div>
+<p>If you are building offline and want to skip the external cross-reference resolution entirely
+(avoiding the fetch attempts and their warnings), set <code class="docutils literal notranslate"><span class="pre">WARP_DOCS_OFFLINE=1</span></code>.</p>
 <p>Running <code class="docutils literal notranslate"><span class="pre">build_docs.py</span></code> also regenerates both the stub file (<code class="docutils literal notranslate"><span class="pre">warp/__init__.pyi</span></code>) and the reStructuredText files for the
 reference pages. After building the documentation, it is recommended to run a <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">status</span></code> to
 check if your changes have modified these files. If so, please commit the modified files to your branch.</p>
