@@ -34,7 +34,8 @@
   compatible managed-memory access, while Warp CUDA arrays backed by non-managed memory still need explicit CPU
   copies. Use `array.memory_kind` to inspect whether an array is backed by host, pinned host, CUDA device, CUDA
   mempool, or CUDA managed memory. Preallocated managed arrays work in CUDA graph captures, but capture-time allocation
-  is a current limitation ([GH-1523](https://github.com/NVIDIA/warp/issues/1523)).
+  is a current limitation. Custom allocators may implement `deallocate_with_context()` when deallocation needs the CUDA
+  allocation context ([GH-1523](https://github.com/NVIDIA/warp/issues/1523)).
 
 ### Removed
 

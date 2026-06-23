@@ -3828,7 +3828,9 @@ class Allocator(Protocol):
     """Protocol for custom memory allocators.
 
     Any object with ``allocate`` and ``deallocate`` methods matching
-    these signatures can be used as a Warp allocator.
+    these signatures can be used as a Warp allocator. Allocators that need the
+    CUDA allocation context during teardown may also implement
+    ``deallocate_with_context(ptr, size_in_bytes, context)``.
     """
 
     def allocate(self, size_in_bytes: int) -> int:
@@ -3904,6 +3906,11 @@ def _validate_allocator(allocator):
             f"(allocate(size_in_bytes) -> int, deallocate(ptr, size_in_bytes) -> None), "
             f"got {type(allocator)!r}"
         )
+    deallocate_with_context = getattr(allocator, "deallocate_with_context", None)
+    if deallocate_with_context is not None and not callable(deallocate_with_context):
+        raise TypeError(
+            f"allocator deallocate_with_context attribute must be callable when provided, got {type(allocator)!r}"
+        )
 
 
 def _capture_alloc_tag():
@@ -3963,7 +3970,7 @@ def _set_alloc_tag_if_tracking(ptr):
 
 
 class CpuDefaultAllocator:
-    deallocate_requires_array_context = True
+    deallocate_requires_context_guard = True
 
     def __init__(self, device):
         if not device.is_cpu:
@@ -3981,7 +3988,7 @@ class CpuDefaultAllocator:
 
 
 class CpuPinnedAllocator:
-    deallocate_requires_array_context = True
+    deallocate_requires_context_guard = True
 
     def __init__(self, device):
         if not device.is_cpu:
@@ -4000,7 +4007,7 @@ class CpuPinnedAllocator:
 
 
 class CudaDefaultAllocator:
-    deallocate_requires_array_context = True
+    deallocate_requires_context_guard = True
 
     def __init__(self, device):
         if not device.is_cuda:
@@ -4035,7 +4042,7 @@ class CudaDefaultAllocator:
 
 
 class CudaMempoolAllocator:
-    deallocate_requires_array_context = True
+    deallocate_requires_context_guard = True
 
     def __init__(self, device):
         if not device.is_cuda:
@@ -4064,21 +4071,17 @@ class ManagedAllocator:
     The allocator object is not bound to one CUDA device and can be reused
     across devices. Each allocation still happens under a specific CUDA context,
     and that context's device must support CUDA managed memory. Warp pushes the
-    target CUDA context before invoking ``allocate()``, and the allocator records
-    that context as the owner for each pointer so it can free allocations
-    through the same CUDA context later. Direct calls to ``allocate()`` require
-    an active CUDA context.
+    target CUDA context before invoking ``allocate()`` and records that
+    allocation context on the resulting array so the allocator can free the
+    pointer through the same CUDA context later. Direct calls to ``allocate()``
+    require an active CUDA context.
 
     Managed allocation uses ``cudaMallocManaged()`` and cannot occur while CUDA
     graph capture is active. Allocate managed arrays before capture begins and
     reuse the existing arrays inside captured work.
     """
 
-    deallocate_requires_array_context = False
-
-    def __init__(self):
-        self._contexts_by_ptr: dict[int, int] = {}
-        self._lock = threading.Lock()
+    deallocate_requires_context_guard = False
 
     def allocate(self, size_in_bytes):
         init()
@@ -4109,8 +4112,6 @@ class ManagedAllocator:
             )
 
         _set_alloc_tag_if_tracking(ptr)
-        with self._lock:
-            self._contexts_by_ptr[ptr] = context
         return ptr
 
     def deallocate(self, ptr, size_in_bytes):
@@ -4119,15 +4120,20 @@ class ManagedAllocator:
         if not ptr:
             return
 
-        with self._lock:
-            context = self._contexts_by_ptr.pop(ptr, None)
-            if context is None:
-                raise RuntimeError("ManagedAllocator cannot free a pointer it did not allocate")
+        context = runtime.core.wp_cuda_context_get_current()
+        if not context:
+            raise RuntimeError("ManagedAllocator.deallocate() requires an active CUDA context")
 
+        self.deallocate_with_context(ptr, size_in_bytes, context)
+
+    def deallocate_with_context(self, ptr, size_in_bytes, context):
+        init()
+
+        if not ptr:
+            return
+        if not context:
+            raise RuntimeError("ManagedAllocator.deallocate_with_context() requires a CUDA context")
         if not runtime.core.wp_free_device_managed(context, ptr):
-            with self._lock:
-                self._contexts_by_ptr[ptr] = context
-
             native_error = runtime.get_error_string()
             reason = f": {native_error}" if native_error else ""
             raise RuntimeError(f"Failed to free {size_in_bytes} bytes with ManagedAllocator{reason}")

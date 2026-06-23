@@ -3672,6 +3672,8 @@ class array(Array[DType, NDim]):
         self.is_contiguous = is_contiguous
         self.deleter = deleter
         self._deleter_context_guard = device.context_guard if deleter is not None else None
+        self._deleter_accepts_context = False
+        self._deallocation_context = None
 
     def _init_new(self, dtype, shape, strides, device, pinned):
         try:
@@ -3724,12 +3726,22 @@ class array(Array[DType, NDim]):
         allocator = device.get_allocator(pinned=pinned)
         # Resolve the deallocate callable before allocating so a bad descriptor/__getattr__
         # cannot leak a freshly-allocated pointer between allocate() and self.deleter assignment.
-        deleter = allocator.deallocate
-        deleter_context_guard = (
-            device.context_guard if getattr(allocator, "deallocate_requires_array_context", True) else None
-        )
+        deallocate_with_context = getattr(allocator, "deallocate_with_context", None)
+        if deallocate_with_context is not None and callable(deallocate_with_context):
+            deleter = deallocate_with_context
+            deleter_accepts_context = True
+            deleter_context_guard = None
+        else:
+            deleter = allocator.deallocate
+            deleter_accepts_context = False
+            deleter_context_guard = (
+                device.context_guard if getattr(allocator, "deallocate_requires_context_guard", True) else None
+            )
+
+        deallocation_context = None
         if capacity > 0:
             if device.is_cuda:
+                deallocation_context = device.context
                 with device.context_guard:
                     ptr = allocator.allocate(capacity)
             else:
@@ -3749,6 +3761,8 @@ class array(Array[DType, NDim]):
         self.is_contiguous = is_contiguous
         self.deleter = deleter
         self._deleter_context_guard = deleter_context_guard
+        self._deleter_accepts_context = deleter_accepts_context
+        self._deallocation_context = deallocation_context
         self._allocator = allocator
 
     def _init_annotation(self, dtype, ndim):
@@ -3763,6 +3777,8 @@ class array(Array[DType, NDim]):
         self.pinned = False
         self.is_contiguous = False
         self._deleter_context_guard = None
+        self._deleter_accepts_context = False
+        self._deallocation_context = None
 
     def __del__(self):
         # Skip deallocation for partially-initialized arrays (e.g. when allocation failed)
@@ -3771,7 +3787,9 @@ class array(Array[DType, NDim]):
             return
         try:
             deleter_context_guard = self._deleter_context_guard
-            if deleter_context_guard is None:
+            if self._deleter_accepts_context:
+                self.deleter(self.ptr, self.capacity, self._deallocation_context)
+            elif deleter_context_guard is None:
                 self.deleter(self.ptr, self.capacity)
             else:
                 with deleter_context_guard:

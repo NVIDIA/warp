@@ -68,21 +68,28 @@ class FailAllocator:
         pass
 
 
-class NoArrayContextAllocator:
-    """Test allocator that owns its deallocation context policy."""
+class ContextAwareAllocator:
+    """Test allocator that receives the allocation context during deallocation."""
 
-    deallocate_requires_array_context = False
+    deallocate_requires_context_guard = True
 
     def __init__(self, device):
         self._inner = device.default_allocator
         self.dealloc_count = 0
+        self.legacy_dealloc_count = 0
+        self.dealloc_contexts = []
 
     def allocate(self, size_in_bytes):
         return self._inner.allocate(size_in_bytes)
 
     def deallocate(self, ptr, size_in_bytes):
-        self.dealloc_count += 1
+        self.legacy_dealloc_count += 1
         self._inner.deallocate(ptr, size_in_bytes)
+
+    def deallocate_with_context(self, ptr, size_in_bytes, context):
+        self.dealloc_count += 1
+        self.dealloc_contexts.append(context)
+        warp_context.runtime.core.wp_free_device_default(context, ptr)
 
 
 class CountingContextGuard:
@@ -232,22 +239,19 @@ add_function_test(
 
 
 class TestCustomAllocator(unittest.TestCase):
-    def test_managed_allocator_deallocate_fallback_error(self):
+    def test_managed_allocator_deallocate_with_context_reports_native_error(self):
         alloc = wp.ManagedAllocator()
         ptr = 0x1234
         context = 0x5678
 
-        with alloc._lock:
-            alloc._contexts_by_ptr[ptr] = context
-
         with (
-            mock.patch.object(warp_context.runtime.core, "wp_free_device_managed", return_value=False),
+            mock.patch.object(warp_context.runtime.core, "wp_free_device_managed", return_value=False) as free,
             mock.patch.object(warp_context.runtime, "get_error_string", return_value=""),
         ):
             with self.assertRaisesRegex(RuntimeError, "Failed to free 64 bytes with ManagedAllocator"):
-                alloc.deallocate(ptr, 64)
+                alloc.deallocate_with_context(ptr, 64, context)
 
-        self.assertEqual(alloc._contexts_by_ptr[ptr], context)
+        free.assert_called_once_with(context, ptr)
 
     @unittest.skipUnless(wp.get_cuda_device_count() >= 2, "Multi-GPU not available")
     def test_set_cuda_allocator_broadcasts_to_all_devices(self):
@@ -366,29 +370,6 @@ def test_managed_allocator_allocates_on_selected_device(test, device):
     np.testing.assert_allclose(a.numpy(), np.zeros(8, dtype=np.float32))
 
 
-@unittest.skipUnless(wp.get_cuda_device_count() >= 2, "Multi-GPU not available")
-def test_managed_allocator_deallocates_from_recorded_context(test, device):
-    """ManagedAllocator frees with the pointer's owner context, not the current one."""
-
-    if not device.is_managed_memory_supported:
-        test.skipTest(f"{device} does not support CUDA managed memory")
-
-    other = wp.get_device(f"cuda:{(device.ordinal + 1) % wp.get_cuda_device_count()}")
-
-    managed = wp.ManagedAllocator()
-    with device.context_guard:
-        ptr = managed.allocate(16)
-
-    try:
-        with other.context_guard:
-            managed.deallocate(ptr, 16)
-            ptr = None
-    finally:
-        if ptr:
-            with device.context_guard:
-                managed.deallocate(ptr, 16)
-
-
 def test_scoped_allocator_restores_on_exception(test, device):
     """ScopedAllocator restores allocator even if body raises."""
     device = wp.get_device(device)
@@ -412,11 +393,11 @@ def test_allocator_swap_with_live_arrays(test, device):
     test.assertEqual(alloc.dealloc_count, 1)
 
 
-def test_allocator_deallocate_can_skip_array_context(test, device):
-    """Allocator policy controls whether array deletion enters the array context."""
+def test_allocator_deallocate_receives_allocation_context(test, device):
+    """Context-aware allocator hooks receive the array allocation context."""
 
     device = wp.get_device(device)
-    alloc = NoArrayContextAllocator(device)
+    alloc = ContextAwareAllocator(device)
     original_guard = device.context_guard
     counting_guard = CountingContextGuard(original_guard)
     device.context_guard = counting_guard
@@ -427,12 +408,14 @@ def test_allocator_deallocate_can_skip_array_context(test, device):
 
         counting_guard.enter_count = 0
         counting_guard.exit_count = 0
+        expected_context = device.context
 
         del a
         gc.collect()
-        wp.synchronize_device(device)
 
         test.assertEqual(alloc.dealloc_count, 1)
+        test.assertEqual(alloc.legacy_dealloc_count, 0)
+        test.assertEqual(alloc.dealloc_contexts, [expected_context])
         test.assertEqual(counting_guard.enter_count, 0)
         test.assertEqual(counting_guard.exit_count, 0)
     finally:
@@ -472,7 +455,7 @@ for fn in [
     test_scoped_allocator,
     test_scoped_allocator_restores_on_exception,
     test_allocator_swap_with_live_arrays,
-    test_allocator_deallocate_can_skip_array_context,
+    test_allocator_deallocate_receives_allocation_context,
     test_allocate_failure,
     test_zero_size_allocation,
 ]:
@@ -482,13 +465,6 @@ add_function_test(
     TestCustomAllocator,
     "test_managed_allocator_allocates_on_selected_device",
     test_managed_allocator_allocates_on_selected_device,
-    devices=cuda_test_devices,
-)
-
-add_function_test(
-    TestCustomAllocator,
-    "test_managed_allocator_deallocates_from_recorded_context",
-    test_managed_allocator_deallocates_from_recorded_context,
     devices=cuda_test_devices,
 )
 

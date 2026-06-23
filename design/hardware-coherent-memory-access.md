@@ -217,7 +217,7 @@ This means the implementation must query capabilities independently instead of a
 | R4 | Provide `wp.prefetch()` API for explicit data migration hints | Should | Performance optimization for HMM / host-page-table ATS |
 | R5 | Optional automatic prefetch in `wp.launch()` for cross-device arrays on coherent systems | Could | Convenience, but needs careful defaults |
 | R6 | `wp.copy()` should skip staging buffers when direct access is available between devices | Could | Performance optimization, marked as TODO in current code |
-| R7 | Provide explicit managed-memory arrays through a built-in allocator | Should | `wp.ManagedAllocator()` integrates with existing allocator APIs and records owner-context metadata |
+| R7 | Provide explicit managed-memory arrays through a built-in allocator | Should | `wp.ManagedAllocator()` integrates with existing allocator APIs and uses array-recorded owner-context metadata during deallocation |
 | R8 | Support graph-capturable managed allocation on CUDA 13+ builds when managed memory pools are available | Could | Future managed-pool backend for `wp.ManagedAllocator()`; CUDA 12.x remains direct `cudaMallocManaged()` outside capture only |
 
 **Non-goals:**
@@ -1000,7 +1000,7 @@ The array's `device` remains `cuda:0`:
 data.device == wp.get_device("cuda:0")
 ```
 
-The `ManagedAllocator` constructor intentionally does not take a device. A device argument would suggest that `cudaMallocManaged` immediately places pages in that device's physical memory, which CUDA does not guarantee. The target device/context still matters for allocation API calls: Warp's array constructors push the target CUDA context before invoking the allocator, and direct calls to `ManagedAllocator.allocate()` require the caller to have already made a managed-memory-capable CUDA context current. `ManagedAllocator` records pointer-to-owner-context metadata internally so one allocator instance can serve multiple CUDA devices. Physical placement is left to CUDA Unified Memory and can be guided explicitly through `wp.prefetch()` once Phase 2 exists.
+The `ManagedAllocator` constructor intentionally does not take a device. A device argument would suggest that `cudaMallocManaged` immediately places pages in that device's physical memory, which CUDA does not guarantee. The target device/context still matters for allocation API calls: Warp's array constructors push the target CUDA context before invoking the allocator, and direct calls to `ManagedAllocator.allocate()` require the caller to have already made a managed-memory-capable CUDA context current. Warp arrays record the allocation context and pass it back through the optional `deallocate_with_context(ptr, size_in_bytes, context)` allocator hook, so one allocator instance can serve multiple CUDA devices without keeping a Python pointer-to-context side table. Physical placement is left to CUDA Unified Memory and can be guided explicitly through `wp.prefetch()` once Phase 2 exists.
 
 `wp.ManagedAllocator()` always uses global managed-memory attach semantics. For the direct fallback path this means `cudaMallocManaged(..., cudaMemAttachGlobal)`. Warp does not expose `cudaMemAttachHost` or `cudaMemAttachSingle` in the initial API; those are specialized ownership/scheduling controls better left to custom allocators or a future explicit stream-attach API.
 
@@ -1010,7 +1010,7 @@ Users may install one `ManagedAllocator` for all CUDA devices:
 wp.set_cuda_allocator(wp.ManagedAllocator())
 ```
 
-Because allocation happens under the target device context and the allocator object stores no device of its own, sharing one instance across multiple managed-memory-capable CUDA devices is valid. The Python allocator records the owner context for each pointer so deallocation uses the same context even if another CUDA context is current. Direct calls to `ManagedAllocator.allocate()` require an active CUDA context whose device supports managed memory; array factory calls pass the target device context automatically.
+Because allocation happens under the target device context and the allocator object stores no device of its own, sharing one instance across multiple managed-memory-capable CUDA devices is valid. Arrays store the allocation context and use `ManagedAllocator.deallocate_with_context()` so deallocation uses the same context even if another CUDA context is current. Direct calls to `ManagedAllocator.allocate()` require an active CUDA context whose device supports managed memory; direct calls to `ManagedAllocator.deallocate()` use the current CUDA context. Array factory calls pass the target device context automatically.
 
 #### Memory-kind inspection
 

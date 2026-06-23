@@ -275,10 +275,11 @@ Custom Allocators
 
 Warp supports pluggable memory allocators for CUDA devices. You can redirect all
 GPU array allocations through a custom allocator by implementing the
-:class:`warp.Allocator` protocol, i.e., any object with ``allocate(size_in_bytes)`` and
-``deallocate(ptr, size_in_bytes)`` methods. Custom allocators only affect
-:class:`warp.array` allocations on CUDA devices; CPU allocations, pinned memory, and
-internal native allocations (e.g., BVH construction temporaries) are not affected.
+:class:`warp.Allocator` protocol, i.e., any object with ``allocate(size_in_bytes)``
+and ``deallocate(ptr, size_in_bytes)`` methods. Custom allocators only affect
+:class:`warp.array` allocations on CUDA devices; CPU allocations, pinned memory,
+and internal native allocations (e.g., BVH construction temporaries) are not
+affected.
 
 Setting a Custom Allocator
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -368,8 +369,8 @@ before CPU code accesses them.
 
 The allocator object is not bound to one CUDA device and can be constructed
 before choosing a CUDA device. Warp invokes it under the target device's CUDA
-context, which must support CUDA managed memory, and records that context as
-the owner for each pointer:
+context, which must support CUDA managed memory. Warp records that allocation
+context on the array and passes it back to the allocator during deallocation:
 
 .. code:: python
 
@@ -453,9 +454,28 @@ A custom allocator is any object that implements ``allocate`` and ``deallocate``
             # Free the device pointer
             ...
 
-By default, Warp enters the array's CUDA context before calling
-``deallocate()``. If an allocator records enough context to free its pointers
-independently, set ``deallocate_requires_array_context = False`` on the
+Allocators that need the CUDA allocation context during teardown may implement
+``deallocate_with_context(ptr, size_in_bytes, context)``. Warp calls that hook
+without entering a CUDA context, passing the context that was used when the
+array allocation was created:
+
+.. code:: python
+
+    class ContextAwareAllocator:
+        def allocate(self, size_in_bytes: int) -> int:
+            ...
+
+        def deallocate(self, ptr: int, size_in_bytes: int) -> None:
+            # Used for direct calls that do not come from a Warp array.
+            ...
+
+        def deallocate_with_context(self, ptr: int, size_in_bytes: int, context) -> None:
+            # Free the pointer using the allocation context.
+            ...
+
+For allocators that only implement ``deallocate()``, Warp enters the array's
+CUDA context before calling it by default. If an allocator manages the current
+context itself, set ``deallocate_requires_context_guard = False`` on the
 allocator object.
 
 Allocators that do not support stream-ordered allocation may not work correctly
