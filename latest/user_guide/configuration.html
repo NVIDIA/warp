@@ -701,6 +701,39 @@ Keys are validated against the module’s known options (see
     <span class="n">b</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">+</span> <span class="mf">1.0</span>
 </pre></div>
 </div>
+<section id="cuda-thread-block-clusters">
+<span id="kernel-cluster-dim"></span><h3>CUDA Thread Block Clusters<a class="headerlink" href="#cuda-thread-block-clusters" title="Link to this heading">#</a></h3>
+<p>CUDA Thread Block Clusters group adjacent CTAs into clusters that the hardware
+co-schedules on a single GPU Processing Cluster (GPC), unlocking features such as
+distributed shared memory. Clusters are supported on devices with compute
+capability 9.0 (Hopper) and above.</p>
+<p>The cluster size is declared per-kernel via the <code class="docutils literal notranslate"><span class="pre">cluster_dim</span></code> decorator
+argument — a positive int up to 16 (the default <code class="docutils literal notranslate"><span class="pre">1</span></code> means no clustering):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">cluster_dim</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">my_kernel</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">a</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="mf">2.0</span>
+</pre></div>
+</div>
+<p>Warp launches CUDA kernels with a 1D hardware grid, so <code class="docutils literal notranslate"><span class="pre">cluster_dim=N</span></code> emits
+CUDA <code class="docutils literal notranslate"><span class="pre">__cluster_dims__(N,</span> <span class="pre">1,</span> <span class="pre">1)</span></code>; multidimensional cluster shapes are not
+supported. Values 2..8 are <em>portable</em> and work on every cluster-capable device;
+values 9..16 are <em>non-portable</em> and depend on the GPU’s GPC layout (some
+integrated parts such as NVIDIA Thor and DGX Spark GB10 cap at 8). Query
+<a class="reference internal" href="../api_reference/_generated/warp.get_cuda_max_cluster_dim.html#warp.get_cuda_max_cluster_dim" title="warp.get_cuda_max_cluster_dim"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.get_cuda_max_cluster_dim()</span></code></a> before selecting a value above 8 if you
+target a range of devices (it returns <code class="docutils literal notranslate"><span class="pre">1</span></code> on devices that cannot form
+clusters).</p>
+<p>On a genuine sub-cluster <em>device</em> (compute capability &lt; 9.0) and on CPU,
+<code class="docutils literal notranslate"><span class="pre">cluster_dim</span></code> is silently ignored and the kernel runs unclustered, so portable
+code can set it freely. Requesting a cluster while compiling for a target below
+sm90 on cluster-capable hardware (for example with
+<code class="docutils literal notranslate"><span class="pre">warp.config.ptx_target_arch</span></code> set below 90) is an error, because the cluster
+attribute would be dropped from the generated kernel.</p>
+<p>Declaring <code class="docutils literal notranslate"><span class="pre">cluster_dim</span></code> only forms the cluster; <em>using</em> it — distributed
+shared memory, cluster barriers, and cluster rank queries — requires native CUDA
+code. See <a class="reference internal" href="cpp_cuda_workflows.html#thread-block-clusters"><span class="std std-ref">Thread Block Clusters and Distributed Shared Memory</span></a> in the C++/CUDA workflows guide for a
+worked distributed-shared-memory example.</p>
+</section>
 </section>
 </section>
 
@@ -755,7 +788,10 @@ Keys are validated against the module’s known options (see
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#global-settings">Global Settings</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-settings">Module Settings</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#kernel-settings">Kernel Settings</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#kernel-settings">Kernel Settings</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#cuda-thread-block-clusters">CUDA Thread Block Clusters</a></li>
+</ul>
+</li>
 </ul>
   </nav></div>
 

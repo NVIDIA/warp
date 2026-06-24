@@ -588,6 +588,103 @@ one result per block.</p>
 </pre></div>
 </div>
 </section>
+<section id="thread-block-clusters-and-distributed-shared-memory">
+<span id="thread-block-clusters"></span><h3>Thread Block Clusters and Distributed Shared Memory<a class="headerlink" href="#thread-block-clusters-and-distributed-shared-memory" title="Link to this heading">#</a></h3>
+<p><a class="reference external" href="https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/intro-to-cuda-cpp.html#thread-block-clusters">CUDA Thread Block Clusters</a>
+group adjacent CTAs into a cluster whose blocks the hardware guarantees to
+co-schedule on a single GPU Processing Cluster (GPC) — a hardware group of SMs
+linked by an on-chip interconnect. That SM-to-SM path unlocks <em>distributed shared
+memory</em>: each block can address the shared memory of every other block in its
+cluster. Clusters require compute capability 9.0 (Hopper) or higher.</p>
+<p>Set the cluster size with the <a class="reference internal" href="configuration.html#kernel-cluster-dim"><span class="std std-ref">cluster_dim</span></a> kernel
+argument. Warp emits the kernel’s <code class="docutils literal notranslate"><span class="pre">__cluster_dims__</span></code> attribute from that value,
+but the cluster machinery itself — distributed shared memory, cluster barriers,
+and cluster rank queries — is reachable only from native CUDA code, so a
+<code class="docutils literal notranslate"><span class="pre">&#64;wp.func_native</span></code> snippet is how you use it.</p>
+<p>The example below reduces an array with a single cluster of <code class="docutils literal notranslate"><span class="pre">CLUSTER_DIM</span></code>
+blocks. Each block sums its own slice into shared memory; after a cluster
+barrier, block 0 reaches into every peer block’s shared memory through the
+<code class="docutils literal notranslate"><span class="pre">__cluster_map_shared_rank</span></code> device builtin to form the cluster-wide total. A
+second cluster barrier keeps every block alive until block 0 has finished
+reading, because a block must not exit while its shared memory is still being
+accessed.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+
+<span class="n">CLUSTER_DIM</span> <span class="o">=</span> <span class="mi">4</span>
+<span class="n">BLOCK_DIM</span> <span class="o">=</span> <span class="mi">32</span>
+
+<span class="n">snippet</span> <span class="o">=</span> <span class="sa">r</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">    const unsigned int lane = threadIdx.x;</span>
+
+<span class="s2">    // Each block reduces its slice into a single shared-memory accumulator.</span>
+<span class="s2">    __shared__ int s_partial;</span>
+<span class="s2">    if (lane == 0) s_partial = 0;</span>
+<span class="s2">    __syncthreads();</span>
+<span class="s2">    atomicAdd(&amp;s_partial, value);</span>
+<span class="s2">    __syncthreads();</span>
+
+<span class="s2">    // Cluster barrier: every block&#39;s s_partial is finalized and visible</span>
+<span class="s2">    // across the cluster&#39;s distributed shared memory.</span>
+<span class="s2">    asm volatile(&quot;barrier.cluster.arrive;&quot; ::: &quot;memory&quot;);</span>
+<span class="s2">    asm volatile(&quot;barrier.cluster.wait;&quot; ::: &quot;memory&quot;);</span>
+
+<span class="s2">    unsigned int rank, num_blocks;</span>
+<span class="s2">    asm volatile(&quot;mov.u32 %0, </span><span class="si">%%</span><span class="s2">cluster_ctarank;&quot; : &quot;=r&quot;(rank));</span>
+<span class="s2">    asm volatile(&quot;mov.u32 %0, </span><span class="si">%%</span><span class="s2">cluster_nctarank;&quot; : &quot;=r&quot;(num_blocks));</span>
+
+<span class="s2">    // Block 0 gathers every peer&#39;s partial sum via distributed shared memory.</span>
+<span class="s2">    if (rank == 0 &amp;&amp; lane == 0) {</span>
+<span class="s2">        int total = 0;</span>
+<span class="s2">        for (unsigned int r = 0; r &lt; num_blocks; ++r) {</span>
+<span class="s2">            int *remote = (int *)__cluster_map_shared_rank(&amp;s_partial, r);</span>
+<span class="s2">            total += *remote;</span>
+<span class="s2">        }</span>
+<span class="s2">        out[0] = total;</span>
+<span class="s2">    }</span>
+
+<span class="s2">    // Second barrier: no block exits (freeing its shared memory) until</span>
+<span class="s2">    // block 0 has finished reading every peer&#39;s accumulator.</span>
+<span class="s2">    asm volatile(&quot;barrier.cluster.arrive;&quot; ::: &quot;memory&quot;);</span>
+<span class="s2">    asm volatile(&quot;barrier.cluster.wait;&quot; ::: &quot;memory&quot;);</span>
+<span class="s2">    &quot;&quot;&quot;</span>
+
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">func_native</span><span class="p">(</span><span class="n">snippet</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">cluster_reduce</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">int</span><span class="p">]):</span>
+    <span class="o">...</span>
+
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">cluster_dim</span><span class="o">=</span><span class="n">CLUSTER_DIM</span><span class="p">,</span> <span class="n">enable_backward</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">cluster_reduce_kernel</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">int</span><span class="p">]):</span>
+    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">cluster_reduce</span><span class="p">(</span><span class="n">values</span><span class="p">[</span><span class="n">tid</span><span class="p">],</span> <span class="n">out</span><span class="p">)</span>
+
+
+<span class="c1"># One cluster of CLUSTER_DIM blocks: launch exactly CLUSTER_DIM * BLOCK_DIM threads.</span>
+<span class="n">n</span> <span class="o">=</span> <span class="n">CLUSTER_DIM</span> <span class="o">*</span> <span class="n">BLOCK_DIM</span>
+<span class="n">values</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
+<span class="n">out</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span>
+    <span class="n">cluster_reduce_kernel</span><span class="p">,</span>
+    <span class="n">dim</span><span class="o">=</span><span class="n">n</span><span class="p">,</span>
+    <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">values</span><span class="p">],</span>
+    <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">],</span>
+    <span class="n">block_dim</span><span class="o">=</span><span class="n">BLOCK_DIM</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">numpy</span><span class="p">()[</span><span class="mi">0</span><span class="p">]))</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>8128
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">&quot;memory&quot;</span></code> clobber on each barrier stops the compiler from reordering
+shared memory accesses across it. <code class="docutils literal notranslate"><span class="pre">cluster_dim</span></code> values 2–8 are portable across
+all cluster-capable devices; values 9–16 are non-portable and depend on the GPU,
+so query <a class="reference internal" href="../api_reference/_generated/warp.get_cuda_max_cluster_dim.html#warp.get_cuda_max_cluster_dim" title="warp.get_cuda_max_cluster_dim"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.get_cuda_max_cluster_dim()</span></code></a> before using them.</p>
+</section>
 <section id="inline-ptx">
 <h3>Inline PTX<a class="headerlink" href="#inline-ptx" title="Link to this heading">#</a></h3>
 <p>Native snippets can also use <a class="reference external" href="https://docs.nvidia.com/cuda/inline-ptx-assembly/index.html">inline Parallel Thread Execution (PTX) assembly</a> inside CUDA
@@ -843,6 +940,7 @@ compilation.</p></li>
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#native-snippets-in-warp-kernels">Native Snippets in Warp Kernels</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#cuda-shared-memory">CUDA Shared Memory</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#thread-block-clusters-and-distributed-shared-memory">Thread Block Clusters and Distributed Shared Memory</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#inline-ptx">Inline PTX</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#returning-values">Returning Values</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#differentiable-native-functions">Differentiable Native Functions</a></li>

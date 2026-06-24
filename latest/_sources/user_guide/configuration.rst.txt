@@ -166,3 +166,44 @@ Kernel-level settings can be passed as arguments to the :func:`@wp.kernel <warp.
         # fast_math is applied to this kernel's unique module
         tid = wp.tid()
         b[tid] = a[tid] + 1.0
+
+.. _kernel-cluster-dim:
+
+CUDA Thread Block Clusters
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+CUDA Thread Block Clusters group adjacent CTAs into clusters that the hardware
+co-schedules on a single GPU Processing Cluster (GPC), unlocking features such as
+distributed shared memory. Clusters are supported on devices with compute
+capability 9.0 (Hopper) and above.
+
+The cluster size is declared per-kernel via the ``cluster_dim`` decorator
+argument — a positive int up to 16 (the default ``1`` means no clustering):
+
+.. code-block:: python
+
+    @wp.kernel(cluster_dim=2)
+    def my_kernel(a: wp.array[float]):
+        i = wp.tid()
+        a[i] = a[i] * 2.0
+
+Warp launches CUDA kernels with a 1D hardware grid, so ``cluster_dim=N`` emits
+CUDA ``__cluster_dims__(N, 1, 1)``; multidimensional cluster shapes are not
+supported. Values 2..8 are *portable* and work on every cluster-capable device;
+values 9..16 are *non-portable* and depend on the GPU's GPC layout (some
+integrated parts such as NVIDIA Thor and DGX Spark GB10 cap at 8). Query
+:func:`warp.get_cuda_max_cluster_dim` before selecting a value above 8 if you
+target a range of devices (it returns ``1`` on devices that cannot form
+clusters).
+
+On a genuine sub-cluster *device* (compute capability < 9.0) and on CPU,
+``cluster_dim`` is silently ignored and the kernel runs unclustered, so portable
+code can set it freely. Requesting a cluster while compiling for a target below
+sm90 on cluster-capable hardware (for example with
+``warp.config.ptx_target_arch`` set below 90) is an error, because the cluster
+attribute would be dropped from the generated kernel.
+
+Declaring ``cluster_dim`` only forms the cluster; *using* it — distributed
+shared memory, cluster barriers, and cluster rank queries — requires native CUDA
+code. See :ref:`thread-block-clusters` in the C++/CUDA workflows guide for a
+worked distributed-shared-memory example.

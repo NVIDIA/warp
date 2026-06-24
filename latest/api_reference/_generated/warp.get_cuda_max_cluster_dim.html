@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.is_cuda_available &#8212; Warp 1.15.0.dev0</title>
+    <title>warp.get_cuda_max_cluster_dim &#8212; Warp 1.15.0.dev0</title>
   
   
   
@@ -49,7 +49,7 @@
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.is_cuda_available';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.get_cuda_max_cluster_dim';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
@@ -62,8 +62,8 @@
 
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="warp.print_diagnostics" href="warp.print_diagnostics.html" />
-    <link rel="prev" title="warp.is_cubql_available" href="warp.is_cubql_available.html" />
+    <link rel="next" title="warp.get_device_allocator" href="warp.get_device_allocator.html" />
+    <link rel="prev" title="warp.ScopedPeerAccess" href="warp.ScopedPeerAccess.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -462,7 +462,7 @@
     
     <li class="breadcrumb-item"><a href="../warp.html" class="nav-link">warp</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.is_cuda_available</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.get_cuda_max_cluster_dim</span></li>
   </ul>
 </nav>
 </div>
@@ -475,7 +475,7 @@
         <div class="header-article-item">
 
 <div class="d-flex justify-content-end w-100">
-  <a href="../../_sources/api_reference/_generated/warp.is_cuda_available.rst.txt">
+  <a href="../../_sources/api_reference/_generated/warp.get_cuda_max_cluster_dim.rst.txt">
     <i class="fa-solid fa-file-code"></i> View page source
   </a>
 </div>
@@ -492,24 +492,49 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="warp-is-cuda-available">
-<h1>warp.is_cuda_available<a class="headerlink" href="#warp-is-cuda-available" title="Link to this heading">#</a></h1>
+  <section id="warp-get-cuda-max-cluster-dim">
+<h1>warp.get_cuda_max_cluster_dim<a class="headerlink" href="#warp-get-cuda-max-cluster-dim" title="Link to this heading">#</a></h1>
 <dl class="py function">
-<dt class="sig sig-object py" id="warp.is_cuda_available">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">is_cuda_available</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L7201-L7211"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.is_cuda_available" title="Link to this definition">#</a></dt>
-<dd><p>Check whether CUDA execution is available.</p>
+<dt class="sig sig-object py" id="warp.get_cuda_max_cluster_dim">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">get_cuda_max_cluster_dim</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">kernel</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">block_dim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">dynamic_smem_bytes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L7406-L7467"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.get_cuda_max_cluster_dim" title="Link to this definition">#</a></dt>
+<dd><p>Return the maximum <code class="docutils literal notranslate"><span class="pre">cluster_dim</span></code> <em>kernel</em> can launch with on <em>device</em>.</p>
+<p>Probes the CUDA driver via <code class="docutils literal notranslate"><span class="pre">cuOccupancyMaxActiveClusters</span></code> for cluster
+sizes from 16 down to 2 and returns the largest one the driver reports as
+launchable. The result reflects actual hardware capability: integrated
+Hopper+ SoCs (NVIDIA Thor sm_101, DGX Spark sm_121) cap at the portable 8,
+while Hopper and Blackwell desktop parts typically support 16.</p>
+<p>For a plain kernel (no <code class="docutils literal notranslate"><span class="pre">cluster_dim</span></code> declared) the result is the
+device’s true cluster limit. For a kernel with <code class="docutils literal notranslate"><span class="pre">cluster_dim</span></code> declared,
+the driver only accepts that declared size, so the function returns the
+declared value when the device supports it, or <code class="docutils literal notranslate"><span class="pre">1</span></code> when it does not.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if at least one CUDA device is available, <code class="docutils literal notranslate"><span class="pre">False</span></code> otherwise.</p>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>kernel</strong> – A <code class="docutils literal notranslate"><span class="pre">&#64;warp.kernel</span></code>-decorated kernel instance.</p></li>
+<li><p><strong>device</strong> (<a class="reference internal" href="warp.Device.html#warp.Device" title="warp._src.context.Device"><em>Device</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Target device. Defaults to the current device.</p></li>
+<li><p><strong>block_dim</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Threads per block at launch. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, uses the kernel’s
+module-resolved <code class="docutils literal notranslate"><span class="pre">block_dim</span></code>.</p></li>
+<li><p><strong>dynamic_smem_bytes</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Dynamic shared memory bytes used at launch.</p></li>
+</ul>
 </dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool">bool</a></p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The maximum <code class="docutils literal notranslate"><span class="pre">cluster_dim</span></code> as a 1D CTA count. Returns <code class="docutils literal notranslate"><span class="pre">1</span></code> on devices
+with compute capability &lt; 9.0, on non-CUDA devices, and on driver error.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
 </dd>
 </dl>
-<div class="admonition seealso">
-<p class="admonition-title">See also</p>
-<p><a class="reference internal" href="warp.is_cpu_available.html#warp.is_cpu_available" title="warp.is_cpu_available"><code class="xref py py-func docutils literal notranslate"><span class="pre">is_cpu_available()</span></code></a>, <a class="reference internal" href="warp.is_device_available.html#warp.is_device_available" title="warp.is_device_available"><code class="xref py py-func docutils literal notranslate"><span class="pre">is_device_available()</span></code></a>, <a class="reference internal" href="warp.get_cuda_device_count.html#warp.get_cuda_device_count" title="warp.get_cuda_device_count"><code class="xref py py-func docutils literal notranslate"><span class="pre">get_cuda_device_count()</span></code></a></p>
-</div>
 </dd></dl>
 
 </section>
@@ -525,20 +550,20 @@
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.is_cubql_available.html"
+       href="warp.ScopedPeerAccess.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.is_cubql_available</p>
+        <p class="prev-next-title">warp.ScopedPeerAccess</p>
       </div>
     </a>
     <a class="right-next"
-       href="warp.print_diagnostics.html"
+       href="warp.get_device_allocator.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.print_diagnostics</p>
+        <p class="prev-next-title">warp.get_device_allocator</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -563,7 +588,7 @@
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.is_cuda_available"><code class="docutils literal notranslate"><span class="pre">is_cuda_available()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.get_cuda_max_cluster_dim"><code class="docutils literal notranslate"><span class="pre">get_cuda_max_cluster_dim()</span></code></a></li>
 </ul>
   </nav></div>
 
@@ -571,7 +596,7 @@
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/_generated/warp.is_cuda_available.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/_generated/warp.get_cuda_max_cluster_dim.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

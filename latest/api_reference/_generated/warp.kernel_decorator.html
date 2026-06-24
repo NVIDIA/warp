@@ -503,11 +503,12 @@
 <dd><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">enable_backward</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">launch_bounds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">cluster_dim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">module_options</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L1371-L1598"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.kernel" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L1489-L1727"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.kernel" title="Link to this definition">#</a></dt>
 <dd><p>Decorator to register a Warp kernel from a Python function.
 The function must be defined with type annotations for all arguments.
 The function must not return anything.</p>
@@ -560,6 +561,13 @@ of 1-2 ints <code class="docutils literal notranslate"><span class="pre">(maxThr
 kernels. Note: The <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> parameter in
 <a class="reference internal" href="warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.launch()</span></code></a> must not exceed the
 <code class="docutils literal notranslate"><span class="pre">maxThreadsPerBlock</span></code> value specified here.</p></li>
+<li><p><strong>cluster_dim</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – CUDA Thread Block Cluster size as a 1D CTA count.
+Warp emits CUDA <code class="docutils literal notranslate"><span class="pre">__cluster_dims__(cluster_dim,</span> <span class="pre">1,</span> <span class="pre">1)</span></code> because
+kernels use a 1D hardware launch grid. Must be a positive int &lt;= 16
+(Hopper non-portable cap). Default <code class="docutils literal notranslate"><span class="pre">1</span></code> means no clustering. Only
+effective on devices with compute capability &gt;= 9.0; silently
+ignored on older archs and on CPU. See
+<a class="reference internal" href="warp.get_cuda_max_cluster_dim.html#warp.get_cuda_max_cluster_dim" title="warp.get_cuda_max_cluster_dim"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.get_cuda_max_cluster_dim()</span></code></a>.</p></li>
 <li><p><strong>module</strong> (<a class="reference internal" href="warp.Module.html#warp.Module" title="warp._src.context.Module"><em>Module</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.14)"><em>Literal</em></a><em>[</em><em>'unique'</em><em>] </em><em>| </em><em>str</em><em> | </em><em>None</em>) – The <a class="reference internal" href="warp.Module.html#warp.Module" title="warp._src.context.Module"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp._src.context.Module</span></code></a> to which the
 kernel belongs. Alternatively, if a string <code class="docutils literal notranslate"><span class="pre">&quot;unique&quot;</span></code> is
 provided, the kernel is assigned to a new module named

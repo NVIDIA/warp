@@ -1283,52 +1283,55 @@ element methods, and <a class="reference internal" href="warp_sparse.html#module
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.ScopedPeerAccess.html#warp.ScopedPeerAccess" title="warp.ScopedPeerAccess"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ScopedPeerAccess</span></code></a></p></td>
 <td><p>Context manager to temporarily enable or disable peer access between CUDA devices.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.get_device_allocator.html#warp.get_device_allocator" title="warp.get_device_allocator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_device_allocator</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.get_cuda_max_cluster_dim.html#warp.get_cuda_max_cluster_dim" title="warp.get_cuda_max_cluster_dim"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_cuda_max_cluster_dim</span></code></a></p></td>
+<td><p>Return the maximum <code class="docutils literal notranslate"><span class="pre">cluster_dim</span></code> <em>kernel</em> can launch with on <em>device</em>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.get_device_allocator.html#warp.get_device_allocator" title="warp.get_device_allocator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_device_allocator</span></code></a></p></td>
 <td><p>Get the current effective memory allocator for a device.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.get_mempool_release_threshold.html#warp.get_mempool_release_threshold" title="warp.get_mempool_release_threshold"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_mempool_release_threshold</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.get_mempool_release_threshold.html#warp.get_mempool_release_threshold" title="warp.get_mempool_release_threshold"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_mempool_release_threshold</span></code></a></p></td>
 <td><p>Get the CUDA memory pool release threshold on the device.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.get_mempool_used_mem_current.html#warp.get_mempool_used_mem_current" title="warp.get_mempool_used_mem_current"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_mempool_used_mem_current</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.get_mempool_used_mem_current.html#warp.get_mempool_used_mem_current" title="warp.get_mempool_used_mem_current"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_mempool_used_mem_current</span></code></a></p></td>
 <td><p>Get the amount of memory from the device's memory pool that is currently in use by the application.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.get_mempool_used_mem_high.html#warp.get_mempool_used_mem_high" title="warp.get_mempool_used_mem_high"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_mempool_used_mem_high</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.get_mempool_used_mem_high.html#warp.get_mempool_used_mem_high" title="warp.get_mempool_used_mem_high"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_mempool_used_mem_high</span></code></a></p></td>
 <td><p>Get the application's memory usage high-water mark from the device's CUDA memory pool.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.is_mempool_access_enabled.html#warp.is_mempool_access_enabled" title="warp.is_mempool_access_enabled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_mempool_access_enabled</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.is_mempool_access_enabled.html#warp.is_mempool_access_enabled" title="warp.is_mempool_access_enabled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_mempool_access_enabled</span></code></a></p></td>
 <td><p>Check if <code class="docutils literal notranslate"><span class="pre">peer_device</span></code> can currently access the memory pool of <code class="docutils literal notranslate"><span class="pre">target_device</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.is_mempool_access_supported.html#warp.is_mempool_access_supported" title="warp.is_mempool_access_supported"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_mempool_access_supported</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.is_mempool_access_supported.html#warp.is_mempool_access_supported" title="warp.is_mempool_access_supported"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_mempool_access_supported</span></code></a></p></td>
 <td><p>Check if <code class="docutils literal notranslate"><span class="pre">peer_device</span></code> can directly access the memory pool of <code class="docutils literal notranslate"><span class="pre">target_device</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.is_mempool_enabled.html#warp.is_mempool_enabled" title="warp.is_mempool_enabled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_mempool_enabled</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.is_mempool_enabled.html#warp.is_mempool_enabled" title="warp.is_mempool_enabled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_mempool_enabled</span></code></a></p></td>
 <td><p>Check if CUDA memory pool allocators are enabled on the device.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.is_mempool_supported.html#warp.is_mempool_supported" title="warp.is_mempool_supported"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_mempool_supported</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.is_mempool_supported.html#warp.is_mempool_supported" title="warp.is_mempool_supported"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_mempool_supported</span></code></a></p></td>
 <td><p>Check if CUDA memory pool allocators are available on the device.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.is_peer_access_enabled.html#warp.is_peer_access_enabled" title="warp.is_peer_access_enabled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_peer_access_enabled</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.is_peer_access_enabled.html#warp.is_peer_access_enabled" title="warp.is_peer_access_enabled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_peer_access_enabled</span></code></a></p></td>
 <td><p>Check if <code class="docutils literal notranslate"><span class="pre">peer_device</span></code> can currently access the memory of <code class="docutils literal notranslate"><span class="pre">target_device</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.is_peer_access_supported.html#warp.is_peer_access_supported" title="warp.is_peer_access_supported"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_peer_access_supported</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.is_peer_access_supported.html#warp.is_peer_access_supported" title="warp.is_peer_access_supported"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_peer_access_supported</span></code></a></p></td>
 <td><p>Check if <code class="docutils literal notranslate"><span class="pre">peer_device</span></code> can directly access the memory of <code class="docutils literal notranslate"><span class="pre">target_device</span></code> on this system.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.set_cuda_allocator.html#warp.set_cuda_allocator" title="warp.set_cuda_allocator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_cuda_allocator</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.set_cuda_allocator.html#warp.set_cuda_allocator" title="warp.set_cuda_allocator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_cuda_allocator</span></code></a></p></td>
 <td><p>Set the memory allocator for all CUDA devices.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.set_device_allocator.html#warp.set_device_allocator" title="warp.set_device_allocator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_device_allocator</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.set_device_allocator.html#warp.set_device_allocator" title="warp.set_device_allocator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_device_allocator</span></code></a></p></td>
 <td><p>Set the memory allocator for a specific CUDA device.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.set_mempool_access_enabled.html#warp.set_mempool_access_enabled" title="warp.set_mempool_access_enabled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_mempool_access_enabled</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.set_mempool_access_enabled.html#warp.set_mempool_access_enabled" title="warp.set_mempool_access_enabled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_mempool_access_enabled</span></code></a></p></td>
 <td><p>Enable or disable access from <code class="docutils literal notranslate"><span class="pre">peer_device</span></code> to the memory pool of <code class="docutils literal notranslate"><span class="pre">target_device</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.set_mempool_enabled.html#warp.set_mempool_enabled" title="warp.set_mempool_enabled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_mempool_enabled</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.set_mempool_enabled.html#warp.set_mempool_enabled" title="warp.set_mempool_enabled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_mempool_enabled</span></code></a></p></td>
 <td><p>Enable or disable CUDA memory pool allocators on the device.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.set_mempool_release_threshold.html#warp.set_mempool_release_threshold" title="warp.set_mempool_release_threshold"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_mempool_release_threshold</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.set_mempool_release_threshold.html#warp.set_mempool_release_threshold" title="warp.set_mempool_release_threshold"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_mempool_release_threshold</span></code></a></p></td>
 <td><p>Set the CUDA memory pool release threshold on the device.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.set_peer_access_enabled.html#warp.set_peer_access_enabled" title="warp.set_peer_access_enabled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_peer_access_enabled</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.set_peer_access_enabled.html#warp.set_peer_access_enabled" title="warp.set_peer_access_enabled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_peer_access_enabled</span></code></a></p></td>
 <td><p>Enable or disable direct access from <code class="docutils literal notranslate"><span class="pre">peer_device</span></code> to the memory of <code class="docutils literal notranslate"><span class="pre">target_device</span></code>.</p></td>
 </tr>
 </tbody>

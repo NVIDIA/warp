@@ -111,6 +111,114 @@ one result per block.
     out = wp.zeros(1, dtype=wp.int32, device="cuda")
     wp.launch(reduce_kernel, dim=128, inputs=[arr], outputs=[out], block_dim=128, device="cuda")
 
+.. _thread-block-clusters:
+
+Thread Block Clusters and Distributed Shared Memory
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+`CUDA Thread Block Clusters
+<https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/intro-to-cuda-cpp.html#thread-block-clusters>`_
+group adjacent CTAs into a cluster whose blocks the hardware guarantees to
+co-schedule on a single GPU Processing Cluster (GPC) — a hardware group of SMs
+linked by an on-chip interconnect. That SM-to-SM path unlocks *distributed shared
+memory*: each block can address the shared memory of every other block in its
+cluster. Clusters require compute capability 9.0 (Hopper) or higher.
+
+Set the cluster size with the :ref:`cluster_dim <kernel-cluster-dim>` kernel
+argument. Warp emits the kernel's ``__cluster_dims__`` attribute from that value,
+but the cluster machinery itself — distributed shared memory, cluster barriers,
+and cluster rank queries — is reachable only from native CUDA code, so a
+``@wp.func_native`` snippet is how you use it.
+
+The example below reduces an array with a single cluster of ``CLUSTER_DIM``
+blocks. Each block sums its own slice into shared memory; after a cluster
+barrier, block 0 reaches into every peer block's shared memory through the
+``__cluster_map_shared_rank`` device builtin to form the cluster-wide total. A
+second cluster barrier keeps every block alive until block 0 has finished
+reading, because a block must not exit while its shared memory is still being
+accessed.
+
+.. testcode::
+    :skipif: wp.get_cuda_device_count() == 0 or wp.get_device("cuda:0").arch < 90
+
+    import numpy as np
+    import warp as wp
+
+    CLUSTER_DIM = 4
+    BLOCK_DIM = 32
+
+    snippet = r"""
+        const unsigned int lane = threadIdx.x;
+
+        // Each block reduces its slice into a single shared-memory accumulator.
+        __shared__ int s_partial;
+        if (lane == 0) s_partial = 0;
+        __syncthreads();
+        atomicAdd(&s_partial, value);
+        __syncthreads();
+
+        // Cluster barrier: every block's s_partial is finalized and visible
+        // across the cluster's distributed shared memory.
+        asm volatile("barrier.cluster.arrive;" ::: "memory");
+        asm volatile("barrier.cluster.wait;" ::: "memory");
+
+        unsigned int rank, num_blocks;
+        asm volatile("mov.u32 %0, %%cluster_ctarank;" : "=r"(rank));
+        asm volatile("mov.u32 %0, %%cluster_nctarank;" : "=r"(num_blocks));
+
+        // Block 0 gathers every peer's partial sum via distributed shared memory.
+        if (rank == 0 && lane == 0) {
+            int total = 0;
+            for (unsigned int r = 0; r < num_blocks; ++r) {
+                int *remote = (int *)__cluster_map_shared_rank(&s_partial, r);
+                total += *remote;
+            }
+            out[0] = total;
+        }
+
+        // Second barrier: no block exits (freeing its shared memory) until
+        // block 0 has finished reading every peer's accumulator.
+        asm volatile("barrier.cluster.arrive;" ::: "memory");
+        asm volatile("barrier.cluster.wait;" ::: "memory");
+        """
+
+
+    @wp.func_native(snippet)
+    def cluster_reduce(value: int, out: wp.array[int]):
+        ...
+
+
+    @wp.kernel(cluster_dim=CLUSTER_DIM, enable_backward=False)
+    def cluster_reduce_kernel(values: wp.array[int], out: wp.array[int]):
+        tid = wp.tid()
+        cluster_reduce(values[tid], out)
+
+
+    # One cluster of CLUSTER_DIM blocks: launch exactly CLUSTER_DIM * BLOCK_DIM threads.
+    n = CLUSTER_DIM * BLOCK_DIM
+    values = wp.array(np.arange(n, dtype=np.int32), dtype=wp.int32, device="cuda")
+    out = wp.zeros(1, dtype=wp.int32, device="cuda")
+    wp.launch(
+        cluster_reduce_kernel,
+        dim=n,
+        inputs=[values],
+        outputs=[out],
+        block_dim=BLOCK_DIM,
+        device="cuda",
+    )
+
+    print(int(out.numpy()[0]))
+
+.. testoutput::
+    :skipif: wp.get_cuda_device_count() == 0 or wp.get_device("cuda:0").arch < 90
+
+    8128
+
+The ``"memory"`` clobber on each barrier stops the compiler from reordering
+shared memory accesses across it. ``cluster_dim`` values 2–8 are portable across
+all cluster-capable devices; values 9–16 are non-portable and depend on the GPU,
+so query :func:`warp.get_cuda_max_cluster_dim` before using them.
+
 Inline PTX
 ~~~~~~~~~~
 

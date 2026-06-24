@@ -63,7 +63,7 @@
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="warp.get_mempool_release_threshold" href="warp.get_mempool_release_threshold.html" />
-    <link rel="prev" title="warp.ScopedPeerAccess" href="warp.ScopedPeerAccess.html" />
+    <link rel="prev" title="warp.get_cuda_max_cluster_dim" href="warp.get_cuda_max_cluster_dim.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -496,7 +496,7 @@
 <h1>warp.get_device_allocator<a class="headerlink" href="#warp-get-device-allocator" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.get_device_allocator">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">get_device_allocator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L7251-L7269"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.get_device_allocator" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">get_device_allocator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L7542-L7560"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.get_device_allocator" title="Link to this definition">#</a></dt>
 <dd><p>Get the current effective memory allocator for a device.</p>
 <p>For CUDA devices, returns the custom allocator if one has been set via
 <a class="reference internal" href="warp.set_device_allocator.html#warp.set_device_allocator" title="warp.set_device_allocator"><code class="xref py py-func docutils literal notranslate"><span class="pre">set_device_allocator()</span></code></a> or <a class="reference internal" href="warp.set_cuda_allocator.html#warp.set_cuda_allocator" title="warp.set_cuda_allocator"><code class="xref py py-func docutils literal notranslate"><span class="pre">set_cuda_allocator()</span></code></a>, otherwise
@@ -528,12 +528,12 @@ returns the device’s current built-in allocator.</p>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.ScopedPeerAccess.html"
+       href="warp.get_cuda_max_cluster_dim.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.ScopedPeerAccess</p>
+        <p class="prev-next-title">warp.get_cuda_max_cluster_dim</p>
       </div>
     </a>
     <a class="right-next"
