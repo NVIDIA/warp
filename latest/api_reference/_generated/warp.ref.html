@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.get_cuda_toolkit_version &#8212; Warp 1.15.0.dev0</title>
+    <title>warp.ref &#8212; Warp 1.15.0.dev0</title>
   
   
   
@@ -49,7 +49,7 @@
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.get_cuda_toolkit_version';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.ref';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
@@ -62,8 +62,8 @@
 
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="warp.get_device" href="warp.get_device.html" />
-    <link rel="prev" title="warp.get_cuda_supported_archs" href="warp.get_cuda_supported_archs.html" />
+    <link rel="next" title="warp.bfloat16" href="warp.bfloat16.html" />
+    <link rel="prev" title="warp.Scalar" href="warp.Scalar.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -462,7 +462,7 @@
     
     <li class="breadcrumb-item"><a href="../warp.html" class="nav-link">warp</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.get_cuda_toolkit_version</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.ref</span></li>
   </ul>
 </nav>
 </div>
@@ -475,7 +475,7 @@
         <div class="header-article-item">
 
 <div class="d-flex justify-content-end w-100">
-  <a href="../../_sources/api_reference/_generated/warp.get_cuda_toolkit_version.rst.txt">
+  <a href="../../_sources/api_reference/_generated/warp.ref.rst.txt">
     <i class="fa-solid fa-file-code"></i> View page source
   </a>
 </div>
@@ -492,24 +492,34 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="warp-get-cuda-toolkit-version">
-<h1>warp.get_cuda_toolkit_version<a class="headerlink" href="#warp-get-cuda-toolkit-version" title="Link to this heading">#</a></h1>
-<dl class="py function">
-<dt class="sig sig-object py" id="warp.get_cuda_toolkit_version">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">get_cuda_toolkit_version</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L12883-L12896"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.get_cuda_toolkit_version" title="Link to this definition">#</a></dt>
-<dd><p>Return the CUDA Toolkit version used to build the Warp native library.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>A tuple of <code class="docutils literal notranslate"><span class="pre">(major,</span> <span class="pre">minor)</span></code> version numbers (e.g., <code class="docutils literal notranslate"><span class="pre">(12,</span> <span class="pre">4)</span></code> for CUDA 12.4),
-or <code class="docutils literal notranslate"><span class="pre">None</span></code> if CUDA support is not available.</p>
-</dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a>] | None</p>
-</dd>
-</dl>
-<div class="admonition seealso">
-<p class="admonition-title">See also</p>
-<p><a class="reference internal" href="warp.get_cuda_driver_version.html#warp.get_cuda_driver_version" title="warp.get_cuda_driver_version"><code class="xref py py-func docutils literal notranslate"><span class="pre">get_cuda_driver_version()</span></code></a></p>
+  <section id="warp-ref">
+<h1>warp.ref<a class="headerlink" href="#warp-ref" title="Link to this heading">#</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="warp.ref">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">ref</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L3072-L3090"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.ref" title="Link to this definition">#</a></dt>
+<dd><p>Pass-by-reference parameter annotation: <code class="docutils literal notranslate"><span class="pre">warp.ref[T]</span></code>.</p>
+<p>Annotate a <code class="docutils literal notranslate"><span class="pre">&#64;warp.func</span></code> or <code class="docutils literal notranslate"><span class="pre">&#64;warp.func_native</span></code> parameter as <code class="docutils literal notranslate"><span class="pre">warp.ref[T]</span></code>
+to receive an addressable argument by reference. Mutations to the parameter
+are visible in the caller’s storage without a return value.</p>
+<p>Accepted argument expressions at call sites include local variables,
+reference parameters, array elements, struct fields, and
+vector/matrix/quaternion/transform components. Literals, arithmetic
+temporaries, and function-call results are rejected at compile time.</p>
+<p><code class="docutils literal notranslate"><span class="pre">warp.ref[T]</span></code> is not allowed in <code class="docutils literal notranslate"><span class="pre">&#64;warp.kernel</span></code> signatures; pass addressable
+values into helper functions instead.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.ref.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#warp.ref.__init__" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<p class="rubric">Methods</p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.ref.__init__" title="warp.ref.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>()</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
 </div>
 </dd></dl>
 
@@ -526,20 +536,20 @@ or <code class="docutils literal notranslate"><span class="pre">None</span></cod
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.get_cuda_supported_archs.html"
+       href="warp.Scalar.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.get_cuda_supported_archs</p>
+        <p class="prev-next-title">warp.Scalar</p>
       </div>
     </a>
     <a class="right-next"
-       href="warp.get_device.html"
+       href="warp.bfloat16.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.get_device</p>
+        <p class="prev-next-title">warp.bfloat16</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -564,7 +574,10 @@ or <code class="docutils literal notranslate"><span class="pre">None</span></cod
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.get_cuda_toolkit_version"><code class="docutils literal notranslate"><span class="pre">get_cuda_toolkit_version()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.ref"><code class="docutils literal notranslate"><span class="pre">ref</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.ref.__init__"><code class="docutils literal notranslate"><span class="pre">__init__()</span></code></a></li>
+</ul>
+</li>
 </ul>
   </nav></div>
 
@@ -572,7 +585,7 @@ or <code class="docutils literal notranslate"><span class="pre">None</span></cod
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/_generated/warp.get_cuda_toolkit_version.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/_generated/warp.ref.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

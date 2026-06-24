@@ -37,6 +37,7 @@ Type Annotations
    Float
    Int
    Scalar
+   ref
 
 Data Types
 ----------
@@ -274,6 +275,7 @@ Kernel Programming
    WarpCodegenKeyError
    WarpCodegenTypeError
    WarpCodegenValueError
+   address_of
    func
    func_grad
    func_native

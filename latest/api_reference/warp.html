@@ -537,6 +537,9 @@ element methods, and <a class="reference internal" href="warp_sparse.html#module
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.Scalar.html#warp.Scalar" title="warp.Scalar"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Scalar</span></code></a></p></td>
 <td><p>Type variable.</p></td>
 </tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.ref.html#warp.ref" title="warp.ref"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ref</span></code></a></p></td>
+<td><p>Pass-by-reference parameter annotation: <code class="docutils literal notranslate"><span class="pre">warp.ref[T]</span></code>.</p></td>
+</tr>
 </tbody>
 </table>
 </div>
@@ -1050,34 +1053,37 @@ element methods, and <a class="reference internal" href="warp_sparse.html#module
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.WarpCodegenValueError.html#warp.WarpCodegenValueError" title="warp.WarpCodegenValueError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">WarpCodegenValueError</span></code></a></p></td>
 <td><p>Value error during Warp kernel code generation.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.func.html#warp.func" title="warp.func"><code class="xref py py-obj docutils literal notranslate"><span class="pre">func</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.address_of.html#warp.address_of" title="warp.address_of"><code class="xref py py-obj docutils literal notranslate"><span class="pre">address_of</span></code></a></p></td>
+<td><p>Return the address of an addressable expression as a <code class="docutils literal notranslate"><span class="pre">warp.uint64</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.func.html#warp.func" title="warp.func"><code class="xref py py-obj docutils literal notranslate"><span class="pre">func</span></code></a></p></td>
 <td><p>Decorator to define a Warp function callable from kernels and other Warp functions.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.func_grad.html#warp.func_grad" title="warp.func_grad"><code class="xref py py-obj docutils literal notranslate"><span class="pre">func_grad</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.func_grad.html#warp.func_grad" title="warp.func_grad"><code class="xref py py-obj docutils literal notranslate"><span class="pre">func_grad</span></code></a></p></td>
 <td><p>Decorator to register a custom gradient function for a given forward function.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.func_native.html#warp.func_native" title="warp.func_native"><code class="xref py py-obj docutils literal notranslate"><span class="pre">func_native</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.func_native.html#warp.func_native" title="warp.func_native"><code class="xref py py-obj docutils literal notranslate"><span class="pre">func_native</span></code></a></p></td>
 <td><p>Register a Warp function implemented by a native C++/CUDA snippet.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.func_replay.html#warp.func_replay" title="warp.func_replay"><code class="xref py py-obj docutils literal notranslate"><span class="pre">func_replay</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.func_replay.html#warp.func_replay" title="warp.func_replay"><code class="xref py py-obj docutils literal notranslate"><span class="pre">func_replay</span></code></a></p></td>
 <td><p>Decorator to register a custom replay function for a given forward function.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.grad.html#warp.grad" title="warp.grad"><code class="xref py py-obj docutils literal notranslate"><span class="pre">grad</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.grad.html#warp.grad" title="warp.grad"><code class="xref py py-obj docutils literal notranslate"><span class="pre">grad</span></code></a></p></td>
 <td><p>Return a callable that computes the gradient of the given function.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.kernel_decorator.html#warp.kernel" title="warp.kernel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">kernel</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.kernel_decorator.html#warp.kernel" title="warp.kernel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">kernel</span></code></a></p></td>
 <td><p>Decorator to register a Warp kernel from a Python function.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.map.html#warp.map" title="warp.map"><code class="xref py py-obj docutils literal notranslate"><span class="pre">map</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.map.html#warp.map" title="warp.map"><code class="xref py py-obj docutils literal notranslate"><span class="pre">map</span></code></a></p></td>
 <td><p>Map a function over the elements of one or more arrays.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.overload.html#warp.overload" title="warp.overload"><code class="xref py py-obj docutils literal notranslate"><span class="pre">overload</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.overload.html#warp.overload" title="warp.overload"><code class="xref py py-obj docutils literal notranslate"><span class="pre">overload</span></code></a></p></td>
 <td><p>Overload a generic kernel with the given argument types.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.static.html#warp.static" title="warp.static"><code class="xref py py-obj docutils literal notranslate"><span class="pre">static</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.static.html#warp.static" title="warp.static"><code class="xref py py-obj docutils literal notranslate"><span class="pre">static</span></code></a></p></td>
 <td><p>Evaluate a static expression and replace the expression with its result.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.struct.html#warp.struct" title="warp.struct"><code class="xref py py-obj docutils literal notranslate"><span class="pre">struct</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.struct.html#warp.struct" title="warp.struct"><code class="xref py py-obj docutils literal notranslate"><span class="pre">struct</span></code></a></p></td>
 <td><p>Decorator to define a Warp struct for use in kernels and functions.</p></td>
 </tr>
 </tbody>

@@ -497,6 +497,12 @@
 <section id="added">
 <h3>Added<a class="headerlink" href="#added" title="Link to this heading">#</a></h3>
 <ul class="simple">
+<li><p>Add <code class="docutils literal notranslate"><span class="pre">wp.ref[T]</span></code> parameter annotation for <code class="docutils literal notranslate"><span class="pre">&#64;wp.func</span></code> and <code class="docutils literal notranslate"><span class="pre">&#64;wp.func_native</span></code>, enabling explicit pass-by-reference
+semantics for scalar, vector, matrix, quaternion, and struct types. Mutations to a <code class="docutils literal notranslate"><span class="pre">wp.ref[T]</span></code> parameter are visible
+in the caller’s storage without a return value. Add <code class="docutils literal notranslate"><span class="pre">wp.address_of(expr)</span> <span class="pre">-&gt;</span> <span class="pre">wp.uint64</span></code> for obtaining a raw pointer
+to an addressable expression for use with native snippets, and allow <code class="docutils literal notranslate"><span class="pre">&#64;wp.func_native</span></code> ref-parameter functions to
+provide manual adjoints with <code class="docutils literal notranslate"><span class="pre">adj_snippet</span></code>
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1277">GH-1277</a>).</p></li>
 <li><p>Add mipmap (texture level-of-detail) support to <code class="docutils literal notranslate"><span class="pre">wp.Texture1D</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.Texture2D</span></code>, and <code class="docutils literal notranslate"><span class="pre">wp.Texture3D</span></code> via the new
 <code class="docutils literal notranslate"><span class="pre">num_mip_levels</span></code> and <code class="docutils literal notranslate"><span class="pre">mip_filter_mode</span></code> constructor parameters, and allow <code class="docutils literal notranslate"><span class="pre">wp.texture_sample()</span></code> to accept an optional
 trailing <code class="docutils literal notranslate"><span class="pre">lod</span></code> argument for controlling sampled detail level (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1409">GH-1409</a>).</p></li>

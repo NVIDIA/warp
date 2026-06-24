@@ -765,6 +765,52 @@ types. Struct return values are not supported.</p>
 </pre></div>
 </div>
 </section>
+<section id="pass-by-reference-parameters">
+<h3>Pass-by-reference Parameters<a class="headerlink" href="#pass-by-reference-parameters" title="Link to this heading">#</a></h3>
+<p>Native functions can use <a class="reference internal" href="../api_reference/_generated/warp.ref.html#warp.ref" title="warp.ref"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ref[T]</span></code></a> parameters for scalar,
+vector, matrix, quaternion, or struct values that should be mutated in place.
+Inside the native snippet, a <code class="docutils literal notranslate"><span class="pre">wp.ref[T]</span></code> parameter is visible as a C++/CUDA
+reference named after the Python parameter:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func_native</span><span class="p">(</span><span class="s2">&quot;x = x + 5;&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">add_five</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">ref</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">]):</span>
+    <span class="o">...</span>
+
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">enable_backward</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">add_five_kernel</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">]):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">add_five</span><span class="p">(</span><span class="n">values</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>Call sites must pass an addressable expression, such as a local variable,
+function parameter, array element, struct field, vector or matrix component, or
+nested field rooted at an array element. If the native function is used in a
+tape-recorded computation, provide an <code class="docutils literal notranslate"><span class="pre">adj_snippet</span></code>; adjoint variables for
+<code class="docutils literal notranslate"><span class="pre">wp.ref</span></code> parameters use the same <code class="docutils literal notranslate"><span class="pre">adj_</span></code> prefix and are also snippet-visible
+as references.</p>
+<p>Use <a class="reference internal" href="../api_reference/_generated/warp.address_of.html#warp.address_of" title="warp.address_of"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.address_of(expr)</span></code></a> when a native snippet needs a
+raw pointer to a specific addressable expression instead of a <code class="docutils literal notranslate"><span class="pre">wp.ref[T]</span></code>
+parameter. Use <code class="docutils literal notranslate"><span class="pre">array.ptr</span></code> for the base pointer of an entire array, and use
+<code class="docutils literal notranslate"><span class="pre">wp.address_of(expr)</span></code> for local variables, array elements, components, or
+nested fields such as <code class="docutils literal notranslate"><span class="pre">wp.address_of(v.y)</span></code> and
+<code class="docutils literal notranslate"><span class="pre">wp.address_of(outers[i].inner.value)</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func_native</span><span class="p">(</span><span class="s2">&quot;*(float*)ptr += delta;&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">add_to_ptr</span><span class="p">(</span><span class="n">ptr</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">uint64</span><span class="p">,</span> <span class="n">delta</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">):</span>
+    <span class="o">...</span>
+
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">enable_backward</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">add_to_ptr_kernel</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">]):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">local</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span>
+    <span class="n">add_to_ptr</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">address_of</span><span class="p">(</span><span class="n">local</span><span class="p">),</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">(</span><span class="mf">2.0</span><span class="p">))</span>
+    <span class="n">add_to_ptr</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">address_of</span><span class="p">(</span><span class="n">values</span><span class="p">[</span><span class="n">i</span><span class="p">]),</span> <span class="n">local</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Raw pointer writes performed through native snippets are not automatically
+differentiable by Warp. Keep those kernels forward-only or provide the
+appropriate manual adjoint for the surrounding native operation.</p>
+</section>
 <section id="differentiable-native-functions">
 <h3>Differentiable Native Functions<a class="headerlink" href="#differentiable-native-functions" title="Link to this heading">#</a></h3>
 <p>When a native function participates in a tape-recorded computation, provide an
@@ -943,6 +989,7 @@ compilation.</p></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#thread-block-clusters-and-distributed-shared-memory">Thread Block Clusters and Distributed Shared Memory</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#inline-ptx">Inline PTX</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#returning-values">Returning Values</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pass-by-reference-parameters">Pass-by-reference Parameters</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#differentiable-native-functions">Differentiable Native Functions</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#native-function-limitations">Native Function Limitations</a></li>
 </ul>

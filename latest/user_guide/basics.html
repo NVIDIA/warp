@@ -758,6 +758,28 @@ of <a class="reference internal" href="../language_reference/_generated/warp.tid
     <span class="k">return</span> <span class="n">foos</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
 </pre></div>
 </div>
+<p>Pass-by-reference parameters can be declared on user functions with
+<a class="reference internal" href="../api_reference/_generated/warp.ref.html#warp.ref" title="warp.ref"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ref[T]</span></code></a>. Assigning to a <code class="docutils literal notranslate"><span class="pre">wp.ref</span></code> parameter mutates the
+caller’s storage instead of rebinding a local variable. Calls must pass an
+addressable expression, such as a local variable, function parameter, array
+element, or struct field:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">increment</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">ref</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">]):</span>
+    <span class="n">x</span> <span class="o">+=</span> <span class="mi">1</span>
+
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">enable_backward</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">increment_kernel</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">]):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">increment</span><span class="p">(</span><span class="n">values</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">wp.ref</span></code> parameters are supported on <a class="reference internal" href="../api_reference/_generated/warp.func.html#warp.func" title="warp.func"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.func</span></code></a> and
+<a class="reference internal" href="../api_reference/_generated/warp.func_native.html#warp.func_native" title="warp.func_native"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.func_native</span></code></a> functions, but not on
+<a class="reference internal" href="../api_reference/_generated/warp.kernel_decorator.html#warp.kernel" title="warp.kernel"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.kernel</span></code></a> signatures. User functions with <code class="docutils literal notranslate"><span class="pre">wp.ref</span></code>
+parameters are not automatically differentiable; use <code class="docutils literal notranslate"><span class="pre">enable_backward=False</span></code>
+on the calling kernel or provide a manually differentiated native function when
+the function participates in a tape-recorded computation.</p>
 <p>Functions may also return multiple values:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">multi_valued_func</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">):</span>

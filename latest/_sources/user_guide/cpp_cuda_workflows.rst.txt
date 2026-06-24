@@ -310,6 +310,58 @@ types. Struct return values are not supported.
     def square(x: wp.float32) -> wp.float32:
         ...
 
+Pass-by-reference Parameters
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Native functions can use :class:`wp.ref[T] <warp.ref>` parameters for scalar,
+vector, matrix, quaternion, or struct values that should be mutated in place.
+Inside the native snippet, a ``wp.ref[T]`` parameter is visible as a C++/CUDA
+reference named after the Python parameter:
+
+.. code-block:: python
+
+    @wp.func_native("x = x + 5;")
+    def add_five(x: wp.ref[wp.int32]):
+        ...
+
+
+    @wp.kernel(enable_backward=False)
+    def add_five_kernel(values: wp.array[wp.int32]):
+        i = wp.tid()
+        add_five(values[i])
+
+Call sites must pass an addressable expression, such as a local variable,
+function parameter, array element, struct field, vector or matrix component, or
+nested field rooted at an array element. If the native function is used in a
+tape-recorded computation, provide an ``adj_snippet``; adjoint variables for
+``wp.ref`` parameters use the same ``adj_`` prefix and are also snippet-visible
+as references.
+
+Use :func:`wp.address_of(expr) <warp.address_of>` when a native snippet needs a
+raw pointer to a specific addressable expression instead of a ``wp.ref[T]``
+parameter. Use ``array.ptr`` for the base pointer of an entire array, and use
+``wp.address_of(expr)`` for local variables, array elements, components, or
+nested fields such as ``wp.address_of(v.y)`` and
+``wp.address_of(outers[i].inner.value)``:
+
+.. code-block:: python
+
+    @wp.func_native("*(float*)ptr += delta;")
+    def add_to_ptr(ptr: wp.uint64, delta: wp.float32):
+        ...
+
+
+    @wp.kernel(enable_backward=False)
+    def add_to_ptr_kernel(values: wp.array[wp.float32]):
+        i = wp.tid()
+        local = wp.float32(1.0)
+        add_to_ptr(wp.address_of(local), wp.float32(2.0))
+        add_to_ptr(wp.address_of(values[i]), local)
+
+Raw pointer writes performed through native snippets are not automatically
+differentiable by Warp. Keep those kernels forward-only or provide the
+appropriate manual adjoint for the surrounding native operation.
+
 Differentiable Native Functions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
