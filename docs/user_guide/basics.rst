@@ -303,6 +303,31 @@ Functions can accept arrays and structs as inputs:
     def lookup(foos: wp.array[wp.uint32], index: int):
         return foos[index]
 
+Pass-by-reference parameters can be declared on user functions with
+:class:`wp.ref[T] <warp.ref>`. Assigning to a ``wp.ref`` parameter mutates the
+caller's storage instead of rebinding a local variable. Calls must pass an
+addressable expression, such as a local variable, function parameter, array
+element, or struct field:
+
+.. code-block:: python
+
+    @wp.func
+    def increment(x: wp.ref[wp.int32]):
+        x += 1
+
+
+    @wp.kernel(enable_backward=False)
+    def increment_kernel(values: wp.array[wp.int32]):
+        i = wp.tid()
+        increment(values[i])
+
+``wp.ref`` parameters are supported on :func:`@wp.func <warp.func>` and
+:func:`@wp.func_native <warp.func_native>` functions, but not on
+:func:`@wp.kernel <warp.kernel>` signatures. User functions with ``wp.ref``
+parameters are not automatically differentiable; use ``enable_backward=False``
+on the calling kernel or provide a manually differentiated native function when
+the function participates in a tape-recorded computation.
+
 Functions may also return multiple values:
 
 .. code-block:: python

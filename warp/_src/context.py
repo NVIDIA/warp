@@ -436,6 +436,14 @@ class Function:
 
         return "_".join([name, *types])
 
+    @staticmethod
+    def _get_signature_ignoring_references(f: Function) -> str:
+        return warp._src.types.get_signature(
+            [warp._src.types.strip_reference(t) for t in f.input_types.values()],
+            func_name=f.key,
+            arg_names=list(f.input_types.keys()),
+        )
+
     def add_overload(self, f: Function) -> None:
         if self.is_builtin():
             # todo: note that it is an error to add two functions
@@ -453,6 +461,22 @@ class Function:
             sig = warp._src.types.get_signature(
                 list(f.input_types.values()), func_name=f.key, arg_names=list(f.input_types.keys())
             )
+            sig_without_refs = self._get_signature_ignoring_references(f)
+            existing_overloads = itertools.chain(self.user_overloads.values(), self.user_templates.values())
+            for overload in existing_overloads:
+                existing_sig = warp._src.types.get_signature(
+                    list(overload.input_types.values()),
+                    func_name=overload.key,
+                    arg_names=list(overload.input_types.keys()),
+                )
+                if existing_sig == sig:
+                    continue
+
+                if self._get_signature_ignoring_references(overload) == sig_without_refs:
+                    raise RuntimeError(
+                        f"Cannot overload Warp function '{self.key}' with signatures that differ only by "
+                        "`wp.ref[T]`; use distinct value types or a different function name."
+                    )
 
             # check if generic
             if warp._src.types.is_generic_signature(sig):
@@ -496,7 +520,7 @@ class Function:
                 # add defaults
                 for k, d in f.defaults.items():
                     if k not in overload_annotations:
-                        overload_annotations[k] = warp._src.codegen.strip_reference(warp._src.codegen.get_arg_type(d))
+                        overload_annotations[k] = warp._src.types.strip_reference(warp._src.codegen.get_arg_type(d))
 
                 ovl = shallowcopy(f)
                 ovl.adj = warp._src.codegen.Adjoint(f.func, overload_annotations, source=f.adj.source)
@@ -12170,7 +12194,7 @@ def export_stubs(file):  # pragma: no cover
     # Step 2b: Pre-classify __init__.py lines into imports vs. other content
     # =========================================================================
     # Pattern to match: "from module import name as name" or "from module import name"
-    import_pattern = re.compile(r"from\s+\S+\s+import\s+(\w+)(?:\s+as\s+(\w+))?")
+    import_pattern = re.compile(r"from\s+(\S+)\s+import\s+(\w+)(?:\s+as\s+(\w+))?")
 
     # Types that will have class stubs generated below (skip their imports to avoid duplicates).
     # Uses vector_types from warp._src.types, excluding spatial types which don't get class stubs.
@@ -12204,10 +12228,11 @@ def export_stubs(file):  # pragma: no cover
         is_import = is_top_level and (import_pattern.search(line) or line.startswith("import ") or "import *" in line)
 
         if is_import:
+            import_line = line
             match = import_pattern.search(line)
             if match:
-                original_name = match.group(1)
-                alias_name = match.group(2) if match.group(2) else original_name
+                original_name = match.group(2)
+                alias_name = match.group(3) if match.group(3) else original_name
                 if alias_name in function_conflicts:
                     # Skip this import - we'll generate merged stubs later
                     init_other_lines.append(f"# Skipped: {line.strip()} (merged stubs generated below)")
@@ -12222,7 +12247,7 @@ def export_stubs(file):  # pragma: no cover
                 if alias_name in header_imported_types:
                     # Skip this import - already imported in header for generic class definitions
                     continue
-            init_import_lines.append(line)
+            init_import_lines.append(import_line)
         else:
             init_other_lines.append(line)
 

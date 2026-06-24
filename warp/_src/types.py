@@ -3041,6 +3041,109 @@ def array_ctype_from_interface(interface: dict, dtype=None, owner=None):
     return array_ctype
 
 
+class Reference:
+    """Internal carrier for a pass-by-reference value.
+
+    Used for both public ``wp.ref[T]`` annotations and codegen lvalues such as
+    array elements and struct fields.
+
+    Args:
+        dtype: The referenced value type ``T``.
+    """
+
+    def __init__(self, dtype):
+        self.value_type = dtype
+
+    @property
+    def dtype(self):
+        return self.value_type
+
+    def __repr__(self):
+        name = getattr(self.value_type, "__name__", repr(self.value_type))
+        return f"wp.ref[{name}]"
+
+    def __eq__(self, other):
+        return isinstance(other, Reference) and self.value_type is other.value_type
+
+    def __hash__(self):
+        return hash((Reference, self.value_type))
+
+
+class ref:
+    """Pass-by-reference parameter annotation: ``wp.ref[T]``.
+
+    Annotate a ``@wp.func`` or ``@wp.func_native`` parameter as ``wp.ref[T]``
+    to receive an addressable argument by reference. Mutations to the parameter
+    are visible in the caller's storage without a return value.
+
+    Accepted argument expressions at call sites include local variables,
+    reference parameters, array elements, struct fields, and
+    vector/matrix/quaternion/transform components. Literals, arithmetic
+    temporaries, and function-call results are rejected at compile time.
+
+    ``wp.ref[T]`` is not allowed in ``@wp.kernel`` signatures; pass addressable
+    values into helper functions instead.
+    """
+
+    def __class_getitem__(cls, dtype):
+        return Reference(dtype)
+
+
+def is_reference(t) -> builtins.bool:
+    """Return ``True`` if *t* is a ``Reference`` instance."""
+    return isinstance(t, Reference)
+
+
+def strip_reference(arg: Any) -> Any:
+    if isinstance(arg, str):
+        return arg
+
+    if is_reference(arg):
+        return arg.value_type
+
+    if isinstance(arg, Sequence):
+        return tuple(strip_reference(x) for x in arg)
+
+    return arg
+
+
+def address_of(expr):
+    """Return the address of an addressable expression as a ``wp.uint64``.
+
+    Only valid inside ``@wp.kernel`` and ``@wp.func`` bodies.  The codegen
+    intercepts this call and emits a pointer cast; it is not a normal Python
+    function and cannot be called from regular Python code.
+
+    Accepted expressions: local variables, array elements (``arr[i]``), struct
+    fields (``s.field``), and ``wp.ref[T]`` parameters.  Literals and
+    function-call results are rejected with a ``WarpCodegenError`` at compile
+    time.
+
+    Use ``array.ptr`` for the base pointer of an entire ``wp.array``.  Use
+    ``wp.address_of(arr[i])`` when the pointer to a specific element is needed.
+
+    Returns:
+        wp.uint64: The address of the expression's storage.
+
+    Raises:
+        RuntimeError: Always, when called from regular Python (outside a kernel
+                      or func body).
+
+    Example::
+
+        @wp.func_native("*(int32_t*)ptr = 42;")
+        def set_via_ptr(ptr: wp.uint64): ...
+
+
+        @wp.kernel(enable_backward=False)
+        def my_kernel(result: wp.array[wp.int32]):
+            val = wp.int32(0)
+            set_via_ptr(wp.address_of(val))
+            result[0] = val  # writes 42
+    """
+    raise RuntimeError("wp.address_of() can only be called inside a @wp.kernel or @wp.func body")
+
+
 class array(Array[DType, NDim]):
     """A fixed-size multi-dimensional array containing values of the same type.
 
@@ -7285,6 +7388,8 @@ def get_type_code(arg_type) -> str:
         return "c"
     elif arg_type is Ellipsis:
         return "?"
+    elif isinstance(arg_type, Reference):
+        return f"ref{get_type_code(arg_type.dtype)}"
     else:
         raise TypeError(f"Unrecognized type '{arg_type}'")
 

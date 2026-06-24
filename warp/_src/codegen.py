@@ -20,7 +20,8 @@ import threading
 import types
 from collections import deque
 from collections.abc import Callable, Mapping, Sequence
-from typing import Any, ClassVar, get_args, get_origin
+from dataclasses import dataclass
+from typing import Any, ClassVar, Literal, get_args, get_origin
 
 import warp.config
 from warp._src.logger import log_debug, log_warning
@@ -698,28 +699,6 @@ class Struct:
         return instance
 
 
-class Reference:
-    def __init__(self, value_type):
-        self.value_type = value_type
-
-
-def is_reference(type: Any) -> builtins.bool:
-    return isinstance(type, Reference)
-
-
-def strip_reference(arg: Any) -> Any:
-    if isinstance(arg, str):
-        return arg
-
-    if is_reference(arg):
-        return arg.value_type
-
-    if isinstance(arg, Sequence):
-        return tuple(strip_reference(x) for x in arg)
-
-    return arg
-
-
 def compute_type_str(base_name, template_params):
     if not template_params:
         return base_name
@@ -744,6 +723,138 @@ def compute_type_str(base_name, template_params):
         return p.__name__
 
     return f"{base_name}<{', '.join(map(param2str, template_params))}>"
+
+
+@dataclass(frozen=True)
+class _LValueStep:
+    """One access step from an addressable root to a nested lvalue."""
+
+    kind: Literal["field", "array", "view", "index"]
+    payload: str | tuple[Var, ...]
+    pointer_cast: str = ""
+    adjoint_pointer_cast: str = ""
+
+
+@dataclass(frozen=True)
+class _LValueOrigin:
+    """A recursive path from an addressable root to a ``Reference(T)`` value."""
+
+    root: Var
+    root_is_ref_parameter: bool = False
+    steps: tuple[_LValueStep, ...] = ()
+
+    @classmethod
+    def from_ref_parameter(cls, parameter: Var) -> _LValueOrigin:
+        return cls(parameter, root_is_ref_parameter=True)
+
+    @classmethod
+    def from_local(cls, local: Var) -> _LValueOrigin:
+        return cls(local)
+
+    def extend(self, step: _LValueStep) -> _LValueOrigin:
+        return _LValueOrigin(
+            self.root,
+            root_is_ref_parameter=self.root_is_ref_parameter,
+            steps=(*self.steps, step),
+        )
+
+    def extend_field(
+        self,
+        field_label: str,
+        pointer_cast: str = "",
+        adjoint_pointer_cast: str = "",
+    ) -> _LValueOrigin:
+        return self.extend(
+            _LValueStep(
+                "field",
+                field_label,
+                pointer_cast=pointer_cast,
+                adjoint_pointer_cast=adjoint_pointer_cast,
+            )
+        )
+
+    def extend_array(self, indices: Sequence[Var]) -> _LValueOrigin:
+        return self.extend(_LValueStep("array", tuple(indices)))
+
+    def extend_view(self, indices: Sequence[Var]) -> _LValueOrigin:
+        return self.extend(_LValueStep("view", tuple(indices)))
+
+    def extend_index(self, indices: Var | Sequence[Var]) -> _LValueOrigin:
+        if isinstance(indices, Var):
+            indices = (indices,)
+        return self.extend(_LValueStep("index", tuple(indices)))
+
+    @staticmethod
+    def _emit_indices(step: _LValueStep) -> str:
+        assert isinstance(step.payload, tuple)
+        return ", ".join(x.emit() for x in step.payload)
+
+    @classmethod
+    def _emit_step_lvalue(cls, base_expr: str, step: _LValueStep) -> str:
+        if step.kind == "field":
+            return f"({base_expr}).{step.payload}"
+        if step.kind == "array":
+            return f"(*wp::address({base_expr}, {cls._emit_indices(step)}))"
+        if step.kind == "view":
+            return f"wp::view({base_expr}, {cls._emit_indices(step)})"
+        if step.kind == "index":
+            return f"(*wp::index({base_expr}, {cls._emit_indices(step)}))"
+        raise WarpCodegenError(f"Unsupported reference lvalue access kind: {step.kind}")
+
+    @classmethod
+    def _emit_step_pointer(cls, base_expr: str, step: _LValueStep, adjoint: bool = False) -> str:
+        pointer_cast = step.adjoint_pointer_cast if adjoint else step.pointer_cast
+        if step.kind == "array":
+            return f"{pointer_cast}wp::address({base_expr}, {cls._emit_indices(step)})"
+        if step.kind == "index":
+            return f"{pointer_cast}wp::index({base_expr}, {cls._emit_indices(step)})"
+        return f"{pointer_cast}&({cls._emit_step_lvalue(base_expr, step)})"
+
+    def emit_lvalue(self, adjoint: bool = False) -> str:
+        if self.root_is_ref_parameter:
+            root_expr = self.root.emit("adj") if adjoint else self.root.emit()
+            expr = f"*({root_expr})"
+        else:
+            expr = self.root.emit("adj" if adjoint else "var")
+
+        for step in self.steps:
+            expr = self._emit_step_lvalue(expr, step)
+
+        return expr
+
+    @classmethod
+    def _emit_materialized_view(cls, adj, prelude: list[str], base_expr: str, step: _LValueStep) -> str:
+        name = f"_wp_ref_view_{adj.label_count}"
+        adj.label_count += 1
+        prelude.append(f"auto {name} = {cls._emit_step_lvalue(base_expr, step)};")
+        return name
+
+    def emit_pointer(self, adjoint: bool = False, adj=None, prelude: list[str] | None = None) -> str:
+        if not self.steps:
+            if self.root_is_ref_parameter:
+                # Root is already a pointer — return it directly.
+                root_expr = self.root.emit("adj") if adjoint else self.root.emit()
+                return root_expr
+            return f"&({self.emit_lvalue(adjoint)})"
+
+        # Walk all but the last step as lvalue expressions, then let the
+        # terminal step emit its pointer (avoids &(*ptr) for array steps).
+        if self.root_is_ref_parameter:
+            root_expr = self.root.emit("adj") if adjoint else self.root.emit()
+            expr = f"*({root_expr})"
+        else:
+            expr = self.root.emit("adj" if adjoint else "var")
+
+        for step in self.steps[:-1]:
+            if prelude is not None and step.kind == "view":
+                expr = self._emit_materialized_view(adj, prelude, expr, step)
+            else:
+                expr = self._emit_step_lvalue(expr, step)
+
+        return self._emit_step_pointer(expr, self.steps[-1], adjoint=adjoint)
+
+    def emit_adjoint_pointer(self, adj, var: Var, prelude: list[str] | None = None) -> str:
+        return self.emit_pointer(adjoint=True, adj=adj, prelude=prelude)
 
 
 class Var:
@@ -777,6 +888,10 @@ class Var:
 
         # used to associate a view array Var with its parent array Var
         self.parent = None
+
+        # For Reference(T) vars, records the lvalue provenance used to derive
+        # the adjoint storage pointer on demand.
+        self.ref_origin: _LValueOrigin | None = None
 
         # Used to associate the variable with the Python statement that resulted in it being created.
         self.relative_lineno = relative_lineno
@@ -946,18 +1061,21 @@ def func_match_args(func, arg_types, kwarg_types):
 
         bound_arg_type_stripped = strip_reference(bound_arg_type)
 
+        # Strip Reference(T) from the parameter so that an argument of type T matches.
+        param_type = strip_reference(func_arg_type)
+
         # Handle array polymorphism (e.g., passing a fixed array to a function taking an array).
-        func_concrete = concrete_array_type(func_arg_type)
+        func_concrete = concrete_array_type(param_type)
         bound_concrete = concrete_array_type(bound_arg_type_stripped)
         if (
-            is_array(func_arg_type)
+            is_array(param_type)
             and (issubclass(func_concrete, bound_concrete) or issubclass(bound_concrete, func_concrete))
-            and types_equal_generic(func_arg_type.dtype, bound_arg_type_stripped.dtype, match_generic=True)
+            and types_equal_generic(param_type.dtype, bound_arg_type_stripped.dtype, match_generic=True)
         ):
             continue
 
         # check arg type matches input variable type
-        if not types_equal_generic(func_arg_type, bound_arg_type_stripped):
+        if not types_equal_generic(param_type, bound_arg_type_stripped):
             return False
 
     return True
@@ -1153,6 +1271,10 @@ class Adjoint:
 
         adj.args = []
         adj.symbols = {}
+        # Names of parameters declared as wp.ref[T]. These are Reference(T) vars in
+        # both adj.args and adj.symbols; generated C++ treats them as pointer
+        # IR while Python-level semantics expose pass-by-reference.
+        adj.ref_params: dict[str, Var] = {}
 
         for name, type in adj.arg_types.items():
             # skip return hint
@@ -1163,9 +1285,16 @@ class Adjoint:
             arg = Var(name, type, requires_grad=False)
             adj.args.append(arg)
 
-            # pre-populate symbol dictionary with function argument names
-            # this is to avoid registering false references to overshadowed modules
-            adj.symbols[name] = arg
+            if is_reference(type):
+                adj.symbols[name] = arg
+                adj.ref_params[name] = arg
+                arg.ref_origin = _LValueOrigin.from_ref_parameter(arg)
+            else:
+                if is_array(type):
+                    arg.ref_origin = _LValueOrigin.from_local(arg)
+                # pre-populate symbol dictionary with function argument names
+                # this is to avoid registering false references to overshadowed modules
+                adj.symbols[name] = arg
 
         # Indicates whether there are unresolved static expressions in the function.
         # These stem from wp.static() expressions that could not be evaluated at declaration time.
@@ -1503,7 +1632,7 @@ class Adjoint:
                 else:
                     arg_strs.append(f"{a.namespace}{prefix}_{a.native_func}")
             elif is_reference(a.type):
-                arg_strs.append(f"{prefix}_{a}")
+                arg_strs.append(a.emit(prefix))
             elif isinstance(a, Var):
                 arg_strs.append(a.emit(prefix))
             else:
@@ -1754,7 +1883,106 @@ class Adjoint:
             f"Couldn't find function overload for '{func.key}' that matched inputs with types: [{', '.join(arg_type_reprs)}]"
         )
 
-    def add_call(adj, func, args, kwargs, type_args, min_outputs=None):
+    @staticmethod
+    def has_manual_ref_adjoint(func):
+        if func.custom_grad_func is not None:
+            return True
+
+        return func.native_snippet is not None and func.adj_native_snippet is not None
+
+    def emit_ref_adjoint_pointer(adj, var, prelude: list[str] | None = None):
+        if var.ref_origin is None:
+            raise WarpCodegenError(
+                f"Internal error: missing adjoint storage expression for reference argument '{var.label}'"
+            )
+
+        return var.ref_origin.emit_adjoint_pointer(adj, var, prelude=prelude)
+
+    def reference_origin_for_var(adj, var):
+        """Return the lvalue origin for *var*, or ``None`` if it is not addressable.
+
+        For Reference(T) vars the origin is stored directly on the var.
+        For value-typed vars:
+        - Named locals (in adj.symbols) are copies; their lvalue is their own
+          storage regardless of any ref_origin inherited from the expression
+          they were initialised from.
+        - Anonymous temporaries propagate ref_origin (enabling chained access
+          like ``arr[i].vec.y`` where intermediate results are never named).
+        """
+        if not isinstance(var, Var):
+            return None
+
+        if is_reference(var.type):
+            return var.ref_origin  # Reference: stored origin (may be None)
+
+        # Array-typed vars are descriptors, so named aliases and views keep
+        # the provenance of the array storage they reference.
+        if is_array(var.type) and var.ref_origin is not None:
+            return var.ref_origin
+
+        # Value-typed: named locals are copies — address their own storage.
+        for symbol in adj.symbols.values():
+            if symbol is var:
+                return _LValueOrigin.from_local(var)
+
+        # Anonymous temp: propagate ref_origin for chaining (may be None).
+        return var.ref_origin
+
+    def emit_addressable_reference(adj, node, var=None, expected_type=None, purpose="reference argument"):
+        _err = (
+            f"{purpose} requires an addressable expression "
+            "(local variable, array element, struct field, or wp.ref[T] parameter)"
+        )
+
+        if node is None and var is None:
+            raise WarpCodegenError(_err)
+
+        if var is None:
+            if not isinstance(node, (ast.Name, ast.Subscript, ast.Attribute)):
+                raise WarpCodegenError(_err)
+            var = adj.eval(node)
+
+        if not isinstance(var, Var):
+            raise WarpCodegenError(_err)
+
+        if isinstance(node, ast.Name) and var.constant is not None:
+            constructor = type_repr(var.type)
+            if var.type in scalar_types:
+                constructor = f"wp.{constructor}"
+            raise WarpCodegenError(
+                f"Error taking a mutable reference to constant local '{node.id}', use the following syntax: "
+                f"{node.id} = {constructor}({var.constant!r}) to declare a dynamic variable"
+            )
+
+        if is_reference(var.type):
+            # Already a Reference(T): struct fields, array elements, ref params.
+            if var.ref_origin is None:
+                raise WarpCodegenError(_err)
+            ref_var = var
+        elif var.ref_origin is not None and not isinstance(node, ast.Name):
+            # Value-typed SSA with a traced lvalue origin from a direct expression
+            # (ast.Attribute or ast.Subscript). Named local bindings (ast.Name) are
+            # copies — their storage is addressed via Branch 3, not through the origin.
+            ref_var = Var(var.ref_origin.emit_pointer(), Reference(var.type), prefix=False)
+            ref_var.ref_origin = var.ref_origin
+        elif isinstance(node, ast.Name):
+            # Plain value-typed local variable (including named bindings of extracted
+            # components): var came from adj.symbols[node.id] and its storage is
+            # directly addressable. Named variables are copies, never aliases.
+            ref_origin = _LValueOrigin.from_local(var)
+            ref_var = Var(ref_origin.emit_pointer(), Reference(var.type), prefix=False)
+            ref_var.ref_origin = ref_origin
+        else:
+            raise WarpCodegenError(_err)
+
+        if expected_type is not None and not types_equal(ref_var.type.value_type, expected_type.value_type):
+            raise WarpCodegenTypeError(
+                f"{purpose} expects {type_repr(expected_type.value_type)}, got {type_repr(ref_var.type.value_type)}"
+            )
+
+        return ref_var
+
+    def add_call(adj, func, args, kwargs, type_args, min_outputs=None, arg_nodes=None, kwarg_nodes=None):
         # Extract the types and values passed as arguments to the function call.
         arg_types = tuple(get_arg_type(x) for x in args)
         kwarg_types = {k: get_arg_type(v) for k, v in kwargs.items()}
@@ -1765,6 +1993,10 @@ class Adjoint:
         # Bind the positional and keyword arguments to the function's signature
         # in order to process them as Python does it.
         bound_args: inspect.BoundArguments = func.signature.bind(*args, **kwargs)
+        if arg_nodes is not None or kwarg_nodes is not None:
+            bound_arg_nodes = func.signature.bind(*(arg_nodes or ()), **(kwarg_nodes or {})).arguments
+        else:
+            bound_arg_nodes = {}
 
         # Type args are the "compile time" argument values we get from codegen.
         # For example, when calling `wp.vec3f(...)` from within a kernel,
@@ -1802,6 +2034,7 @@ class Adjoint:
             apply_defaults(bound_args, default_vars)
 
         bound_args = bound_args.arguments
+        bound_arg_names = tuple(bound_args.keys())
 
         # Constant precision preservation: when calling a 64-bit scalar type
         # constructor with a single compile-time constant argument, emit
@@ -1913,12 +2146,37 @@ class Adjoint:
         func_name = compute_type_str(func.native_func, template_args)
         use_initializer_list = func.initializer_list_func(bound_args, return_type)
 
+        # For user functions, check which parameters are wp.ref[T] / Reference(T)
+        # so we can pass pointer-shaped IR through without creating copies.
+        parameter_types = list(func.input_types.values()) if not func.is_builtin() else []
+        func_has_ref_params = any(is_reference(t) for t in parameter_types)
+
         fwd_args = []
-        for func_arg in func_args:
-            if not isinstance(func_arg, (Reference, warp._src.context.Function)):
+        reverse_adj_args = []
+        reverse_prelude = []
+        for i, func_arg in enumerate(func_args):
+            parameter_type = parameter_types[i] if i < len(parameter_types) else None
+            parameter_is_ref = is_reference(parameter_type)
+
+            if parameter_is_ref:
+                arg_node = bound_arg_nodes.get(bound_arg_names[i]) if i < len(bound_arg_names) else None
+                func_arg_var = adj.emit_addressable_reference(
+                    arg_node,
+                    var=func_arg,
+                    expected_type=parameter_type,
+                    purpose=f"wp.ref[{type_repr(parameter_type.value_type)}] parameter",
+                )
+                reverse_arg_var = Var(
+                    adj.emit_ref_adjoint_pointer(func_arg_var, prelude=reverse_prelude),
+                    parameter_type,
+                    prefix=False,
+                )
+            elif not isinstance(func_arg, (Reference, warp._src.context.Function)):
                 func_arg_var = adj.load(func_arg)
+                reverse_arg_var = strip_reference(func_arg)
             else:
                 func_arg_var = func_arg
+                reverse_arg_var = strip_reference(func_arg)
 
             # if the argument is a function (and not a builtin), then build it recursively
             if isinstance(func_arg_var, warp._src.context.Function) and not func_arg_var.is_builtin():
@@ -1927,7 +2185,11 @@ class Adjoint:
 
                 adj.builder.build_function(func_arg_var)
 
-            fwd_args.append(strip_reference(func_arg_var))
+            if parameter_is_ref:
+                fwd_args.append(func_arg_var)
+            else:
+                fwd_args.append(strip_reference(func_arg_var))
+            reverse_adj_args.append(reverse_arg_var)
 
         if return_type is None:
             # handles expression (zero output) functions, e.g.: void do_something();
@@ -1967,7 +2229,15 @@ class Adjoint:
         )
 
         if func.is_differentiable and func_args and not skip_reverse and not has_nondifferentiable_callable_arg:
-            adj_args = tuple(strip_reference(x) for x in func_args)
+            # Ref-param functions are not automatically differentiable: a silent
+            # skip would produce wrong gradients, so raise instead.
+            if func_has_ref_params and adj.used_by_backward_kernel and not adj.has_manual_ref_adjoint(func):
+                raise WarpCodegenError(
+                    f"Cannot call '{func.key}' with wp.ref[T] parameters from a backward-enabled "
+                    "kernel. Use enable_backward=False on the kernel, or switch to @wp.func_native "
+                    "with adj_snippet for a manually written adjoint."
+                )
+            adj_args = tuple(reverse_adj_args)
             reverse_has_output_args = (
                 func.require_original_output_arg or len(output_list) > 1
             ) and func.custom_grad_func is None
@@ -1986,6 +2256,8 @@ class Adjoint:
                     adj_func_name = func.native_func
                 reverse_call = f"{func.namespace}adj_{adj_func_name}({arg_str});"
                 adj.add_reverse(reverse_call)
+                for statement in reversed(reverse_prelude):
+                    adj.add_reverse(statement)
 
         # update our smem roofline requirements based on any
         # shared memory required by the dependent function call
@@ -2619,16 +2891,25 @@ class Adjoint:
             # reading a vector or quaternion component
             if type_is_vector(aggregate_type) or type_is_quaternion(aggregate_type):
                 index = adj.vector_component_index(node.attr, aggregate_type)
+                out = adj.add_builtin_call("extract", [aggregate, index])
 
-                return adj.add_builtin_call("extract", [aggregate, index])
+                if origin := adj.reference_origin_for_var(aggregate):
+                    out.ref_origin = origin.extend_index(index)
+
+                return out
 
             elif type_is_transformation(aggregate_type):
                 component = adj.transform_component(node.attr)
 
                 if component == "p":
-                    return adj.add_builtin_call("transform_get_translation", [aggregate])
+                    out = adj.add_builtin_call("transform_get_translation", [aggregate])
                 else:
-                    return adj.add_builtin_call("transform_get_rotation", [aggregate])
+                    out = adj.add_builtin_call("transform_get_rotation", [aggregate])
+
+                if origin := adj.reference_origin_for_var(aggregate):
+                    out.ref_origin = origin.extend_field(component)
+
+                return out
 
             else:
                 attr_var = aggregate_type.vars[node.attr]
@@ -2644,8 +2925,19 @@ class Adjoint:
                     attr_type = Reference(attr_var.type)
 
                 attr = adj.add_var(attr_type)
+                # Array descriptor fields, such as ``shape``, must be taken from
+                # the descriptor Var itself; replaying an origin may reconstruct
+                # an rvalue view like ``wp::view(...).shape``.
+                origin = None if is_array(aggregate_type) else adj.reference_origin_for_var(aggregate)
 
-                if is_reference(aggregate.type):
+                if origin is not None:
+                    attr.ref_origin = origin.extend_field(
+                        attr_var.label,
+                        pointer_cast=cast,
+                        adjoint_pointer_cast=adj_cast,
+                    )
+                    adj.add_forward(f"{attr.emit()} = {attr.ref_origin.emit_pointer()};")
+                elif is_reference(aggregate.type):
                     adj.add_forward(f"{attr.emit()} = {cast}&({aggregate.emit()}->{attr_var.label});")
                 else:
                     adj.add_forward(f"{attr.emit()} = {cast}&({aggregate.emit()}.{attr_var.label});")
@@ -3122,6 +3414,21 @@ class Adjoint:
 
         return elements
 
+    def emit_address_of(adj, node):
+        """Handle wp.address_of(expr) -> wp.uint64 as a codegen special form."""
+        if len(node.args) != 1 or node.keywords:
+            raise WarpCodegenError("wp.address_of() takes exactly one positional argument")
+
+        arg_node = node.args[0]
+        var = adj.emit_addressable_reference(arg_node, purpose="wp.address_of()")
+
+        ctype_uint64 = Var.type_to_ctype(warp.uint64)  # "wp::uint64"
+        addr_expr = f"({ctype_uint64})({var.emit()})"
+
+        result = adj.add_var(warp.uint64)
+        adj.add_forward(f"{result.emit()} = {addr_expr};")
+        return result
+
     def emit_Call(adj, node):
         adj.check_tid_in_func_error(node)
 
@@ -3134,6 +3441,11 @@ class Adjoint:
             func, path = adj.resolve_static_expression(node.func)
         if func is None:
             func = adj.eval(node.func)
+
+        # wp.address_of() is a codegen-only special form; intercept it here
+        # regardless of how it was resolved (via module path or direct ref).
+        if func is warp.address_of:
+            return adj.emit_address_of(node)
 
         if adj.is_static_expression(func):
             # try to evaluate wp.static() expressions
@@ -3233,18 +3545,30 @@ class Adjoint:
 
         # Evaluate positional arguments.
         args = []
+        arg_nodes = []
         for x in node.args:
             if isinstance(x, ast.Starred):
                 # Handle starred expressions by unpacking them into multiple arguments.
                 unpacked = adj.unpack_starred(x)
                 args.extend(unpacked)
+                arg_nodes.extend([None] * len(unpacked))
             else:
                 args.append(adj.resolve_arg(x))
+                arg_nodes.append(x)
 
         # Evaluate keyword arguments.
         kwargs = {x.arg: adj.resolve_arg(x.value) for x in node.keywords}
+        kwarg_nodes = {x.arg: x.value for x in node.keywords}
 
-        out = adj.add_call(func, args, kwargs, type_args, min_outputs=min_outputs)
+        out = adj.add_call(
+            func,
+            args,
+            kwargs,
+            type_args,
+            min_outputs=min_outputs,
+            arg_nodes=arg_nodes,
+            kwarg_nodes=kwarg_nodes,
+        )
 
         if adj.builder_options.get("verify_autograd_array_access", False):
             # Extract the types and values passed as arguments to the function call.
@@ -3297,6 +3621,8 @@ class Adjoint:
             ):
                 # handles array loads (where each dimension has an index specified)
                 out = adj.add_builtin_call("address", [target, *indices])
+                if origin := adj.reference_origin_for_var(target):
+                    out.ref_origin = origin.extend_array(indices)
 
                 if adj.builder_options.get("verify_autograd_array_access", False):
                     target.mark_read()
@@ -3319,6 +3645,8 @@ class Adjoint:
 
                 # handles array views (fewer indices than dimensions)
                 out = adj.add_builtin_call("view", [target, *indices])
+                if origin := adj.reference_origin_for_var(target):
+                    out.ref_origin = origin.extend_view(indices)
 
                 if adj.builder_options.get("verify_autograd_array_access", False):
                     # store reference to target Var to propagate downstream read/write state back to root arg Var
@@ -3343,6 +3671,20 @@ class Adjoint:
         else:
             # handles non-array type indexing, e.g: vec3, mat33, etc
             out = adj.add_builtin_call("extract", [target, *indices])
+            if origin := adj.reference_origin_for_var(target):
+                index_types_are_int = all(warp._src.types.type_is_int(strip_reference(x.type)) for x in indices)
+                if type_is_matrix(target_type) and len(indices) in (1, 2) and index_types_are_int:
+                    out.ref_origin = origin.extend_index(indices)
+                elif (
+                    (
+                        type_is_vector(target_type)
+                        or type_is_quaternion(target_type)
+                        or type_is_transformation(target_type)
+                    )
+                    and len(indices) == 1
+                    and index_types_are_int
+                ):
+                    out.ref_origin = origin.extend_index(indices[0])
 
         return out
 
@@ -3514,6 +3856,21 @@ class Adjoint:
             # symbol name
             name = lhs.id
 
+            # If this name is a wp.ref[T] parameter, emit a direct mutation
+            # of the referenced storage rather than creating a new SSA variable.
+            if name in adj.ref_params:
+                ref_var = adj.ref_params[name]
+                rhs = adj.load(rhs)
+                # Type-check: rhs must be T (the referent type).
+                rhs_type = rhs.type if isinstance(rhs, Var) else None
+                if rhs_type is not None and not types_equal(rhs_type, ref_var.type.value_type):
+                    raise WarpCodegenTypeError(
+                        f"Error, assigning to ref parameter '{name}' ({ref_var.type.value_type}) "
+                        f"with value of different type ({rhs_type})"
+                    )
+                adj.add_forward(f"*{ref_var.emit()} = {rhs.emit()};")
+                return
+
             # handle GradWrapper specially - just store it in symbols for later use
             # this allows patterns like: func_handle = warp.grad(square); func_handle(x)
             if isinstance(rhs, warp._src.context.GradWrapper):
@@ -3568,6 +3925,9 @@ class Adjoint:
                 out = adj.add_builtin_call("copy", [rhs])
             else:
                 out = rhs
+
+            if isinstance(out, Var) and is_array(out.type):
+                out.ref_origin = getattr(rhs, "ref_origin", None)
 
             # update symbol map (assumes lhs is a Name node)
             adj.symbols[name] = out
@@ -4043,26 +4403,45 @@ class Adjoint:
             # Non-inplace: produces a new value, rebind the symbol.
             # Check for user-defined operator overloads first (same as emit_BinOp).
             op_name = builtin_operators[type(node.op)]
+
+            def store_ref_param_result(result):
+                ref_var = adj.ref_params[lhs.id]
+                if not types_equal(result.type, ref_var.type.value_type):
+                    raise WarpCodegenTypeError(
+                        f"Error, augmented assignment to ref parameter `{lhs.id}` ({ref_var.type.value_type}) "
+                        f"produces different type ({result.type})"
+                    )
+                adj.add_forward(f"*{ref_var.emit()} = {result.emit()};")
+
             try:
                 user_func = adj.resolve_external_reference(op_name)
                 if isinstance(user_func, warp._src.context.Function):
                     result = adj.add_call(user_func, (target, rhs), {}, {})
-                    adj.symbols[lhs.id] = result
-                    return
             except WarpCodegenError:
                 pass
+            else:
+                if isinstance(user_func, warp._src.context.Function):
+                    if lhs.id in adj.ref_params:
+                        store_ref_param_result(result)
+                    else:
+                        adj.symbols[lhs.id] = result
+                    return
 
             result = adj.add_builtin_call(op_name, [target, rhs])
 
-            # Validate type consistency (same as emit_Assign for Name targets).
-            if lhs.id in adj.symbols:
-                if not types_equal(strip_reference(result.type), adj.symbols[lhs.id].type):
-                    raise WarpCodegenTypeError(
-                        f"Error, augmented assignment to `{lhs.id}` ({adj.symbols[lhs.id].type}) "
-                        f"produces different type ({result.type})"
-                    )
+            if lhs.id in adj.ref_params:
+                # Write the computed result back into the referenced storage.
+                store_ref_param_result(result)
+            else:
+                # Validate type consistency (same as emit_Assign for Name targets).
+                if lhs.id in adj.symbols:
+                    if not types_equal(strip_reference(result.type), adj.symbols[lhs.id].type):
+                        raise WarpCodegenTypeError(
+                            f"Error, augmented assignment to `{lhs.id}` ({adj.symbols[lhs.id].type}) "
+                            f"produces different type ({result.type})"
+                        )
 
-            adj.symbols[lhs.id] = result
+                adj.symbols[lhs.id] = result
             return
 
         # Evaluate RHS once for non-Name targets.
@@ -4084,7 +4463,10 @@ class Adjoint:
             target_type = strip_reference(target.type)
 
             with adj.suppress_read_tracking():
-                if is_array(target_type):
+                if is_reference(target.type):
+                    current_ref = adj.add_builtin_call("indexref", [target, *indices])
+                    current = adj.load(current_ref)
+                elif is_array(target_type):
                     current = adj.add_builtin_call("address", [target, *indices])
                 elif is_tile(target_type):
                     current = adj.add_builtin_call("tile_extract", [target, *indices])
@@ -4185,6 +4567,10 @@ class Adjoint:
                 or type_is_matrix(target_type)
                 or type_is_transformation(target_type)
             ):
+                if is_reference(target.type):
+                    augassign_subscript(target, indices)
+                    return
+
                 if isinstance(node.op, ast.Add):
                     adj.add_builtin_call("add_inplace", [target, *indices, rhs])
                 elif isinstance(node.op, ast.Sub):
@@ -4690,11 +5076,15 @@ class Adjoint:
         path = [*reversed(attributes)]
         if isinstance(node, ast.Name):
             path.insert(0, node.id)
-
-        # Try resolving path from captured context
-        captured_obj = adj.resolve_path(path)
-        if captured_obj is not None:
-            return captured_obj, path
+            # resolve_path traverses a dotted name chain starting from a root
+            # name — only valid when the root expression is actually a name.
+            # A non-Name root (e.g. boxes[i].quat.w where boxes[i] is a
+            # Subscript) has no static root to look up; calling resolve_path
+            # with the bare attribute suffix would match warp module names
+            # (e.g. 'quat' → warp.quat) and return the wrong object.
+            captured_obj = adj.resolve_path(path)
+            if captured_obj is not None:
+                return captured_obj, path
 
         return None, path
 
@@ -5163,7 +5553,6 @@ def codegen_struct(struct, device="cpu", indent_size=4):
 
     forward_args = []
     reverse_args = []
-
     forward_initializers = []
     reverse_body = []
     atomic_add_body = []
@@ -5435,6 +5824,8 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None, forward_only
         elif is_tile(arg.type) or is_tile_stack(arg.type):
             tname = f"tile_{arg.label}"
             reverse_args.append(f"{tname} & adj_{arg.label}")
+        elif is_reference(arg.type):
+            reverse_args.append(arg.ctype() + " adj_" + arg.label)
         else:
             reverse_args.append(arg.ctype() + " & adj_" + arg.label)
     if has_multiple_outputs:
@@ -5448,6 +5839,8 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None, forward_only
             if is_tile(arg.type) or is_tile_stack(arg.type):
                 tname = f"tile_{arg.label}"
                 reverse_args.append(f"{tname} & {arg.emit()}")
+            elif is_reference(arg.type):
+                reverse_args.append(f"{arg.ctype()} {arg.emit()}")
             else:
                 reverse_args.append(f"{arg.ctype()} & {arg.emit()}")
 
@@ -5519,6 +5912,8 @@ def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet, forward_onl
 
     forward_args = []
     reverse_args = []
+    forward_ref_aliases = []
+    reverse_ref_aliases = []
 
     # Tile parameters use C++ template parameters (matching codegen_func)
     # so that the same @wp.func_native can accept tiles with any storage
@@ -5533,6 +5928,12 @@ def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet, forward_onl
             tname = f"tile_{arg.label}"
             template_params.append(tname)
             s = f"{tname}& {arg.emit().replace('var_', '')}"
+        elif is_reference(arg.type):
+            label = arg.emit().replace("var_", "")
+            internal = f"_wp_ref_{label}"
+            s = f"{arg.ctype()} {internal}"
+            forward_ref_aliases.append(f"    {Var.type_to_ctype(arg.type.value_type)}& {label} = *{internal};\n")
+            reverse_ref_aliases.append(f"    {Var.type_to_ctype(arg.type.value_type)}& {label} = *{internal};\n")
         else:
             s = f"{arg.ctype()} {arg.emit().replace('var_', '')}"
         forward_args.append(s)
@@ -5545,6 +5946,12 @@ def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet, forward_onl
             reverse_args.append(_arg.ctype() + " & adj_" + arg.label)
         elif is_tile(arg.type):
             reverse_args.append(f"tile_{arg.label} & adj_{arg.label}")
+        elif is_reference(arg.type):
+            internal = f"_wp_ref_adj_{arg.label}"
+            reverse_args.append(f"{arg.ctype()} {internal}")
+            reverse_ref_aliases.append(
+                f"    {Var.type_to_ctype(arg.type.value_type)}& adj_{arg.label} = *{internal};\n"
+            )
         else:
             reverse_args.append(arg.ctype() + " & adj_" + arg.label)
     if return_type != "void":
@@ -5554,6 +5961,9 @@ def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet, forward_onl
     template_prefix = ""
     if template_params:
         template_prefix = "template<" + ", ".join(f"typename {t}" for t in template_params) + ">\n"
+
+    forward_ref_aliases_str = "".join(forward_ref_aliases)
+    reverse_ref_aliases_str = "".join(reverse_ref_aliases)
 
     forward_template = cuda_forward_function_template
     replay_template = cuda_forward_function_template
@@ -5567,7 +5977,7 @@ def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet, forward_onl
             name=name,
             return_type=return_type,
             forward_args=indent(forward_args),
-            forward_body=snippet,
+            forward_body=forward_ref_aliases_str + snippet,
             filename=adj.filename,
             lineno=adj.fun_lineno,
             line_directive="",
@@ -5578,7 +5988,7 @@ def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet, forward_onl
                 name="replay_" + name,
                 return_type=return_type,
                 forward_args=indent(forward_args),
-                forward_body=replay_snippet,
+                forward_body=forward_ref_aliases_str + replay_snippet,
                 filename=adj.filename,
                 lineno=adj.fun_lineno,
                 line_directive="",
@@ -5587,9 +5997,9 @@ def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet, forward_onl
     # Pass 2: Reverse/adjoint only
     if not forward_only:
         if adj_snippet:
-            reverse_body = adj_snippet
+            reverse_body = reverse_ref_aliases_str + adj_snippet
         else:
-            reverse_body = ""
+            reverse_body = reverse_ref_aliases_str
 
         s += template_prefix + reverse_template.format(
             name=name,

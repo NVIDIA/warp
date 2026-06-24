@@ -4,6 +4,12 @@
 
 ### Added
 
+- Add `wp.ref[T]` parameter annotation for `@wp.func` and `@wp.func_native`, enabling explicit pass-by-reference
+  semantics for scalar, vector, matrix, quaternion, and struct types. Mutations to a `wp.ref[T]` parameter are visible
+  in the caller's storage without a return value. Add `wp.address_of(expr) -> wp.uint64` for obtaining a raw pointer
+  to an addressable expression for use with native snippets, and allow `@wp.func_native` ref-parameter functions to
+  provide manual adjoints with `adj_snippet`
+  ([GH-1277](https://github.com/NVIDIA/warp/issues/1277)).
 - Add mipmap (texture level-of-detail) support to `wp.Texture1D`, `wp.Texture2D`, and `wp.Texture3D` via the new
   `num_mip_levels` and `mip_filter_mode` constructor parameters, and allow `wp.texture_sample()` to accept an optional
   trailing `lod` argument for controlling sampled detail level ([GH-1409](https://github.com/NVIDIA/warp/issues/1409)).

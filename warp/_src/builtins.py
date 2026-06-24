@@ -11,7 +11,7 @@ from typing import Any
 
 import warp._src.build
 import warp._src.context
-from warp._src.codegen import Reference, Var, get_arg_value, strip_reference
+from warp._src.codegen import Var, get_arg_value
 from warp._src.logger import log_warning
 from warp._src.types import *
 

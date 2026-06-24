@@ -23,6 +23,7 @@ from warp._src.types import Int as Int
 from warp._src.types import Float as Float
 from warp._src.types import Scalar as Scalar
 from warp._src.context import DeviceLike as DeviceLike
+from warp._src.types import ref as ref
 
 
 # category: Data Types > Scalars
@@ -230,6 +231,7 @@ from warp._src.context import kernel as kernel
 from warp._src.context import struct as struct
 from warp._src.context import overload as overload
 from warp._src.types import constant as constant
+from warp._src.types import address_of as address_of
 from warp._src.utils import map as map
 from warp._src.builtins import static as static
 
