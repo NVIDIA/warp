@@ -23,6 +23,7 @@ import platform
 import re
 import shutil
 import sys
+import sysconfig
 import tempfile
 import textwrap
 import threading
@@ -6630,6 +6631,13 @@ class Runtime:
         # ctypes function objects with plain Python callables that lack those attributes.
         self.fastcall = None
         try:
+            # The pre-built native library uses a PyModuleDef compiled against the
+            # regular CPython ABI.  Free-threaded Python (3.13t+) has a different
+            # PyObject_HEAD layout (32 vs 16 bytes), so loading the module would
+            # dereference garbage offsets and segfault.  Skip the fast path until
+            # the library is rebuilt for the free-threaded ABI.
+            if sysconfig.get_config_var("Py_GIL_DISABLED"):
+                raise ImportError("_warp_fastcall is not compatible with free-threaded Python")
             loader = importlib.machinery.ExtensionFileLoader("_warp_fastcall", warp_lib)
             spec = importlib.util.spec_from_file_location("_warp_fastcall", warp_lib, loader=loader)
             fastcall = importlib.util.module_from_spec(spec)
