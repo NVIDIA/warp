@@ -5023,6 +5023,12 @@ class _ArrayAnnotationBase:
     def __hash__(self):
         return hash((self._concrete_cls, self.dtype, self.ndim))
 
+    def __or__(self, other):
+        return Union[self, other]  # noqa: UP007
+
+    def __ror__(self, other):
+        return Union[other, self]  # noqa: UP007
+
 
 class _ArrayAnnotation(_ArrayAnnotationBase):
     """Lightweight annotation for :class:`array` types."""
@@ -7201,6 +7207,10 @@ def get_type_code(arg_type) -> str:
         # This must come before isinstance(arg_type, type) check
         arg_types = arg_type.__args__
         return f"tpl{len(arg_types)}{''.join(get_type_code(x) for x in arg_types)}"
+    elif get_origin(arg_type) is Union or isinstance(arg_type, types.UnionType):
+        raise TypeError(
+            "Union type annotations are only supported at Python scope and are invalid in Warp kernels/functions"
+        )
     elif isinstance(arg_type, type):
         if hasattr(arg_type, "_wp_scalar_type_"):
             # vector/matrix type

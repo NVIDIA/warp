@@ -103,6 +103,8 @@
 - Fix the gradient of `wp.copy()` when `src_offset` and `dest_offset` differ.
 - Fix `warp.init()` segfault while loading `warp-clang.so` on some Linux systems caused by aggressive symbol stripping.
   ([GH-1554](https://github.com/NVIDIA/warp/issues/1554)).
+- Fix `wp.array[...]`-style subscript annotations to allow for PEP 604 unions (for example, `wp.array[float] | float`)
+  on Python methods ([GH-1548](https://github.com/NVIDIA/warp/issues/1548)).
 
 ### Documentation
 
