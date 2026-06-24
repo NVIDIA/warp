@@ -72,12 +72,12 @@ def sample_mesh_query_signed(
 
 
 class MeshQuery:
-    params = [[0, 8], ["bunny", "rocks"]]
-    param_names = ["leaf_size", "asset"]
+    params = [[0, 8], ["bunny", "rocks"], ["lbvh", "cubql"]]
+    param_names = ["leaf_size", "asset", "constructor"]
     number = 20
     timeout = 60
 
-    def setup(self, leaf_size, asset):
+    def setup(self, leaf_size, asset, bvh_constructor):
         from pxr import Usd, UsdGeom
 
         wp.init()
@@ -106,6 +106,7 @@ class MeshQuery:
                 points=wp.array(points, dtype=wp.vec3, device=self.device),
                 velocities=None,
                 indices=wp.array(indices, dtype=int, device=self.device),
+                bvh_constructor=bvh_constructor,
             )
 
         else:
@@ -114,6 +115,7 @@ class MeshQuery:
                 velocities=None,
                 indices=wp.array(indices, dtype=int, device=self.device),
                 bvh_leaf_size=leaf_size,
+                bvh_constructor=bvh_constructor,
             )
 
         self.query_closest_points = wp.empty_like(self.query_points, device=self.device)
@@ -139,12 +141,12 @@ class MeshQuery:
         wp.synchronize_device(self.device)
 
     @skip_benchmark_if(USD_AVAILABLE is False)
-    def time_mesh_query_closest_point(self, leaf_size, asset):
+    def time_mesh_query_closest_point(self, leaf_size, asset, bvh_constructor):
         self.cmd_no_sign.launch()
         wp.synchronize_device(self.device)
 
     @skip_benchmark_if(USD_AVAILABLE is False)
-    def time_mesh_query_closest_point_signed(self, leaf_size, asset):
+    def time_mesh_query_closest_point_signed(self, leaf_size, asset, bvh_constructor):
         self.cmd_signed.launch()
         wp.synchronize_device(self.device)
 
@@ -360,13 +362,13 @@ def replicate_mesh_with_random_perturbation(
 
 
 class BvhAABBQuery:
-    params = [[0.002, 0.008], [0, 8], ["cuda"]]
-    param_names = ["query_radius", "leaf_size", "device"]
+    params = [[0.002, 0.008], [0, 8], ["cuda"], ["lbvh", "cubql"]]
+    param_names = ["query_radius", "leaf_size", "device", "constructor"]
 
     number = 5
     timeout = 120
 
-    def setup(self, query_radius, leaf_size, device):
+    def setup(self, query_radius, leaf_size, device, bvh_constructor):
         with wp.ScopedDevice(device):
             from pxr import Usd, UsdGeom
 
@@ -422,11 +424,13 @@ class BvhAABBQuery:
             )
 
             if leaf_size == 0:
-                self.bvh = wp.Bvh(self.lowers, self.uppers)
-                self.mesh = wp.Mesh(self.points, wp.array(indices, dtype=int))
+                self.bvh = wp.Bvh(self.lowers, self.uppers, constructor=bvh_constructor)
+                self.mesh = wp.Mesh(self.points, wp.array(indices, dtype=int), bvh_constructor=bvh_constructor)
             else:
-                self.bvh = wp.Bvh(self.lowers, self.uppers, leaf_size=leaf_size)
-                self.mesh = wp.Mesh(self.points, wp.array(indices, dtype=int), bvh_leaf_size=leaf_size)
+                self.bvh = wp.Bvh(self.lowers, self.uppers, leaf_size=leaf_size, constructor=bvh_constructor)
+                self.mesh = wp.Mesh(
+                    self.points, wp.array(indices, dtype=int), bvh_leaf_size=leaf_size, bvh_constructor=bvh_constructor
+                )
 
             buffer_size_per_vertex = 32
             self.vertex_colliding_triangles_offsets = wp.array(
@@ -478,24 +482,24 @@ class BvhAABBQuery:
             wp.synchronize_device(self.device)
 
     @skip_benchmark_if(USD_AVAILABLE is False)
-    def time_bvh_aabb_vs_aabb_query(self, query_radius, leaf_size, device):
+    def time_bvh_aabb_vs_aabb_query(self, query_radius, leaf_size, device, bvh_constructor):
         wp.capture_launch(self.cuda_graph_bvh_aabb_vs_aabb)
         wp.synchronize_device(self.device)
 
     @skip_benchmark_if(USD_AVAILABLE is False)
-    def time_mesh_aabb_vs_aabb_query(self, query_radius, leaf_size, device):
+    def time_mesh_aabb_vs_aabb_query(self, query_radius, leaf_size, device, bvh_constructor):
         wp.capture_launch(self.cuda_graph_mesh_aabb_vs_aabb)
         wp.synchronize_device(self.device)
 
 
 class BvhRayQuery:
-    params = [[480, 1080], [0, 8], ["cuda"]]
-    param_names = ["resolution", "leaf_size", "device"]
+    params = [[480, 1080], [0, 8], ["cuda"], ["lbvh", "cubql"]]
+    param_names = ["resolution", "leaf_size", "device", "constructor"]
 
     number = 5
     timeout = 120
 
-    def setup(self, resolution, leaf_size, device):
+    def setup(self, resolution, leaf_size, device, bvh_constructor):
         cam_pos = wp.vec3(0.0, 0.75, 7.0)
         cam_rot = wp.quat(0.0, 0.0, 0.0, 1.0)
         horizontal_aperture = 36.0
@@ -548,11 +552,13 @@ class BvhRayQuery:
                 outputs=[self.lowers, self.uppers],
             )
             if leaf_size == 0:
-                self.bvh = wp.Bvh(self.lowers, self.uppers)
-                self.mesh = wp.Mesh(self.points, wp.array(indices, dtype=int))
+                self.bvh = wp.Bvh(self.lowers, self.uppers, constructor=bvh_constructor)
+                self.mesh = wp.Mesh(self.points, wp.array(indices, dtype=int), bvh_constructor=bvh_constructor)
             else:
-                self.bvh = wp.Bvh(self.lowers, self.uppers, leaf_size=leaf_size)
-                self.mesh = wp.Mesh(self.points, wp.array(indices, dtype=int), bvh_leaf_size=leaf_size)
+                self.bvh = wp.Bvh(self.lowers, self.uppers, leaf_size=leaf_size, constructor=bvh_constructor)
+                self.mesh = wp.Mesh(
+                    self.points, wp.array(indices, dtype=int), bvh_leaf_size=leaf_size, bvh_constructor=bvh_constructor
+                )
 
             bb_min = bounding_box[0]
             bb_max = bounding_box[1]
@@ -635,11 +641,11 @@ class BvhRayQuery:
             wp.synchronize_device()
 
     @skip_benchmark_if(USD_AVAILABLE is False)
-    def time_bvh_ray_vs_aabb_query(self, resolution, leaf_size, device):
+    def time_bvh_ray_vs_aabb_query(self, resolution, leaf_size, device, bvh_constructor):
         wp.capture_launch(self.cuda_graph_bvh_ray_vs_aabb)
         wp.synchronize_device()
 
     @skip_benchmark_if(USD_AVAILABLE is False)
-    def time_mesh_ray_vs_aabb_query(self, resolution, leaf_size, device):
+    def time_mesh_ray_vs_aabb_query(self, resolution, leaf_size, device, bvh_constructor):
         wp.capture_launch(self.cuda_graph_mesh_ray_vs_aabb)
         wp.synchronize_device()

@@ -498,6 +498,7 @@ def main(argv: list[str] | None = None) -> int:
         cpp_sources = [
             "native/warp.cpp",
             "native/bvh.cpp",
+            "native/bvh_cubql.cpp",
             "native/scan.cpp",
             "native/apic.cpp",
             "native/alloc_tracker.cpp",
@@ -525,6 +526,7 @@ def main(argv: list[str] | None = None) -> int:
         else:
             cuda_sources = [
                 "native/bvh.cu",
+                "native/bvh_cubql.cu",
                 "native/mesh.cu",
                 "native/sort.cu",
                 "native/hashgrid.cu",

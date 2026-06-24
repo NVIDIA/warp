@@ -1,8 +1,6 @@
 // SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-#define CUBQL_GPU_BUILDER_IMPLEMENTATION 1
-
 #include "warp.h"
 
 #include "bvh.h"
@@ -19,15 +17,7 @@
 #define THRUST_IGNORE_CUB_VERSION_CHECK
 #define REORDER_HOST_TREE
 
-// CUB must be included before cuBQL. cuBQL's math/common.h includes <stdexcept>,
-// which causes CCCL's _CCCL_HAS_EXCEPTIONS() to be true when typeid.h is later
-// pulled in by CUB. This makes __throw_out_of_range non-constexpr, breaking a
-// static_assert in typeid.h on GCC < 12 (which lacks P2448R2 relaxed constexpr).
 #include <cub/cub.cuh>
-
-#ifndef WP_DISABLE_CUBQL
-#include "cuBQL/bvh.h"
-#endif
 
 extern CUcontext get_current_context();
 
@@ -634,9 +624,11 @@ template <typename T> T* make_device_buffer_of(void* context, T* host_buffer, si
 
 void copy_host_tree_to_device(void* context, BVH& bvh_host, BVH& bvh_device_on_host)
 {
-    if (!bvh_host.item_groups)
-    // if it's grouped bvh it's already reordered
-    {
+    // Skip the reorder for cuBQL trees: it scrambles cuBQL's natural
+    // contiguous child-pair layout (root at 0, children at offset/offset+1)
+    // and hurts ray traversal cache behaviour. Grouped BVHs are already
+    // reordered by the builder so they don't need it either.
+    if (!bvh_host.item_groups && bvh_host.constructor_type != BVH_CONSTRUCTOR_CUBQL) {
         reorder_top_down_bvh(bvh_host);
     }
 
@@ -646,6 +638,7 @@ void copy_host_tree_to_device(void* context, BVH& bvh_host, BVH& bvh_device_on_h
     bvh_device_on_host.num_items = bvh_host.num_items;
     bvh_device_on_host.max_depth = bvh_host.max_depth;
     bvh_device_on_host.leaf_size = bvh_host.leaf_size;
+    bvh_device_on_host.constructor_type = bvh_host.constructor_type;
 
     bvh_device_on_host.root = (int*)wp_alloc_device(context, sizeof(int), "(native:bvh)");
     wp_memcpy_h2d(context, bvh_device_on_host.root, bvh_host.root, sizeof(int));
@@ -671,6 +664,17 @@ void bvh_create_device(
 )
 {
     ContextGuard guard(context);
+    if (constructor_type == BVH_CONSTRUCTOR_CUBQL) {
+        if (groups) {
+            wp::set_error_string("Warp error: grouped BVHs are not supported with cuBQL construction");
+            memset(&bvh_device_on_host, 0, sizeof(BVH));
+            return;
+        }
+        cubql_bvh_create_device(context, lowers, uppers, num_items, leaf_size, bvh_device_on_host);
+        bvh_device_on_host.constructor_type = constructor_type;
+        return;
+    }
+
     if (constructor_type == BVH_CONSTRUCTOR_SAH || constructor_type == BVH_CONSTRUCTOR_MEDIAN)
     // CPU based constructors
     {
@@ -700,6 +704,7 @@ void bvh_create_device(
         bvh_device_on_host.item_lowers = lowers;
         bvh_device_on_host.item_uppers = uppers;
         bvh_device_on_host.item_groups = groups;
+        bvh_device_on_host.constructor_type = constructor_type;
         // node_counts is not allocated for host tree
         bvh_device_on_host.node_counts
             = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(int) * bvh_device_on_host.max_nodes, "(native:bvh)");
@@ -734,6 +739,7 @@ void bvh_create_device(
         bvh_device_on_host.item_uppers = uppers;
         bvh_device_on_host.item_groups = groups;
         bvh_device_on_host.context = context ? context : wp_cuda_context_get_current();
+        bvh_device_on_host.constructor_type = constructor_type;
 
         LinearBVHBuilderGPU builder;
         builder.build(bvh_device_on_host, lowers, uppers, num_items, NULL, groups);
@@ -767,6 +773,11 @@ void bvh_refit_device(BVH& bvh)
 {
     ContextGuard guard(bvh.context);
 
+    if (!bvh.node_lowers || !bvh.node_uppers || !bvh.node_parents || !bvh.node_counts || !bvh.primitive_indices
+        || bvh.num_leaf_nodes <= 0) {
+        return;
+    }
+
     // clear child counters
     wp_memset_device(WP_CURRENT_CONTEXT, bvh.node_counts, 0, sizeof(int) * bvh.max_nodes);
     wp_launch_device(
@@ -780,239 +791,16 @@ void bvh_rebuild_device(BVH& bvh)
 {
     ContextGuard guard(bvh.context);
 
+    if (bvh.constructor_type == BVH_CONSTRUCTOR_CUBQL) {
+        cubql_bvh_rebuild_device(bvh);
+        bvh.constructor_type = BVH_CONSTRUCTOR_CUBQL;
+        return;
+    }
+
     LinearBVHBuilderGPU builder;
     builder.build(bvh, bvh.item_lowers, bvh.item_uppers, bvh.num_items, NULL, bvh.item_groups);
+    bvh.constructor_type = BVH_CONSTRUCTOR_LBVH;
 }
-
-#ifndef WP_DISABLE_CUBQL
-
-__global__ void cubql_make_boxes(const vec3* lowers, const vec3* uppers, cuBQL::box3f* boxes, int n)
-{
-    const int tid = blockDim.x * blockIdx.x + threadIdx.x;
-    if (tid < n) {
-        const vec3 lower = lowers[tid];
-        const vec3 upper = uppers[tid];
-        boxes[tid]
-            = cuBQL::box3f(cuBQL::vec3f(lower[0], lower[1], lower[2]), cuBQL::vec3f(upper[0], upper[1], upper[2]));
-    }
-}
-
-static inline cuBQL::bvh3f cubql_native_view(const CuBQLBVH& bvh)
-{
-    cuBQL::bvh3f native;
-    native.nodes = reinterpret_cast<cuBQL::bvh3f::node_t*>(bvh.nodes);
-    native.numNodes = uint32_t(bvh.num_nodes);
-    native.primIDs = reinterpret_cast<uint32_t*>(bvh.primitive_indices);
-    native.numPrims = uint32_t(bvh.num_prims);
-    return native;
-}
-
-static inline void cubql_assign(CuBQLBVH& bvh, const cuBQL::bvh3f& native)
-{
-    bvh.nodes = reinterpret_cast<CuBQLNode*>(native.nodes);
-    bvh.num_nodes = int(native.numNodes);
-    bvh.primitive_indices = native.primIDs;
-    bvh.num_prims = int(native.numPrims);
-    if (bvh.root) {
-        int root_index = native.numNodes > 0 ? 0 : -1;
-        wp_memcpy_h2d(WP_CURRENT_CONTEXT, bvh.root, &root_index, sizeof(int));
-    }
-}
-
-static inline void cubql_update_device_boxes(CuBQLBVH& bvh)
-{
-    if (!bvh.boxes || bvh.num_items <= 0) {
-        return;
-    }
-    wp_launch_device(
-        WP_CURRENT_CONTEXT, cubql_make_boxes, bvh.num_items,
-        (bvh.item_lowers, bvh.item_uppers, reinterpret_cast<cuBQL::box3f*>(bvh.boxes), bvh.num_items)
-    );
-}
-
-static cuBQL::GpuMemoryResource& cubql_get_mem_resource()
-{
-    int ordinal = wp_cuda_context_get_device_ordinal(wp_cuda_context_get_current());
-    if (wp_cuda_device_is_mempool_supported(ordinal))
-        return cuBQL::defaultGpuMemResource();
-    static cuBQL::DeviceMemoryResource sync_resource;
-    return sync_resource;
-}
-
-void cubql_bvh_create_device(
-    void* context, vec3* lowers, vec3* uppers, int num_items, int leaf_size, CuBQLBVH& bvh_device_on_host
-)
-{
-    ContextGuard guard(context);
-    memset(&bvh_device_on_host, 0, sizeof(CuBQLBVH));
-
-    bvh_device_on_host.context = context ? context : wp_cuda_context_get_current();
-    bvh_device_on_host.item_lowers = lowers;
-    bvh_device_on_host.item_uppers = uppers;
-    bvh_device_on_host.num_items = num_items;
-    bvh_device_on_host.leaf_size = leaf_size;
-    bvh_device_on_host.root = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(int));
-
-    int root_index = -1;
-    wp_memcpy_h2d(WP_CURRENT_CONTEXT, bvh_device_on_host.root, &root_index, sizeof(int));
-
-    if (num_items <= 0) {
-        return;
-    }
-
-    bvh_device_on_host.boxes = wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(cuBQL::box3f) * num_items);
-    cubql_update_device_boxes(bvh_device_on_host);
-
-    auto free_partial_bvh = [&]() {
-        if (bvh_device_on_host.boxes) {
-            wp_free_device(WP_CURRENT_CONTEXT, bvh_device_on_host.boxes);
-            bvh_device_on_host.boxes = nullptr;
-        }
-        if (bvh_device_on_host.root) {
-            wp_free_device(WP_CURRENT_CONTEXT, bvh_device_on_host.root);
-            bvh_device_on_host.root = nullptr;
-        }
-    };
-
-    try {
-        cuBQL::bvh3f native;
-        cuBQL::BuildConfig build_config;
-        build_config.enableSAH();
-        build_config.makeLeafThreshold = leaf_size;
-        cuBQL::gpuBuilder(
-            native, reinterpret_cast<cuBQL::box3f*>(bvh_device_on_host.boxes), uint32_t(num_items), build_config, 0,
-            cubql_get_mem_resource()
-        );
-        cubql_assign(bvh_device_on_host, native);
-    } catch (const std::exception& e) {
-        wp::set_error_string("Warp error: cuBQL BVH build failed: %s", e.what());
-        free_partial_bvh();
-    } catch (...) {
-        wp::set_error_string("Warp error: cuBQL BVH build failed: unknown exception");
-        free_partial_bvh();
-    }
-}
-
-void cubql_bvh_destroy_device(CuBQLBVH& bvh)
-{
-    ContextGuard guard(bvh.context);
-
-    if (bvh.nodes || bvh.primitive_indices) {
-        cuBQL::bvh3f native = cubql_native_view(bvh);
-        try {
-            cuBQL::cuda::free(native, 0, cubql_get_mem_resource());
-        } catch (const std::exception& e) {
-            wp::set_error_string("Warp error: cuBQL BVH free failed: %s", e.what());
-        } catch (...) {
-            wp::set_error_string("Warp error: cuBQL BVH free failed: unknown exception");
-        }
-    }
-
-    if (bvh.boxes) {
-        wp_free_device(WP_CURRENT_CONTEXT, bvh.boxes);
-        bvh.boxes = nullptr;
-    }
-    if (bvh.root) {
-        wp_free_device(WP_CURRENT_CONTEXT, bvh.root);
-        bvh.root = nullptr;
-    }
-    bvh.nodes = nullptr;
-    bvh.num_nodes = 0;
-    bvh.primitive_indices = nullptr;
-    bvh.num_prims = 0;
-    bvh.leaf_size = 0;
-}
-
-bool cubql_bvh_refit_device(CuBQLBVH& bvh)
-{
-    ContextGuard guard(bvh.context);
-    if (!bvh.nodes || !bvh.boxes || bvh.num_items <= 0) {
-        return true;
-    }
-
-    cubql_update_device_boxes(bvh);
-    cuBQL::bvh3f native = cubql_native_view(bvh);
-    try {
-        cuBQL::cuda::refit(native, reinterpret_cast<cuBQL::box3f*>(bvh.boxes), 0, cubql_get_mem_resource());
-        return true;
-    } catch (const std::exception& e) {
-        wp::set_error_string("Warp error: cuBQL BVH refit failed: %s", e.what());
-    } catch (...) {
-        wp::set_error_string("Warp error: cuBQL BVH refit failed: unknown exception");
-    }
-    return false;
-}
-
-void cubql_bvh_rebuild_device(CuBQLBVH& bvh)
-{
-    ContextGuard guard(bvh.context);
-
-    auto reset_rebuilt_bvh = [&]() {
-        bvh.nodes = nullptr;
-        bvh.num_nodes = 0;
-        bvh.primitive_indices = nullptr;
-        bvh.num_prims = 0;
-        if (bvh.root) {
-            int root_index = -1;
-            wp_memcpy_h2d(WP_CURRENT_CONTEXT, bvh.root, &root_index, sizeof(int));
-        }
-    };
-
-    if (bvh.nodes || bvh.primitive_indices) {
-        cuBQL::bvh3f old_native = cubql_native_view(bvh);
-        try {
-            cuBQL::cuda::free(old_native, 0, cubql_get_mem_resource());
-        } catch (const std::exception& e) {
-            wp::set_error_string("Warp error: cuBQL BVH free failed: %s", e.what());
-        } catch (...) {
-            wp::set_error_string("Warp error: cuBQL BVH free failed: unknown exception");
-        }
-    }
-
-    if (bvh.num_items <= 0) {
-        reset_rebuilt_bvh();
-        return;
-    }
-
-    if (!bvh.boxes) {
-        bvh.boxes = wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(cuBQL::box3f) * bvh.num_items);
-    }
-    cubql_update_device_boxes(bvh);
-
-    try {
-        cuBQL::bvh3f native;
-        cuBQL::BuildConfig build_config;
-        build_config.enableSAH();
-        build_config.makeLeafThreshold = bvh.leaf_size;
-        cuBQL::gpuBuilder(
-            native, reinterpret_cast<cuBQL::box3f*>(bvh.boxes), uint32_t(bvh.num_items), build_config, 0,
-            cubql_get_mem_resource()
-        );
-        cubql_assign(bvh, native);
-    } catch (const std::exception& e) {
-        wp::set_error_string("Warp error: cuBQL BVH rebuild failed: %s", e.what());
-        reset_rebuilt_bvh();
-    } catch (...) {
-        wp::set_error_string("Warp error: cuBQL BVH rebuild failed: unknown exception");
-        reset_rebuilt_bvh();
-    }
-}
-
-#else  // WP_DISABLE_CUBQL
-
-void cubql_bvh_create_device(
-    void* context, vec3* lowers, vec3* uppers, int num_items, int leaf_size, CuBQLBVH& bvh_device_on_host
-)
-{
-    fprintf(stderr, "Warp error: cuBQL support disabled (WP_DISABLE_CUBQL)\n");
-    memset(&bvh_device_on_host, 0, sizeof(CuBQLBVH));
-}
-
-void cubql_bvh_destroy_device(CuBQLBVH&) { }
-bool cubql_bvh_refit_device(CuBQLBVH&) { return true; }
-void cubql_bvh_rebuild_device(CuBQLBVH&) { }
-
-#endif  // WP_DISABLE_CUBQL
 
 
 }  // namespace wp
@@ -1034,7 +822,23 @@ void wp_bvh_rebuild_device(uint64_t id)
     if (bvh_get_descriptor(id, bvh)) {
         ContextGuard guard(bvh.context);
 
+        // A cuBQL rebuild reallocates the device buffers, so the BVH struct (pointers
+        // and sizes) changes; an in-place LBVH rebuild reuses its buffers, leaving the
+        // struct unchanged.
+        const bool was_cubql = (bvh.constructor_type == BVH_CONSTRUCTOR_CUBQL);
+
         wp::bvh_rebuild_device(bvh);
+
+        // Refresh the host-side descriptor in case any fields changed.
+        wp::bvh_add_descriptor(id, bvh);
+
+        // Only the cuBQL path needs the device-side descriptor refreshed. The host->device
+        // copy of pageable memory is not CUDA-graph-capture safe, so we must skip it for the
+        // in-place LBVH rebuild to keep grouped/LBVH rebuilds capture-safe (its device struct
+        // is unchanged anyway).
+        if (was_cubql) {
+            wp_memcpy_h2d(WP_CURRENT_CONTEXT, (void*)id, &bvh, sizeof(wp::BVH));
+        }
     }
 }
 
@@ -1057,32 +861,16 @@ uint64_t wp_bvh_create_device(
         WP_CURRENT_CONTEXT, lowers, uppers, num_items, constructor_type, groups, leaf_size, bvh_device_on_host
     );
 
+    if (!bvh_device_on_host.node_lowers && num_items > 0) {
+        return 0;
+    }
+
     // create device-side BVH descriptor
     bvh_device_ptr = (wp::BVH*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::BVH), "(native:bvh)");
     wp_memcpy_h2d(WP_CURRENT_CONTEXT, bvh_device_ptr, &bvh_device_on_host, sizeof(wp::BVH));
 
     uint64_t bvh_id = (uint64_t)bvh_device_ptr;
     wp::bvh_add_descriptor(bvh_id, bvh_device_on_host);
-    return bvh_id;
-}
-
-uint64_t wp_cubql_bvh_create_device(void* context, wp::vec3* lowers, wp::vec3* uppers, int num_items, int leaf_size)
-{
-    ContextGuard guard(context);
-    wp::CuBQLBVH bvh_device_on_host;
-    memset(&bvh_device_on_host, 0, sizeof(wp::CuBQLBVH));
-
-    wp::cubql_bvh_create_device(WP_CURRENT_CONTEXT, lowers, uppers, num_items, leaf_size, bvh_device_on_host);
-
-    if (!bvh_device_on_host.nodes && num_items > 0) {
-        return 0;
-    }
-
-    wp::CuBQLBVH* bvh_device_ptr = (wp::CuBQLBVH*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::CuBQLBVH));
-    wp_memcpy_h2d(WP_CURRENT_CONTEXT, bvh_device_ptr, &bvh_device_on_host, sizeof(wp::CuBQLBVH));
-
-    uint64_t bvh_id = (uint64_t)bvh_device_ptr;
-    wp::cubql_bvh_add_descriptor(bvh_id, bvh_device_on_host);
     return bvh_id;
 }
 
@@ -1095,40 +883,6 @@ void wp_bvh_destroy_device(uint64_t id)
         wp::bvh_rem_descriptor(id);
 
         // free descriptor
-        wp_free_device(WP_CURRENT_CONTEXT, (void*)id);
-    }
-}
-
-void wp_cubql_bvh_refit_device(uint64_t id)
-{
-    wp::CuBQLBVH bvh;
-    if (wp::cubql_bvh_get_descriptor(id, bvh)) {
-        ContextGuard guard(bvh.context);
-        if (!wp::cubql_bvh_refit_device(bvh)) {
-            return;
-        }
-        wp::cubql_bvh_add_descriptor(id, bvh);
-        wp_memcpy_h2d(WP_CURRENT_CONTEXT, (void*)id, &bvh, sizeof(wp::CuBQLBVH));
-    }
-}
-
-void wp_cubql_bvh_rebuild_device(uint64_t id)
-{
-    wp::CuBQLBVH bvh;
-    if (wp::cubql_bvh_get_descriptor(id, bvh)) {
-        ContextGuard guard(bvh.context);
-        wp::cubql_bvh_rebuild_device(bvh);
-        wp::cubql_bvh_add_descriptor(id, bvh);
-        wp_memcpy_h2d(WP_CURRENT_CONTEXT, (void*)id, &bvh, sizeof(wp::CuBQLBVH));
-    }
-}
-
-void wp_cubql_bvh_destroy_device(uint64_t id)
-{
-    wp::CuBQLBVH bvh;
-    if (wp::cubql_bvh_get_descriptor(id, bvh)) {
-        wp::cubql_bvh_destroy_device(bvh);
-        wp::cubql_bvh_rem_descriptor(id);
         wp_free_device(WP_CURRENT_CONTEXT, (void*)id);
     }
 }

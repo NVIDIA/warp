@@ -271,8 +271,7 @@ uint64_t wp_mesh_create_device(
     ContextGuard guard(context);
 
     wp::Mesh mesh(points, velocities, indices, num_points, num_tris);
-    const bool use_cubql = (constructor_type == CUBQL_MESH_CONSTRUCTOR_TYPE);
-    mesh.bvh_backend = use_cubql ? wp::MESH_BVH_BACKEND_CUBQL : wp::MESH_BVH_BACKEND_WARP;
+    const bool use_cubql = (constructor_type == BVH_CONSTRUCTOR_CUBQL);
 
     mesh.context = context ? context : wp_cuda_context_get_current();
 
@@ -314,17 +313,17 @@ uint64_t wp_mesh_create_device(
     );
 #ifndef WP_DISABLE_CUBQL
     if (use_cubql) {
-        wp::cubql_bvh_create_device(mesh.context, mesh.lowers, mesh.uppers, num_tris, bvh_leaf_size, mesh.cubql_bvh);
-        if ((!mesh.cubql_bvh.nodes || !mesh.cubql_bvh.primitive_indices) && num_tris > 0) {
-            wp::cubql_bvh_destroy_device(mesh.cubql_bvh);
+        wp::cubql_bvh_create_device(mesh.context, mesh.lowers, mesh.uppers, num_tris, bvh_leaf_size, mesh.bvh);
+        if ((!mesh.bvh.node_lowers || !mesh.bvh.primitive_indices) && num_tris > 0) {
+            wp::cubql_bvh_destroy_device(mesh.bvh);
             wp_mesh_free_device_allocations(mesh, mesh_device);
             return 0;
         }
-        wp_memcpy_h2d(WP_CURRENT_CONTEXT, &(mesh_device->cubql_bvh), &mesh.cubql_bvh, sizeof(wp::CuBQLBVH));
+        wp_memcpy_h2d(WP_CURRENT_CONTEXT, &(mesh_device->bvh), &mesh.bvh, sizeof(wp::BVH));
     } else
 #else
     if (use_cubql) {
-        fprintf(stderr, "Warp error: cuBQL support disabled (WP_DISABLE_CUBQL)\n");
+        wp::set_error_string("Warp error: cuBQL support disabled (WP_DISABLE_CUBQL)");
         wp_mesh_free_device_allocations(mesh, mesh_device);
         return 0;
     }
@@ -351,14 +350,7 @@ void wp_mesh_destroy_device(uint64_t id)
     if (wp::mesh_get_descriptor(id, mesh)) {
         ContextGuard guard(mesh.context);
 
-#ifndef WP_DISABLE_CUBQL
-        if (mesh.bvh_backend == wp::MESH_BVH_BACKEND_CUBQL) {
-            wp::cubql_bvh_destroy_device(mesh.cubql_bvh);
-        } else
-#endif
-        {
-            wp::bvh_destroy_device(mesh.bvh);
-        }
+        wp::bvh_destroy_device(mesh.bvh);
 
         wp_free_device(WP_CURRENT_CONTEXT, mesh.lowers);
         wp_free_device(WP_CURRENT_CONTEXT, mesh.uppers);
@@ -401,14 +393,7 @@ int wp_mesh_refit_device(uint64_t id)
             (m.num_tris, m.points, m.indices, m.lowers, m.uppers)
         );
 
-#ifndef WP_DISABLE_CUBQL
-        if (m.bvh_backend == wp::MESH_BVH_BACKEND_CUBQL) {
-            if (!wp::cubql_bvh_refit_device(m.cubql_bvh)) {
-                return 0;
-            }
-        } else
-#endif
-            if (m.solid_angle_props) {
+        if (m.solid_angle_props) {
             // update solid angle data
             bvh_refit_with_solid_angle_device(m.bvh, m);
         } else {

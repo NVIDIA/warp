@@ -7265,7 +7265,7 @@ def is_cuda_driver_initialized() -> bool:
 
 
 def is_cubql_available() -> bool:
-    """Check whether the cuBQL BVH backend is available.
+    """Check whether the cuBQL BVH builder is available.
 
     Returns:
         ``True`` if the native library was compiled with cuBQL support, ``False`` otherwise.

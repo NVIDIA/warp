@@ -337,15 +337,22 @@ def test_mesh_query_point(test, device):
     else:
         constructors = ["sah", "median", "lbvh"]
 
+    if wp.is_cubql_available():
+        constructors.append("cubql")
+
     leaf_sizes = [1, 2, 4]
 
     for leaf_size, constructor in itertools.product(leaf_sizes, constructors):
+        # cuBQL doesn't yet support winding-number queries; build without that data
+        # and skip the winding-number kernel / assertions for this constructor.
+        use_winding_number = constructor != "cubql"
+
         # create mesh
         mesh = wp.Mesh(
             points=mesh_points,
             velocities=None,
             indices=mesh_indices,
-            support_winding_number=True,
+            support_winding_number=use_winding_number,
             bvh_constructor=constructor,
             bvh_leaf_size=leaf_size,
         )
@@ -399,18 +406,19 @@ def test_mesh_query_point(test, device):
             device=device,
         )
 
-        wp.launch(
-            kernel=sample_mesh_query_sign_winding_number,
-            dim=query_count,
-            inputs=[
-                mesh.id,
-                query_points,
-                faces_query_winding_number,
-                signs_query_winding_number,
-                dist_query_winding_number,
-            ],
-            device=device,
-        )
+        if use_winding_number:
+            wp.launch(
+                kernel=sample_mesh_query_sign_winding_number,
+                dim=query_count,
+                inputs=[
+                    mesh.id,
+                    query_points,
+                    faces_query_winding_number,
+                    signs_query_winding_number,
+                    dist_query_winding_number,
+                ],
+                device=device,
+            )
 
         wp.launch(
             kernel=sample_mesh_query_sign_parity,
@@ -509,7 +517,8 @@ def test_mesh_query_point(test, device):
 
         test.assertTrue(len(inside_query) == len(inside_brute))
         test.assertTrue(len(inside_query_normal) == len(inside_brute))
-        test.assertTrue(len(inside_query_winding_number) == len(inside_brute))
+        if use_winding_number:
+            test.assertTrue(len(inside_query_winding_number) == len(inside_brute))
         test.assertTrue(len(inside_query_parity) == len(inside_brute))
 
         tolerance = 1.5e-4
@@ -535,17 +544,18 @@ def test_mesh_query_point(test, device):
             sign_error < tolerance, f"mesh_query_point_sign_normal sign_error is {sign_error} which is >= {tolerance}"
         )
 
-        dist_error = np.max(np.abs(dist_query_winding_number - dist_brute))
-        sign_error = np.max(np.abs(inside_query_winding_number - inside_brute))
+        if use_winding_number:
+            dist_error = np.max(np.abs(dist_query_winding_number - dist_brute))
+            sign_error = np.max(np.abs(inside_query_winding_number - inside_brute))
 
-        test.assertTrue(
-            dist_error < tolerance,
-            f"mesh_query_point_sign_winding_number dist_error is {dist_error} which is >= {tolerance}",
-        )
-        test.assertTrue(
-            sign_error < tolerance,
-            f"mesh_query_point_sign_winding_number sign_error is {sign_error} which is >= {tolerance}",
-        )
+            test.assertTrue(
+                dist_error < tolerance,
+                f"mesh_query_point_sign_winding_number dist_error is {dist_error} which is >= {tolerance}",
+            )
+            test.assertTrue(
+                sign_error < tolerance,
+                f"mesh_query_point_sign_winding_number sign_error is {sign_error} which is >= {tolerance}",
+            )
 
         dist_error = np.max(np.abs(dist_query_parity - dist_brute))
         sign_error = np.max(np.abs(inside_query_parity - inside_brute))
@@ -743,6 +753,9 @@ def test_mesh_query_furthest_point(test, device):
         constructors = ["sah", "median"]
     else:
         constructors = ["sah", "median", "lbvh"]
+
+    if wp.is_cubql_available():
+        constructors.append("cubql")
 
     for constructor in constructors:
         # create mesh

@@ -201,6 +201,7 @@ endfunction()
 set(WARP_CPP_SOURCES
     warp/native/warp.cpp
     warp/native/bvh.cpp
+    warp/native/bvh_cubql.cpp
     warp/native/scan.cpp
     warp/native/apic.cpp
     warp/native/alloc_tracker.cpp
@@ -226,6 +227,7 @@ if(WARP_ENABLE_CUDA)
     list(
         APPEND WARP_SOURCES
         warp/native/bvh.cu
+        warp/native/bvh_cubql.cu
         warp/native/mesh.cu
         warp/native/sort.cu
         warp/native/hashgrid.cu

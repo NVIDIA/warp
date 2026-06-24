@@ -5444,7 +5444,7 @@ class BvhConstructor(enum.IntEnum):
     LBVH = 2
     """GPU-based bottom-up constructor maximizing parallelism."""
     CUBQL = -1
-    """cuBQL library constructor (Mesh only)."""
+    """cuBQL library constructor."""
 
     @classmethod
     def from_str(cls, value: str) -> BvhConstructor:
@@ -5485,7 +5485,7 @@ class Bvh:
             uppers: Array of upper bounds of data type :class:`warp.vec3`.
               ``lowers`` and ``uppers`` must live on the same device.
             constructor: The construction algorithm used to build the tree.
-              Valid choices are ``"sah"``, ``"median"``, ``"lbvh"``, or ``None``.
+              Valid choices are ``"sah"``, ``"median"``, ``"lbvh"``, ``"cubql"``, or ``None``.
               When ``None``, the default constructor will be used (see the note).
             groups: Optional array of group indices of data type :class:`warp.int32`.
             leaf_size: The number of primitives (AABBs) stored in each leaf node. The optimal value depends on the primary
@@ -5504,16 +5504,20 @@ class Bvh:
               inferior query performance.
             - ``"lbvh"``: A GPU-based bottom-up constructor which maximizes parallelism. Construction is very
               fast, especially for large models. Query performance is slightly slower than ``"sah"``.
+            - ``"cubql"``: An experimental cuBQL constructor. It builds a temporary cuBQL BVH and converts
+              it into Warp's native BVH layout for traversal. Grouped BVHs are not supported with this
+              constructor.
             - ``None``: The constructor will be automatically chosen based on the device where the tree
               lives. For a GPU tree, the ``"lbvh"`` constructor will be selected; for a CPU tree, the ``"sah"``
               constructor will be selected.
 
-            All three constructors are supported for GPU trees. When a CPU-based constructor is selected
-            for a GPU tree, bounds will be copied back to the CPU to run the CPU-based constructor. After
-            construction, the CPU tree will be copied to the GPU.
+            All constructors are supported for GPU trees when Warp is compiled with cuBQL support. When a
+            CPU-based constructor is selected for a GPU tree, bounds will be copied back to the CPU to run
+            the CPU-based constructor. After construction, the CPU tree will be copied to the GPU.
 
-            Only ``"sah"`` and ``"median"`` are supported for CPU trees. If ``"lbvh"`` is selected for a CPU tree, a
-            warning message will be issued, and the constructor will automatically fall back to ``"sah"``.
+            ``"sah"``, ``"median"``, and ``"cubql"`` are supported for CPU trees when Warp is compiled with cuBQL
+            support. If ``"lbvh"`` is selected for a CPU tree, a warning message will be issued, and the constructor
+            will automatically fall back to ``"sah"``.
 
             The ``leaf_size`` parameter controls the number of primitives (AABBs) stored in each leaf node of the BVH.
             This parameter can have a considerable impact on query performance, and the optimal value depends on the
@@ -5590,7 +5594,8 @@ class Bvh:
             constructor = BvhConstructor.from_str(constructor)
 
         if constructor == BvhConstructor.CUBQL:
-            raise ValueError("CUBQL constructor is not available for wp.Bvh")
+            if groups is not None:
+                raise RuntimeError("Grouped BVHs are not supported with constructor='cubql'")
 
         if leaf_size < 1:
             raise ValueError(f"leaf_size must be greater than or equal to 1, current value: {leaf_size}")
@@ -5620,6 +5625,10 @@ class Bvh:
                 get_data(groups),
                 leaf_size,
             )
+
+        self._constructor = constructor
+        if not self.id:
+            raise RuntimeError(f"Failed to create BVH: {self.runtime.get_error_string()}")
 
     def __del__(self):
         if not self.id:
@@ -5661,15 +5670,18 @@ class Bvh:
 
         Args:
             constructor (str | None): Construction algorithm to use. One of ``"sah"``,
-                ``"median"``, ``"lbvh"``, or ``None``. If ``None``, the default is chosen
-                based on the device (CPU → ``"sah"``, CUDA → ``"lbvh"``). On CPU,
-                ``"sah"`` and ``"median"`` are supported; requesting ``"lbvh"`` falls back
-                to ``"sah"`` with a warning. On CUDA, in-place rebuild supports ``"lbvh"``
-                only; other values fall back to ``"lbvh"`` with a warning.
+                ``"median"``, ``"lbvh"``, ``"cubql"``, or ``None``. If ``None``, the default is
+                chosen based on the device (CPU → ``"sah"``, CUDA → ``"lbvh"``), except for
+                cuBQL-constructed BVHs, which rebuild with cuBQL. On CPU, ``"sah"`` and
+                ``"median"`` are supported; requesting ``"lbvh"`` falls back to ``"sah"`` with a
+                warning. On CUDA, in-place rebuild supports ``"lbvh"`` only; other values fall
+                back to ``"lbvh"`` with a warning. In-place rebuild does not support switching to
+                or from ``"cubql"``; create a new BVH instead.
 
         Notes:
-            - This method is CUDA graph-capture safe: previously captured graphs that include
-              queries on this BVH remain valid after ``rebuild`` because buffers are reused.
+            - The native CUDA LBVH rebuild path is CUDA graph-capture safe: previously captured graphs
+              that include queries on this BVH remain valid after ``rebuild`` because buffers are reused.
+              This guarantee does not apply to cuBQL rebuilds.
             - If you need a CPU top-down constructor (``"sah"``/``"median"``) for a GPU tree,
               create a new BVH via the class constructor instead.
 
@@ -5677,7 +5689,9 @@ class Bvh:
             ValueError: If an unknown constructor is provided.
         """
 
-        if constructor is None:
+        if constructor is None and self._constructor == BvhConstructor.CUBQL:
+            constructor = BvhConstructor.CUBQL
+        elif constructor is None:
             if self.device.is_cpu:
                 constructor = BvhConstructor.SAH
             else:
@@ -5687,7 +5701,18 @@ class Bvh:
             constructor = BvhConstructor.from_str(constructor)
 
         if constructor == BvhConstructor.CUBQL:
-            raise ValueError("CUBQL constructor is not available for wp.Bvh")
+            if self._constructor != BvhConstructor.CUBQL:
+                raise ValueError("Cannot rebuild a non-cuBQL BVH with constructor='cubql'; create a new BVH instead")
+
+            if self.device.is_cpu:
+                self.runtime.core.wp_bvh_rebuild_host(self.id, constructor)
+            else:
+                self.runtime.core.wp_bvh_rebuild_device(self.id)
+                self.runtime.verify_cuda_device(self.device)
+            return
+
+        if self._constructor == BvhConstructor.CUBQL:
+            raise ValueError("Cannot rebuild a cuBQL BVH with a different constructor; create a new BVH instead")
 
         if self.device.is_cpu:
             if constructor == BvhConstructor.LBVH:
@@ -5696,6 +5721,7 @@ class Bvh:
                 )
                 constructor = BvhConstructor.SAH
             self.runtime.core.wp_bvh_rebuild_host(self.id, constructor)
+            self._constructor = constructor
         else:
             if constructor != BvhConstructor.LBVH:
                 log_warning(
@@ -5704,6 +5730,7 @@ class Bvh:
                 )
             self.runtime.core.wp_bvh_rebuild_device(self.id)
             self.runtime.verify_cuda_device(self.device)
+            self._constructor = BvhConstructor.LBVH
 
 
 class Mesh:
@@ -5748,8 +5775,9 @@ class Mesh:
             bvh_constructor: The construction algorithm for the underlying BVH
               (see the docstring of :class:`Bvh` for explanation).
               Valid choices are ``"sah"``, ``"median"``, ``"lbvh"``, ``"cubql"``, or ``None``.
-              When ``"cubql"`` is selected (**experimental**), only ray query APIs are supported.
-              All other queries will silently return no results.
+              When ``"cubql"`` is selected (**experimental**), cuBQL is used to
+              build the underlying BVH in Warp's native layout. Grouped meshes and
+              ``support_winding_number=True`` are not supported with this constructor.
             bvh_leaf_size: The number of primitives (AABBs) stored in each leaf node
               (see the docstring of :class:`Bvh` for more details). If ``None`` the default
               value based on the ``bvh_constructor`` will be used.

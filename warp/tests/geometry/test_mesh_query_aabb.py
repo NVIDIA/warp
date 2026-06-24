@@ -283,6 +283,9 @@ def test_mesh_query_aabb_count_overlap_with_checksum(test, device):
     else:
         constructors = ["sah", "median", "lbvh"]
 
+    if wp.is_cubql_available():
+        constructors.append("cubql")
+
     leaf_sizes = [1, 2, 4]
 
     points, indices = load_mesh()
@@ -397,64 +400,76 @@ def test_tile_mesh_query_aabb(test, device):
         dtype=np.int32,
     )
 
-    mesh = wp.Mesh(
-        points=wp.array(points, dtype=wp.vec3, device=device), indices=wp.array(indices, dtype=int, device=device)
-    )
+    points_wp = wp.array(points, dtype=wp.vec3, device=device)
+    indices_wp = wp.array(indices, dtype=int, device=device)
+
+    # Cover the cuBQL constructor alongside the default Warp BVH path.
+    if device.is_cpu:
+        constructors = ["sah", "median"]
+    else:
+        constructors = ["sah", "median", "lbvh"]
+
+    if wp.is_cubql_available():
+        constructors.append("cubql")
 
     query_lower = wp.vec3(0.2, 0.2, -0.5)
     query_upper = wp.vec3(0.8, 0.8, 0.5)
 
-    # Test with single-threaded version (ground truth)
-    faces_intersected_single = wp.zeros(shape=(2), dtype=int, device=device)
-    wp.launch(
-        kernel=mesh_query_aabb_kernel,
-        dim=1,
-        inputs=[mesh.id, query_lower, query_upper, faces_intersected_single],
-        device=device,
-    )
+    for constructor in constructors:
+        mesh = wp.Mesh(points=points_wp, indices=indices_wp, bvh_constructor=constructor)
 
-    # Test with tile-based version
-    block_dim = 64
-    faces_intersected_tile = wp.zeros(shape=(2), dtype=int, device=device)
-    wp.launch_tiled(
-        kernel=tile_mesh_query_aabb_kernel,
-        dim=1,
-        inputs=[mesh.id, query_lower, query_upper, faces_intersected_tile],
-        device=device,
-        block_dim=block_dim,
-    )
-
-    # Compare results
-    single_result = faces_intersected_single.numpy()
-    tile_result = faces_intersected_tile.numpy()
-
-    for i in range(2):
-        test.assertEqual(
-            single_result[i],
-            tile_result[i],
-            f"Mismatch at face {i}: single={single_result[i]}, tile={tile_result[i]}",
+        # Test with single-threaded version (ground truth)
+        faces_intersected_single = wp.zeros(shape=(2), dtype=int, device=device)
+        wp.launch(
+            kernel=mesh_query_aabb_kernel,
+            dim=1,
+            inputs=[mesh.id, query_lower, query_upper, faces_intersected_single],
+            device=device,
         )
 
-    # Both triangles should be found exactly once
-    test.assertEqual(single_result[0], 1)
-    test.assertEqual(single_result[1], 1)
-
-    # Also test tile_query_valid-based loop
-    faces_intersected_count = wp.zeros(shape=(2), dtype=int, device=device)
-    wp.launch_tiled(
-        kernel=tile_mesh_query_aabb_valid_kernel,
-        dim=1,
-        inputs=[mesh.id, query_lower, query_upper, faces_intersected_count],
-        device=device,
-        block_dim=block_dim,
-    )
-    count_result = faces_intersected_count.numpy()
-    for i in range(2):
-        test.assertEqual(
-            single_result[i],
-            count_result[i],
-            f"tile_query_valid mismatch at face {i}: single={single_result[i]}, count={count_result[i]}",
+        # Test with tile-based version
+        block_dim = 64
+        faces_intersected_tile = wp.zeros(shape=(2), dtype=int, device=device)
+        wp.launch_tiled(
+            kernel=tile_mesh_query_aabb_kernel,
+            dim=1,
+            inputs=[mesh.id, query_lower, query_upper, faces_intersected_tile],
+            device=device,
+            block_dim=block_dim,
         )
+
+        # Compare results
+        single_result = faces_intersected_single.numpy()
+        tile_result = faces_intersected_tile.numpy()
+
+        for i in range(2):
+            test.assertEqual(
+                single_result[i],
+                tile_result[i],
+                f"[{constructor}] Mismatch at face {i}: single={single_result[i]}, tile={tile_result[i]}",
+            )
+
+        # Both triangles should be found exactly once
+        test.assertEqual(single_result[0], 1, msg=f"[{constructor}] expected 1 hit on face 0")
+        test.assertEqual(single_result[1], 1, msg=f"[{constructor}] expected 1 hit on face 1")
+
+        # Also test tile_query_valid-based loop
+        faces_intersected_count = wp.zeros(shape=(2), dtype=int, device=device)
+        wp.launch_tiled(
+            kernel=tile_mesh_query_aabb_valid_kernel,
+            dim=1,
+            inputs=[mesh.id, query_lower, query_upper, faces_intersected_count],
+            device=device,
+            block_dim=block_dim,
+        )
+        count_result = faces_intersected_count.numpy()
+        for i in range(2):
+            test.assertEqual(
+                single_result[i],
+                count_result[i],
+                f"[{constructor}] tile_query_valid mismatch at face {i}: "
+                f"single={single_result[i]}, count={count_result[i]}",
+            )
 
 
 @unittest.skipUnless(USD_AVAILABLE, "Requires usd-core")
