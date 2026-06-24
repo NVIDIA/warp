@@ -58,21 +58,45 @@ static PyMethodDef fastcall_methods[] = {
 };
 
 #ifdef Py_GIL_DISABLED
+static int fastcall_exec(PyObject* module)
+{
+    PyObject* builtins = PyImport_AddModule("builtins");
+    if (!builtins)
+        return -1;
+
+    g_python_type_error = PyObject_GetAttrString(builtins, "TypeError");
+    if (!g_python_type_error)
+        return -1;
+
+    return 0;
+}
+
 static PyModuleDef_Slot fastcall_slots[] = {
+    { Py_mod_exec, reinterpret_cast<void*>(fastcall_exec) },
     { Py_mod_gil, Py_MOD_GIL_NOT_USED },
     { 0, nullptr },
 };
 #endif
 
 static PyModuleDef fastcall_module = {
-    PyModuleDef_HEAD_INIT, "_warp_fastcall", "Warp METH_FASTCALL native bindings", -1, fastcall_methods,
+    PyModuleDef_HEAD_INIT,
+    "_warp_fastcall",
+    "Warp METH_FASTCALL native bindings",
 #ifdef Py_GIL_DISABLED
+    0,
+    fastcall_methods,
     fastcall_slots,
+#else
+    -1,
+    fastcall_methods,
 #endif
 };
 
 extern "C" WP_API PyObject* PyInit__warp_fastcall()
 {
+#ifdef Py_GIL_DISABLED
+    return PyModuleDef_Init(&fastcall_module);
+#else
     PyObject* builtins = PyImport_AddModule("builtins");
     if (!builtins)
         return nullptr;
@@ -82,4 +106,5 @@ extern "C" WP_API PyObject* PyInit__warp_fastcall()
         return nullptr;
 
     return PyModule_Create(&fastcall_module);
+#endif
 }
