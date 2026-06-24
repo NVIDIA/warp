@@ -57,8 +57,18 @@ static PyMethodDef fastcall_methods[] = {
     { nullptr, nullptr, 0, nullptr },
 };
 
+#ifdef Py_GIL_DISABLED
+static PyModuleDef_Slot fastcall_slots[] = {
+    { Py_mod_gil, Py_MOD_GIL_NOT_USED },
+    { 0, nullptr },
+};
+#endif
+
 static PyModuleDef fastcall_module = {
     PyModuleDef_HEAD_INIT, "_warp_fastcall", "Warp METH_FASTCALL native bindings", -1, fastcall_methods,
+#ifdef Py_GIL_DISABLED
+    fastcall_slots,
+#endif
 };
 
 extern "C" WP_API PyObject* PyInit__warp_fastcall()
