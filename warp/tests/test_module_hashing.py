@@ -311,6 +311,41 @@ class TestOptionResolution(unittest.TestCase):
             wp.config.verify_fp = old
 
 
+class TestModuleHasherKernelOptions(unittest.TestCase):
+    """Regression tests: kernel.options must participate in ModuleHasher."""
+
+    def test_kernel_options_hashed(self):
+        # Two kernels with identical bodies but different launch_bounds must
+        # produce different module hashes.  Before the fix, kernel.options was
+        # not fed into ContentHash, so both hashes collided.
+        def make(bounds):
+            @wp.kernel(launch_bounds=bounds, module="unique")
+            def k(a: wp.array[int]):
+                i = wp.tid()
+                a[i] = i
+
+            return k
+
+        h_a = make(64).module.hash_module()
+        h_b = make(128).module.hash_module()
+        # Without the fix, these would collide because kernel name and body match.
+        self.assertNotEqual(h_a, h_b)
+
+    def test_cluster_dim_hashed(self):
+        # cluster_dim is another kernel option fed through kernel.options, so
+        # distinct values must not collide on a shared compiled module (and
+        # identical values must hash the same).
+        def make(cluster_dim):
+            @wp.kernel(cluster_dim=cluster_dim, module="unique")
+            def k(a: wp.array[int]):
+                a[wp.tid()] = 0
+
+            return k
+
+        self.assertNotEqual(make(2).module.hash_module(), make(4).module.hash_module())
+        self.assertEqual(make(2).module.hash_module(), make(2).module.hash_module())
+
+
 class TestModuleHashing(unittest.TestCase):
     def test_unique_module_import_hash_before_explicit_init(self):
         """Unique-module import-time hashing must work before explicit ``wp.init()``."""

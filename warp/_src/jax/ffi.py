@@ -13,7 +13,12 @@ from enum import IntEnum
 
 import warp as wp
 from warp._src.codegen import get_full_arg_spec, make_full_qualified_name
-from warp._src.context import CudaMemcpyKind, _build_launch_bounds
+from warp._src.context import (
+    CudaMemcpyKind,
+    _build_launch_bounds,
+    _raise_cuda_launch_error,
+    _validate_cluster_launch,
+)
 from warp._src.jax import get_jax_device
 from warp._src.logger import log_warning
 from warp._src.types import (
@@ -450,22 +455,24 @@ class FfiKernel:
                 hooks = self.kernel.module.get_kernel_hooks(self.kernel, device)
                 assert hooks.forward, "Failed to find kernel entry point"
 
-                # launch the kernel
+                # reject non-cluster-aligned grids with a clear Python error instead
+                # of a cryptic native CUDA error (block_dim=256, max_blocks=0 below)
+                _validate_cluster_launch(hooks.cluster_dim, launch_bounds.size, 256, 0)
+
+                # launch the kernel (cluster_dim is cached on the hooks at load time)
                 if wp._src.context.runtime.core.wp_cuda_launch_kernel(
                     device.context,
                     hooks.forward,
                     launch_bounds.size,
                     0,
                     256,
+                    hooks.cluster_dim,
                     hooks.forward_smem_bytes,
                     kernel_params,
                     stream,
                     None,  # apic_info
                 ):
-                    raise RuntimeError(
-                        f"Error launching kernel: {self.kernel.key} on device {device}: "
-                        f"{wp._src.context.runtime.get_error_string()}"
-                    )
+                    _raise_cuda_launch_error(self.kernel, device)
 
         except Exception as e:
             print(traceback.format_exc())

@@ -219,6 +219,46 @@ static CUfunction apic_get_kernel_function(
     return kernel;
 }
 
+static bool apic_configure_kernel_cluster_attrs(APICGraph* graph)
+{
+    if (!graph)
+        return true;
+    if (graph->operation_count == 0 || graph->operation_stream.empty())
+        return true;
+
+    const uint8_t* ptr = graph->operation_stream.data();
+    const uint8_t* end = ptr + graph->operation_stream.size();
+
+    for (uint32_t i = 0; i < graph->operation_count && ptr < end; i++) {
+        const APICOpHeader* header = reinterpret_cast<const APICOpHeader*>(ptr);
+
+        if (header->op_type == APIC_OP_KERNEL_LAUNCH) {
+            const APICLaunchRecord* rec = reinterpret_cast<const APICLaunchRecord*>(ptr);
+            int cluster_dim = rec->cluster_dim > 0 ? rec->cluster_dim : 1;
+
+            if (cluster_dim > 1) {
+                const uint8_t* var_data = ptr + sizeof(APICLaunchRecord);
+                const char* kernel_key = reinterpret_cast<const char*>(var_data);
+                const char* module_hash = reinterpret_cast<const char*>(var_data + rec->kernel_key_len);
+                CUfunction kernel = apic_get_kernel_function(
+                    graph, module_hash, rec->module_hash_len, kernel_key, rec->kernel_key_len, rec->is_forward != 0
+                );
+                if (!kernel)
+                    return false;
+
+                if (!wp_cuda_set_kernel_cluster_attrs(kernel, cluster_dim, 1, 1)) {
+                    wp::set_error_string("Failed to set cluster attributes for APIC kernel launch");
+                    return false;
+                }
+            }
+        }
+
+        ptr += header->total_size;
+    }
+
+    return true;
+}
+
 static bool apic_rebuild_cuda_graph(APICGraph* graph, CUstream stream)
 {
     // Precondition: graph->operations_validated is true. Enforced by
@@ -231,6 +271,9 @@ static bool apic_rebuild_cuda_graph(APICGraph* graph, CUstream stream)
         cudaGraphDestroy((cudaGraph_t)graph->cuda_graph);
         graph->cuda_graph = nullptr;
     }
+
+    if (!apic_configure_kernel_cluster_attrs(graph))
+        return false;
 
     cudaError_t cuda_err = cudaStreamBeginCapture((cudaStream_t)stream, cudaStreamCaptureModeThreadLocal);
     if (cuda_err != cudaSuccess) {
@@ -372,17 +415,18 @@ static bool apic_rebuild_cuda_graph(APICGraph* graph, CUstream stream)
             // Replay via the same wp_cuda_launch_kernel that captured this op.
             // apic_info=nullptr is safe: g_apic_state is null during replay, so
             // the recording branch in wp_cuda_launch_kernel is a no-op.
-            size_t launch_result = wp_cuda_launch_kernel(
-                graph->cuda_context, kernel, rec->dim, rec->max_blocks, rec->block_dim, rec->smem_bytes, args.data(),
-                stream, /*apic_info=*/nullptr
+            size_t launch_res = wp_cuda_launch_kernel(
+                graph->cuda_context, kernel, rec->dim, rec->max_blocks, rec->block_dim,
+                rec->cluster_dim > 0 ? rec->cluster_dim : 1, rec->smem_bytes, args.data(), stream,
+                /*apic_info=*/nullptr
             );
+            if (launch_res != CUDA_SUCCESS)
+                success = false;
 
             for (uint8_t* p : arg_storage)
                 delete[] p;
-            if (launch_result) {
-                success = false;
+            if (!success)
                 break;
-            }
             break;
         }
 

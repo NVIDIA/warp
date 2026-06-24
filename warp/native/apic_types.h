@@ -162,7 +162,8 @@ struct APICLaunchRecord {
     int32_t block_dim;  // Threads per block
     int32_t smem_bytes;  // Shared memory bytes
     uint8_t is_forward;  // 1 for forward pass, 0 for backward
-    uint8_t _pad1[3];
+    uint8_t cluster_dim;  // 1D CTA cluster size, or 0 for older records
+    uint8_t _pad1[2];
 
     // Variable data sizes
     uint16_t kernel_key_len;  // Length of kernel_key string

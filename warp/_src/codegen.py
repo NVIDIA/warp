@@ -4857,6 +4857,15 @@ cuda_module_header = """
 
 #define builtin_block_dim() wp::block_dim()
 
+// CUDA Thread Block Cluster shape declaration. Expands to __cluster_dims__
+// only on devices that support clusters (compute capability 9.0+); otherwise
+// expands to nothing so the same source compiles cleanly for any target arch.
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 900)
+#define WP_CLUSTER_DIMS(x, y, z) __cluster_dims__(x, y, z)
+#else
+#define WP_CLUSTER_DIMS(x, y, z)
+#endif
+
 """
 
 struct_template = """
@@ -4931,7 +4940,7 @@ cuda_reverse_function_template = """
 
 cuda_kernel_template_forward = """
 
-{line_directive}extern "C" {launch_bounds_str}__global__ void {name}_cuda_kernel_forward(
+{line_directive}extern "C" {launch_bounds_str}{cluster_dims_str}__global__ void {name}_cuda_kernel_forward(
     {forward_args})
 {{
 {line_directive}    wp::tile_shared_storage_t tile_mem;
@@ -4950,7 +4959,7 @@ cuda_kernel_template_forward = """
 
 cuda_kernel_template_backward = """
 
-{line_directive}extern "C" {launch_bounds_str}__global__ void {name}_cuda_kernel_backward(
+{line_directive}extern "C" {launch_bounds_str}{cluster_dims_str}__global__ void {name}_cuda_kernel_backward(
     {reverse_args})
 {{
 {line_directive}    wp::tile_shared_storage_t tile_mem;
@@ -5647,6 +5656,15 @@ def codegen_kernel(kernel, device, options):
         else:
             raise ValueError(f"launch_bounds must be an int or a tuple/list of 1-2 ints, got {type(launch_bounds)}")
 
+    # Generate cluster_dims string for CUDA kernels.
+    # 1 is the implicit default and is treated as a no-op so that
+    # kernels without cluster_dim produce byte-identical source to pre-feature.
+    cluster_dims_str = ""
+    if device == "cuda":
+        cluster_dim = options.get("cluster_dim", 1)
+        if cluster_dim != 1:
+            cluster_dims_str = f"WP_CLUSTER_DIMS({cluster_dim}, 1, 1) "
+
     # build forward signature
     forward_args = [f"wp::launch_bounds_t<{adj.kernel_dim}> dim"]
     if device == "cpu":
@@ -5662,6 +5680,7 @@ def codegen_kernel(kernel, device, options):
             "forward_body": forward_body,
             "line_directive": func_line_directive,
             "launch_bounds_str": launch_bounds_str,
+            "cluster_dims_str": cluster_dims_str,
         }
     )
     template += template_forward

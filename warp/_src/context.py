@@ -782,12 +782,130 @@ def call_builtin_from_desc(
 
 
 class KernelHooks:
-    def __init__(self, forward, backward, forward_smem_bytes=0, backward_smem_bytes=0):
+    def __init__(self, forward, backward, forward_smem_bytes=0, backward_smem_bytes=0, cluster_dim=1):
         self.forward = forward
         self.backward = backward
 
         self.forward_smem_bytes = forward_smem_bytes
         self.backward_smem_bytes = backward_smem_bytes
+
+        # Effective CUDA Thread Block Cluster size baked into the loaded
+        # CUfunction(s): the requested cluster_dim when the compile target carries
+        # the attribute, otherwise 1. Resolved once here so the launch hot path
+        # reads a single attribute instead of recomputing it per call.
+        self.cluster_dim = cluster_dim
+
+
+# Hardware upper bound for the non-portable cluster range (9-16), valid on
+# Hopper and Blackwell. The usable maximum for a given kernel and device is
+# queried at runtime via get_cuda_max_cluster_dim().
+_MAX_CLUSTER_SIZE = 16
+
+
+def _normalize_cluster_dim(value) -> int:
+    """Validate and canonicalize a ``cluster_dim`` decorator value.
+
+    Warp launches CUDA kernels with a 1D hardware grid, so ``cluster_dim`` is a
+    scalar CTA count. Codegen maps ``N`` to CUDA ``__cluster_dims__(N, 1, 1)``.
+
+    Returns the canonical positive ``int`` value.
+
+    Raises ``ValueError`` (or ``TypeError`` for non-numeric input) on any
+    invalid value.
+    """
+    if isinstance(value, bool):
+        # bool is a subclass of int; reject early to avoid surprising values.
+        raise TypeError(f"cluster_dim must be an int CTA count, got bool {value!r}")
+    if not isinstance(value, int):
+        raise TypeError(
+            "cluster_dim must be an int CTA count; Warp uses a 1D hardware launch grid and does not "
+            f"support multidimensional CUDA cluster shapes, got {type(value).__name__}: {value!r}"
+        )
+    if value < 1:
+        raise ValueError(f"cluster_dim must be >= 1, got {value!r}")
+    if value > _MAX_CLUSTER_SIZE:
+        raise ValueError(f"cluster_dim must be <= {_MAX_CLUSTER_SIZE} (Hopper non-portable cap), got {value!r}")
+
+    return value
+
+
+def _get_kernel_cluster_dim(kernel) -> int:
+    """Return the normalized cluster_dim from merged module/kernel options.
+
+    Hot path: most kernels never set cluster_dim, so probe both dicts directly
+    instead of building a merged dict. Kernel-level values are pre-normalized at
+    decoration time (see ``_normalize_cluster_dim`` in the decorator) and can be
+    trusted as-is. Module-level overrides bypass the decorator (e.g.
+    ``set_module_options``), so they are validated here on first launch.
+    """
+    cd = kernel.options.get("cluster_dim")
+    if cd is not None:
+        return cd
+    cd = kernel.module.options.get("cluster_dim", 1)
+    return cd if cd == 1 else _normalize_cluster_dim(cd)
+
+
+def _cluster_dim_target_status(device_arch: int | None, compile_arch: int | None) -> str:
+    """Classify how a ``cluster_dim > 1`` request maps to a compile target.
+
+    Thread block clusters require a compile target of sm90+. Below that, the
+    ``WP_CLUSTER_DIMS`` macro (guarded by ``__CUDA_ARCH__ >= 900`` in codegen)
+    expands to nothing, so the requested ``__cluster_dims__`` attribute silently
+    vanishes from the generated kernel.
+
+    Args:
+        device_arch: Compute capability of the backing device, or ``None`` for
+            an ahead-of-time compile with no backing device.
+        compile_arch: Compute capability the module is (being) compiled for.
+
+    Returns:
+        ``"active"`` -- the compile target supports clusters (>= sm90); the
+        cluster attribute is present and should be configured on the CUfunction.
+
+        ``"ignored"`` -- a genuine sub-cluster *device* (arch < 90) compiling its
+        own code. Clustering is silently dropped so portable code that sets
+        ``cluster_dim`` still runs unclustered on older hardware.
+
+        ``"dropped"`` -- the target is below sm90 but this is not a genuine
+        sub-cluster device: either a cluster-capable device compiled for a lower
+        target (e.g. ``warp.config.ptx_target_arch < 90``) or an AOT compile with
+        no backing device. The requested cluster attribute would silently vanish,
+        so callers should raise instead of reasoning about clustering that is not
+        present in the binary.
+    """
+    if compile_arch is not None and compile_arch >= 90:
+        return "active"
+    if device_arch is not None and device_arch < 90:
+        return "ignored"
+    return "dropped"
+
+
+def _validate_cluster_launch(cluster_dim: int, dim: int, block_dim: int, max_blocks: int) -> None:
+    """Reject clustered launches whose grid is not a clean multiple of ``cluster_dim``.
+
+    Warp kernels run their body only while ``_idx < dim``, so a launch grid padded
+    beyond ``ceil(dim / block_dim)`` would launch CTAs that join their cluster but
+    skip the body, leaving cluster collectives (distributed shared memory, cluster
+    barriers) waiting on peers that never participate. Rather than pad, require the
+    block count to be cluster-aligned and fail with a clear error otherwise.
+    """
+    if cluster_dim <= 1:
+        return
+
+    if 0 < max_blocks < cluster_dim:
+        raise ValueError(
+            f"Clustered kernel launches require max_blocks to be 0 or at least cluster_dim; "
+            f"got max_blocks={max_blocks}, cluster_dim={cluster_dim}"
+        )
+
+    num_blocks = (dim + block_dim - 1) // block_dim
+    if num_blocks % cluster_dim != 0:
+        raise ValueError(
+            f"Clustered kernel launch requires the block count ceil(dim / block_dim) to be a "
+            f"multiple of cluster_dim; got {num_blocks} blocks (dim={dim}, block_dim={block_dim}) "
+            f"for cluster_dim={cluster_dim}. Pad the launch dimension up to a whole number of "
+            f"clusters and guard out-of-range threads in the kernel (e.g. `if tid >= n: return`)."
+        )
 
 
 # caches source and compiled entry points for a kernel (will be populated after module loads)
@@ -1373,6 +1491,7 @@ def kernel(
     *,
     enable_backward: bool | None = None,
     launch_bounds: tuple[int, ...] | int | None = None,
+    cluster_dim: int | None = None,
     module: Module | Literal["unique"] | str | None = None,
     module_options: dict[str, Any] | None = None,
 ):
@@ -1428,6 +1547,13 @@ def kernel(
             kernels. Note: The ``block_dim`` parameter in
             :func:`warp.launch` must not exceed the
             ``maxThreadsPerBlock`` value specified here.
+        cluster_dim: CUDA Thread Block Cluster size as a 1D CTA count.
+            Warp emits CUDA ``__cluster_dims__(cluster_dim, 1, 1)`` because
+            kernels use a 1D hardware launch grid. Must be a positive int <= 16
+            (Hopper non-portable cap). Default ``1`` means no clustering. Only
+            effective on devices with compute capability >= 9.0; silently
+            ignored on older archs and on CPU. See
+            :func:`warp.get_cuda_max_cluster_dim`.
         module: The :class:`warp._src.context.Module` to which the
             kernel belongs. Alternatively, if a string ``"unique"`` is
             provided, the kernel is assigned to a new module named
@@ -1453,6 +1579,9 @@ def kernel(
 
         if launch_bounds is not None:
             kernel_options["launch_bounds"] = launch_bounds
+
+        if cluster_dim is not None:
+            kernel_options["cluster_dim"] = _normalize_cluster_dim(cluster_dim)
 
         # Resolve the module for this kernel
         if module is None:
@@ -2278,6 +2407,17 @@ class ModuleHasher:
         ch.update(self.hash_adjoint(kernel.adj))
         ch.update(self._hash_kernel_return_annotation(kernel))
 
+        # Include per-kernel options (e.g. cluster_dim, launch_bounds) so that
+        # two kernels with identical source but different options get distinct
+        # hashes.  Values are stringified, so option types must have a
+        # deterministic ``str()`` (built-in scalars, tuples of scalars, bools,
+        # etc.).  Don't add options whose ``str()`` includes id-based output
+        # (e.g. ``<object at 0x...>``); the hash would still be stable within
+        # a process but unstable across runs.
+        for opt in sorted(kernel.options.keys()):
+            s = f"{opt}:{kernel.options[opt]}"
+            ch.update(bytes(s, "utf-8"))
+
         h = ch.digest()
 
         self.unique_kernels[h] = kernel
@@ -2647,13 +2787,17 @@ class ModuleExec:
         instance.handle = None
         return instance
 
-    def __init__(self, handle, module_hash, device, meta, block_dim: int):
+    def __init__(self, handle, module_hash, device, meta, block_dim: int, compile_arch: int | None = None):
         self.handle = handle
         self.module_hash = module_hash
         self.device = device
         self.kernel_hooks = {}
         self.meta = meta
         self.block_dim = block_dim
+        # Compute capability the loaded binary was actually compiled for (None for
+        # CPU). Cluster classification must use this frozen target, not the current
+        # global config, which can change after the module is loaded.
+        self.compile_arch = compile_arch
 
     # release the loaded module
     def __del__(self):
@@ -2715,7 +2859,49 @@ class ModuleExec:
                     f"Failed to configure kernel dynamic shared memory for this device, tried to configure {backward_name} kernel for {backward_smem_bytes} bytes, but maximum available is {max_smem_bytes}"
                 )
 
-            hooks = KernelHooks(forward_kernel, backward_kernel, forward_smem_bytes, backward_smem_bytes)
+            # Resolve the effective cluster_dim once here (cached on the hooks)
+            # and configure the cluster attribute on the loaded CUfunction(s).
+            # status: "active" configures the attribute, "ignored" stays
+            # unclustered, "dropped" raises; see _cluster_dim_target_status.
+            effective_cluster_dim = 1
+            cluster_dim = _normalize_cluster_dim(options.get("cluster_dim", 1))
+            if cluster_dim != 1:
+                # Classify against the target the loaded binary was compiled for,
+                # frozen on this ModuleExec at load time. Re-reading the global
+                # config here would misclassify an already-loaded module if the
+                # config changed between load and first launch.
+                compile_arch = self.compile_arch
+                status = _cluster_dim_target_status(self.device.arch, compile_arch)
+                if status == "dropped":
+                    raise RuntimeError(
+                        f"Kernel {name!r} requests cluster_dim={cluster_dim} on {self.device.alias} "
+                        f"(sm_{self.device.arch}), but the module was compiled for sm_{compile_arch}, where "
+                        f"thread block clusters are unavailable and the cluster attribute is dropped. Raise "
+                        f"warp.config.ptx_target_arch to >= 90 or build CUBIN for this device to use "
+                        f"clustering, or remove cluster_dim."
+                    )
+                if status == "active":
+                    effective_cluster_dim = cluster_dim
+                    if not runtime.core.wp_cuda_set_kernel_cluster_attrs(forward_kernel, cluster_dim, 1, 1):
+                        log_warning(
+                            f"Failed to set cluster attributes on {forward_name} for "
+                            f"cluster_dim={cluster_dim}; launches may fail on this device"
+                        )
+                    if options["enable_backward"] and not runtime.core.wp_cuda_set_kernel_cluster_attrs(
+                        backward_kernel, cluster_dim, 1, 1
+                    ):
+                        log_warning(
+                            f"Failed to set cluster attributes on {backward_name} for "
+                            f"cluster_dim={cluster_dim}; launches may fail on this device"
+                        )
+
+            hooks = KernelHooks(
+                forward_kernel,
+                backward_kernel,
+                forward_smem_bytes,
+                backward_smem_bytes,
+                cluster_dim=effective_cluster_dim,
+            )
 
         else:
             func = ctypes.CFUNCTYPE(None)
@@ -2855,6 +3041,8 @@ class Module:
             options["mode"] = config.mode
         if options["optimization_level"] is None:
             options["optimization_level"] = config.optimization_level
+        if "cluster_dim" in options:
+            options["cluster_dim"] = _normalize_cluster_dim(options["cluster_dim"])
         # None means "use target-specific default": O2 for CPU, O3 for CUDA.
         # Resolved at compile time in _compile() so the hash distinguishes
         # explicit levels from the default.
@@ -3245,6 +3433,29 @@ class Module:
 
         options = options | {"output_arch": output_arch}
 
+        # Reject cluster_dim > 1 when the compile target drops the cluster
+        # attribute (status == "dropped"); see _cluster_dim_target_status.
+        if not is_cpu and output_arch < 90:
+            device_arch = device.arch if device is not None else None
+            if _cluster_dim_target_status(device_arch, output_arch) == "dropped":
+                # Validate the same live unique-kernel set that codegen emits.
+                # self.kernels keeps only the latest kernel per key, so a kernel
+                # redefined with the same key can leave an older *live* clustered
+                # kernel that still generates WP_CLUSTER_DIMS yet would be missed
+                # by self.kernels.values().
+                cluster_hasher = ModuleHasher(self._get_live_kernels(), options)
+                for kernel in cluster_hasher.get_unique_kernels():
+                    cluster_dim = _get_kernel_cluster_dim(kernel)
+                    if cluster_dim > 1:
+                        target = "this ahead-of-time compile" if device is None else device.alias
+                        raise RuntimeError(
+                            f"Kernel {kernel.key!r} requests cluster_dim={cluster_dim}, but {target} is "
+                            f"compiling for sm_{output_arch}, where thread block clusters are unavailable and "
+                            f"the cluster attribute is dropped. Compile for sm_90 or higher (raise "
+                            f"warp.config.ptx_target_arch to >= 90, target a cluster-capable arch, or build "
+                            f"CUBIN for a cluster-capable device) to use clustering, or remove cluster_dim."
+                        )
+
         # ``options`` is the resolved dict for the active block_dim variant
         # (set by ``Module.load`` via ``resolve_options(block_dim=...)``). Use
         # it for every cache-path lookup below so the .meta filename and
@@ -3545,13 +3756,13 @@ class Module:
                     != 0
                 ):
                     raise Exception(f"Failed to load CPU module '{self.name}' ({module_load_diagnostics})")
-                module_exec = ModuleExec(module_handle, module_hash, device, meta, active_block_dim)
+                module_exec = ModuleExec(module_handle, module_hash, device, meta, active_block_dim, output_arch)
                 self.execs[(None, active_block_dim)] = module_exec
 
             elif device.is_cuda:
                 cuda_module = warp._src.build.load_cuda(binary_path, device)
                 if cuda_module is not None:
-                    module_exec = ModuleExec(cuda_module, module_hash, device, meta, active_block_dim)
+                    module_exec = ModuleExec(cuda_module, module_hash, device, meta, active_block_dim, output_arch)
                     self.execs[(device.context, active_block_dim)] = module_exec
                 else:
                     module_load_timer.extra_msg = " (error)"
@@ -6300,6 +6511,22 @@ class Runtime:
             self.core.wp_cuda_configure_kernel_shared_memory.argtypes = [ctypes.c_void_p, ctypes.c_int]
             self.core.wp_cuda_configure_kernel_shared_memory.restype = ctypes.c_bool
 
+            self.core.wp_cuda_set_kernel_cluster_attrs.argtypes = [
+                ctypes.c_void_p,  # kernel (CUfunction)
+                ctypes.c_int,  # cx
+                ctypes.c_int,  # cy
+                ctypes.c_int,  # cz
+            ]
+            self.core.wp_cuda_set_kernel_cluster_attrs.restype = ctypes.c_bool
+
+            self.core.wp_cuda_get_max_cluster_dim.argtypes = [
+                ctypes.c_void_p,  # context
+                ctypes.c_void_p,  # kernel (CUfunction)
+                ctypes.c_int,  # block_dim
+                ctypes.c_int,  # dynamic_smem_bytes
+            ]
+            self.core.wp_cuda_get_max_cluster_dim.restype = ctypes.c_int
+
             self.core.wp_cuda_get_suggested_block_size.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
@@ -6313,6 +6540,7 @@ class Runtime:
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.c_size_t,
+                ctypes.c_int,
                 ctypes.c_int,
                 ctypes.c_int,
                 ctypes.c_int,
@@ -7173,6 +7401,69 @@ def is_mempool_enabled(device: DeviceLike) -> bool:
     device = runtime.get_device(device)
 
     return device.is_mempool_enabled
+
+
+def get_cuda_max_cluster_dim(
+    kernel,
+    device: DeviceLike = None,
+    *,
+    block_dim: int | None = None,
+    dynamic_smem_bytes: int = 0,
+) -> int:
+    """Return the maximum ``cluster_dim`` *kernel* can launch with on *device*.
+
+    Probes the CUDA driver via ``cuOccupancyMaxActiveClusters`` for cluster
+    sizes from 16 down to 2 and returns the largest one the driver reports as
+    launchable. The result reflects actual hardware capability: integrated
+    Hopper+ SoCs (NVIDIA Thor sm_101, DGX Spark sm_121) cap at the portable 8,
+    while Hopper and Blackwell desktop parts typically support 16.
+
+    For a plain kernel (no ``cluster_dim`` declared) the result is the
+    device's true cluster limit. For a kernel with ``cluster_dim`` declared,
+    the driver only accepts that declared size, so the function returns the
+    declared value when the device supports it, or ``1`` when it does not.
+
+    Args:
+        kernel: A ``@wp.kernel``-decorated kernel instance.
+        device: Target device. Defaults to the current device.
+        block_dim: Threads per block at launch. If ``None``, uses the kernel's
+            module-resolved ``block_dim``.
+        dynamic_smem_bytes: Dynamic shared memory bytes used at launch.
+
+    Returns:
+        The maximum ``cluster_dim`` as a 1D CTA count. Returns ``1`` on devices
+        with compute capability < 9.0, on non-CUDA devices, and on driver error.
+    """
+    init()
+
+    device = runtime.get_device(device)
+    if not device.is_cuda or device.arch < 90:
+        return 1
+
+    if block_dim is None:
+        block_dim = kernel.module.options.get("block_dim", 256)
+
+    # ``Module.load(device, block_dim)`` mutates ``module.options["block_dim"]``
+    # as a side effect.  Snapshot and restore so this query helper has no
+    # observable effect on subsequent launches that don't pass ``block_dim``.
+    prior_block_dim = kernel.module.options["block_dim"]
+    try:
+        module_exec = kernel.module.load(device, block_dim)
+        if module_exec is None:
+            return 1
+
+        hooks = module_exec.get_kernel_hooks(kernel)
+        forward_handle = hooks.forward
+        if not forward_handle:
+            return 1
+
+        return int(
+            runtime.core.wp_cuda_get_max_cluster_dim(
+                device.context, forward_handle, int(block_dim), int(dynamic_smem_bytes)
+            )
+        )
+    finally:
+        kernel.module.options["block_dim"] = prior_block_dim
 
 
 def set_mempool_enabled(device: DeviceLike, enable: bool) -> None:
@@ -8785,8 +9076,14 @@ def invoke(kernel, hooks, params: Sequence[Any], adjoint: bool):
 
 
 def _raise_cuda_launch_error(kernel: Kernel, device: Device) -> None:
-    """Raise a RuntimeError for the current CUDA launch failure."""
-    raise RuntimeError(f"Error launching kernel: {kernel.key} on device {device}: {runtime.get_error_string()}")
+    """Raise a RuntimeError describing a failed CUDA kernel launch.
+
+    Call only on the failure path (``if wp_cuda_launch_kernel(...):``) so the
+    success path -- the overwhelming majority of launches -- never enters this
+    function. The six call sites must keep the launch+raise inlined and in sync.
+    """
+    err = runtime.get_error_string()
+    raise RuntimeError(f"Error launching kernel: {kernel.key} on device {device}: {err}")
 
 
 class Launch:
@@ -8820,6 +9117,11 @@ class Launch:
         # if not specified set a zero bound sized to match the compiled kernel
         if not bounds:
             bounds = launch_bounds_t((0,) * kernel.adj.kernel_dim)
+
+        # cluster_dim is resolved and cached on the hooks at load time; the only
+        # per-launch cluster work is the alignment guards, which short-circuit
+        # for the common unclustered case.
+        _validate_cluster_launch(hooks.cluster_dim, bounds.size, block_dim, max_blocks)
 
         # if not specified then build a list of default value params for args
         if not params:
@@ -8870,6 +9172,9 @@ class Launch:
         self.block_dim: int = block_dim
         """The number of threads per block."""
 
+        self.cluster_dim: int = hooks.cluster_dim
+        """The number of CUDA thread blocks per Thread Block Cluster."""
+
         self.adjoint: bool = adjoint
         """Whether to run the adjoint kernel instead of the forward kernel."""
 
@@ -8880,6 +9185,13 @@ class Launch:
             dim: The dimensions of the launch.
         """
         self.bounds = _build_launch_bounds(dim, self.kernel.adj.kernel_dim)
+
+        # Re-validate cluster alignment for the new shape: the constructor checked
+        # the original dim, but a relaunch with a misaligned dim would otherwise
+        # only be caught by the native backstop as an opaque CUDA error. This is
+        # off the hot replay path (launch() does not re-validate) and short-
+        # circuits for the common unclustered case.
+        _validate_cluster_launch(self.cluster_dim, self.bounds.size, self.block_dim, self.max_blocks)
 
         # launch bounds always at index 0
         self.params[0] = self.bounds
@@ -9001,6 +9313,7 @@ class Launch:
                     self.bounds.size,
                     self.max_blocks,
                     self.block_dim,
+                    self.cluster_dim,
                     self.hooks.backward_smem_bytes,
                     self.params_addr,
                     stream.cuda_stream,
@@ -9014,6 +9327,7 @@ class Launch:
                     self.bounds.size,
                     self.max_blocks,
                     self.block_dim,
+                    self.cluster_dim,
                     self.hooks.forward_smem_bytes,
                     self.params_addr,
                     stream.cuda_stream,
@@ -9301,6 +9615,13 @@ def launch(
             kernel_args = [ctypes.c_void_p(ctypes.addressof(x)) for x in params]
             kernel_params = (ctypes.c_void_p * len(kernel_args))(*kernel_args)
 
+            # cluster_dim is resolved and cached on the hooks at load time; the
+            # only per-launch cluster work is the alignment guards, which
+            # short-circuit for the common unclustered case. Kept on the CUDA
+            # path so CPU launches pay nothing for a CUDA-only feature.
+            cluster_dim = hooks.cluster_dim
+            _validate_cluster_launch(cluster_dim, bounds.size, block_dim, max_blocks)
+
             if stream is None:
                 stream = device.stream
 
@@ -9344,6 +9665,7 @@ def launch(
                         bounds.size,
                         max_blocks,
                         block_dim,
+                        cluster_dim,
                         hooks.backward_smem_bytes,
                         kernel_params,
                         stream.cuda_stream,
@@ -9388,6 +9710,7 @@ def launch(
                         bounds.size,
                         max_blocks,
                         block_dim,
+                        cluster_dim,
                         hooks.forward_smem_bytes,
                         kernel_params,
                         stream.cuda_stream,

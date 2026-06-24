@@ -155,6 +155,7 @@ from warp._src.context import get_event_elapsed_time as get_event_elapsed_time
 from warp._src.utils import ScopedMempool as ScopedMempool
 from warp._src.utils import ScopedMempoolAccess as ScopedMempoolAccess
 from warp._src.utils import ScopedPeerAccess as ScopedPeerAccess
+from warp._src.context import get_cuda_max_cluster_dim as get_cuda_max_cluster_dim
 from warp._src.context import is_mempool_supported as is_mempool_supported
 from warp._src.context import is_mempool_enabled as is_mempool_enabled
 from warp._src.context import set_mempool_enabled as set_mempool_enabled

@@ -5179,6 +5179,90 @@ bool wp_cuda_configure_kernel_shared_memory(void* kernel, int size)
     return true;
 }
 
+bool wp_cuda_set_kernel_cluster_attrs(void* kernel, int cx, int cy, int cz)
+{
+    if (!kernel)
+        return false;
+
+    int total = cx * cy * cz;
+    if (total <= 1)
+        return true;  // (1,1,1) and other unit shapes are pure no-ops.
+
+    if (total > 8) {
+        // CU_FUNC_ATTRIBUTE_NON_PORTABLE_CLUSTER_SIZE_ALLOWED == 14
+        // (defined in CUDA 12.0 headers; declared as a constant here to
+        // decouple from any future header reorg).
+        const CUfunction_attribute non_portable_attr = (CUfunction_attribute)14;
+        CUresult res = cuFuncSetAttribute_f((CUfunction)kernel, non_portable_attr, 1);
+        if (res != CUDA_SUCCESS)
+            return false;
+    }
+
+    return true;
+}
+
+int wp_cuda_get_max_cluster_dim(void* context, void* kernel, int block_dim, int dynamic_smem_bytes)
+{
+    if (!kernel || !context)
+        return 1;
+
+    ContextGuard guard(context);
+
+    // Opt into non-portable cluster sizes so probes above 8 are valid on
+    // hardware that supports them. The attribute is a no-op on cluster sizes
+    // <= 8. CU_FUNC_ATTRIBUTE_NON_PORTABLE_CLUSTER_SIZE_ALLOWED == 14.
+    //
+    // This is a query helper, so save and restore the attribute to avoid
+    // permanently opting the caller's kernel into non-portable cluster sizes
+    // as a side effect of probing. If the attribute can't be read back,
+    // prior_non_portable stays 0 (disabled), which is the value we restore.
+    const CUfunction_attribute non_portable_attr = (CUfunction_attribute)14;
+    int prior_non_portable = 0;
+    cuFuncGetAttribute_f(&prior_non_portable, non_portable_attr, (CUfunction)kernel);
+    cuFuncSetAttribute_f((CUfunction)kernel, non_portable_attr, 1);
+
+    // Descending probe via cuOccupancyMaxActiveClusters: return the largest
+    // cluster_dim the driver reports as launchable. For plain kernels this
+    // reveals the device's true cluster limit (8 on integrated Hopper+ SoCs
+    // like Thor sm_101 and DGX Spark sm_121, up to 16 on Hopper/Blackwell
+    // desktop parts). For kernels with __cluster_dims__ baked in, the driver
+    // only accepts the declared size, so we get the declared value back (or
+    // 1 if the device can't support it).
+    CUlaunchAttribute cluster_attr = {};
+    cluster_attr.id = CU_LAUNCH_ATTRIBUTE_CLUSTER_DIMENSION;
+    cluster_attr.value.clusterDim.y = 1;
+    cluster_attr.value.clusterDim.z = 1;
+
+    CUlaunchConfig config = {};
+    config.gridDimY = 1;
+    config.gridDimZ = 1;
+    config.blockDimX = (unsigned int)block_dim;
+    config.blockDimY = 1;
+    config.blockDimZ = 1;
+    config.sharedMemBytes = (unsigned int)dynamic_smem_bytes;
+    config.hStream = 0;
+    config.attrs = &cluster_attr;
+    config.numAttrs = 1;
+
+    int max_cluster_dim = 1;
+    for (int cd = 16; cd >= 2; --cd) {
+        cluster_attr.value.clusterDim.x = (unsigned int)cd;
+        config.gridDimX = (unsigned int)cd;
+        int num_clusters = 0;
+        CUresult res = cuOccupancyMaxActiveClusters_f(&num_clusters, (CUfunction)kernel, &config);
+        if (res == CUDA_SUCCESS && num_clusters >= 1) {
+            max_cluster_dim = cd;
+            break;
+        }
+    }
+
+    // Restore the prior value (disabled when the read-back above failed) so
+    // probing leaves no observable side effect on the caller's kernel.
+    cuFuncSetAttribute_f((CUfunction)kernel, non_portable_attr, prior_non_portable);
+
+    return max_cluster_dim;
+}
+
 void* wp_cuda_get_kernel(void* context, void* module, const char* name)
 {
     ContextGuard guard(context);
@@ -5199,6 +5283,7 @@ size_t wp_cuda_launch_kernel(
     size_t dim,
     int max_blocks,
     int block_dim,
+    int cluster_dim,
     int shared_memory_bytes,
     void** args,
     void* stream,
@@ -5214,9 +5299,20 @@ size_t wp_cuda_launch_kernel(
         block_dim = 256;
     }
 
+    if (cluster_dim <= 0) {
+        cluster_dim = 1;
+    }
+    if (cluster_dim > 1) {
+        ContextInfo* context_info = get_context_info(static_cast<CUcontext>(context));
+        if (!context_info || !context_info->device_info || context_info->device_info->arch < 90) {
+            cluster_dim = 1;
+        }
+    }
+
     // CUDA specs up to compute capability 9.0 says the max x-dim grid is 2**31-1, so
     // grid_dim is fine as an int for the near future
-    int grid_dim = (dim + block_dim - 1) / block_dim;
+    int natural_grid_dim = (dim + block_dim - 1) / block_dim;
+    int grid_dim = natural_grid_dim;
 
     if (max_blocks <= 0) {
         max_blocks = 2147483647;
@@ -5235,6 +5331,38 @@ size_t wp_cuda_launch_kernel(
     } else {
         if (grid_dim > max_blocks) {
             grid_dim = max_blocks;
+        }
+    }
+
+    if (cluster_dim > 1 && grid_dim > 0) {
+        // CUDA requires the launch grid to be a multiple of cluster_dim when the
+        // kernel was compiled with __cluster_dims__. We never pad upward: padded
+        // CTAs would skip the kernel body (guarded by _idx < dim) yet still join
+        // their cluster, breaking distributed shared memory / cluster barriers
+        // that require every peer to run. The launch path rejects non-aligned
+        // shapes before reaching here; this is the backstop for any other caller.
+        if (grid_dim == natural_grid_dim) {
+            // Untruncated launch shape: must already be cluster-aligned.
+            if (grid_dim % cluster_dim != 0) {
+                wp::set_error_string(
+                    "Warp CUDA error: clustered kernel launch requires the block count to be a multiple of "
+                    "cluster_dim (got %d blocks, cluster_dim=%d); pad dim to a whole number of clusters",
+                    grid_dim, cluster_dim
+                );
+                return CUDA_ERROR_INVALID_VALUE;
+            }
+        } else {
+            // Truncated by max_blocks (grid-stride loop): every launched CTA runs
+            // the body, so rounding down to a valid multiple stays safe.
+            grid_dim = (grid_dim / cluster_dim) * cluster_dim;
+            if (grid_dim == 0) {
+                wp::set_error_string(
+                    "Warp CUDA error: clustered kernel launch requires max_blocks to be 0 or at least cluster_dim "
+                    "(got max_blocks=%d, cluster_dim=%d)",
+                    max_blocks, cluster_dim
+                );
+                return CUDA_ERROR_INVALID_VALUE;
+            }
         }
     }
 
@@ -5275,7 +5403,7 @@ size_t wp_cuda_launch_kernel(
 
             apic_record_kernel_launch(
                 state, apic_info->kernel_key, apic_info->module_hash, apic_info->is_forward, shape, ndim, launch_size,
-                max_blocks, block_dim, shared_memory_bytes, apic_info->params, apic_info->num_params,
+                max_blocks, block_dim, cluster_dim, shared_memory_bytes, apic_info->params, apic_info->num_params,
                 apic_info->adj_params, apic_info->relocs, apic_info->num_relocs, apic_info->value_data,
                 apic_info->value_data_size
             );

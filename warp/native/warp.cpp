@@ -277,8 +277,8 @@ void wp_cpu_launch_kernel(void* func, void* bounds, void* args, void* adj_args, 
 
         apic_record_kernel_launch(
             recording_state, apic_info->kernel_key, apic_info->module_hash, apic_info->is_forward, shape, ndim,
-            launch_size, 0, 0,
-            0,  // max_blocks, block_dim, smem_bytes (not applicable for CPU)
+            launch_size, 0, 0, 1,
+            0,  // max_blocks, block_dim, cluster_dim, smem_bytes (not applicable for CPU)
             apic_info->params, apic_info->num_params, apic_info->adj_params, apic_info->relocs, apic_info->num_relocs,
             apic_info->value_data, apic_info->value_data_size
         );
@@ -1180,6 +1180,7 @@ WP_API size_t wp_cuda_launch_kernel(
     size_t dim,
     int max_blocks,
     int block_dim,
+    int cluster_dim,
     int shared_memory_bytes,
     void** args,
     void* stream,
@@ -1197,6 +1198,8 @@ WP_API bool wp_cuda_get_suggested_block_size(
 }
 WP_API int wp_cuda_get_max_shared_memory(void* context) { return 0; }
 WP_API bool wp_cuda_configure_kernel_shared_memory(void* kernel, int size) { return false; }
+WP_API bool wp_cuda_set_kernel_cluster_attrs(void* kernel, int cx, int cy, int cz) { return false; }
+WP_API int wp_cuda_get_max_cluster_dim(void* context, void* kernel, int block_dim, int dynamic_smem_bytes) { return 1; }
 
 WP_API void wp_cuda_set_context_restore_policy(bool always_restore) { }
 WP_API int wp_cuda_get_context_restore_policy() { return false; }

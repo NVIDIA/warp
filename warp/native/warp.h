@@ -704,6 +704,7 @@ WP_API size_t wp_cuda_launch_kernel(
     size_t dim,
     int max_blocks,
     int block_dim,
+    int cluster_dim,
     int shared_memory_bytes,
     void** args,
     void* stream,
@@ -711,6 +712,16 @@ WP_API size_t wp_cuda_launch_kernel(
 );
 WP_API int wp_cuda_get_max_shared_memory(void* context);
 WP_API bool wp_cuda_configure_kernel_shared_memory(void* kernel, int size);
+// Set CUDA Thread Block Cluster attributes on a loaded kernel function.
+// For total cluster size > 8 (non-portable range), enables
+// CU_FUNC_NON_PORTABLE_CLUSTER_SIZE_ALLOWED. Sizes <= 8 are no-ops at this
+// layer (the cluster dimension itself is set via __cluster_dims__ in codegen).
+// Returns true on success or no-op; false on driver error.
+WP_API bool wp_cuda_set_kernel_cluster_attrs(void* kernel, int cx, int cy, int cz);
+// Query the maximum cluster_dim (CTA count, 1D product) usable for *kernel*
+// at the given block_dim and dynamic shared memory configuration. Returns
+// 1 if the device does not support clusters or on driver error.
+WP_API int wp_cuda_get_max_cluster_dim(void* context, void* kernel, int block_dim, int dynamic_smem_bytes);
 WP_API bool wp_cuda_get_suggested_block_size(
     void* context, void* kernel, int shared_memory_bytes, int* block_size_out, int* min_grid_size_out
 );

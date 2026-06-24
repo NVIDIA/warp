@@ -107,6 +107,7 @@ static PFN_cuModuleUnload_v2000 pfn_cuModuleUnload;
 static PFN_cuModuleGetFunction_v2000 pfn_cuModuleGetFunction;
 static PFN_cuLaunchKernel_v4000 pfn_cuLaunchKernel;
 static PFN_cuOccupancyMaxPotentialBlockSize_v6050 pfn_cuOccupancyMaxPotentialBlockSize;
+static PFN_cuOccupancyMaxActiveClusters_v11070 pfn_cuOccupancyMaxActiveClusters;
 static PFN_cuMemcpyPeerAsync_v4000 pfn_cuMemcpyPeerAsync;
 static PFN_cuPointerGetAttribute_v4000 pfn_cuPointerGetAttribute;
 static PFN_cuGraphicsMapResources_v3000 pfn_cuGraphicsMapResources;
@@ -118,6 +119,7 @@ static PFN_cuGraphicsSubResourceGetMappedArray_v3000 pfn_cuGraphicsSubResourceGe
 static PFN_cuGraphicsUnregisterResource_v3000 pfn_cuGraphicsUnregisterResource;
 static PFN_cuModuleGetGlobal_v3020 pfn_cuModuleGetGlobal;
 static PFN_cuFuncSetAttribute_v9000 pfn_cuFuncSetAttribute;
+static PFN_cuFuncGetAttribute_v2020 pfn_cuFuncGetAttribute;
 static PFN_cuIpcGetEventHandle_v4010 pfn_cuIpcGetEventHandle;
 static PFN_cuIpcOpenEventHandle_v4010 pfn_cuIpcOpenEventHandle;
 static PFN_cuIpcGetMemHandle_v4010 pfn_cuIpcGetMemHandle;
@@ -277,6 +279,7 @@ bool init_cuda_driver()
     get_driver_entry_point("cuModuleGetFunction", 2000, &(void*&)pfn_cuModuleGetFunction);
     get_driver_entry_point("cuLaunchKernel", 4000, &(void*&)pfn_cuLaunchKernel);
     get_driver_entry_point("cuOccupancyMaxPotentialBlockSize", 6050, &(void*&)pfn_cuOccupancyMaxPotentialBlockSize);
+    get_driver_entry_point("cuOccupancyMaxActiveClusters", 11070, &(void*&)pfn_cuOccupancyMaxActiveClusters);
     get_driver_entry_point("cuMemcpyPeerAsync", 4000, &(void*&)pfn_cuMemcpyPeerAsync);
     get_driver_entry_point("cuPointerGetAttribute", 4000, &(void*&)pfn_cuPointerGetAttribute);
     get_driver_entry_point("cuGraphicsMapResources", 3000, &(void*&)pfn_cuGraphicsMapResources);
@@ -290,6 +293,7 @@ bool init_cuda_driver()
     get_driver_entry_point("cuGraphicsUnregisterResource", 3000, &(void*&)pfn_cuGraphicsUnregisterResource);
     get_driver_entry_point("cuModuleGetGlobal", 3020, &(void*&)pfn_cuModuleGetGlobal);
     get_driver_entry_point("cuFuncSetAttribute", 9000, &(void*&)pfn_cuFuncSetAttribute);
+    get_driver_entry_point("cuFuncGetAttribute", 2020, &(void*&)pfn_cuFuncGetAttribute);
     get_driver_entry_point("cuIpcGetEventHandle", 4010, &(void*&)pfn_cuIpcGetEventHandle);
     get_driver_entry_point("cuIpcOpenEventHandle", 4010, &(void*&)pfn_cuIpcOpenEventHandle);
     get_driver_entry_point("cuIpcGetMemHandle", 4010, &(void*&)pfn_cuIpcGetMemHandle);
@@ -946,9 +950,20 @@ CUresult cuModuleGetGlobal_f(CUdeviceptr* dptr, size_t* bytes, CUmodule hmod, co
     return pfn_cuModuleGetGlobal ? pfn_cuModuleGetGlobal(dptr, bytes, hmod, name) : DRIVER_ENTRY_POINT_ERROR;
 }
 
+CUresult cuOccupancyMaxActiveClusters_f(int* numClusters, CUfunction func, const CUlaunchConfig* config)
+{
+    return pfn_cuOccupancyMaxActiveClusters ? pfn_cuOccupancyMaxActiveClusters(numClusters, func, config)
+                                            : DRIVER_ENTRY_POINT_ERROR;
+}
+
 CUresult cuFuncSetAttribute_f(CUfunction hfunc, CUfunction_attribute attrib, int value)
 {
     return pfn_cuFuncSetAttribute ? pfn_cuFuncSetAttribute(hfunc, attrib, value) : DRIVER_ENTRY_POINT_ERROR;
+}
+
+CUresult cuFuncGetAttribute_f(int* pi, CUfunction_attribute attrib, CUfunction hfunc)
+{
+    return pfn_cuFuncGetAttribute ? pfn_cuFuncGetAttribute(pi, attrib, hfunc) : DRIVER_ENTRY_POINT_ERROR;
 }
 
 CUresult cuIpcGetEventHandle_f(CUipcEventHandle* pHandle, CUevent event)
