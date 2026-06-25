@@ -372,7 +372,6 @@ class DeterministicCodegen:
 
     def __init__(self, adj):
         self.adj = adj
-        self.atomic_return_discarded = False
         adj.det_meta = None
         adj.det_registry = None
 
@@ -395,27 +394,6 @@ class DeterministicCodegen:
         else:
             self.adj.det_meta = None
             self.adj.det_registry = None
-
-        self.atomic_return_discarded = False
-
-    def is_direct_atomic_expression(self, node) -> bool:
-        """Return whether ``node`` is a bare atomic expression handled specially."""
-        return (
-            self.enabled
-            and isinstance(node, ast.Call)
-            and _deterministic_call_name(node.func)
-            in (_DET_INTERCEPTABLE_ATOMICS | _DET_UNINTERCEPTED_SIDE_EFFECT_ATOMICS)
-        )
-
-    @contextmanager
-    def atomic_return(self, *, discarded: bool):
-        """Temporarily classify atomic returns emitted below this point."""
-        previous = self.atomic_return_discarded
-        self.atomic_return_discarded = discarded
-        try:
-            yield
-        finally:
-            self.atomic_return_discarded = previous
 
     def include_function_call(self, func, bound_args) -> None:
         """Merge deterministic requirements for a resolved user function call."""
@@ -450,58 +428,285 @@ class DeterministicCodegen:
         except ValueError as e:
             raise WarpCodegenError(str(e)) from e
 
-    def emit_atomic_call(self, func, bound_args, return_type, output, output_list):
+    def emit_atomic_call(self, func, bound_args, return_type, output, output_list, *, return_value_used: bool):
         """Emit deterministic atomic lowering when ``func`` is intercepted."""
         if self.enabled and func.is_builtin() and func.key in _DET_INTERCEPTABLE_ATOMICS:
-            return emit_deterministic_atomic(self.adj, func, bound_args, return_type, output, output_list)
+            return emit_deterministic_atomic(
+                self.adj,
+                func,
+                bound_args,
+                return_type,
+                output,
+                output_list,
+                return_value_used=return_value_used,
+            )
         return None
 
     def call_args(self, func, bound_args):
         if func.is_builtin():
             return []
-        return _deterministic_call_args(self.adj, getattr(func.adj, "det_meta", None), bound_args)
+        return self.helper_args_for_meta(getattr(func.adj, "det_meta", None), bound_args)
 
     def replay_call_args(self, func, bound_args, default_args):
         if func.custom_replay_func is None:
             return default_args
-        return _deterministic_call_args(self.adj, getattr(func.custom_replay_func.adj, "det_meta", None), bound_args)
+        return self.helper_args_for_meta(getattr(func.custom_replay_func.adj, "det_meta", None), bound_args)
 
     def reverse_call_args(self, func, bound_args, default_args):
         if func.custom_grad_func is None:
             return default_args
-        return _deterministic_call_args(self.adj, getattr(func.custom_grad_func.adj, "det_meta", None), bound_args)
+        return self.helper_args_for_meta(getattr(func.custom_grad_func.adj, "det_meta", None), bound_args)
 
-    def wrap_unintercepted_side_effect_atomic(self, func, forward_call: str, replay_call: str) -> tuple[str, str]:
+    def helper_args_for_meta(self, meta, bound_args):
+        """Return helper arguments to pass into a deterministic ``@wp.func``."""
+        if self.adj.det_meta is None or meta is None or not meta.needs_deterministic:
+            return []
+
+        det_args = ["det_ctx"]
+        for target in meta.counter_targets:
+            mapped_label, mapped_attr_path = _deterministic_map_target(target, bound_args)
+            mapped_target = _deterministic_find_target(
+                self.adj.det_meta.counter_targets,
+                mapped_label,
+                mapped_attr_path,
+                adjoint=getattr(target, "adjoint", False),
+            )
+            if mapped_target is None and self.adj.det_registry is not None:
+                mapped_target = get_or_create_counter_target(
+                    self.adj.det_registry,
+                    self.adj.det_meta,
+                    mapped_label,
+                    target.value_ctype,
+                    attr_path=mapped_attr_path,
+                    adjoint=getattr(target, "adjoint", False),
+                    use_forward=getattr(target, "use_forward", True),
+                    use_backward=getattr(target, "use_backward", False),
+                )
+                self.adj.det_meta.counter_records_per_thread[mapped_target] += (
+                    meta.counter_records_per_thread.get(target, 1) - 1
+                )
+            det_args.append(mapped_target.helper_name if mapped_target is not None else target.helper_name)
+
+        for target in meta.scatter_targets:
+            mapped_label, mapped_attr_path = _deterministic_map_target(target, bound_args)
+            mapped_target = _deterministic_find_target(
+                self.adj.det_meta.scatter_targets,
+                mapped_label,
+                mapped_attr_path,
+                adjoint=getattr(target, "adjoint", False),
+            )
+            if mapped_target is None and self.adj.det_registry is not None:
+                mapped_target = get_or_create_scatter_target(
+                    self.adj.det_registry,
+                    self.adj.det_meta,
+                    mapped_label,
+                    target.value_dtype,
+                    target.value_ctype,
+                    target.scalar_dtype,
+                    target.reduce_op,
+                    attr_path=mapped_attr_path,
+                    adjoint=getattr(target, "adjoint", False),
+                    use_forward=getattr(target, "use_forward", True),
+                    use_backward=getattr(target, "use_backward", False),
+                )
+                self.adj.det_meta.scatter_records_per_thread[mapped_target] += (
+                    meta.scatter_records_per_thread.get(target, 1) - 1
+                )
+            det_args.append(mapped_target.helper_name if mapped_target is not None else target.helper_name)
+
+        return det_args
+
+    def wrap_unintercepted_side_effect_atomic(
+        self,
+        func,
+        forward_call: str,
+        replay_call: str,
+        *,
+        return_value_used: bool,
+    ) -> tuple[str, str]:
         """Phase-guard non-intercepted atomic side effects in two-pass kernels."""
         if not (func.is_builtin() and func.key in _DET_UNINTERCEPTED_SIDE_EFFECT_ATOMICS):
             return forward_call, replay_call
 
-        if _det_needs_store_guard(self.adj) and not self.atomic_return_discarded:
+        if self.needs_store_guard() and return_value_used:
             from warp._src.codegen import WarpCodegenError  # noqa: PLC0415
 
             raise WarpCodegenError(
                 f"Deterministic mode does not support consuming the return of wp.{func.key} in two-pass kernels."
             )
 
-        return _det_wrap_side_effect_call(self.adj, forward_call), _det_wrap_side_effect_call(self.adj, replay_call)
+        return self.wrap_side_effect_call(forward_call), self.wrap_side_effect_call(replay_call)
+
+    def wrap_side_effect_call(self, statement: str) -> str:
+        """Phase-guard a non-counter side effect emitted inside a two-pass body."""
+        if self.needs_store_guard():
+            self.adj.det_meta.needs_context = True
+            return f"WP_DET_SIDE_EFFECT_IF_ACTIVE(det_ctx, {statement});"
+        return statement
 
     def adjoint_address_call(self, fwd_args, output_list, fallback_call):
-        return _deterministic_adjoint_address_call(self.adj, fwd_args, output_list, fallback_call)
+        """Return a deterministic reverse ``address`` call when needed.
+
+        Reverse-mode array reads accumulate into ``adj_arr[index]`` (or
+        ``arr.grad[index]``) with native floating-point atomics. Under
+        deterministic mode, route those updates through the same
+        scatter/sort/reduce helper used by forward scatter atomics so tape
+        backward passes get a fixed reduction order.
+        """
+        from warp._src.codegen import Var, WarpCodegenError  # noqa: PLC0415
+
+        if not fwd_args or not output_list:
+            return fallback_call
+
+        arr_var = fwd_args[0]
+        view_prefix_vars = []
+        while getattr(arr_var, "deterministic_view_parent", None) is not None:
+            view_prefix_vars = list(arr_var.deterministic_view_indices) + view_prefix_vars
+            arr_var = arr_var.deterministic_view_parent
+
+        try:
+            target_info = _deterministic_target_info(arr_var)
+            if target_info is None:
+                return fallback_call
+
+            target_root_label, target_attr_path, arr_type, target_is_adjoint = target_info
+            if not is_array(arr_type):
+                return fallback_call
+
+            value_dtype = arr_type.dtype
+            scalar_dtype = value_dtype
+            if hasattr(scalar_dtype, "_wp_scalar_type_"):
+                scalar_dtype = scalar_dtype._wp_scalar_type_
+            if scalar_dtype not in float_types:
+                return fallback_call
+
+            if not any(arg.label == target_root_label for arg in self.adj.args):
+                return fallback_call
+
+            store_target = ArrayStoreTarget(target_root_label, tuple(target_attr_path), bool(target_is_adjoint))
+            if store_target in self.adj.det_meta.store_targets_seen:
+                return fallback_call
+
+            value_ctype = Var.dtype_to_ctype(value_dtype)
+            target = get_or_create_scatter_target(
+                self.adj.det_registry,
+                self.adj.det_meta,
+                target_root_label,
+                value_dtype,
+                value_ctype,
+                scalar_dtype,
+                REDUCE_OP_ADD,
+                attr_path=target_attr_path,
+                adjoint=True,
+                use_forward=False,
+                use_backward=True,
+            )
+            # Validate that the scalar value has a deterministic reducer. The
+            # result is used by launch-time post-reduce, but checking here gives
+            # a source-adjacent error if an unsupported gradient type appears.
+            warp_scalar_type_to_id(scalar_dtype)
+        except (AttributeError, KeyError, TypeError, ValueError) as e:
+            raise WarpCodegenError(f"Deterministic mode could not lower adjoint address accumulation: {e}") from e
+
+        loaded_prefix = [self.adj.load(var) for var in view_prefix_vars]
+        idx_loaded_list = loaded_prefix + list(fwd_args[1:])
+        target_expr = _deterministic_array_expr(self.adj, target_root_label, target_attr_path, adjoint=True)
+        if target_expr is None:
+            return fallback_call
+
+        flat_idx_expr = _deterministic_flat_index_expr(
+            self.adj, target_expr, idx_loaded_list, "address", target.value_ctype
+        )
+        adj_output = output_list[0].emit_adj()
+        return (
+            f"WP_DET_SCATTER_OR_FALLBACK(det_ctx, {target.helper_name}, "
+            f"{flat_idx_expr}, {adj_output}, {fallback_call});"
+        )
 
     def function_args(self):
-        return _deterministic_function_args(self.adj)
+        """Return hidden deterministic parameters for generated ``@wp.func`` calls."""
+        if self.adj.det_meta is None or not self.adj.det_meta.needs_deterministic:
+            return []
+
+        det_args = ["wp::det_ctx det_ctx"]
+        for target in self.adj.det_meta.counter_targets:
+            det_args.append(f"{counter_cpp_type(target)} {target.helper_name}")
+        for target in self.adj.det_meta.scatter_targets:
+            det_args.append(f"{scatter_cpp_type(target)} {target.helper_name}")
+        return det_args
 
     def kernel_args(self):
-        return _deterministic_kernel_args(self.adj)
+        """Return raw deterministic launch parameters for generated CUDA kernels."""
+        if self.adj.det_meta is None or not self.adj.det_meta.needs_deterministic:
+            return []
+
+        det_args = [
+            "int _wp_det_phase",
+            "int _wp_det_debug",
+            "int* _wp_det_overflow",
+        ]
+        for target in self.adj.det_meta.counter_targets:
+            names = kernel_raw_counter_param_names(target)
+            det_args.append(f"wp::det_counter_buf_t {names['buf']}")
+        for target in self.adj.det_meta.scatter_targets:
+            names = kernel_raw_scatter_param_names(target)
+            det_args.append(f"wp::det_scatter_buf_t<{target.value_ctype}> {names['buf']}")
+        return det_args
 
     def kernel_locals(self, device):
-        return _deterministic_kernel_locals(self.adj, device)
+        """Declare ``det_ctx`` plus helper aliases inside generated kernels."""
+        if self.adj.det_meta is None or not self.adj.det_meta.needs_deterministic:
+            return ""
+
+        if device == "cuda":
+            decls = []
+            n_counter_targets = len(self.adj.det_meta.counter_targets)
+            if n_counter_targets > 0:
+                counter_buf_names = [
+                    kernel_raw_counter_param_names(target)["buf"] for target in self.adj.det_meta.counter_targets
+                ]
+                target_inits = ", ".join(f"{name}.target" for name in counter_buf_names)
+                decls.append(f"wp::array_t<int> _wp_det_counter_targets[{n_counter_targets}] = {{{target_inits}}};")
+                decls.append(
+                    "wp::det_ctx det_ctx{_wp_det_phase, _wp_det_debug, _idx, _wp_det_overflow, "
+                    f"_wp_det_counter_targets, {n_counter_targets}}};"
+                )
+            else:
+                decls.append("wp::det_ctx det_ctx{_wp_det_phase, _wp_det_debug, _idx, _wp_det_overflow, nullptr, 0};")
+            for target in self.adj.det_meta.counter_targets:
+                names = kernel_raw_counter_param_names(target)
+                decls.append(f"auto& {target.helper_name} = {names['buf']};")
+            for target in self.adj.det_meta.scatter_targets:
+                names = kernel_raw_scatter_param_names(target)
+                decls.append(f"auto& {target.helper_name} = {names['buf']};")
+        else:
+            decls = [
+                "wp::det_ctx det_ctx{1, 0, 0, nullptr, nullptr, 0};",
+            ]
+            for target in self.adj.det_meta.counter_targets:
+                decls.append(
+                    f"wp::det_counter_buf_t {target.helper_name}{{nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0, 0, wp::array_t<int>{{}}, 0}};"
+                )
+            for target in self.adj.det_meta.scatter_targets:
+                decls.append(
+                    f"wp::det_scatter_buf_t<{target.value_ctype}> {target.helper_name}{{nullptr, nullptr, nullptr, 0}};"
+                )
+        return "".join(f"    {line}\n" for line in decls)
 
     def needs_store_guard(self) -> bool:
-        return _det_needs_store_guard(self.adj)
+        if self.adj.det_meta is None:
+            return False
+        return (
+            self.adj.det_meta.has_counter
+            or self.adj.det_meta.has_consumed_atomic
+            or self.adj.det_meta.has_side_effect_store
+        )
 
     def wrap_slot_store(self, slot_lvalue: str, value_expr: str) -> str:
-        return _det_wrap_slot_store(self.adj, slot_lvalue, value_expr)
+        if self.needs_store_guard():
+            self.adj.det_meta.needs_context = True
+            return f"WP_DET_SLOT_STORE_IF_ACTIVE(det_ctx, {slot_lvalue}, {value_expr});"
+        return f"{slot_lvalue} = {value_expr};"
 
     def add_array_store(self, target, indices, rhs) -> None:
         self.adj.det_meta.needs_context = True
@@ -717,29 +922,6 @@ _DET_UNINTERCEPTED_SIDE_EFFECT_ATOMICS = frozenset(
 )
 
 
-def _det_needs_store_guard(adj) -> bool:
-    """Return whether stores in this body must be phase-gated."""
-    if adj.det_meta is None:
-        return False
-    return adj.det_meta.has_counter or adj.det_meta.has_consumed_atomic or adj.det_meta.has_side_effect_store
-
-
-def _det_wrap_slot_store(adj, slot_lvalue: str, value_expr: str) -> str:
-    """Return the forward C++ statement for ``slot_lvalue = value_expr``."""
-    if _det_needs_store_guard(adj):
-        adj.det_meta.needs_context = True
-        return f"WP_DET_SLOT_STORE_IF_ACTIVE(det_ctx, {slot_lvalue}, {value_expr});"
-    return f"{slot_lvalue} = {value_expr};"
-
-
-def _det_wrap_side_effect_call(adj, statement: str) -> str:
-    """Return the forward C++ statement for a non-counter atomic side effect."""
-    if _det_needs_store_guard(adj):
-        adj.det_meta.needs_context = True
-        return f"WP_DET_SIDE_EFFECT_IF_ACTIVE(det_ctx, {statement});"
-    return statement
-
-
 def _deterministic_call_name(node):
     if isinstance(node, ast.Attribute):
         return node.attr
@@ -936,7 +1118,7 @@ def _deterministic_has_consumed_atomic_impl(tree, adj, seen):
     return False
 
 
-def emit_deterministic_atomic(adj, func, bound_args, return_type, output, output_list):
+def emit_deterministic_atomic(adj, func, bound_args, return_type, output, output_list, *, return_value_used: bool):
     """Emit deterministic scatter or two-pass code for an atomic builtin.
 
     Returns the output Var if the atomic was handled, or None only for
@@ -983,7 +1165,7 @@ def emit_deterministic_atomic(adj, func, bound_args, return_type, output, output
     # When called from emit_AugAssign (arr[i] += val) or a bare expression,
     # the return is discarded and the atomic can be handled by scatter/reduce.
     # Any other expression context consumes the return value.
-    return_is_discarded = getattr(getattr(adj, "deterministic", None), "atomic_return_discarded", False)
+    return_is_discarded = not return_value_used
     return_is_consumed = not return_is_discarded
 
     value_ctype = Var.dtype_to_ctype(value_dtype)
@@ -1153,79 +1335,6 @@ def emit_deterministic_atomic(adj, func, bound_args, return_type, output, output
     return output
 
 
-def _deterministic_function_args(adj):
-    """Return hidden deterministic parameters for generated ``@wp.func`` calls."""
-    if adj.det_meta is None or not adj.det_meta.needs_deterministic:
-        return []
-
-    det_args = ["wp::det_ctx det_ctx"]
-    for target in adj.det_meta.counter_targets:
-        det_args.append(f"{counter_cpp_type(target)} {target.helper_name}")
-    for target in adj.det_meta.scatter_targets:
-        det_args.append(f"{scatter_cpp_type(target)} {target.helper_name}")
-    return det_args
-
-
-def _deterministic_kernel_args(adj):
-    """Return raw deterministic launch parameters for generated CUDA kernels."""
-    if adj.det_meta is None or not adj.det_meta.needs_deterministic:
-        return []
-
-    det_args = [
-        "int _wp_det_phase",
-        "int _wp_det_debug",
-        "int* _wp_det_overflow",
-    ]
-    for target in adj.det_meta.counter_targets:
-        names = kernel_raw_counter_param_names(target)
-        det_args.append(f"wp::det_counter_buf_t {names['buf']}")
-    for target in adj.det_meta.scatter_targets:
-        names = kernel_raw_scatter_param_names(target)
-        det_args.append(f"wp::det_scatter_buf_t<{target.value_ctype}> {names['buf']}")
-    return det_args
-
-
-def _deterministic_kernel_locals(adj, device, *, use_launch_buffers=True):
-    """Declare ``det_ctx`` plus helper aliases/stand-ins inside generated kernels."""
-    if adj.det_meta is None or not adj.det_meta.needs_deterministic:
-        return ""
-
-    if device == "cuda" and use_launch_buffers:
-        decls = []
-        n_counter_targets = len(adj.det_meta.counter_targets)
-        if n_counter_targets > 0:
-            counter_buf_names = [
-                kernel_raw_counter_param_names(target)["buf"] for target in adj.det_meta.counter_targets
-            ]
-            target_inits = ", ".join(f"{name}.target" for name in counter_buf_names)
-            decls.append(f"wp::array_t<int> _wp_det_counter_targets[{n_counter_targets}] = {{{target_inits}}};")
-            decls.append(
-                "wp::det_ctx det_ctx{_wp_det_phase, _wp_det_debug, _idx, _wp_det_overflow, "
-                f"_wp_det_counter_targets, {n_counter_targets}}};"
-            )
-        else:
-            decls.append("wp::det_ctx det_ctx{_wp_det_phase, _wp_det_debug, _idx, _wp_det_overflow, nullptr, 0};")
-        for target in adj.det_meta.counter_targets:
-            names = kernel_raw_counter_param_names(target)
-            decls.append(f"auto& {target.helper_name} = {names['buf']};")
-        for target in adj.det_meta.scatter_targets:
-            names = kernel_raw_scatter_param_names(target)
-            decls.append(f"auto& {target.helper_name} = {names['buf']};")
-    else:
-        decls = [
-            "wp::det_ctx det_ctx{1, 0, 0, nullptr, nullptr, 0};",
-        ]
-        for target in adj.det_meta.counter_targets:
-            decls.append(
-                f"wp::det_counter_buf_t {target.helper_name}{{nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0, 0, wp::array_t<int>{{}}, 0}};"
-            )
-        for target in adj.det_meta.scatter_targets:
-            decls.append(
-                f"wp::det_scatter_buf_t<{target.value_ctype}> {target.helper_name}{{nullptr, nullptr, nullptr, 0}};"
-            )
-    return "".join(f"    {line}\n" for line in decls)
-
-
 def _deterministic_reference_origin(var):
     """Return the root argument and field path for a tracked array reference."""
     root_label = getattr(var, "deterministic_ref_root_label", None)
@@ -1351,81 +1460,6 @@ def _add_deterministic_array_store(adj, target, indices, rhs):
         )
         if arg_str is not None:
             adj.add_reverse(f"{store_func.namespace}adj_{func_name}({arg_str});")
-
-
-def _deterministic_adjoint_address_call(adj, fwd_args, output_list, fallback_call):
-    """Return a deterministic reverse ``address`` call when it scatters into an array adjoint.
-
-    Reverse-mode array reads accumulate into ``adj_arr[index]`` (or
-    ``arr.grad[index]``) with native floating-point atomics.  Under deterministic
-    mode, route those updates through the same scatter/sort/reduce helper used
-    by forward scatter atomics so tape backward passes get a fixed reduction
-    order.
-    """
-    from warp._src.codegen import Var, WarpCodegenError  # noqa: PLC0415
-
-    if not fwd_args or not output_list:
-        return fallback_call
-
-    arr_var = fwd_args[0]
-    view_prefix_vars = []
-    while getattr(arr_var, "deterministic_view_parent", None) is not None:
-        view_prefix_vars = list(arr_var.deterministic_view_indices) + view_prefix_vars
-        arr_var = arr_var.deterministic_view_parent
-
-    try:
-        target_info = _deterministic_target_info(arr_var)
-        if target_info is None:
-            return fallback_call
-
-        target_root_label, target_attr_path, arr_type, _target_is_adjoint = target_info
-        if not is_array(arr_type):
-            return fallback_call
-
-        value_dtype = arr_type.dtype
-        scalar_dtype = value_dtype
-        if hasattr(scalar_dtype, "_wp_scalar_type_"):
-            scalar_dtype = scalar_dtype._wp_scalar_type_
-        if scalar_dtype not in float_types:
-            return fallback_call
-
-        if not any(arg.label == target_root_label for arg in adj.args):
-            return fallback_call
-
-        store_target = ArrayStoreTarget(target_root_label, tuple(target_attr_path), bool(_target_is_adjoint))
-        if store_target in adj.det_meta.store_targets_seen:
-            return fallback_call
-
-        value_ctype = Var.dtype_to_ctype(value_dtype)
-        target = get_or_create_scatter_target(
-            adj.det_registry,
-            adj.det_meta,
-            target_root_label,
-            value_dtype,
-            value_ctype,
-            scalar_dtype,
-            REDUCE_OP_ADD,
-            attr_path=target_attr_path,
-            adjoint=True,
-            use_forward=False,
-            use_backward=True,
-        )
-        # Validate that the scalar value has a deterministic reducer.  The
-        # result is used by launch-time post-reduce, but checking here gives a
-        # source-adjacent error if an unsupported gradient type appears.
-        warp_scalar_type_to_id(scalar_dtype)
-    except (AttributeError, KeyError, TypeError, ValueError) as e:
-        raise WarpCodegenError(f"Deterministic mode could not lower adjoint address accumulation: {e}") from e
-
-    loaded_prefix = [adj.load(var) for var in view_prefix_vars]
-    idx_loaded_list = loaded_prefix + list(fwd_args[1:])
-    target_expr = _deterministic_array_expr(adj, target_root_label, target_attr_path, adjoint=True)
-    if target_expr is None:
-        return fallback_call
-
-    flat_idx_expr = _deterministic_flat_index_expr(adj, target_expr, idx_loaded_list, "address", target.value_ctype)
-    adj_output = output_list[0].emit_adj()
-    return f"WP_DET_SCATTER_OR_FALLBACK(det_ctx, {target.helper_name}, {flat_idx_expr}, {adj_output}, {fallback_call});"
 
 
 def _deterministic_flat_index_expr(adj, target_expr, idx_loaded_list, func_key, value_ctype):
@@ -1571,54 +1605,6 @@ def _include_deterministic_call_meta(adj, meta, bound_args, *, include_replay_ta
                 f"consumed-return counter atomics on array '{mapped_target.target_label}' in the same function or kernel."
             )
         adj.det_meta.side_effect_atomic_targets.add(mapped_target)
-
-
-def _deterministic_call_args(adj, meta, bound_args):
-    """Return helper arguments to pass from a caller into a deterministic ``@wp.func``."""
-    if adj.det_meta is None or meta is None or not meta.needs_deterministic:
-        return []
-
-    det_args = ["det_ctx"]
-    for target in meta.counter_targets:
-        mapped_label, mapped_attr_path = _deterministic_map_target(target, bound_args)
-        mapped_target = _deterministic_find_target(
-            adj.det_meta.counter_targets, mapped_label, mapped_attr_path, adjoint=getattr(target, "adjoint", False)
-        )
-        if mapped_target is None and adj.det_registry is not None:
-            mapped_target = get_or_create_counter_target(
-                adj.det_registry,
-                adj.det_meta,
-                mapped_label,
-                target.value_ctype,
-                attr_path=mapped_attr_path,
-                adjoint=getattr(target, "adjoint", False),
-                use_forward=getattr(target, "use_forward", True),
-                use_backward=getattr(target, "use_backward", False),
-            )
-            adj.det_meta.counter_records_per_thread[mapped_target] += meta.counter_records_per_thread.get(target, 1) - 1
-        det_args.append(mapped_target.helper_name if mapped_target is not None else target.helper_name)
-    for target in meta.scatter_targets:
-        mapped_label, mapped_attr_path = _deterministic_map_target(target, bound_args)
-        mapped_target = _deterministic_find_target(
-            adj.det_meta.scatter_targets, mapped_label, mapped_attr_path, adjoint=getattr(target, "adjoint", False)
-        )
-        if mapped_target is None and adj.det_registry is not None:
-            mapped_target = get_or_create_scatter_target(
-                adj.det_registry,
-                adj.det_meta,
-                mapped_label,
-                target.value_dtype,
-                target.value_ctype,
-                target.scalar_dtype,
-                target.reduce_op,
-                attr_path=mapped_attr_path,
-                adjoint=getattr(target, "adjoint", False),
-                use_forward=getattr(target, "use_forward", True),
-                use_backward=getattr(target, "use_backward", False),
-            )
-            adj.det_meta.scatter_records_per_thread[mapped_target] += meta.scatter_records_per_thread.get(target, 1) - 1
-        det_args.append(mapped_target.helper_name if mapped_target is not None else target.helper_name)
-    return det_args
 
 
 def _cinit_expr(dtype):

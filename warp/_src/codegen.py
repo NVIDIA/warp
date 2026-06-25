@@ -1761,7 +1761,7 @@ class Adjoint:
             f"Couldn't find function overload for '{func.key}' that matched inputs with types: [{', '.join(arg_type_reprs)}]"
         )
 
-    def add_call(adj, func, args, kwargs, type_args, min_outputs=None):
+    def add_call(adj, func, args, kwargs, type_args, min_outputs=None, return_value_used=True):
         # Extract the types and values passed as arguments to the function call.
         arg_types = tuple(get_arg_type(x) for x in args)
         kwarg_types = {k: get_arg_type(v) for k, v in kwargs.items()}
@@ -1902,7 +1902,9 @@ class Adjoint:
 
         # Deterministic mode: intercept atomic builtins and emit scatter or
         # two-pass code instead of the normal atomic call.
-        det_output = adj.deterministic.emit_atomic_call(func, bound_args, return_type, output, output_list)
+        det_output = adj.deterministic.emit_atomic_call(
+            func, bound_args, return_type, output, output_list, return_value_used=return_value_used
+        )
         if det_output is not None:
             return det_output
 
@@ -1970,7 +1972,7 @@ class Adjoint:
             replay_call = forward_call
 
         forward_call, replay_call = adj.deterministic.wrap_unintercepted_side_effect_atomic(
-            func, forward_call, replay_call
+            func, forward_call, replay_call, return_value_used=return_value_used
         )
 
         if func.skip_replay:
@@ -2021,9 +2023,9 @@ class Adjoint:
 
         return output
 
-    def add_builtin_call(adj, func_name, args, min_outputs=None):
+    def add_builtin_call(adj, func_name, args, min_outputs=None, return_value_used=True):
         func = warp._src.context.builtin_functions[func_name]
-        return adj.add_call(func, args, {}, {}, min_outputs=min_outputs)
+        return adj.add_call(func, args, {}, {}, min_outputs=min_outputs, return_value_used=return_value_used)
 
     def add_grad_call(adj, func, args, kwargs):
         """Generate code for calling the gradient of a function via warp.grad().
@@ -3003,9 +3005,8 @@ class Adjoint:
         adj.add_forward(f"goto start_{adj.loop_blocks[-1].label};")
 
     def emit_Expr(adj, node):
-        if adj.deterministic.is_direct_atomic_expression(node.value):
-            with adj.deterministic.atomic_return(discarded=True):
-                return adj.eval(node.value)
+        if isinstance(node.value, ast.Call):
+            return adj.emit_Call(node.value, return_value_used=False)
         return adj.eval(node.value)
 
     def check_tid_in_func_error(adj, node):
@@ -3153,7 +3154,7 @@ class Adjoint:
 
         return elements
 
-    def emit_Call(adj, node):
+    def emit_Call(adj, node, return_value_used=True):
         adj.check_tid_in_func_error(node)
 
         # try and lookup function in globals by
@@ -3275,7 +3276,14 @@ class Adjoint:
         # Evaluate keyword arguments.
         kwargs = {x.arg: adj.resolve_arg(x.value) for x in node.keywords}
 
-        out = adj.add_call(func, args, kwargs, type_args, min_outputs=min_outputs)
+        out = adj.add_call(
+            func,
+            args,
+            kwargs,
+            type_args,
+            min_outputs=min_outputs,
+            return_value_used=return_value_used,
+        )
 
         if adj.builder_options.get("verify_autograd_array_access", False):
             # Extract the types and values passed as arguments to the function call.
@@ -3333,6 +3341,8 @@ class Adjoint:
                     target.mark_read()
 
             else:
+                view_indices = tuple(indices)
+
                 if warp._src.types.matches_array_class(target_type, warp._src.types.array):
                     # In order to reduce the number of overloads needed in the C
                     # implementation to support combinations of int/slice indices,
@@ -3350,7 +3360,7 @@ class Adjoint:
 
                 # handles array views (fewer indices than dimensions)
                 out = adj.add_builtin_call("view", [target, *indices])
-                adj.deterministic.track_view(out, target, indices)
+                adj.deterministic.track_view(out, target, view_indices)
 
                 if adj.builder_options.get("verify_autograd_array_access", False):
                     # store reference to target Var to propagate downstream read/write state back to root arg Var
@@ -4184,40 +4194,43 @@ class Adjoint:
                 filename = adj.filename
                 lineno = adj.lineno + adj.fun_lineno
 
-                with adj.deterministic.atomic_return(discarded=True):
-                    if isinstance(node.op, ast.Add):
-                        adj.add_builtin_call("atomic_add", [target, *indices, rhs])
+                # Array augmented assignment lowers to a Warp atomic, e.g.
+                # ``arr[i] += value`` -> ``wp.atomic_add(arr, i, value)``.
+                # The Python expression has no visible return value, so the
+                # generated atomic return is intentionally discarded.
+                if isinstance(node.op, ast.Add):
+                    adj.add_builtin_call("atomic_add", [target, *indices, rhs], return_value_used=False)
 
-                        if adj.builder_options.get("verify_autograd_array_access", False):
-                            target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
+                    if adj.builder_options.get("verify_autograd_array_access", False):
+                        target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
 
-                    elif isinstance(node.op, ast.Sub):
-                        adj.add_builtin_call("atomic_sub", [target, *indices, rhs])
+                elif isinstance(node.op, ast.Sub):
+                    adj.add_builtin_call("atomic_sub", [target, *indices, rhs], return_value_used=False)
 
-                        if adj.builder_options.get("verify_autograd_array_access", False):
-                            target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
+                    if adj.builder_options.get("verify_autograd_array_access", False):
+                        target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
 
-                    elif isinstance(node.op, ast.BitAnd):
-                        adj.add_builtin_call("atomic_and", [target, *indices, rhs])
+                elif isinstance(node.op, ast.BitAnd):
+                    adj.add_builtin_call("atomic_and", [target, *indices, rhs], return_value_used=False)
 
-                        if adj.builder_options.get("verify_autograd_array_access", False):
-                            target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
+                    if adj.builder_options.get("verify_autograd_array_access", False):
+                        target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
 
-                    elif isinstance(node.op, ast.BitOr):
-                        adj.add_builtin_call("atomic_or", [target, *indices, rhs])
+                elif isinstance(node.op, ast.BitOr):
+                    adj.add_builtin_call("atomic_or", [target, *indices, rhs], return_value_used=False)
 
-                        if adj.builder_options.get("verify_autograd_array_access", False):
-                            target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
+                    if adj.builder_options.get("verify_autograd_array_access", False):
+                        target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
 
-                    elif isinstance(node.op, ast.BitXor):
-                        adj.add_builtin_call("atomic_xor", [target, *indices, rhs])
+                elif isinstance(node.op, ast.BitXor):
+                    adj.add_builtin_call("atomic_xor", [target, *indices, rhs], return_value_used=False)
 
-                        if adj.builder_options.get("verify_autograd_array_access", False):
-                            target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
-                    else:
-                        log_debug(f"Warning: in-place op {node.op} is not differentiable")
-                        augassign_subscript(target, indices)
-                        return
+                    if adj.builder_options.get("verify_autograd_array_access", False):
+                        target.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
+                else:
+                    log_debug(f"Warning: in-place op {node.op} is not differentiable")
+                    augassign_subscript(target, indices)
+                    return
 
             elif (
                 type_is_vector(target_type)
