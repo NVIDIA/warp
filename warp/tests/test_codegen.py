@@ -1610,6 +1610,47 @@ def test_unary_minus_on_64bit_constant(test, device):
 
 
 class TestCodeGen(unittest.TestCase):
+    def test_grid_stride_precedence(self):
+        from warp._src.codegen import resolve_grid_stride  # noqa: PLC0415
+
+        # resolve_grid_stride is the single build-time resolver: an explicit per-kernel choice wins,
+        # otherwise the kernel inherits the resolved module/global default.
+        self.assertFalse(resolve_grid_stride({}, False))
+        self.assertTrue(resolve_grid_stride({}, True))
+        self.assertTrue(resolve_grid_stride({"grid_stride": True}, False))
+        self.assertFalse(resolve_grid_stride({"grid_stride": False}, True))
+
+        # The effective value is resolved once at build and frozen on Kernel.grid_stride; launches read
+        # it directly and never re-resolve from mutable config.
+        saved_config = wp.config.default_grid_stride
+        try:
+            wp.config.default_grid_stride = True
+
+            @wp.kernel(module="unique")
+            def gs_unset(a: wp.array(dtype=float)):
+                a[wp.tid()] = 1.0
+
+            @wp.kernel(grid_stride=True, module="unique")
+            def gs_true(a: wp.array(dtype=float)):
+                a[wp.tid()] = 1.0
+
+            @wp.kernel(grid_stride=False, module="unique")
+            def gs_false(a: wp.array(dtype=float)):
+                a[wp.tid()] = 1.0
+
+            for k in (gs_unset, gs_true, gs_false):
+                k.module.get_module_hash()  # build-time resolution records Kernel.grid_stride
+
+            self.assertTrue(gs_unset.grid_stride)  # inherited the default (True) at build
+            self.assertTrue(gs_true.grid_stride)  # explicit True overrides
+            self.assertFalse(gs_false.grid_stride)  # explicit False overrides
+
+            # Flipping the global default after the build does not mutate the frozen value.
+            wp.config.default_grid_stride = False
+            self.assertTrue(gs_unset.grid_stride)
+        finally:
+            wp.config.default_grid_stride = saved_config
+
     def _make_adjoint_with_filename(self, filename):
         source = "def kernel_fn(x: int):\n    y = x + 1\n    return y\n"
         linecache.cache[filename] = (len(source), None, source.splitlines(True), filename)

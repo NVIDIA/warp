@@ -4,6 +4,12 @@
 
 ### Added
 
+- Add `@wp.kernel(grid_stride=False)` (and the `"default_grid_stride"` module option / `wp.config.default_grid_stride`
+  for a whole module or process) to compile a kernel without the grid-stride loop. Removing the loop lowers per-thread
+  overhead and register pressure, which can speed up launch-bound kernels; it still handles launches of any size, but
+  the block count can no longer be capped, so launching such a kernel with `max_blocks > 0` raises an error pointing
+  back at the grid-stride default. The default launch is unchanged
+  ([GH-1270](https://github.com/NVIDIA/warp/issues/1270)).
 - Add `wp.ref[T]` parameter annotation for `@wp.func` and `@wp.func_native`, enabling explicit pass-by-reference
   semantics for scalar, vector, matrix, quaternion, and struct types. Mutations to a `wp.ref[T]` parameter are visible
   in the caller's storage without a return value. Add `wp.address_of(expr) -> wp.uint64` for obtaining a raw pointer

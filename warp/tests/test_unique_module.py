@@ -318,6 +318,47 @@ class TestUniqueModule(unittest.TestCase):
             wp.launch(multi_type_kernel, dim=3, inputs=[x_i32_2, y_i32_2])
             assert_np_equal(y_i32_2.numpy(), [10, 12, 14])
 
+    def test_unique_module_generic_kernel_options_disambiguation(self):
+        """Generic unique kernels differing only in a per-kernel option must stay distinct.
+
+        Each option is passed through a factory variable, so it never appears in the
+        kernel source text and is not referenced in the body. The no-overload generic
+        salt must therefore fold ``kernel.options``; otherwise the second definition
+        silently reuses the first kernel object and inherits its option value.
+        """
+
+        def _make(grid_stride=None, enable_backward=None, launch_bounds=None):
+            @wp.kernel(
+                module="unique",
+                grid_stride=grid_stride,
+                enable_backward=enable_backward,
+                launch_bounds=launch_bounds,
+            )
+            def _opt_kernel(x: wp.array(dtype=Any)):
+                i = wp.tid()
+                x[i] = x[i] + x[i]
+
+            return _opt_kernel
+
+        # grid_stride (the reported case): True vs False must not merge.
+        k_loop = _make(grid_stride=True)
+        k_lean = _make(grid_stride=False)
+        self.assertIsNot(k_loop, k_lean)
+        self.assertNotEqual(k_loop.module.name, k_lean.module.name)
+        self.assertEqual(k_loop.options.get("grid_stride"), True)
+        self.assertEqual(k_lean.options.get("grid_stride"), False)
+
+        # enable_backward and launch_bounds must disambiguate through the same path.
+        k_bwd = _make(enable_backward=True)
+        k_nobwd = _make(enable_backward=False)
+        self.assertIsNot(k_bwd, k_nobwd)
+        self.assertNotEqual(k_bwd.module.name, k_nobwd.module.name)
+
+        k_lb64 = _make(launch_bounds=64)
+        k_lb128 = _make(launch_bounds=128)
+        self.assertIsNot(k_lb64, k_lb128)
+        self.assertNotEqual(k_lb64.module.name, k_lb128.module.name)
+
 
 def test_unique_module_deferred_static_expressions(test, device):
     """Test that unique modules correctly hash deferred wp.static() expressions.

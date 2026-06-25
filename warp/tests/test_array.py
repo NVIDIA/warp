@@ -3192,6 +3192,19 @@ def offset_2d(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
     y[i, j] = x[i, j] + 1.0
 
 
+@wp.kernel
+def scale_slice_2d(x: wp.array(dtype=float), y: wp.array2d(dtype=float)):
+    i = wp.tid()
+    y_slice = y[0:1, :]
+    y_slice[0, i] = 2.0 * x[i]
+
+
+@wp.kernel
+def offset_row_2d(x: wp.array2d(dtype=float), y: wp.array(dtype=float)):
+    i = wp.tid()
+    y[i] = x[0, i] + 1.0
+
+
 def test_retain_grad_2d(test, device):
     M, N = 4, 3
 
@@ -3209,6 +3222,23 @@ def test_retain_grad_2d(test, device):
     assert_np_equal(x.grad.numpy(), np.full((M, N), fill_value=2.0, dtype=float))
     # y.grad should be preserved because retain_grad=True; dz/dy = 1
     assert_np_equal(y.grad.numpy(), np.ones((M, N), dtype=float))
+
+
+def test_retain_grad_slice_view_store(test, device):
+    N = 4
+
+    x = wp.ones(N, dtype=float, requires_grad=True, device=device)
+    y = wp.zeros((1, N), dtype=float, requires_grad=True, retain_grad=True, device=device)
+    z = wp.zeros(N, dtype=float, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch(scale_slice_2d, dim=N, inputs=[x, y], device=device)
+        wp.launch(offset_row_2d, dim=N, inputs=[y, z], device=device)
+
+    tape.backward(grads={z: wp.ones_like(z)})
+
+    assert_np_equal(x.grad.numpy(), np.full(N, fill_value=2.0, dtype=float))
+    assert_np_equal(y.grad.numpy(), np.zeros((1, N), dtype=float))
 
 
 def test_array_from_int32_domain(test, device):
@@ -4026,6 +4056,7 @@ add_function_test(TestArray, "test_retain_grad", test_retain_grad, devices=devic
 add_function_test(TestArray, "test_retain_grad_validation", test_retain_grad_validation, devices=devices)
 add_function_test(TestArray, "test_retain_grad_intermediate", test_retain_grad_intermediate, devices=devices)
 add_function_test(TestArray, "test_retain_grad_2d", test_retain_grad_2d, devices=devices)
+add_function_test(TestArray, "test_retain_grad_slice_view_store", test_retain_grad_slice_view_store, devices=devices)
 
 add_function_test(TestArray, "test_array_shape_int_promotion", test_array_shape_int_promotion, devices=devices)
 add_function_test(TestArray, "test_indexing_types", test_indexing_types, devices=devices)

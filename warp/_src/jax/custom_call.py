@@ -140,6 +140,7 @@ def _warp_custom_callback(stream, buffers, opaque, opaque_len):
         bounds.size,
         0,
         256,
+        int(kernel.grid_stride),
         hooks.cluster_dim,
         hooks.forward_smem_bytes,
         kernel_params,

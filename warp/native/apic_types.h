@@ -14,8 +14,8 @@ extern "C" {
 // APIC Format Constants
 // =============================================================================
 
-#define APIC_FORMAT_VERSION 10
-#define APIC_MIN_SUPPORTED_FORMAT_VERSION 10
+#define APIC_FORMAT_VERSION 11
+#define APIC_MIN_SUPPORTED_FORMAT_VERSION 11
 #define APIC_MAGIC "WRP1"
 #define APIC_MAGIC_VALUE 0x31505257  // "WRP1" as little-endian uint32
 
@@ -161,6 +161,7 @@ struct APICLaunchRecord {
     int32_t max_blocks;  // Maximum blocks
     int32_t block_dim;  // Threads per block
     int32_t smem_bytes;  // Shared memory bytes
+    int32_t grid_stride;  // 1 = grid-stride loop kernel, 0 = lean 3D kernel
     uint8_t is_forward;  // 1 for forward pass, 0 for backward
     uint8_t cluster_dim;  // 1D CTA cluster size, or 0 for older records
     uint8_t _pad1[2];

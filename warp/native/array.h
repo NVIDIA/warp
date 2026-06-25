@@ -849,7 +849,10 @@ CUDA_CALLABLE inline array_t<T> view(array_t<T>& src, const Slices&... slice_arg
 
     size_t offset = byte_offset_helper(src, slices, make_index_sequence<N> {});
 
-    array_t<T> out;
+    // Copy-construct rather than default-construct to work around an NVCC
+    // miscompile observed on older architectures (sm_89).
+    array_t<T> out(src);
+    out.flags = 0;
 
     out.data = data_at_byte_offset(src, offset);
     if (src.grad) {

@@ -5283,6 +5283,7 @@ size_t wp_cuda_launch_kernel(
     size_t dim,
     int max_blocks,
     int block_dim,
+    int grid_stride,
     int cluster_dim,
     int shared_memory_bytes,
     void** args,
@@ -5309,68 +5310,97 @@ size_t wp_cuda_launch_kernel(
         }
     }
 
-    // CUDA specs up to compute capability 9.0 says the max x-dim grid is 2**31-1, so
-    // grid_dim is fine as an int for the near future
-    int natural_grid_dim = (dim + block_dim - 1) / block_dim;
-    int grid_dim = natural_grid_dim;
+    unsigned int grid_x, grid_y = 1, grid_z = 1;
 
-    if (max_blocks <= 0) {
-        max_blocks = 2147483647;
-    }
-
-    if (grid_dim < 0) {
-#if defined(_DEBUG)
-        fprintf(
-            stderr,
-            "Warp warning: Overflow in grid dimensions detected for %zu total elements and 256 threads "
-            "per block.\n    Setting block count to %d.\n",
-            dim, max_blocks
-        );
-#endif
-        grid_dim = max_blocks;
+    if (grid_stride) {
+        // Grid-stride loop kernel: a 1D grid suffices because the loop covers every work item.
+        // max_blocks (when set) caps the block count; otherwise use the CUDA gridDim.x max (2**31-1).
+        // A clustered kernel needs gridDim.x to be a multiple of cluster_dim: an untruncated grid must
+        // already be aligned (pad dim), while a grid truncated by max_blocks rounds down to a whole
+        // number of clusters (the loop still covers every work item).
+        int natural_grid_dim = (dim + block_dim - 1) / block_dim;
+        int grid_dim = natural_grid_dim;
+        int cap = (max_blocks > 0) ? max_blocks : 2147483647;
+        if (grid_dim < 0)
+            grid_dim = cap;
+        else if (grid_dim > cap)
+            grid_dim = cap;
+        if (cluster_dim > 1 && grid_dim > 0) {
+            if (grid_dim == natural_grid_dim) {
+                if (grid_dim % cluster_dim != 0) {
+                    wp::set_error_string(
+                        "Warp CUDA error: clustered kernel launch requires the block count to be a multiple of "
+                        "cluster_dim (got %d blocks, cluster_dim=%d); pad dim to a whole number of clusters",
+                        grid_dim, cluster_dim
+                    );
+                    return CUDA_ERROR_INVALID_VALUE;
+                }
+            } else {
+                grid_dim = (grid_dim / cluster_dim) * cluster_dim;
+                if (grid_dim == 0) {
+                    wp::set_error_string(
+                        "Warp CUDA error: clustered kernel launch requires max_blocks to be 0 or at least cluster_dim "
+                        "(got max_blocks=%d, cluster_dim=%d)",
+                        max_blocks, cluster_dim
+                    );
+                    return CUDA_ERROR_INVALID_VALUE;
+                }
+            }
+        }
+        grid_x = (unsigned int)(grid_dim <= 0 ? 1 : grid_dim);
     } else {
-        if (grid_dim > max_blocks) {
-            grid_dim = max_blocks;
+        // Lean 3D kernel (no loop): spread blocks across a 3D grid so the launch can exceed the
+        // gridDim.x limit. Cap grid.x so gridDim.x*blockDim.x stays within uint32 (matching the
+        // lean kernel template's index math on the IMAD.WIDE.U32 fast path), then spill the
+        // remaining blocks into grid.y and grid.z (each capped at 65535).
+        //
+        // Clusters group cluster_dim blocks along x, but a lean block early-returns (before any
+        // cluster barrier) when _idx >= dim.size. To keep every cluster all-run or all-return, require
+        // the block count to be a whole number of clusters (pad dim) and keep grid.x a multiple of
+        // cluster_dim, so the run/early-return boundary lands on a cluster boundary.
+        size_t total_blocks = (dim + block_dim - 1) / block_dim;
+        if (cluster_dim > 1 && (total_blocks % (size_t)cluster_dim) != 0) {
+            wp::set_error_string(
+                "Warp CUDA error: clustered kernel launch requires the block count to be a multiple of "
+                "cluster_dim (got %zu blocks, cluster_dim=%d); pad dim to a whole number of clusters",
+                total_blocks, cluster_dim
+            );
+            return CUDA_ERROR_INVALID_VALUE;
         }
-    }
-
-    if (cluster_dim > 1 && grid_dim > 0) {
-        // CUDA requires the launch grid to be a multiple of cluster_dim when the
-        // kernel was compiled with __cluster_dims__. We never pad upward: padded
-        // CTAs would skip the kernel body (guarded by _idx < dim) yet still join
-        // their cluster, breaking distributed shared memory / cluster barriers
-        // that require every peer to run. The launch path rejects non-aligned
-        // shapes before reaching here; this is the backstop for any other caller.
-        if (grid_dim == natural_grid_dim) {
-            // Untruncated launch shape: must already be cluster-aligned.
-            if (grid_dim % cluster_dim != 0) {
-                wp::set_error_string(
-                    "Warp CUDA error: clustered kernel launch requires the block count to be a multiple of "
-                    "cluster_dim (got %d blocks, cluster_dim=%d); pad dim to a whole number of clusters",
-                    grid_dim, cluster_dim
-                );
-                return CUDA_ERROR_INVALID_VALUE;
-            }
-        } else {
-            // Truncated by max_blocks (grid-stride loop): every launched CTA runs
-            // the body, so rounding down to a valid multiple stays safe.
-            grid_dim = (grid_dim / cluster_dim) * cluster_dim;
-            if (grid_dim == 0) {
-                wp::set_error_string(
-                    "Warp CUDA error: clustered kernel launch requires max_blocks to be 0 or at least cluster_dim "
-                    "(got max_blocks=%d, cluster_dim=%d)",
-                    max_blocks, cluster_dim
-                );
-                return CUDA_ERROR_INVALID_VALUE;
-            }
+        unsigned int max_grid_x = (1u << 24) / (unsigned int)block_dim;
+        if (cluster_dim > 1) {
+            max_grid_x = (max_grid_x / (unsigned int)cluster_dim) * (unsigned int)cluster_dim;
+            if (max_grid_x == 0)
+                max_grid_x = (unsigned int)cluster_dim;
         }
+        unsigned int gx = (unsigned int)(total_blocks < (size_t)max_grid_x ? total_blocks : (size_t)max_grid_x);
+        if (gx == 0)
+            gx = 1;
+        size_t remaining = (total_blocks + gx - 1) / gx;
+        unsigned int gy = (unsigned int)(remaining < 65535u ? remaining : 65535u);
+        if (gy == 0)
+            gy = 1;
+        unsigned int gz = (unsigned int)((remaining + gy - 1) / gy);
+        if (gz == 0)
+            gz = 1;
+        if (gz > 65535u)
+            gz = 65535u;
+        grid_x = gx;
+        grid_y = gy;
+        grid_z = gz;
     }
 
     begin_cuda_range(WP_TIMING_KERNEL, stream, context, get_cuda_kernel_name(kernel));
 
-    CUresult res = cuLaunchKernel_f(
-        (CUfunction)kernel, grid_dim, 1, 1, block_dim, 1, 1, shared_memory_bytes, static_cast<CUstream>(stream), args, 0
-    );
+    // Skip the launch for an empty grid (no work): the dummy gridDim.x=1 fallback is not a multiple
+    // of cluster_dim, so an empty clustered launch (e.g. a recorded lean launch resized via
+    // set_dim(0)) would otherwise be rejected by CUDA.
+    CUresult res = CUDA_SUCCESS;
+    if (dim > 0)
+        res = cuLaunchKernel_f(
+            (CUfunction)kernel, grid_x, grid_y, grid_z, block_dim, 1, 1, shared_memory_bytes,
+            static_cast<CUstream>(stream), args, 0
+        );
 
     check_cu(res);
 
@@ -5403,9 +5433,9 @@ size_t wp_cuda_launch_kernel(
 
             apic_record_kernel_launch(
                 state, apic_info->kernel_key, apic_info->module_hash, apic_info->is_forward, shape, ndim, launch_size,
-                max_blocks, block_dim, cluster_dim, shared_memory_bytes, apic_info->params, apic_info->num_params,
-                apic_info->adj_params, apic_info->relocs, apic_info->num_relocs, apic_info->value_data,
-                apic_info->value_data_size
+                max_blocks, block_dim, grid_stride, cluster_dim, shared_memory_bytes, apic_info->params,
+                apic_info->num_params, apic_info->adj_params, apic_info->relocs, apic_info->num_relocs,
+                apic_info->value_data, apic_info->value_data_size
             );
         }
     }

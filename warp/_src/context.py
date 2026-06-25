@@ -982,6 +982,9 @@ class Kernel:
         # hash will be computed when the module is built
         self.hash = None
 
+        # effective grid_stride, resolved with the hash when the module is built and read at launch
+        self.grid_stride: bool | None = None
+
         # flag indicating if this kernel belongs to a unique module (set by @wp.kernel decorator)
         self.is_unique_module = False
 
@@ -1516,6 +1519,7 @@ def kernel(
     cluster_dim: int | None = None,
     module: Module | Literal["unique"] | str | None = None,
     module_options: dict[str, Any] | None = None,
+    grid_stride: bool | None = None,
 ):
     """
     Decorator to register a Warp kernel from a Python function.
@@ -1588,6 +1592,12 @@ def kernel(
             For shared modules, use :func:`warp.set_module_options`
             instead. See :func:`warp.set_module_options` for the full
             list of supported options.
+        grid_stride: Whether to emit a grid-stride loop. ``False`` opts
+            into a lean launch (no grid-stride loop) with lower per-thread
+            overhead and register pressure, but the block count cannot be
+            capped: launching it with ``max_blocks > 0`` raises. ``None``
+            defers to the ``"default_grid_stride"`` module option, then
+            :data:`warp.config.default_grid_stride`.
 
     Returns:
         The registered kernel.
@@ -1601,6 +1611,9 @@ def kernel(
 
         if launch_bounds is not None:
             kernel_options["launch_bounds"] = launch_bounds
+
+        if grid_stride is not None:
+            kernel_options["grid_stride"] = bool(grid_stride)
 
         if cluster_dim is not None:
             kernel_options["cluster_dim"] = _normalize_cluster_dim(cluster_dim)
@@ -1667,14 +1680,11 @@ def kernel(
             # ModuleHasher (adjoint + referenced functions/types/constants).
             module_hash = m.get_module_hash()
 
-            # Generic kernels may not have any overloads at declaration time.
-            # In that case, ModuleHasher has no overload hash to include, so
-            # different closure-captured function bindings (e.g. different
-            # writer_func values) can collide to the same unique module name.
-            #
-            # Add a template-level hash salt from the generic kernel adjoint to
-            # disambiguate those cases. If the same closure/function binding is
-            # reused, this salt is stable and cache/module reuse still works.
+            # A generic kernel may have no overloads at declaration time, so ModuleHasher folds no
+            # kernel content into module_hash; two such kernels differing only in a closure-captured
+            # value (a writer_func, a per-kernel option) would then collide to the same unique-module
+            # name. Salt the name with the kernel's identity to disambiguate; reusing the same values
+            # keeps the salt stable so cache/module reuse still works.
             if k.is_generic and len(k.overloads) == 0:
                 block_dim = m.options["block_dim"]
                 # The hasher was already cached by get_module_hash() above.
@@ -1682,9 +1692,7 @@ def kernel(
 
                 ch = hashlib.sha256()
                 ch.update(module_hash)
-                ch.update(bytes(k.key, "utf-8"))
-                ch.update(hasher.hash_adjoint(k.adj))
-                ch.update(hasher._hash_kernel_return_annotation(k))
+                hasher._hash_kernel_identity(ch, k)
                 module_hash = ch.digest()
 
             # module_hash may have been salted above for generic kernels with
@@ -2369,6 +2377,9 @@ class ModuleHasher:
         # start hashing the module
         ch = hashlib.sha256()
 
+        # module grid-stride default; hash_kernel folds each kernel's effective value
+        default_grid_stride = options.get("default_grid_stride", False)
+
         # hash all kernels: non-generic kernels are hashed directly,
         # generic kernels are hashed via their instantiated overloads
         for kernel in kernels:
@@ -2376,7 +2387,7 @@ class ModuleHasher:
                 for ovl in kernel.overloads.values():
                     if not ovl.adj.skip_build:
                         old_hash = ovl.hash
-                        ovl.hash = self.hash_kernel(ovl)
+                        ovl.hash = self.hash_kernel(ovl, default_grid_stride)
                         # Only log hash changes when old hash was not None (unexpected changes)
                         if (
                             (warp.config.verbose or warp.config.log_level <= warp.LOG_DEBUG)
@@ -2389,7 +2400,7 @@ class ModuleHasher:
             else:
                 if not kernel.adj.skip_build:
                     old_hash = kernel.hash
-                    kernel.hash = self.hash_kernel(kernel)
+                    kernel.hash = self.hash_kernel(kernel, default_grid_stride)
                     # Only log hash changes when old hash was not None (unexpected changes)
                     if (
                         (warp.config.verbose or warp.config.log_level <= warp.LOG_DEBUG)
@@ -2420,14 +2431,15 @@ class ModuleHasher:
         # save the module hash
         self.hash = ch.digest()
 
-    def hash_kernel(self, kernel: Kernel) -> bytes:
+    def hash_kernel(self, kernel: Kernel, default_grid_stride: bool) -> bytes:
         # NOTE: We only hash non-generic kernels, so we don't traverse kernel overloads here.
 
         ch = hashlib.sha256()
+        self._hash_kernel_identity(ch, kernel)
 
-        ch.update(bytes(kernel.key, "utf-8"))
-        ch.update(self.hash_adjoint(kernel.adj))
-        ch.update(self._hash_kernel_return_annotation(kernel))
+        # Record the resolved grid_stride for launches to read. No separate salt: an explicit choice
+        # rides on kernel.options, an inherited default on the "default_grid_stride" module option.
+        kernel.grid_stride = warp._src.codegen.resolve_grid_stride(kernel.options, default_grid_stride)
 
         # Include per-kernel options (e.g. cluster_dim, launch_bounds) so that
         # two kernels with identical source but different options get distinct
@@ -2445,6 +2457,15 @@ class ModuleHasher:
         self.unique_kernels[h] = kernel
 
         return h
+
+    def _hash_kernel_identity(self, ch, kernel: Kernel) -> None:
+        # Hash a kernel's content identity. Shared by hash_kernel() and the unique-module salt so the
+        # two can't drift. Options change generated code, so fold them by value, sorted for determinism.
+        ch.update(bytes(kernel.key, "utf-8"))
+        for opt in sorted(kernel.options):
+            ch.update(bytes(f"{opt}:{kernel.options[opt]}", "utf-8"))
+        ch.update(self.hash_adjoint(kernel.adj))
+        ch.update(self._hash_kernel_return_annotation(kernel))
 
     @staticmethod
     def _hash_kernel_return_annotation(kernel: Kernel) -> bytes:
@@ -3027,6 +3048,7 @@ class Module:
             "block_dim": 256,
             "compile_time_trace": warp.config.compile_time_trace,
             "strip_hash": False,
+            "default_grid_stride": None,  # None means inherit warp.config.default_grid_stride
         }
 
         # Module dependencies are determined by scanning each function
@@ -3079,6 +3101,9 @@ class Module:
             options["enable_mathdx_solver"] = config.enable_mathdx_solver
         if options["enable_mathdx_fft"] is None:
             options["enable_mathdx_fft"] = config.enable_mathdx_fft
+
+        if options["default_grid_stride"] is None:
+            options["default_grid_stride"] = config.default_grid_stride
 
         # Fold in global config flags that affect compilation
         options["verify_fp"] = config.verify_fp
@@ -6562,10 +6587,11 @@ class Runtime:
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.c_size_t,
-                ctypes.c_int,
-                ctypes.c_int,
-                ctypes.c_int,
-                ctypes.c_int,
+                ctypes.c_int,  # max_blocks
+                ctypes.c_int,  # block_dim
+                ctypes.c_int,  # grid_stride (1 = grid-stride loop kernel, 0 = lean 3D kernel)
+                ctypes.c_int,  # cluster_dim
+                ctypes.c_int,  # shared_memory_bytes
                 ctypes.POINTER(ctypes.c_void_p),
                 ctypes.c_void_p,
                 ctypes.c_void_p,  # const APICLaunchInfo* (NULL when not recording)
@@ -9179,13 +9205,35 @@ class Launch:
         self.adjoint: bool = adjoint
         """Whether to run the adjoint kernel instead of the forward kernel."""
 
+        self.grid_stride: bool = kernel.grid_stride
+        """Whether the kernel uses a grid-stride loop (vs the lean 3D launch). Selects the grid shape."""
+
     def set_dim(self, dim: int | list[int] | tuple[int, ...]):
         """Set the launch dimensions.
 
         Args:
             dim: The dimensions of the launch.
+
+        Raises:
+            RuntimeError: If the kernel is not grid-stride and the new dimensions exceed the lean 3D
+                grid capacity (~7e16 work items). Decorate the kernel with
+                ``@wp.kernel(grid_stride=True)`` to support launch dimensions this large.
         """
-        self.bounds = _build_launch_bounds(dim, self.kernel.adj.kernel_dim)
+        new_bounds = _build_launch_bounds(dim, self.kernel.adj.kernel_dim)
+
+        # Guard the impossible lean-grid overflow so a resize fails clearly instead of silently
+        # dropping work items (matching wp.launch()).
+        if not self.device.is_cpu and not self.grid_stride:
+            max_lean_blocks = _lean_grid_max_blocks(self.block_dim)
+            if _cuda_grid_blocks(new_bounds.size, self.block_dim) > max_lean_blocks:
+                raise RuntimeError(
+                    f"Kernel '{self.kernel.key}' set_dim() requires dim.size={new_bounds.size} "
+                    f"(block_dim={self.block_dim}), exceeding the lean 3D grid capacity of "
+                    f"{max_lean_blocks * (self.block_dim if self.block_dim > 0 else 256)} work items. "
+                    f"Decorate the kernel with @wp.kernel(grid_stride=True) to launch dimensions this large."
+                )
+
+        self.bounds = new_bounds
 
         # Re-validate cluster alignment for the new shape: the constructor checked
         # the original dim, but a relaunch with a misaligned dim would otherwise
@@ -9314,6 +9362,7 @@ class Launch:
                     self.bounds.size,
                     self.max_blocks,
                     self.block_dim,
+                    int(self.grid_stride),
                     self.cluster_dim,
                     self.hooks.backward_smem_bytes,
                     self.params_addr,
@@ -9328,6 +9377,7 @@ class Launch:
                     self.bounds.size,
                     self.max_blocks,
                     self.block_dim,
+                    int(self.grid_stride),
                     self.cluster_dim,
                     self.hooks.forward_smem_bytes,
                     self.params_addr,
@@ -9335,6 +9385,29 @@ class Launch:
                     None,  # apic_info: replayed launches don't re-record
                 ):
                     _raise_cuda_launch_error(self.kernel, self.device)
+
+
+def _cuda_grid_blocks(total_dim_size: int, block_dim: int) -> int:
+    """Number of thread blocks a launch of ``total_dim_size`` threads needs at ``block_dim``.
+
+    ``block_dim`` is clamped to 256 when non-positive, matching the native launcher, so the count
+    reflects the grid the kernel is actually launched with. Compared against
+    :func:`_lean_grid_max_blocks` to detect a launch exceeding even the lean 3D grid.
+    """
+    if block_dim <= 0:
+        block_dim = 256
+    return (total_dim_size + block_dim - 1) // block_dim
+
+
+def _lean_grid_max_blocks(block_dim: int) -> int:
+    """Max blocks the lean (grid_stride=False) grid can address: ``(2**24 // block_dim) * 65535**2``,
+    i.e. ~2**24 * 65535**2 ≈ 7.2e16 work items -- far beyond any real launch. launch()/set_dim() raise
+    above this rather than silently drop the overflow threads. ``block_dim`` clamps to 256 to match the
+    launcher.
+    """
+    if block_dim <= 0:
+        block_dim = 256
+    return ((1 << 24) // block_dim) * 65535 * 65535
 
 
 def _canonicalize_dim(dim: int | Sequence[int]) -> tuple[int, ...]:
@@ -9466,8 +9539,10 @@ def launch(
           object. The launch will not occur until the user calls
           :meth:`Launch.launch()`.
         max_blocks: The maximum number of CUDA thread blocks to use.
-          Only has an effect for CUDA kernel launches.
-          If negative or zero, the maximum hardware value will be used.
+          Requires a grid-stride loop, which is the default. Launching a
+          kernel that opted into the lean launch path with
+          ``@wp.kernel(grid_stride=False)`` and ``max_blocks > 0`` raises
+          a ``RuntimeError``.
         block_dim: The number of threads per block (always 1 for "cpu" devices).
     """
 
@@ -9481,6 +9556,8 @@ def launch(
 
     if device == "cpu":
         block_dim = 1
+    elif block_dim <= 0:
+        block_dim = 256
 
     # check function is a Kernel
     if not isinstance(kernel, Kernel):
@@ -9527,6 +9604,25 @@ def launch(
 
         if not module_exec:
             return
+
+        if not kernel.grid_stride and not device.is_cpu:
+            if max_blocks > 0:
+                raise RuntimeError(
+                    f"Kernel '{kernel.key}' was launched with max_blocks={max_blocks}, but it was compiled "
+                    f"without a grid-stride loop (grid_stride=False); capping the block count requires a "
+                    f"grid-stride loop. Opt the kernel into grid-stride via @wp.kernel(grid_stride=True), the "
+                    f'"default_grid_stride" module option, or wp.config.default_grid_stride=True; or drop '
+                    f"max_blocks."
+                )
+
+            # Fail clearly on the (practically unreachable) lean-grid overflow instead of dropping threads.
+            max_lean_blocks = _lean_grid_max_blocks(block_dim)
+            if _cuda_grid_blocks(total_dim_size, block_dim) > max_lean_blocks:
+                raise RuntimeError(
+                    f"Kernel '{kernel.key}' was launched with dim.size={total_dim_size} (block_dim={block_dim}), "
+                    f"exceeding the lean 3D grid capacity of {max_lean_blocks * block_dim} work items. Use "
+                    f"@wp.kernel(grid_stride=True) to launch dimensions this large."
+                )
 
         bounds = _build_launch_bounds_from_tuple(dim, kernel.adj.kernel_dim)
 
@@ -9666,6 +9762,7 @@ def launch(
                         bounds.size,
                         max_blocks,
                         block_dim,
+                        int(kernel.grid_stride),
                         cluster_dim,
                         hooks.backward_smem_bytes,
                         kernel_params,
@@ -9711,6 +9808,7 @@ def launch(
                         bounds.size,
                         max_blocks,
                         block_dim,
+                        int(kernel.grid_stride),
                         cluster_dim,
                         hooks.forward_smem_bytes,
                         kernel_params,
@@ -10483,6 +10581,7 @@ def set_module_options(options: dict[str, Any], module: Any = None):
     * **block_dim**: The default number of threads to assign to each block, defaults to ``256``.
     * **compile_time_trace**: Enable compile-time tracing, defaults to the value of ``warp.config.compile_time_trace``.
     * **strip_hash**: Omit the content hash from compiled kernel file names, defaults to ``False``.
+    * **default_grid_stride**: Whether kernels in this module that do not set ``grid_stride`` explicitly compile with a grid-stride loop. When ``None`` (the default), defers to ``warp.config.default_grid_stride`` (which defaults to grid-stride); set ``False`` to opt the module's kernels into the lean launch. A per-kernel ``@wp.kernel(grid_stride=...)`` always takes precedence.
 
     Args:
 

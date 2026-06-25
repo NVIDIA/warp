@@ -2429,8 +2429,7 @@ class Adjoint:
 
     def add_return(adj, var):
         if var is None or len(var) == 0:
-            # NOTE: If this kernel gets compiled for a CUDA device, then we need
-            # to convert the return; into a continue; in codegen_func_forward()
+            # Rewritten to `continue;` for CUDA grid-stride kernels by codegen_func_forward().
             adj.add_forward("return;", f"goto label{adj.label_count};")
         elif len(var) == 1:
             adj.add_forward(f"return {var[0].emit()};", f"goto label{adj.label_count};")
@@ -5328,7 +5327,41 @@ cuda_reverse_function_template = """
 
 """
 
+# Lean (grid_stride=False) templates: 3D grid with a per-thread early return, no grid-stride loop.
+# The index flattens blockIdx.{z,y,x}; the grid shape (and its uint32 cap) is built in wp_cuda_launch_kernel.
 cuda_kernel_template_forward = """
+
+{line_directive}extern "C" {launch_bounds_str}{cluster_dims_str}__global__ void {name}_cuda_kernel_forward(
+    {forward_args})
+{{
+{line_directive}    wp::tile_shared_storage_t tile_mem;
+
+{line_directive}    const size_t _idx = static_cast<size_t>(blockIdx.z * gridDim.y + blockIdx.y) * static_cast<size_t>(gridDim.x * blockDim.x) + static_cast<size_t>(blockIdx.x * blockDim.x + threadIdx.x);
+{line_directive}    if (_idx >= dim.size) return;
+            // reset shared memory allocator
+{line_directive}    wp::tile_shared_storage_t::init();
+
+{forward_body}{line_directive}}}
+
+"""
+
+cuda_kernel_template_backward = """
+
+{line_directive}extern "C" {launch_bounds_str}{cluster_dims_str}__global__ void {name}_cuda_kernel_backward(
+    {reverse_args})
+{{
+{line_directive}    wp::tile_shared_storage_t tile_mem;
+
+{line_directive}    const size_t _idx = static_cast<size_t>(blockIdx.z * gridDim.y + blockIdx.y) * static_cast<size_t>(gridDim.x * blockDim.x) + static_cast<size_t>(blockIdx.x * blockDim.x + threadIdx.x);
+{line_directive}    if (_idx >= dim.size) return;
+            // reset shared memory allocator
+{line_directive}    wp::tile_shared_storage_t::init();
+
+{reverse_body}{line_directive}}}
+
+"""
+
+cuda_kernel_template_forward_grid_stride = """
 
 {line_directive}extern "C" {launch_bounds_str}{cluster_dims_str}__global__ void {name}_cuda_kernel_forward(
     {forward_args})
@@ -5347,7 +5380,7 @@ cuda_kernel_template_forward = """
 
 """
 
-cuda_kernel_template_backward = """
+cuda_kernel_template_backward_grid_stride = """
 
 {line_directive}extern "C" {launch_bounds_str}{cluster_dims_str}__global__ void {name}_cuda_kernel_backward(
     {reverse_args})
@@ -5602,7 +5635,7 @@ def codegen_struct(struct, device="cpu", indent_size=4):
     )
 
 
-def codegen_func_forward(adj, func_type="kernel", device="cpu"):
+def codegen_func_forward(adj, func_type="kernel", device="cpu", grid_stride=False):
     if device == "cpu":
         indent = 4
     elif device == "cuda":
@@ -5647,8 +5680,7 @@ def codegen_func_forward(adj, func_type="kernel", device="cpu"):
     lines += ["// forward\n"]
 
     for f in adj.blocks[0].body_forward:
-        if func_type == "kernel" and device == "cuda" and f.lstrip().startswith("return;"):
-            # Use of grid-stride loops in CUDA kernels requires that we convert return; to continue;
+        if grid_stride and func_type == "kernel" and device == "cuda" and f.lstrip().startswith("return;"):
             lines += [f.replace("return;", "continue;") + "\n"]
         else:
             lines += [f + "\n"]
@@ -5656,7 +5688,7 @@ def codegen_func_forward(adj, func_type="kernel", device="cpu"):
     return "".join(l.lstrip() if l.lstrip().startswith("#line") else indent_block + l for l in lines)
 
 
-def codegen_func_reverse(adj, func_type="kernel", device="cpu"):
+def codegen_func_reverse(adj, func_type="kernel", device="cpu", grid_stride=False):
     if device == "cpu":
         indent = 4
     elif device == "cuda":
@@ -5739,8 +5771,7 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu"):
     for l in reversed(adj.blocks[0].body_reverse):
         lines += [l + "\n"]
 
-    # In grid-stride kernels the reverse body is in a for loop
-    if device == "cuda" and func_type == "kernel":
+    if grid_stride and device == "cuda" and func_type == "kernel":
         lines += ["continue;\n"]
     else:
         lines += ["return;\n"]
@@ -6015,6 +6046,16 @@ def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet, forward_onl
     return s
 
 
+def resolve_grid_stride(kernel_options: dict, default_grid_stride: builtins.bool) -> builtins.bool:
+    """Resolve a kernel's effective ``grid_stride``: an explicit ``@wp.kernel(grid_stride=...)`` choice in
+    ``kernel_options`` wins, otherwise the kernel inherits the resolved ``default_grid_stride``.
+    """
+    # ``bool`` is shadowed by ``warp.bool`` in this module's namespace; use ``builtins.bool`` so this
+    # returns a Python bool (callers cache and compare it as one), not a Warp scalar.
+    explicit = kernel_options.get("grid_stride")
+    return builtins.bool(default_grid_stride if explicit is None else explicit)
+
+
 def codegen_kernel(kernel, device, options):
     # Update the module's options with the ones defined on the kernel, if any.
     options = options | kernel.options
@@ -6039,8 +6080,12 @@ def codegen_kernel(kernel, device, options):
         template_forward = cpu_kernel_template_forward
         template_backward = cpu_kernel_template_backward
     elif device == "cuda":
-        template_forward = cuda_kernel_template_forward
-        template_backward = cuda_kernel_template_backward
+        if kernel.grid_stride:
+            template_forward = cuda_kernel_template_forward_grid_stride
+            template_backward = cuda_kernel_template_backward_grid_stride
+        else:
+            template_forward = cuda_kernel_template_forward
+            template_backward = cuda_kernel_template_backward
     else:
         raise ValueError(f"Device {device} is not supported")
 
@@ -6083,7 +6128,7 @@ def codegen_kernel(kernel, device, options):
         for arg in adj.args:
             forward_args.append(arg.ctype() + " var_" + arg.label)
 
-    forward_body = codegen_func_forward(adj, func_type="kernel", device=device)
+    forward_body = codegen_func_forward(adj, func_type="kernel", device=device, grid_stride=kernel.grid_stride)
     template_fmt_args.update(
         {
             "forward_args": indent(forward_args),
@@ -6111,7 +6156,7 @@ def codegen_kernel(kernel, device, options):
                 else:
                     reverse_args.append(arg.ctype() + " adj_" + arg.label)
 
-        reverse_body = codegen_func_reverse(adj, func_type="kernel", device=device)
+        reverse_body = codegen_func_reverse(adj, func_type="kernel", device=device, grid_stride=kernel.grid_stride)
         template_fmt_args.update(
             {
                 "reverse_args": indent(reverse_args),

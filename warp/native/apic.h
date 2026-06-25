@@ -157,6 +157,7 @@ WP_API void apic_record_kernel_launch(
     uint64_t size,
     int max_blocks,
     int block_dim,
+    int grid_stride,
     int cluster_dim,
     int smem_bytes,
     const APICLaunchParamRecord* params,

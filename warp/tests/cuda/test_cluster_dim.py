@@ -59,10 +59,10 @@ def cluster_ctarank() -> wp.uint32: ...
 def cluster_nctarank() -> wp.uint32: ...
 
 
-def make_cluster_probe(cluster_dim: int):
+def make_cluster_probe(cluster_dim: int, grid_stride: bool):
     """A clustered kernel where each leading CTA records its rank and cluster size."""
 
-    @wp.kernel(cluster_dim=cluster_dim, enable_backward=False, module="unique")
+    @wp.kernel(cluster_dim=cluster_dim, grid_stride=grid_stride, enable_backward=False, module="unique")
     def probe(rank: wp.array[wp.uint32], size: wp.array[wp.uint32]):
         tid = wp.tid()
         if tid % wp.block_dim() == 0:
@@ -75,7 +75,9 @@ def make_cluster_probe(cluster_dim: int):
 
 # 2 and 8 are portable; 16 is non-portable and only valid on devices that
 # report support for it. Each test skips sizes above the device's reported max.
-CLUSTER_PROBES = {cd: make_cluster_probe(cd) for cd in (2, 8, 16)}
+# Probes are built for both launch shapes (grid-stride loop and lean 3D grid) so
+# clusters are exercised on both paths.
+CLUSTER_PROBES = {(cd, gs): make_cluster_probe(cd, gs) for cd in (2, 8, 16) for gs in (True, False)}
 
 
 # Functional kernels for the cross-device launch, max_blocks, and APIC tests.
@@ -100,6 +102,12 @@ def fill_ones(a: wp.array[int]):
 def cluster_scale(a: wp.array[float], out: wp.array[float]):
     i = wp.tid()
     out[i] = a[i] * 3.0
+
+
+# Lean (grid_stride=False) clustered kernel for the empty-launch regression below.
+@wp.kernel(cluster_dim=2, grid_stride=False, enable_backward=False, module="unique")
+def cluster_lean_fill(a: wp.array[int]):
+    a[wp.tid()] = 1
 
 
 def run_cluster_probe(test, probe, cluster_total, n_clusters, device, block_dim=32):
@@ -144,10 +152,10 @@ def test_cluster_kernel_runs_on_all_devices(test, device):
 def test_clusters_form_with_requested_size(test, device):
     max_cluster_dim = wp.get_cuda_max_cluster_dim(query_probe, device)
     test.assertGreaterEqual(max_cluster_dim, 2)
-    for cluster_total, probe in CLUSTER_PROBES.items():
+    for (cluster_total, grid_stride), probe in CLUSTER_PROBES.items():
         if cluster_total > max_cluster_dim:
             continue
-        with test.subTest(cluster_dim=cluster_total):
+        with test.subTest(cluster_dim=cluster_total, grid_stride=grid_stride):
             run_cluster_probe(test, probe, cluster_total, n_clusters=2, device=device)
 
 
@@ -230,6 +238,19 @@ def test_clustered_launch_set_dim_revalidates(test, device):
     assert_np_equal(a.numpy(), np.ones(256, dtype=np.int32))
 
 
+def test_clustered_lean_set_dim_zero(test, device):
+    # A recorded clustered lean (grid_stride=False) launch resized to zero work items must be a
+    # no-op, not a CUDA error. Zero blocks passes the cluster alignment check, but the empty-grid
+    # fallback uses gridDim.x=1, which is not a multiple of cluster_dim; the native launch must be
+    # skipped entirely for an empty grid. cluster_dim=2, block_dim=32, dim=64 -> 2 blocks (aligned).
+    a = wp.zeros(64, dtype=int, device=device)
+    cmd = wp.launch(cluster_lean_fill, dim=64, inputs=[a], device=device, block_dim=32, record_cmd=True)
+    cmd.set_dim(0)
+    cmd.launch()  # empty clustered lean launch: must not raise
+    wp.synchronize_device(device)
+    assert_np_equal(a.numpy(), np.zeros(64, dtype=np.int32))  # nothing ran
+
+
 def test_clustered_kernel_in_cuda_graph(test, device):
     # A clustered launch must form clusters at the requested size when captured
     # into a standard (non-APIC) CUDA graph and replayed -- distinct from the
@@ -238,7 +259,7 @@ def test_clustered_kernel_in_cuda_graph(test, device):
     block_dim = 32
     cluster_dim = 2
     n_clusters = 2
-    probe = CLUSTER_PROBES[cluster_dim]
+    probe = CLUSTER_PROBES[(cluster_dim, True)]
     n_blocks = n_clusters * cluster_dim
     rank = wp.zeros(n_blocks, dtype=wp.uint32, device=device)
     size = wp.zeros(n_blocks, dtype=wp.uint32, device=device)
@@ -506,6 +527,7 @@ add_function_test(
     test_clustered_launch_set_dim_revalidates,
     devices=hopper,
 )
+add_function_test(TestClusterDim, "test_clustered_lean_set_dim_zero", test_clustered_lean_set_dim_zero, devices=hopper)
 add_function_test(
     TestClusterDim, "test_clustered_kernel_in_cuda_graph", test_clustered_kernel_in_cuda_graph, devices=hopper
 )

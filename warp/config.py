@@ -301,6 +301,14 @@ enable_backward: bool = True
 This setting can be overridden at the module level by setting the ``"enable_backward"`` module option.
 """
 
+default_grid_stride: bool = True
+"""Default ``grid_stride`` for kernels that make no explicit choice.
+
+``False`` opts kernels into the lean launch path (no grid-stride loop, lower per-thread overhead and
+register pressure, but ``max_blocks`` cannot be capped). Lowest precedence: a per-kernel
+``@wp.kernel(grid_stride=...)`` argument or the module ``"default_grid_stride"`` option overrides it.
+"""
+
 enable_mathdx_gemm: bool = True
 """Use libmathdx (cuBLASDx) for tile_matmul on GPU when available.
 

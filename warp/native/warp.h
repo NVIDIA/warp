@@ -693,6 +693,7 @@ WP_API size_t wp_cuda_launch_kernel(
     size_t dim,
     int max_blocks,
     int block_dim,
+    int grid_stride,
     int cluster_dim,
     int shared_memory_bytes,
     void** args,

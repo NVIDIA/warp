@@ -237,6 +237,7 @@ void apic_record_kernel_launch(
     uint64_t size,
     int max_blocks,
     int block_dim,
+    int grid_stride,
     int cluster_dim,
     int smem_bytes,
     const APICLaunchParamRecord* params,
@@ -273,6 +274,7 @@ void apic_record_kernel_launch(
     rec.dim = size;
     rec.max_blocks = max_blocks;
     rec.block_dim = block_dim;
+    rec.grid_stride = grid_stride;
     rec.smem_bytes = smem_bytes;
     rec.is_forward = is_forward ? 1 : 0;
     rec.cluster_dim = cluster_dim > 0 ? static_cast<uint8_t>(cluster_dim) : 1;
