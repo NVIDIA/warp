@@ -1727,13 +1727,13 @@ class transformd:
 @over
 def zeros(
     shape: int | tuple[int, ...] | list[int] | None = None,
-    dtype: type = float,
+    dtype: type[DType] | None = None,
     device: DeviceLike = None,
     requires_grad: _builtins.bool = False,
     pinned: _builtins.bool = False,
     retain_grad: _builtins.bool = False,
     **kwargs,
-) -> array:
+) -> array[DType]:
     """Return a zero-initialized array."""
     ...
 
