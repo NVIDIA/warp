@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.ones_like &#8212; Warp 1.15.0.dev0</title>
+    <title>warp.config.default_grid_stride &#8212; Warp 1.15.0.dev0</title>
   
   
   
@@ -49,7 +49,7 @@
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.ones_like';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.config.default_grid_stride';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
@@ -62,8 +62,8 @@
 
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="warp.zeros" href="warp.zeros.html" />
-    <link rel="prev" title="warp.ones" href="warp.ones.html" />
+    <link rel="next" title="warp.config.enable_backward" href="warp.config.enable_backward.html" />
+    <link rel="prev" title="warp.config.cuda_output" href="warp.config.cuda_output.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -460,9 +460,9 @@
       </a>
     </li>
     
-    <li class="breadcrumb-item"><a href="../warp.html" class="nav-link">warp</a></li>
+    <li class="breadcrumb-item"><a href="../warp_config.html" class="nav-link">warp.config</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.ones_like</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.config.default_grid_stride</span></li>
   </ul>
 </nav>
 </div>
@@ -475,7 +475,7 @@
         <div class="header-article-item">
 
 <div class="d-flex justify-content-end w-100">
-  <a href="../../_sources/api_reference/_generated/warp.ones_like.rst.txt">
+  <a href="../../_sources/api_reference/_generated/warp.config.default_grid_stride.rst.txt">
     <i class="fa-solid fa-file-code"></i> View page source
   </a>
 </div>
@@ -492,39 +492,15 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="warp-ones-like">
-<h1>warp.ones_like<a class="headerlink" href="#warp-ones-like" title="Link to this heading">#</a></h1>
-<dl class="py function">
-<dt class="sig sig-object py" id="warp.ones_like">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">ones_like</span></span><span class="sig-paren">(</span>
-
-<dl>
-<dd><em class="sig-param"><span class="n"><span class="pre">src</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">requires_grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">pinned</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">retain_grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
-</dl>
-
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L8270-L8291"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.ones_like" title="Link to this definition">#</a></dt>
-<dd><p>Return a one-initialized array with the same type and dimension of another array.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>src</strong> (<em>Array</em>) – The template array to use for shape, data type, and device</p></li>
-<li><p><strong>device</strong> (<a class="reference internal" href="warp.Device.html#warp.Device" title="warp._src.context.Device"><em>Device</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – The device where the new array will be created (defaults to src.device)</p></li>
-<li><p><strong>requires_grad</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a><em> | </em><em>None</em>) – Whether the array will be tracked for back propagation</p></li>
-<li><p><strong>pinned</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a><em> | </em><em>None</em>) – Whether the array uses pinned host memory (only applicable to CPU arrays)</p></li>
-<li><p><strong>retain_grad</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether to preserve gradients during backward instead of zeroing after read</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>A warp.array object representing the allocation</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a></p>
-</dd>
-</dl>
+  <section id="warp-config-default-grid-stride">
+<h1>warp.config.default_grid_stride<a class="headerlink" href="#warp-config-default-grid-stride" title="Link to this heading">#</a></h1>
+<dl class="py data">
+<dt class="sig sig-object py" id="warp.config.default_grid_stride">
+<span class="sig-prename descclassname"><span class="pre">warp.config.</span></span><span class="sig-name descname"><span class="pre">default_grid_stride</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">True</span></em><a class="headerlink" href="#warp.config.default_grid_stride" title="Link to this definition">#</a></dt>
+<dd><p>Default <code class="docutils literal notranslate"><span class="pre">grid_stride</span></code> for kernels that make no explicit choice.</p>
+<p><code class="docutils literal notranslate"><span class="pre">False</span></code> opts kernels into the lean launch path (no grid-stride loop, lower per-thread overhead and
+register pressure, but <code class="docutils literal notranslate"><span class="pre">max_blocks</span></code> cannot be capped). Lowest precedence: a per-kernel
+<code class="docutils literal notranslate"><span class="pre">&#64;warp.kernel(grid_stride=...)</span></code> argument or the module <code class="docutils literal notranslate"><span class="pre">&quot;default_grid_stride&quot;</span></code> option overrides it.</p>
 </dd></dl>
 
 </section>
@@ -540,20 +516,20 @@
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.ones.html"
+       href="warp.config.cuda_output.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.ones</p>
+        <p class="prev-next-title">warp.config.cuda_output</p>
       </div>
     </a>
     <a class="right-next"
-       href="warp.zeros.html"
+       href="warp.config.enable_backward.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.zeros</p>
+        <p class="prev-next-title">warp.config.enable_backward</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -578,7 +554,7 @@
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.ones_like"><code class="docutils literal notranslate"><span class="pre">ones_like()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.config.default_grid_stride"><code class="docutils literal notranslate"><span class="pre">default_grid_stride</span></code></a></li>
 </ul>
   </nav></div>
 
@@ -586,7 +562,7 @@
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/_generated/warp.ones_like.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/_generated/warp.config.default_grid_stride.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

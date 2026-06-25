@@ -506,9 +506,10 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">cluster_dim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">module_options</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">grid_stride</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L1511-L1749"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.kernel" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L1514-L1757"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.kernel" title="Link to this definition">#</a></dt>
 <dd><p>Decorator to register a Warp kernel from a Python function.
 The function must be defined with type annotations for all arguments.
 The function must not return anything.</p>
@@ -580,6 +581,12 @@ applied to the kernel’s module. Requires
 For shared modules, use <a class="reference internal" href="warp.set_module_options.html#warp.set_module_options" title="warp.set_module_options"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.set_module_options()</span></code></a>
 instead. See <a class="reference internal" href="warp.set_module_options.html#warp.set_module_options" title="warp.set_module_options"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.set_module_options()</span></code></a> for the full
 list of supported options.</p></li>
+<li><p><strong>grid_stride</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a><em> | </em><em>None</em>) – Whether to emit a grid-stride loop. <code class="docutils literal notranslate"><span class="pre">False</span></code> opts
+into a lean launch (no grid-stride loop) with lower per-thread
+overhead and register pressure, but the block count cannot be
+capped: launching it with <code class="docutils literal notranslate"><span class="pre">max_blocks</span> <span class="pre">&gt;</span> <span class="pre">0</span></code> raises. <code class="docutils literal notranslate"><span class="pre">None</span></code>
+defers to the <code class="docutils literal notranslate"><span class="pre">&quot;default_grid_stride&quot;</span></code> module option, then
+<a class="reference internal" href="warp.config.default_grid_stride.html#warp.config.default_grid_stride" title="warp.config.default_grid_stride"><code class="xref py py-data docutils literal notranslate"><span class="pre">warp.config.default_grid_stride</span></code></a>.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>

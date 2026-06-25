@@ -514,7 +514,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">block_dim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">256</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L9433-L9740"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.launch" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L9506-L9838"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.launch" title="Link to this definition">#</a></dt>
 <dd><p>Launch a Warp kernel on the target device</p>
 <p>Kernel launches are asynchronous with respect to the calling Python thread.</p>
 <dl class="field-list simple">
@@ -536,8 +536,10 @@ sequence of integers with a maximum of 4 dimensions.</p></li>
 object. The launch will not occur until the user calls
 <a class="reference internal" href="warp.Launch.html#warp.Launch.launch" title="warp.Launch.launch"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Launch.launch()</span></code></a>.</p></li>
 <li><p><strong>max_blocks</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – The maximum number of CUDA thread blocks to use.
-Only has an effect for CUDA kernel launches.
-If negative or zero, the maximum hardware value will be used.</p></li>
+Requires a grid-stride loop, which is the default. Launching a
+kernel that opted into the lean launch path with
+<code class="docutils literal notranslate"><span class="pre">&#64;warp.kernel(grid_stride=False)</span></code> and <code class="docutils literal notranslate"><span class="pre">max_blocks</span> <span class="pre">&gt;</span> <span class="pre">0</span></code> raises
+a <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code>.</p></li>
 <li><p><strong>block_dim</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – The number of threads per block (always 1 for “cpu” devices).</p></li>
 </ul>
 </dd>

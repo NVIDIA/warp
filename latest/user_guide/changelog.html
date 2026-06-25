@@ -497,6 +497,12 @@
 <section id="added">
 <h3>Added<a class="headerlink" href="#added" title="Link to this heading">#</a></h3>
 <ul class="simple">
+<li><p>Add <code class="docutils literal notranslate"><span class="pre">&#64;wp.kernel(grid_stride=False)</span></code> (and the <code class="docutils literal notranslate"><span class="pre">&quot;default_grid_stride&quot;</span></code> module option / <code class="docutils literal notranslate"><span class="pre">wp.config.default_grid_stride</span></code>
+for a whole module or process) to compile a kernel without the grid-stride loop. Removing the loop lowers per-thread
+overhead and register pressure, which can speed up launch-bound kernels; it still handles launches of any size, but
+the block count can no longer be capped, so launching such a kernel with <code class="docutils literal notranslate"><span class="pre">max_blocks</span> <span class="pre">&gt;</span> <span class="pre">0</span></code> raises an error pointing
+back at the grid-stride default. The default launch is unchanged
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1270">GH-1270</a>).</p></li>
 <li><p>Add <code class="docutils literal notranslate"><span class="pre">wp.ref[T]</span></code> parameter annotation for <code class="docutils literal notranslate"><span class="pre">&#64;wp.func</span></code> and <code class="docutils literal notranslate"><span class="pre">&#64;wp.func_native</span></code>, enabling explicit pass-by-reference
 semantics for scalar, vector, matrix, quaternion, and struct types. Mutations to a <code class="docutils literal notranslate"><span class="pre">wp.ref[T]</span></code> parameter are visible
 in the caller’s storage without a return value. Add <code class="docutils literal notranslate"><span class="pre">wp.address_of(expr)</span> <span class="pre">-&gt;</span> <span class="pre">wp.uint64</span></code> for obtaining a raw pointer
