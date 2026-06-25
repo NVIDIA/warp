@@ -312,6 +312,107 @@ def test_apic_capture_rejects_deterministic_cuda_kernel(test, device):
             wp.launch(scatter_add_kernel, dim=n, inputs=[data, indices], outputs=[output], device=device)
 
 
+@wp.kernel
+def _decrement_iter_kernel(iters: wp.array(dtype=wp.int32)):
+    """Decrement the loop counter used as the while-condition."""
+    iters[0] = iters[0] - 1
+
+
+@unittest.skipUnless(wp.is_conditional_graph_supported(), "Conditional graph nodes not supported")
+def test_capture_while_deterministic_scatter(test, device):
+    """Verify deterministic scatter launches work inside conditional body graphs.
+
+    CUDA forbids memory-allocation nodes inside conditional body graphs
+    (``wp.capture_while``), so deterministic temporary buffers must be
+    allocated outside the captured graph. This mirrors how MuJoCo Warp's
+    solver launches kernels with atomics inside ``wp.capture_while``.
+    """
+    n = 256
+    out_size = 8
+    loop_iters = 3
+    rng = np.random.default_rng(57)
+
+    data_np = rng.random(n, dtype=np.float32)
+    indices_np = rng.integers(0, out_size, size=n, dtype=np.int32)
+
+    data = wp.array(data_np, dtype=wp.float32, device=device)
+    indices = wp.array(indices_np, dtype=wp.int32, device=device)
+    output = wp.zeros(out_size, dtype=wp.float32, device=device)
+    iters = wp.zeros(1, dtype=wp.int32, device=device)
+
+    # Warm up modules outside capture.
+    wp.launch(scatter_add_kernel, dim=n, inputs=[data, indices], outputs=[output], device=device)
+    wp.launch(_decrement_iter_kernel, dim=1, inputs=[iters], device=device)
+    output.zero_()
+
+    def while_body():
+        wp.launch(scatter_add_kernel, dim=n, inputs=[data, indices], outputs=[output], device=device)
+        wp.launch(_decrement_iter_kernel, dim=1, inputs=[iters], device=device)
+
+    iters.fill_(loop_iters)
+    with wp.ScopedCapture(device, force_module_load=False) as capture:
+        wp.capture_while(iters, while_body)
+
+    def run_once():
+        output.zero_()
+        iters.fill_(loop_iters)
+        wp.capture_launch(capture.graph)
+        wp.synchronize_device(device)
+        return output.numpy().copy()
+
+    first = run_once()
+    second = run_once()
+
+    # The loop body must have executed exactly loop_iters times, with bit-equal replays.
+    expected = np.zeros(out_size, dtype=np.float64)
+    np.add.at(expected, indices_np, data_np.astype(np.float64))
+    np.testing.assert_allclose(first, loop_iters * expected, rtol=1e-5)
+    np.testing.assert_array_equal(first, second)
+
+
+@unittest.skipUnless(wp.is_conditional_graph_supported(), "Conditional graph nodes not supported")
+def test_capture_while_deterministic_counter(test, device):
+    """Verify consumed-return counter atomics work inside conditional body graphs."""
+    n = 64
+    loop_iters = 2
+    rng = np.random.default_rng(58)
+    data_np = rng.random(n, dtype=np.float32)
+
+    data = wp.array(data_np, dtype=wp.float32, device=device)
+    counter = wp.zeros(1, dtype=wp.int32, device=device)
+    output = wp.zeros(loop_iters * n, dtype=wp.float32, device=device)
+    iters = wp.zeros(1, dtype=wp.int32, device=device)
+
+    # Warm up modules outside capture.
+    wp.launch(counter_kernel, dim=n, inputs=[data, counter], outputs=[output], device=device)
+    wp.launch(_decrement_iter_kernel, dim=1, inputs=[iters], device=device)
+    counter.zero_()
+    output.zero_()
+
+    def while_body():
+        wp.launch(counter_kernel, dim=n, inputs=[data, counter], outputs=[output], device=device)
+        wp.launch(_decrement_iter_kernel, dim=1, inputs=[iters], device=device)
+
+    iters.fill_(loop_iters)
+    with wp.ScopedCapture(device, force_module_load=False) as capture:
+        wp.capture_while(iters, while_body)
+
+    def run_once():
+        counter.zero_()
+        output.zero_()
+        iters.fill_(loop_iters)
+        wp.capture_launch(capture.graph)
+        wp.synchronize_device(device)
+        return counter.numpy().copy(), output.numpy().copy()
+
+    first_count, first = run_once()
+    second_count, second = run_once()
+
+    test.assertEqual(int(first_count[0]), loop_iters * n)
+    np.testing.assert_array_equal(first_count, second_count)
+    np.testing.assert_array_equal(first, second)
+
+
 class TestDeterministicGraph(DeterministicTestBase):
     """Test deterministic launches in CUDA graph capture paths."""
 
@@ -333,6 +434,8 @@ for _name in (
     "test_graph_capture_indexed_counter",
     "test_counter_large_launch_rejected",
     "test_apic_capture_rejects_deterministic_cuda_kernel",
+    "test_capture_while_deterministic_scatter",
+    "test_capture_while_deterministic_counter",
 ):
     _add(_name)
 

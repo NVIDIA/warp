@@ -6097,6 +6097,8 @@ class Runtime:
             self.core.wp_cuda_stream_wait_stream.restype = None
             self.core.wp_cuda_stream_is_capturing.argtypes = [ctypes.c_void_p]
             self.core.wp_cuda_stream_is_capturing.restype = ctypes.c_int
+            self.core.wp_cuda_thread_exchange_capture_mode.argtypes = [ctypes.c_int]
+            self.core.wp_cuda_thread_exchange_capture_mode.restype = ctypes.c_int
             self.core.wp_cuda_stream_get_capture_id.argtypes = [ctypes.c_void_p]
             self.core.wp_cuda_stream_get_capture_id.restype = ctypes.c_uint64
             self.core.wp_cuda_stream_get_priority.argtypes = [ctypes.c_void_p]

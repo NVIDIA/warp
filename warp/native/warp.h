@@ -558,6 +558,7 @@ WP_API void wp_cuda_stream_synchronize(void* stream);
 WP_API void wp_cuda_stream_wait_event(void* stream, void* event, bool external = false);
 WP_API void wp_cuda_stream_wait_stream(void* stream, void* other_stream, void* event, bool external = false);
 WP_API int wp_cuda_stream_is_capturing(void* stream);
+WP_API int wp_cuda_thread_exchange_capture_mode(int mode);
 WP_API uint64_t wp_cuda_stream_get_capture_id(void* stream);
 WP_API int wp_cuda_stream_get_priority(void* stream);
 

@@ -3180,6 +3180,20 @@ int wp_cuda_stream_is_capturing(void* stream)
     return int(status != cudaStreamCaptureStatusNone);
 }
 
+int wp_cuda_thread_exchange_capture_mode(int mode)
+{
+    // Swap this thread's stream capture mode and return the previous mode.
+    // Passing cudaStreamCaptureModeRelaxed allows otherwise-forbidden
+    // operations (e.g. legacy allocations on non-capturing streams) while a
+    // thread-local capture is active on another stream. Callers must restore
+    // the returned mode afterwards.
+    cudaStreamCaptureMode capture_mode = static_cast<cudaStreamCaptureMode>(mode);
+    if (!check_cuda(cudaThreadExchangeStreamCaptureMode(&capture_mode)))
+        return -1;
+
+    return int(capture_mode);
+}
+
 uint64_t wp_cuda_stream_get_capture_id(void* stream) { return get_capture_id(static_cast<CUstream>(stream)); }
 
 int wp_cuda_stream_get_priority(void* stream)

@@ -29,6 +29,7 @@ import ctypes
 import itertools
 import re
 from collections.abc import Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
@@ -38,6 +39,73 @@ from warp.config import DeterministicMode
 if TYPE_CHECKING:
     from warp._src.context import Device, KernelHooks, Stream
     from warp._src.types import launch_bounds_t
+
+
+# Dedicated non-capturing allocation streams, one per device. Used to keep
+# deterministic buffer allocations out of captured CUDA graphs so that
+# deterministic kernels can run inside conditional body graphs
+# (wp.capture_while / wp.capture_if), where allocation nodes are illegal.
+_det_alloc_streams = {}
+
+
+def _det_capture_alloc_stream(device):
+    """Return (creating on first use) the dedicated allocation stream for ``device``."""
+    import warp  # noqa: PLC0415
+
+    stream = _det_alloc_streams.get(device.alias)
+    if stream is None:
+        stream = warp.Stream(device)
+        _det_alloc_streams[device.alias] = stream
+    return stream
+
+
+@contextmanager
+def det_buffer_allocation_scope(device, stream_is_capturing):
+    """Allocation scope for temporary deterministic buffers.
+
+    Outside graph capture this is a no-op. During capture, allocations made
+    inside the scope are redirected to a dedicated non-capturing stream so no
+    memory-allocation nodes are recorded into the graph. CUDA forbids
+    allocation nodes inside conditional body graphs (``wp.capture_while`` /
+    ``wp.capture_if``), so this is required for deterministic kernels launched
+    there.
+
+    The thread's stream capture mode is temporarily switched to relaxed
+    (``cudaThreadExchangeStreamCaptureMode``) because thread-local captures
+    forbid this thread from touching non-capturing streams. The allocation
+    stream is synchronized on scope exit so the memory is valid before any
+    captured work uses it; relaxed mode also permits that synchronization.
+
+    Note that buffer *initialization* performed inside this scope runs on the
+    allocation stream exactly once (it is not captured). Buffers whose
+    contents must be reset on every graph replay need explicit captured
+    ``zero_()`` / ``fill_()`` calls on the capturing stream after the scope.
+    """
+    import warp  # noqa: PLC0415
+    from warp._src import context as warp_context  # noqa: PLC0415
+    from warp._src.context import CaptureMode  # noqa: PLC0415
+
+    if not stream_is_capturing or not device.is_cuda:
+        yield
+        return
+
+    runtime = warp_context.runtime
+    alloc_stream = _det_capture_alloc_stream(device)
+    previous_mode = runtime.core.wp_cuda_thread_exchange_capture_mode(int(CaptureMode.RELAXED))
+    if previous_mode < 0:
+        raise RuntimeError(f"Failed to switch thread capture mode: {runtime.get_error_string()}")
+    try:
+        with warp.ScopedStream(alloc_stream, sync_enter=False):
+            yield
+        # Ensure allocations/initialization on the allocation stream complete
+        # before captured work can use the memory. Call the native sync
+        # directly: warp.synchronize_stream() refuses to run while any capture
+        # is active, but synchronizing a non-capturing stream is legal under
+        # the relaxed thread capture mode we hold here.
+        runtime.core.wp_cuda_stream_synchronize(alloc_stream.cuda_stream)
+    finally:
+        if runtime.core.wp_cuda_thread_exchange_capture_mode(previous_mode) < 0:
+            raise RuntimeError(f"Failed to restore thread capture mode: {runtime.get_error_string()}")
 
 
 def _det_dest_size_elements(arr) -> int:
@@ -1342,7 +1410,7 @@ def get_counter_record_count(counter_buffer, stream_is_capturing=False):
     return min(emitted_count, capacity)
 
 
-def allocate_counter_state_buffers(runtime, counter_arrays, device, stream):
+def allocate_counter_state_buffers(runtime, counter_arrays, device, stream, stream_is_capturing=False):
     """Snapshot raw counter spans and allocate delayed writeback totals."""
     import warp  # noqa: PLC0415
 
@@ -1359,8 +1427,9 @@ def allocate_counter_state_buffers(runtime, counter_arrays, device, stream):
             buffers.append((None, None, 0))
             continue
 
-        bases = warp.empty(shape=(counter_size_elements,), dtype=warp.int32, device=device)
-        totals = warp.empty(shape=(counter_size_elements,), dtype=warp.int32, device=device)
+        with det_buffer_allocation_scope(device, stream_is_capturing):
+            bases = warp.empty(shape=(counter_size_elements,), dtype=warp.int32, device=device)
+            totals = warp.empty(shape=(counter_size_elements,), dtype=warp.int32, device=device)
         bytes_to_copy = counter_size_elements * element_size
         if not runtime.core.wp_memcpy_d2d(
             device.context, bases.ptr, counter_arr.ptr, bytes_to_copy, stream.cuda_stream
@@ -1401,7 +1470,14 @@ def allocate_counter_buffers(counter_targets, meta, dim_size, device, max_record
 
 
 def run_sort_reduce(
-    runtime, scatter_targets, scatter_buffers, dest_arrays, device, determinism_mode, record_counts=None
+    runtime,
+    scatter_targets,
+    scatter_buffers,
+    dest_arrays,
+    device,
+    determinism_mode,
+    record_counts=None,
+    stream_is_capturing=False,
 ):
     """Execute post-kernel sort-reduce for all scatter targets."""
     import warp  # noqa: PLC0415
@@ -1438,7 +1514,8 @@ def run_sort_reduce(
             components,
             determinism_mode_id,
         )
-        workspace = warp.empty(shape=(workspace_size,), dtype=warp.uint8, device=device)
+        with det_buffer_allocation_scope(device, stream_is_capturing):
+            workspace = warp.empty(shape=(workspace_size,), dtype=warp.uint8, device=device)
         workspaces.append(workspace)
 
         dest_size_elements = _det_dest_size_elements(dest_arr)
@@ -1459,7 +1536,15 @@ def run_sort_reduce(
     return workspaces
 
 
-def run_counter_scan(runtime, counter_buffers, counter_arrays, counter_state_buffers, device, record_counts=None):
+def run_counter_scan(
+    runtime,
+    counter_buffers,
+    counter_arrays,
+    counter_state_buffers,
+    device,
+    record_counts=None,
+    stream_is_capturing=False,
+):
     """Compute deterministic consumed-return prefixes for counter records."""
     import warp  # noqa: PLC0415
 
@@ -1479,7 +1564,8 @@ def run_counter_scan(runtime, counter_buffers, counter_arrays, counter_state_buf
             continue
 
         workspace_size = runtime.core.wp_deterministic_counter_scan_workspace_size(record_count)
-        workspace = warp.empty(shape=(workspace_size,), dtype=warp.uint8, device=device)
+        with det_buffer_allocation_scope(device, stream_is_capturing):
+            workspace = warp.empty(shape=(workspace_size,), dtype=warp.uint8, device=device)
         workspaces.append(workspace)
 
         runtime.core.wp_deterministic_counter_scan_device(
@@ -1780,34 +1866,55 @@ def launch_deterministic(
         capture_id = runtime.core.wp_cuda_stream_get_capture_id(stream.cuda_stream)
         capture_graph = runtime.captures.get(capture_id)
 
-    # Allocate buffers.
-    scatter_bufs = (
-        allocate_scatter_buffers(
-            active_scatter_targets,
-            det_meta,
-            dim_size,
-            device,
-            max_records=max_records,
-            initialize_unused=stream_is_capturing,
+    # Allocate buffers. During graph capture, allocations are redirected to a
+    # dedicated non-capturing stream (see det_buffer_allocation_scope) so the
+    # captured graph contains no allocation nodes. This keeps deterministic
+    # kernels legal inside conditional body graphs (wp.capture_while /
+    # wp.capture_if), where CUDA forbids memory allocation. Buffer lifetime is
+    # tied to the graph via _deterministic_buffer_refs below.
+    with det_buffer_allocation_scope(device, stream_is_capturing):
+        scatter_bufs = (
+            allocate_scatter_buffers(
+                active_scatter_targets,
+                det_meta,
+                dim_size,
+                device,
+                max_records=max_records,
+                initialize_unused=stream_is_capturing,
+            )
+            if active_scatter_targets
+            else []
         )
-        if active_scatter_targets
-        else []
-    )
-    counter_bufs = (
-        allocate_counter_buffers(
-            active_counter_targets,
-            det_meta,
-            dim_size,
-            device,
-            max_records=max_records,
-            initialize_unused=stream_is_capturing,
+        counter_bufs = (
+            allocate_counter_buffers(
+                active_counter_targets,
+                det_meta,
+                dim_size,
+                device,
+                max_records=max_records,
+                initialize_unused=stream_is_capturing,
+            )
+            if active_counter_targets
+            else []
         )
-        if active_counter_targets
-        else []
-    )
+        overflow_buf = warp.zeros(shape=(1,), dtype=warp.int32, device=device) if scatter_bufs or counter_bufs else None
+
+    if stream_is_capturing:
+        # Allocation-time initialization ran on the non-capturing allocation
+        # stream and is not part of the graph. Record explicit resets on the
+        # capturing stream so every graph replay starts from clean buffers.
+        # (The two-pass counter path below performs its own captured resets.)
+        with warp.ScopedStream(stream, sync_enter=False):
+            for scatter_buf in scatter_bufs:
+                keys, values, counter, _capacity = scatter_buf
+                keys.fill_(-1)
+                values.zero_()
+                counter.zero_()
+            if overflow_buf is not None:
+                overflow_buf.zero_()
+
     scatter_bufs_by_target = dict(zip(active_scatter_targets, scatter_bufs, strict=True))
     counter_bufs_by_target = dict(zip(active_counter_targets, counter_bufs, strict=True))
-    overflow_buf = warp.zeros(shape=(1,), dtype=warp.int32, device=device) if scatter_bufs or counter_bufs else None
     sort_reduce_workspaces = []
     counter_scan_workspaces = []
     counter_state_buffers = []
@@ -1908,7 +2015,9 @@ def launch_deterministic(
         do_cuda_launch(launch_hook, params_p0)
 
         with warp.ScopedStream(stream, sync_enter=False):
-            counter_state_buffers = allocate_counter_state_buffers(runtime, counter_arrays, device, stream)
+            counter_state_buffers = allocate_counter_state_buffers(
+                runtime, counter_arrays, device, stream, stream_is_capturing=stream_is_capturing
+            )
 
         # Sort counter records by destination and deterministic record order,
         # then compute the exclusive prefix each atomic should return.
@@ -1957,6 +2066,7 @@ def launch_deterministic(
                 counter_state_buffers,
                 device,
                 record_counts=counter_record_counts,
+                stream_is_capturing=stream_is_capturing,
             )
             for counter_buf in counter_bufs:
                 _keys, _values, _prefixes, _record_slots, cursors, _count, _capacity, _records_per_thread = counter_buf
@@ -2015,6 +2125,7 @@ def launch_deterministic(
                 device,
                 determinism_mode,
                 record_counts=record_counts,
+                stream_is_capturing=stream_is_capturing,
             )
 
     if capture_graph is not None:

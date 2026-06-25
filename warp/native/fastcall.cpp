@@ -3,9 +3,16 @@
 
 // METH_FASTCALL wrappers for performance-critical native functions.
 // Embedded in warp.dll and loaded as a Python extension module via importlib.
-#include "warp.h"
 
+// Python.h must be included before any standard/system headers. It defines
+// feature-test macros (e.g. _XOPEN_SOURCE) that affect the standard headers;
+// warp.h transitively pulls in glibc <features.h>, so including it first
+// causes a _XOPEN_SOURCE redefinition that fails under -Werror on newer glibc.
+// clang-format off
 #include <Python.h>
+
+#include "warp.h"
+// clang-format on
 
 // Cached at PyInit time instead of using PyExc_TypeError directly. PyExc_TypeError
 // is a data import; data symbols are eagerly resolved by the OS loader on every
