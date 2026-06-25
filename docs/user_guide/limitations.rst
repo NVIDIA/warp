@@ -25,6 +25,8 @@ Kernels and User Functions
 * :func:`wp.atomic_add() <warp._src.lang.atomic_add>` does not support :class:`wp.float16 <float16>` or
   :class:`wp.bfloat16 <bfloat16>` on GPUs with compute capability below 7.0.
   On such devices, the function will return ``0.0`` without modifying the target memory.
+* Using ``wp.atomic_add()`` or related functions on the same memory address from
+  overlapping CPU and GPU kernels is currently unsupported.
 * :func:`wp.tid() <warp._src.lang.tid>` cannot be called from user functions.
 * Modifying the value of a :class:`wp.constant() <warp.constant>` during runtime will not trigger
   recompilation of the affected kernels if the modules have already been loaded
@@ -66,11 +68,12 @@ Arrays
 * There are currently no data types that support complex numbers.
 * ``wp.config.launch_array_access_mode = wp.config.LaunchArrayAccessMode.CHECKED``
   only fully verifies cross-device :class:`wp.array <warp.array>` arguments when
-  Warp can determine the allocation kind. Arrays backed by custom or externally
-  wrapped allocators warn and proceed in checked mode; use
+  Warp can classify the pointer and prove the relevant access requirements.
+  Custom arrays or external wrappers whose pointer kind or specific access state
+  cannot be verified warn and proceed in checked mode; use
   ``wp.config.LaunchArrayAccessMode.STRICT`` to reject cross-device launches before
-  checking allocator provenance. Directly passed ``__array_interface__`` or
-  ``__cuda_array_interface__`` objects are not fully allocation-verified. See
+  checking access. Directly passed ``__array_interface__`` or
+  ``__cuda_array_interface__`` objects are not fully access-verified. See
   :ref:`launch_array_access_checks` for details.
 
 Structs

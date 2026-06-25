@@ -35,6 +35,12 @@
   Grouped BVHs/meshes and mesh winding-number queries remain unsupported. ([GH-1467](https://github.com/NVIDIA/warp/issues/1467))
 - Add a `cluster_dim` option to `@wp.kernel` and a `wp.get_cuda_max_cluster_dim()` query helper for using CUDA Thread
   Block Clusters from `@wp.func_native` code ([GH-1401](https://github.com/NVIDIA/warp/issues/1401)).
+- Add `wp.CudaManagedAllocator()` for explicit CUDA managed-memory arrays. CPU kernels can use managed arrays as an
+  opt-in path to read and write CUDA managed-memory allocations through Unified Memory on systems where CUDA reports
+  compatible managed-memory access, while Warp CUDA arrays backed by non-managed memory still need explicit CPU
+  copies. Use `array.memory_kind` to inspect whether an array is backed by host, pinned host, CUDA device, CUDA
+  mempool, or CUDA managed memory. Preallocated managed arrays work in CUDA graph captures, but capture-time allocation
+  is a current limitation ([GH-1523](https://github.com/NVIDIA/warp/issues/1523)).
 
 ### Removed
 

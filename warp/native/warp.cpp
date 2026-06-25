@@ -979,6 +979,8 @@ void* wp_alloc_device_default(void* context, size_t s, const char* tag) { return
 
 void* wp_alloc_device_async(void* context, size_t s, const char* tag) { return NULL; }
 
+void* wp_alloc_device_managed(void* context, size_t s, const char* tag) { return NULL; }
+
 void wp_free_device(void* context, void* ptr) { }
 
 void wp_free_device_default(void* context, void* ptr) { }
@@ -1031,6 +1033,9 @@ WP_API int wp_cuda_device_is_uva(int ordinal) { return 0; }
 WP_API int wp_cuda_device_get_pageable_memory_access(int ordinal) { return 0; }
 WP_API int wp_cuda_device_get_direct_managed_mem_access_from_host(int ordinal) { return 0; }
 WP_API int wp_cuda_device_get_host_native_atomic_supported(int ordinal) { return 0; }
+WP_API int wp_cuda_device_get_managed_memory_supported(int ordinal) { return 0; }
+WP_API int wp_cuda_device_get_concurrent_managed_access_supported(int ordinal) { return 0; }
+WP_API int wp_cuda_pointer_get_memory_kind(void* context, void* ptr) { return WP_MEMORY_KIND_UNKNOWN; }
 WP_API int wp_cuda_device_is_mempool_supported(int ordinal) { return 0; }
 WP_API int wp_cuda_device_is_ipc_supported(int ordinal) { return 0; }
 WP_API int wp_cuda_device_set_mempool_release_threshold(int ordinal, uint64_t threshold) { return 0; }

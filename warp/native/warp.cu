@@ -151,6 +151,8 @@ struct DeviceInfo {
     int pageable_memory_access = 0;
     int direct_managed_mem_access_from_host = 0;
     int host_native_atomic_supported = 0;
+    int managed_memory = 0;
+    int concurrent_managed_access = 0;
     int is_mempool_supported = 0;
     int sm_count = 0;
     int is_ipc_supported = -1;
@@ -300,6 +302,12 @@ int cuda_init()
                 ));
                 check_cu(cuDeviceGetAttribute_f(
                     &g_devices[i].host_native_atomic_supported, CU_DEVICE_ATTRIBUTE_HOST_NATIVE_ATOMIC_SUPPORTED, device
+                ));
+                check_cu(
+                    cuDeviceGetAttribute_f(&g_devices[i].managed_memory, CU_DEVICE_ATTRIBUTE_MANAGED_MEMORY, device)
+                );
+                check_cu(cuDeviceGetAttribute_f(
+                    &g_devices[i].concurrent_managed_access, CU_DEVICE_ATTRIBUTE_CONCURRENT_MANAGED_ACCESS, device
                 ));
                 check_cu(cuDeviceGetAttribute_f(
                     &g_devices[i].is_mempool_supported, CU_DEVICE_ATTRIBUTE_MEMORY_POOLS_SUPPORTED, device
@@ -836,6 +844,29 @@ void* wp_alloc_device_async(void* context, size_t s, const char* tag)
             }
         }
     }
+
+    if (g_alloc_tracker.enabled && ptr)
+        g_alloc_tracker.record_alloc(ptr, s, ALLOC_KIND_DEVICE, wp_cuda_context_get_device_ordinal(context), tag);
+
+    return ptr;
+}
+
+void* wp_alloc_device_managed(void* context, size_t s, const char* tag)
+{
+    ContextGuard guard(context);
+
+    ContextInfo* context_info = get_context_info(context);
+    if (!context_info || !context_info->device_info)
+        return NULL;
+
+    DeviceInfo* device_info = context_info->device_info;
+    if (!device_info->managed_memory)
+        return NULL;
+
+    void* ptr = NULL;
+
+    if (!check_cuda(cudaMallocManaged(&ptr, s, cudaMemAttachGlobal)))
+        return NULL;
 
     if (g_alloc_tracker.enabled && ptr)
         g_alloc_tracker.record_alloc(ptr, s, ALLOC_KIND_DEVICE, wp_cuda_context_get_device_ordinal(context), tag);
@@ -2487,6 +2518,59 @@ int wp_cuda_device_get_host_native_atomic_supported(int ordinal)
     if (ordinal >= 0 && ordinal < int(g_devices.size()))
         return g_devices[ordinal].host_native_atomic_supported;
     return 0;
+}
+
+int wp_cuda_device_get_managed_memory_supported(int ordinal)
+{
+    if (ordinal >= 0 && ordinal < int(g_devices.size()))
+        return g_devices[ordinal].managed_memory;
+    return 0;
+}
+
+int wp_cuda_device_get_concurrent_managed_access_supported(int ordinal)
+{
+    if (ordinal >= 0 && ordinal < int(g_devices.size()))
+        return g_devices[ordinal].concurrent_managed_access;
+    return 0;
+}
+
+int wp_cuda_pointer_get_memory_kind(void* context, void* ptr)
+{
+    if (!ptr)
+        return WP_MEMORY_KIND_UNKNOWN;
+
+    ContextGuard guard(context);
+
+    unsigned int is_managed = 0;
+    CUresult managed_result
+        = cuPointerGetAttribute_f(&is_managed, CU_POINTER_ATTRIBUTE_IS_MANAGED, reinterpret_cast<CUdeviceptr>(ptr));
+    if (managed_result != CUDA_SUCCESS)
+        return WP_MEMORY_KIND_UNKNOWN;
+    if (is_managed)
+        return WP_MEMORY_KIND_CUDA_MANAGED;
+
+    unsigned int memory_type = 0;
+    CUresult memory_type_result
+        = cuPointerGetAttribute_f(&memory_type, CU_POINTER_ATTRIBUTE_MEMORY_TYPE, reinterpret_cast<CUdeviceptr>(ptr));
+    if (memory_type_result != CUDA_SUCCESS)
+        return WP_MEMORY_KIND_UNKNOWN;
+
+    if (memory_type == CU_MEMORYTYPE_HOST)
+        return WP_MEMORY_KIND_PINNED;
+
+    if (memory_type != CU_MEMORYTYPE_DEVICE)
+        return WP_MEMORY_KIND_UNKNOWN;
+
+    CUmemoryPool mempool = NULL;
+    CUresult mempool_result
+        = cuPointerGetAttribute_f(&mempool, CU_POINTER_ATTRIBUTE_MEMPOOL_HANDLE, reinterpret_cast<CUdeviceptr>(ptr));
+    if (mempool_result != CUDA_SUCCESS)
+        return WP_MEMORY_KIND_CUDA_DEVICE;
+
+    if (mempool)
+        return WP_MEMORY_KIND_CUDA_MEMPOOL;
+
+    return WP_MEMORY_KIND_CUDA_DEVICE;
 }
 
 int wp_cuda_device_is_mempool_supported(int ordinal)
