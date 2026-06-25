@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.full &#8212; Warp 1.15.0.dev0</title>
+    <title>warp.MemoryKind &#8212; Warp 1.15.0.dev0</title>
   
   
   
@@ -49,7 +49,7 @@
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.full';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.MemoryKind';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
@@ -62,8 +62,8 @@
 
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="warp.full_like" href="warp.full_like.html" />
-    <link rel="prev" title="warp.from_ptr" href="warp.from_ptr.html" />
+    <link rel="next" title="warp.ScopedAllocator" href="warp.ScopedAllocator.html" />
+    <link rel="prev" title="warp.CudaManagedAllocator" href="warp.CudaManagedAllocator.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -462,7 +462,7 @@
     
     <li class="breadcrumb-item"><a href="../warp.html" class="nav-link">warp</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.full</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.MemoryKind</span></li>
   </ul>
 </nav>
 </div>
@@ -475,7 +475,7 @@
         <div class="header-article-item">
 
 <div class="d-flex justify-content-end w-100">
-  <a href="../../_sources/api_reference/_generated/warp.full.rst.txt">
+  <a href="../../_sources/api_reference/_generated/warp.MemoryKind.rst.txt">
     <i class="fa-solid fa-file-code"></i> View page source
   </a>
 </div>
@@ -492,44 +492,123 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="warp-full">
-<h1>warp.full<a class="headerlink" href="#warp-full" title="Link to this heading">#</a></h1>
-<dl class="py function">
-<dt class="sig sig-object py" id="warp.full">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">full</span></span><span class="sig-paren">(</span>
+  <section id="warp-memorykind">
+<h1>warp.MemoryKind<a class="headerlink" href="#warp-memorykind" title="Link to this heading">#</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="warp.MemoryKind">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">MemoryKind</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L3875-L3902"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.MemoryKind" title="Link to this definition">#</a></dt>
+<dd><p>Observed memory kind backing a Warp array.</p>
+<p>This describes the memory class reported by Warp and CUDA pointer
+attributes. It does not describe current physical residency, migration
+state, synchronization state, or whether a specific device can access the
+array. Use <a class="reference internal" href="warp.can_access.html#warp.can_access" title="warp.can_access"><code class="xref py py-func docutils literal notranslate"><span class="pre">can_access()</span></code></a> for access checks.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.MemoryKind.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwds</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/../../../_temp/uv-python-dir/cpython-3.12.13-linux-x86_64-gnu/lib/python3.12/enum.py#L1184-L1186"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.MemoryKind.__init__" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
 
-<dl>
-<dd><em class="sig-param"><span class="n"><span class="pre">shape</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">requires_grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">pinned</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">retain_grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em>,</dd>
-</dl>
+<p class="rubric">Methods</p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">conjugate</span></code></p></td>
+<td><p>Returns self, the complex conjugate of any int.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">bit_length</span></code>()</p></td>
+<td><p>Number of bits necessary to represent self in binary.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">bit_count</span></code>()</p></td>
+<td><p>Number of ones in the binary representation of the absolute value of self.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">to_bytes</span></code>([length, byteorder, signed])</p></td>
+<td><p>Return an array of bytes representing an integer.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_bytes</span></code>(bytes[, byteorder, signed])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">as_integer_ratio</span></code>()</p></td>
+<td><p>Return a pair of integers, whose ratio is equal to the original int.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_integer</span></code>()</p></td>
+<td><p>Returns True.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.MemoryKind.__init__" title="warp.MemoryKind.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(*args, **kwds)</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p class="rubric">Attributes</p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">real</span></code></p></td>
+<td><p>the real part of a complex number</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">imag</span></code></p></td>
+<td><p>the imaginary part of a complex number</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">numerator</span></code></p></td>
+<td><p>the numerator of a rational number in lowest terms</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">denominator</span></code></p></td>
+<td><p>the denominator of a rational number in lowest terms</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.MemoryKind.UNKNOWN" title="warp.MemoryKind.UNKNOWN"><code class="xref py py-obj docutils literal notranslate"><span class="pre">UNKNOWN</span></code></a></p></td>
+<td><p>Memory kind that Warp cannot classify.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.MemoryKind.HOST" title="warp.MemoryKind.HOST"><code class="xref py py-obj docutils literal notranslate"><span class="pre">HOST</span></code></a></p></td>
+<td><p>Default host memory.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.MemoryKind.PINNED" title="warp.MemoryKind.PINNED"><code class="xref py py-obj docutils literal notranslate"><span class="pre">PINNED</span></code></a></p></td>
+<td><p>Pinned or CUDA-registered host memory.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.MemoryKind.CUDA_DEVICE" title="warp.MemoryKind.CUDA_DEVICE"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CUDA_DEVICE</span></code></a></p></td>
+<td><p>CUDA device memory that is not classified as managed or mempool memory.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.MemoryKind.CUDA_MEMPOOL" title="warp.MemoryKind.CUDA_MEMPOOL"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CUDA_MEMPOOL</span></code></a></p></td>
+<td><p>CUDA memory-pool allocation.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.MemoryKind.CUDA_MANAGED" title="warp.MemoryKind.CUDA_MANAGED"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CUDA_MANAGED</span></code></a></p></td>
+<td><p>CUDA managed-memory allocation.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.MemoryKind.UNKNOWN">
+<span class="sig-name descname"><span class="pre">UNKNOWN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></em><a class="headerlink" href="#warp.MemoryKind.UNKNOWN" title="Link to this definition">#</a></dt>
+<dd><p>Memory kind that Warp cannot classify.</p>
+</dd></dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L8409-L8483"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.full" title="Link to this definition">#</a></dt>
-<dd><p>Return an array with all elements initialized to the given value.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>shape</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>...</em><em>] </em><em>| </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>] </em><em>| </em><em>None</em>) – Array dimensions</p></li>
-<li><p><strong>value</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>) – Element value</p></li>
-<li><p><strong>dtype</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><em>type</em></a><em> | </em><em>None</em>) – Type of each element, e.g.: float, warp.vec3, warp.mat33, etc</p></li>
-<li><p><strong>device</strong> (<a class="reference internal" href="warp.Device.html#warp.Device" title="warp._src.context.Device"><em>Device</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Device that array will live on</p></li>
-<li><p><strong>requires_grad</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether the array will be tracked for back propagation</p></li>
-<li><p><strong>pinned</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether the array uses pinned host memory (only applicable to CPU arrays)</p></li>
-<li><p><strong>retain_grad</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether to preserve gradients during backward instead of zeroing after read</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>A warp.array object representing the allocation</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a></p>
-</dd>
-</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.MemoryKind.HOST">
+<span class="sig-name descname"><span class="pre">HOST</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#warp.MemoryKind.HOST" title="Link to this definition">#</a></dt>
+<dd><p>Default host memory.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.MemoryKind.PINNED">
+<span class="sig-name descname"><span class="pre">PINNED</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#warp.MemoryKind.PINNED" title="Link to this definition">#</a></dt>
+<dd><p>Pinned or CUDA-registered host memory.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.MemoryKind.CUDA_DEVICE">
+<span class="sig-name descname"><span class="pre">CUDA_DEVICE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">3</span></em><a class="headerlink" href="#warp.MemoryKind.CUDA_DEVICE" title="Link to this definition">#</a></dt>
+<dd><p>CUDA device memory that is not classified as managed or mempool memory.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.MemoryKind.CUDA_MEMPOOL">
+<span class="sig-name descname"><span class="pre">CUDA_MEMPOOL</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">4</span></em><a class="headerlink" href="#warp.MemoryKind.CUDA_MEMPOOL" title="Link to this definition">#</a></dt>
+<dd><p>CUDA memory-pool allocation.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.MemoryKind.CUDA_MANAGED">
+<span class="sig-name descname"><span class="pre">CUDA_MANAGED</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">5</span></em><a class="headerlink" href="#warp.MemoryKind.CUDA_MANAGED" title="Link to this definition">#</a></dt>
+<dd><p>CUDA managed-memory allocation.</p>
+</dd></dl>
+
 </dd></dl>
 
 </section>
@@ -545,20 +624,20 @@
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.from_ptr.html"
+       href="warp.CudaManagedAllocator.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.from_ptr</p>
+        <p class="prev-next-title">warp.CudaManagedAllocator</p>
       </div>
     </a>
     <a class="right-next"
-       href="warp.full_like.html"
+       href="warp.ScopedAllocator.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.full_like</p>
+        <p class="prev-next-title">warp.ScopedAllocator</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -583,7 +662,16 @@
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.full"><code class="docutils literal notranslate"><span class="pre">full()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.MemoryKind"><code class="docutils literal notranslate"><span class="pre">MemoryKind</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.MemoryKind.__init__"><code class="docutils literal notranslate"><span class="pre">__init__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.MemoryKind.UNKNOWN"><code class="docutils literal notranslate"><span class="pre">UNKNOWN</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.MemoryKind.HOST"><code class="docutils literal notranslate"><span class="pre">HOST</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.MemoryKind.PINNED"><code class="docutils literal notranslate"><span class="pre">PINNED</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.MemoryKind.CUDA_DEVICE"><code class="docutils literal notranslate"><span class="pre">CUDA_DEVICE</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.MemoryKind.CUDA_MEMPOOL"><code class="docutils literal notranslate"><span class="pre">CUDA_MEMPOOL</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.MemoryKind.CUDA_MANAGED"><code class="docutils literal notranslate"><span class="pre">CUDA_MANAGED</span></code></a></li>
+</ul>
+</li>
 </ul>
   </nav></div>
 
@@ -591,7 +679,7 @@
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/_generated/warp.full.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/_generated/warp.MemoryKind.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

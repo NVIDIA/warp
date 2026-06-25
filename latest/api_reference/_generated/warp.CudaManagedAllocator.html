@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.full &#8212; Warp 1.15.0.dev0</title>
+    <title>warp.CudaManagedAllocator &#8212; Warp 1.15.0.dev0</title>
   
   
   
@@ -49,7 +49,7 @@
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.full';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.CudaManagedAllocator';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
@@ -62,8 +62,8 @@
 
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="warp.full_like" href="warp.full_like.html" />
-    <link rel="prev" title="warp.from_ptr" href="warp.from_ptr.html" />
+    <link rel="next" title="warp.MemoryKind" href="warp.MemoryKind.html" />
+    <link rel="prev" title="warp.Allocator" href="warp.Allocator.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -462,7 +462,7 @@
     
     <li class="breadcrumb-item"><a href="../warp.html" class="nav-link">warp</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.full</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.CudaManagedAllocator</span></li>
   </ul>
 </nav>
 </div>
@@ -475,7 +475,7 @@
         <div class="header-article-item">
 
 <div class="d-flex justify-content-end w-100">
-  <a href="../../_sources/api_reference/_generated/warp.full.rst.txt">
+  <a href="../../_sources/api_reference/_generated/warp.CudaManagedAllocator.rst.txt">
     <i class="fa-solid fa-file-code"></i> View page source
   </a>
 </div>
@@ -492,44 +492,72 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="warp-full">
-<h1>warp.full<a class="headerlink" href="#warp-full" title="Link to this heading">#</a></h1>
-<dl class="py function">
-<dt class="sig sig-object py" id="warp.full">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">full</span></span><span class="sig-paren">(</span>
+  <section id="warp-cudamanagedallocator">
+<h1>warp.CudaManagedAllocator<a class="headerlink" href="#warp-cudamanagedallocator" title="Link to this heading">#</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="warp.CudaManagedAllocator">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">CudaManagedAllocator</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L4079-L4131"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.CudaManagedAllocator" title="Link to this definition">#</a></dt>
+<dd><p>Allocator that creates CUDA managed-memory arrays.</p>
+<p>The allocator object is not bound to one CUDA device and can be reused
+across devices. Each allocation still happens under a specific CUDA context,
+and that context’s device must support CUDA managed memory. Warp pushes the
+target CUDA context before invoking <code class="docutils literal notranslate"><span class="pre">allocate()</span></code>. Direct calls to
+<code class="docutils literal notranslate"><span class="pre">allocate()</span></code> require an active CUDA context.</p>
+<p>Managed allocation uses <code class="docutils literal notranslate"><span class="pre">cudaMallocManaged()</span></code>. Allocate managed arrays
+before CUDA graph capture begins and reuse the existing arrays inside
+captured work for maximum CUDA compatibility.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.CudaManagedAllocator.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#warp.CudaManagedAllocator.__init__" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
 
-<dl>
-<dd><em class="sig-param"><span class="n"><span class="pre">shape</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">requires_grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">pinned</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">retain_grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em>,</dd>
-</dl>
+<p class="rubric">Methods</p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.CudaManagedAllocator.__init__" title="warp.CudaManagedAllocator.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>()</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.CudaManagedAllocator.allocate" title="warp.CudaManagedAllocator.allocate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">allocate</span></code></a>(size_in_bytes)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.CudaManagedAllocator.deallocate" title="warp.CudaManagedAllocator.deallocate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deallocate</span></code></a>(ptr, size_in_bytes)</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p class="rubric">Attributes</p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.CudaManagedAllocator.deallocate_requires_context_guard" title="warp.CudaManagedAllocator.deallocate_requires_context_guard"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deallocate_requires_context_guard</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.CudaManagedAllocator.memory_kind" title="warp.CudaManagedAllocator.memory_kind"><code class="xref py py-obj docutils literal notranslate"><span class="pre">memory_kind</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.CudaManagedAllocator.deallocate_requires_context_guard">
+<span class="sig-name descname"><span class="pre">deallocate_requires_context_guard</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="headerlink" href="#warp.CudaManagedAllocator.deallocate_requires_context_guard" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L8409-L8483"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.full" title="Link to this definition">#</a></dt>
-<dd><p>Return an array with all elements initialized to the given value.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>shape</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>...</em><em>] </em><em>| </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>] </em><em>| </em><em>None</em>) – Array dimensions</p></li>
-<li><p><strong>value</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>) – Element value</p></li>
-<li><p><strong>dtype</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><em>type</em></a><em> | </em><em>None</em>) – Type of each element, e.g.: float, warp.vec3, warp.mat33, etc</p></li>
-<li><p><strong>device</strong> (<a class="reference internal" href="warp.Device.html#warp.Device" title="warp._src.context.Device"><em>Device</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Device that array will live on</p></li>
-<li><p><strong>requires_grad</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether the array will be tracked for back propagation</p></li>
-<li><p><strong>pinned</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether the array uses pinned host memory (only applicable to CPU arrays)</p></li>
-<li><p><strong>retain_grad</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether to preserve gradients during backward instead of zeroing after read</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>A warp.array object representing the allocation</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a></p>
-</dd>
-</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.CudaManagedAllocator.memory_kind">
+<span class="sig-name descname"><span class="pre">memory_kind</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">5</span></em><a class="headerlink" href="#warp.CudaManagedAllocator.memory_kind" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.CudaManagedAllocator.allocate">
+<span class="sig-name descname"><span class="pre">allocate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size_in_bytes</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L4096-L4121"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.CudaManagedAllocator.allocate" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.CudaManagedAllocator.deallocate">
+<span class="sig-name descname"><span class="pre">deallocate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ptr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size_in_bytes</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L4122-L4131"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.CudaManagedAllocator.deallocate" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
 </dd></dl>
 
 </section>
@@ -545,20 +573,20 @@
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.from_ptr.html"
+       href="warp.Allocator.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.from_ptr</p>
+        <p class="prev-next-title">warp.Allocator</p>
       </div>
     </a>
     <a class="right-next"
-       href="warp.full_like.html"
+       href="warp.MemoryKind.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.full_like</p>
+        <p class="prev-next-title">warp.MemoryKind</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -583,7 +611,14 @@
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.full"><code class="docutils literal notranslate"><span class="pre">full()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.CudaManagedAllocator"><code class="docutils literal notranslate"><span class="pre">CudaManagedAllocator</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.CudaManagedAllocator.__init__"><code class="docutils literal notranslate"><span class="pre">__init__()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.CudaManagedAllocator.deallocate_requires_context_guard"><code class="docutils literal notranslate"><span class="pre">deallocate_requires_context_guard</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.CudaManagedAllocator.memory_kind"><code class="docutils literal notranslate"><span class="pre">memory_kind</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.CudaManagedAllocator.allocate"><code class="docutils literal notranslate"><span class="pre">allocate()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.CudaManagedAllocator.deallocate"><code class="docutils literal notranslate"><span class="pre">deallocate()</span></code></a></li>
+</ul>
+</li>
 </ul>
   </nav></div>
 
@@ -591,7 +626,7 @@
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/_generated/warp.full.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/_generated/warp.CudaManagedAllocator.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

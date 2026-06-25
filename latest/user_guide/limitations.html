@@ -513,6 +513,8 @@ Problems, questions, and feature requests can be opened on <a class="reference e
 <li><p><a class="reference internal" href="../language_reference/_generated/warp.atomic_add.html#warp._src.lang.atomic_add" title="warp._src.lang.atomic_add"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.atomic_add()</span></code></a> does not support <a class="reference internal" href="../api_reference/_generated/warp.float16.html#warp.float16" title="warp.float16"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.float16</span></code></a> or
 <a class="reference internal" href="../api_reference/_generated/warp.bfloat16.html#warp.bfloat16" title="warp.bfloat16"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.bfloat16</span></code></a> on GPUs with compute capability below 7.0.
 On such devices, the function will return <code class="docutils literal notranslate"><span class="pre">0.0</span></code> without modifying the target memory.</p></li>
+<li><p>Using <code class="docutils literal notranslate"><span class="pre">wp.atomic_add()</span></code> or related functions on the same memory address from
+overlapping CPU and GPU kernels is currently unsupported.</p></li>
 <li><p><a class="reference internal" href="../language_reference/_generated/warp.tid.html#warp._src.lang.tid" title="warp._src.lang.tid"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tid()</span></code></a> cannot be called from user functions.</p></li>
 <li><p>Modifying the value of a <a class="reference internal" href="../api_reference/_generated/warp.constant.html#warp.constant" title="warp.constant"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.constant()</span></code></a> during runtime will not trigger
 recompilation of the affected kernels if the modules have already been loaded
@@ -552,11 +554,12 @@ and indexing pattern.</p></li>
 <li><p>There are currently no data types that support complex numbers.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">wp.config.launch_array_access_mode</span> <span class="pre">=</span> <span class="pre">wp.config.LaunchArrayAccessMode.CHECKED</span></code>
 only fully verifies cross-device <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.array</span></code></a> arguments when
-Warp can determine the allocation kind. Arrays backed by custom or externally
-wrapped allocators warn and proceed in checked mode; use
+Warp can classify the pointer and prove the relevant access requirements.
+Custom arrays or external wrappers whose pointer kind or specific access state
+cannot be verified warn and proceed in checked mode; use
 <code class="docutils literal notranslate"><span class="pre">wp.config.LaunchArrayAccessMode.STRICT</span></code> to reject cross-device launches before
-checking allocator provenance. Directly passed <code class="docutils literal notranslate"><span class="pre">__array_interface__</span></code> or
-<code class="docutils literal notranslate"><span class="pre">__cuda_array_interface__</span></code> objects are not fully allocation-verified. See
+checking access. Directly passed <code class="docutils literal notranslate"><span class="pre">__array_interface__</span></code> or
+<code class="docutils literal notranslate"><span class="pre">__cuda_array_interface__</span></code> objects are not fully access-verified. See
 <a class="reference internal" href="../deep_dive/memory_access.html#launch-array-access-checks"><span class="std std-ref">Checking array access before launch</span></a> for details.</p></li>
 </ul>
 </section>

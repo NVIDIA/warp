@@ -506,6 +506,8 @@
 </li>
         <li><a href="api_reference/_generated/warp.config.LaunchArrayAccessMode.html#warp.config.LaunchArrayAccessMode.__init__">(warp.config.LaunchArrayAccessMode method)</a>
 </li>
+        <li><a href="api_reference/_generated/warp.CudaManagedAllocator.html#warp.CudaManagedAllocator.__init__">(warp.CudaManagedAllocator method)</a>
+</li>
         <li><a href="api_reference/_generated/warp.Device.html#warp.Device.__init__">(warp.Device method)</a>
 </li>
         <li><a href="api_reference/_generated/warp.Event.html#warp.Event.__init__">(warp.Event method)</a>
@@ -743,6 +745,8 @@
         <li><a href="api_reference/_generated/warp.mat44f.html#warp.mat44f.__init__">(warp.mat44f method)</a>
 </li>
         <li><a href="api_reference/_generated/warp.mat44h.html#warp.mat44h.__init__">(warp.mat44h method)</a>
+</li>
+        <li><a href="api_reference/_generated/warp.MemoryKind.html#warp.MemoryKind.__init__">(warp.MemoryKind method)</a>
 </li>
         <li><a href="api_reference/_generated/warp.Mesh.html#warp.Mesh.__init__">(warp.Mesh method)</a>
 </li>
@@ -988,6 +992,8 @@
       <li><a href="api_reference/_generated/warp.Allocator.html#warp.Allocator.allocate">allocate() (warp.Allocator method)</a>
 
       <ul>
+        <li><a href="api_reference/_generated/warp.CudaManagedAllocator.html#warp.CudaManagedAllocator.allocate">(warp.CudaManagedAllocator method)</a>
+</li>
         <li><a href="api_reference/_generated/warp.utils.AllocatorRmm.html#warp.utils.AllocatorRmm.allocate">(warp.utils.AllocatorRmm method)</a>
 </li>
         <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.allocate">(warp.Volume class method)</a>
@@ -2056,8 +2062,6 @@
       </ul></li>
       <li><a href="api_reference/_generated/warp.fem.Geometry.html#warp.fem.Geometry.cell_measure">cell_measure() (warp.fem.Geometry static method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.fem.Geometry.html#warp.fem.Geometry.cell_measure_ratio">cell_measure_ratio (warp.fem.Geometry attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.AdaptiveNanogrid.html#warp.fem.AdaptiveNanogrid.cell_normal">cell_normal (warp.fem.AdaptiveNanogrid attribute)</a>
@@ -2070,6 +2074,8 @@
         <li><a href="api_reference/_generated/warp.fem.Nanogrid.html#warp.fem.Nanogrid.cell_normal">(warp.fem.Nanogrid attribute)</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.fem.Geometry.html#warp.fem.Geometry.cell_normal">cell_normal() (warp.fem.Geometry static method)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.PicQuadrature.html#warp.fem.PicQuadrature.cell_particle_indices">cell_particle_indices (warp.fem.PicQuadrature property)</a>
@@ -2248,11 +2254,19 @@
 </li>
       <li><a href="api_reference/_generated/warp.Texture.html#warp.Texture.cuda_array">cuda_array (warp.Texture property)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.MemoryKind.html#warp.MemoryKind.CUDA_DEVICE">CUDA_DEVICE (warp.MemoryKind attribute)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.MemoryKind.html#warp.MemoryKind.CUDA_MANAGED">CUDA_MANAGED (warp.MemoryKind attribute)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.MemoryKind.html#warp.MemoryKind.CUDA_MEMPOOL">CUDA_MEMPOOL (warp.MemoryKind attribute)</a>
+</li>
       <li><a href="api_reference/_generated/warp.config.cuda_output.html#warp.config.cuda_output">cuda_output (in module warp.config)</a>
 </li>
       <li><a href="api_reference/_generated/warp.Texture.html#warp.Texture.cuda_surface">cuda_surface (warp.Texture property)</a>
 </li>
       <li><a href="api_reference/_generated/warp.Texture.html#warp.Texture.cuda_texture">cuda_texture (warp.Texture property)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.CudaManagedAllocator.html#warp.CudaManagedAllocator">CudaManagedAllocator (class in warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.curl.html#warp.fem.curl">curl (in module warp.fem)</a>
 </li>
@@ -2271,9 +2285,13 @@
       <li><a href="api_reference/_generated/warp.Allocator.html#warp.Allocator.deallocate">deallocate() (warp.Allocator method)</a>
 
       <ul>
+        <li><a href="api_reference/_generated/warp.CudaManagedAllocator.html#warp.CudaManagedAllocator.deallocate">(warp.CudaManagedAllocator method)</a>
+</li>
         <li><a href="api_reference/_generated/warp.utils.AllocatorRmm.html#warp.utils.AllocatorRmm.deallocate">(warp.utils.AllocatorRmm method)</a>
 </li>
       </ul></li>
+      <li><a href="api_reference/_generated/warp.CudaManagedAllocator.html#warp.CudaManagedAllocator.deallocate_requires_context_guard">deallocate_requires_context_guard (warp.CudaManagedAllocator attribute)</a>
+</li>
       <li><a href="api_reference/_generated/warp.Logger.html#warp.Logger.debug">debug() (warp.Logger method)</a>
 </li>
       <li><a href="api_reference/_generated/warp.Event.html#warp.Event.Flags.DEFAULT">DEFAULT (warp.Event.Flags attribute)</a>
@@ -2380,10 +2398,10 @@
       </ul></li>
       <li><a href="api_reference/_generated/warp.Event.html#warp.Event.Flags.DISABLE_TIMING">DISABLE_TIMING (warp.Event.Flags attribute)</a>
 </li>
-      <li><a href="api_reference/_generated/warp.fem.DiscreteField.html#warp.fem.DiscreteField">DiscreteField (class in warp.fem)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api_reference/_generated/warp.fem.DiscreteField.html#warp.fem.DiscreteField">DiscreteField (class in warp.fem)</a>
+</li>
       <li><a href="api_reference/_generated/warp.fem.div.html#warp.fem.div">div (in module warp.fem)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.div_outer.html#warp.fem.div_outer">div_outer (in module warp.fem)</a>
@@ -3412,6 +3430,8 @@
 </li>
       <li><a href="api_reference/_generated/warp.fem.Hexmesh.html#warp.fem.Hexmesh">Hexmesh (class in warp.fem)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.MemoryKind.html#warp.MemoryKind.HOST">HOST (warp.MemoryKind attribute)</a>
+</li>
       <li><a href="api_reference/_generated/warp.fem.linalg.householder_make_hessenberg.html#warp.fem.linalg.householder_make_hessenberg">householder_make_hessenberg (in module warp.fem.linalg)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.linalg.householder_qr_decomposition.html#warp.fem.linalg.householder_qr_decomposition">householder_qr_decomposition (in module warp.fem.linalg)</a>
@@ -3518,14 +3538,14 @@
 </li>
       <li><a href="api_reference/_generated/warp.Function.html#warp.Function.is_builtin">is_builtin() (warp.Function method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.Device.html#warp.Device.is_capturing">is_capturing (warp.Device property)</a>
 
       <ul>
         <li><a href="api_reference/_generated/warp.Stream.html#warp.Stream.is_capturing">(warp.Stream property)</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.Event.html#warp.Event.is_complete">is_complete (warp.Event property)</a>
 
       <ul>
@@ -3533,6 +3553,8 @@
 </li>
       </ul></li>
       <li><a href="api_reference/_generated/warp.types.is_composite.html#warp.types.is_composite">is_composite() (in module warp.types)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.Device.html#warp.Device.is_concurrent_managed_access_supported">is_concurrent_managed_access_supported (warp.Device attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.is_conditional_graph_supported.html#warp.is_conditional_graph_supported">is_conditional_graph_supported() (in module warp)</a>
 </li>
@@ -3571,6 +3593,8 @@
       <li><a href="api_reference/_generated/warp.Device.html#warp.Device.is_ipc_supported">is_ipc_supported (warp.Device attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.Graph.html#warp.Graph.is_loaded">is_loaded (warp.Graph property)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.Device.html#warp.Device.is_managed_memory_supported">is_managed_memory_supported (warp.Device attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.types.is_matrix.html#warp.types.is_matrix">is_matrix() (in module warp.types)</a>
 </li>
@@ -4198,6 +4222,14 @@
 </li>
       <li><a href="api_reference/_generated/warp.fem.measure_ratio.html#warp.fem.measure_ratio">measure_ratio (in module warp.fem)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.array.html#warp.array.memory_kind">memory_kind (warp.array property)</a>
+
+      <ul>
+        <li><a href="api_reference/_generated/warp.CudaManagedAllocator.html#warp.CudaManagedAllocator.memory_kind">(warp.CudaManagedAllocator attribute)</a>
+</li>
+      </ul></li>
+      <li><a href="api_reference/_generated/warp.MemoryKind.html#warp.MemoryKind">MemoryKind (class in warp)</a>
+</li>
       <li><a href="api_reference/_generated/warp.Mesh.html#warp.Mesh">Mesh (class in warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.MeshQueryAABB.html#warp.MeshQueryAABB">MeshQueryAABB (class in warp)</a>
@@ -4611,14 +4643,16 @@
 </li>
       <li><a href="api_reference/_generated/warp.array.html#warp.array.pinned">pinned (warp.array attribute)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.MemoryKind.html#warp.MemoryKind.PINNED">PINNED (warp.MemoryKind attribute)</a>
+</li>
       <li><a href="api_reference/_generated/warp.fem.Quadrature.html#warp.fem.Quadrature.point_coords">point_coords() (warp.fem.Quadrature static method)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.ExplicitQuadrature.html#warp.fem.ExplicitQuadrature.point_count">point_count (warp.fem.ExplicitQuadrature attribute)</a>
 </li>
-      <li><a href="api_reference/_generated/warp.fem.Quadrature.html#warp.fem.Quadrature.point_count">point_count() (warp.fem.Quadrature static method)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api_reference/_generated/warp.fem.Quadrature.html#warp.fem.Quadrature.point_count">point_count() (warp.fem.Quadrature static method)</a>
+</li>
       <li><a href="api_reference/_generated/warp.fem.Quadrature.html#warp.fem.Quadrature.point_evaluation_index">point_evaluation_index() (warp.fem.Quadrature static method)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.Quadrature.html#warp.fem.Quadrature.point_index">point_index() (warp.fem.Quadrature static method)</a>
@@ -5842,6 +5876,8 @@
       <li><a href="api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.uncompress_rows">uncompress_rows() (warp.sparse.BsrMatrix method)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.UniformField.html#warp.fem.UniformField">UniformField (class in warp.fem)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.MemoryKind.html#warp.MemoryKind.UNKNOWN">UNKNOWN (warp.MemoryKind attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.Module.html#warp.Module.unload">unload() (warp.Module method)</a>
 </li>
