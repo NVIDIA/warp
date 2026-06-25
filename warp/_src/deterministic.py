@@ -33,7 +33,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
-from warp._src.types import array_t, float_types, int32, is_array, type_repr, type_size_in_bytes
+from warp._src.types import array_t, float_types, int32, is_array, type_is_int, type_repr, type_size_in_bytes
 from warp.config import DeterministicMode
 
 if TYPE_CHECKING:
@@ -358,6 +358,185 @@ class DeterministicRegistry:
     _counter_targets_by_array: dict[tuple[str, tuple[str, ...], bool], CounterTarget] = field(default_factory=dict)
     # Scatter and counter helpers share one namespace in generated C++.
     _next_target_index: int = 0
+
+
+class DeterministicCodegen:
+    """Deliberate integration surface between core codegen and deterministic lowering.
+
+    The deterministic transform needs to participate in a few core codegen
+    events: build setup, function-call argument threading, store emission, and
+    atomic return-use classification. Keep those touch points behind this small
+    object so ``codegen.py`` does not need to coordinate deterministic internals
+    directly.
+    """
+
+    def __init__(self, adj):
+        self.adj = adj
+        self.atomic_return_discarded = False
+        adj.det_meta = None
+        adj.det_registry = None
+
+    @property
+    def enabled(self) -> bool:
+        return self.adj.det_meta is not None
+
+    def begin_build(self, builder_options) -> None:
+        """Initialize deterministic metadata for one ``Adjoint.build()`` pass."""
+        deterministic_mode = builder_options.get("deterministic")
+        if deterministic_mode != DeterministicMode.NOT_GUARANTEED:
+            self.adj.det_meta = DeterministicMeta(
+                determinism_mode=deterministic_mode,
+                max_records=builder_options.get("deterministic_max_records", 0),
+                has_consumed_atomic=_deterministic_has_consumed_atomic_impl(self.adj.tree, self.adj, seen=None),
+                has_side_effect_store=self.adj.is_user_function
+                and _deterministic_has_propagating_side_effect(self.adj.tree),
+            )
+            self.adj.det_registry = DeterministicRegistry()
+        else:
+            self.adj.det_meta = None
+            self.adj.det_registry = None
+
+        self.atomic_return_discarded = False
+
+    def is_direct_atomic_expression(self, node) -> bool:
+        """Return whether ``node`` is a bare atomic expression handled specially."""
+        return (
+            self.enabled
+            and isinstance(node, ast.Call)
+            and _deterministic_call_name(node.func)
+            in (_DET_INTERCEPTABLE_ATOMICS | _DET_UNINTERCEPTED_SIDE_EFFECT_ATOMICS)
+        )
+
+    @contextmanager
+    def atomic_return(self, *, discarded: bool):
+        """Temporarily classify atomic returns emitted below this point."""
+        previous = self.atomic_return_discarded
+        self.atomic_return_discarded = discarded
+        try:
+            yield
+        finally:
+            self.atomic_return_discarded = previous
+
+    def include_function_call(self, func, bound_args) -> None:
+        """Merge deterministic requirements for a resolved user function call."""
+        if not self.enabled:
+            return
+
+        from warp._src.codegen import WarpCodegenError  # noqa: PLC0415
+
+        func_det_meta = getattr(func.adj, "det_meta", None)
+        if func_det_meta is not None:
+            try:
+                _include_deterministic_call_meta(
+                    self.adj, func_det_meta, bound_args, include_replay_targets=func.custom_replay_func is None
+                )
+            except ValueError as e:
+                raise WarpCodegenError(str(e)) from e
+
+        if func.custom_grad_func is None:
+            return
+
+        custom_grad_det_meta = getattr(func.custom_grad_func.adj, "det_meta", None)
+        if not hasattr(func.custom_grad_func.adj, "return_var") or custom_grad_det_meta is None:
+            func.custom_grad_func.build(None, self.adj.builder_options)
+        custom_grad_det_meta = getattr(func.custom_grad_func.adj, "det_meta", None)
+        if custom_grad_det_meta is None:
+            return
+
+        if getattr(custom_grad_det_meta, "has_unsupported_consumed_counter_backward", False):
+            raise WarpCodegenError(UNSUPPORTED_CONSUMED_COUNTER_BACKWARD_MESSAGE)
+        try:
+            _include_deterministic_call_meta(self.adj, custom_grad_det_meta, bound_args)
+        except ValueError as e:
+            raise WarpCodegenError(str(e)) from e
+
+    def emit_atomic_call(self, func, bound_args, return_type, output, output_list):
+        """Emit deterministic atomic lowering when ``func`` is intercepted."""
+        if self.enabled and func.is_builtin() and func.key in _DET_INTERCEPTABLE_ATOMICS:
+            return emit_deterministic_atomic(self.adj, func, bound_args, return_type, output, output_list)
+        return None
+
+    def call_args(self, func, bound_args):
+        if func.is_builtin():
+            return []
+        return _deterministic_call_args(self.adj, getattr(func.adj, "det_meta", None), bound_args)
+
+    def replay_call_args(self, func, bound_args, default_args):
+        if func.custom_replay_func is None:
+            return default_args
+        return _deterministic_call_args(self.adj, getattr(func.custom_replay_func.adj, "det_meta", None), bound_args)
+
+    def reverse_call_args(self, func, bound_args, default_args):
+        if func.custom_grad_func is None:
+            return default_args
+        return _deterministic_call_args(self.adj, getattr(func.custom_grad_func.adj, "det_meta", None), bound_args)
+
+    def wrap_unintercepted_side_effect_atomic(self, func, forward_call: str, replay_call: str) -> tuple[str, str]:
+        """Phase-guard non-intercepted atomic side effects in two-pass kernels."""
+        if not (func.is_builtin() and func.key in _DET_UNINTERCEPTED_SIDE_EFFECT_ATOMICS):
+            return forward_call, replay_call
+
+        if _det_needs_store_guard(self.adj) and not self.atomic_return_discarded:
+            from warp._src.codegen import WarpCodegenError  # noqa: PLC0415
+
+            raise WarpCodegenError(
+                f"Deterministic mode does not support consuming the return of wp.{func.key} in two-pass kernels."
+            )
+
+        return _det_wrap_side_effect_call(self.adj, forward_call), _det_wrap_side_effect_call(self.adj, replay_call)
+
+    def adjoint_address_call(self, fwd_args, output_list, fallback_call):
+        return _deterministic_adjoint_address_call(self.adj, fwd_args, output_list, fallback_call)
+
+    def function_args(self):
+        return _deterministic_function_args(self.adj)
+
+    def kernel_args(self):
+        return _deterministic_kernel_args(self.adj)
+
+    def kernel_locals(self, device):
+        return _deterministic_kernel_locals(self.adj, device)
+
+    def needs_store_guard(self) -> bool:
+        return _det_needs_store_guard(self.adj)
+
+    def wrap_slot_store(self, slot_lvalue: str, value_expr: str) -> str:
+        return _det_wrap_slot_store(self.adj, slot_lvalue, value_expr)
+
+    def add_array_store(self, target, indices, rhs) -> None:
+        self.adj.det_meta.needs_context = True
+        _add_deterministic_array_store(self.adj, target, indices, rhs)
+
+    def propagate_attribute_reference(self, attr, aggregate, attr_var, attr_type) -> None:
+        """Carry deterministic reference origin through struct-field references."""
+        from warp._src.codegen import Var, strip_reference  # noqa: PLC0415
+
+        if not isinstance(aggregate, Var):
+            return
+
+        root_label = getattr(aggregate, "deterministic_ref_root_label", aggregate.label)
+        attr_path = (*getattr(aggregate, "deterministic_ref_attr_path", ()), attr_var.label)
+        attr.deterministic_ref_root_label = root_label
+        attr.deterministic_ref_attr_path = attr_path
+        if is_array(strip_reference(attr_type)):
+            attr.deterministic_ref_array_type = strip_reference(attr_type)
+
+    def track_view(self, out, target, indices) -> None:
+        """Track integer-only array views so atomics through views can be remapped."""
+        from warp._src.codegen import strip_reference  # noqa: PLC0415
+
+        if not all(type_is_int(strip_reference(index.type)) for index in indices):
+            return
+
+        out.deterministic_view_parent = target
+        out.deterministic_view_indices = tuple(indices)
+        if getattr(target, "deterministic_adjoint_target", False):
+            out.deterministic_adjoint_target = True
+            out.deterministic_adjoint_root_label = getattr(target, "deterministic_adjoint_root_label", None)
+
+    def mark_adjoint_target(self, var, root_label: str) -> None:
+        var.deterministic_adjoint_target = True
+        var.deterministic_adjoint_root_label = root_label
 
 
 def get_or_create_scatter_target(
@@ -770,9 +949,9 @@ def emit_deterministic_atomic(adj, func, bound_args, return_type, output, output
     arr_var = args_list[0]  # the target array, possibly a view such as arr[i]
     view_prefix_vars = []
 
-    while getattr(arr_var, "_det_view_parent", None) is not None:
-        view_prefix_vars = list(arr_var._det_view_indices) + view_prefix_vars
-        arr_var = arr_var._det_view_parent
+    while getattr(arr_var, "deterministic_view_parent", None) is not None:
+        view_prefix_vars = list(arr_var.deterministic_view_indices) + view_prefix_vars
+        arr_var = arr_var.deterministic_view_parent
 
     try:
         target_info = _deterministic_target_info(arr_var)
@@ -804,7 +983,7 @@ def emit_deterministic_atomic(adj, func, bound_args, return_type, output, output
     # When called from emit_AugAssign (arr[i] += val) or a bare expression,
     # the return is discarded and the atomic can be handled by scatter/reduce.
     # Any other expression context consumes the return value.
-    return_is_discarded = getattr(adj, "_det_atomic_return_discarded", False)
+    return_is_discarded = getattr(getattr(adj, "deterministic", None), "atomic_return_discarded", False)
     return_is_consumed = not return_is_discarded
 
     value_ctype = Var.dtype_to_ctype(value_dtype)
@@ -1049,10 +1228,10 @@ def _deterministic_kernel_locals(adj, device, *, use_launch_buffers=True):
 
 def _deterministic_reference_origin(var):
     """Return the root argument and field path for a tracked array reference."""
-    root_label = getattr(var, "_det_ref_root_label", None)
+    root_label = getattr(var, "deterministic_ref_root_label", None)
     if root_label is None:
         return None
-    return root_label, tuple(getattr(var, "_det_ref_attr_path", ()))
+    return root_label, tuple(getattr(var, "deterministic_ref_attr_path", ()))
 
 
 def _deterministic_array_expr(adj, root_label, attr_path, adjoint=False):
@@ -1080,18 +1259,18 @@ def _deterministic_target_info(var):
     if var_type is None:
         return None
 
-    if getattr(var, "_det_adjoint_target", False):
-        root_label = getattr(var, "_det_adjoint_root_label", None)
+    if getattr(var, "deterministic_adjoint_target", False):
+        root_label = getattr(var, "deterministic_adjoint_root_label", None)
         if root_label is None:
             return None
-        attr_path = tuple(getattr(var, "_det_ref_attr_path", ()))
-        array_type = getattr(var, "_det_ref_array_type", strip_reference(var_type))
+        attr_path = tuple(getattr(var, "deterministic_ref_attr_path", ()))
+        array_type = getattr(var, "deterministic_ref_array_type", strip_reference(var_type))
         return root_label, attr_path, array_type, True
 
     origin = _deterministic_reference_origin(var)
     if origin is not None:
         root_label, attr_path = origin
-        array_type = getattr(var, "_det_ref_array_type", strip_reference(var_type))
+        array_type = getattr(var, "deterministic_ref_array_type", strip_reference(var_type))
         return root_label, attr_path, array_type, False
 
     if is_reference(var_type):
@@ -1146,8 +1325,8 @@ def _add_deterministic_array_store(adj, target, indices, rhs):
         fwd_args.append(strip_reference(loaded_arg))
 
     store_target_var = target
-    while getattr(store_target_var, "_det_view_parent", None) is not None:
-        store_target_var = store_target_var._det_view_parent
+    while getattr(store_target_var, "deterministic_view_parent", None) is not None:
+        store_target_var = store_target_var.deterministic_view_parent
     store_target_info = _deterministic_target_info(store_target_var)
     if store_target_info is not None:
         target_root_label, target_attr_path, target_type, target_is_adjoint = store_target_info
@@ -1190,9 +1369,9 @@ def _deterministic_adjoint_address_call(adj, fwd_args, output_list, fallback_cal
 
     arr_var = fwd_args[0]
     view_prefix_vars = []
-    while getattr(arr_var, "_det_view_parent", None) is not None:
-        view_prefix_vars = list(arr_var._det_view_indices) + view_prefix_vars
-        arr_var = arr_var._det_view_parent
+    while getattr(arr_var, "deterministic_view_parent", None) is not None:
+        view_prefix_vars = list(arr_var.deterministic_view_indices) + view_prefix_vars
+        arr_var = arr_var.deterministic_view_parent
 
     try:
         target_info = _deterministic_target_info(arr_var)
