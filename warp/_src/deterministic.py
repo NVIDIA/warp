@@ -259,6 +259,20 @@ class CounterTarget:
 
 
 @dataclass(frozen=True)
+class ArrayStoreTarget:
+    """Array target that has already been written in the current body."""
+
+    array_var_label: str
+    attr_path: tuple[str, ...] = ()
+    adjoint: bool = False
+
+    @property
+    def target_label(self) -> str:
+        label = target_label(self.array_var_label, self.attr_path)
+        return f"adjoint({label})" if self.adjoint else label
+
+
+@dataclass(frozen=True)
 class SideEffectAtomicTarget:
     """Target identity for ordinary integer atomics in two-pass kernels."""
 
@@ -287,6 +301,7 @@ class DeterministicMeta:
     scatter_records_per_thread: dict[ScatterTarget, int] = field(default_factory=dict)
     counter_records_per_thread: dict[CounterTarget, int] = field(default_factory=dict)
     counter_replay_targets: set[CounterTarget] = field(default_factory=set)
+    store_targets_seen: set[ArrayStoreTarget] = field(default_factory=set)
     side_effect_atomic_targets: set[SideEffectAtomicTarget] = field(default_factory=set)
     needs_context: bool = False
     # Set by Adjoint.build() once the body has been pre-scanned.
@@ -317,6 +332,7 @@ class DeterministicMeta:
             self.add_scatter_target(target, records_per_thread=count)
         for target, count in other.counter_records_per_thread.items():
             self.add_counter_target(target, records_per_thread=count)
+        self.store_targets_seen |= other.store_targets_seen
         self.side_effect_atomic_targets |= other.side_effect_atomic_targets
 
     @property
@@ -1129,6 +1145,17 @@ def _add_deterministic_array_store(adj, target, indices, rhs):
             loaded_arg = adj.load(func_arg)
         fwd_args.append(strip_reference(loaded_arg))
 
+    store_target_var = target
+    while getattr(store_target_var, "_det_view_parent", None) is not None:
+        store_target_var = store_target_var._det_view_parent
+    store_target_info = _deterministic_target_info(store_target_var)
+    if store_target_info is not None:
+        target_root_label, target_attr_path, target_type, target_is_adjoint = store_target_info
+        if is_array(target_type):
+            adj.det_meta.store_targets_seen.add(
+                ArrayStoreTarget(target_root_label, tuple(target_attr_path), bool(target_is_adjoint))
+            )
+
     store_args = adj.format_forward_call_args(fwd_args, use_initializer_list)
     guarded_store_call = f"WP_DET_STORE_IF_ACTIVE(det_ctx, {store_args});"
     replay_store_call = f"{store_func.namespace}{func_name}({store_args});"
@@ -1184,6 +1211,10 @@ def _deterministic_adjoint_address_call(adj, fwd_args, output_list, fallback_cal
             return fallback_call
 
         if not any(arg.label == target_root_label for arg in adj.args):
+            return fallback_call
+
+        store_target = ArrayStoreTarget(target_root_label, tuple(target_attr_path), bool(_target_is_adjoint))
+        if store_target in adj.det_meta.store_targets_seen:
             return fallback_call
 
         value_ctype = Var.dtype_to_ctype(value_dtype)
@@ -1293,6 +1324,12 @@ def _include_deterministic_call_meta(adj, meta, bound_args, *, include_replay_ta
         return
 
     adj.det_meta.needs_context |= meta.needs_context
+
+    for target in meta.store_targets_seen:
+        mapped_label, mapped_attr_path = _deterministic_map_target(target, bound_args)
+        adj.det_meta.store_targets_seen.add(
+            ArrayStoreTarget(mapped_label, tuple(mapped_attr_path), bool(getattr(target, "adjoint", False)))
+        )
 
     for target, count in meta.scatter_records_per_thread.items():
         mapped_label, mapped_attr_path = _deterministic_map_target(target, bound_args)
