@@ -3341,6 +3341,9 @@ class Adjoint:
                     target.mark_read()
 
             else:
+                # Keep the original source-level indices for deterministic view
+                # tracking before the plain array path rewrites integer indices
+                # into slice arguments for the native view builtin.
                 view_indices = tuple(indices)
 
                 if warp._src.types.matches_array_class(target_type, warp._src.types.array):
