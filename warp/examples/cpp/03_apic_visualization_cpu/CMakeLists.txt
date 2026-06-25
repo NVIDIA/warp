@@ -111,17 +111,6 @@ target_link_libraries(03_apic_visualization_cpu
     warp::runtime
 )
 
-# warp.so contains lazily-resolved Python C API function references that
-# are deferred to runtime by -Wl,-z,lazy in the warp.so build, so non-Python
-# C++ hosts can dlopen the library. The static linker still tries to resolve
-# them at link time; tell it to defer unresolved shared-lib symbols to
-# runtime instead. The smoke path never calls these symbols.
-# Remove once `nm -D --undefined-only warp/bin/warp.so | grep Py` is empty.
-if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    target_link_options(03_apic_visualization_cpu PRIVATE
-        "LINKER:--unresolved-symbols=ignore-in-shared-libs")
-endif()
-
 # On Windows, copy the warp DLLs to the output directory
 if(WIN32)
     get_filename_component(WARP_LIB_DIR "${WARP_LIB}" DIRECTORY)

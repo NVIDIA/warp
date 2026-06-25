@@ -94,29 +94,8 @@ function(warp_set_default_cuda_architectures)
 endfunction()
 
 function(warp_find_python)
-    find_package(Python3 3.10 COMPONENTS Interpreter Development.Module REQUIRED)
+    find_package(Python3 3.10 COMPONENTS Interpreter REQUIRED)
     set(WARP_PYTHON_EXECUTABLE "${Python3_EXECUTABLE}" PARENT_SCOPE)
-    set(WARP_PYTHON_INCLUDE_DIRS "${Python3_INCLUDE_DIRS}" PARENT_SCOPE)
-
-    if(WIN32)
-        execute_process(
-            COMMAND "${Python3_EXECUTABLE}" -c "import sysconfig; print(sysconfig.get_config_var('base') or sysconfig.get_config_var('installed_base') or '')"
-            OUTPUT_VARIABLE _python_base
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-            COMMAND_ERROR_IS_FATAL ANY
-        )
-        unset(_warp_python3_library CACHE)
-        find_library(
-            _warp_python3_library
-            NAMES python3
-            PATHS "${_python_base}/libs" "${Python3_LIBRARY_DIRS}"
-            NO_DEFAULT_PATH
-        )
-        if(NOT _warp_python3_library OR NOT EXISTS "${_warp_python3_library}")
-            message(FATAL_ERROR "Could not find python3.lib for Python stable ABI linking")
-        endif()
-        set(WARP_PYTHON3_LIBRARY "${_warp_python3_library}" PARENT_SCOPE)
-    endif()
 endfunction()
 
 function(warp_get_python_script_command out_var script_path)
