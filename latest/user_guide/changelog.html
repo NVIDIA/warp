@@ -527,6 +527,10 @@ Block Clusters from <code class="docutils literal notranslate"><span class="pre"
 <section id="removed">
 <h3>Removed<a class="headerlink" href="#removed" title="Link to this heading">#</a></h3>
 <ul class="simple">
+<li><p>Remove the native Python C API fast-call path for <code class="docutils literal notranslate"><span class="pre">wp.float16</span></code> conversions. Warp now uses the existing <code class="docutils literal notranslate"><span class="pre">ctypes</span></code>
+bindings for this surface, avoiding Python development header requirements when building from source and keeping
+source-built binaries compatible with free-threaded Python builds
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1339">GH-1339</a>).</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">warp.fem</span></code>: Remove the deprecated <code class="docutils literal notranslate"><span class="pre">quadrature</span></code> and <code class="docutils literal notranslate"><span class="pre">domain</span></code> arguments of <code class="docutils literal notranslate"><span class="pre">fem.interpolate()</span></code>, and the deprecated
 <code class="docutils literal notranslate"><span class="pre">space</span></code> argument of <code class="docutils literal notranslate"><span class="pre">fem.make_space_restriction()</span></code> and <code class="docutils literal notranslate"><span class="pre">fem.make_space_partition()</span></code>. Pass a <code class="docutils literal notranslate"><span class="pre">Quadrature</span></code> or
 <code class="docutils literal notranslate"><span class="pre">GeometryDomain</span></code> to <code class="docutils literal notranslate"><span class="pre">at</span></code> when interpolating, pass <code class="docutils literal notranslate"><span class="pre">space_topology</span></code> to <code class="docutils literal notranslate"><span class="pre">fem.make_space_partition()</span></code>, and pass
