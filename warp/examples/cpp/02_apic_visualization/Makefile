@@ -63,10 +63,8 @@ NVCC_FLAGS := -std=c++17 \
 # Platform-specific linker flags
 # nvcc requires -Xlinker (or -Xcompiler) to forward flags to the host linker;
 # bare -Wl,... is rejected as an unknown nvcc option.
-# The trailing --unresolved-symbols flag tolerates Py* references in
-# warp.so; see CMakeLists.txt for full rationale.
 ifeq ($(UNAME_S),Linux)
-    LDFLAGS := -lcuda -lcudart -lGL -lglfw -L$(WARP_LIB) -l:warp.so -Xlinker -rpath -Xlinker $(WARP_LIB) -Xlinker --unresolved-symbols=ignore-in-shared-libs
+    LDFLAGS := -lcuda -lcudart -lGL -lglfw -L$(WARP_LIB) -l:warp.so -Xlinker -rpath -Xlinker $(WARP_LIB)
 else ifeq ($(UNAME_S),Darwin)
     $(error macOS is not supported - CUDA not available on macOS)
 else

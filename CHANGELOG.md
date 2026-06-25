@@ -32,6 +32,10 @@
 
 ### Removed
 
+- Remove the native Python C API fast-call path for `wp.float16` conversions. Warp now uses the existing `ctypes`
+  bindings for this surface, avoiding Python development header requirements when building from source and keeping
+  source-built binaries compatible with free-threaded Python builds
+  ([GH-1339](https://github.com/NVIDIA/warp/issues/1339)).
 - `warp.fem`: Remove the deprecated `quadrature` and `domain` arguments of `fem.interpolate()`, and the deprecated
   `space` argument of `fem.make_space_restriction()` and `fem.make_space_partition()`. Pass a `Quadrature` or
   `GeometryDomain` to `at` when interpolating, pass `space_topology` to `fem.make_space_partition()`, and pass

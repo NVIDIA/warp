@@ -218,7 +218,6 @@ set(WARP_CPP_SOURCES
     warp/native/texture.cpp
     warp/native/mathdx.cpp
     warp/native/coloring.cpp
-    warp/native/fastcall.cpp
 )
 
 set(WARP_SOURCES ${WARP_CPP_SOURCES})
@@ -251,7 +250,7 @@ set_target_properties(
         POSITION_INDEPENDENT_CODE ON
         MSVC_RUNTIME_LIBRARY "MultiThreaded"
 )
-target_include_directories(warp PRIVATE "${WARP_NATIVE_DIR}" ${WARP_PYTHON_INCLUDE_DIRS})
+target_include_directories(warp PRIVATE "${WARP_NATIVE_DIR}")
 target_compile_features(warp PRIVATE cxx_std_17)
 
 if(WARP_ENABLE_CUDA)
@@ -286,8 +285,6 @@ target_compile_definitions(
         "$<$<BOOL:${WARP_FAST_MATH}>:WP_FAST_MATH>"
         "$<$<PLATFORM_ID:Linux,Darwin>:_GLIBCXX_USE_CXX11_ABI=0>"
 )
-set_source_files_properties(warp/native/fastcall.cpp PROPERTIES COMPILE_DEFINITIONS Py_LIMITED_API=0x030a0000)
-
 if(WARP_ENABLE_CUDA)
     target_compile_options(
         warp
@@ -362,10 +359,9 @@ if(WARP_ENABLE_CUDA)
 endif()
 
 if(WIN32)
-    target_link_libraries(warp PRIVATE ws2_32 user32 delayimp "${WARP_PYTHON3_LIBRARY}")
-    target_link_options(warp PRIVATE /DELAYLOAD:python3.dll)
+    target_link_libraries(warp PRIVATE ws2_32 user32)
 elseif(APPLE)
-    target_link_options(warp PRIVATE "LINKER:-undefined,dynamic_lookup" "LINKER:-rpath,@loader_path")
+    target_link_options(warp PRIVATE "LINKER:-rpath,@loader_path")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     warp_add_linux_link_options(warp)
 endif()
@@ -415,10 +411,7 @@ if(WARP_BUILD_CLANG)
                 Version
                 Ws2_32
                 ntdll
-                delayimp
-                "${WARP_PYTHON3_LIBRARY}"
         )
-        target_link_options(warp-clang PRIVATE /DELAYLOAD:python3.dll)
     elseif(APPLE)
         # Repeat LLVM static archives to resolve circular dependencies on macOS.
         target_link_libraries(warp-clang PRIVATE ${WARP_LLVM_LIBRARIES} ${WARP_LLVM_LIBRARIES} pthread dl)

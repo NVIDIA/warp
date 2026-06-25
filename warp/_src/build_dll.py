@@ -12,7 +12,6 @@ import re
 import shutil
 import subprocess
 import sys
-import sysconfig
 import time
 
 from warp._src.utils import ScopedTimer
@@ -559,14 +558,6 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
 
     native_dir = os.path.join(warp_home, "native")
 
-    # Validate Python development headers for fastcall.cpp
-    python_include_dir = sysconfig.get_path("include")
-    if not python_include_dir or not os.path.isfile(os.path.join(python_include_dir, "Python.h")):
-        raise RuntimeError(
-            f"Python development headers not found (looked in {python_include_dir}).\n"
-            f"Install the Python development package, e.g.: `sudo apt install libpython{sys.version_info.major}.{sys.version_info.minor}-dev`"
-        )
-
     if cu_paths:
         # check CUDA Toolkit version
         ctk_version = get_cuda_toolkit_version(cuda_home)
@@ -690,8 +681,6 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
                 extra_flags = ""
                 if "clang/clang.cpp" in cpp_path.replace("\\", "/"):
                     extra_flags = " /wd4624"  # suppress C4624: destructor was implicitly defined as deleted
-                if "fastcall.cpp" in cpp_path:
-                    extra_flags += f' /I"{python_include_dir}" /DPy_LIMITED_API=0x030a0000'  # Python 3.10
                 cpp_cmd = f'"{args.host_compiler}" {cpp_flags}{extra_flags} -c "{cpp_path}" /Fo"{cpp_out}"'
                 cpp_cmds.append(cpp_cmd)
 
@@ -754,12 +743,6 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
                 elapsed = (time.perf_counter_ns() - wall_clock) / 1000000.0
                 print(f"build took {elapsed:.2f} ms ({args.jobs:d} workers)")
 
-        # Python stable ABI library for fastcall.cpp. /DELAYLOAD defers loading
-        # python3.dll until a Python C API function is actually called -- without
-        # it, warp.dll cannot be LoadLibrary'd from non-Python C++ hosts.
-        python_libs_dir = os.path.join(sys.base_prefix, "libs")
-        linkopts.append(f'python3.lib /LIBPATH:"{python_libs_dir}" /DELAYLOAD:python3.dll delayimp.lib')
-
         with ScopedTimer("link", active=args.verbose):
             link_cmd = f'"{host_linker}" {" ".join(linkopts + libs)} /out:"{dll_path}"'
             run_cmd(link_cmd)
@@ -813,8 +796,6 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
                 cpp_out = cpp_path + _obj_tag + ".o"
                 ld_inputs.append(quote(cpp_out))
                 extra_flags = ""
-                if "fastcall.cpp" in cpp_path:
-                    extra_flags = f' -I"{python_include_dir}" -DPy_LIMITED_API=0x030a0000'  # Python 3.10
                 cpp_cmd = f'{cpp_compiler} {cpp_flags}{extra_flags} -c "{cpp_path}" -o "{cpp_out}"'
                 cpp_cmds.append(cpp_cmd)
 
@@ -882,12 +863,10 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
                 elapsed = (time.perf_counter_ns() - wall_clock) / 1000000.0
                 print(f"build took {elapsed:.2f} ms ({args.jobs:d} workers)")
 
-        # Python C API function symbols from fastcall.cpp are left unresolved at link
-        # time and resolved lazily on first call by the interpreter. A post-link nm/readelf
-        # check (below) verifies no eagerly-resolved data symbols remain.
         if sys.platform == "darwin":
-            # macOS linker rejects undefined symbols by default; this is the standard
-            # convention for Python extensions (used by CPython, pybind11).
+            # macOS linker rejects undefined symbols by default. Permit dynamic
+            # lookup here, then validate below so unexpected unresolved symbols
+            # produce a consistent diagnostic across platforms.
             opt_undefined = "-Wl,-undefined,dynamic_lookup"
             opt_exclude_libs = ""
             opt_static_runtime = ""
@@ -905,7 +884,6 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
             link_cmd = f"{cpp_compiler} {version} -shared -Wl,-rpath,'{origin}' {opt_static_runtime} {opt_undefined} {opt_exclude_libs}{sanitize_ld} -o '{dll_path}' {' '.join(ld_inputs + libs)}"
             run_cmd(link_cmd)
 
-            # Verify that only Python C API symbols are truly undefined.
             # Platform-specific paths collect all undefined symbol names.
             undefined = []
             if sys.platform == "darwin":
@@ -923,7 +901,7 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
             else:
                 # readelf --dyn-syms lists dynamic symbols with type info. Symbols
                 # from linked dependencies (glibc, libm) have type FUNC or OBJECT,
-                # while truly undefined symbols (e.g. Python C API) have type NOTYPE.
+                # while truly undefined symbols have type NOTYPE.
                 # Format: "  54: 0...0  0 NOTYPE  GLOBAL DEFAULT  UND PyFloat_FromDouble"
                 readelf_output = subprocess.check_output(["readelf", "-W", "--dyn-syms", dll_path])
                 for line in readelf_output.decode().splitlines():
@@ -934,31 +912,8 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
                     if sym_bind == "GLOBAL" and sym_ndx == "UND" and sym_type == "NOTYPE":
                         undefined.append(sym_name)
 
-            unexpected = [sym for sym in undefined if not sym.startswith(("Py", "_Py"))]
-            if unexpected:
-                raise RuntimeError("Unexpected undefined symbols in " + dll_path + ":\n" + "\n".join(unexpected))
-
-            # Forbid eagerly-resolved Python data symbol references. Function imports
-            # go through PLT/GOT (R_*_JUMP_SLOT) and are lazily bound; data imports use
-            # R_*_GLOB_DAT and are resolved at load time, which would break dlopen()
-            # from non-Python C++ hosts.
-            if sys.platform != "darwin":
-                relocs_output = subprocess.check_output(["readelf", "-r", "--wide", dll_path])
-                eager_py_data = []
-                for line in relocs_output.decode().splitlines():
-                    fields = line.split()
-                    if len(fields) < 5 or "GLOB_DAT" not in fields[2]:
-                        continue
-                    sym_name = fields[4]
-                    if sym_name.startswith(("Py", "_Py")):
-                        eager_py_data.append(sym_name)
-                if eager_py_data:
-                    raise RuntimeError(
-                        "Eagerly-resolved Python data symbols in "
-                        + dll_path
-                        + " (would break loading from non-Python hosts):\n"
-                        + "\n".join(eager_py_data)
-                    )
+            if undefined:
+                raise RuntimeError("Unexpected undefined symbols in " + dll_path + ":\n" + "\n".join(undefined))
 
             # Strip symbols to reduce the binary size
             if mode == "release":
