@@ -323,6 +323,18 @@ def mixed_counter_int_atomic_kernel(
 
 
 @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
+def mixed_same_counter_int_atomic_kernel(
+    counter: wp.array[wp.int32],
+    output: wp.array[wp.int32],
+):
+    """Unused and consumed integer atomics to the same counter are unsupported."""
+    tid = wp.tid()
+    wp.atomic_add(counter, 0, 1)
+    slot = wp.atomic_add(counter, 0, 1)
+    output[slot] = tid
+
+
+@wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
 def strided_counter_gap_kernel(
     counter: wp.array[wp.int32],
     gaps: wp.array[wp.int32],
@@ -915,6 +927,15 @@ def test_counter_with_integer_accumulation(test, device):
     np.testing.assert_array_equal(accum.numpy(), np.full(8, n // 8, dtype=np.int32))
 
 
+def test_counter_mixed_same_target_integer_atomic_rejected(test, device):
+    """Verify unused integer atomics to consumed counter targets fail closed."""
+    counter = wp.zeros(1, dtype=wp.int32, device=device)
+    output = wp.full(64, value=-1, dtype=wp.int32, device=device)
+
+    with test.assertRaisesRegex(RuntimeError, "ordinary integer atomic side effects"):
+        wp.launch(mixed_same_counter_int_atomic_kernel, dim=64, inputs=[counter], outputs=[output], device=device)
+
+
 def test_int_atomic_passthrough(test, device):
     """Verify integer atomics (return unused) work without overhead."""
     n = 1024
@@ -970,6 +991,7 @@ for _name in (
     "test_conditional_counter",
     "test_mixed_pattern",
     "test_counter_with_integer_accumulation",
+    "test_counter_mixed_same_target_integer_atomic_rejected",
 ):
     _add(_name)
 

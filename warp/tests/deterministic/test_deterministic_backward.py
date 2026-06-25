@@ -212,6 +212,21 @@ def custom_adjoint_counter_kernel(
     output[tid] = _det_counter_grad_value(values, counter, slots, tid)
 
 
+@wp.func
+def _det_square_via_scratch(scratch: wp.array[wp.float32], x: wp.float32):
+    scratch[0] = x
+    return scratch[0] * scratch[0]
+
+
+@wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
+def scratch_overwrite_grad_kernel(
+    x: wp.array[wp.float32],
+    scratch: wp.array[wp.float32],
+    loss: wp.array[wp.float32],
+):
+    loss[0] = _det_square_via_scratch(scratch, x[0])
+
+
 def test_deterministic_backward_scatter_add(test, device):
     """Verify deterministic scatter-add kernels launch backward and propagate value gradients."""
     n = 512
@@ -518,6 +533,23 @@ def test_deterministic_custom_adjoint_store_function(test, device):
     np.testing.assert_allclose(tape.gradients[values].numpy(), 2.0 * values_np, rtol=0, atol=0)
 
 
+def test_deterministic_scratch_overwrite_replay_gradient(test, device):
+    """Verify deterministic replay preserves gradients through overwritten scratch values."""
+    x = wp.array(np.array([3.0], dtype=np.float32), dtype=wp.float32, device=device, requires_grad=True)
+    scratch = wp.zeros(1, dtype=wp.float32, device=device, requires_grad=True)
+    loss = wp.zeros(1, dtype=wp.float32, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(scratch_overwrite_grad_kernel, dim=1, inputs=[x, scratch], outputs=[loss], device=device)
+
+    tape.backward(grads={loss: wp.ones_like(loss)})
+
+    np.testing.assert_allclose(loss.numpy(), np.array([9.0], dtype=np.float32), rtol=0, atol=0)
+    np.testing.assert_allclose(tape.gradients[x].numpy(), np.array([6.0], dtype=np.float32), rtol=0, atol=0)
+    np.testing.assert_allclose(tape.gradients[scratch].numpy(), np.zeros(1, dtype=np.float32), rtol=0, atol=0)
+
+
 def test_custom_adjoint_not_guaranteed_mode(test, device):
     """Verify custom adjoints compile after disabling deterministic mode."""
     n = 48
@@ -613,6 +645,7 @@ for _name in (
     "test_deterministic_custom_adjoint_array_atomic",
     "test_deterministic_custom_adjoint_gather_atomic",
     "test_deterministic_custom_adjoint_store_function",
+    "test_deterministic_scratch_overwrite_replay_gradient",
 ):
     _add(_name)
 

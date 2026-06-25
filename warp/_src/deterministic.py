@@ -258,6 +258,20 @@ class CounterTarget:
         return f"adjoint({label})" if self.adjoint else label
 
 
+@dataclass(frozen=True)
+class SideEffectAtomicTarget:
+    """Target identity for ordinary integer atomics in two-pass kernels."""
+
+    array_var_label: str
+    attr_path: tuple[str, ...] = ()
+    adjoint: bool = False
+
+    @property
+    def target_label(self) -> str:
+        label = target_label(self.array_var_label, self.attr_path)
+        return f"adjoint({label})" if self.adjoint else label
+
+
 @dataclass
 class DeterministicMeta:
     """Per-adjoint deterministic requirements discovered during codegen.
@@ -273,6 +287,7 @@ class DeterministicMeta:
     scatter_records_per_thread: dict[ScatterTarget, int] = field(default_factory=dict)
     counter_records_per_thread: dict[CounterTarget, int] = field(default_factory=dict)
     counter_replay_targets: set[CounterTarget] = field(default_factory=set)
+    side_effect_atomic_targets: set[SideEffectAtomicTarget] = field(default_factory=set)
     needs_context: bool = False
     # Set by Adjoint.build() once the body has been pre-scanned.
     has_consumed_atomic: bool = False
@@ -302,6 +317,7 @@ class DeterministicMeta:
             self.add_scatter_target(target, records_per_thread=count)
         for target, count in other.counter_records_per_thread.items():
             self.add_counter_target(target, records_per_thread=count)
+        self.side_effect_atomic_targets |= other.side_effect_atomic_targets
 
     @property
     def has_scatter(self):
@@ -415,6 +431,12 @@ def get_or_create_counter_target(
         raise ValueError(
             f"Deterministic mode does not support using array '{helper_label}' as both a counter target "
             "and a scatter target in the same function or kernel."
+        )
+    side_effect_target = SideEffectAtomicTarget(array_var_label, attr_path, bool(adjoint))
+    if side_effect_target in meta.side_effect_atomic_targets:
+        raise ValueError(
+            "Deterministic mode does not support mixing ordinary integer atomic side effects and "
+            f"consumed-return counter atomics on array '{side_effect_target.target_label}' in the same function or kernel."
         )
     target = registry._counter_targets_by_array.get(key)
     if target is None:
@@ -793,14 +815,14 @@ def emit_deterministic_atomic(adj, func, bound_args, return_type, output, output
     # we handle both CUDA and CPU paths here: emit the CUDA path as
     # raw C++ with #ifdef, then return output to skip the normal codegen.
 
-    # Build the CPU fallback: a normal atomic call string.
-    # This is used in the #else branch for CPU compilation.
+    # Build the fallback normal atomic call string.
+    # This is used outside CUDA deterministic interception.
     loaded_args = [adj.load(a) for a in args_list]
-    cpu_args_str = ", ".join(a.emit() for a in loaded_args)
+    fallback_args_str = ", ".join(a.emit() for a in loaded_args)
     if output is not None:
-        cpu_call = f"var_{output} = wp::{func.native_func}({cpu_args_str});"
+        fallback_call = f"var_{output} = wp::{func.native_func}({fallback_args_str});"
     else:
-        cpu_call = f"wp::{func.native_func}({cpu_args_str});"
+        fallback_call = f"wp::{func.native_func}({fallback_args_str});"
 
     # Integer accumulation atomics are deterministic in a single pass, but
     # in two-pass counter kernels they are side effects and must not run
@@ -808,7 +830,21 @@ def emit_deterministic_atomic(adj, func, bound_args, return_type, output, output
     # counter atomic in source order.
     if scalar_dtype not in float_types and not return_is_consumed:
         if adj.det_meta.has_consumed_atomic:
-            adj.add_forward(f"WP_DET_SIDE_EFFECT_IF_ACTIVE(det_ctx, {cpu_call});")
+            side_effect_target = SideEffectAtomicTarget(
+                target_root_label, tuple(target_attr_path), bool(target_is_adjoint)
+            )
+            if _deterministic_find_target(
+                adj.det_meta.counter_targets,
+                side_effect_target.array_var_label,
+                side_effect_target.attr_path,
+                adjoint=side_effect_target.adjoint,
+            ):
+                raise WarpCodegenError(
+                    "Deterministic mode does not support mixing ordinary integer atomic side effects and "
+                    f"consumed-return counter atomics on array '{side_effect_target.target_label}' in the same function or kernel."
+                )
+            adj.det_meta.side_effect_atomic_targets.add(side_effect_target)
+            adj.add_forward(f"WP_DET_SIDE_EFFECT_IF_ACTIVE(det_ctx, {fallback_call});")
             return output
         return None  # fall through to normal codegen
 
@@ -858,7 +894,7 @@ def emit_deterministic_atomic(adj, func, bound_args, return_type, output, output
 
         counter_call = (
             f"WP_DET_COUNTER_OR_FALLBACK(var_{output}, det_ctx, {helper_name}, {flat_idx_expr}, "
-            f"{val_loaded.emit()}, {cpu_call});"
+            f"{val_loaded.emit()}, {fallback_call});"
         )
         adj.add_forward(counter_call, replay=counter_call)
         return output
@@ -899,7 +935,7 @@ def emit_deterministic_atomic(adj, func, bound_args, return_type, output, output
         val_expr = f"(-{val_expr})"
 
     adj.add_forward(
-        f"WP_DET_SCATTER_OR_FALLBACK(det_ctx, {helper_name}, {flat_idx_expr}, {val_expr}, {cpu_call});",
+        f"WP_DET_SCATTER_OR_FALLBACK(det_ctx, {helper_name}, {flat_idx_expr}, {val_expr}, {fallback_call});",
         replay="// deterministic scatter replay (skipped)",
     )
     if output is not None:
@@ -1093,8 +1129,10 @@ def _add_deterministic_array_store(adj, target, indices, rhs):
             loaded_arg = adj.load(func_arg)
         fwd_args.append(strip_reference(loaded_arg))
 
-    store_args = ", ".join(f"var_{x}" for x in fwd_args)
-    adj.add_forward(f"WP_DET_STORE_IF_ACTIVE(det_ctx, {store_args});", skip_replay=True)
+    store_args = adj.format_forward_call_args(fwd_args, use_initializer_list)
+    guarded_store_call = f"WP_DET_STORE_IF_ACTIVE(det_ctx, {store_args});"
+    replay_store_call = f"{store_func.namespace}{func_name}({store_args});"
+    adj.add_forward(guarded_store_call, replay=replay_store_call)
 
     if store_func.is_differentiable:
         adj_args = tuple(strip_reference(x) for x in func_args)
@@ -1275,6 +1313,16 @@ def _include_deterministic_call_meta(adj, meta, bound_args, *, include_replay_ta
 
     for target, count in meta.counter_records_per_thread.items():
         mapped_label, mapped_attr_path = _deterministic_map_target(target, bound_args)
+        side_effect_target = SideEffectAtomicTarget(
+            mapped_label, tuple(mapped_attr_path), bool(getattr(target, "adjoint", False))
+        )
+        if side_effect_target in adj.det_meta.side_effect_atomic_targets:
+            from warp._src.codegen import WarpCodegenError  # noqa: PLC0415
+
+            raise WarpCodegenError(
+                "Deterministic mode does not support mixing ordinary integer atomic side effects and "
+                f"consumed-return counter atomics on array '{side_effect_target.target_label}' in the same function or kernel."
+            )
         mapped_target = get_or_create_counter_target(
             adj.det_registry,
             adj.det_meta,
@@ -1288,6 +1336,25 @@ def _include_deterministic_call_meta(adj, meta, bound_args, *, include_replay_ta
         adj.det_meta.counter_records_per_thread[mapped_target] += count - 1
         if include_replay_targets and target in meta.counter_replay_targets:
             adj.det_meta.counter_replay_targets.add(mapped_target)
+
+    for target in meta.side_effect_atomic_targets:
+        mapped_label, mapped_attr_path = _deterministic_map_target(target, bound_args)
+        mapped_target = SideEffectAtomicTarget(
+            mapped_label, tuple(mapped_attr_path), bool(getattr(target, "adjoint", False))
+        )
+        if _deterministic_find_target(
+            adj.det_meta.counter_targets,
+            mapped_target.array_var_label,
+            mapped_target.attr_path,
+            adjoint=mapped_target.adjoint,
+        ):
+            from warp._src.codegen import WarpCodegenError  # noqa: PLC0415
+
+            raise WarpCodegenError(
+                "Deterministic mode does not support mixing ordinary integer atomic side effects and "
+                f"consumed-return counter atomics on array '{mapped_target.target_label}' in the same function or kernel."
+            )
+        adj.det_meta.side_effect_atomic_targets.add(mapped_target)
 
 
 def _deterministic_call_args(adj, meta, bound_args):
