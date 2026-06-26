@@ -100,6 +100,7 @@
 
 ### Fixed
 
+- Fix `wp.from_dlpack()` to honor `DLTensor.byte_offset` when importing external DLPack tensors.
 - Fix `wp.load_module()` and `wp.ScopedCapture(force_module_load=True)` after CPU launches so CUDA graph capture
   precompiles the correct CUDA kernel variant. On CUDA drivers older than 12.3 this previously raised
   `CUDA_ERROR_STREAM_CAPTURE_UNSUPPORTED`; on newer drivers it silently recompiled inside the capture window

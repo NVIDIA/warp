@@ -8,6 +8,7 @@ import unittest
 import numpy as np
 
 import warp as wp
+from warp._src.thirdparty.dlpack import DLDataTypeCode, DLDeviceType, DLManagedTensor, _c_str_dltensor
 from warp.tests.unittest_utils import *
 
 # Configure JAX memory behavior before any module-level JAX version checks.
@@ -16,6 +17,16 @@ os.environ.setdefault("XLA_PYTHON_CLIENT_MEM_FRACTION", "0.5")
 os.environ.setdefault("XLA_PYTHON_CLIENT_ALLOCATOR", "platform")
 
 N = 1024 * 1024
+
+
+@ctypes.CFUNCTYPE(None, ctypes.c_void_p)
+def _free_dlpack_managed_tensor(managed_ptr):
+    wp._src.dlpack.PyMem_RawFree(ctypes.c_void_p(managed_ptr))
+
+
+PyCapsule_New = ctypes.pythonapi.PyCapsule_New
+PyCapsule_New.argtypes = [ctypes.c_void_p, ctypes.c_char_p, wp._src.dlpack.PyCapsule_Destructor]
+PyCapsule_New.restype = ctypes.py_object
 
 
 def _jax_version():
@@ -79,6 +90,49 @@ def test_dlpack_warp_to_warp(test, device):
     wp.launch(inc, dim=a2.size, inputs=[a2], device=device)
 
     assert_np_equal(a1.numpy(), a2.numpy())
+
+
+def test_dlpack_from_dlpack_byte_offset(test, device):
+    backing = np.arange(8, dtype=np.int32)
+    shape = (3,)
+
+    managed_tensor_size = ctypes.sizeof(DLManagedTensor)
+    padding = (-managed_tensor_size) & 7
+    shape_size = len(shape) * ctypes.sizeof(ctypes.c_int64)
+    mem_size = managed_tensor_size + padding + shape_size
+    mem_ptr = wp._src.dlpack.PyMem_RawMalloc(mem_size)
+    test.assertTrue(mem_ptr)
+
+    managed_tensor = DLManagedTensor.from_address(mem_ptr)
+    managed_tensor.dl_tensor.data = backing.ctypes.data
+    managed_tensor.dl_tensor.device.device_type = DLDeviceType.kDLCPU
+    managed_tensor.dl_tensor.device.device_id = 0
+    managed_tensor.dl_tensor.ndim = len(shape)
+    managed_tensor.dl_tensor.dtype.type_code = DLDataTypeCode.kDLInt
+    managed_tensor.dl_tensor.dtype.bits = 32
+    managed_tensor.dl_tensor.dtype.lanes = 1
+    managed_tensor.dl_tensor.byte_offset = 3 * backing.dtype.itemsize
+
+    shape_ptr = ctypes.cast(mem_ptr + managed_tensor_size + padding, ctypes.POINTER(ctypes.c_int64))
+    for i, dim in enumerate(shape):
+        shape_ptr[i] = dim
+    managed_tensor.dl_tensor.shape = shape_ptr
+    managed_tensor.dl_tensor.strides = None
+    managed_tensor.manager_ctx = None
+    managed_tensor.deleter = _free_dlpack_managed_tensor
+
+    capsule = PyCapsule_New(ctypes.byref(managed_tensor), _c_str_dltensor, wp._src.dlpack._dlpack_capsule_deleter)
+
+    arr = wp.from_dlpack(capsule)
+    expected_ptr = backing.ctypes.data + managed_tensor.dl_tensor.byte_offset
+    test.assertEqual(arr.ptr, expected_ptr)
+    assert_np_equal(arr.numpy(), backing[3:6])
+
+    values = wp.array(np.array([20, 21, 22], dtype=np.int32), device="cpu")
+    wp.copy(arr, values)
+
+    expected = np.array([0, 1, 2, 20, 21, 22, 6, 7], dtype=np.int32)
+    assert_np_equal(backing, expected)
 
 
 def test_dlpack_dtypes_and_shapes(test, device):
@@ -656,6 +710,7 @@ class TestDLPack(unittest.TestCase):
 devices = get_test_devices()
 
 add_function_test(TestDLPack, "test_dlpack_warp_to_warp", test_dlpack_warp_to_warp, devices=devices)
+add_function_test(TestDLPack, "test_dlpack_from_dlpack_byte_offset", test_dlpack_from_dlpack_byte_offset, devices=None)
 add_function_test(TestDLPack, "test_dlpack_dtypes_and_shapes", test_dlpack_dtypes_and_shapes, devices=devices)
 add_function_test(TestDLPack, "test_dlpack_stream_arg", test_dlpack_stream_arg, devices=devices)
 
