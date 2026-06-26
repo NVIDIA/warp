@@ -584,6 +584,10 @@ non-parallel rays. These traversal changes use additional per-thread temporary s
 CUDA device-side assertions (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1483">GH-1483</a>).</p></li>
 <li><p>Reject non-<code class="docutils literal notranslate"><span class="pre">None</span></code> return annotations on kernels. Write results to output arguments and either omit the return annotation
 or use <code class="docutils literal notranslate"><span class="pre">-&gt;</span> <span class="pre">None</span></code> (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1471">GH-1471</a>).</p></li>
+<li><p><strong>Breaking:</strong> <code class="docutils literal notranslate"><span class="pre">wp.copy()</span></code> now validates its <code class="docutils literal notranslate"><span class="pre">src_offset</span></code>, <code class="docutils literal notranslate"><span class="pre">dest_offset</span></code>, and <code class="docutils literal notranslate"><span class="pre">count</span></code> arguments, raising a clear error
+for non-integer values, negative offsets, and a negative <code class="docutils literal notranslate"><span class="pre">count</span></code> (previously a negative <code class="docutils literal notranslate"><span class="pre">count</span></code> silently copied the
+entire array). It also rejects copies between contiguous arrays whose element sizes differ, matching the existing
+behavior for non-contiguous arrays (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1584">GH-1584</a>).</p></li>
 </ul>
 </section>
 <section id="fixed">
