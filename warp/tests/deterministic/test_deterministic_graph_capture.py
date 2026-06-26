@@ -23,6 +23,11 @@ from warp.tests.deterministic.test_deterministic_scatter import (
 from warp.tests.unittest_utils import add_function_test
 
 
+def _load_capture_modules(device, *kernels):
+    for kernel in kernels:
+        wp.load_module(module=kernel.module, device=device)
+
+
 def test_record_cmd_deterministic_launch(test, device):
     """Verify ``record_cmd=True`` works for deterministic CUDA launches."""
     n = 128
@@ -77,6 +82,7 @@ def test_graph_capture_deterministic_launch(test, device):
     indices = wp.array(indices_np, dtype=wp.int32, device=device)
     output = wp.zeros(8, dtype=wp.float32, device=device)
 
+    _load_capture_modules(device, scatter_add_kernel)
     wp.launch(scatter_add_kernel, dim=n, inputs=[data, indices], outputs=[output], device=device)
     output.zero_()
 
@@ -116,6 +122,7 @@ def test_graph_capture_sliced_array(test, device):
     col_idx = wp.array(col_np, dtype=wp.int32, device=device)
     output = wp.zeros(shape=(rows, cols), dtype=wp.float32, device=device)
 
+    _load_capture_modules(device, sliced_2d_atomic_add_kernel)
     wp.launch(sliced_2d_atomic_add_kernel, dim=n, inputs=[data, row_idx, col_idx], outputs=[output], device=device)
     output.zero_()
 
@@ -142,6 +149,7 @@ def test_graph_capture_deterministic_closure_kernel(test, device):
     data = wp.array(data_np, dtype=wp.float32, device=device)
     output = wp.zeros(8, dtype=wp.float32, device=device)
 
+    _load_capture_modules(device, kernel)
     wp.launch(kernel, dim=n, inputs=[data], outputs=[output], device=device)
     output.zero_()
 
@@ -169,6 +177,7 @@ def test_graph_capture_deterministic_func_kernel(test, device):
     indices = wp.array(indices_np, dtype=wp.int32, device=device)
     output = wp.zeros(8, dtype=wp.float32, device=device)
 
+    _load_capture_modules(device, func_scatter_add_kernel)
     wp.launch(func_scatter_add_kernel, dim=n, inputs=[data, indices], outputs=[output], device=device)
     output.zero_()
 
@@ -199,6 +208,7 @@ def test_graph_capture_vec3_atomic_minmax(test, device):
 
     out_min.fill_(min_init)
     out_max.fill_(max_init)
+    _load_capture_modules(device, vec3_atomic_minmax_kernel)
     wp.launch(vec3_atomic_minmax_kernel, dim=n, inputs=[points], outputs=[out_min, out_max], device=device)
     out_min.fill_(min_init)
     out_max.fill_(max_init)
@@ -230,6 +240,7 @@ def test_graph_capture_consumed_return_counter(test, device):
     counter = wp.zeros(1, dtype=wp.int32, device=device)
     output = wp.zeros(n, dtype=wp.float32, device=device)
 
+    _load_capture_modules(device, counter_kernel)
     wp.launch(counter_kernel, dim=n, inputs=[data, counter], outputs=[output], device=device)
     counter.zero_()
     output.zero_()
@@ -263,6 +274,7 @@ def test_graph_capture_indexed_counter(test, device):
     counter = wp.zeros(bin_count, dtype=wp.int32, device=device)
     output = wp.full((bin_count, n), value=-1, dtype=wp.int32, device=device)
 
+    _load_capture_modules(device, indexed_counter_kernel)
     wp.launch(indexed_counter_kernel, dim=n, inputs=[values, bins, counter], outputs=[output], device=device)
     counter.zero_()
     output.fill_(-1)
@@ -304,6 +316,7 @@ def test_apic_capture_rejects_deterministic_cuda_kernel(test, device):
     indices = wp.array(indices_np, dtype=wp.int32, device=device)
     output = wp.zeros(4, dtype=wp.float32, device=device)
 
+    _load_capture_modules(device, scatter_add_kernel)
     wp.launch(scatter_add_kernel, dim=n, inputs=[data, indices], outputs=[output], device=device)
     output.zero_()
 
@@ -341,6 +354,7 @@ def test_capture_while_deterministic_scatter(test, device):
     iters = wp.zeros(1, dtype=wp.int32, device=device)
 
     # Warm up modules outside capture.
+    _load_capture_modules(device, scatter_add_kernel, _decrement_iter_kernel)
     wp.launch(scatter_add_kernel, dim=n, inputs=[data, indices], outputs=[output], device=device)
     wp.launch(_decrement_iter_kernel, dim=1, inputs=[iters], device=device)
     output.zero_()
@@ -384,6 +398,7 @@ def test_capture_while_deterministic_counter(test, device):
     iters = wp.zeros(1, dtype=wp.int32, device=device)
 
     # Warm up modules outside capture.
+    _load_capture_modules(device, counter_kernel, _decrement_iter_kernel)
     wp.launch(counter_kernel, dim=n, inputs=[data, counter], outputs=[output], device=device)
     wp.launch(_decrement_iter_kernel, dim=1, inputs=[iters], device=device)
     counter.zero_()

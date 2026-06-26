@@ -560,7 +560,7 @@ def test_padded_sparse_assembly(test, device):
         test.assertEqual(padded.values.ptr, padded_values_ptr)
         assert_np_equal((padded @ x).numpy(), (compact @ x).numpy(), tol=1.0e-5)
 
-        with wp.ScopedCapture() as capture:
+        with wp.ScopedCapture(force_module_load=False) as capture:
             fem.integrate(
                 bilinear_form,
                 fields={"v": test_field, "u": trial_field},
@@ -704,7 +704,7 @@ def test_capturability(test, device):
         bsr_set_zero(A)
         assert A.nnz_sync() == 0
 
-        with wp.ScopedCapture() as capture:
+        with wp.ScopedCapture(force_module_load=False) as capture:
             test_body()
         wp.capture_launch(capture.graph)
         assert A.nnz_sync() == nnz_ref

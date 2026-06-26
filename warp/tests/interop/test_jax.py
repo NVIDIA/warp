@@ -966,6 +966,9 @@ def test_ffi_jax_callable_graph_cache(test, device):
         experimental_ffi = importlib.import_module("warp.jax_experimental.ffi")
 
     _clear_jax_experimental_warning_cache()
+    wp.load_module(module=scale_kernel.module, device=device)
+    old_force_module_load = wp.config.enable_graph_capture_module_load_by_default
+    wp.config.enable_graph_capture_module_load_by_default = False
     try:
         JaxCallableGraphMode = wp.JaxCallableGraphMode
         clear_jax_callable_graph_cache = wp.clear_jax_callable_graph_cache
@@ -1077,6 +1080,7 @@ def test_ffi_jax_callable_graph_cache(test, device):
             ffi_module.set_jax_callable_default_graph_cache_max(saved_max)
 
     finally:
+        wp.config.enable_graph_capture_module_load_by_default = old_force_module_load
         _clear_jax_experimental_warning_cache()
 
 
