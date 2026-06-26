@@ -96,6 +96,180 @@ constexpr inline CUDA_CALLABLE int next_higher_pow2(int input)
 
 // Bitonic sort fast pass for small arrays
 
+// half / float16 needs a dedicated overload: the generic template below resolves to
+// __shfl_xor_sync, which has no half overload, so half's implicit conversions make
+// the call ambiguous. Shuffle the raw bits instead.
+inline CUDA_CALLABLE half warp_shuffle_xor(half val, int lane_mask)
+{
+    unsigned int bits = static_cast<unsigned int>(val.u);
+    bits = __shfl_xor_sync(0xFFFFFFFFu, bits, lane_mask);
+
+    half result;
+    result.u = static_cast<unsigned short>(bits);
+    return result;
+}
+
+#ifndef WP_NO_BFLOAT16
+inline CUDA_CALLABLE bfloat16 warp_shuffle_xor(bfloat16 val, int lane_mask)
+{
+    unsigned int bits = static_cast<unsigned int>(val.u);
+    bits = __shfl_xor_sync(0xFFFFFFFFu, bits, lane_mask);
+
+    bfloat16 result;
+    result.u = static_cast<unsigned short>(bits);
+    return result;
+}
+#endif  // WP_NO_BFLOAT16
+
+template <typename T> inline CUDA_CALLABLE T warp_shuffle_xor(T val, int lane_mask)
+{
+    // Shuffle word-by-word over the raw bytes so any trivially-copyable value type
+    // (including quaternions and transforms, which __shfl_xor_sync has no overload
+    // for) is supported. Mirrors the generic warp_shuffle_down() fallback; see the
+    // comment there for why a plain word buffer is used instead of a union over T and
+    // why the buffers are over-aligned to max(alignof(T), alignof(Word)).
+    typedef unsigned int Word;
+
+    constexpr int word_count = (sizeof(T) + sizeof(Word) - 1) / sizeof(Word);
+
+    constexpr size_t buffer_align = alignof(T) > alignof(Word) ? alignof(T) : alignof(Word);
+
+    alignas(buffer_align) Word input[word_count] = {};
+    alignas(buffer_align) Word output[word_count] = {};
+
+    *reinterpret_cast<T*>(input) = val;
+
+    WP_PRAGMA_UNROLL
+    for (int i = 0; i < word_count; ++i) {
+        output[i] = __shfl_xor_sync(0xFFFFFFFFu, input[i], lane_mask);
+    }
+
+    return *reinterpret_cast<T*>(output);
+}
+
+template <unsigned Length, typename T>
+inline CUDA_CALLABLE wp::vec_t<Length, T> warp_shuffle_xor(wp::vec_t<Length, T> val, int lane_mask)
+{
+    wp::vec_t<Length, T> result;
+
+    for (unsigned i = 0; i < Length; ++i)
+        result[i] = __shfl_xor_sync(0xFFFFFFFFu, val[i], lane_mask);
+
+    return result;
+}
+
+template <unsigned Length>
+inline CUDA_CALLABLE wp::vec_t<Length, half> warp_shuffle_xor(wp::vec_t<Length, half> val, int lane_mask)
+{
+    wp::vec_t<Length, half> result;
+
+    for (unsigned i = 0; i < Length; ++i)
+        result[i] = warp_shuffle_xor(val[i], lane_mask);
+
+    return result;
+}
+
+#ifndef WP_NO_BFLOAT16
+template <unsigned Length>
+inline CUDA_CALLABLE wp::vec_t<Length, bfloat16> warp_shuffle_xor(wp::vec_t<Length, bfloat16> val, int lane_mask)
+{
+    wp::vec_t<Length, bfloat16> result;
+
+    for (unsigned i = 0; i < Length; ++i)
+        result[i] = warp_shuffle_xor(val[i], lane_mask);
+
+    return result;
+}
+#endif  // WP_NO_BFLOAT16
+
+template <unsigned Rows, unsigned Cols, typename T>
+inline CUDA_CALLABLE wp::mat_t<Rows, Cols, T> warp_shuffle_xor(wp::mat_t<Rows, Cols, T> val, int lane_mask)
+{
+    wp::mat_t<Rows, Cols, T> result;
+
+    for (unsigned i = 0; i < Rows; ++i)
+        for (unsigned j = 0; j < Cols; ++j)
+            result.data[i][j] = __shfl_xor_sync(0xFFFFFFFFu, val.data[i][j], lane_mask);
+
+    return result;
+}
+
+template <unsigned Rows, unsigned Cols>
+inline CUDA_CALLABLE wp::mat_t<Rows, Cols, half> warp_shuffle_xor(wp::mat_t<Rows, Cols, half> val, int lane_mask)
+{
+    wp::mat_t<Rows, Cols, half> result;
+
+    for (unsigned i = 0; i < Rows; ++i)
+        for (unsigned j = 0; j < Cols; ++j)
+            result.data[i][j] = warp_shuffle_xor(val.data[i][j], lane_mask);
+
+    return result;
+}
+
+#ifndef WP_NO_BFLOAT16
+template <unsigned Rows, unsigned Cols>
+inline CUDA_CALLABLE wp::mat_t<Rows, Cols, bfloat16>
+warp_shuffle_xor(wp::mat_t<Rows, Cols, bfloat16> val, int lane_mask)
+{
+    wp::mat_t<Rows, Cols, bfloat16> result;
+
+    for (unsigned i = 0; i < Rows; ++i)
+        for (unsigned j = 0; j < Cols; ++j)
+            result.data[i][j] = warp_shuffle_xor(val.data[i][j], lane_mask);
+
+    return result;
+}
+#endif  // WP_NO_BFLOAT16
+
+template <typename T> inline CUDA_CALLABLE T* warp_shuffle_xor(T* val, int lane_mask)
+{
+    unsigned long long ptr = reinterpret_cast<unsigned long long>(val);
+    unsigned int ptr_lo = static_cast<unsigned int>(ptr);
+    unsigned int ptr_hi = static_cast<unsigned int>(ptr >> 32);
+    ptr_lo = __shfl_xor_sync(0xFFFFFFFFu, ptr_lo, lane_mask);
+    ptr_hi = __shfl_xor_sync(0xFFFFFFFFu, ptr_hi, lane_mask);
+    ptr = (static_cast<unsigned long long>(ptr_hi) << 32) | static_cast<unsigned long long>(ptr_lo);
+    return reinterpret_cast<T*>(ptr);
+}
+
+inline CUDA_CALLABLE wp::shape_t warp_shuffle_xor(wp::shape_t val, int lane_mask)
+{
+    wp::shape_t result;
+
+    for (int i = 0; i < wp::ARRAY_MAX_DIMS; ++i)
+        result.dims[i] = __shfl_xor_sync(0xFFFFFFFFu, val.dims[i], lane_mask);
+
+    return result;
+}
+
+template <typename T> inline CUDA_CALLABLE wp::array_t<T> warp_shuffle_xor(wp::array_t<T> val, int lane_mask)
+{
+    wp::array_t<T> result;
+
+    result.data = wp::warp_shuffle_xor(val.data, lane_mask);
+    result.grad = wp::warp_shuffle_xor(val.grad, lane_mask);
+    result.shape = wp::warp_shuffle_xor(val.shape, lane_mask);
+    for (int i = 0; i < wp::ARRAY_MAX_DIMS; ++i)
+        result.strides[i] = __shfl_xor_sync(0xFFFFFFFFu, val.strides[i], lane_mask);
+    result.ndim = static_cast<uint16_t>(__shfl_xor_sync(0xFFFFFFFFu, static_cast<unsigned int>(val.ndim), lane_mask));
+    result.flags = static_cast<uint16_t>(__shfl_xor_sync(0xFFFFFFFFu, static_cast<unsigned int>(val.flags), lane_mask));
+
+    return result;
+}
+
+template <typename T>
+inline CUDA_CALLABLE wp::indexedarray_t<T> warp_shuffle_xor(wp::indexedarray_t<T> val, int lane_mask)
+{
+    wp::indexedarray_t<T> result;
+
+    result.arr = wp::warp_shuffle_xor(val.arr, lane_mask);
+    for (int i = 0; i < wp::ARRAY_MAX_DIMS; ++i)
+        result.indices[i] = wp::warp_shuffle_xor(val.indices[i], lane_mask);
+    result.shape = wp::warp_shuffle_xor(val.shape, lane_mask);
+
+    return result;
+}
+
 template <typename T> inline CUDA_CALLABLE T shfl_xor(unsigned int thread_id, T* sh_mem, unsigned int lane_mask)
 {
     unsigned int source_lane = thread_id ^ lane_mask;
@@ -121,7 +295,7 @@ inline CUDA_CALLABLE void bitonic_sort_single_stage_full_thread_block(
         int thread_id2 = loop_id * WP_TILE_BLOCK_DIM + thread_id;
 
         key_register[loop_id] = thread_id2 < length ? key_sh_mem[thread_id2] : max_key_value;
-        val_register[loop_id] = thread_id2 < length ? val_sh_mem[thread_id2] : static_cast<V>(0);
+        val_register[loop_id] = thread_id2 < length ? val_sh_mem[thread_id2] : V {};
     }
 
     __syncthreads();
@@ -160,7 +334,7 @@ template <typename K, typename V>
 inline CUDA_CALLABLE void bitonic_sort_single_stage_full_warp(int k, unsigned int thread_id, int stride, K& key, V& val)
 {
     auto s_key = __shfl_xor_sync(0xFFFFFFFFu, key, stride);
-    auto s_val = __shfl_xor_sync(0xFFFFFFFFu, val, stride);
+    auto s_val = warp_shuffle_xor(val, stride);
     auto swap = (((thread_id & stride) != 0 ? key > s_key : key < s_key)) ^ ((thread_id & k) == 0);
     key = swap ? s_key : key;
     val = swap ? s_val : val;
@@ -192,6 +366,8 @@ bitonic_sort_single_warp(int thread_id, K* keys_input, V* values_input, int num_
     V value;
     if (thread_id < num_elements_to_sort)
         value = values_input[thread_id];
+    else
+        value = V {};
 
     __syncwarp();
     bitonic_sort_single_warp(thread_id, key, value);
@@ -218,8 +394,7 @@ bitonic_sort_pow2_length(unsigned int thread_id, K* key_sh_mem, V* val_sh_mem, i
     for (int loop_id = 0; loop_id < num_loops; ++loop_id) {
         int thread_id2 = loop_id * WP_TILE_BLOCK_DIM + thread_id;
         key[loop_id] = thread_id2 < length ? key_sh_mem[thread_id2] : key_max_possible_value;
-        if (thread_id2 < length)
-            val[loop_id] = val_sh_mem[thread_id2];
+        val[loop_id] = thread_id2 < length ? val_sh_mem[thread_id2] : V {};
     }
 
     __syncthreads();
@@ -317,7 +492,7 @@ bitonic_sort_thread_block_shared_mem(int thread_id, K* keys_input, V* values_inp
             } else {
                 // Note that these values may end up in the output If enough NaN or Inf values are present in keys_input
                 keys_shared_mem[i] = key_max_possible_value;
-                values_shared_mem[i] = static_cast<V>(0);
+                values_shared_mem[i] = V {};
             }
         }
         __syncthreads();
@@ -853,8 +1028,7 @@ void bitonic_sort_pairs_general_size_cpu(K* keys, V* values, int length)
 
     for (int i = 0; i < pow2_size; ++i) {
         keys_tmp[i] = i < length ? keys[i] : max_key;
-        if (i < length)
-            values_tmp[i] = values[i];
+        values_tmp[i] = i < length ? values[i] : V {};
     }
 
     bitonic_sort_pairs_pow2_length_cpu(keys_tmp, values_tmp, pow2_size);

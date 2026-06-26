@@ -260,6 +260,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.tile.test_tile_solve_no_mathdx import TestTileSolveNoMathDx
     from warp.tests.tile.test_tile_sort import TestTileSort
     from warp.tests.tile.test_tile_stack import TestTileStack
+    from warp.tests.tile.test_tile_struct import TestTileStruct
     from warp.tests.tile.test_tile_view import TestTileView
 
     test_classes = [
@@ -411,6 +412,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestTileSolveNoMathDx,
         TestTileSort,
         TestTileStack,
+        TestTileStruct,
         TestTileView,
         TestTorch,
         TestTorchAllocator,

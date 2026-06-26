@@ -4129,13 +4129,13 @@ def tile_map(op: Callable, a: Tile[Any, tuple[int, ...]], b: Any) -> Tile[Any, t
     """Apply a function to tile elements.
 
     This function cooperatively applies a binary function to each element of the tile using all threads in the block.
-    The second argument can be a tile (must have same dimensions as ``a``), or a non-tile constant (scalar, vector, or matrix)
-    which will be broadcast across all elements.
+    The second argument can be a tile (must have same dimensions as ``a``), or a non-tile constant (scalar, vector,
+    matrix, or Warp struct) which will be broadcast across all elements.
 
     Args:
         op: A callable function that accepts two arguments and returns one argument, all of the same type, may be a user function or builtin.
         a: The first input tile, the operator (or one of its overloads) must be able to accept the tile's dtype.
-        b: Either a tile with matching dimensions, or a scalar/vector/matrix constant.
+        b: Either a tile with matching dimensions, or a scalar/vector/matrix/Warp struct constant.
 
     Returns:
         A tile with the same dimensions as tile ``a``. Its datatype is specified by the return type of ``op``.
@@ -4162,17 +4162,17 @@ def tile_map(op: Callable, a: Tile[Any, tuple[int, ...]], b: Any) -> Tile[Any, t
     ...
 
 @over
-def tile_map(op: Callable, a: Tile[Any, tuple[int, ...]], *args: Any) -> Tile[Scalar, tuple[int, ...]]:
+def tile_map(op: Callable, a: Tile[Any, tuple[int, ...]], *args: Any) -> Tile[Any, tuple[int, ...]]:
     """Apply a function to tile elements.
 
     This function cooperatively applies a user-defined function to corresponding elements using all threads in the block.
-    The first argument 'a' must be a tile (determines output shape). Additional arguments can be tiles (must have same dimensions)
-    or non-tile constants (scalar, vector, or matrix) which will be broadcast across all elements.
+    The first argument 'a' must be a tile (determines output shape). Additional arguments can be tiles (must have same
+    dimensions) or non-tile constants (scalar, vector, matrix, or Warp struct) which will be broadcast across all elements.
 
     Args:
         op: A callable function that accepts N arguments and returns one value, must be a user function.
         a: The first input tile, determines the output shape.
-        args: Additional arguments: tiles with matching dimensions, or scalar/vector/matrix constants.
+        args: Additional arguments: tiles with matching dimensions, or scalar/vector/matrix/Warp struct constants.
 
     Returns:
         A tile with the same dimensions as tile ``a``. Its datatype is specified by the return type of ``op``.

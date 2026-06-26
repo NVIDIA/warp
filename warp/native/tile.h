@@ -693,6 +693,19 @@ template <typename Shape> struct tile_coord_iter_t {
     }
 };
 
+template <typename T> inline CUDA_CALLABLE T tile_atomic_add_value(T* ptr, T value)
+{
+    return wp::atomic_add(ptr, value);
+}
+template <typename T> inline CUDA_CALLABLE T tile_adj_atomic_add_value(T* ptr, T value)
+{
+    // adj_atomic_add accumulates for floats but is a no-op for integral/bool types,
+    // which lack a CUDA atomicAdd overload. The returned old value is unused.
+    T old = {};
+    wp::adj_atomic_add(ptr, value);
+    return old;
+}
+
 // represents a tile stored in global memory with dynamic strides
 // used to represent the source and offset for tile loads to register/shared
 // BoundsCheck: when true (default), validates array access bounds; when false, skips validation for performance
@@ -786,7 +799,7 @@ template <typename T, typename Shape_, bool BoundsCheck = true, bool Aligned = f
     {
         int64_t i;
         if (index(coord, i))
-            return wp::atomic_add(&data.data[i], value);
+            return tile_atomic_add_value(&data.data[i], value);
         else
             return T {};
     }
@@ -795,7 +808,7 @@ template <typename T, typename Shape_, bool BoundsCheck = true, bool Aligned = f
     {
         int64_t i;
         if (index(coord, i))
-            return wp::atomic_add(&data.grad[i], grad);
+            return tile_adj_atomic_add_value(&data.grad[i], grad);
         else
             return T {};
     }
@@ -1576,7 +1589,7 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
     {
         // since multiple threads may extract the same element
         // we need to accumulate using atomic operations
-        wp::atomic_add(&grad(c), adj_ret);
+        tile_adj_atomic_add_value(&grad(c), adj_ret);
 
         WP_TILE_SYNC();
     }
@@ -1586,7 +1599,7 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
     {
         // since multiple threads may add to the same element
         // we need to accumulate using atomic operations
-        wp::atomic_add(&data(c), x);
+        tile_atomic_add_value(&data(c), x);
 
         WP_TILE_SYNC();
     }
@@ -1599,7 +1612,7 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
     {
         // since multiple threads may add to the same element
         // we need to accumulate using atomic operations
-        wp::atomic_add(&data(c), -x);
+        tile_atomic_add_value(&data(c), -x);
 
         WP_TILE_SYNC();
     }
@@ -1728,7 +1741,7 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
                 // use shared memory atomics to accumulate gradients
                 // since for broadcast tiles (e.g.: a bias vector) multiple incoming threads
                 // may map to a single location in shared memory
-                wp::atomic_add(&grad(linear), tile.data[i]);
+                tile_adj_atomic_add_value(&grad(linear), tile.data[i]);
         }
 
         WP_TILE_SYNC();
@@ -1762,7 +1775,7 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
                 // use shared memory atomics to accumulate gradients
                 // since for broadcast tiles (e.g.: a bias vector) multiple incoming threads
                 // may map to a single location in shared memory
-                wp::atomic_add(&grad(c), g);
+                tile_adj_atomic_add_value(&grad(c), g);
             }
         }
 
@@ -2365,7 +2378,7 @@ inline CUDA_CALLABLE void tile_add(tile_shared_t<T, L, Owner>& tile, int /*reg*/
     if constexpr (L::Unique)
         tile.data(linear) += val;
     else
-        wp::atomic_add(&tile.data(linear), val);
+        tile_atomic_add_value(&tile.data(linear), val);
 }
 
 // ---------------------------------------------------------------------------
@@ -2923,7 +2936,7 @@ inline CUDA_CALLABLE auto tile_atomic_add_indexed(
     src_reg.apply([&](int reg, auto c) {
         int64_t i;
         if (compute_index(dest, indices, axis, offset, c, i))
-            ret_reg.data[reg] = wp::atomic_add(&dest.data[i], src_reg.data[reg]);
+            ret_reg.data[reg] = tile_atomic_add_value(&dest.data[i], src_reg.data[reg]);
         else
             ret_reg.data[reg] = T {};
     });
@@ -2995,6 +3008,9 @@ inline CUDA_CALLABLE void adj_tile_load(array_t<T>& src, Coord c, array_t<T>& ad
     if (adj_src.data)
         dest.data.grad = adj_src.data;
 
+    if (dest.data.grad == nullptr)
+        return;
+
     adj_ret.atomic_add_grad(dest);
 }
 
@@ -3051,12 +3067,15 @@ inline CUDA_CALLABLE void adj_tile_load_indexed(
     if (adj_src.data)
         src.grad = adj_src.data;
 
+    if (src.grad == nullptr)
+        return;
+
     auto adj_ret_reg = adj_ret.grad_to_register();
 
     adj_ret_reg.apply([&](int reg, auto c) {
         int64_t i;
         if (compute_index(src, indices, axis, offset, c, i))
-            wp::atomic_add(&src.grad[i], adj_ret_reg.data[reg]);
+            tile_adj_atomic_add_value(&src.grad[i], adj_ret_reg.data[reg]);
     });
 }
 
@@ -4649,7 +4668,7 @@ inline CUDA_CALLABLE void tile_scatter_add(Tile& t, int i, typename Tile::Type v
 {
     assert(!has_value || (i >= 0 && i < Tile::Layout::Shape::dim(0)));
     if (has_value)
-        wp::atomic_add(&t.data(tile_coord(i)), value);
+        tile_atomic_add_value(&t.data(tile_coord(i)), value);
     WP_TILE_SYNC();
 }
 
@@ -4659,7 +4678,7 @@ inline CUDA_CALLABLE void tile_scatter_add(Tile& t, int i, typename Tile::Type v
     assert(!has_value || (i >= 0 && i < Tile::Layout::Shape::dim(0)));
     if (has_value) {
         if constexpr (Atomic)
-            wp::atomic_add(&t.data(tile_coord(i)), value);
+            tile_atomic_add_value(&t.data(tile_coord(i)), value);
         else
             t.data(tile_coord(i)) += value;
     }
@@ -4671,7 +4690,7 @@ inline CUDA_CALLABLE void tile_scatter_add(Tile& t, int i, int j, typename Tile:
 {
     assert(!has_value || (i >= 0 && i < Tile::Layout::Shape::dim(0) && j >= 0 && j < Tile::Layout::Shape::dim(1)));
     if (has_value)
-        wp::atomic_add(&t.data(tile_coord(i, j)), value);
+        tile_atomic_add_value(&t.data(tile_coord(i, j)), value);
     WP_TILE_SYNC();
 }
 
@@ -4681,7 +4700,7 @@ inline CUDA_CALLABLE void tile_scatter_add(Tile& t, int i, int j, typename Tile:
     assert(!has_value || (i >= 0 && i < Tile::Layout::Shape::dim(0) && j >= 0 && j < Tile::Layout::Shape::dim(1)));
     if (has_value) {
         if constexpr (Atomic)
-            wp::atomic_add(&t.data(tile_coord(i, j)), value);
+            tile_atomic_add_value(&t.data(tile_coord(i, j)), value);
         else
             t.data(tile_coord(i, j)) += value;
     }
@@ -4697,7 +4716,7 @@ inline CUDA_CALLABLE void tile_scatter_add(Tile& t, int i, int j, int k, typenam
             && k < Tile::Layout::Shape::dim(2))
     );
     if (has_value)
-        wp::atomic_add(&t.data(tile_coord(i, j, k)), value);
+        tile_atomic_add_value(&t.data(tile_coord(i, j, k)), value);
     WP_TILE_SYNC();
 }
 
@@ -4711,7 +4730,7 @@ inline CUDA_CALLABLE void tile_scatter_add(Tile& t, int i, int j, int k, typenam
     );
     if (has_value) {
         if constexpr (Atomic)
-            wp::atomic_add(&t.data(tile_coord(i, j, k)), value);
+            tile_atomic_add_value(&t.data(tile_coord(i, j, k)), value);
         else
             t.data(tile_coord(i, j, k)) += value;
     }
@@ -4728,7 +4747,7 @@ tile_scatter_add(Tile& t, int i, int j, int k, int l, typename Tile::Type value,
             && k < Tile::Layout::Shape::dim(2) && l >= 0 && l < Tile::Layout::Shape::dim(3))
     );
     if (has_value)
-        wp::atomic_add(&t.data(tile_coord(i, j, k, l)), value);
+        tile_atomic_add_value(&t.data(tile_coord(i, j, k, l)), value);
     WP_TILE_SYNC();
 }
 
@@ -4743,7 +4762,7 @@ tile_scatter_add(Tile& t, int i, int j, int k, int l, typename Tile::Type value,
     );
     if (has_value) {
         if constexpr (Atomic)
-            wp::atomic_add(&t.data(tile_coord(i, j, k, l)), value);
+            tile_atomic_add_value(&t.data(tile_coord(i, j, k, l)), value);
         else
             t.data(tile_coord(i, j, k, l)) += value;
     }
@@ -5712,8 +5731,8 @@ inline CUDA_CALLABLE void adj_assign(
     }
 }
 
-template <typename TileA, typename TileB, typename Coord>
-inline CUDA_CALLABLE void tile_assign(TileA& dest, TileB& src, const Coord& offset)
+template <typename TileA, typename TileB, int N>
+inline CUDA_CALLABLE void tile_assign(TileA& dest, TileB& src, const tile_coord_t<N>& offset)
 {
     using Layout = typename TileB::Layout;
 
@@ -5726,8 +5745,8 @@ inline CUDA_CALLABLE void tile_assign(TileA& dest, TileB& src, const Coord& offs
     WP_TILE_SYNC();
 }
 
-template <typename TileA, typename T, typename Layout, typename Coord>
-inline CUDA_CALLABLE void tile_assign(TileA& dest, tile_register_t<T, Layout>& src, const Coord& offset)
+template <typename TileA, typename T, typename Layout, int N>
+inline CUDA_CALLABLE void tile_assign(TileA& dest, tile_register_t<T, Layout>& src, const tile_coord_t<N>& offset)
 {
     WP_PRAGMA_UNROLL
     for (int reg = 0; reg < Layout::NumRegs; ++reg) {
@@ -5743,9 +5762,15 @@ inline CUDA_CALLABLE void tile_assign(TileA& dest, tile_register_t<T, Layout>& s
     WP_TILE_SYNC();
 }
 
-template <typename TileA, typename TileB, typename AdjTileA, typename AdjTileB, typename Coord, typename AdjCoord>
-inline CUDA_CALLABLE void
-adj_tile_assign(TileA& dest, TileB& src, Coord offset, AdjTileA& adj_dest, AdjTileB& adj_src, AdjCoord adj_offset)
+template <typename TileA, typename TileB, typename AdjTileA, typename AdjTileB, int N, int AdjN>
+inline CUDA_CALLABLE void adj_tile_assign(
+    TileA& dest,
+    TileB& src,
+    tile_coord_t<N> offset,
+    AdjTileA& adj_dest,
+    AdjTileB& adj_src,
+    tile_coord_t<AdjN> adj_offset
+)
 {
     using Layout = typename TileB::Layout;
 
@@ -5776,15 +5801,15 @@ template <
     typename AdjTileA,
     typename AdjT,
     typename AdjLayout,
-    typename Coord,
-    typename AdjCoord>
+    int N,
+    int AdjN>
 inline CUDA_CALLABLE void adj_tile_assign(
     TileA& dest,
     tile_register_t<T, Layout>& src,
-    Coord offset,
+    tile_coord_t<N> offset,
     AdjTileA& adj_dest,
     tile_register_t<AdjT, AdjLayout>& adj_src,
-    AdjCoord adj_offset
+    tile_coord_t<AdjN> adj_offset
 )
 {
     static_assert(

@@ -41,6 +41,10 @@
   copies. Use `array.memory_kind` to inspect whether an array is backed by host, pinned host, CUDA device, CUDA
   mempool, or CUDA managed memory. Preallocated managed arrays work in CUDA graph captures, but capture-time allocation
   is a current limitation ([GH-1523](https://github.com/NVIDIA/warp/issues/1523)).
+- Add support for Warp struct tile elements in `wp.tile_map()` and Warp struct constants.
+  Support field-wise Warp struct addition and subtraction in tile arithmetic,
+  reductions, atomics, adjoints for supported data-movement and additive paths,
+  and forward `tile_sort()` value payloads ([GH-573](https://github.com/NVIDIA/warp/issues/573)).
 
 ### Removed
 

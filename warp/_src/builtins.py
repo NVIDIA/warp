@@ -2430,6 +2430,8 @@ def tile_ones_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str,
         raise ValueError(f"Invalid value for 'storage': {arg_values['storage']!r}. Expected 'shared' or 'register'.")
 
     dtype = arg_values["dtype"]
+    if type_is_struct(dtype):
+        raise TypeError("tile_ones() does not support Warp struct dtypes; use tile_full() with an explicit value")
 
     return tile(dtype=dtype, shape=shape, storage=arg_values["storage"])
 
@@ -2597,6 +2599,12 @@ def tile_full_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str,
         raise ValueError(f"Invalid value for 'storage': {arg_values['storage']!r}. Expected 'shared' or 'register'.")
 
     dtype = arg_values["dtype"]
+    value_type = arg_types["value"]
+
+    if type_is_struct(dtype) and not types_equal(value_type, dtype):
+        raise TypeError(
+            f"tile_full() value must have dtype {type_repr(dtype)} when filling Warp struct tile elements, got {type_repr(value_type)}"
+        )
 
     return tile(dtype=dtype, shape=shape, storage=arg_values["storage"])
 
@@ -3167,6 +3175,12 @@ def tile_arange_value_func(arg_types: Mapping[str, type], arg_values: Mapping[st
         dtype = arg_values["dtype"]
     else:
         dtype = float
+
+    # tile_arange() is variadic, which bypasses the Scalar dtype constraint enforced by
+    # overload matching, so reject struct dtypes explicitly: a numeric range has no
+    # meaning for a struct and the native tile_arange would fail to compile.
+    if type_is_struct(dtype):
+        raise TypeError("tile_arange() does not support Warp struct dtypes")
 
     if arg_values["storage"] not in {"shared", "register"}:
         raise ValueError(f"Invalid value for 'storage': {arg_values['storage']!r}. Expected 'shared' or 'register'.")
@@ -3776,6 +3790,21 @@ add_builtin(
 )
 
 
+def check_tile_atomic_add_dtype(dtype, fn_name):
+    # Mirror the wp.atomic_add() constraint: only scalar leaf types with a CUDA atomicAdd
+    # overload may be accumulated. Struct tiles are allowed; their generated helper carries
+    # fields whose scalar type has no atomic add rather than accumulating them.
+    if type_is_struct(dtype):
+        return
+    scalar_type = getattr(dtype, "_wp_scalar_type_", dtype)
+    supported_atomic_types = (*SUPPORTED_ATOMIC_TYPES, warp.float16, warp.bfloat16)
+    if not any(types_equal_generic(scalar_type, x) for x in supported_atomic_types):
+        raise RuntimeError(
+            f"{fn_name}() only supports tiles with [u]int32, [u]int64, float16, bfloat16, float32, "
+            f"or float64 as the underlying scalar type, but got {type_repr(dtype)}"
+        )
+
+
 def tile_atomic_add_value_func(arg_types, arg_values):
     # return generic type (for doc builds)
     if arg_types is None:
@@ -3805,6 +3834,8 @@ def tile_atomic_add_value_func(arg_types, arg_values):
         raise TypeError(
             f"tile_atomic_add() 'a' and 't' arguments must have the same dtype, got {arg_types['a'].dtype} and {arg_types['t'].dtype}"
         )
+
+    check_tile_atomic_add_dtype(t.dtype, "tile_atomic_add")
 
     return tile(
         dtype=arg_types["t"].dtype,
@@ -3925,6 +3956,8 @@ def tile_atomic_add_indexed_value_func(arg_types, arg_values):
         raise TypeError(
             f"tile_atomic_add_indexed() 'a' and 't' arguments must have the same dtype, got {arg_types['a'].dtype} and {arg_types['t'].dtype}"
         )
+
+    check_tile_atomic_add_dtype(t.dtype, "tile_atomic_add_indexed")
 
     return tile(dtype=t.dtype, shape=t.shape, storage=t.storage)
 
@@ -5067,6 +5100,9 @@ add_builtin(
 
 
 def tile_inplace_value_func(arg_types, arg_values):
+    if arg_types is None:
+        return None
+
     if not types_equal(arg_types["a"].dtype, arg_types["value"]):
         raise TypeError(
             f"'value' must have the same dtype as target tile for inplace ops, got {arg_types['a'].dtype} and {arg_types['value']}"
@@ -5079,6 +5115,41 @@ def tile_inplace_value_func(arg_types, arg_values):
     return None
 
 
+def tile_inplace_tile_value_func(arg_types, arg_values):
+    if arg_types is None:
+        return None
+
+    a = arg_types["a"]
+    b = arg_types["b"]
+
+    if not is_tile(a):
+        raise TypeError(f"Tile inplace operator left-hand side must be a tile, got {a!r}")
+    if not is_tile(b):
+        raise TypeError(f"Tile inplace operator right-hand side must be a tile, got {b!r}")
+
+    if a.shape != b.shape:
+        raise ValueError(f"Tile inplace arguments must have the same shape, got {a.shape} and {b.shape}")
+
+    if not types_equal(a.dtype, b.dtype):
+        raise TypeError(f"Tile inplace arguments must have the same dtype, got {a.dtype} and {b.dtype}")
+
+    return None
+
+
+def tile_inplace_bitwise_value_func(arg_types, arg_values):
+    if arg_types is not None and type_is_struct(arg_types["a"].dtype):
+        raise TypeError("Tile bitwise inplace operators do not support Warp struct tile elements")
+
+    return tile_inplace_value_func(arg_types, arg_values)
+
+
+def tile_inplace_tile_bitwise_value_func(arg_types, arg_values):
+    if arg_types is not None and type_is_struct(arg_types["a"].dtype):
+        raise TypeError("Tile bitwise inplace operators do not support Warp struct tile elements")
+
+    return tile_inplace_tile_value_func(arg_types, arg_values)
+
+
 add_builtin(
     "tile_add_inplace",
     input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "value": Any},
@@ -5148,7 +5219,7 @@ add_builtin(
 add_builtin(
     "tile_bit_and_inplace",
     input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "value": Any},
-    value_func=tile_inplace_value_func,
+    value_func=tile_inplace_bitwise_value_func,
     group="Tile Primitives",
     hidden=True,
     export=False,
@@ -5157,7 +5228,7 @@ add_builtin(
 add_builtin(
     "tile_bit_and_inplace",
     input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "j": int, "value": Any},
-    value_func=tile_inplace_value_func,
+    value_func=tile_inplace_bitwise_value_func,
     group="Tile Primitives",
     hidden=True,
     export=False,
@@ -5166,7 +5237,7 @@ add_builtin(
 add_builtin(
     "tile_bit_and_inplace",
     input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "j": int, "k": int, "value": Any},
-    value_func=tile_inplace_value_func,
+    value_func=tile_inplace_bitwise_value_func,
     group="Tile Primitives",
     hidden=True,
     export=False,
@@ -5175,7 +5246,7 @@ add_builtin(
 add_builtin(
     "tile_bit_and_inplace",
     input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "j": int, "k": int, "l": int, "value": Any},
-    value_func=tile_inplace_value_func,
+    value_func=tile_inplace_bitwise_value_func,
     group="Tile Primitives",
     hidden=True,
     export=False,
@@ -5185,7 +5256,7 @@ add_builtin(
 add_builtin(
     "tile_bit_or_inplace",
     input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "value": Any},
-    value_func=tile_inplace_value_func,
+    value_func=tile_inplace_bitwise_value_func,
     group="Tile Primitives",
     hidden=True,
     export=False,
@@ -5194,7 +5265,7 @@ add_builtin(
 add_builtin(
     "tile_bit_or_inplace",
     input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "j": int, "value": Any},
-    value_func=tile_inplace_value_func,
+    value_func=tile_inplace_bitwise_value_func,
     group="Tile Primitives",
     hidden=True,
     export=False,
@@ -5203,7 +5274,7 @@ add_builtin(
 add_builtin(
     "tile_bit_or_inplace",
     input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "j": int, "k": int, "value": Any},
-    value_func=tile_inplace_value_func,
+    value_func=tile_inplace_bitwise_value_func,
     group="Tile Primitives",
     hidden=True,
     export=False,
@@ -5212,7 +5283,7 @@ add_builtin(
 add_builtin(
     "tile_bit_or_inplace",
     input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "j": int, "k": int, "l": int, "value": Any},
-    value_func=tile_inplace_value_func,
+    value_func=tile_inplace_bitwise_value_func,
     group="Tile Primitives",
     hidden=True,
     export=False,
@@ -5222,7 +5293,7 @@ add_builtin(
 add_builtin(
     "tile_bit_xor_inplace",
     input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "value": Any},
-    value_func=tile_inplace_value_func,
+    value_func=tile_inplace_bitwise_value_func,
     group="Tile Primitives",
     hidden=True,
     export=False,
@@ -5231,7 +5302,7 @@ add_builtin(
 add_builtin(
     "tile_bit_xor_inplace",
     input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "j": int, "value": Any},
-    value_func=tile_inplace_value_func,
+    value_func=tile_inplace_bitwise_value_func,
     group="Tile Primitives",
     hidden=True,
     export=False,
@@ -5240,7 +5311,7 @@ add_builtin(
 add_builtin(
     "tile_bit_xor_inplace",
     input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "j": int, "k": int, "value": Any},
-    value_func=tile_inplace_value_func,
+    value_func=tile_inplace_bitwise_value_func,
     group="Tile Primitives",
     hidden=True,
     export=False,
@@ -5249,7 +5320,7 @@ add_builtin(
 add_builtin(
     "tile_bit_xor_inplace",
     input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "j": int, "k": int, "l": int, "value": Any},
-    value_func=tile_inplace_value_func,
+    value_func=tile_inplace_bitwise_value_func,
     group="Tile Primitives",
     hidden=True,
     export=False,
@@ -5453,6 +5524,8 @@ def tile_dot_value_func(arg_types, arg_values):
         raise TypeError(f"tile_dot() arguments must have the same shape, got {a.shape} and {b.shape}")
     if not types_equal(a.dtype, b.dtype):
         raise TypeError(f"tile_dot() arguments must have the same dtype, got {a.dtype} and {b.dtype}")
+    if type_is_struct(a.dtype):
+        raise TypeError("tile_dot() does not support Warp struct tile elements")
 
     return tile(dtype=type_scalar_type(a.dtype), shape=(1,))
 
@@ -5522,6 +5595,8 @@ def tile_axpy_value_func(arg_types, arg_values):
         raise TypeError(f"tile_axpy() 'dest' and 'src' must have the same shape, got {dest.shape} and {src.shape}")
     if not types_equal(dest.dtype, src.dtype):
         raise TypeError(f"tile_axpy() 'dest' and 'src' must have the same dtype, got {dest.dtype} and {src.dtype}")
+    if type_is_struct(dest.dtype):
+        raise TypeError("tile_axpy() does not support Warp struct tile elements")
     if is_tile(alpha):
         raise TypeError(f"tile_axpy() 'alpha' must be a scalar, got tile {alpha!r}")
     if not type_is_scalar(alpha):
@@ -5753,6 +5828,12 @@ def tile_min_value_func(arg_types, arg_values):
     if not is_tile(a):
         raise TypeError(f"tile_min() argument must be a tile, got {a!r}")
 
+    # tile_min() is variadic, which bypasses the Scalar dtype constraint enforced by
+    # overload matching, so reject struct tiles explicitly: there is no canonical
+    # ordering for a struct and the native reduction would fail to compile.
+    if type_is_struct(a.dtype):
+        raise TypeError("tile_min() does not support Warp struct tile elements")
+
     return tile(dtype=a.dtype, shape=(1,))
 
 
@@ -5806,6 +5887,12 @@ def tile_argmin_value_func(arg_types, arg_values):
 
     if not is_tile(a):
         raise TypeError(f"tile_argmin() argument must be a tile, got {a!r}")
+
+    # tile_argmin() is variadic, which bypasses the Scalar dtype constraint enforced by
+    # overload matching, so reject struct tiles explicitly: there is no canonical
+    # ordering for a struct and the native reduction would fail to compile.
+    if type_is_struct(a.dtype):
+        raise TypeError("tile_argmin() does not support Warp struct tile elements")
 
     return tile(dtype=warp.int32, shape=(1,))
 
@@ -5962,6 +6049,33 @@ def tile_reduce_value_func(arg_types, arg_values):
 
     if not is_tile(a):
         raise TypeError(f"tile_reduce() 'a' argument must be a tile, got {a!r}")
+
+    # Struct element types require the reduction operator to have an overload that both
+    # accepts and returns the struct; otherwise codegen emits an unsupported native call
+    # (e.g. wp::min on a struct) that fails to compile, or silently reinterprets a
+    # mismatched return type as the struct. Resolve and validate the overload up front so
+    # either problem surfaces as a clean Python error. Scalar dtypes keep their existing
+    # behavior (their builtin operator overloads always resolve in codegen).
+    if type_is_struct(a.dtype) and arg_values is not None and "op" in arg_values:
+        op = arg_values["op"]
+        overload = _get_tile_map_overload(
+            op,
+            [a.dtype, a.dtype],
+            f"tile_reduce() operator {op} has no overload accepting Warp struct tile element type {type_repr(a.dtype)}",
+        )
+
+        if overload.value_func is None:
+            overload.build(None)
+
+        param_names = iter(overload.input_types)
+        param_a, param_b = next(param_names), next(param_names)
+        return_type = overload.value_func({param_a: a.dtype, param_b: a.dtype}, None)
+
+        if not types_equal(return_type, a.dtype):
+            raise TypeError(
+                f"tile_reduce() operator {op} must return the tile element type {type_repr(a.dtype)}, "
+                f"got {type_repr(return_type)}"
+            )
 
     return tile(dtype=a.dtype, shape=(1,))
 
@@ -6363,6 +6477,22 @@ add_builtin(
 # maps
 
 
+def _is_tile_map_element_type_supported(t):
+    return type_is_scalar(t) or type_is_vector(t) or type_is_matrix(t) or type_is_struct(t)
+
+
+def _get_tile_map_overload(op, dtypes, message):
+    try:
+        overload = op.get_overload(dtypes, {})
+    except KeyError as exc:
+        raise RuntimeError(message) from exc
+
+    if overload is None:
+        raise RuntimeError(message)
+
+    return overload
+
+
 # does type propagation for load()
 def tile_unary_map_value_func(arg_types, arg_values):
     if arg_types is None:
@@ -6375,10 +6505,9 @@ def tile_unary_map_value_func(arg_types, arg_values):
 
     if "op" in arg_values:
         op = arg_values["op"]
-        try:
-            overload = op.get_overload([a.dtype], {})
-        except KeyError as exc:
-            raise RuntimeError(f"No overload of {op} found for tile element type {type_repr(a.dtype)}") from exc
+        overload = _get_tile_map_overload(
+            op, [a.dtype], f"No overload of {op} found for tile element type {type_repr(a.dtype)}"
+        )
 
         # build the right overload on demand
         if overload.value_func is None:
@@ -6387,7 +6516,7 @@ def tile_unary_map_value_func(arg_types, arg_values):
         param_name = next(iter(overload.input_types))
         value_type = overload.value_func({param_name: a.dtype}, None)
 
-        if not type_is_scalar(value_type) and not type_is_vector(value_type) and not type_is_matrix(value_type):
+        if not _is_tile_map_element_type_supported(value_type):
             raise TypeError(f"Operator {op} returns unsupported type {type_repr(value_type)} for a tile element")
 
         return tile(dtype=value_type, shape=a.shape)
@@ -6474,18 +6603,19 @@ def tile_binary_map_value_func(arg_types, arg_values):
         b_dtype = b.dtype
     else:
         # b is a non-tile constant, validate it's a supported type
-        if not type_is_scalar(b) and not type_is_vector(b) and not type_is_matrix(b):
-            raise TypeError(f"tile_map() 'b' argument must be a tile, scalar, vector, or matrix, got {b!r}")
+        if not _is_tile_map_element_type_supported(b):
+            raise TypeError(
+                f"tile_map() 'b' argument must be a tile, scalar, vector, matrix, or Warp struct, got {b!r}"
+            )
         b_dtype = b
 
     if "op" in arg_values:
         op = arg_values["op"]
-        try:
-            overload = op.get_overload([a.dtype, b_dtype], {})
-        except KeyError as exc:
-            raise RuntimeError(
-                f"No overload of {op} found for tile element types {type_repr(a.dtype)}, {type_repr(b_dtype)}"
-            ) from exc
+        overload = _get_tile_map_overload(
+            op,
+            [a.dtype, b_dtype],
+            f"No overload of {op} found for tile element types {type_repr(a.dtype)}, {type_repr(b_dtype)}",
+        )
 
         # build the right overload on demand
         if overload.value_func is None:
@@ -6495,7 +6625,7 @@ def tile_binary_map_value_func(arg_types, arg_values):
         param_a_name, param_b_name = next(param_names), next(param_names)
         value_type = overload.value_func({param_a_name: a.dtype, param_b_name: b_dtype}, None)
 
-        if not type_is_scalar(value_type) and not type_is_vector(value_type) and not type_is_matrix(value_type):
+        if not _is_tile_map_element_type_supported(value_type):
             raise TypeError(f"Operator {op} returns unsupported type {type_repr(value_type)} for a tile element")
 
         return tile(dtype=value_type, shape=a.shape)
@@ -6538,13 +6668,13 @@ add_builtin(
     doc="""Apply a function to tile elements.
 
     This function cooperatively applies a binary function to each element of the tile using all threads in the block.
-    The second argument can be a tile (must have same dimensions as ``a``), or a non-tile constant (scalar, vector, or matrix)
-    which will be broadcast across all elements.
+    The second argument can be a tile (must have same dimensions as ``a``), or a non-tile constant (scalar, vector,
+    matrix, or Warp struct) which will be broadcast across all elements.
 
     Args:
         op: A callable function that accepts two arguments and returns one argument, all of the same type, may be a user function or builtin.
         a: The first input tile, the operator (or one of its overloads) must be able to accept the tile's dtype.
-        b: Either a tile with matching dimensions, or a scalar/vector/matrix constant.
+        b: Either a tile with matching dimensions, or a scalar/vector/matrix/Warp struct constant.
 
     Returns:
         A tile with the same dimensions as tile ``a``. Its datatype is specified by the return type of ``op``.
@@ -6576,7 +6706,7 @@ add_builtin(
 
 def tile_n_map_value_func(arg_types, arg_values):
     if arg_types is None:
-        return tile(dtype=Scalar, shape=tuple[int, ...])
+        return tile(dtype=Any, shape=tuple[int, ...])
 
     # 'a' is the first tile (required)
     a = arg_types["a"]
@@ -6610,8 +6740,10 @@ def tile_n_map_value_func(arg_types, arg_values):
             dtypes.append(arg.dtype)
         else:
             # Non-tile constant: validate it's a supported type
-            if not type_is_scalar(arg) and not type_is_vector(arg) and not type_is_matrix(arg):
-                raise TypeError(f"tile_map() argument {i + 1} must be a tile, scalar, vector, or matrix, got {arg!r}")
+            if not _is_tile_map_element_type_supported(arg):
+                raise TypeError(
+                    f"tile_map() argument {i + 1} must be a tile, scalar, vector, matrix, or Warp struct, got {arg!r}"
+                )
             dtypes.append(arg)
 
     if "op" not in arg_values:
@@ -6619,11 +6751,8 @@ def tile_n_map_value_func(arg_types, arg_values):
 
     op = arg_values["op"]
 
-    try:
-        overload = op.get_overload(dtypes, {})
-    except KeyError as exc:
-        dtype_strs = ", ".join(type_repr(dt) for dt in dtypes)
-        raise RuntimeError(f"No overload of {op} found for tile element types {dtype_strs}") from exc
+    dtype_strs = ", ".join(type_repr(dt) for dt in dtypes)
+    overload = _get_tile_map_overload(op, dtypes, f"No overload of {op} found for tile element types {dtype_strs}")
 
     # build the right overload on demand
     if overload.value_func is None:
@@ -6635,7 +6764,7 @@ def tile_n_map_value_func(arg_types, arg_values):
     arg_type_map = dict(zip(overload.input_types, dtypes, strict=True))
     value_type = overload.value_func(arg_type_map, None)
 
-    if not type_is_scalar(value_type) and not type_is_vector(value_type) and not type_is_matrix(value_type):
+    if not _is_tile_map_element_type_supported(value_type):
         raise TypeError(f"Operator {op} returns unsupported type {type_repr(value_type)} for a tile element")
 
     return tile(dtype=value_type, shape=a.shape)
@@ -6670,13 +6799,13 @@ add_builtin(
     doc="""Apply a function to tile elements.
 
     This function cooperatively applies a user-defined function to corresponding elements using all threads in the block.
-    The first argument 'a' must be a tile (determines output shape). Additional arguments can be tiles (must have same dimensions)
-    or non-tile constants (scalar, vector, or matrix) which will be broadcast across all elements.
+    The first argument 'a' must be a tile (determines output shape). Additional arguments can be tiles (must have same
+    dimensions) or non-tile constants (scalar, vector, matrix, or Warp struct) which will be broadcast across all elements.
 
     Args:
         op: A callable function that accepts N arguments and returns one value, must be a user function.
         a: The first input tile, determines the output shape.
-        args: Additional arguments: tiles with matching dimensions, or scalar/vector/matrix constants.
+        args: Additional arguments: tiles with matching dimensions, or scalar/vector/matrix/Warp struct constants.
 
     Returns:
         A tile with the same dimensions as tile ``a``. Its datatype is specified by the return type of ``op``.
@@ -12514,7 +12643,28 @@ def tile_unary_value_func(arg_types, arg_values):
     if not is_tile(t):
         raise TypeError(f"Expected tile for unary expression, got {t}")
 
+    if type_is_struct(t.dtype):
+        raise TypeError("Tile unary operators do not support Warp struct tile elements")
+
     return tile(dtype=t.dtype, shape=t.shape)
+
+
+def tile_binary_bitwise_value_func(arg_types, arg_values):
+    result = tile_binary_map_value_func(arg_types, arg_values)
+
+    if arg_types is None:
+        return result
+
+    a = arg_types["a"]
+    b = arg_types["b"]
+
+    a_dtype = a.dtype if is_tile(a) else a
+    b_dtype = b.dtype if is_tile(b) else b
+
+    if type_is_struct(a_dtype) or type_is_struct(b_dtype):
+        raise TypeError("Tile bitwise operators do not support Warp struct tile elements")
+
+    return result
 
 
 def tile_mul_value_func(arg_types, arg_values):
@@ -12734,7 +12884,7 @@ add_builtin(
 add_builtin(
     "bit_and",
     input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "b": tile(dtype=Any, shape=tuple[int, ...])},
-    value_func=tile_binary_map_value_func,
+    value_func=tile_binary_bitwise_value_func,
     # dispatch_func=tile_map_dispatch_func,
     # variadic=True,
     native_func="tile_bit_and",
@@ -12749,7 +12899,7 @@ add_builtin(
 add_builtin(
     "bit_or",
     input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "b": tile(dtype=Any, shape=tuple[int, ...])},
-    value_func=tile_binary_map_value_func,
+    value_func=tile_binary_bitwise_value_func,
     # dispatch_func=tile_map_dispatch_func,
     # variadic=True,
     native_func="tile_bit_or",
@@ -12764,7 +12914,7 @@ add_builtin(
 add_builtin(
     "bit_xor",
     input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "b": tile(dtype=Any, shape=tuple[int, ...])},
-    value_func=tile_binary_map_value_func,
+    value_func=tile_binary_bitwise_value_func,
     # dispatch_func=tile_map_dispatch_func,
     # variadic=True,
     native_func="tile_bit_xor",
@@ -12881,7 +13031,7 @@ def tile_inplace_dispatch_func(input_types: Mapping[str, type], return_type: Any
 add_builtin(
     "add_inplace",
     input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "b": tile(dtype=Any, shape=tuple[int, ...])},
-    value_type=None,
+    value_func=tile_inplace_tile_value_func,
     dispatch_func=tile_inplace_dispatch_func,
     export=False,
     hidden=True,
@@ -12893,7 +13043,7 @@ add_builtin(
 add_builtin(
     "sub_inplace",
     input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "b": tile(dtype=Any, shape=tuple[int, ...])},
-    value_type=None,
+    value_func=tile_inplace_tile_value_func,
     dispatch_func=tile_inplace_dispatch_func,
     export=False,
     hidden=True,
@@ -12905,7 +13055,7 @@ add_builtin(
 add_builtin(
     "bit_and_inplace",
     input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "b": tile(dtype=Any, shape=tuple[int, ...])},
-    value_type=None,
+    value_func=tile_inplace_tile_bitwise_value_func,
     dispatch_func=tile_inplace_dispatch_func,
     export=False,
     hidden=True,
@@ -12918,7 +13068,7 @@ add_builtin(
 add_builtin(
     "bit_or_inplace",
     input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "b": tile(dtype=Any, shape=tuple[int, ...])},
-    value_type=None,
+    value_func=tile_inplace_tile_bitwise_value_func,
     dispatch_func=tile_inplace_dispatch_func,
     export=False,
     hidden=True,
@@ -12931,7 +13081,7 @@ add_builtin(
 add_builtin(
     "bit_xor_inplace",
     input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "b": tile(dtype=Any, shape=tuple[int, ...])},
-    value_type=None,
+    value_func=tile_inplace_tile_bitwise_value_func,
     dispatch_func=tile_inplace_dispatch_func,
     export=False,
     hidden=True,

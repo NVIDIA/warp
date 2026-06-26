@@ -2677,6 +2677,46 @@ class ModuleBuilder:
 
         return False
 
+    def _collect_struct_dependencies(self, struct_type, struct_hashes):
+        struct_type = warp._src.codegen.strip_reference(struct_type)
+        if not isinstance(struct_type, warp._src.codegen.Struct):
+            return
+
+        if struct_type.hash in struct_hashes:
+            return
+
+        struct_hashes.add(struct_type.hash)
+        for var in struct_type.vars.values():
+            self._collect_struct_dependencies(var.type, struct_hashes)
+
+    def _collect_tile_helper_structs_from_type(self, var_type, struct_hashes):
+        var_type = warp._src.codegen.strip_reference(var_type)
+        if warp._src.types.is_tile(var_type) or warp._src.types.is_tile_stack(var_type):
+            self._collect_struct_dependencies(var_type.dtype, struct_hashes)
+
+    def _get_tile_helper_struct_hashes(self):
+        struct_hashes = set()
+
+        def visit_var(var):
+            self._collect_tile_helper_structs_from_type(var.type, struct_hashes)
+
+        def visit_adjoint(adj):
+            for var in adj.variables:
+                visit_var(var)
+            if adj.return_var is not None:
+                if isinstance(adj.return_var, Sequence) and not isinstance(adj.return_var, (str, bytes)):
+                    for var in adj.return_var:
+                        visit_var(var)
+                else:
+                    visit_var(adj.return_var)
+
+        for kernel in self.kernels:
+            visit_adjoint(kernel.adj)
+        for func in self.functions.keys():
+            visit_adjoint(func.adj)
+
+        return struct_hashes
+
     def build_kernel(self, kernel):
         if kernel.options.get("enable_backward", True):
             kernel.adj.used_by_backward_kernel = True
@@ -2755,11 +2795,15 @@ class ModuleBuilder:
             source += "}\n"
 
         # code-gen structs
+        tile_helper_structs = self._get_tile_helper_struct_hashes()
         visited_structs = set()
         for struct in self.structs.keys():
             # avoid emitting duplicates
             if struct.hash not in visited_structs:
-                source += warp._src.codegen.codegen_struct(struct)
+                source += warp._src.codegen.codegen_struct(
+                    struct,
+                    include_tile_helpers=struct.hash in tile_helper_structs,
+                )
                 visited_structs.add(struct.hash)
 
         # Three-pass code generation:
@@ -12905,7 +12949,7 @@ def export_stubs(file):  # pragma: no cover
         deduped = []
         for f, type_overrides in result:
             args = tuple(
-                type_overrides[k] if type_overrides and k in type_overrides else type_str(v)
+                (k, type_overrides[k] if type_overrides and k in type_overrides else type_str(v))
                 for k, v in f.input_types.items()
             )
             sig = (args, get_return_type_str(f))

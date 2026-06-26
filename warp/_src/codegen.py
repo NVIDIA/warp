@@ -3935,7 +3935,7 @@ class Adjoint:
             # Fast path: array-rooted composite-component writes.
             if adj._try_lower_array_slot_write(lhs, rhs):
                 return
-            adj._store_attribute(lhs, adj.eval(lhs.value), rhs)
+            adj._store_attribute(lhs, adj.resolve_attribute_store_aggregate(lhs.value), rhs)
 
         else:
             raise WarpCodegenError("Error, unsupported assignment statement.")
@@ -4266,6 +4266,50 @@ class Adjoint:
                 f"Can only subscript assign array, vector, quaternion, transformation, and matrix types, got {target_type}"
             )
 
+    def resolve_attribute_store_aggregate(adj, node):
+        """Resolve the aggregate that an attribute store/augmented-store writes into.
+
+        For a nested struct chain rooted at a local variable (e.g. ``out.inner`` in
+        ``out.inner.x = ...``), return a flat dotted member ``Var`` (``Var("0.inner",
+        Inner)``) instead of evaluating it to a ``Reference``. Routing struct-field
+        stores through a value-typed member Var lets them reuse the value-type
+        assignment branch in :meth:`_store_attribute`, which emits correct root-to-leaf
+        adjoints. Evaluating to a reference instead only flushes leaf-to-root, which is
+        correct for reads but silently drops the write gradient (the parent's adjoint is
+        never read back into the stored value).
+
+        Falls back to :meth:`eval` for anything that is not a pure local-struct chain
+        (array-rooted writes, vector/transform components, function-argument
+        references), preserving the existing reference-based paths.
+        """
+        member = adj._resolve_struct_member_lvalue(node)
+        if member is not None and isinstance(member.type, Struct):
+            return member
+        return adj.eval(node)
+
+    def _resolve_struct_member_lvalue(adj, node):
+        """Resolve a struct attribute chain rooted at a local variable to a flat dotted
+        ``Var``, or return ``None`` if ``node`` is not such a chain.
+
+        Each level must be a non-reference struct field so the result can be written as
+        a direct ``a.b.c`` member access. Used by :meth:`resolve_attribute_store_aggregate`.
+        """
+        if not isinstance(node, ast.Attribute):
+            return None
+
+        if isinstance(node.value, ast.Name):
+            base = adj.eval(node.value)
+        else:
+            base = adj._resolve_struct_member_lvalue(node.value)
+
+        if not isinstance(base, Var) or is_reference(base.type) or not isinstance(base.type, Struct):
+            return None
+        if node.attr not in base.type.vars:
+            return None
+
+        attr_type = base.type.vars[node.attr].type
+        return Var(f"{base.label}.{node.attr}", attr_type, prefix=base.prefix)
+
     def _store_attribute(adj, lhs, aggregate, rhs):
         """Store ``rhs`` into an attribute target using pre-evaluated ``aggregate``.
 
@@ -4304,6 +4348,23 @@ class Adjoint:
                 return adj.add_builtin_call("transform_set_translation", [aggregate, rhs])
             else:
                 return adj.add_builtin_call("transform_set_rotation", [aggregate, rhs])
+
+        elif isinstance(aggregate_type, Struct) and not is_reference(aggregate.type):
+            attr_var = aggregate_type.vars[lhs.attr]
+
+            if is_reference(rhs.type):
+                rhs = adj.add_builtin_call("copy", [rhs])
+
+            if not types_equal(strip_reference(rhs.type), attr_var.type):
+                raise WarpCodegenTypeError(
+                    f"Error, assigning to struct field `{lhs.attr}` ({attr_var.type}) with different type ({rhs.type})"
+                )
+
+            adj.add_forward(f"{aggregate.emit()}.{attr_var.label} = {rhs.emit()};")
+
+            adj.add_reverse(f"{aggregate.emit_adj()}.{attr_var.label} = {{}};")
+            if adj.is_differentiable_value_type(attr_var.type):
+                adj.add_reverse(f"{rhs.emit_adj()} += {aggregate.emit_adj()}.{attr_var.label};")
 
         else:
             attr = adj.emit_Attribute(lhs, aggregate=aggregate)
@@ -4477,7 +4538,7 @@ class Adjoint:
 
         def augassign_attribute():
             """Load current value of attribute target, apply op, store back."""
-            aggregate = adj.eval(lhs.value)
+            aggregate = adj.resolve_attribute_store_aggregate(lhs.value)
 
             with adj.suppress_read_tracking():
                 current = adj.emit_Attribute(lhs, aggregate=aggregate)
@@ -5271,7 +5332,7 @@ struct {name}
     CUDA_CALLABLE {name}& operator += (const {name}& rhs)
     {{{prefix_add_body}
         return *this;}}
-
+{tile_member_ops}
 }};
 
 static CUDA_CALLABLE void adj_{name}({reverse_args})
@@ -5281,14 +5342,89 @@ static CUDA_CALLABLE void adj_{name}({reverse_args})
 // Required when compiling adjoints.
 CUDA_CALLABLE {name} add(const {name}& a, const {name}& b)
 {{
-    return {name}();
+{add_body}
 }}
 
 CUDA_CALLABLE void adj_atomic_add({name}* p, {name} t)
 {{
 {atomic_add_body}}}
 
+{tile_helper_body}
 
+"""
+
+tile_struct_member_ops_template = """
+
+    CUDA_CALLABLE {name}& operator -= (const {name}& rhs)
+    {{{prefix_sub_body}
+        return *this;}}
+
+    CUDA_CALLABLE {name} operator - () const
+    {{
+        {name} ret = *this;
+{prefix_neg_body}
+        return ret;
+    }}
+"""
+
+tile_struct_helpers_template = """
+// Required by tile templates. The overloads are found by ADL when tile.h is
+// instantiated with a generated struct type.
+CUDA_CALLABLE void adj_add(const {name}& a, const {name}& b, {name}& adj_a, {name}& adj_b, const {name}& adj_ret)
+{{
+    adj_a += adj_ret;
+    adj_b += adj_ret;
+}}
+
+CUDA_CALLABLE {name} sub(const {name}& a, const {name}& b)
+{{
+    {name} ret = a;
+    ret -= b;
+    return ret;
+}}
+
+CUDA_CALLABLE void adj_sub(const {name}& a, const {name}& b, {name}& adj_a, {name}& adj_b, const {name}& adj_ret)
+{{
+    adj_a += adj_ret;
+    adj_b -= adj_ret;
+}}
+
+CUDA_CALLABLE {name} atomic_add({name}* p, {name} t)
+{{
+    {name} old {{}};
+{atomic_add_forward_body}
+    return old;
+}}
+
+CUDA_CALLABLE {name} tile_atomic_add_value({name}* p, {name} t)
+{{
+    return atomic_add(p, t);
+}}
+
+CUDA_CALLABLE {name} tile_adj_atomic_add_value({name}* p, {name} t)
+{{
+    // Tile adjoint struct atomics accumulate only for side effects; callers
+    // currently ignore the returned old value, so avoid a second atomic here.
+    {name} old {{}};
+    adj_atomic_add(p, t);
+    return old;
+}}
+
+#if defined(__CUDA_ARCH__)
+CUDA_CALLABLE {name} warp_shuffle_down({name} val, int offset, int mask)
+{{
+    {name} ret {{}};
+{shuffle_down_body}
+    return ret;
+}}
+
+CUDA_CALLABLE {name} warp_shuffle_xor({name} val, int lane_mask)
+{{
+    {name} ret {{}};
+{shuffle_xor_body}
+    return ret;
+}}
+#endif
 """
 
 cpu_forward_function_template = """
@@ -5571,11 +5707,33 @@ def make_full_qualified_name(func: str | Callable) -> str:
     return re.sub("[^0-9a-zA-Z_]+", "", func.replace(".", "__"))
 
 
-def codegen_struct(struct, device="cpu", indent_size=4):
+def codegen_struct(struct, device="cpu", indent_size=4, include_tile_helpers=False):
     name = struct.native_name
 
     body = []
     indent_block = " " * indent_size
+
+    def field_type_supports_tile_value_ops(field_type):
+        return type_is_value(field_type) or type_is_struct(field_type)
+
+    def field_type_supports_tile_descriptor_shuffle(field_type):
+        return is_array(field_type) and concrete_array_type(field_type) in (array, indexedarray)
+
+    # Scalar leaf types that support additive accumulation: exactly the wp.atomic_add()
+    # type set. Every field-wise operation (add, subtract, negate, reduction, atomic add)
+    # accumulates a field only if its scalar type is here; other fields (arrays, bool,
+    # narrow ints) ride along unchanged. This keeps the operations consistent with each
+    # other and with Warp, which does not accumulate integral types (see the no-op
+    # adj_atomic_add overloads in native code).
+    accumulatable_scalar_types = (int32, int64, uint32, uint64, float32, float64, float16, bfloat16)
+
+    def field_type_accumulates(field_type):
+        # Nested structs recurse through their own (already-gated) helpers.
+        if type_is_struct(field_type):
+            return True
+        if is_array(field_type):
+            return False
+        return type_scalar_type(field_type) in accumulatable_scalar_types
 
     if len(struct.vars) > 0:
         for label, var in struct.vars.items():
@@ -5589,7 +5747,12 @@ def codegen_struct(struct, device="cpu", indent_size=4):
     forward_initializers = []
     reverse_body = []
     atomic_add_body = []
+    atomic_add_forward_body = []
     prefix_add_body = []
+    prefix_sub_body = []
+    prefix_neg_body = []
+    shuffle_down_body = []
+    shuffle_xor_body = []
 
     # forward args
     for label, var in struct.vars.items():
@@ -5600,14 +5763,43 @@ def codegen_struct(struct, device="cpu", indent_size=4):
 
         namespace = "wp::" if var_ctype.startswith("wp::") or var_ctype == "bool" else ""
         atomic_add_body.append(f"{indent_block}{namespace}adj_atomic_add(&p->{label}, t.{label});\n")
+        if field_type_supports_tile_descriptor_shuffle(var.type):
+            atomic_add_forward_body.append(f"{indent_block}old.{label} = p->{label};\n")
+            shuffle_down_body.append(f"{indent_block}ret.{label} = wp::warp_shuffle_down(val.{label}, offset, mask);\n")
+            shuffle_xor_body.append(f"{indent_block}ret.{label} = wp::warp_shuffle_xor(val.{label}, lane_mask);\n")
+        elif field_type_supports_tile_value_ops(var.type):
+            if field_type_accumulates(var.type):
+                atomic_add_forward_body.append(
+                    f"{indent_block}old.{label} = {namespace}atomic_add(&p->{label}, t.{label});\n"
+                )
+            else:
+                # No CUDA atomic add for this scalar type (e.g. bool, [u]int8/16); the field
+                # rides along with the struct value but is not accumulated.
+                atomic_add_forward_body.append(f"{indent_block}old.{label} = p->{label};\n")
+            shuffle_namespace = "" if type_is_struct(var.type) else "wp::"
+            shuffle_down_body.append(
+                f"{indent_block}ret.{label} = {shuffle_namespace}warp_shuffle_down(val.{label}, offset, mask);\n"
+            )
+            shuffle_xor_body.append(
+                f"{indent_block}ret.{label} = {shuffle_namespace}warp_shuffle_xor(val.{label}, lane_mask);\n"
+            )
+        else:
+            atomic_add_forward_body.append(f"{indent_block}old.{label} = p->{label};\n")
+            shuffle_down_body.append(f"{indent_block}ret.{label} = val.{label};\n")
+            shuffle_xor_body.append(f"{indent_block}ret.{label} = val.{label};\n")
 
         prefix = f"{indent_block}," if forward_initializers else ":"
         forward_initializers.append(f"{indent_block}{prefix} {label}{{{label}}}\n")
 
-    # prefix-add operator
+    # Field-wise arithmetic. A field participates in addition, subtraction, and negation
+    # only if its scalar type supports value accumulation; other fields (arrays, bool,
+    # narrow ints) ride along unchanged, keeping +, -, reductions, and atomic add
+    # consistent rather than silently producing meaningless integer/bool arithmetic.
     for label, var in struct.vars.items():
-        if not is_array(var.type):
+        if field_type_accumulates(var.type):
             prefix_add_body.append(f"{indent_block}{label} += rhs.{label};\n")
+            prefix_sub_body.append(f"{indent_block}{label} -= rhs.{label};\n")
+            prefix_neg_body.append(f"{indent_block}ret.{label} = -ret.{label};\n")
 
     # reverse args
     for label, var in struct.vars.items():
@@ -5622,6 +5814,26 @@ def codegen_struct(struct, device="cpu", indent_size=4):
     # explicitly defaulted default constructor if no default constructor has been defined
     defaulted_constructor_def = f"{name}() = default;" if forward_args else ""
 
+    tile_member_ops = ""
+    tile_helper_body = ""
+    if include_tile_helpers:
+        tile_member_ops = tile_struct_member_ops_template.format(
+            name=name,
+            prefix_sub_body="".join(prefix_sub_body),
+            prefix_neg_body="".join(prefix_neg_body),
+        )
+        tile_helper_body = tile_struct_helpers_template.format(
+            name=name,
+            atomic_add_forward_body="".join(atomic_add_forward_body),
+            shuffle_down_body="".join(shuffle_down_body),
+            shuffle_xor_body="".join(shuffle_xor_body),
+        )
+
+    if include_tile_helpers:
+        add_body = f"    {name} ret = a;\n    ret += b;\n    return ret;"
+    else:
+        add_body = f"    return {name}();"
+
     return struct_template.format(
         name=name,
         struct_body="".join([indent_block + l for l in body]),
@@ -5631,6 +5843,9 @@ def codegen_struct(struct, device="cpu", indent_size=4):
         reverse_body="".join(reverse_body),
         prefix_add_body="".join(prefix_add_body),
         atomic_add_body="".join(atomic_add_body),
+        tile_member_ops=tile_member_ops,
+        add_body=add_body,
+        tile_helper_body=tile_helper_body,
         defaulted_constructor_def=defaulted_constructor_def,
     )
 
