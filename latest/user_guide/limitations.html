@@ -526,6 +526,13 @@ To preserve full 64-bit precision, wrap the constant in an explicit type constru
 (e.g., <code class="docutils literal notranslate"><span class="pre">wp.float64(wp.PI)</span></code> or <code class="docutils literal notranslate"><span class="pre">wp.int64(large_value)</span></code>).</p></li>
 <li><p>Python <code class="docutils literal notranslate"><span class="pre">IntFlag</span></code> values behave like raw integers in Warp kernels: bitwise negation (<code class="docutils literal notranslate"><span class="pre">~</span></code>)
 produces the integer negation, not a masked combination of flags as in standard Python <code class="docutils literal notranslate"><span class="pre">IntFlag</span></code> behavior.</p></li>
+<li><p><a class="reference internal" href="basics.html#callable-parameters"><span class="std std-ref">Function parameters</span></a> in user functions only support direct inline calls with
+user-defined <a class="reference internal" href="../api_reference/_generated/warp.func.html#warp.func" title="warp.func"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.func</span></code></a> functions and simple built-in Warp functions such as <code class="docutils literal notranslate"><span class="pre">wp.sin</span></code>,
+<code class="docutils literal notranslate"><span class="pre">wp.cos</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.sqrt</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.add</span></code>, and <code class="docutils literal notranslate"><span class="pre">wp.min</span></code>.
+Arbitrary Python callables are not supported. Some built-in Warp functions, such as <code class="docutils literal notranslate"><span class="pre">wp.printf</span></code>, cannot be used
+as <code class="docutils literal notranslate"><span class="pre">wp.Function</span></code> arguments because they need special handling during kernel compilation.
+Rebinding a function-valued local to a different function or to a non-function value is not supported.
+User functions with <code class="docutils literal notranslate"><span class="pre">wp.Function</span></code> parameters also cannot define custom gradient or replay functions.</p></li>
 </ul>
 <p>A limitation of Warp is that each dimension of the grid used to launch a kernel must be representable as a 32-bit
 signed integer. Therefore, no single dimension of a grid should exceed <span class="math notranslate nohighlight">\(2^{31}-1\)</span>.</p>

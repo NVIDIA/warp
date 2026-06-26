@@ -809,6 +809,58 @@ the function participates in a tape-recorded computation.</p>
     <span class="k">return</span> <span class="n">x</span> <span class="o">+</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
 </pre></div>
 </div>
+<section id="function-parameters">
+<span id="callable-parameters"></span><h3>Function Parameters<a class="headerlink" href="#function-parameters" title="Link to this heading">#</a></h3>
+<p>User functions can accept another user-defined Warp function or simple built-in
+Warp function by annotating the parameter as <a class="reference internal" href="../api_reference/_generated/warp.Function.html#warp.Function" title="warp.Function"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Function</span></code></a>.
+Function targets are chosen when Warp generates code, not while the kernel is
+running. Warp compiles a separate version of the user function for each distinct
+set of target functions used at a call site. This is similar to generic
+specialization: many target combinations mean more specialized versions to
+compile, including for <code class="docutils literal notranslate"><span class="pre">wp.grad()</span></code> calls. The function target is chosen where
+the user function is called and can be invoked directly inside the user function
+body:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">square</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">x</span> <span class="o">*</span> <span class="n">x</span>
+
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">cube</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">x</span> <span class="o">*</span> <span class="n">x</span> <span class="o">*</span> <span class="n">x</span>
+
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="n">f</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">Function</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">f</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">apply_kernel</span><span class="p">(</span>
+    <span class="n">values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
+    <span class="n">square_out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
+    <span class="n">cube_out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
+<span class="p">):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">square_out</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">apply</span><span class="p">(</span><span class="n">square</span><span class="p">,</span> <span class="n">values</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+    <span class="n">cube_out</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">apply</span><span class="p">(</span><span class="n">cube</span><span class="p">,</span> <span class="n">values</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>The <a class="reference internal" href="../api_reference/_generated/warp.Function.html#warp.Function" title="warp.Function"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Function</span></code></a> annotation is type-erased. It does not encode or
+validate the target function signature. The target is checked only through the
+actual calls made in the function body during code generation.</p>
+<p>Function parameters may also use defaults and keyword arguments:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">apply_default</span><span class="p">(</span><span class="n">f</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">Function</span> <span class="o">=</span> <span class="n">square</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">f</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Pass only user-defined <a class="reference internal" href="../api_reference/_generated/warp.func.html#warp.func" title="warp.func"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.func</span></code></a> functions or simple built-in
+functions such as <code class="docutils literal notranslate"><span class="pre">wp.sin</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.cos</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.sqrt</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.add</span></code>, and <code class="docutils literal notranslate"><span class="pre">wp.min</span></code>
+as function targets. See <a class="reference internal" href="limitations.html"><span class="doc">Limitations</span></a> for unsupported function targets and
+other restrictions.</p>
 <p>Tiles may also be passed to user functions. The function signature tile argument should include
 dtype and shape parameters to match the tile type intended to be used in the function. For example:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
@@ -827,6 +879,7 @@ determine the tile argument type:</p>
 <p>See <a class="reference internal" href="differentiability.html"><span class="doc">Differentiability</span></a> for details on custom gradient and replay
 functions. See <a class="reference internal" href="cpp_cuda_workflows.html"><span class="doc">C++ and CUDA Workflows</span></a> for native C++/CUDA snippets and
 other non-Python integration workflows.</p>
+</section>
 </section>
 <section id="user-structs">
 <h2>User Structs<a class="headerlink" href="#user-structs" title="Link to this heading">#</a></h2>
@@ -1015,7 +1068,10 @@ use vector types like <a class="reference internal" href="../api_reference/_gene
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#arrays">Arrays</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#user-functions">User Functions</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#user-functions">User Functions</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#function-parameters">Function Parameters</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#user-structs">User Structs</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#python-scope-vs-kernel-scope-api">Python Scope vs. Kernel Scope API</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#compilation-model">Compilation Model</a></li>
