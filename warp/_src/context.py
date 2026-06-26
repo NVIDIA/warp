@@ -12057,9 +12057,9 @@ def copy(
     Args:
         dest: Destination array, must be at least as large as source buffer
         src: Source array
-        dest_offset: Element offset in the destination array
-        src_offset: Element offset in the source array
-        count: Number of array elements to copy (will copy all elements if set to 0)
+        dest_offset: Non-negative element offset in the destination array
+        src_offset: Non-negative element offset in the source array
+        count: Number of array elements to copy (must be non-negative; copies all elements if set to 0)
         stream: The stream on which to perform the copy
 
     The stream, if specified, can be from any device.  If the stream is omitted, then Warp selects a stream based on the following rules:
@@ -12067,6 +12067,9 @@ def copy(
     (2) Otherwise, if the source array is on a CUDA device, use the current stream on the source device.
 
     If neither source nor destination are on a CUDA device, no stream is used for the copy.
+
+    The source and destination arrays must have the same element size in bytes; a copy between arrays
+    whose element sizes differ raises an error.
 
     When the source or destination is non-contiguous (e.g. a strided slice), ``dest_offset``, ``src_offset``, and
     ``count`` are only supported for one-dimensional arrays; using them with multi-dimensional non-contiguous,
@@ -12077,8 +12080,27 @@ def copy(
     if not warp._src.types.is_array(src) or not warp._src.types.is_array(dest):
         raise RuntimeError("Copy source and destination must be arrays")
 
+    # Validate the offsets and count before any pointer arithmetic or device work.
+    # operator.index() accepts Python and NumPy integers and rejects non-integers
+    # (e.g. floats), matching how launch extents are validated elsewhere.
+    try:
+        src_offset = operator.index(src_offset)
+        dest_offset = operator.index(dest_offset)
+        count = operator.index(count)
+    except TypeError as e:
+        raise RuntimeError("Copy src_offset, dest_offset, and count must be integers") from e
+
+    if src_offset < 0:
+        raise RuntimeError(f"Source offset must be non-negative, got {src_offset}")
+
+    if dest_offset < 0:
+        raise RuntimeError(f"Destination offset must be non-negative, got {dest_offset}")
+
+    if count < 0:
+        raise RuntimeError(f"Copy count must be non-negative, got {count}")
+
     # backwards compatibility, if count is zero then copy entire src array
-    if count <= 0:
+    if count == 0:
         count = src.size
 
     if count == 0:
@@ -12130,6 +12152,9 @@ def copy(
             src = tmp
 
     if src.is_contiguous and dest.is_contiguous:
+        if warp._src.types.type_size_in_bytes(src.dtype) != warp._src.types.type_size_in_bytes(dest.dtype):
+            raise RuntimeError("Incompatible array data types")
+
         bytes_to_copy = count * warp._src.types.type_size_in_bytes(src.dtype)
 
         src_size_in_bytes = src.size * warp._src.types.type_size_in_bytes(src.dtype)
@@ -12214,12 +12239,12 @@ def copy(
                 raise RuntimeError(
                     "dest_offset, src_offset, and count are only supported for 1-D non-contiguous arrays"
                 )
-            if src_offset < 0 or count < 0 or src_offset + count > src.size:
+            if src_offset + count > src.size:
                 raise RuntimeError(
                     f"Trying to copy a range of {count} element(s) from source offset ({src_offset}) "
                     f"exceeds the source size ({src.size})"
                 )
-            if dest_offset < 0 or dest_offset + count > dest.size:
+            if dest_offset + count > dest.size:
                 raise RuntimeError(
                     f"Trying to copy a range of {count} element(s) to destination offset ({dest_offset}) "
                     f"exceeds the destination size ({dest.size})"

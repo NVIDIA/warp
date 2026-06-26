@@ -434,6 +434,53 @@ def test_copy_offset_unsupported(test, device):
         wp.copy(dst_oob, src_oob, count=5)
 
 
+def test_copy_invalid_args(test, device):
+    # wp.copy must reject malformed offsets/count and incompatible element sizes
+    # before any pointer arithmetic or device work (contiguous path).
+    src = wp.array([1, 2, 3, 4], dtype=wp.int32, device=device)
+    dest = wp.zeros_like(src)
+
+    with test.assertRaisesRegex(RuntimeError, "Source offset must be non-negative"):
+        wp.copy(dest, src, src_offset=-1)
+
+    with test.assertRaisesRegex(RuntimeError, "Destination offset must be non-negative"):
+        wp.copy(dest, src, dest_offset=-1)
+
+    with test.assertRaisesRegex(RuntimeError, "count must be non-negative"):
+        wp.copy(dest, src, count=-1)
+
+    # non-integer offsets/count
+    with test.assertRaisesRegex(RuntimeError, "must be integers"):
+        wp.copy(dest, src, src_offset=1.5)
+
+    with test.assertRaisesRegex(RuntimeError, "must be integers"):
+        wp.copy(dest, src, count=2.0)
+
+    # mismatched element sizes on the contiguous path (float32 vs float64)
+    src_f32 = wp.array([1.0, 2.0, 3.0, 4.0], dtype=wp.float32, device=device)
+    dest_f64 = wp.zeros(4, dtype=wp.float64, device=device)
+    test.assertTrue(src_f32.is_contiguous)
+    test.assertTrue(dest_f64.is_contiguous)
+    with test.assertRaisesRegex(RuntimeError, "Incompatible array data types"):
+        wp.copy(dest_f64, src_f32)
+
+
+def test_copy_count_zero_copies_all(test, device):
+    # count == 0 keeps its documented "copy all" meaning now that negative counts
+    # are rejected (the historical `count <= 0` default narrowed to `count == 0`).
+    expected = np.array([1, 2, 3, 4], dtype=np.int32)
+
+    src = wp.array(expected, dtype=wp.int32, device=device)
+
+    dest = wp.zeros_like(src)
+    wp.copy(dest, src)  # omitted count
+    assert_np_equal(dest.numpy(), expected, tol=0)
+
+    dest2 = wp.zeros_like(src)
+    wp.copy(dest2, src, count=0)  # explicit zero
+    assert_np_equal(dest2.numpy(), expected, tol=0)
+
+
 devices = get_test_devices()
 
 
@@ -498,6 +545,8 @@ add_function_test(TestCopy, "test_copy_adjoint", test_copy_adjoint, devices=devi
 add_function_test(TestCopy, "test_copy_offset_adjoint", test_copy_offset_adjoint, devices=devices)
 add_function_test(TestCopy, "test_copy_offset_adjoint_asymmetric", test_copy_offset_adjoint_asymmetric, devices=devices)
 add_function_test(TestCopy, "test_copy_offset_unsupported", test_copy_offset_unsupported, devices=devices)
+add_function_test(TestCopy, "test_copy_invalid_args", test_copy_invalid_args, devices=devices)
+add_function_test(TestCopy, "test_copy_count_zero_copies_all", test_copy_count_zero_copies_all, devices=devices)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

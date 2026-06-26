@@ -84,6 +84,10 @@
   CUDA device-side assertions ([GH-1483](https://github.com/NVIDIA/warp/issues/1483)).
 - Reject non-`None` return annotations on kernels. Write results to output arguments and either omit the return annotation
   or use `-> None` ([GH-1471](https://github.com/NVIDIA/warp/issues/1471)).
+- **Breaking:** `wp.copy()` now validates its `src_offset`, `dest_offset`, and `count` arguments, raising a clear error
+  for non-integer values, negative offsets, and a negative `count` (previously a negative `count` silently copied the
+  entire array). It also rejects copies between contiguous arrays whose element sizes differ, matching the existing
+  behavior for non-contiguous arrays ([GH-1584](https://github.com/NVIDIA/warp/issues/1584)).
 
 ### Fixed
 
