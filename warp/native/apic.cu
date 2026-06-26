@@ -203,7 +203,7 @@ static CUfunction apic_get_kernel_function(
         return nullptr;
     }
 
-    auto kern_it = graph->kernels.find(key_str);
+    auto kern_it = graph->kernels.find(apic_kernel_map_key(hash_str, key_str));
     if (kern_it == graph->kernels.end()) {
         wp::set_error_string("Kernel not found: %s", key_str.c_str());
         return nullptr;

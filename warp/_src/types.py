@@ -4163,7 +4163,7 @@ class array(Array[DType, NDim]):
     def _apic_ensure_tracked(self):
         """Register this array as a memory region if an APIC capture is active."""
         apic_capture = getattr(warp._src.context.runtime, "_apic_capture", None)
-        if apic_capture is not None and self.ptr:
+        if apic_capture is not None:
             apic_capture.track_array(self)
 
     def zero_(self):
@@ -4242,6 +4242,15 @@ class array(Array[DType, NDim]):
         if self.is_contiguous:
             self.device.memtile(self.ptr, cvalue_ptr, cvalue_size, self.size)
         else:
+            # The non-contiguous host fill path (wp_array_fill_host) does not
+            # record into the APIC byte stream yet, so it would silently
+            # execute once at capture time and never replay. Surface the
+            # limitation now instead of producing wrong output at replay.
+            if self.device.is_cpu and warp._src.context.runtime._apic_capture is not None:
+                raise NotImplementedError(
+                    "APIC capture does not yet support fill_() on non-contiguous CPU arrays; "
+                    "fill the underlying contiguous array first or move the fill outside the capture."
+                )
             carr = self.__ctype__()
             carr_ptr = ctypes.pointer(carr)
 
@@ -4944,6 +4953,16 @@ class noncontiguous_array_base(Array[DType, NDim]):
                     cvalue = self.dtype._type_(value)
         except Exception as e:
             raise ValueError(f"Failed to convert the value to the array data type: {e}") from e
+
+        # The indexed/fabric host fill path (wp_array_fill_host) does not
+        # record into the APIC byte stream yet, so it would silently execute
+        # once at capture time and never replay. Surface the limitation now
+        # instead of producing wrong output at replay.
+        if self.device.is_cpu and warp._src.context.runtime._apic_capture is not None:
+            raise NotImplementedError(
+                "APIC capture does not yet support fill_() on wp.indexedarray / wp.fabricarray on CPU; "
+                "fill the underlying contiguous array first or move the fill outside the capture."
+            )
 
         cvalue_ptr = ctypes.pointer(cvalue)
         cvalue_size = ctypes.sizeof(cvalue)

@@ -1644,8 +1644,17 @@ The operations recorded on CPU now cover most of the CUDA path:
   (:func:`wp.launch() <warp.launch>`, :func:`wp.launch_tiled() <warp.launch_tiled>`,
   and the adjoint launches emitted by :class:`wp.Tape <warp.Tape>` /
   :meth:`Tape.backward() <warp.Tape.backward>`).
+- Reusable launches created with ``wp.launch(..., record_cmd=True)`` when they
+  are replayed with :meth:`Launch.launch() <warp.Launch.launch>`.
 - Memory copies (:func:`wp.copy() <warp.copy>`) and zero-initialization
-  (:meth:`array.zero_() <warp.array.zero_>`).
+  (:meth:`array.zero_() <warp.array.zero_>`), plus contiguous
+  :meth:`array.fill_() <warp.array.fill_>`.
+- Host library helpers including
+  :func:`wp.utils.array_scan() <warp.utils.array_scan>`,
+  :func:`wp.utils.radix_sort_pairs() <warp.utils.radix_sort_pairs>`,
+  :func:`wp.utils.segmented_sort_pairs() <warp.utils.segmented_sort_pairs>`,
+  :func:`wp.utils.runlength_encode() <warp.utils.runlength_encode>`, and the
+  ``warp.sparse`` BSR ``from_triplets`` / ``transpose`` topology builders.
 - Conditional graph nodes (:func:`wp.capture_if() <warp.capture_if>` and
   :func:`wp.capture_while() <warp.capture_while>`). The condition is re-evaluated
   on every replay, so a captured ``while`` loop can iterate a different number
@@ -1657,21 +1666,39 @@ kernels with scalar parameters of any size (serialized into per-launch value
 blobs, with pointer fields patched via relocation metadata at replay), and
 empty / zero-length array arguments.
 
+Memory allocations made during CPU capture, including temporary arrays borrowed
+by ``warp.fem`` internals, are retained for the lifetime of the graph and reused
+on replay. ``Device.is_capturing`` reports active CPU APIC capture, and Warp's
+internal capture pause/resume flow can temporarily suspend CPU recording for
+setup work that should not enter the replay stream.
+
 Current limitations of CPU graph capture:
 
-- :meth:`array.fill_() <warp.array.fill_>` for non-zero values is not yet
-  recorded on CPU and is silently dropped from the captured graph. Use
-  :meth:`array.zero_() <warp.array.zero_>` or a kernel launch instead.
-- :func:`wp.utils.array_scan() <warp.utils.array_scan>` is not yet recorded
-  into the CPU APIC byte stream; calling it inside a CPU :class:`ScopedCapture`
-  raises :exc:`NotImplementedError`. Run the scan before or after the captured
-  region.
-- Memsets and memcpys whose destination pointer was not previously seen by
-  Warp's tracker (for example, buffers allocated by an external solver such as
-  mujoco-warp) print ``APIC: Error - memset dst pointer not in any registered
-  region`` and are dropped from the captured graph. Routing the allocation
-  through :func:`wp.empty() <warp.empty>` / :func:`wp.zeros() <warp.zeros>`, or
-  passing the buffer through a kernel launch, ensures it is tracked.
+- :func:`wp.utils.array_scan() <warp.utils.array_scan>` records ``int32``, ``float32``,
+  ``int64``, and ``float64`` scalar and vector scans -- including positively-strided
+  (non-contiguous) 1D arrays -- into the CPU APIC byte stream. Negative strides raise
+  :exc:`NotImplementedError` inside a CPU :class:`ScopedCapture`; run them outside the
+  captured region.
+- :func:`wp.utils.runlength_encode() <warp.utils.runlength_encode>` requires an explicit
+  ``run_count`` array during CPU APIC capture; the host-return form (``run_count=None``) raises
+  :exc:`NotImplementedError`, because its capture-time host integer cannot represent the
+  replay-time result.
+- Non-contiguous :func:`wp.copy() <warp.copy>`, non-contiguous
+  :meth:`array.fill_() <warp.array.fill_>`, and fills on
+  :class:`wp.indexedarray <warp.indexedarray>` / ``wp.fabricarray`` raise
+  :exc:`NotImplementedError` inside a CPU :class:`ScopedCapture`.
+- Reusable launches with array parameters must be updated through Warp-level
+  setters such as :meth:`Launch.set_param_at_index() <warp.Launch.set_param_at_index>`.
+  Raw ctype array parameters passed through
+  :meth:`Launch.set_param_at_index_from_ctype() <warp.Launch.set_param_at_index_from_ctype>`
+  cannot be recorded because APIC needs the original :class:`warp.array`
+  object to describe replay-time pointer relocation.
+- :meth:`BsrMatrix.nnz_sync() <warp.sparse.BsrMatrix.nnz_sync>` cannot read the
+  result of a topology update recorded earlier in the same CPU capture. Read the
+  count after replay, or avoid the readback inside the captured region.
+- Recording is scoped to the capture's device: a host (CPU) helper op invoked while a CUDA
+  graph capture is active executes immediately instead of being recorded into the CUDA graph,
+  and vice versa.
 - Nested captures are rejected on both CPU and CUDA. Only one capture may be
   active at a time on a given thread.
 - Arrays used during capture must remain alive for the lifetime of the captured
@@ -1912,16 +1939,21 @@ resolved from the ``.o`` files in the companion ``_modules/`` directory by
 loading the ``warp-clang`` library at runtime and calling its ``wp_load_obj`` /
 ``wp_lookup`` entry points, then registering each pointer with the loaded graph
 via ``wp_apic_register_loaded_cpu_kernel``. The example walks every kernel
-returned by ``wp_apic_get_num_kernels`` and ``wp_apic_get_kernel_key`` and does
-this resolution once at startup. The C API surface for this lookup is:
+returned by ``wp_apic_get_num_kernels`` and does this resolution once at
+startup. Kernel metadata includes both the kernel key and module hash so
+same-key kernels from distinct ``module="unique"`` modules resolve to the
+correct object file and function pointer. The C API surface for this lookup is:
 
 .. code:: c
 
     int         wp_apic_get_num_kernels(APICGraph* graph);
     const char* wp_apic_get_kernel_key(APICGraph* graph, int index);
-    const char* wp_apic_get_kernel_forward_name(APICGraph* graph, const char* key);
-    const char* wp_apic_get_kernel_backward_name(APICGraph* graph, const char* key);
+    const char* wp_apic_get_kernel_module_hash(APICGraph* graph, int index);
+    const char* wp_apic_get_kernel_module_binary_filename(APICGraph* graph, int index);
+    const char* wp_apic_get_kernel_forward_name(APICGraph* graph, int index);
+    const char* wp_apic_get_kernel_backward_name(APICGraph* graph, int index);
     void        wp_apic_register_loaded_cpu_kernel(APICGraph* graph, const char* key,
+                                                   const char* module_hash,
                                                    void* forward_fn, void* backward_fn);
 
 Loading a CPU ``.wrp`` graph uses the pure-C++ APIC loader in the Warp native
@@ -1955,10 +1987,15 @@ options, controls, and platform-specific notes.
 
 Current limitations of API Capture:
 
-- The recorded operation set matches the CPU graph set: kernel launches,
-  :func:`wp.copy() <warp.copy>`, and :meth:`array.zero_() <warp.array.zero_>`.
-  :meth:`array.fill_() <warp.array.fill_>` is recorded on CUDA (it dispatches a
-  kernel that the CUDA driver captures) but not on CPU.
+- The recorded operation set covers kernel launches, :func:`wp.copy() <warp.copy>`,
+  :meth:`array.zero_() <warp.array.zero_>`, contiguous :meth:`array.fill_() <warp.array.fill_>`,
+  and the host library helpers (:func:`wp.utils.array_scan() <warp.utils.array_scan>`,
+  :func:`wp.utils.radix_sort_pairs() <warp.utils.radix_sort_pairs>`,
+  :func:`wp.utils.segmented_sort_pairs() <warp.utils.segmented_sort_pairs>`,
+  :func:`wp.utils.runlength_encode() <warp.utils.runlength_encode>`, and the
+  ``warp.sparse`` BSR ``from_triplets``/``transpose`` builders, including
+  topology-only builds). See the CPU graph capture
+  limitations above for the supported dtype and layout ranges.
 - Only :class:`wp.Mesh <warp.Mesh>` object handles are serialized.
   :class:`wp.Volume <warp.Volume>` and :class:`wp.Bvh <warp.Bvh>` handles are not
   yet supported.

@@ -90,6 +90,10 @@ _BSR_STATUS_SUCCESS = BSR_STATUS_SUCCESS
 _BSR_STATUS_ROW_CAPACITY_EXCEEDED = BSR_STATUS_ROW_CAPACITY_EXCEEDED
 
 
+def _mark_apic_deferred_nnz_update(bsr: BsrMatrix, apic_capture) -> None:
+    BsrMatrix.__setattr__(bsr, "_apic_deferred_nnz_capture", apic_capture)
+
+
 def _warn_masked_arg_deprecated(func_name: str):
     log_warning(
         f"The `masked` argument to {func_name}() is deprecated; pass topology='masked' instead.",
@@ -193,13 +197,32 @@ class BsrMatrix(Generic[_BlockType]):
         See also :meth:`notify_nnz_changed`.
         """
 
-        buf, event = self._nnz_transfer_if_any()
-        if buf is None:
-            buf, event = self._copy_nnz_async()
+        # A nnz readback reads the current value "now". Under a CPU APIC capture
+        # the host copy/readback would otherwise be recorded (deferred), leaving
+        # the readback buffer uninitialized, so pause recording around it so it
+        # runs live and returns the real value.
+        from warp._src.context import capture_pause, capture_resume, runtime  # noqa: PLC0415
 
-        if event is not None:
-            wp.synchronize_event(event)
-        self.nnz = int(buf.numpy()[0])
+        apic_graph = runtime._apic_graph
+        paused_graph = None
+        if apic_graph is not None and apic_graph.device.is_cpu and apic_graph.device == self.device:
+            if getattr(self, "_apic_deferred_nnz_capture", None) is apic_graph._apic_capture:
+                raise NotImplementedError(
+                    "BsrMatrix.nnz_sync() cannot read a topology update recorded during CPU APIC capture. "
+                    "Call nnz_sync() after graph replay or avoid the readback inside the capture."
+                )
+            paused_graph = capture_pause(device=self.device)
+        try:
+            buf, event = self._nnz_transfer_if_any()
+            if buf is None:
+                buf, event = self._copy_nnz_async()
+
+            if event is not None:
+                wp.synchronize_event(event)
+            self.nnz = int(buf.numpy()[0])
+        finally:
+            if paused_graph is not None:
+                capture_resume(paused_graph, device=self.device)
         return self.nnz
 
     def status_sync(self) -> int:
@@ -366,7 +389,10 @@ def _allocate_transfer_buf(device):
     if pool:
         return pool.pop()
 
-    if device.is_capturing:
+    # A CUDA captured stream cannot allocate a fresh transfer buffer mid-capture
+    # (the pooled path handles that). A CPU APIC capture allocates host memory
+    # safely, so let it fall through and complete the readback.
+    if device.is_capturing and not device.is_cpu:
         return None, None
 
     buf = wp.empty(dtype=int, shape=(1,), device="cpu", pinned=device.is_cuda)
@@ -1208,10 +1234,29 @@ def bsr_set_from_triplets(
         values_3d = _as_3d_array(values, dest.block_shape) if values is not None else None
         zero_value_mask = _zero_value_masks.get(scalar_type, 0) if prune_numerical_zeros and values is not None else 0
 
+        from warp._src.context import runtime  # noqa: PLC0415
+
+        apic_capture = runtime._apic_capture if device.is_cpu else None
+        cpu_apic_capture = apic_capture is not None and apic_capture.device.is_cpu
+
         compact_offsets = wp.empty(shape=(dest.nrow + 1,), dtype=wp.int32, device=device)
         compact_columns = wp.empty(shape=(nnz,), dtype=wp.int32, device=device)
-        summed_triplet_offsets = wp.empty(shape=(nnz,), dtype=wp.int32, device=device) if values is not None else None
-        summed_triplet_indices = wp.empty(shape=(nnz,), dtype=wp.int32, device=device) if values is not None else None
+        needs_summed_triplets = values is not None or cpu_apic_capture
+        summed_triplet_offsets = (
+            wp.empty(shape=(nnz,), dtype=wp.int32, device=device) if needs_summed_triplets else None
+        )
+        summed_triplet_indices = (
+            wp.empty(shape=(nnz,), dtype=wp.int32, device=device) if needs_summed_triplets else None
+        )
+        if cpu_apic_capture:
+            apic_capture.track_array(rows)
+            apic_capture.track_array(columns)
+            apic_capture.track_array(values)
+            apic_capture.track_array(summed_triplet_offsets)
+            apic_capture.track_array(summed_triplet_indices)
+            apic_capture.track_array(compact_offsets)
+            apic_capture.track_array(compact_columns)
+            apic_capture.track_array(count)
 
         _bsr_set_from_triplets_native(
             dest,
@@ -1299,9 +1344,36 @@ def bsr_set_from_triplets(
     scalar_type = dest.scalar_type
     zero_value_mask = _zero_value_masks.get(scalar_type, 0) if prune_numerical_zeros and values is not None else 0
 
+    apic_capture = None
+    cpu_apic_capture = False
+    if device.is_cpu:
+        from warp._src.context import runtime  # noqa: PLC0415
+
+        apic_capture = runtime._apic_capture
+        cpu_apic_capture = apic_capture is not None and apic_capture.device.is_cpu
+
     nnz_buf, nnz_event = dest._setup_nnz_transfer()
-    summed_triplet_offsets = wp.empty(shape=(nnz,), dtype=wp.int32, device=device) if values is not None else None
-    summed_triplet_indices = wp.empty(shape=(nnz,), dtype=wp.int32, device=device) if values is not None else None
+    needs_summed_triplets = values is not None or cpu_apic_capture
+    summed_triplet_offsets = wp.empty(shape=(nnz,), dtype=wp.int32, device=device) if needs_summed_triplets else None
+    summed_triplet_indices = wp.empty(shape=(nnz,), dtype=wp.int32, device=device) if needs_summed_triplets else None
+
+    if device.is_cpu:
+        # On CPU the topology build dispatches to wp_bsr_matrix_from_triplets_host,
+        # which records an APIC_OP_BSR_FROM_TRIPLETS op under capture. Track the
+        # input/output base regions first so the recorded op references real
+        # region IDs (matches the sort / runlength_encode tracking).
+        if cpu_apic_capture:
+            apic_capture.track_array(rows)
+            apic_capture.track_array(columns)
+            apic_capture.track_array(values)
+            apic_capture.track_array(summed_triplet_offsets)
+            apic_capture.track_array(summed_triplet_indices)
+            apic_capture.track_array(dest.offsets)
+            apic_capture.track_array(dest.columns)
+            apic_capture.track_array(dest.row_counts)
+            apic_capture.track_array(count)
+            apic_capture.track_array(nnz_buf)
+            _mark_apic_deferred_nnz_update(dest, apic_capture)
 
     _bsr_set_from_triplets_native(
         dest,
@@ -2513,6 +2585,18 @@ def bsr_set_transpose(
 
         dest_nnz = dest.columns.size
         block_index_map = wp.empty(shape=max(dest_nnz, 2 * nnz), dtype=int, device=src.device)
+        if dest.values.device.is_cpu:
+            apic_capture = runtime._apic_capture
+            if apic_capture is not None and apic_capture.device.is_cpu:
+                apic_capture.track_array(src.offsets)
+                if src.row_counts is not None:
+                    apic_capture.track_array(src.row_counts)
+                apic_capture.track_array(src.columns)
+                apic_capture.track_array(dest.offsets)
+                apic_capture.track_array(dest.row_counts)
+                apic_capture.track_array(dest.columns)
+                apic_capture.track_array(block_index_map)
+                apic_capture.track_array(status)
         with wp.ScopedDevice(dest.device):
             native_func(
                 src.nrow,
@@ -2574,6 +2658,24 @@ def bsr_set_transpose(
             native_func = runtime.core.wp_bsr_transpose_device
 
         block_index_map = wp.empty(shape=2 * nnz, dtype=int, device=src.device)
+
+        if dest.values.device.is_cpu:
+            # On CPU the transpose dispatches to wp_bsr_transpose_host, which
+            # records an APIC_OP_BSR_TRANSPOSE op under capture. Track the
+            # input/output base regions first so the recorded op references real
+            # region IDs.
+            apic_capture = runtime._apic_capture
+            if apic_capture is not None and apic_capture.device.is_cpu:
+                apic_capture.track_array(src.offsets)
+                if src.row_counts is not None:
+                    apic_capture.track_array(src.row_counts)
+                apic_capture.track_array(src.columns)
+                apic_capture.track_array(dest.offsets)
+                if dest.row_counts is not None:
+                    apic_capture.track_array(dest.row_counts)
+                apic_capture.track_array(dest.columns)
+                apic_capture.track_array(block_index_map)
+                _mark_apic_deferred_nnz_update(dest, apic_capture)
 
         with wp.ScopedDevice(dest.device):
             native_func(

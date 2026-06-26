@@ -178,15 +178,18 @@ def get_cuda_device_pair_with_mempool_access_support(devices=None):
     return None
 
 
-def get_test_devices_with_mempool(mode: str | None = None):
-    """Like :func:`get_test_devices`, but drops CUDA devices without memory pool support.
+def get_test_devices_with_graph_capture_allocation(mode: str | None = None):
+    """Like :func:`get_test_devices`, but drops devices that cannot allocate during graph capture.
 
-    Allocations performed inside a CUDA graph capture must use ``cudaMallocAsync``,
-    which itself requires mempool support on the device. Use this getter to gate
-    tests that allocate during capture so they skip cleanly on devices reporting
-    ``is_mempool_supported = False``. CPU devices pass through unchanged.
+    Use this getter to gate tests that allocate inside a graph capture so they skip
+    cleanly on devices without the capability. CUDA requires memory-pool support
+    (``cudaMallocAsync`` is the only capture-safe allocator); CPU/APIC capture
+    allocates through the host allocator (kept valid by APIC region retention) and is
+    always supported. See ``warp._src.context._is_graph_capture_allocation_supported``.
     """
-    return [d for d in get_test_devices(mode) if not d.is_cuda or d.is_mempool_supported]
+    from warp._src.context import _is_graph_capture_allocation_supported  # noqa: PLC0415
+
+    return [d for d in get_test_devices(mode) if _is_graph_capture_allocation_supported(d)]
 
 
 def is_cuda_graph_module_load_supported(device) -> bool:
@@ -205,16 +208,16 @@ def get_test_devices_with_cuda_graph_module_load(mode: str | None = None):
     return [d for d in get_test_devices(mode) if is_cuda_graph_module_load_supported(d)]
 
 
-def get_test_devices_with_mempool_and_cuda_graph_module_load(mode: str | None = None):
-    """Like :func:`get_test_devices_with_mempool`, but also gates CUDA graph module loading."""
-    return [d for d in get_test_devices_with_mempool(mode) if is_cuda_graph_module_load_supported(d)]
+def get_test_devices_with_graph_capture_allocation_and_cuda_graph_module_load(mode: str | None = None):
+    """Like :func:`get_test_devices_with_graph_capture_allocation`, but also gates CUDA graph module loading."""
+    return [d for d in get_test_devices_with_graph_capture_allocation(mode) if is_cuda_graph_module_load_supported(d)]
 
 
 def get_cuda_test_devices_with_mempool(mode=None):
     """Like :func:`get_cuda_test_devices`, but drops CUDA devices without memory pool support.
 
-    See :func:`get_test_devices_with_mempool` for context on why mempool support
-    is required for in-capture allocation.
+    See :func:`get_test_devices_with_graph_capture_allocation` for context on why mempool
+    support is required for in-capture allocation on CUDA.
     """
     return [d for d in get_cuda_test_devices(mode) if d.is_mempool_supported]
 
@@ -222,8 +225,8 @@ def get_cuda_test_devices_with_mempool(mode=None):
 def get_selected_cuda_test_devices_with_mempool(mode: str | None = None):
     """Like :func:`get_selected_cuda_test_devices`, but drops CUDA devices without memory pool support.
 
-    See :func:`get_test_devices_with_mempool` for context on why mempool support
-    is required for in-capture allocation.
+    See :func:`get_test_devices_with_graph_capture_allocation` for context on why mempool
+    support is required for in-capture allocation on CUDA.
     """
     return [d for d in get_selected_cuda_test_devices(mode) if d.is_mempool_supported]
 

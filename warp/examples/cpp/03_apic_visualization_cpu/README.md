@@ -111,6 +111,11 @@ wp_apic_cpu_replay_graph(graph);
 wp_apic_destroy_graph(graph);
 ```
 
+CPU replay also needs kernel function pointers from the companion `.o` files.
+The example loads each object with `warp-clang`, resolves the recorded forward
+and backward symbols, and registers them with `wp_apic_register_loaded_cpu_kernel()`
+using the recorded kernel key and module hash.
+
 ## Current Limitations
 
 - CPU replay requires `warp-clang` and the companion `wave_sim_modules/`

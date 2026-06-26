@@ -449,14 +449,26 @@ class NodePartition(SpacePartition):
 
     def node_count(self) -> int:
         """Return number of nodes referenced by this partition, including exterior halo."""
+        # When a non-negative upper bound is supplied, the partition is sized to
+        # `_max_node_count` and `_category_offsets` is filled with that value (see
+        # `_finalize_node_indices`), so the count is known on the host without a
+        # device readback. Returning it directly keeps this path graph-capture
+        # safe (the `.numpy()` below would read an as-yet-unwritten array during
+        # capture). The exact-count `< 0` path is unchanged.
+        if self._max_node_count >= 0:
+            return self._max_node_count
         return int(self._category_offsets.numpy()[NodeCategory.HALO_OTHER_SIDE + 1])
 
     def owned_node_count(self) -> int:
         """Return number of nodes in this partition, excluding exterior halo."""
+        if self._max_node_count >= 0:
+            return self._max_node_count
         return int(self._category_offsets.numpy()[NodeCategory.OWNED_FRONTIER + 1])
 
     def interior_node_count(self) -> int:
         """Return number of interior nodes in this partition."""
+        if self._max_node_count >= 0:
+            return self._max_node_count
         return int(self._category_offsets.numpy()[NodeCategory.OWNED_INTERIOR + 1])
 
     def space_node_indices(self):

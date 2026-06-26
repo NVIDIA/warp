@@ -3,10 +3,14 @@
 
 #include "warp.h"
 
+#include "apic.h"
+#include "apic_internal.h"
+#include "apic_types.h"
 #include "sparse_util.h"
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <numeric>
 #include <type_traits>
@@ -96,6 +100,148 @@ void bsr_compress_inplace_host_impl(
     }
 }
 
+// Record a host BSR-from-triplets topology build into the active APIC byte
+// stream; returns true if recorded (and therefore should NOT execute now).
+// Mirrors the sort / runlength-encode try-record helpers: under CPU graph
+// capture the host call is otherwise invisible to the byte stream, so replay
+// would leave the matrix topology frozen at the capture-time (deferred/empty)
+// triplet data.
+bool apic_capture_bsr_from_triplets(
+    int block_size,
+    int scalar_size_in_bytes,
+    int row_count,
+    int col_count,
+    int nnz,
+    const int* tpl_nnz,
+    const int* tpl_rows,
+    const int* tpl_columns,
+    const void* tpl_values,
+    uint64_t scalar_zero_mask,
+    bool masked_topology,
+    int* summed_block_offsets,
+    int* summed_block_indices,
+    int* bsr_offsets,
+    const int* bsr_row_counts,
+    int* bsr_columns,
+    int* bsr_nnz
+)
+{
+    APICState* state = wp_apic_get_recording_state();
+    if (!state)
+        return false;
+    if (nnz <= 0)
+        return false;  // empty topology: cheap and free of deferred-data hazards; execute normally
+    // Only record the recordable shape (caller-provided summed-block buffers, as
+    // wp.sparse.bsr_set_from_triplets always passes). If a caller relies on the
+    // internally-allocated scratch path, fall through to normal execution.
+    if (!tpl_rows || !tpl_columns || !summed_block_offsets || !summed_block_indices || !bsr_offsets || !bsr_columns)
+        return false;
+
+    uint64_t int_bytes = static_cast<uint64_t>(nnz) * sizeof(int32_t);
+    uint64_t rowp1_bytes = (static_cast<uint64_t>(row_count) + 1) * sizeof(int32_t);
+    uint64_t values_bytes
+        = static_cast<uint64_t>(nnz) * static_cast<uint64_t>(block_size) * static_cast<uint64_t>(scalar_size_in_bytes);
+    uint64_t bsr_columns_count = static_cast<uint64_t>(nnz);
+    if (masked_topology && bsr_offsets)
+        bsr_columns_count = std::max(bsr_columns_count, static_cast<uint64_t>(bsr_offsets[row_count]));
+    uint64_t bsr_columns_bytes = bsr_columns_count * sizeof(int32_t);
+
+    // Optional pointers: preserve APICAddress{} (region_id == -1) when null.
+    // Do NOT call the resolver with a null pointer — it would auto-register
+    // address 0 as a region, silently changing semantics.
+    APICAddress tpl_nnz_addr;
+    if (tpl_nnz)
+        tpl_nnz_addr = apic_resolve_host_ptr(state, reinterpret_cast<uint64_t>(tpl_nnz), sizeof(int32_t));
+    APICAddress tpl_rows_addr = apic_resolve_host_ptr(state, reinterpret_cast<uint64_t>(tpl_rows), int_bytes);
+    APICAddress tpl_columns_addr = apic_resolve_host_ptr(state, reinterpret_cast<uint64_t>(tpl_columns), int_bytes);
+    APICAddress tpl_values_addr;
+    if (tpl_values)
+        tpl_values_addr = apic_resolve_host_ptr(state, reinterpret_cast<uint64_t>(tpl_values), values_bytes);
+    APICAddress sbo_addr = apic_resolve_host_ptr(state, reinterpret_cast<uint64_t>(summed_block_offsets), int_bytes);
+    APICAddress sbi_addr = apic_resolve_host_ptr(state, reinterpret_cast<uint64_t>(summed_block_indices), int_bytes);
+    APICAddress bo_addr = apic_resolve_host_ptr(state, reinterpret_cast<uint64_t>(bsr_offsets), rowp1_bytes);
+    APICAddress brc_addr;
+    if (bsr_row_counts)
+        brc_addr = apic_resolve_host_ptr(
+            state, reinterpret_cast<uint64_t>(bsr_row_counts), static_cast<uint64_t>(row_count) * sizeof(int32_t)
+        );
+    APICAddress bc_addr = apic_resolve_host_ptr(state, reinterpret_cast<uint64_t>(bsr_columns), bsr_columns_bytes);
+    APICAddress bnnz_addr;
+    if (bsr_nnz)
+        bnnz_addr = apic_resolve_host_ptr(state, reinterpret_cast<uint64_t>(bsr_nnz), sizeof(int32_t));
+
+    apic_record_bsr_from_triplets(
+        state, block_size, scalar_size_in_bytes, row_count, col_count, nnz, scalar_zero_mask, masked_topology ? 1 : 0,
+        tpl_nnz_addr.region_id, tpl_nnz_addr.offset, tpl_rows_addr.region_id, tpl_rows_addr.offset,
+        tpl_columns_addr.region_id, tpl_columns_addr.offset, tpl_values_addr.region_id, tpl_values_addr.offset,
+        sbo_addr.region_id, sbo_addr.offset, sbi_addr.region_id, sbi_addr.offset, bo_addr.region_id, bo_addr.offset,
+        brc_addr.region_id, brc_addr.offset, bc_addr.region_id, bc_addr.offset, bnnz_addr.region_id, bnnz_addr.offset
+    );
+    return true;
+}
+
+// Record a host BSR-transpose into the active APIC byte stream; returns true if
+// recorded (skip execution). ``nnz`` is the upper bound passed by Python; the
+// replayed host call re-reads the exact nnz from the (replay-time) offsets.
+bool apic_capture_bsr_transpose(
+    int row_count,
+    int col_count,
+    int nnz,
+    const int* bsr_offsets,
+    const int* bsr_row_counts,
+    const int* bsr_columns,
+    int* transposed_bsr_offsets,
+    int* transposed_bsr_row_counts,
+    int* transposed_bsr_columns,
+    int* src_block_indices,
+    int* status
+)
+{
+    APICState* state = wp_apic_get_recording_state();
+    if (!state)
+        return false;
+    if (nnz <= 0)
+        return false;
+    if (!bsr_offsets || !bsr_columns || !transposed_bsr_offsets || !transposed_bsr_columns || !src_block_indices)
+        return false;
+
+    uint64_t int_bytes = static_cast<uint64_t>(nnz) * sizeof(int32_t);
+    uint64_t rowp1_bytes = (static_cast<uint64_t>(row_count) + 1) * sizeof(int32_t);
+    uint64_t colp1_bytes = (static_cast<uint64_t>(col_count) + 1) * sizeof(int32_t);
+    // transposed_bsr_offsets is an output under capture and may not be initialized yet.
+    // Replay re-reads padded capacity from the live offsets before executing.
+    uint64_t block_indices_bytes = int_bytes;
+
+    APICAddress bo_addr = apic_resolve_host_ptr(state, reinterpret_cast<uint64_t>(bsr_offsets), rowp1_bytes);
+    APICAddress brc_addr;
+    if (bsr_row_counts)
+        brc_addr = apic_resolve_host_ptr(
+            state, reinterpret_cast<uint64_t>(bsr_row_counts), static_cast<uint64_t>(row_count) * sizeof(int32_t)
+        );
+    APICAddress bc_addr = apic_resolve_host_ptr(state, reinterpret_cast<uint64_t>(bsr_columns), int_bytes);
+    APICAddress to_addr = apic_resolve_host_ptr(state, reinterpret_cast<uint64_t>(transposed_bsr_offsets), colp1_bytes);
+    APICAddress trc_addr;
+    if (transposed_bsr_row_counts)
+        trc_addr = apic_resolve_host_ptr(
+            state, reinterpret_cast<uint64_t>(transposed_bsr_row_counts),
+            static_cast<uint64_t>(col_count) * sizeof(int32_t)
+        );
+    APICAddress tc_addr
+        = apic_resolve_host_ptr(state, reinterpret_cast<uint64_t>(transposed_bsr_columns), block_indices_bytes);
+    APICAddress bi_addr
+        = apic_resolve_host_ptr(state, reinterpret_cast<uint64_t>(src_block_indices), block_indices_bytes);
+    APICAddress status_addr;
+    if (status)
+        status_addr = apic_resolve_host_ptr(state, reinterpret_cast<uint64_t>(status), sizeof(int32_t));
+
+    apic_record_bsr_transpose(
+        state, row_count, col_count, nnz, bo_addr.region_id, bo_addr.offset, brc_addr.region_id, brc_addr.offset,
+        bc_addr.region_id, bc_addr.offset, to_addr.region_id, to_addr.offset, trc_addr.region_id, trc_addr.offset,
+        tc_addr.region_id, tc_addr.offset, bi_addr.region_id, bi_addr.offset, status_addr.region_id, status_addr.offset
+    );
+    return true;
+}
+
 }  // namespace
 
 
@@ -120,6 +266,16 @@ WP_API void wp_bsr_matrix_from_triplets_host(
     void* bsr_nnz_event
 )
 {
+    // Under CPU graph capture, record the topology build (so it replays with
+    // fresh triplets) instead of executing it now on deferred/stale data.
+    // ``nnz`` here is the triplet upper bound used for buffer sizing.
+    if (apic_capture_bsr_from_triplets(
+            block_size, scalar_size_in_bytes, row_count, col_count, nnz, tpl_nnz, tpl_rows, tpl_columns, tpl_values,
+            scalar_zero_mask, masked_topology, tpl_block_offsets, tpl_block_indices, bsr_offsets, bsr_row_counts,
+            bsr_columns, bsr_nnz
+        ))
+        return;
+
     if (tpl_nnz != nullptr) {
         nnz = *tpl_nnz;
     }
@@ -251,6 +407,16 @@ WP_API void wp_bsr_transpose_host(
     int* status
 )
 {
+    // Under CPU graph capture, record the transpose (so it replays with the
+    // fresh source topology) instead of executing it now on deferred/stale
+    // offsets. ``nnz`` here is the upper bound (the exact nnz is re-read from
+    // the offsets at replay time).
+    if (apic_capture_bsr_transpose(
+            row_count, col_count, nnz, bsr_offsets, bsr_row_counts, bsr_columns, transposed_bsr_offsets,
+            transposed_bsr_row_counts, transposed_bsr_columns, block_indices, status
+        ))
+        return;
+
     const int capacity = std::min(nnz, bsr_offsets[row_count]);
     const bool padded = transposed_bsr_row_counts != nullptr;
 

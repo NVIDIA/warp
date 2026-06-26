@@ -1102,18 +1102,11 @@ bool wp_memcpy_d2d(void* context, void* dest, void* src, size_t n, void* stream)
     // make recording unconditional at capture time. For now we still execute
     // the CUDA op live under stream capture, but the record itself is API-
     // intent only and doesn't depend on the live call's result.
-    APICState* apic_state = wp_apic_get_recording_state();
-    if (apic_state) {
-        int32_t dst_region, src_region;
-        uint64_t dst_offset, src_offset;
-        bool dst_ok = apic_resolve_ptr(apic_state, (uint64_t)dest, &dst_region, &dst_offset);
-        bool src_ok = apic_resolve_ptr(apic_state, (uint64_t)src, &src_region, &src_offset);
-        if (!dst_ok)
-            fprintf(stderr, "APIC: Error - memcpy dst pointer not in any registered region\n");
-        if (!src_ok)
-            fprintf(stderr, "APIC: Error - memcpy src pointer not in any registered region\n");
-        if (dst_ok && src_ok)
-            apic_record_memcpy_d2d(apic_state, dst_region, dst_offset, src_region, src_offset, n);
+    APICState* apic_state = wp_apic_get_cuda_recording_state();
+    if (apic_state && n > 0) {
+        APICAddress dst_addr = apic_resolve_live_ptr(apic_state, (uint64_t)dest, n);
+        APICAddress src_addr = apic_resolve_live_ptr(apic_state, (uint64_t)src, n);
+        apic_record_memcpy_d2d(apic_state, dst_addr.region_id, dst_addr.offset, src_addr.region_id, src_addr.offset, n);
     }
 
     return result;
@@ -1286,14 +1279,10 @@ bool wp_memset_device(void* context, void* dest, int value, size_t n, void* stre
     // make recording unconditional at capture time. For now we still execute
     // the CUDA op live under stream capture, but the record itself is API-
     // intent only and doesn't depend on the live call's result.
-    APICState* apic_state = wp_apic_get_recording_state();
-    if (apic_state) {
-        int32_t region_id;
-        uint64_t offset;
-        if (apic_resolve_ptr(apic_state, (uint64_t)dest, &region_id, &offset))
-            apic_record_memset(apic_state, region_id, offset, n, value);
-        else
-            fprintf(stderr, "APIC: Error - memset dst pointer not in any registered region\n");
+    APICState* apic_state = wp_apic_get_cuda_recording_state();
+    if (apic_state && n > 0) {
+        APICAddress addr = apic_resolve_live_ptr(apic_state, (uint64_t)dest, n);
+        apic_record_memset(apic_state, addr.region_id, addr.offset, n, value);
     }
     return result;
 }
@@ -5506,7 +5495,7 @@ size_t wp_cuda_launch_kernel(
 
     // APIC recording: record kernel launch to byte stream if capturing
     if (apic_info) {
-        APICState* state = wp_apic_get_recording_state();
+        APICState* state = wp_apic_get_cuda_recording_state();
         if (state) {
             // Read shape and size from launch_bounds_t<N> in args[0].
             int ndim = apic_info->kernel_dim;

@@ -130,6 +130,14 @@ To get the exact count on host, you can explicitly synchronize using :meth:`BsrM
     non-zero block count. For padded matrices, this is the total row-capacity
     storage size, not necessarily the active block count.
 
+.. note::
+
+    During CPU APIC graph capture, :meth:`BsrMatrix.nnz_sync` performs its host
+    readback outside the recorded stream when the matrix topology has not been
+    changed by the capture. If the same capture has already recorded a topology
+    update for that matrix, :meth:`BsrMatrix.nnz_sync` raises
+    :exc:`NotImplementedError`; read the count after replay instead.
+
 If the number of non-zeros has been changed from outside of the :mod:`warp.sparse` builtin functions, for instance by direct modifications to the offsets array, use the :meth:`BsrMatrix.notify_nnz_changed` method to ensure consistency.
 
 Row Capacity and Padded Topology

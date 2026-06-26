@@ -4212,13 +4212,13 @@ class CudaDefaultAllocator:
         if not ptr:
             reason = ""
             if self.device.is_capturing:
-                if not self.device.is_mempool_supported:
+                if not _is_graph_capture_allocation_supported(self.device):
                     reason = (
                         ":  "
                         f"Failed to allocate memory during graph capture because memory pools are not supported "
                         f"on device '{self.device}'.  Try pre-allocating memory before capture begins."
                     )
-                elif not self.device.is_mempool_enabled:
+                elif not _is_graph_capture_allocation_enabled(self.device):
                     reason = (
                         ":  "
                         f"Failed to allocate memory during graph capture because memory pools are not enabled "
@@ -4828,15 +4828,24 @@ class Device:
 
     @property
     def is_capturing(self) -> bool:
-        """A boolean indicating whether this device's default stream is currently capturing a graph."""
+        """A boolean indicating whether this device is currently capturing a graph.
+
+        For CUDA devices this reflects CUDA stream capture; for the CPU device it reflects
+        an active APIC graph capture (which does not use a CUDA stream).
+        """
         if self.is_cuda and self.stream is not None:
             # There is no CUDA API to check if graph capture was started on a device, so we
             # can't tell if a capture was started by external code on a different stream.
             # The best we can do is check whether a graph capture was started by Warp on this
             # device and whether the current stream is capturing.
             return self.captures or self.stream.is_capturing
-        else:
-            return False
+        # CPU device: APIC graph capture does not use a CUDA stream. Reflect the active APIC
+        # recording state so is_capturing is consistent with Warp's internal capture detection
+        # (runtime._apic_capture) and capture-safe code paths that branch on is_capturing
+        # behave identically on CPU and CUDA. Match the capture's target device so a CUDA
+        # capture (e.g. a deferred one, which also sets the global runtime._apic_capture) does
+        # not make the CPU device report as capturing.
+        return runtime is not None and runtime._apic_capture is not None and runtime._apic_capture.device == self
 
     @property
     def context(self):
@@ -5647,12 +5656,14 @@ class Runtime:
             self.core.wp_apic_create_state.restype = ctypes.c_void_p
             self.core.wp_apic_destroy_state.argtypes = [ctypes.c_void_p]
             self.core.wp_apic_destroy_state.restype = None
-            self.core.wp_apic_begin_recording.argtypes = [ctypes.c_void_p]
+            self.core.wp_apic_begin_recording.argtypes = [ctypes.c_void_p, ctypes.c_int]
             self.core.wp_apic_begin_recording.restype = None
             self.core.wp_apic_end_recording.argtypes = [ctypes.c_void_p]
             self.core.wp_apic_end_recording.restype = None
             self.core.wp_apic_get_recording_state.argtypes = []
             self.core.wp_apic_get_recording_state.restype = ctypes.c_void_p
+            self.core.wp_apic_get_cuda_recording_state.argtypes = []
+            self.core.wp_apic_get_cuda_recording_state.restype = ctypes.c_void_p
             self.core.wp_apic_get_operation_count.argtypes = [ctypes.c_void_p]
             self.core.wp_apic_get_operation_count.restype = ctypes.c_uint32
             self.core.wp_apic_begin_branch.argtypes = [ctypes.c_void_p]
@@ -5687,7 +5698,8 @@ class Runtime:
             self.core.wp_cpu_launch_kernel.restype = None
             self.core.wp_apic_register_cpu_kernel.argtypes = [
                 ctypes.c_void_p,
-                ctypes.c_char_p,
+                ctypes.c_char_p,  # kernel_key
+                ctypes.c_char_p,  # module_hash (disambiguates same-key kernels)
                 ctypes.c_void_p,
                 ctypes.c_void_p,
             ]
@@ -5747,6 +5759,7 @@ class Runtime:
             self.core.wp_apic_register_loaded_cpu_kernel.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_char_p,
+                ctypes.c_char_p,
                 ctypes.c_void_p,
                 ctypes.c_void_p,
             ]
@@ -5755,9 +5768,13 @@ class Runtime:
             self.core.wp_apic_get_num_kernels.restype = ctypes.c_int
             self.core.wp_apic_get_kernel_key.argtypes = [ctypes.c_void_p, ctypes.c_int]
             self.core.wp_apic_get_kernel_key.restype = ctypes.c_char_p
-            self.core.wp_apic_get_kernel_forward_name.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+            self.core.wp_apic_get_kernel_module_hash.argtypes = [ctypes.c_void_p, ctypes.c_int]
+            self.core.wp_apic_get_kernel_module_hash.restype = ctypes.c_char_p
+            self.core.wp_apic_get_kernel_module_binary_filename.argtypes = [ctypes.c_void_p, ctypes.c_int]
+            self.core.wp_apic_get_kernel_module_binary_filename.restype = ctypes.c_char_p
+            self.core.wp_apic_get_kernel_forward_name.argtypes = [ctypes.c_void_p, ctypes.c_int]
             self.core.wp_apic_get_kernel_forward_name.restype = ctypes.c_char_p
-            self.core.wp_apic_get_kernel_backward_name.argtypes = [ctypes.c_void_p, ctypes.c_char_p]
+            self.core.wp_apic_get_kernel_backward_name.argtypes = [ctypes.c_void_p, ctypes.c_int]
             self.core.wp_apic_get_kernel_backward_name.restype = ctypes.c_char_p
             self.core.wp_apic_set_param.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_void_p, ctypes.c_size_t]
             self.core.wp_apic_set_param.restype = ctypes.c_bool
@@ -7761,6 +7778,34 @@ def unmap_cuda_device(alias: str) -> None:
     runtime.unmap_cuda_device(alias)
 
 
+def _is_graph_capture_allocation_supported(device: DeviceLike) -> bool:
+    """Whether ``device`` can allocate memory during a graph capture.
+
+    This is the capability the capture / allocation code paths actually need, kept
+    separate from the public memory-pool API. CUDA requires a memory pool because
+    ``cudaMalloc`` is not capture-safe, so the answer derives from mempool support.
+    CPU/APIC capture allocates through the host allocator and stays valid via APIC
+    region tracking + retention, so allocation during capture is always supported.
+    """
+    device = runtime.get_device(device)
+    if device.is_cpu:
+        return True
+    return device.is_mempool_supported
+
+
+def _is_graph_capture_allocation_enabled(device: DeviceLike) -> bool:
+    """Whether allocation during a graph capture is currently enabled on ``device``.
+
+    CUDA derives this from whether its memory pool is enabled (the pool allocator must
+    be active for ``cudaMallocAsync`` during capture); CPU is always enabled because
+    host allocation needs no pool.
+    """
+    device = runtime.get_device(device)
+    if device.is_cpu:
+        return True
+    return device.is_mempool_enabled
+
+
 def is_mempool_supported(device: DeviceLike) -> bool:
     """Check if CUDA memory pool allocators are available on the device.
 
@@ -8829,7 +8874,7 @@ def empty(
 
     # During APIC capture, register the region immediately so that subsequent
     # operations (zero_(), fill_(), copy()) can be recorded in the byte stream.
-    if runtime._apic_capture is not None and arr.ptr:
+    if runtime._apic_capture is not None:
         runtime._apic_capture.track_array(arr)
 
     return arr
@@ -9570,6 +9615,8 @@ class Launch:
         max_blocks: int = 0,
         block_dim: int = 256,
         adjoint: bool = False,
+        fwd_args: list[Any] | None = None,
+        adj_args: list[Any] | None = None,
     ):
         # retain the module executable so it doesn't get unloaded
         self.module_exec = kernel.module.load(device, block_dim)
@@ -9644,6 +9691,15 @@ class Launch:
         self.grid_stride: bool = kernel.grid_stride
         """Whether the kernel uses a grid-stride loop (vs the lean 3D launch). Selects the grid shape."""
 
+        # Original (unpacked) kernel arguments, retained so that replaying this
+        # launch under an active APIC CPU capture can record an
+        # APIC_OP_KERNEL_LAUNCH op (build_launch_info needs the warp.array
+        # objects to emit data-pointer relocations). None when the launch was
+        # built without explicit args (e.g. the default-params path); such a
+        # launch falls back to direct execution and is not APIC-recordable.
+        self.fwd_args = fwd_args
+        self.adj_args = adj_args
+
     def set_dim(self, dim: int | list[int] | tuple[int, ...]):
         """Set the launch dimensions.
 
@@ -9708,6 +9764,16 @@ class Launch:
         if self.params_addr:
             self.params_addr[params_index] = ctypes.c_void_p(ctypes.addressof(carg))
 
+        # Keep the retained original args in sync with the packed params. Under an
+        # APIC capture, build_launch_info derives data-pointer relocations from the
+        # unpacked fwd_args/adj_args (warp.array objects), so leaving them stale
+        # would replay the original array and silently ignore this update.
+        if adjoint:
+            if self.adj_args is not None:
+                self.adj_args[index] = value
+        elif self.fwd_args is not None:
+            self.fwd_args[index] = value
+
     def set_param_at_index_from_ctype(self, index: int, value: ctypes.Structure | int | float, adjoint: bool = False):
         """Set a kernel parameter at an index without any type conversion.
 
@@ -9715,6 +9781,13 @@ class Launch:
             index: The index of the param to set.
             value: The value to set the param to.
             adjoint: If ``True``, target the adjoint half of the param packet.
+
+        Note:
+            This method does not perform warp-level type conversion, so it should not be
+            used on array-typed parameters during CPU APIC capture. APIC relocation
+            metadata requires the original ``warp.array`` objects stored in ``fwd_args``
+            to track region IDs; passing a raw ctype struct bypasses that. Use
+            ``set_param_at_index()`` instead when a CPU APIC capture is active.
         """
         if adjoint:
             params_index = index + len(self.kernel.adj.args) + 1
@@ -9731,6 +9804,13 @@ class Launch:
 
         else:
             self.params[params_index].__init__(value)
+
+        # Keep fwd_args in sync so _apic_record_cpu() does not see a stale warp
+        # array from a prior set_param_at_index() call. For non-array parameters
+        # this is a no-op with respect to APIC (the relocation walker ignores
+        # original_value for scalars and structs that contain no array fields).
+        if self.fwd_args is not None:
+            self.fwd_args[index] = value
 
     def set_param_by_name(self, name: str, value: Any, adjoint: bool = False):
         """Set a kernel parameter by argument name.
@@ -9777,6 +9857,48 @@ class Launch:
         for i, v in enumerate(values):
             self.set_param_at_index_from_ctype(i, v)
 
+    def _apic_record_cpu(self) -> None:
+        """Record this launch as an APIC_OP_KERNEL_LAUNCH during a CPU capture.
+
+        Mirrors the recording branch of ``wp.launch`` for CPU: builds the
+        per-launch ``APICLaunchInfo`` from the current (possibly
+        ``set_param_at_index``-updated) ``params`` plus the retained
+        ``fwd_args`` and routes through ``wp_cpu_launch_kernel`` so the launch
+        enters the byte stream and replays. Calling the kernel hook directly
+        (``invoke``) is invisible to the byte stream and would be dropped on
+        replay.
+        """
+        apic_capture = runtime._apic_capture
+        if runtime._apic_graph is not None:
+            runtime._apic_graph._retain_module_exec(self.module_exec)
+        args_struct, adj_args_struct = _build_cpu_args_structs(self.kernel, self.hooks, self.params, self.adjoint)
+        apic_info = apic_capture.build_launch_info(
+            self.kernel,
+            self.module_exec,
+            self.hooks,
+            self.params,
+            self.fwd_args,
+            self.adjoint,
+            adj_args=self.adj_args if self.adjoint else None,
+        )
+        func = self.hooks.backward if self.adjoint else self.hooks.forward
+        key_str = self.kernel.key if isinstance(self.kernel.key, str) else self.kernel.key.decode("utf-8")
+        module_hash_str = apic_capture._hash_to_str(self.module_exec.module_hash)
+        runtime.core.wp_apic_register_cpu_kernel(
+            apic_capture.apic_state,
+            key_str.encode("utf-8"),
+            module_hash_str.encode("utf-8"),
+            ctypes.cast(self.hooks.forward, ctypes.c_void_p) if self.hooks.forward else None,
+            ctypes.cast(self.hooks.backward, ctypes.c_void_p) if self.hooks.backward else None,
+        )
+        runtime.core.wp_cpu_launch_kernel(
+            ctypes.cast(func, ctypes.c_void_p),
+            ctypes.byref(self.bounds),
+            ctypes.byref(args_struct) if args_struct is not None else None,
+            ctypes.byref(adj_args_struct) if adj_args_struct is not None else None,
+            ctypes.byref(apic_info),
+        )
+
     def launch(self, stream: Stream | None = None) -> None:
         """Launch the kernel.
 
@@ -9784,7 +9906,20 @@ class Launch:
             stream: The stream to launch on.
         """
         if self.device.is_cpu:
-            invoke(self.kernel, self.hooks, self.params, self.adjoint)
+            if runtime._apic_capture is not None and runtime._apic_capture.device.is_cpu:
+                # Under an active APIC CPU capture, record the launch so it
+                # replays from the byte stream. fwd_args is required to emit
+                # data-pointer relocations; raise rather than silently skipping
+                # the record and falling through to a non-captured invoke().
+                if self.fwd_args is None:
+                    raise RuntimeError(
+                        "Cannot record kernel launch under CPU APIC capture: "
+                        "retained argument list is unavailable. "
+                        "Use wp.launch() to create a capturable launch command."
+                    )
+                self._apic_record_cpu()
+            else:
+                invoke(self.kernel, self.hooks, self.params, self.adjoint)
         else:
             if stream is None:
                 stream = self.device.stream
@@ -10163,6 +10298,8 @@ def launch(
                     device=device,
                     block_dim=block_dim,
                     adjoint=adjoint,
+                    fwd_args=fwd_args,
+                    adj_args=adj_args,
                 )
                 return launch
 
@@ -10188,9 +10325,11 @@ def launch(
                 func = hooks.backward if adjoint else hooks.forward
                 # Register kernel function pointer for byte-stream replay
                 key_str = kernel.key if isinstance(kernel.key, str) else kernel.key.decode("utf-8")
+                module_hash_str = apic_capture._hash_to_str(module_exec.module_hash)
                 runtime.core.wp_apic_register_cpu_kernel(
                     apic_capture.apic_state,
                     key_str.encode("utf-8"),
+                    module_hash_str.encode("utf-8"),
                     ctypes.cast(hooks.forward, ctypes.c_void_p) if hooks.forward else None,
                     ctypes.cast(hooks.backward, ctypes.c_void_p) if hooks.backward else None,
                 )
@@ -11378,6 +11517,20 @@ def is_conditional_graph_supported() -> bool:
 
 
 def capture_pause(device: DeviceLike = None, stream: Stream | None = None) -> Graph:
+    # ---- CPU APIC capture path ----
+    # A CPU APIC capture has no CUDA stream to pause; suspend byte-stream
+    # recording instead so host operations performed while paused (e.g. creating
+    # cached FEM quadrature arrays) are not recorded into the graph. Resume
+    # continues appending to the same stream.
+    if runtime._apic_graph is not None and runtime._apic_graph.device.is_cpu:
+        graph = runtime._apic_graph
+        apic_capture = graph._apic_capture
+        if apic_capture is not None:
+            apic_capture.end_recording()
+        runtime._apic_capture = None
+        runtime._apic_graph = None
+        return graph
+
     if stream is not None:
         device = stream.device
     else:
@@ -11404,6 +11557,13 @@ def capture_pause(device: DeviceLike = None, stream: Stream | None = None) -> Gr
 
 
 def capture_resume(graph: Graph, device: DeviceLike = None, stream: Stream | None = None):
+    # ---- CPU APIC capture path ---- (mirror of capture_pause)
+    if graph is not None and graph.device.is_cpu and graph._apic_capture is not None:
+        runtime._apic_capture = graph._apic_capture
+        runtime._apic_graph = graph
+        graph._apic_capture.begin_recording()
+        return
+
     if stream is not None:
         device = stream.device
     else:
@@ -11899,10 +12059,10 @@ def capture_save(graph: Graph, path: str, inputs: dict | None = None, outputs: d
         )
 
     # Register kernel metadata
-    for kernel_key, info in apic_capture.collected_kernels.items():
+    for info in apic_capture.collected_kernels.values():
         runtime.core.wp_apic_register_kernel(
             state,
-            _enc(kernel_key),
+            _enc(info["kernel_key"]),
             _enc(info["module_hash"]),
             _enc(info["forward_name"]),
             _enc(info["backward_name"]),
@@ -12046,7 +12206,7 @@ def _apic_load_cpu_modules(native_graph, wrp_path: str) -> list[str]:
     modules_dir = base_name + "_modules"
 
     # Load all .o modules from the modules directory
-    loaded_handles = {}  # module_hash -> handle string
+    loaded_handles = {}  # binary filename -> handle string
     if os.path.isdir(modules_dir):
         for filename in os.listdir(modules_dir):
             if filename.endswith(".o"):
@@ -12076,16 +12236,27 @@ def _apic_load_cpu_modules(native_graph, wrp_path: str) -> list[str]:
         kernel_key = runtime.core.wp_apic_get_kernel_key(native_graph, i)
         if not kernel_key:
             continue
-        forward_name = runtime.core.wp_apic_get_kernel_forward_name(native_graph, kernel_key)
-        backward_name = runtime.core.wp_apic_get_kernel_backward_name(native_graph, kernel_key)
+        module_hash = runtime.core.wp_apic_get_kernel_module_hash(native_graph, i)
+        module_binary_filename = runtime.core.wp_apic_get_kernel_module_binary_filename(native_graph, i)
+        forward_name = runtime.core.wp_apic_get_kernel_forward_name(native_graph, i)
+        backward_name = runtime.core.wp_apic_get_kernel_backward_name(native_graph, i)
 
         if not forward_name:
             continue
 
-        # Try to resolve the function pointer from any loaded module
+        # Prefer the object file recorded for this kernel's module. Fall back
+        # to scanning all handles for compatibility with older metadata.
+        handles = None
+        if module_binary_filename:
+            handle = loaded_handles.get(module_binary_filename.decode("utf-8"))
+            if handle:
+                handles = (handle,)
+        if handles is None:
+            handles = loaded_handles.values()
+
         forward_fn = 0
         backward_fn = 0
-        for handle in loaded_handles.values():
+        for handle in handles:
             fwd = runtime.llvm.wp_lookup(handle.encode("utf-8"), forward_name)
             if fwd:
                 forward_fn = fwd
@@ -12097,6 +12268,7 @@ def _apic_load_cpu_modules(native_graph, wrp_path: str) -> list[str]:
             runtime.core.wp_apic_register_loaded_cpu_kernel(
                 native_graph,
                 kernel_key,
+                module_hash,
                 ctypes.c_void_p(forward_fn),
                 ctypes.c_void_p(backward_fn) if backward_fn else None,
             )
@@ -12349,6 +12521,16 @@ def copy(
                 )
                 stream.wait_stream(dest.device.stream)
         else:
+            # The non-contiguous host copy path (wp_array_copy_host) does not
+            # record into the APIC byte stream yet, so it would silently
+            # execute once at capture time and never replay. Surface the
+            # limitation now instead of producing wrong output at replay.
+            if runtime._apic_capture is not None:
+                raise NotImplementedError(
+                    "APIC capture does not yet support wp.copy() between non-contiguous CPU arrays "
+                    "(strided / indexed / fabric); copy the underlying contiguous arrays first or "
+                    "move the copy outside the capture."
+                )
             result = runtime.core.wp_array_copy_host(dst_ptr, src_ptr, dst_type, src_type, src_elem_size)
 
         if not result:

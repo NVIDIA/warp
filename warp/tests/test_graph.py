@@ -23,7 +23,7 @@ from warp.tests.unittest_utils import (
     get_selected_cuda_test_devices_with_mempool,
     get_test_devices,
     get_test_devices_with_cuda_graph_module_load,
-    get_test_devices_with_mempool_and_cuda_graph_module_load,
+    get_test_devices_with_graph_capture_allocation_and_cuda_graph_module_load,
 )
 
 
@@ -190,6 +190,105 @@ def test_graph_memset(test, device):
     np.testing.assert_allclose(arr.numpy(), np.ones(n))
     wp.capture_launch(capture.graph)
     np.testing.assert_allclose(arr.numpy(), np.zeros(n))
+
+
+def test_graph_fill_replay(test, device):
+    # Mutate the array between launches so the only way it ends up at
+    # fill_value is if the captured fill_() re-executes on every replay.
+    n = 8
+    fill_value = 42
+    arr = wp.zeros(n, dtype=wp.int32, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+        arr.fill_(fill_value)
+
+    expected = np.full(n, fill_value, dtype=np.int32)
+
+    arr.zero_()
+    wp.capture_launch(capture.graph)
+    np.testing.assert_array_equal(arr.numpy(), expected)
+
+    arr.zero_()
+    wp.capture_launch(capture.graph)
+    np.testing.assert_array_equal(arr.numpy(), expected)
+
+
+def test_graph_fill_noncontiguous_cpu_rejected(test, device):
+    # Non-contiguous arr.fill_() during CPU APIC capture has no recording
+    # path yet. Surface this as a clear NotImplementedError so it does not
+    # silently produce wrong replay output (the user-visible symptom that
+    # motivated wp_memtile_host recording in the first place).
+    if not device.is_cpu:
+        test.skipTest("CPU-only: CUDA fills go through wp_array_fill_device")
+    arr = wp.zeros((4, 4), dtype=wp.int32, device=device)
+    sliced = arr[:, 0]  # strided view; not contiguous
+    assert not sliced.is_contiguous
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, force_module_load=False):
+        with test.assertRaises(NotImplementedError):
+            sliced.fill_(42)
+
+
+def test_graph_fill_indexed_cpu_rejected(test, device):
+    # Indexedarray.fill_() during CPU APIC capture has no recording path yet.
+    if not device.is_cpu:
+        test.skipTest("CPU-only: CUDA indexed fills go through wp_array_fill_device")
+    arr = wp.zeros(8, dtype=wp.int32, device=device)
+    idx = wp.array([0, 2, 4, 6], dtype=wp.int32, device=device)
+    indexed = wp.indexedarray(arr, [idx])
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, force_module_load=False):
+        with test.assertRaises(NotImplementedError):
+            indexed.fill_(42)
+
+
+def test_graph_copy_noncontiguous_cpu_rejected(test, device):
+    # Non-contiguous wp.copy() during CPU APIC capture has no recording path
+    # yet. Surface this as a clear NotImplementedError so it does not
+    # silently produce wrong replay output.
+    if not device.is_cpu:
+        test.skipTest("CPU-only: CUDA copies go through wp_array_copy_device")
+    src = wp.array(np.arange(16, dtype=np.int32).reshape(4, 4), device=device)
+    dst = wp.zeros((4, 4), dtype=wp.int32, device=device)
+    src_col = src[:, 0]  # strided view
+    dst_col = dst[:, 0]
+    assert not src_col.is_contiguous
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, force_module_load=False):
+        with test.assertRaises(NotImplementedError):
+            wp.copy(dst_col, src_col)
+
+
+def test_graph_fill_drives_capture_while(test, device):
+    # End-to-end pattern from mujoco_warp's solver: fill_ initializes a
+    # capture_while counter at the top of the graph. Each replay must reset
+    # the counter so the body runs the expected number of iterations.
+    counter = wp.empty(1, dtype=wp.int32, device=device)
+    out = wp.zeros(1, dtype=wp.int32, device=device)
+
+    @wp.kernel
+    def decrement_and_count(c: wp.array(dtype=wp.int32), o: wp.array(dtype=wp.int32)):
+        wp.atomic_sub(c, 0, 1)
+        wp.atomic_add(o, 0, 1)
+
+    def body():
+        wp.launch(decrement_and_count, dim=1, inputs=[counter, out], device=device)
+
+    wp.load_module(device=device)
+    fill_value = 3
+    with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+        counter.fill_(fill_value)
+        wp.capture_while(counter, while_body=body)
+
+    K = 4
+    for _ in range(K):
+        wp.capture_launch(capture.graph)
+
+    np.testing.assert_array_equal(out.numpy(), np.array([fill_value * K], dtype=np.int32))
 
 
 def test_graph_launch_array_access_mode_checked_cuda_capture(test, device):
@@ -1265,7 +1364,9 @@ def test_cuda_graph_topo_alloc_free_serializes_dependent_streams_only(test, devi
 
 devices = get_test_devices()
 devices_with_cuda_graph_module_load = get_test_devices_with_cuda_graph_module_load()
-devices_with_mempool_and_cuda_graph_module_load = get_test_devices_with_mempool_and_cuda_graph_module_load()
+devices_with_graph_capture_allocation_and_cuda_graph_module_load = (
+    get_test_devices_with_graph_capture_allocation_and_cuda_graph_module_load()
+)
 cuda_devices_with_cuda_graph_module_load = [device for device in devices_with_cuda_graph_module_load if device.is_cuda]
 
 add_function_test(
@@ -1288,6 +1389,31 @@ add_function_test(
 )
 add_function_test(TestGraph, "test_graph_memcpy", test_graph_memcpy, devices=devices)
 add_function_test(TestGraph, "test_graph_memset", test_graph_memset, devices=devices)
+add_function_test(TestGraph, "test_graph_fill_replay", test_graph_fill_replay, devices=devices)
+add_function_test(
+    TestGraph,
+    "test_graph_fill_noncontiguous_cpu_rejected",
+    test_graph_fill_noncontiguous_cpu_rejected,
+    devices=devices,
+)
+add_function_test(
+    TestGraph,
+    "test_graph_fill_indexed_cpu_rejected",
+    test_graph_fill_indexed_cpu_rejected,
+    devices=devices,
+)
+add_function_test(
+    TestGraph,
+    "test_graph_copy_noncontiguous_cpu_rejected",
+    test_graph_copy_noncontiguous_cpu_rejected,
+    devices=devices,
+)
+add_function_test(
+    TestGraph,
+    "test_graph_fill_drives_capture_while",
+    test_graph_fill_drives_capture_while,
+    devices=devices_with_cuda_graph_module_load,
+)
 add_function_test(
     TestGraph,
     "test_graph_launch_array_access_mode_checked_cuda_capture",
@@ -1308,7 +1434,7 @@ add_function_test(
     TestGraph,
     "test_graph_alloc",
     test_graph_alloc,
-    devices=devices_with_mempool_and_cuda_graph_module_load,
+    devices=devices_with_graph_capture_allocation_and_cuda_graph_module_load,
 )
 
 # CUDA-only tests

@@ -609,9 +609,12 @@ class TemporaryStore:
 
         from warp._src.context import runtime  # noqa: PLC0415
 
-        if runtime.tape is not None:
-            # Prevent early release if a tape is being captured
-            # Rely on usual garbage collection instead
+        if runtime.tape is not None or runtime._apic_capture is not None:
+            # Prevent early release while a wp.Tape or an APIC graph capture is
+            # recording: the captured byte stream references the buffer by
+            # pointer, so it must stay alive (and unrecycled) until the graph is
+            # destroyed. Rely on garbage collection plus the capture's _regions
+            # retention instead.
             return
 
         temporary = temporary_ref()
@@ -654,10 +657,19 @@ def borrow_temporary(
         device: device on which the memory should be allocated; if ``None``, the current device will be used.
     """
 
+    from warp._src.context import runtime  # noqa: PLC0415
+
     if temporary_store is None:
         temporary_store = TemporaryStore._default_store
 
-    if temporary_store is None:
+    # During APIC graph capture, bypass the recycling pool. The captured byte
+    # stream references buffers by pointer, so a borrowed temporary must not be
+    # handed back to a later borrow. A non-pool array -- its own allocator
+    # deleter, never entered into Pool._allocs -- is never re-issued; track_array()
+    # retains it via the capture's _regions for the graph's lifetime, and
+    # release()/detach() are suppressed while a capture is active (see
+    # _release_temporary).
+    if temporary_store is None or runtime._apic_capture is not None:
         return TemporaryStore.add_temporary_convenience_methods(
             Temporary(shape=shape, dtype=dtype, pinned=pinned, device=device, requires_grad=requires_grad)
         )

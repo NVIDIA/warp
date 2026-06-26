@@ -6,16 +6,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // =============================================================================
 // APIC Format Constants
 // =============================================================================
 
-#define APIC_FORMAT_VERSION 11
-#define APIC_MIN_SUPPORTED_FORMAT_VERSION 11
+#define APIC_FORMAT_VERSION 13
+#define APIC_MIN_SUPPORTED_FORMAT_VERSION 13
 #define APIC_MAGIC "WRP1"
 #define APIC_MAGIC_VALUE 0x31505257  // "WRP1" as little-endian uint32
 
@@ -39,6 +35,23 @@ enum APICOpType : uint32_t {
     APIC_OP_ALLOC = 6,  // In-graph allocation
     APIC_OP_IF = 7,  // wp.capture_if
     APIC_OP_WHILE = 8,  // wp.capture_while
+    APIC_OP_SCAN = 9,  // wp.utils.array_scan
+    APIC_OP_MEMTILE = 10,  // wp_memtile_host (multi-byte arr.fill_)
+    APIC_OP_SEGMENTED_SORT = 11,  // wp.utils.segmented_sort_pairs
+    APIC_OP_RADIX_SORT = 12,  // wp.utils.radix_sort_pairs
+    APIC_OP_RUNLENGTH_ENCODE = 13,  // wp.utils.runlength_encode
+    APIC_OP_BSR_FROM_TRIPLETS = 14,  // wp_bsr_matrix_from_triplets_host
+    APIC_OP_BSR_TRANSPOSE = 15,  // wp_bsr_transpose_host
+};
+
+// Scalar element types
+enum APICType : uint8_t {
+    APIC_TYPE_INT32 = 1,
+    APIC_TYPE_UINT32 = 2,
+    APIC_TYPE_INT64 = 3,
+    APIC_TYPE_UINT64 = 4,
+    APIC_TYPE_FLOAT32 = 5,
+    APIC_TYPE_FLOAT64 = 6,
 };
 
 // Per-value-blob relocation kinds. A relocation patches one 8-byte slot
@@ -251,6 +264,20 @@ struct APICMemsetRecord {
     uint64_t size;
 };  // 32 bytes
 
+// Memtile fill (variable: trailing inline value blob of srcsize bytes).
+// Records a contiguous wp_memtile_host call that writes ``count`` copies of
+// the ``srcsize``-byte value into the destination region starting at
+// ``offset``. Used by ``arr.fill_(value)`` for multi-byte element types,
+// which wp_memset cannot express because memset only repeats a single byte.
+struct APICMemtileRecord {
+    APICOpHeader header;  // op_type = APIC_OP_MEMTILE
+    int32_t region_id;
+    uint32_t srcsize;  // bytes per element
+    uint64_t offset;
+    uint64_t count;  // number of elements
+    // followed by srcsize bytes of inline value data
+};  // 32 bytes fixed
+
 // In-graph allocation (fixed size)
 struct APICAllocRecord {
     APICOpHeader header;  // op_type = APIC_OP_ALLOC
@@ -258,6 +285,157 @@ struct APICAllocRecord {
     uint32_t _pad;
     uint64_t size;
 };  // 24 bytes
+
+// Scan op (fixed size). Records a wp.utils.array_scan() call so replay
+// recomputes from the current input region instead of returning the
+// capture-time output. ``dtype`` selects the scalar host entry point.
+struct APICScanRecord {
+    APICOpHeader header;  // op_type = APIC_OP_SCAN
+    int32_t dst_region_id;
+    int32_t src_region_id;
+    uint64_t dst_offset;
+    uint64_t src_offset;
+    uint32_t length;  // element count
+    int32_t in_stride;
+    int32_t out_stride;
+    int32_t type_len;
+    uint8_t dtype;  // APICType
+    uint8_t inclusive;  // 1 = inclusive, 0 = exclusive
+    uint8_t _pad[2];
+};
+
+// Segmented-sort op (fixed size). Records a wp.utils.segmented_sort_pairs()
+// call so replay re-sorts the current (replay-time) keys/values instead of
+// leaving them in capture-time order. On CPU this op exists because the sort
+// dispatches to a host function (wp_segmented_sort_pairs_*_host) that, unlike a
+// kernel launch, is otherwise invisible to the byte stream. ``dtype`` is the
+// key dtype (APICType: INT32 or FLOAT32); values are always int32. The
+// keys/values buffers must hold 2*count elements (sort scratch).
+struct APICSegmentedSortRecord {
+    APICOpHeader header;  // op_type = APIC_OP_SEGMENTED_SORT
+    int32_t keys_region_id;
+    int32_t values_region_id;
+    int32_t segstart_region_id;
+    int32_t segend_region_id;
+    uint64_t keys_offset;
+    uint64_t values_offset;
+    uint64_t segstart_offset;
+    uint64_t segend_offset;
+    uint32_t count;  // n (number of elements to sort)
+    uint32_t num_segments;
+    uint8_t dtype;  // APICType (key dtype)
+    uint8_t _pad[3];
+};
+
+// Radix-sort op (fixed size). Records a wp.utils.radix_sort_pairs() call (the
+// non-segmented host sort). Same rationale as APICSegmentedSortRecord: on CPU
+// the sort dispatches to a host function invisible to the byte stream.
+// ``dtype`` is the key APICType and ``value_size`` records whether each
+// value element is 4 or 8 bytes. keys/values buffers hold 2*count elements
+// (sort scratch).
+struct APICRadixSortRecord {
+    APICOpHeader header;  // op_type = APIC_OP_RADIX_SORT
+    int32_t keys_region_id;
+    int32_t values_region_id;
+    uint64_t keys_offset;
+    uint64_t values_offset;
+    uint32_t count;
+    int32_t begin_bit;
+    int32_t end_bit;
+    int32_t value_size;
+    uint8_t dtype;  // APICType
+    uint8_t _pad[3];
+};
+
+// Run-length-encode op (fixed size). Records a wp.utils.runlength_encode() call
+// (the int32 host path). Same rationale as the sorts: on CPU it dispatches to a
+// host function invisible to the byte stream. Inputs/outputs are all int32:
+// ``values`` (value_count elements) -> ``run_values`` / ``run_lengths`` (up to
+// value_count) and a single-element ``run_count``.
+struct APICRunlengthEncodeRecord {
+    APICOpHeader header;  // op_type = APIC_OP_RUNLENGTH_ENCODE
+    int32_t values_region_id;
+    int32_t run_values_region_id;
+    int32_t run_lengths_region_id;
+    int32_t run_count_region_id;
+    uint64_t values_offset;
+    uint64_t run_values_offset;
+    uint64_t run_lengths_offset;
+    uint64_t run_count_offset;
+    uint32_t value_count;
+    uint8_t _pad[4];
+};
+
+// BSR-from-triplets op. Records a wp_bsr_matrix_from_triplets_host() call so
+// replay recomputes the matrix topology (bsr_offsets/bsr_columns and the
+// per-triplet summed_block offsets/indices that the recorded
+// _bsr_accumulate_triplet_values kernel reads) from the current (replay-time)
+// triplets. Same rationale as the sorts/runlength-encode: on CPU the topology
+// is computed by a host function that, unlike a kernel launch, is otherwise
+// invisible to the byte stream — so without this op the topology stays frozen
+// at the capture-time (deferred/empty) triplet data. Region ids are -1 for the
+// optional pointers (tpl_nnz, tpl_values, bsr_row_counts, bsr_nnz) when absent.
+// Buffer sizes derive from ``nnz_upper_bound`` (the triplet count) and the
+// scalar fields.
+struct APICBsrFromTripletsRecord {
+    APICOpHeader header;  // op_type = APIC_OP_BSR_FROM_TRIPLETS
+    int32_t block_size;
+    int32_t scalar_size_in_bytes;
+    int32_t row_count;
+    int32_t col_count;
+    int32_t nnz_upper_bound;
+    uint8_t masked_topology;
+    uint8_t _pad[3];
+    uint64_t scalar_zero_mask;
+    int32_t tpl_nnz_region_id;  // -1 if absent
+    int32_t tpl_rows_region_id;
+    int32_t tpl_columns_region_id;
+    int32_t tpl_values_region_id;  // -1 if absent
+    int32_t summed_block_offsets_region_id;
+    int32_t summed_block_indices_region_id;
+    int32_t bsr_offsets_region_id;
+    int32_t bsr_row_counts_region_id;  // -1 if absent
+    int32_t bsr_columns_region_id;
+    int32_t bsr_nnz_region_id;  // -1 if absent
+    uint64_t tpl_nnz_offset;
+    uint64_t tpl_rows_offset;
+    uint64_t tpl_columns_offset;
+    uint64_t tpl_values_offset;
+    uint64_t summed_block_offsets_offset;
+    uint64_t summed_block_indices_offset;
+    uint64_t bsr_offsets_offset;
+    uint64_t bsr_row_counts_offset;
+    uint64_t bsr_columns_offset;
+    uint64_t bsr_nnz_offset;
+};
+
+// BSR-transpose op. Records a wp_bsr_transpose_host() call so replay recomputes
+// the transposed topology (transposed_offsets/columns and block_indices, which
+// the recorded _bsr_transpose_values kernel reads) from the current source
+// topology. Same rationale as APICBsrFromTripletsRecord. Buffer sizes derive
+// from ``nnz_upper_bound`` and row/col counts.
+struct APICBsrTransposeRecord {
+    APICOpHeader header;  // op_type = APIC_OP_BSR_TRANSPOSE
+    int32_t row_count;
+    int32_t col_count;
+    int32_t nnz_upper_bound;
+    int32_t bsr_offsets_region_id;
+    int32_t bsr_row_counts_region_id;  // -1 if absent
+    int32_t bsr_columns_region_id;
+    int32_t transposed_offsets_region_id;
+    int32_t transposed_row_counts_region_id;  // -1 if absent
+    int32_t transposed_columns_region_id;
+    int32_t block_indices_region_id;
+    int32_t status_region_id;  // -1 if absent
+    uint64_t bsr_offsets_offset;
+    uint64_t bsr_row_counts_offset;
+    uint64_t bsr_columns_offset;
+    uint64_t transposed_offsets_offset;
+    uint64_t transposed_row_counts_offset;
+    uint64_t transposed_columns_offset;
+    uint64_t block_indices_offset;
+    uint64_t status_offset;
+};
 
 // Conditional / loop op (variable: trailing per-branch op-stream blocks).
 // Used by both APIC_OP_IF (then + else branches) and APIC_OP_WHILE
@@ -330,7 +508,3 @@ struct apic_array_t {
     uint16_t ndim;
     uint16_t flags;
 };
-
-#ifdef __cplusplus
-}
-#endif

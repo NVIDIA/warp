@@ -53,6 +53,11 @@ def array_scan(in_array: wp.array, out_array: wp.array, inclusive: bool = True) 
     This function computes the inclusive or exclusive scan of the input array and stores the result in the output array.
     The scan operation computes a running sum of elements in the array. Vector types are scanned component-wise.
 
+    During CPU APIC graph capture (:class:`ScopedCapture <warp.ScopedCapture>` with ``apic=True``), ``int32``,
+    ``float32``, ``int64``, and ``float64`` scalar and vector scans are recorded into the byte stream, including
+    positively-strided (non-contiguous) 1D arrays. Negatively-strided CPU arrays raise :exc:`NotImplementedError`;
+    run those scans outside the captured region.
+
     Args:
         in_array: Input array to scan. Must be a scalar or vector type with scalar type ``int32``, ``int64``,
           ``float32``, or ``float64``.
@@ -62,6 +67,8 @@ def array_scan(in_array: wp.array, out_array: wp.array, inclusive: bool = True) 
 
     Raises:
         RuntimeError: If array storage devices don't match, if storage size is insufficient, or if data types are unsupported.
+        NotImplementedError: If called inside a CPU APIC :class:`ScopedCapture <warp.ScopedCapture>` with a
+          negatively-strided array.
     """
 
     if in_array.device != out_array.device:
@@ -96,18 +103,17 @@ def array_scan(in_array: wp.array, out_array: wp.array, inclusive: bool = True) 
     from warp._src.context import runtime  # noqa: PLC0415
 
     if in_array.device.is_cpu:
-        # CPU APIC capture doesn't yet record array_scan operations, so the
-        # captured byte stream would silently produce stale output on replay
-        # (capture-time scan result, not a fresh recompute from the current
-        # input). Raise rather than serialize a broken graph; the supported
-        # workaround is to run the scan before / after the captured region.
-        if runtime._apic_capture is not None:
-            raise NotImplementedError(
-                "wp.utils.array_scan() is not yet supported during CPU APIC capture: "
-                "the scan would be silently dropped from the captured byte stream and "
-                "replay would return stale output. Run the scan outside ScopedCapture."
-            )
-
+        # CPU scan recording requires both arrays' base regions to be tracked
+        # so the captured op references real region IDs (and so capture_save
+        # can bind them by name). Register only when a CPU APIC capture is active.
+        apic_capture = runtime._apic_capture
+        if apic_capture is not None and apic_capture.device.is_cpu:
+            if in_stride < 0 or out_stride < 0:
+                raise NotImplementedError(
+                    "APIC capture does not yet support array_scan() on CPU arrays with negative strides"
+                )
+            apic_capture.track_array(in_array)
+            apic_capture.track_array(out_array)
         if scalar_type == wp.int32:
             native_func = runtime.core.wp_array_scan_int_host
         elif scalar_type == wp.int64:
@@ -203,6 +209,13 @@ def radix_sort_pairs(
     from warp._src.context import runtime  # noqa: PLC0415
 
     if keys.device.is_cpu:
+        # CPU radix sort dispatches to a host function that records an
+        # APIC_OP_RADIX_SORT op under capture. Track keys/values base regions
+        # first so the recorded op references real region IDs.
+        apic_capture = runtime._apic_capture
+        if apic_capture is not None and apic_capture.device.is_cpu:
+            apic_capture.track_array(keys)
+            apic_capture.track_array(values)
         if keys.dtype == wp.int32:
             runtime.core.wp_radix_sort_pairs_int_host(keys.ptr, values.ptr, count, begin_bit, end_bit, value_size)
         elif keys.dtype == wp.uint32:
@@ -298,6 +311,17 @@ def segmented_sort_pairs(
         segment_start_indices_ptr = segment_start_indices.ptr
 
     if keys.device.is_cpu:
+        # CPU segmented sort dispatches to a host function that records an
+        # APIC_OP_SEGMENTED_SORT op under capture. Track the keys/values/segment
+        # base regions first so the recorded op references real region IDs (and
+        # so capture_save can bind them by name). Only when a CPU APIC capture is
+        # active — the capture singleton is shared with CUDA captures.
+        apic_capture = runtime._apic_capture
+        if apic_capture is not None and apic_capture.device.is_cpu:
+            apic_capture.track_array(keys)
+            apic_capture.track_array(values)
+            apic_capture.track_array(segment_start_indices)
+            apic_capture.track_array(segment_end_indices)
         if keys.dtype == wp.int32 and values.dtype == wp.int32:
             runtime.core.wp_segmented_sort_pairs_int_host(
                 keys.ptr,
@@ -385,11 +409,18 @@ def runlength_encode(
     if run_lengths.dtype != wp.int32:
         raise RuntimeError("run_lengths array must be of type int32")
 
+    from warp._src.context import runtime  # noqa: PLC0415
+
+    apic_capture = runtime._apic_capture if values.device.is_cpu else None
+    cpu_apic_capture = apic_capture is not None and apic_capture.device.is_cpu
+
     # User can provide a device output array for storing the number of runs
     # For convenience, if no such array is provided, number of runs is returned on host
     if run_count is None:
         if value_count == 0:
             return 0
+        if cpu_apic_capture:
+            raise NotImplementedError("APIC capture requires runlength_encode() to receive an explicit run_count array")
         run_count = wp.empty(shape=(1,), dtype=int, device=values.device)
         host_return = True
     else:
@@ -402,9 +433,15 @@ def runlength_encode(
             return run_count
         host_return = False
 
-    from warp._src.context import runtime  # noqa: PLC0415
-
     if values.device.is_cpu:
+        # CPU run-length-encode dispatches to a host function that records an
+        # APIC_OP_RUNLENGTH_ENCODE op under capture. Track the base regions first
+        # so the recorded op references real region IDs.
+        if cpu_apic_capture:
+            apic_capture.track_array(values)
+            apic_capture.track_array(run_values)
+            apic_capture.track_array(run_lengths)
+            apic_capture.track_array(run_count)
         if values.dtype == wp.int32:
             runtime.core.wp_runlength_encode_int_host(
                 values.ptr, run_values.ptr, run_lengths.ptr, run_count.ptr, value_count

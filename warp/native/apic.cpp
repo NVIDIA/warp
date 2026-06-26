@@ -21,8 +21,10 @@
 #include "error.h"
 #include "mesh.h"
 
+#include <algorithm>
 #include <cassert>
 #include <cstddef>  // offsetof
+#include <cstdint>  // SIZE_MAX
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -38,7 +40,7 @@ APICState* wp_apic_create_state() { return new APICState(); }
 
 void wp_apic_destroy_state(APICState* state) { delete state; }
 
-void wp_apic_begin_recording(APICState* state)
+void wp_apic_begin_recording(APICState* state, int is_cpu)
 {
     if (state) {
         // Nested captures are not supported (matches CUDA runtime behavior).
@@ -47,6 +49,9 @@ void wp_apic_begin_recording(APICState* state)
             return;
         }
         state->recording = true;
+        // Remember the capture's device class so device-mismatched host/device
+        // hooks can decline to record into the wrong byte stream.
+        state->is_cpu = (is_cpu != 0);
         // The stream is about to be (re)built; any prior validation is stale.
         state->operations_validated = false;
         g_apic_state = state;
@@ -67,7 +72,16 @@ void wp_apic_end_recording(APICState* state)
     }
 }
 
-APICState* wp_apic_get_recording_state() { return g_apic_state; }
+// Host (CPU) capture hooks: return the active state only for a CPU capture, so
+// a host op invoked during a CUDA APIC capture runs live instead of recording
+// into the CUDA byte stream.
+APICState* wp_apic_get_recording_state() { return (g_apic_state && g_apic_state->is_cpu) ? g_apic_state : nullptr; }
+
+// Device (CUDA) capture hooks: mirror of the above for the CUDA side.
+APICState* wp_apic_get_cuda_recording_state()
+{
+    return (g_apic_state && !g_apic_state->is_cpu) ? g_apic_state : nullptr;
+}
 
 uint32_t wp_apic_get_operation_count(APICState* state) { return state ? state->operation_count : 0; }
 
@@ -75,21 +89,27 @@ uint32_t wp_apic_get_operation_count(APICState* state) { return state ? state->o
 // Memory Region Registration
 // ============================================================================
 
+static void apic_set_region_entry(APICState* state, uint32_t region_id, uint64_t base_ptr, uint64_t size)
+{
+    if (state->regions_by_id.size() <= region_id)
+        state->regions_by_id.resize(region_id + 1);
+    auto& slot = state->regions_by_id[region_id];
+    slot.base_ptr = base_ptr;
+    slot.size = size;
+    slot.valid = true;
+}
+
 uint32_t
 wp_apic_register_memory_region_by_ptr(APICState* state, uint64_t base_ptr, uint64_t size, uint32_t element_size)
 {
     if (!state)
         return 0;
-    for (size_t i = 0; i < state->ptr_region_table.size(); i++) {
-        if (state->ptr_region_table[i].base_ptr == base_ptr)
-            return state->ptr_region_table[i].region_id;
+    for (size_t i = 1; i < state->regions_by_id.size(); i++) {
+        if (state->regions_by_id[i].valid && state->regions_by_id[i].base_ptr == base_ptr)
+            return (uint32_t)i;
     }
     uint32_t region_id = state->next_region_id++;
-    APICState::PtrRegionEntry entry;
-    entry.base_ptr = base_ptr;
-    entry.size = size;
-    entry.region_id = region_id;
-    state->ptr_region_table.push_back(entry);
+    apic_set_region_entry(state, region_id, base_ptr, size);
     return region_id;
 }
 
@@ -108,23 +128,81 @@ void wp_apic_register_memory_region(APICState* state, uint32_t region_id, uint64
     state->memory_regions[region_id] = std::move(info);
 }
 
-bool apic_resolve_ptr(APICState* state, uint64_t ptr, int32_t* out_region_id, uint64_t* out_offset)
+static void apic_sync_serialized_host_region(APICState* state, uint32_t region_id, uint64_t base_ptr, uint64_t size)
 {
-    if (!state)
-        return false;
-    for (size_t i = 0; i < state->ptr_region_table.size(); i++) {
-        uint64_t base = state->ptr_region_table[i].base_ptr;
-        uint64_t sz = state->ptr_region_table[i].size;
-        if (ptr >= base && ptr < base + sz) {
-            *out_region_id = (int32_t)state->ptr_region_table[i].region_id;
-            *out_offset = ptr - base;
-            return true;
-        }
-    }
-    return false;
+    if (!state || region_id == 0)
+        return;
+
+    APICState::RegionInfo& info = state->memory_regions[region_id];
+    info.region_id = region_id;
+    if (info.element_size == 0)
+        info.element_size = 1;
+    if (size > info.size)
+        info.size = size;
+
+    if (base_ptr == 0 || size == 0)
+        return;
+
+    size_t old_size = info.initial_data.size();
+    size_t new_size = static_cast<size_t>(size);
+    if (new_size <= old_size)
+        return;
+
+    info.initial_data.resize(new_size);
+    memcpy(
+        info.initial_data.data() + old_size, reinterpret_cast<const void*>(base_ptr + old_size), new_size - old_size
+    );
 }
 
-// Resolve a region pointer from an APICState's ptr_region_table.
+enum class APICPtrRegistrationMode {
+    LiveOnly,
+    SnapshotHostInitialData,
+};
+
+static APICAddress apic_resolve_ptr(APICState* state, uint64_t ptr, uint64_t access_size, APICPtrRegistrationMode mode)
+{
+    if (!state)
+        return APICAddress {};
+
+    // First pass: scan regions_by_id for a region containing ptr. Grow in
+    // place if the access would overshoot the recorded size.
+    for (size_t i = 1; i < state->regions_by_id.size(); i++) {
+        auto& region = state->regions_by_id[i];
+        if (!region.valid)
+            continue;
+        if (ptr >= region.base_ptr && ptr < region.base_ptr + region.size) {
+            uint64_t needed = (ptr - region.base_ptr) + access_size;
+            if (needed > region.size)
+                apic_set_region_entry(state, (uint32_t)i, region.base_ptr, needed);
+            if (mode == APICPtrRegistrationMode::SnapshotHostInitialData)
+                apic_sync_serialized_host_region(state, (uint32_t)i, region.base_ptr, region.size);
+            return APICAddress { (int32_t)i, ptr - region.base_ptr };
+        }
+    }
+
+    // No existing region contains `ptr` — auto-register it with the
+    // pointer itself as the region base. Subsequent ops in
+    // [ptr, ptr + access_size) will resolve into this region; an op at
+    // a different base creates another region.
+    uint32_t region_id = state->next_region_id++;
+    uint64_t size = access_size > 0 ? access_size : 1;
+    apic_set_region_entry(state, region_id, ptr, size);
+    if (mode == APICPtrRegistrationMode::SnapshotHostInitialData)
+        apic_sync_serialized_host_region(state, region_id, ptr, size);
+    return APICAddress { (int32_t)region_id, 0 };
+}
+
+APICAddress apic_resolve_live_ptr(APICState* state, uint64_t ptr, uint64_t access_size)
+{
+    return apic_resolve_ptr(state, ptr, access_size, APICPtrRegistrationMode::LiveOnly);
+}
+
+APICAddress apic_resolve_host_ptr(APICState* state, uint64_t ptr, uint64_t access_size)
+{
+    return apic_resolve_ptr(state, ptr, access_size, APICPtrRegistrationMode::SnapshotHostInitialData);
+}
+
+// Resolve a region pointer from regions_by_id.
 // `access_size` is the number of bytes the caller intends to read or write
 // starting at the resolved pointer; the resolver returns nullptr unless the
 // range [offset, offset + access_size) fits inside the region. Pass 0 when
@@ -135,16 +213,15 @@ static void* apic_resolve_state_region_ptr(APICState* state, int32_t region_id, 
 {
     if (region_id < 0)
         return nullptr;
-    for (size_t i = 0; i < state->ptr_region_table.size(); i++) {
-        auto& entry = state->ptr_region_table[i];
-        if (entry.region_id == static_cast<uint32_t>(region_id)) {
-            uint64_t end = offset + access_size;
-            if (end < offset || end > entry.size || entry.base_ptr > UINTPTR_MAX - offset)
-                return nullptr;
-            return reinterpret_cast<void*>(entry.base_ptr + offset);
-        }
-    }
-    return nullptr;
+    if (static_cast<size_t>(region_id) >= state->regions_by_id.size())
+        return nullptr;
+    const auto& entry = state->regions_by_id[region_id];
+    if (!entry.valid)
+        return nullptr;
+    uint64_t end = offset + access_size;
+    if (end < offset || end > entry.size || entry.base_ptr > UINTPTR_MAX - offset)
+        return nullptr;
+    return reinterpret_cast<void*>(entry.base_ptr + offset);
 }
 
 // ============================================================================
@@ -182,16 +259,18 @@ void wp_apic_register_kernel(
     if (!state || !kernel_key)
         return;
     std::string key_str(kernel_key);
-    if (state->kernels.find(key_str) == state->kernels.end()) {
+    std::string hash_str = module_hash ? module_hash : "";
+    std::string map_key = apic_kernel_map_key(hash_str, key_str);
+    if (state->kernels.find(map_key) == state->kernels.end()) {
         APICKernel kern;
         kern.kernel_key = key_str;
-        kern.module_hash = module_hash ? module_hash : "";
+        kern.module_hash = hash_str;
         kern.forward_name = forward_name ? forward_name : "";
         kern.backward_name = backward_name ? backward_name : "";
         kern.forward_smem_bytes = forward_smem_bytes;
         kern.backward_smem_bytes = backward_smem_bytes;
         kern.block_dim = block_dim;
-        state->kernels[key_str] = kern;
+        state->kernels[map_key] = kern;
     }
 }
 
@@ -213,14 +292,16 @@ void wp_apic_register_ptr_location(APICState* state, uint32_t region_id, uint64_
     state->ptr_locations.push_back(loc);
 }
 
-void wp_apic_register_cpu_kernel(APICState* state, const char* kernel_key, void* forward_fn, void* backward_fn)
+void wp_apic_register_cpu_kernel(
+    APICState* state, const char* kernel_key, const char* module_hash, void* forward_fn, void* backward_fn
+)
 {
     if (!state || !kernel_key)
         return;
     APICCPUKernel entry;
     entry.forward_fn = forward_fn;
     entry.backward_fn = backward_fn;
-    state->cpu_kernels[std::string(kernel_key)] = entry;
+    state->cpu_kernels[apic_kernel_map_key(module_hash ? module_hash : "", kernel_key)] = entry;
 }
 
 // ============================================================================
@@ -339,6 +420,25 @@ void apic_record_memset(APICState* state, int32_t region_id, uint64_t offset, ui
     state->operation_count++;
 }
 
+void apic_record_memtile(
+    APICState* state, int32_t region_id, uint64_t offset, uint32_t srcsize, const void* value_ptr, uint64_t count
+)
+{
+    if (!state)
+        return;
+    APICMemtileRecord rec = {};
+    rec.header.op_type = APIC_OP_MEMTILE;
+    rec.header.total_size = static_cast<uint32_t>(sizeof(rec) + srcsize);
+    rec.region_id = region_id;
+    rec.srcsize = srcsize;
+    rec.offset = offset;
+    rec.count = count;
+    state->append_bytes(&rec, sizeof(rec));
+    if (srcsize > 0 && value_ptr)
+        state->append_bytes(value_ptr, srcsize);
+    state->operation_count++;
+}
+
 void apic_record_alloc(APICState* state, int32_t region_id, uint64_t size)
 {
     if (!state)
@@ -348,6 +448,254 @@ void apic_record_alloc(APICState* state, int32_t region_id, uint64_t size)
     rec.header.total_size = sizeof(rec);
     rec.region_id = region_id;
     rec.size = size;
+    state->append_bytes(&rec, sizeof(rec));
+    state->operation_count++;
+}
+
+void apic_record_scan(
+    APICState* state,
+    int32_t dst_region_id,
+    uint64_t dst_offset,
+    int32_t src_region_id,
+    uint64_t src_offset,
+    uint32_t length,
+    int32_t in_stride,
+    int32_t out_stride,
+    int32_t type_len,
+    uint8_t dtype,
+    uint8_t inclusive
+)
+{
+    if (!state)
+        return;
+    APICScanRecord rec = {};
+    rec.header.op_type = APIC_OP_SCAN;
+    rec.header.total_size = sizeof(rec);
+    rec.dst_region_id = dst_region_id;
+    rec.src_region_id = src_region_id;
+    rec.dst_offset = dst_offset;
+    rec.src_offset = src_offset;
+    rec.length = length;
+    rec.in_stride = in_stride;
+    rec.out_stride = out_stride;
+    rec.type_len = type_len;
+    rec.dtype = dtype;
+    rec.inclusive = inclusive;
+    state->append_bytes(&rec, sizeof(rec));
+    state->operation_count++;
+}
+
+void apic_record_segmented_sort(
+    APICState* state,
+    int32_t keys_region_id,
+    uint64_t keys_offset,
+    int32_t values_region_id,
+    uint64_t values_offset,
+    int32_t segstart_region_id,
+    uint64_t segstart_offset,
+    int32_t segend_region_id,
+    uint64_t segend_offset,
+    uint32_t count,
+    uint32_t num_segments,
+    uint8_t dtype
+)
+{
+    if (!state)
+        return;
+    APICSegmentedSortRecord rec = {};
+    rec.header.op_type = APIC_OP_SEGMENTED_SORT;
+    rec.header.total_size = sizeof(rec);
+    rec.keys_region_id = keys_region_id;
+    rec.values_region_id = values_region_id;
+    rec.segstart_region_id = segstart_region_id;
+    rec.segend_region_id = segend_region_id;
+    rec.keys_offset = keys_offset;
+    rec.values_offset = values_offset;
+    rec.segstart_offset = segstart_offset;
+    rec.segend_offset = segend_offset;
+    rec.count = count;
+    rec.num_segments = num_segments;
+    rec.dtype = dtype;
+    state->append_bytes(&rec, sizeof(rec));
+    state->operation_count++;
+}
+
+void apic_record_radix_sort(
+    APICState* state,
+    int32_t keys_region_id,
+    uint64_t keys_offset,
+    int32_t values_region_id,
+    uint64_t values_offset,
+    uint32_t count,
+    int32_t begin_bit,
+    int32_t end_bit,
+    int32_t value_size,
+    uint8_t dtype
+)
+{
+    if (!state)
+        return;
+    APICRadixSortRecord rec = {};
+    rec.header.op_type = APIC_OP_RADIX_SORT;
+    rec.header.total_size = sizeof(rec);
+    rec.keys_region_id = keys_region_id;
+    rec.values_region_id = values_region_id;
+    rec.keys_offset = keys_offset;
+    rec.values_offset = values_offset;
+    rec.count = count;
+    rec.begin_bit = begin_bit;
+    rec.end_bit = end_bit;
+    rec.value_size = value_size;
+    rec.dtype = dtype;
+    state->append_bytes(&rec, sizeof(rec));
+    state->operation_count++;
+}
+
+void apic_record_runlength_encode(
+    APICState* state,
+    int32_t values_region_id,
+    uint64_t values_offset,
+    int32_t run_values_region_id,
+    uint64_t run_values_offset,
+    int32_t run_lengths_region_id,
+    uint64_t run_lengths_offset,
+    int32_t run_count_region_id,
+    uint64_t run_count_offset,
+    uint32_t value_count
+)
+{
+    if (!state)
+        return;
+    APICRunlengthEncodeRecord rec = {};
+    rec.header.op_type = APIC_OP_RUNLENGTH_ENCODE;
+    rec.header.total_size = sizeof(rec);
+    rec.values_region_id = values_region_id;
+    rec.run_values_region_id = run_values_region_id;
+    rec.run_lengths_region_id = run_lengths_region_id;
+    rec.run_count_region_id = run_count_region_id;
+    rec.values_offset = values_offset;
+    rec.run_values_offset = run_values_offset;
+    rec.run_lengths_offset = run_lengths_offset;
+    rec.run_count_offset = run_count_offset;
+    rec.value_count = value_count;
+    state->append_bytes(&rec, sizeof(rec));
+    state->operation_count++;
+}
+
+void apic_record_bsr_from_triplets(
+    APICState* state,
+    int32_t block_size,
+    int32_t scalar_size_in_bytes,
+    int32_t row_count,
+    int32_t col_count,
+    int32_t nnz_upper_bound,
+    uint64_t scalar_zero_mask,
+    uint8_t masked_topology,
+    int32_t tpl_nnz_region_id,
+    uint64_t tpl_nnz_offset,
+    int32_t tpl_rows_region_id,
+    uint64_t tpl_rows_offset,
+    int32_t tpl_columns_region_id,
+    uint64_t tpl_columns_offset,
+    int32_t tpl_values_region_id,
+    uint64_t tpl_values_offset,
+    int32_t summed_block_offsets_region_id,
+    uint64_t summed_block_offsets_offset,
+    int32_t summed_block_indices_region_id,
+    uint64_t summed_block_indices_offset,
+    int32_t bsr_offsets_region_id,
+    uint64_t bsr_offsets_offset,
+    int32_t bsr_row_counts_region_id,
+    uint64_t bsr_row_counts_offset,
+    int32_t bsr_columns_region_id,
+    uint64_t bsr_columns_offset,
+    int32_t bsr_nnz_region_id,
+    uint64_t bsr_nnz_offset
+)
+{
+    if (!state)
+        return;
+    APICBsrFromTripletsRecord rec = {};
+    rec.header.op_type = APIC_OP_BSR_FROM_TRIPLETS;
+    rec.header.total_size = sizeof(rec);
+    rec.block_size = block_size;
+    rec.scalar_size_in_bytes = scalar_size_in_bytes;
+    rec.row_count = row_count;
+    rec.col_count = col_count;
+    rec.nnz_upper_bound = nnz_upper_bound;
+    rec.masked_topology = masked_topology;
+    rec.scalar_zero_mask = scalar_zero_mask;
+    rec.tpl_nnz_region_id = tpl_nnz_region_id;
+    rec.tpl_rows_region_id = tpl_rows_region_id;
+    rec.tpl_columns_region_id = tpl_columns_region_id;
+    rec.tpl_values_region_id = tpl_values_region_id;
+    rec.summed_block_offsets_region_id = summed_block_offsets_region_id;
+    rec.summed_block_indices_region_id = summed_block_indices_region_id;
+    rec.bsr_offsets_region_id = bsr_offsets_region_id;
+    rec.bsr_row_counts_region_id = bsr_row_counts_region_id;
+    rec.bsr_columns_region_id = bsr_columns_region_id;
+    rec.bsr_nnz_region_id = bsr_nnz_region_id;
+    rec.tpl_nnz_offset = tpl_nnz_offset;
+    rec.tpl_rows_offset = tpl_rows_offset;
+    rec.tpl_columns_offset = tpl_columns_offset;
+    rec.tpl_values_offset = tpl_values_offset;
+    rec.summed_block_offsets_offset = summed_block_offsets_offset;
+    rec.summed_block_indices_offset = summed_block_indices_offset;
+    rec.bsr_offsets_offset = bsr_offsets_offset;
+    rec.bsr_row_counts_offset = bsr_row_counts_offset;
+    rec.bsr_columns_offset = bsr_columns_offset;
+    rec.bsr_nnz_offset = bsr_nnz_offset;
+    state->append_bytes(&rec, sizeof(rec));
+    state->operation_count++;
+}
+
+void apic_record_bsr_transpose(
+    APICState* state,
+    int32_t row_count,
+    int32_t col_count,
+    int32_t nnz_upper_bound,
+    int32_t bsr_offsets_region_id,
+    uint64_t bsr_offsets_offset,
+    int32_t bsr_row_counts_region_id,
+    uint64_t bsr_row_counts_offset,
+    int32_t bsr_columns_region_id,
+    uint64_t bsr_columns_offset,
+    int32_t transposed_offsets_region_id,
+    uint64_t transposed_offsets_offset,
+    int32_t transposed_row_counts_region_id,
+    uint64_t transposed_row_counts_offset,
+    int32_t transposed_columns_region_id,
+    uint64_t transposed_columns_offset,
+    int32_t block_indices_region_id,
+    uint64_t block_indices_offset,
+    int32_t status_region_id,
+    uint64_t status_offset
+)
+{
+    if (!state)
+        return;
+    APICBsrTransposeRecord rec = {};
+    rec.header.op_type = APIC_OP_BSR_TRANSPOSE;
+    rec.header.total_size = sizeof(rec);
+    rec.row_count = row_count;
+    rec.col_count = col_count;
+    rec.nnz_upper_bound = nnz_upper_bound;
+    rec.bsr_offsets_region_id = bsr_offsets_region_id;
+    rec.bsr_row_counts_region_id = bsr_row_counts_region_id;
+    rec.bsr_columns_region_id = bsr_columns_region_id;
+    rec.transposed_offsets_region_id = transposed_offsets_region_id;
+    rec.transposed_row_counts_region_id = transposed_row_counts_region_id;
+    rec.transposed_columns_region_id = transposed_columns_region_id;
+    rec.block_indices_region_id = block_indices_region_id;
+    rec.status_region_id = status_region_id;
+    rec.bsr_offsets_offset = bsr_offsets_offset;
+    rec.bsr_row_counts_offset = bsr_row_counts_offset;
+    rec.bsr_columns_offset = bsr_columns_offset;
+    rec.transposed_offsets_offset = transposed_offsets_offset;
+    rec.transposed_row_counts_offset = transposed_row_counts_offset;
+    rec.transposed_columns_offset = transposed_columns_offset;
+    rec.block_indices_offset = block_indices_offset;
+    rec.status_offset = status_offset;
     state->append_bytes(&rec, sizeof(rec));
     state->operation_count++;
 }
@@ -661,7 +1009,7 @@ bool apic_parse_metadata(const uint8_t* data, size_t size, APICGraph* graph)
         info.forward_smem_bytes = apic_read_value<uint32_t>(ptr);
         info.backward_smem_bytes = apic_read_value<uint32_t>(ptr);
         info.block_dim = apic_read_value<uint32_t>(ptr);
-        graph->kernels[info.kernel_key] = info;
+        graph->kernels[apic_kernel_map_key(info.module_hash, info.kernel_key)] = info;
     }
 
     for (uint32_t i = 0; i < num_params; i++) {
@@ -718,7 +1066,7 @@ bool apic_parse_memory_regions(const uint8_t* data, size_t size, APICGraph* grap
         ptr += sizeof(APICMemoryRegionRecord);
 
         if (graph->regions.find(rec->region_id) == graph->regions.end()) {
-            APICRegion region;
+            APICMemory region;
             region.region_id = rec->region_id;
             region.size = rec->size;
             region.element_size = rec->element_size;
@@ -848,6 +1196,39 @@ void apic_fixup_ptr_locations(APICGraph* graph)
 // ============================================================================
 // Operation Stream Validation
 // ============================================================================
+
+static bool apic_is_scan_dtype(uint8_t dtype)
+{
+    return dtype == APIC_TYPE_INT32 || dtype == APIC_TYPE_FLOAT32 || dtype == APIC_TYPE_INT64
+        || dtype == APIC_TYPE_FLOAT64;
+}
+
+static size_t apic_strided_access_bytes(uint32_t length, int32_t stride, int32_t type_len, size_t scalar_size)
+{
+    if (length == 0 || stride < 0 || type_len <= 0 || scalar_size == 0)
+        return 0;
+    return static_cast<size_t>(length - 1) * static_cast<size_t>(stride) + static_cast<size_t>(type_len) * scalar_size;
+}
+
+static bool apic_is_radix_dtype(uint8_t dtype)
+{
+    return dtype == APIC_TYPE_INT32 || dtype == APIC_TYPE_UINT32 || dtype == APIC_TYPE_FLOAT32
+        || dtype == APIC_TYPE_INT64 || dtype == APIC_TYPE_UINT64 || dtype == APIC_TYPE_FLOAT64;
+}
+
+// Checked multiply: writes a*b to *out and returns true, or returns false if
+// the product would overflow size_t. Replay computes byte spans as products of
+// record fields (count, stride, nnz, block size, scalar size) and trusts the
+// validator, so a corrupt/oversized .wrp could otherwise wrap a span to a small
+// value that passes resolve_ptr's bounds check while the host op reads/writes
+// far more. The validator uses this to reject such records up front.
+static bool apic_mul_check(uint64_t a, uint64_t b, uint64_t* out)
+{
+    if (b != 0 && a > (SIZE_MAX / b))
+        return false;
+    *out = a * b;
+    return true;
+}
 
 // Walks the byte stream once and verifies every record fits in bounds, its
 // variable-length fields don't overflow its declared total_size, and the
@@ -1005,12 +1386,164 @@ bool apic_validate_operation_stream(const uint8_t* data, size_t size, uint32_t o
                 return false;
             }
             break;
+        case APIC_OP_MEMTILE: {
+            if (op_end < op_start + sizeof(APICMemtileRecord)) {
+                fprintf(stderr, "APIC: Error - memtile record overflow at operation %u\n", i);
+                return false;
+            }
+            const APICMemtileRecord* rec = reinterpret_cast<const APICMemtileRecord*>(ptr);
+            if (op_start + sizeof(APICMemtileRecord) + rec->srcsize > op_end) {
+                fprintf(stderr, "APIC: Error - memtile inline data overflow at operation %u\n", i);
+                return false;
+            }
+            break;
+        }
         case APIC_OP_ALLOC:
             if (op_end < op_start + sizeof(APICAllocRecord)) {
                 fprintf(stderr, "APIC: Error - alloc record overflow at operation %u\n", i);
                 return false;
             }
             break;
+        case APIC_OP_SCAN: {
+            if (op_end < op_start + sizeof(APICScanRecord)) {
+                fprintf(stderr, "APIC: Error - scan record overflow at operation %u\n", i);
+                return false;
+            }
+            const APICScanRecord* rec = reinterpret_cast<const APICScanRecord*>(ptr);
+            if (!apic_is_scan_dtype(rec->dtype)) {
+                fprintf(stderr, "APIC: Error - unknown scan dtype %u at operation %u\n", rec->dtype, i);
+                return false;
+            }
+            if (rec->inclusive > 1) {
+                fprintf(stderr, "APIC: Error - scan inclusive flag out of range at operation %u\n", i);
+                return false;
+            }
+            if (rec->length > 0 && (rec->in_stride < 0 || rec->out_stride < 0 || rec->type_len <= 0)) {
+                fprintf(stderr, "APIC: Error - invalid scan strides/type length at operation %u\n", i);
+                return false;
+            }
+            {
+                // Replay accesses (length-1)*stride + type_len*scalar_size bytes.
+                uint64_t scan_stride
+                    = static_cast<uint64_t>(rec->in_stride > rec->out_stride ? rec->in_stride : rec->out_stride);
+                uint64_t span_tmp;
+                if (rec->length > 0
+                    && (!apic_mul_check(static_cast<uint64_t>(rec->length) - 1, scan_stride, &span_tmp)
+                        || !apic_mul_check(
+                            static_cast<uint64_t>(rec->type_len), apic_type_size(rec->dtype), &span_tmp
+                        ))) {
+                    fprintf(stderr, "APIC: Error - scan span overflow at operation %u\n", i);
+                    return false;
+                }
+            }
+            break;
+        }
+        case APIC_OP_SEGMENTED_SORT: {
+            if (op_end < op_start + sizeof(APICSegmentedSortRecord)) {
+                fprintf(stderr, "APIC: Error - segmented-sort record overflow at operation %u\n", i);
+                return false;
+            }
+            const APICSegmentedSortRecord* rec = reinterpret_cast<const APICSegmentedSortRecord*>(ptr);
+            if (rec->dtype != APIC_TYPE_INT32 && rec->dtype != APIC_TYPE_FLOAT32) {
+                fprintf(stderr, "APIC: Error - unknown segmented-sort dtype %u at operation %u\n", rec->dtype, i);
+                return false;
+            }
+            {
+                // Replay accesses 2*count keys/values and num_segments+1 start indices.
+                uint64_t span_tmp;
+                if (!apic_mul_check(static_cast<uint64_t>(rec->count) * 2u, sizeof(uint32_t), &span_tmp)
+                    || !apic_mul_check(static_cast<uint64_t>(rec->num_segments) + 1u, sizeof(int32_t), &span_tmp)) {
+                    fprintf(stderr, "APIC: Error - segmented-sort span overflow at operation %u\n", i);
+                    return false;
+                }
+            }
+            break;
+        }
+        case APIC_OP_RADIX_SORT: {
+            if (op_end < op_start + sizeof(APICRadixSortRecord)) {
+                fprintf(stderr, "APIC: Error - radix-sort record overflow at operation %u\n", i);
+                return false;
+            }
+            const APICRadixSortRecord* rec = reinterpret_cast<const APICRadixSortRecord*>(ptr);
+            if (!apic_is_radix_dtype(rec->dtype)) {
+                fprintf(stderr, "APIC: Error - unknown radix-sort dtype %u at operation %u\n", rec->dtype, i);
+                return false;
+            }
+            int32_t key_bits = static_cast<int32_t>(apic_type_size(rec->dtype) * 8);
+            if ((rec->value_size != 4 && rec->value_size != 8) || rec->begin_bit < 0 || rec->end_bit < rec->begin_bit
+                || rec->end_bit > key_bits) {
+                fprintf(stderr, "APIC: Error - invalid radix-sort metadata at operation %u\n", i);
+                return false;
+            }
+            {
+                // Replay accesses 2*count keys (key_size) and 2*count values (value_size).
+                uint64_t span_tmp;
+                if (!apic_mul_check(static_cast<uint64_t>(rec->count) * 2u, apic_type_size(rec->dtype), &span_tmp)
+                    || !apic_mul_check(
+                        static_cast<uint64_t>(rec->count) * 2u, static_cast<uint64_t>(rec->value_size), &span_tmp
+                    )) {
+                    fprintf(stderr, "APIC: Error - radix-sort span overflow at operation %u\n", i);
+                    return false;
+                }
+            }
+            break;
+        }
+        case APIC_OP_RUNLENGTH_ENCODE: {
+            if (op_end < op_start + sizeof(APICRunlengthEncodeRecord)) {
+                fprintf(stderr, "APIC: Error - runlength-encode record overflow at operation %u\n", i);
+                return false;
+            }
+            {
+                const APICRunlengthEncodeRecord* rec = reinterpret_cast<const APICRunlengthEncodeRecord*>(ptr);
+                uint64_t span_tmp;
+                if (!apic_mul_check(static_cast<uint64_t>(rec->value_count), sizeof(int32_t), &span_tmp)) {
+                    fprintf(stderr, "APIC: Error - runlength-encode span overflow at operation %u\n", i);
+                    return false;
+                }
+            }
+            break;
+        }
+        case APIC_OP_BSR_FROM_TRIPLETS: {
+            if (op_end < op_start + sizeof(APICBsrFromTripletsRecord)) {
+                fprintf(stderr, "APIC: Error - bsr-from-triplets record overflow at operation %u\n", i);
+                return false;
+            }
+            {
+                const APICBsrFromTripletsRecord* rec = reinterpret_cast<const APICBsrFromTripletsRecord*>(ptr);
+                // Replay accesses nnz*int32 topology and nnz*block_size*scalar_size block data;
+                // the three int32 factors can overflow size_t for a corrupt record.
+                uint64_t span_tmp;
+                if (rec->nnz_upper_bound < 0 || rec->row_count < 0 || rec->block_size < 0
+                    || rec->scalar_size_in_bytes < 0
+                    || !apic_mul_check(static_cast<uint64_t>(rec->row_count) + 1u, sizeof(int32_t), &span_tmp)
+                    || !apic_mul_check(
+                        static_cast<uint64_t>(rec->nnz_upper_bound), static_cast<uint64_t>(rec->block_size), &span_tmp
+                    )
+                    || !apic_mul_check(span_tmp, static_cast<uint64_t>(rec->scalar_size_in_bytes), &span_tmp)) {
+                    fprintf(stderr, "APIC: Error - bsr-from-triplets span overflow at operation %u\n", i);
+                    return false;
+                }
+            }
+            break;
+        }
+        case APIC_OP_BSR_TRANSPOSE: {
+            if (op_end < op_start + sizeof(APICBsrTransposeRecord)) {
+                fprintf(stderr, "APIC: Error - bsr-transpose record overflow at operation %u\n", i);
+                return false;
+            }
+            {
+                const APICBsrTransposeRecord* rec = reinterpret_cast<const APICBsrTransposeRecord*>(ptr);
+                uint64_t span_tmp;
+                if (rec->nnz_upper_bound < 0 || rec->row_count < 0 || rec->col_count < 0
+                    || !apic_mul_check(static_cast<uint64_t>(rec->nnz_upper_bound), sizeof(int32_t), &span_tmp)
+                    || !apic_mul_check(static_cast<uint64_t>(rec->row_count) + 1u, sizeof(int32_t), &span_tmp)
+                    || !apic_mul_check(static_cast<uint64_t>(rec->col_count) + 1u, sizeof(int32_t), &span_tmp)) {
+                    fprintf(stderr, "APIC: Error - bsr-transpose span overflow at operation %u\n", i);
+                    return false;
+                }
+            }
+            break;
+        }
         case APIC_OP_IF:
         case APIC_OP_WHILE: {
             if (op_end < op_start + sizeof(APICCondRecord)) {
@@ -1175,6 +1708,14 @@ static bool apic_cpu_replay_stream(
     // bounds checks needed here.
     const uint8_t* ptr = stream_data;
 
+    // Grow-only heap scratch reused across all kernel-launch ops in this stream,
+    // replacing per-op malloc/free of the args buffers. Heap-backed (not stack)
+    // to keep the stack shallow for the kernel's own tile storage; reused to
+    // avoid per-launch allocator churn on launch-dense graphs (e.g. diffsim_bear
+    // replays ~10^5 launches per iteration).
+    std::vector<uint8_t> fwd_scratch;
+    std::vector<uint8_t> adj_scratch;
+
     for (uint32_t i = 0; i < operation_count; i++) {
         const APICOpHeader* header = reinterpret_cast<const APICOpHeader*>(ptr);
 
@@ -1183,6 +1724,11 @@ static bool apic_cpu_replay_stream(
             const APICLaunchRecord* rec = reinterpret_cast<const APICLaunchRecord*>(ptr);
             const uint8_t* var_data = ptr + sizeof(APICLaunchRecord);
             std::string key_str(reinterpret_cast<const char*>(var_data), rec->kernel_key_len);
+            // The module hash recorded alongside the key disambiguates same-key
+            // kernels compiled into distinct modules (see apic_kernel_map_key).
+            std::string module_hash_str(
+                reinterpret_cast<const char*>(var_data + rec->kernel_key_len), rec->module_hash_len
+            );
 
             const uint16_t adj_count = rec->is_forward ? 0u : rec->num_params;
             const APICLaunchParamRecord* fwd_bindings
@@ -1203,7 +1749,7 @@ static bool apic_cpu_replay_stream(
             for (uint16_t j = 0; j < rec->num_params; j++)
                 fwd_reloc_count += fwd_bindings[j].num_relocs;
 
-            void* func = find_kernel(key_str, rec->is_forward);
+            void* func = find_kernel(key_str, module_hash_str, rec->is_forward);
             if (!func) {
                 fprintf(stderr, "APIC: Error - CPU kernel not found: %s\n", key_str.c_str());
                 return false;
@@ -1237,21 +1783,18 @@ static bool apic_cpu_replay_stream(
             }
             *reinterpret_cast<size_t*>(bounds_buf + coord_mult_offset) = coord_mult;
 
-            // Build forward args buffer (always heap-allocate to keep the stack
-            // shallow before calling into the kernel — the kernel itself may
-            // allocate a 256 KB tile_shared_storage_t on its own stack frame
-            // and adding sibling stack buffers in the replay path can blow
-            // the per-thread stack budget on Windows).
+            // Build forward args buffer in the reused heap scratch (grow-only).
+            // Heap-backed (not stack) to keep the stack shallow before calling
+            // into the kernel — the kernel itself may allocate a 256 KB
+            // tile_shared_storage_t on its own stack frame.
             size_t fwd_total = apic_args_buf_size(fwd_bindings, rec->num_params);
-            uint8_t* fwd_buf = static_cast<uint8_t*>(malloc(fwd_total > 0 ? fwd_total : 1));
-            if (!fwd_buf) {
-                fprintf(stderr, "APIC: Error - failed to allocate %zu bytes for kernel args\n", fwd_total);
-                return false;
-            }
+            size_t fwd_need = fwd_total > 0 ? fwd_total : size_t(1);
+            if (fwd_scratch.size() < fwd_need)
+                fwd_scratch.resize(fwd_need);
+            uint8_t* fwd_buf = fwd_scratch.data();
             if (!apic_pack_args_buf(
                     fwd_buf, fwd_total, fwd_bindings, rec->num_params, value_data, relocs, resolve_ptr, remap_handle
                 )) {
-                free(fwd_buf);
                 fprintf(stderr, "APIC: Error - forward arg packing failed at operation %u\n", i);
                 return false;
             }
@@ -1263,19 +1806,15 @@ static bool apic_cpu_replay_stream(
             uint8_t* adj_buf = nullptr;
             if (!rec->is_forward) {
                 adj_total = apic_args_buf_size(adj_bindings, adj_count);
-                adj_buf = static_cast<uint8_t*>(malloc(adj_total > 0 ? adj_total : 1));
-                if (!adj_buf) {
-                    free(fwd_buf);
-                    fprintf(stderr, "APIC: Error - failed to allocate %zu bytes for adj args\n", adj_total);
-                    return false;
-                }
+                size_t adj_need = adj_total > 0 ? adj_total : size_t(1);
+                if (adj_scratch.size() < adj_need)
+                    adj_scratch.resize(adj_need);
+                adj_buf = adj_scratch.data();
                 if (adj_total > 0
                     && !apic_pack_args_buf(
                         adj_buf, adj_total, adj_bindings, adj_count, value_data, relocs + fwd_reloc_count, resolve_ptr,
                         remap_handle
                     )) {
-                    free(fwd_buf);
-                    free(adj_buf);
                     fprintf(stderr, "APIC: Error - adjoint arg packing failed at operation %u\n", i);
                     return false;
                 }
@@ -1286,10 +1825,6 @@ static bool apic_cpu_replay_stream(
             // the recording branch in wp_cpu_launch_kernel is a no-op and the
             // execute branch fires.
             wp_cpu_launch_kernel(func, bounds_buf, fwd_buf, adj_buf, /*apic_info=*/nullptr);
-
-            free(fwd_buf);
-            if (adj_buf)
-                free(adj_buf);
             break;
         }
 
@@ -1319,8 +1854,285 @@ static bool apic_cpu_replay_stream(
             break;
         }
 
+        case APIC_OP_MEMTILE: {
+            const APICMemtileRecord* rec = reinterpret_cast<const APICMemtileRecord*>(ptr);
+            const void* value = ptr + sizeof(APICMemtileRecord);
+            uint64_t total_bytes = rec->count * rec->srcsize;
+            void* dst = resolve_ptr(rec->region_id, rec->offset, total_bytes);
+            if (!dst) {
+                fprintf(stderr, "APIC: Error - memtile pointer resolution failed at operation %u\n", i);
+                return false;
+            }
+            // g_apic_state is null during replay, so this call executes
+            // the actual memtile instead of re-recording it.
+            wp_memtile_host(dst, value, rec->srcsize, rec->count);
+            break;
+        }
+
         case APIC_OP_ALLOC:
             break;
+
+        case APIC_OP_SCAN: {
+            const APICScanRecord* rec = reinterpret_cast<const APICScanRecord*>(ptr);
+            size_t scalar_size = apic_type_size(rec->dtype);
+            size_t src_bytes = apic_strided_access_bytes(rec->length, rec->in_stride, rec->type_len, scalar_size);
+            size_t dst_bytes = apic_strided_access_bytes(rec->length, rec->out_stride, rec->type_len, scalar_size);
+            void* dst = resolve_ptr(rec->dst_region_id, rec->dst_offset, dst_bytes);
+            const void* src = resolve_ptr(rec->src_region_id, rec->src_offset, src_bytes);
+            if (!dst || !src) {
+                fprintf(stderr, "APIC: Error - scan pointer resolution failed at operation %u\n", i);
+                return false;
+            }
+            // g_apic_state is null during replay, so these calls execute
+            // (not record). Same entry points the user-facing
+            // wp.utils.array_scan() dispatches to.
+            if (rec->dtype == APIC_TYPE_INT32) {
+                wp_array_scan_int_host(
+                    reinterpret_cast<uint64_t>(src), reinterpret_cast<uint64_t>(dst), static_cast<int>(rec->length),
+                    rec->in_stride, rec->out_stride, rec->type_len, rec->inclusive != 0
+                );
+            } else if (rec->dtype == APIC_TYPE_INT64) {
+                wp_array_scan_int64_host(
+                    reinterpret_cast<uint64_t>(src), reinterpret_cast<uint64_t>(dst), static_cast<int>(rec->length),
+                    rec->in_stride, rec->out_stride, rec->type_len, rec->inclusive != 0
+                );
+            } else if (rec->dtype == APIC_TYPE_FLOAT32) {
+                wp_array_scan_float_host(
+                    reinterpret_cast<uint64_t>(src), reinterpret_cast<uint64_t>(dst), static_cast<int>(rec->length),
+                    rec->in_stride, rec->out_stride, rec->type_len, rec->inclusive != 0
+                );
+            } else {
+                wp_array_scan_double_host(
+                    reinterpret_cast<uint64_t>(src), reinterpret_cast<uint64_t>(dst), static_cast<int>(rec->length),
+                    rec->in_stride, rec->out_stride, rec->type_len, rec->inclusive != 0
+                );
+            }
+            break;
+        }
+
+        case APIC_OP_SEGMENTED_SORT: {
+            const APICSegmentedSortRecord* rec = reinterpret_cast<const APICSegmentedSortRecord*>(ptr);
+            size_t key_size = (rec->dtype == APIC_TYPE_INT32 ? sizeof(int32_t) : sizeof(float));
+            // keys/values buffers span 2*count elements (sort scratch).
+            size_t keys_bytes = static_cast<size_t>(2) * rec->count * key_size;
+            size_t values_bytes = static_cast<size_t>(2) * rec->count * sizeof(int32_t);
+            // Inferred-end captures alias segment_end into the start array (same
+            // region), so the start region spans num_segments+1 entries; explicit-end
+            // captures use two separate num_segments-entry arrays (distinct regions).
+            // Match the span recorded at capture.
+            bool segments_inferred_end = (rec->segstart_region_id == rec->segend_region_id);
+            size_t segstart_bytes
+                = (static_cast<size_t>(rec->num_segments) + (segments_inferred_end ? 1 : 0)) * sizeof(int32_t);
+            size_t segend_bytes = static_cast<size_t>(rec->num_segments) * sizeof(int32_t);
+            void* keys = resolve_ptr(rec->keys_region_id, rec->keys_offset, keys_bytes);
+            void* values = resolve_ptr(rec->values_region_id, rec->values_offset, values_bytes);
+            void* segstart = resolve_ptr(rec->segstart_region_id, rec->segstart_offset, segstart_bytes);
+            void* segend = resolve_ptr(rec->segend_region_id, rec->segend_offset, segend_bytes);
+            if (!keys || !values || !segstart || !segend) {
+                fprintf(stderr, "APIC: Error - segmented-sort pointer resolution failed at operation %u\n", i);
+                return false;
+            }
+            // g_apic_state is null during replay, so these calls execute the
+            // real sort instead of re-recording. Same entry points the
+            // user-facing wp.utils.segmented_sort_pairs() dispatches to.
+            if (rec->dtype == APIC_TYPE_INT32) {
+                wp_segmented_sort_pairs_int_host(
+                    reinterpret_cast<uint64_t>(keys), reinterpret_cast<uint64_t>(values), static_cast<int>(rec->count),
+                    reinterpret_cast<uint64_t>(segstart), reinterpret_cast<uint64_t>(segend),
+                    static_cast<int>(rec->num_segments)
+                );
+            } else {
+                wp_segmented_sort_pairs_float_host(
+                    reinterpret_cast<uint64_t>(keys), reinterpret_cast<uint64_t>(values), static_cast<int>(rec->count),
+                    reinterpret_cast<uint64_t>(segstart), reinterpret_cast<uint64_t>(segend),
+                    static_cast<int>(rec->num_segments)
+                );
+            }
+            break;
+        }
+
+        case APIC_OP_RADIX_SORT: {
+            const APICRadixSortRecord* rec = reinterpret_cast<const APICRadixSortRecord*>(ptr);
+            size_t key_size = apic_type_size(rec->dtype);
+            size_t keys_bytes = static_cast<size_t>(2) * rec->count * key_size;
+            size_t values_bytes = static_cast<size_t>(2) * rec->count * static_cast<size_t>(rec->value_size);
+            void* keys = resolve_ptr(rec->keys_region_id, rec->keys_offset, keys_bytes);
+            void* values = resolve_ptr(rec->values_region_id, rec->values_offset, values_bytes);
+            if (!keys || !values) {
+                fprintf(stderr, "APIC: Error - radix-sort pointer resolution failed at operation %u\n", i);
+                return false;
+            }
+            // g_apic_state is null during replay, so these calls execute the
+            // real sort. Same entry points wp.utils.radix_sort_pairs() uses.
+            if (rec->dtype == APIC_TYPE_INT32) {
+                wp_radix_sort_pairs_int_host(
+                    reinterpret_cast<uint64_t>(keys), reinterpret_cast<uint64_t>(values), static_cast<int>(rec->count),
+                    rec->begin_bit, rec->end_bit, rec->value_size
+                );
+            } else if (rec->dtype == APIC_TYPE_UINT32) {
+                wp_radix_sort_pairs_uint_host(
+                    reinterpret_cast<uint64_t>(keys), reinterpret_cast<uint64_t>(values), static_cast<int>(rec->count),
+                    rec->begin_bit, rec->end_bit, rec->value_size
+                );
+            } else if (rec->dtype == APIC_TYPE_INT64) {
+                wp_radix_sort_pairs_int64_host(
+                    reinterpret_cast<uint64_t>(keys), reinterpret_cast<uint64_t>(values), static_cast<int>(rec->count),
+                    rec->begin_bit, rec->end_bit, rec->value_size
+                );
+            } else if (rec->dtype == APIC_TYPE_UINT64) {
+                wp_radix_sort_pairs_uint64_host(
+                    reinterpret_cast<uint64_t>(keys), reinterpret_cast<uint64_t>(values), static_cast<int>(rec->count),
+                    rec->begin_bit, rec->end_bit, rec->value_size
+                );
+            } else if (rec->dtype == APIC_TYPE_FLOAT32) {
+                wp_radix_sort_pairs_float_host(
+                    reinterpret_cast<uint64_t>(keys), reinterpret_cast<uint64_t>(values), static_cast<int>(rec->count),
+                    rec->begin_bit, rec->end_bit, rec->value_size
+                );
+            } else {
+                wp_radix_sort_pairs_double_host(
+                    reinterpret_cast<uint64_t>(keys), reinterpret_cast<uint64_t>(values), static_cast<int>(rec->count),
+                    rec->begin_bit, rec->end_bit, rec->value_size
+                );
+            }
+            break;
+        }
+
+        case APIC_OP_RUNLENGTH_ENCODE: {
+            const APICRunlengthEncodeRecord* rec = reinterpret_cast<const APICRunlengthEncodeRecord*>(ptr);
+            size_t n = rec->value_count;
+            size_t in_bytes = n * sizeof(int32_t);
+            void* values = resolve_ptr(rec->values_region_id, rec->values_offset, in_bytes);
+            // run_values / run_lengths hold up to value_count entries.
+            void* run_values = resolve_ptr(rec->run_values_region_id, rec->run_values_offset, in_bytes);
+            void* run_lengths = resolve_ptr(rec->run_lengths_region_id, rec->run_lengths_offset, in_bytes);
+            void* run_count = resolve_ptr(rec->run_count_region_id, rec->run_count_offset, sizeof(int32_t));
+            if (!values || !run_values || !run_lengths || !run_count) {
+                fprintf(stderr, "APIC: Error - runlength-encode pointer resolution failed at operation %u\n", i);
+                return false;
+            }
+            // g_apic_state is null during replay, so this executes the real
+            // encode. Same entry point wp.utils.runlength_encode() uses.
+            wp_runlength_encode_int_host(
+                reinterpret_cast<uint64_t>(values), reinterpret_cast<uint64_t>(run_values),
+                reinterpret_cast<uint64_t>(run_lengths), reinterpret_cast<uint64_t>(run_count),
+                static_cast<int>(rec->value_count)
+            );
+            break;
+        }
+
+        case APIC_OP_BSR_FROM_TRIPLETS: {
+            const APICBsrFromTripletsRecord* rec = reinterpret_cast<const APICBsrFromTripletsRecord*>(ptr);
+            size_t nnz = static_cast<size_t>(rec->nnz_upper_bound);
+            size_t int_bytes = nnz * sizeof(int32_t);
+            size_t rowp1_bytes = (static_cast<size_t>(rec->row_count) + 1) * sizeof(int32_t);
+            size_t values_bytes
+                = nnz * static_cast<size_t>(rec->block_size) * static_cast<size_t>(rec->scalar_size_in_bytes);
+
+            void* tpl_nnz = rec->tpl_nnz_region_id >= 0
+                ? resolve_ptr(rec->tpl_nnz_region_id, rec->tpl_nnz_offset, sizeof(int32_t))
+                : nullptr;
+            void* tpl_rows = resolve_ptr(rec->tpl_rows_region_id, rec->tpl_rows_offset, int_bytes);
+            void* tpl_columns = resolve_ptr(rec->tpl_columns_region_id, rec->tpl_columns_offset, int_bytes);
+            void* tpl_values = rec->tpl_values_region_id >= 0
+                ? resolve_ptr(rec->tpl_values_region_id, rec->tpl_values_offset, values_bytes)
+                : nullptr;
+            void* summed_block_offsets
+                = resolve_ptr(rec->summed_block_offsets_region_id, rec->summed_block_offsets_offset, int_bytes);
+            void* summed_block_indices
+                = resolve_ptr(rec->summed_block_indices_region_id, rec->summed_block_indices_offset, int_bytes);
+            void* bsr_offsets = resolve_ptr(rec->bsr_offsets_region_id, rec->bsr_offsets_offset, rowp1_bytes);
+            void* bsr_row_counts = rec->bsr_row_counts_region_id >= 0
+                ? resolve_ptr(
+                      rec->bsr_row_counts_region_id, rec->bsr_row_counts_offset,
+                      static_cast<size_t>(rec->row_count) * sizeof(int32_t)
+                  )
+                : nullptr;
+            size_t bsr_columns_bytes = int_bytes;
+            if (bsr_offsets && rec->masked_topology != 0)
+                bsr_columns_bytes = std::max(
+                    bsr_columns_bytes,
+                    static_cast<size_t>(reinterpret_cast<const int*>(bsr_offsets)[rec->row_count]) * sizeof(int32_t)
+                );
+            void* bsr_columns = resolve_ptr(rec->bsr_columns_region_id, rec->bsr_columns_offset, bsr_columns_bytes);
+            void* bsr_nnz = rec->bsr_nnz_region_id >= 0
+                ? resolve_ptr(rec->bsr_nnz_region_id, rec->bsr_nnz_offset, sizeof(int32_t))
+                : nullptr;
+
+            if (!tpl_rows || !tpl_columns || !summed_block_offsets || !summed_block_indices || !bsr_offsets
+                || !bsr_columns || (rec->tpl_nnz_region_id >= 0 && !tpl_nnz)
+                || (rec->tpl_values_region_id >= 0 && !tpl_values)
+                || (rec->bsr_row_counts_region_id >= 0 && !bsr_row_counts)
+                || (rec->bsr_nnz_region_id >= 0 && !bsr_nnz)) {
+                fprintf(stderr, "APIC: Error - bsr-from-triplets pointer resolution failed at operation %u\n", i);
+                return false;
+            }
+            // g_apic_state is null during replay, so this executes the real
+            // topology build. Same entry point wp.sparse.bsr_set_from_triplets uses.
+            wp_bsr_matrix_from_triplets_host(
+                rec->block_size, rec->scalar_size_in_bytes, rec->row_count, rec->col_count, rec->nnz_upper_bound,
+                reinterpret_cast<const int*>(tpl_nnz), reinterpret_cast<const int*>(tpl_rows),
+                reinterpret_cast<const int*>(tpl_columns), tpl_values, rec->scalar_zero_mask, rec->masked_topology != 0,
+                reinterpret_cast<int*>(summed_block_offsets), reinterpret_cast<int*>(summed_block_indices),
+                reinterpret_cast<int*>(bsr_offsets), reinterpret_cast<const int*>(bsr_row_counts),
+                reinterpret_cast<int*>(bsr_columns), reinterpret_cast<int*>(bsr_nnz), nullptr
+            );
+            break;
+        }
+
+        case APIC_OP_BSR_TRANSPOSE: {
+            const APICBsrTransposeRecord* rec = reinterpret_cast<const APICBsrTransposeRecord*>(ptr);
+            size_t nnz = static_cast<size_t>(rec->nnz_upper_bound);
+            size_t int_bytes = nnz * sizeof(int32_t);
+            size_t rowp1_bytes = (static_cast<size_t>(rec->row_count) + 1) * sizeof(int32_t);
+            size_t colp1_bytes = (static_cast<size_t>(rec->col_count) + 1) * sizeof(int32_t);
+            void* bsr_offsets = resolve_ptr(rec->bsr_offsets_region_id, rec->bsr_offsets_offset, rowp1_bytes);
+            void* bsr_row_counts = rec->bsr_row_counts_region_id >= 0
+                ? resolve_ptr(
+                      rec->bsr_row_counts_region_id, rec->bsr_row_counts_offset,
+                      static_cast<size_t>(rec->row_count) * sizeof(int32_t)
+                  )
+                : nullptr;
+            void* bsr_columns = resolve_ptr(rec->bsr_columns_region_id, rec->bsr_columns_offset, int_bytes);
+            void* t_offsets
+                = resolve_ptr(rec->transposed_offsets_region_id, rec->transposed_offsets_offset, colp1_bytes);
+            void* t_row_counts = rec->transposed_row_counts_region_id >= 0
+                ? resolve_ptr(
+                      rec->transposed_row_counts_region_id, rec->transposed_row_counts_offset,
+                      static_cast<size_t>(rec->col_count) * sizeof(int32_t)
+                  )
+                : nullptr;
+            size_t transposed_capacity_bytes = int_bytes;
+            if (t_offsets && rec->transposed_row_counts_region_id >= 0)
+                transposed_capacity_bytes = std::max(
+                    transposed_capacity_bytes,
+                    static_cast<size_t>(reinterpret_cast<const int*>(t_offsets)[rec->col_count]) * sizeof(int32_t)
+                );
+            void* t_columns = resolve_ptr(
+                rec->transposed_columns_region_id, rec->transposed_columns_offset, transposed_capacity_bytes
+            );
+            void* block_indices
+                = resolve_ptr(rec->block_indices_region_id, rec->block_indices_offset, transposed_capacity_bytes);
+            void* status = rec->status_region_id >= 0
+                ? resolve_ptr(rec->status_region_id, rec->status_offset, sizeof(int32_t))
+                : nullptr;
+            if (!bsr_offsets || !bsr_columns || !t_offsets || !t_columns || !block_indices
+                || (rec->bsr_row_counts_region_id >= 0 && !bsr_row_counts)
+                || (rec->transposed_row_counts_region_id >= 0 && !t_row_counts)
+                || (rec->status_region_id >= 0 && !status)) {
+                fprintf(stderr, "APIC: Error - bsr-transpose pointer resolution failed at operation %u\n", i);
+                return false;
+            }
+            // g_apic_state is null during replay, so this executes the real
+            // transpose. Same entry point wp.sparse.bsr_set_transpose uses.
+            wp_bsr_transpose_host(
+                rec->row_count, rec->col_count, rec->nnz_upper_bound, reinterpret_cast<const int*>(bsr_offsets),
+                reinterpret_cast<const int*>(bsr_row_counts), reinterpret_cast<const int*>(bsr_columns),
+                reinterpret_cast<int*>(t_offsets), reinterpret_cast<int*>(t_row_counts),
+                reinterpret_cast<int*>(t_columns), reinterpret_cast<int*>(block_indices), reinterpret_cast<int*>(status)
+            );
+            break;
+        }
 
         case APIC_OP_IF: {
             const APICCondRecord* rec = reinterpret_cast<const APICCondRecord*>(ptr);
@@ -1398,8 +2210,14 @@ static bool apic_cpu_replay_stream(
 template <typename Container, typename Resolver, typename HandleRemap>
 static bool apic_cpu_replay_container(Container* c, Resolver resolve, HandleRemap remap_handle)
 {
-    auto find_kernel = [c](const std::string& key, uint8_t is_forward) -> void* {
-        auto it = c->cpu_kernels.find(key);
+    auto find_kernel = [c](const std::string& key, const std::string& module_hash, uint8_t is_forward) -> void* {
+        // Prefer the exact (module_hash, key) match so same-key kernels from
+        // distinct modules are dispatched correctly. The plain-key fallback is
+        // retained for older in-memory states/graphs registered before module
+        // hash disambiguation was available.
+        auto it = c->cpu_kernels.find(apic_kernel_map_key(module_hash, key));
+        if (it == c->cpu_kernels.end())
+            it = c->cpu_kernels.find(key);
         if (it == c->cpu_kernels.end())
             return nullptr;
         return is_forward ? it->second.forward_fn : it->second.backward_fn;
@@ -1657,53 +2475,62 @@ void* wp_apic_get_param_ptr(APICGraph* graph, const char* name)
 
 int wp_apic_get_num_kernels(APICGraph* graph) { return graph ? static_cast<int>(graph->kernels.size()) : 0; }
 
-const char* wp_apic_get_kernel_key(APICGraph* graph, int index)
+static const APICKernel* apic_get_kernel_by_index(APICGraph* graph, int index)
 {
     if (!graph || index < 0 || index >= static_cast<int>(graph->kernels.size()))
         return nullptr;
     auto it = graph->kernels.begin();
     std::advance(it, index);
-    return it->first.c_str();
+    return &it->second;
 }
 
-const char* wp_apic_get_kernel_forward_name(APICGraph* graph, const char* kernel_key)
+const char* wp_apic_get_kernel_key(APICGraph* graph, int index)
 {
-    if (!graph || !kernel_key)
-        return nullptr;
-    auto it = graph->kernels.find(kernel_key);
-    if (it == graph->kernels.end())
-        return nullptr;
-    return it->second.forward_name.c_str();
+    const APICKernel* kernel = apic_get_kernel_by_index(graph, index);
+    return kernel ? kernel->kernel_key.c_str() : nullptr;
 }
 
-const char* wp_apic_get_kernel_backward_name(APICGraph* graph, const char* kernel_key)
+const char* wp_apic_get_kernel_module_hash(APICGraph* graph, int index)
 {
-    if (!graph || !kernel_key)
-        return nullptr;
-    auto it = graph->kernels.find(kernel_key);
-    if (it == graph->kernels.end())
-        return nullptr;
-    return it->second.backward_name.c_str();
+    const APICKernel* kernel = apic_get_kernel_by_index(graph, index);
+    return kernel ? kernel->module_hash.c_str() : nullptr;
 }
 
-const char* wp_apic_get_kernel_module_hash(APICGraph* graph, const char* kernel_key)
+const char* wp_apic_get_kernel_module_binary_filename(APICGraph* graph, int index)
 {
-    if (!graph || !kernel_key)
+    const APICKernel* kernel = apic_get_kernel_by_index(graph, index);
+    if (!kernel)
         return nullptr;
-    auto it = graph->kernels.find(kernel_key);
-    if (it == graph->kernels.end())
+
+    auto it = graph->modules.find(kernel->module_hash);
+    if (it == graph->modules.end())
         return nullptr;
-    return it->second.module_hash.c_str();
+
+    return it->second.cubin_filename.c_str();
 }
 
-void wp_apic_register_loaded_cpu_kernel(APICGraph* graph, const char* kernel_key, void* forward_fn, void* backward_fn)
+const char* wp_apic_get_kernel_forward_name(APICGraph* graph, int index)
+{
+    const APICKernel* kernel = apic_get_kernel_by_index(graph, index);
+    return kernel ? kernel->forward_name.c_str() : nullptr;
+}
+
+const char* wp_apic_get_kernel_backward_name(APICGraph* graph, int index)
+{
+    const APICKernel* kernel = apic_get_kernel_by_index(graph, index);
+    return kernel ? kernel->backward_name.c_str() : nullptr;
+}
+
+void wp_apic_register_loaded_cpu_kernel(
+    APICGraph* graph, const char* kernel_key, const char* module_hash, void* forward_fn, void* backward_fn
+)
 {
     if (!graph || !kernel_key)
         return;
     APICCPUKernel info;
     info.forward_fn = forward_fn;
     info.backward_fn = backward_fn;
-    graph->cpu_kernels[std::string(kernel_key)] = info;
+    graph->cpu_kernels[apic_kernel_map_key(module_hash ? module_hash : "", kernel_key)] = info;
 }
 
 // ============================================================================

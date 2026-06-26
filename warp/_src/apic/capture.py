@@ -48,11 +48,11 @@ class APICapture:
         # on each launch and consumed by capture_save() to register modules,
         # kernels, and meshes with the C++ state before writing the .wrp file.
         self.collected_modules: dict[str, dict] = {}  # module_hash -> info
-        self.collected_kernels: dict[str, dict] = {}  # kernel_key -> info
+        self.collected_kernels: dict[tuple[str, str], dict] = {}  # (module_hash, kernel_key) -> info
         self.collected_mesh_ids: set[int] = set()  # mesh IDs seen during capture
 
     def begin_recording(self):
-        self.runtime.core.wp_apic_begin_recording(self.apic_state)
+        self.runtime.core.wp_apic_begin_recording(self.apic_state, 1 if self.device.is_cpu else 0)
 
     def end_recording(self):
         self.runtime.core.wp_apic_end_recording(self.apic_state)
@@ -104,8 +104,11 @@ class APICapture:
                 offsets.extend(self._find_handle_offsets(var.type, base_offset + field_offset))
         return offsets
 
-    def track_array(self, arr) -> tuple[int, int]:
+    def track_array(self, arr: warp.array | None) -> tuple[int, int]:
         """Register an array's base allocation as a memory region.
+
+        ``None`` and zero-``ptr`` arrays are accepted and return ``(-1, 0)``
+        without registering anything, so callers do not need to guard the call.
 
         Returns:
             (region_id, byte_offset) for this array within its base region.
@@ -189,6 +192,11 @@ class APICapture:
         indexedarray_t = warp._src.types.indexedarray_t
 
         if warp._src.types.matches_array_class(arg_type, array_cls):
+            if isinstance(original_value, array_t):
+                raise NotImplementedError(
+                    "APIC capture cannot record raw array ctype launch parameters; "
+                    "use set_param_at_index() with a Warp array object or None instead."
+                )
             data_offset = base_offset + array_t.data.offset
             grad_offset = base_offset + array_t.grad.offset
             if original_value is not None and original_value.ptr:
@@ -204,6 +212,11 @@ class APICapture:
                 out.append(self._make_reloc(grad_offset, APIC_RELOC_NULL, -1, 0))
 
         elif warp._src.types.matches_array_class(arg_type, indexedarray_cls):
+            if isinstance(original_value, indexedarray_t):
+                raise NotImplementedError(
+                    "APIC capture cannot record raw indexedarray ctype launch parameters; "
+                    "use set_param_at_index() with a Warp indexedarray object or None instead."
+                )
             # indexedarray_t lays out a nested array_t at offset 0, then
             # ARRAY_MAX_DIMS indices pointers. Recurse into the nested array_t
             # for data + grad, then emit one DATA_PTR / NULL reloc per indices
@@ -484,7 +497,8 @@ class APICapture:
             }
 
         kernel_key = kernel.key
-        if kernel_key not in self.collected_kernels:
+        kernel_id = (module_hash, kernel_key)
+        if kernel_id not in self.collected_kernels:
             name = kernel.get_mangled_name()
             options = kernel.module.options | kernel.options
 
@@ -496,7 +510,7 @@ class APICapture:
                 backward_name = (name + "_cpu_backward") if options.get("enable_backward", True) else ""
 
             hooks = module_exec.get_kernel_hooks(kernel)
-            self.collected_kernels[kernel_key] = {
+            self.collected_kernels[kernel_id] = {
                 "kernel_key": kernel_key,
                 "module_hash": module_hash,
                 "forward_name": forward_name,

@@ -3,6 +3,7 @@
 
 """Tests for APIC (API Capture) graph serialization and loading."""
 
+import ctypes
 import os
 import tempfile
 import unittest
@@ -17,8 +18,8 @@ from warp.tests.unittest_utils import (
     get_cuda_test_devices,
     get_test_devices,
     get_test_devices_with_cuda_graph_module_load,
-    get_test_devices_with_mempool,
-    get_test_devices_with_mempool_and_cuda_graph_module_load,
+    get_test_devices_with_graph_capture_allocation,
+    get_test_devices_with_graph_capture_allocation_and_cuda_graph_module_load,
 )
 
 
@@ -32,6 +33,20 @@ def scale_kernel(input: wp.array(dtype=float), output: wp.array(dtype=float), s:
 def add_kernel(a: wp.array(dtype=float), b: wp.array(dtype=float), output: wp.array(dtype=float)):
     i = wp.tid()
     output[i] = a[i] + b[i]
+
+
+@wp.kernel
+def fill_descending_kernel(keys: wp.array(dtype=float), values: wp.array(dtype=wp.int32), count: wp.int32):
+    i = wp.tid()
+    keys[i] = float(count - 1 - i)
+    values[i] = i
+
+
+@wp.kernel
+def fill_runs_kernel(values: wp.array(dtype=wp.int32)):
+    # Produces consecutive runs of length 3: [0,0,0,1,1,1,2,2,2,...].
+    i = wp.tid()
+    values[i] = i // 3
 
 
 class TestApic(unittest.TestCase):
@@ -368,6 +383,96 @@ def test_multiple_internal_allocations(test, device):
         loaded.get_param("output", result)
         # t1=10, t2=30, t3=40, output=45
         np.testing.assert_allclose(result.numpy(), np.full(n, 45.0))
+
+
+def test_apic_alloc_grow_during_capture(test, device):
+    """A NEW array allocated inside capture stays valid across multiple replays.
+
+    Mirrors the Newton SolverVBD pattern of growing a buffer during capture: the temporary is
+    allocated while recording, and the captured graph must re-resolve its region against the
+    retained allocation on every replay (not just the first). Gated on graph-capture allocation
+    capability because in-capture allocation on CUDA requires ``cudaMallocAsync``; CPU allocates
+    during capture regardless.
+    """
+    n = 256
+    input_data = wp.array(np.arange(n, dtype=np.float32) + 1.0, device=device)
+    output_data = wp.zeros(n, dtype=float, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        # Fresh allocation made *during* capture (the buffer-grow analog).
+        tmp = wp.empty(n, dtype=float, device=device)
+        wp.launch(scale_kernel, dim=n, inputs=[input_data, tmp, 2.0], device=device)  # tmp = input*2
+        wp.launch(add_kernel, dim=n, inputs=[tmp, input_data, output_data], device=device)  # out = input*3
+
+    expected = (np.arange(n, dtype=np.float32) + 1.0) * 3.0
+
+    # Replay twice, clobbering the output in between, to prove the captured temporary's region is
+    # re-resolved against the still-live allocation on each launch, not just the first.
+    for _ in range(2):
+        output_data.zero_()
+        wp.capture_launch(capture.graph)
+        wp.synchronize_device(device)
+        np.testing.assert_allclose(output_data.numpy(), expected)
+
+
+def test_cpu_graph_alloc_not_leaked_on_relaunch(test, device):
+    """In-graph allocations on CPU must not accumulate across relaunches.
+
+    CPU APIC allocates a graph's in-capture buffers once (at capture time) and reuses them
+    on every replay -- APIC_OP_ALLOC is a no-op during replay and the backing array is
+    retained for the graph's lifetime -- so relaunching must perform no further host
+    allocations. (CUDA achieves the analogous no-leak guarantee via its stream-ordered graph
+    mempool; see test_cuda_graph_alloc_retained_release.) This guards against a regression
+    that re-allocates, and leaks, on every launch. The allocation tracker counts host
+    allocations, so the count must not grow across the relaunch loop.
+    """
+    core = wp_context.runtime.core
+    n = 1024
+    input_data = wp.array(np.arange(n, dtype=np.float32) + 1.0, device=device)
+    output_data = wp.zeros(n, dtype=float, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        # Allocation made *inside* the capture; replay must reuse it, not re-allocate.
+        tmp = wp.empty(n, dtype=float, device=device)
+        wp.launch(scale_kernel, dim=n, inputs=[input_data, tmp, 2.0], device=device)  # tmp = input*2
+        wp.launch(add_kernel, dim=n, inputs=[tmp, input_data, output_data], device=device)  # out = input*3
+
+    expected = (np.arange(n, dtype=np.float32) + 1.0) * 3.0
+
+    # Warm-up launch establishes steady state and checks correctness.
+    wp.capture_launch(capture.graph)
+    wp.synchronize_device(device)
+    np.testing.assert_allclose(output_data.numpy(), expected)
+
+    # Count host allocations performed across many relaunches; reuse means this stays at zero,
+    # whereas a per-launch re-allocation would scale with the relaunch count.
+    was_enabled = bool(core.wp_alloc_tracker_is_enabled())
+    core.wp_alloc_tracker_enable(1)
+    try:
+        before = core.wp_alloc_tracker_get_total_alloc_count()
+        n_relaunch = 50
+        for _ in range(n_relaunch):
+            wp.capture_launch(capture.graph)
+        wp.synchronize_device(device)
+        allocations = core.wp_alloc_tracker_get_total_alloc_count() - before
+    finally:
+        if not was_enabled:
+            core.wp_alloc_tracker_enable(0)
+
+    test.assertEqual(
+        allocations,
+        0,
+        f"CPU graph relaunch performed {allocations} host allocation(s) over {n_relaunch} relaunches; "
+        "in-capture allocations should be reused, not re-allocated per launch",
+    )
+
+    # Still correct after the relaunch loop (reused buffers were not corrupted).
+    output_data.zero_()
+    wp.capture_launch(capture.graph)
+    wp.synchronize_device(device)
+    np.testing.assert_allclose(output_data.numpy(), expected)
 
 
 def test_graph_execution_unchanged(test, device):
@@ -1112,28 +1217,87 @@ def test_capture_while_cpu(test, device):
     test.assertEqual(int(counter.numpy()[0]), 0)
 
 
-def test_capture_with_array_scan(test, device):
-    """``wp.utils.array_scan`` interaction with APIC capture:
+def _make_const_writer(value):
+    """Build a kernel that writes a compile-time constant. Two kernels from this
+    factory share ``kernel.key`` (``_make_const_writer__locals__kernel``) but
+    compile to distinct modules via ``module="unique"``."""
+    constant = value
 
-    - CPU: scan ops are not yet recorded into the byte stream; the helper
-      raises so users don't silently get a graph with stale scan output.
-      Tracks the gist's Issue 2.
-    - CUDA: the scan kernels are picked up by ``cudaGraph`` stream capture,
-      so capture + launch reproduces the live scan output.
-    """
+    @wp.kernel(module="unique")
+    def kernel(out: wp.array(dtype=wp.int32)):
+        out[0] = wp.static(constant)
+
+    return kernel
+
+
+def test_capture_distinct_modules_same_key_cpu(test, device):
+    """Regression: kernels built with ``module="unique"`` from one factory share
+    a ``kernel.key`` but compile to distinct functions. APIC keyed CPU replay
+    kernels by key alone, so the second registration clobbered the first and
+    replay dispatched the wrong compiled kernel (wrong results or out-of-bounds
+    access). Each recorded launch must replay its own kernel."""
+    ka = _make_const_writer(111)
+    kb = _make_const_writer(222)
+    test.assertEqual(ka.key, kb.key)  # same key, distinct compiled modules
+
+    out_a = wp.zeros(1, dtype=wp.int32, device=device)
+    out_b = wp.zeros(1, dtype=wp.int32, device=device)
+
+    wp.load_module(ka.module, device=device)
+    wp.load_module(kb.module, device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.launch(ka, dim=1, inputs=[out_a], device=device)
+        wp.launch(kb, dim=1, inputs=[out_b], device=device)
+
+    out_a.zero_()
+    out_b.zero_()
+    wp.capture_launch(capture.graph)
+    wp.synchronize_device(device)
+    test.assertEqual(int(out_a.numpy()[0]), 111)
+    test.assertEqual(int(out_b.numpy()[0]), 222)
+
+
+def test_save_load_distinct_modules_same_key_cpu(test, device):
+    """Saved CPU APIC graphs must also dispatch same-key unique-module kernels."""
+    ka = _make_const_writer(111)
+    kb = _make_const_writer(222)
+    test.assertEqual(ka.key, kb.key)
+
+    out_a = wp.zeros(1, dtype=wp.int32, device=device)
+    out_b = wp.zeros(1, dtype=wp.int32, device=device)
+
+    wp.load_module(ka.module, device=device)
+    wp.load_module(kb.module, device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.launch(ka, dim=1, inputs=[out_a], device=device)
+        wp.launch(kb, dim=1, inputs=[out_b], device=device)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "same_key_modules")
+        wp.capture_save(capture.graph, path, outputs={"a": out_a, "b": out_b})
+
+        loaded = wp.capture_load(path, device=device)
+        wp.capture_launch(loaded)
+
+        loaded_a = wp.empty_like(out_a)
+        loaded_b = wp.empty_like(out_b)
+        loaded.get_param("a", loaded_a)
+        loaded.get_param("b", loaded_b)
+
+    test.assertEqual(int(loaded_a.numpy()[0]), 111)
+    test.assertEqual(int(loaded_b.numpy()[0]), 222)
+
+
+def test_capture_with_array_scan(test, device):
+    """Regression: Newton's broad/narrow-phase calls into wp_array_scan_*_host,
+    whose internal scratch -> output memcpy used to fail apic_resolve_ptr and
+    silently drop. After the fix, scan internals use plain memcpy."""
     n = 32
     src = wp.array(np.ones(n, dtype=np.int32), dtype=wp.int32, device=device)
     dst_in = wp.zeros(n, dtype=wp.int32, device=device)
     dst_ex = wp.zeros(n, dtype=wp.int32, device=device)
 
     wp.load_module(device=device)
-
-    if wp.get_device(device).is_cpu:
-        with test.assertRaises(NotImplementedError):
-            with wp.ScopedCapture(device=device, apic=True, force_module_load=False):
-                wp.utils.array_scan(src, dst_in, inclusive=True)
-        return
-
     with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
         wp.utils.array_scan(src, dst_in, inclusive=True)
         wp.utils.array_scan(src, dst_ex, inclusive=False)
@@ -1143,6 +1307,702 @@ def test_capture_with_array_scan(test, device):
     # Inclusive scan of [1]*n is [1,2,...,n]; exclusive is [0,1,...,n-1].
     np.testing.assert_allclose(dst_in.numpy(), np.arange(1, n + 1, dtype=np.int32))
     np.testing.assert_allclose(dst_ex.numpy(), np.arange(0, n, dtype=np.int32))
+
+
+def test_cpu_helper_not_recorded_during_cuda_capture(test, device):
+    """A CPU host helper invoked during a CUDA APIC capture must execute live,
+    not record into the CUDA byte stream. The native host hooks are gated on the
+    capture's device class, so a CPU array_scan run inside a CUDA capture runs
+    immediately (its output is correct once the capture block exits) instead of
+    being deferred/recorded into the CUDA capture. ``device`` is a CUDA
+    device; the scan operates on CPU arrays."""
+    n = 16
+    src = wp.array(np.ones(n, dtype=np.int32), dtype=wp.int32, device="cpu")
+    dst = wp.zeros(n, dtype=wp.int32, device="cpu")
+
+    wp.load_module(device=device)
+    # No host synchronization inside the CUDA capture (illegal under stream capture).
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False):
+        wp.utils.array_scan(src, dst, inclusive=True)
+
+    # If the CPU scan had been recorded (and thus deferred) into the CUDA capture
+    # instead of executing live, dst would still be all zeros here.
+    np.testing.assert_allclose(dst.numpy(), np.arange(1, n + 1, dtype=np.int32))
+
+
+def test_capture_pause_resume_during_cpu_apic_capture(test, device):
+    """capture_pause()/capture_resume() must work during a CPU APIC capture, not
+    just a CUDA capture, so consumers (e.g. cached FEM quadrature arrays) can
+    build host data outside the recorded stream without hitting 'Must be a CUDA
+    device'. Work done while paused is not recorded; the surrounding launches
+    still replay."""
+    n = 8
+    base = np.arange(n, dtype=np.float32) + 1.0
+    a = wp.array(base, device=device)
+    out = wp.zeros(n, dtype=float, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.launch(scale_kernel, dim=n, inputs=[a, out, 2.0], device=device)  # out = a*2
+        graph = wp_context.capture_pause(device=device)
+        test.assertFalse(wp.get_device(device).is_capturing, "capture should be paused")
+        # Allocation/work here must not be recorded into the graph.
+        _scratch = wp.zeros(n, dtype=float, device=device)
+        wp_context.capture_resume(graph, device=device)
+        test.assertTrue(wp.get_device(device).is_capturing, "capture should have resumed")
+        wp.launch(scale_kernel, dim=n, inputs=[out, out, 3.0], device=device)  # out = out*3
+
+    out.zero_()
+    wp.capture_launch(capture.graph)
+    wp.synchronize_device(device)
+    # Both recorded launches replay across the pause: out = a*2*3 = 6a.
+    np.testing.assert_allclose(out.numpy(), 6.0 * base)
+
+
+def test_bsr_nnz_sync_during_cpu_apic_capture(test, device):
+    """BsrMatrix.nnz_sync() during a CPU APIC capture must not crash and must
+    return the real block count: the readback is performed with recording paused
+    so it runs live rather than recording a deferred host copy into an
+    uninitialized buffer."""
+    import warp.sparse as sparse  # noqa: PLC0415
+
+    bsr = sparse.bsr_zeros(4, 4, wp.float32, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False):
+        nnz = bsr.nnz_sync()
+
+    test.assertIsInstance(nnz, int)
+    test.assertEqual(nnz, 0)
+
+
+def test_bsr_nnz_sync_after_recorded_topology_rejected(test, device):
+    """A deferred topology update cannot provide a replay-time nnz during capture."""
+    from warp.sparse import bsr_set_from_triplets, bsr_zeros  # noqa: PLC0415
+
+    rows = wp.array(np.array([1, 0, 1], dtype=np.int32), dtype=wp.int32, device=device)
+    columns = wp.array(np.array([2, 1, 2], dtype=np.int32), dtype=wp.int32, device=device)
+    values = wp.array(np.array([1.0, 2.0, 3.0], dtype=np.float32), dtype=wp.float32, device=device)
+    A = bsr_zeros(2, 3, block_type=wp.float32, device=device)
+
+    with test.assertRaisesRegex(NotImplementedError, "topology update"):
+        with wp.ScopedCapture(device=device, apic=True, force_module_load=False):
+            bsr_set_from_triplets(A, rows, columns, values)
+            A.nnz_sync()
+
+
+def test_save_load_array_scan_replay_with_updated_input(test, device):
+    """``wp.utils.array_scan`` must be recorded into the byte stream so a saved
+    + loaded graph recomputes against the current input rather than returning
+    capture-time output. Regression for shi-eric's gist (Issue 2)."""
+    original = np.array([1, 2, 3, 4, 5], dtype=np.int32)
+    updated = np.array([5, 1, 4, 1, 3], dtype=np.int32)
+
+    src = wp.array(original, dtype=wp.int32, device=device)
+    dst = wp.zeros_like(src)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.utils.array_scan(src, dst, inclusive=False)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "exclusive_scan")
+        wp.capture_save(capture.graph, path, inputs={"src": src}, outputs={"dst": dst})
+
+        loaded = wp.capture_load(path, device=device)
+        loaded.set_param("src", wp.array(updated, dtype=wp.int32, device=device))
+        wp.capture_launch(loaded)
+
+        actual = wp.empty_like(dst)
+        loaded.get_param("dst", actual)
+
+    expected = np.zeros_like(updated)
+    expected[1:] = np.cumsum(updated[:-1], dtype=updated.dtype)
+    np.testing.assert_allclose(actual.numpy(), expected)
+
+
+def test_capture_with_array_scan_extended_metadata(test, device):
+    """APIC scan records must preserve dtype, vector lanes, and 1D strides."""
+    n = 6
+
+    base = wp.array(np.arange(0, 2 * n, dtype=np.int64), dtype=wp.int64, device=device)
+    dst_base = wp.zeros(2 * n, dtype=wp.int64, device=device)
+    src = base[0 : 2 * n : 2]
+    dst = dst_base[1 : 2 * n : 2]
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.utils.array_scan(src, dst, inclusive=True)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "strided_int64_scan")
+        wp.capture_save(capture.graph, path, inputs={"base": base}, outputs={"dst_base": dst_base})
+
+        updated_base_np = np.array([10, -1, 2, -1, 7, -1, 1, -1, 3, -1, 4, -1], dtype=np.int64)
+        loaded = wp.capture_load(path, device=device)
+        loaded.set_param("base", wp.array(updated_base_np, dtype=wp.int64, device=device))
+        wp.capture_launch(loaded)
+
+        actual = wp.empty_like(dst_base)
+        loaded.get_param("dst_base", actual)
+
+    expected = np.zeros(2 * n, dtype=np.int64)
+    expected[1::2] = np.cumsum(updated_base_np[::2], dtype=np.int64)
+    np.testing.assert_array_equal(actual.numpy(), expected)
+
+    vec_src_np = np.array([[1.0, 10.0, 100.0], [2.0, 20.0, 200.0], [3.0, 30.0, 300.0]], dtype=np.float32)
+    vec_src = wp.array(vec_src_np, dtype=wp.vec3, device=device)
+    vec_dst = wp.zeros_like(vec_src)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture_vec:
+        wp.utils.array_scan(vec_src, vec_dst, inclusive=False)
+    wp.capture_launch(capture_vec.graph)
+    np.testing.assert_allclose(
+        vec_dst.numpy(), np.vstack([np.zeros(3, dtype=np.float32), np.cumsum(vec_src_np[:-1], axis=0)])
+    )
+
+    f64_src_np = np.array([0.25, 0.5, 1.25, 2.0], dtype=np.float64)
+    f64_src = wp.array(f64_src_np, dtype=wp.float64, device=device)
+    f64_dst = wp.zeros_like(f64_src)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture_f64:
+        wp.utils.array_scan(f64_src, f64_dst, inclusive=True)
+    wp.capture_launch(capture_f64.graph)
+    np.testing.assert_allclose(f64_dst.numpy(), np.cumsum(f64_src_np))
+
+
+def test_capture_with_segmented_sort(test, device):
+    """Regression: wp.utils.segmented_sort_pairs on CPU dispatches to a host
+    function that wasn't recorded into the APIC byte stream, so under graph
+    capture/replay the sort silently didn't run and data stayed unsorted
+    (Newton SAP broadphase ~10x slowdown). The fill kernel runs inside the
+    capture so the keys at replay time differ from capture time, forcing the
+    sort to actually replay."""
+    n = 64
+    # segmented_sort_pairs requires 2*count capacity for sort scratch.
+    keys = wp.zeros(2 * n, dtype=wp.float32, device=device)
+    values = wp.zeros(2 * n, dtype=wp.int32, device=device)
+    segments = wp.array(np.array([0, n], dtype=np.int32), dtype=wp.int32, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.launch(fill_descending_kernel, dim=n, inputs=[keys, values, n], device=device)
+        wp.utils.segmented_sort_pairs(keys=keys, values=values, count=n, segment_start_indices=segments)
+
+    wp.capture_launch(capture.graph)
+    wp.synchronize_device(device)
+    # Correct sort turns descending keys [n-1..0] into ascending [0..n-1],
+    # and carries the original indices into values in reverse.
+    np.testing.assert_allclose(keys.numpy()[:n], np.arange(0, n, dtype=np.float32))
+    np.testing.assert_allclose(values.numpy()[:n], np.arange(n - 1, -1, -1, dtype=np.int32))
+
+
+def test_save_load_segmented_sort(test, device):
+    """A captured segmented sort must be recorded into the byte stream so a
+    saved + loaded graph re-sorts on replay rather than returning capture-time
+    (unsorted) data."""
+    n = 16
+    keys = wp.zeros(2 * n, dtype=wp.float32, device=device)
+    values = wp.zeros(2 * n, dtype=wp.int32, device=device)
+    segments = wp.array(np.array([0, n], dtype=np.int32), dtype=wp.int32, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.launch(fill_descending_kernel, dim=n, inputs=[keys, values, n], device=device)
+        wp.utils.segmented_sort_pairs(keys=keys, values=values, count=n, segment_start_indices=segments)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "segmented_sort")
+        wp.capture_save(capture.graph, path, outputs={"keys": keys})
+
+        loaded = wp.capture_load(path, device=device)
+        wp.capture_launch(loaded)
+        wp.synchronize_device(device)
+
+        result = wp.empty(2 * n, dtype=wp.float32, device=device)
+        loaded.get_param("keys", result)
+        np.testing.assert_allclose(result.numpy()[:n], np.arange(0, n, dtype=np.float32))
+
+
+def test_save_load_segmented_sort_explicit_end(test, device):
+    """With explicit ``segment_end_indices`` the start array holds only
+    ``num_segments`` entries (not ``num_segments + 1``), so the recorded
+    start-region span must match the array. The earlier code always claimed
+    ``num_segments + 1`` entries, over-running the explicit-end start array so
+    save/load replay failed pointer resolution."""
+    n = 16
+    half = n // 2
+    keys = wp.zeros(2 * n, dtype=wp.float32, device=device)
+    values = wp.zeros(2 * n, dtype=wp.int32, device=device)
+    # Two segments with SEPARATE start/end arrays, each num_segments (=2) entries.
+    seg_start = wp.array(np.array([0, half], dtype=np.int32), dtype=wp.int32, device=device)
+    seg_end = wp.array(np.array([half, n], dtype=np.int32), dtype=wp.int32, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.launch(fill_descending_kernel, dim=n, inputs=[keys, values, n], device=device)
+        wp.utils.segmented_sort_pairs(
+            keys=keys,
+            values=values,
+            count=n,
+            segment_start_indices=seg_start,
+            segment_end_indices=seg_end,
+        )
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "segmented_sort_explicit")
+        wp.capture_save(capture.graph, path, outputs={"keys": keys})
+
+        loaded = wp.capture_load(path, device=device)
+        wp.capture_launch(loaded)
+        wp.synchronize_device(device)
+
+        result = wp.empty(2 * n, dtype=wp.float32, device=device)
+        loaded.get_param("keys", result)
+
+    # Each segment is sorted ascending independently: descending fill
+    # [n-1 .. 0] becomes [half .. n-1] for segment 0 and [0 .. half-1] for segment 1.
+    expected = np.concatenate([np.arange(half, n, dtype=np.float32), np.arange(0, half, dtype=np.float32)])
+    np.testing.assert_allclose(result.numpy()[:n], expected)
+
+
+def test_capture_with_radix_sort(test, device):
+    """Regression: wp.utils.radix_sort_pairs on CPU dispatches to a host function
+    (wp_radix_sort_pairs_*_host) that, like the segmented sort, was invisible to
+    the APIC byte stream and so didn't replay. The fill kernel runs inside the
+    capture so replay-time keys differ from capture time."""
+    n = 64
+    keys = wp.zeros(2 * n, dtype=wp.float32, device=device)
+    values = wp.zeros(2 * n, dtype=wp.int32, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.launch(fill_descending_kernel, dim=n, inputs=[keys, values, n], device=device)
+        wp.utils.radix_sort_pairs(keys, values, n)
+
+    wp.capture_launch(capture.graph)
+    wp.synchronize_device(device)
+    np.testing.assert_allclose(keys.numpy()[:n], np.arange(0, n, dtype=np.float32))
+    np.testing.assert_allclose(values.numpy()[:n], np.arange(n - 1, -1, -1, dtype=np.int32))
+
+
+def test_capture_with_radix_sort_extended_metadata(test, device):
+    """APIC radix-sort records must preserve key dtype, bit range, and value size."""
+    n = 4
+    keys_np = np.array([0x0201, 0x0102, 0x0200, 0x0101, 0, 0, 0, 0], dtype=np.uint32)
+    values_np = np.array([10, 20, 30, 40, 0, 0, 0, 0], dtype=np.int64)
+    keys = wp.array(keys_np, dtype=wp.uint32, device=device)
+    values = wp.array(values_np, dtype=wp.int64, device=device)
+
+    f64_keys_np = np.array([3.0, 1.0, 2.0, 0.0, 0.0, 0.0], dtype=np.float64)
+    f64_values_np = np.array([0, 1, 2, 0, 0, 0], dtype=np.int32)
+    f64_keys = wp.array(f64_keys_np, dtype=wp.float64, device=device)
+    f64_values = wp.array(f64_values_np, dtype=wp.int32, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.utils.radix_sort_pairs(keys, values, n, begin_bit=8, end_bit=16)
+        wp.utils.radix_sort_pairs(f64_keys, f64_values, 3)
+
+    wp.capture_launch(capture.graph)
+    wp.synchronize_device(device)
+
+    np.testing.assert_array_equal(keys.numpy()[:n], np.array([0x0102, 0x0101, 0x0201, 0x0200], dtype=np.uint32))
+    np.testing.assert_array_equal(values.numpy()[:n], np.array([20, 40, 10, 30], dtype=np.int64))
+    np.testing.assert_allclose(f64_keys.numpy()[:3], np.array([1.0, 2.0, 3.0], dtype=np.float64))
+    np.testing.assert_array_equal(f64_values.numpy()[:3], np.array([1, 2, 0], dtype=np.int32))
+
+
+def test_borrow_temporary_not_recycled_during_apic_capture(test, device):
+    """Regression: ``warp.fem`` temporaries borrowed during APIC capture must not
+    be recycled by the temporary pool. The captured byte stream references them by
+    pointer, so a release + re-borrow that handed the same pool memory back for a
+    distinct captured region left replay reading/writing stale memory.
+    Under an active capture the pool is bypassed, so a released buffer's memory is
+    not aliased onto the next borrow.
+    """
+    from warp._src.fem import cache as fem_cache  # noqa: PLC0415
+
+    store = fem_cache.TemporaryStore()
+    n = 64
+
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False):
+        t1 = fem_cache.borrow_temporary(store, shape=(n,), dtype=wp.float32, device=device)
+        ptr1 = t1.ptr
+        # Without the fix this returns t1's buffer to the pool; with the fix it is
+        # a no-op so t1 stays alive for the graph's lifetime.
+        t1.release()
+        t2 = fem_cache.borrow_temporary(store, shape=(n,), dtype=wp.float32, device=device)
+
+    # The pool must not have recycled t1's memory onto t2 while capturing.
+    test.assertNotEqual(t2.ptr, ptr1, "temporary pool recycled a buffer during APIC capture")
+    # t1 must remain alive at its original address (release was neutralized).
+    test.assertEqual(t1.ptr, ptr1, "captured temporary was released mid-capture")
+
+
+@wp.kernel
+def saxpy_kernel(a: wp.array(dtype=float), b: wp.array(dtype=float), s: float, out: wp.array(dtype=float)):
+    i = wp.tid()
+    out[i] = a[i] + s * b[i]
+
+
+@wp.kernel
+def copy_scaled_kernel(src: wp.array(dtype=float), dst: wp.array(dtype=float), idx: int, s: float):
+    dst[idx] = src[0] * s
+
+
+def test_capture_replay_many_regions(test, device):
+    """Regression for the O(1) region-resolution index in the CPU live-capture
+    replay path (apic_resolve_state_region_ptr): a graph that registers many
+    distinct array regions must resolve every one correctly on replay. Each of
+    the `n` launches reads a distinct `src` array (a distinct region) and writes
+    one slot of `out`, so replay must resolve `n` distinct regions; the outputs
+    are clobbered after capture so only correct per-region resolution restores
+    them. Guards the index build/lookup against off-by-one / stale-index bugs."""
+    n = 300
+    srcs = [wp.array([float(i + 1)], dtype=float, device=device) for i in range(n)]
+    out = wp.zeros(n, dtype=float, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        for i in range(n):
+            wp.launch(copy_scaled_kernel, dim=1, inputs=[srcs[i], out, i, 2.0], device=device)
+
+    out.fill_(-1.0)  # clobber; only correct region resolution on replay restores it
+    wp.capture_launch(capture.graph)
+    wp.synchronize_device(device)
+    np.testing.assert_allclose(out.numpy(), 2.0 * (np.arange(n) + 1))
+
+    # Replay again to exercise the cached (already-built) index path.
+    out.fill_(-1.0)
+    wp.capture_launch(capture.graph)
+    wp.synchronize_device(device)
+    np.testing.assert_allclose(out.numpy(), 2.0 * (np.arange(n) + 1))
+
+
+def test_capture_with_record_cmd_launch(test, device):
+    """Regression: a reusable launch from ``wp.launch(..., record_cmd=True)``
+    invoked during APIC capture must record an APIC_OP_KERNEL_LAUNCH (it
+    previously called the kernel hook directly, bypassing the byte stream, so
+    the launch was dropped on replay). The output is clobbered after capture, so
+    only a replayed launch can restore it. Also covers ``set_param_at_index``."""
+    n = 64
+    a = wp.array(np.arange(n, dtype=np.float32), device=device)
+    b = wp.array(np.full(n, 10.0, dtype=np.float32), device=device)
+    out = wp.zeros(n, dtype=float, device=device)
+
+    cmd = wp.launch(saxpy_kernel, dim=n, inputs=[a, b, 2.0], outputs=[out], record_cmd=True, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        cmd.launch()
+
+    out.fill_(-999.0)  # clobber so a dropped launch leaves the sentinel
+    wp.capture_launch(capture.graph)
+    wp.synchronize_device(device)
+    np.testing.assert_allclose(out.numpy(), np.arange(n, dtype=np.float32) + 2.0 * 10.0)
+
+    # set_param_at_index on a scalar must propagate into the recorded value blob.
+    cmd.set_param_at_index(2, 3.0)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture2:
+        cmd.launch()
+    out.fill_(-999.0)
+    wp.capture_launch(capture2.graph)
+    wp.synchronize_device(device)
+    np.testing.assert_allclose(out.numpy(), np.arange(n, dtype=np.float32) + 3.0 * 10.0)
+
+    # set_param_at_index on an array arg must also propagate: the recorded
+    # data-pointer relocation is derived from the retained fwd_args, so it must
+    # target the updated array rather than the one passed at launch-record time.
+    new_a = wp.array(np.arange(n, dtype=np.float32) + 100.0, device=device)
+    cmd.set_param_at_index(0, new_a)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture3:
+        cmd.launch()
+    out.fill_(-999.0)
+    wp.capture_launch(capture3.graph)
+    wp.synchronize_device(device)
+    np.testing.assert_allclose(out.numpy(), np.arange(n, dtype=np.float32) + 100.0 + 3.0 * 10.0)
+
+
+def test_record_cmd_raw_array_ctype_rejected_during_apic_capture(test, device):
+    """Raw ctypes array descriptors do not provide APIC relocation ownership."""
+    n = 4
+    a = wp.array(np.arange(n, dtype=np.float32), device=device)
+    b = wp.ones(n, dtype=wp.float32, device=device)
+    out = wp.zeros(n, dtype=float, device=device)
+
+    cmd = wp.launch(saxpy_kernel, dim=n, inputs=[a, b, 2.0], outputs=[out], record_cmd=True, device=device)
+    cmd.set_param_at_index_from_ctype(0, a.__ctype__())
+
+    wp.load_module(device=device)
+    with test.assertRaisesRegex(NotImplementedError, "raw array ctype"):
+        with wp.ScopedCapture(device=device, apic=True, force_module_load=False):
+            cmd.launch()
+
+
+@wp.kernel
+def fill_diag_triplets_kernel(
+    rows: wp.array(dtype=wp.int32), columns: wp.array(dtype=wp.int32), values: wp.array(dtype=wp.float32)
+):
+    # Emit one diagonal triplet per row: (i, i) = i + 1.
+    i = wp.tid()
+    rows[i] = i
+    columns[i] = i
+    values[i] = float(i + 1)
+
+
+def test_capture_with_bsr_from_triplets(test, device):
+    """Regression: wp.sparse.bsr_set_from_triplets on CPU computes the matrix
+    topology via a host function (wp_bsr_matrix_from_triplets_host) that, like the
+    sorts/runlength_encode, was invisible to the APIC byte stream. The triplet
+    arrays are produced by a kernel inside the capture (deferred at capture time),
+    so without recording the op replay scatters fresh values into a frozen,
+    capture-time-empty topology, leaving the matrix empty."""
+    from warp.sparse import bsr_set_from_triplets, bsr_zeros  # noqa: PLC0415
+
+    n = 8
+    rows = wp.zeros(n, dtype=wp.int32, device=device)
+    columns = wp.zeros(n, dtype=wp.int32, device=device)
+    values = wp.zeros(n, dtype=wp.float32, device=device)
+    A = bsr_zeros(n, n, block_type=wp.float32, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.launch(fill_diag_triplets_kernel, dim=n, inputs=[rows, columns, values], device=device)
+        bsr_set_from_triplets(A, rows, columns, values)
+
+    # Clobber topology + values so a no-op replay cannot leave capture-time data.
+    A.offsets.zero_()
+    A.columns.fill_(-1)
+    A.values.zero_()
+
+    wp.capture_launch(capture.graph)
+    wp.synchronize_device(device)
+
+    # Expect an 8x8 diagonal matrix: nnz=8, columns=[0..7], values=[1..8].
+    test.assertEqual(int(A.offsets.numpy()[n]), n)
+    np.testing.assert_array_equal(A.columns.numpy()[:n], np.arange(n, dtype=np.int32))
+    np.testing.assert_allclose(A.values.numpy()[:n], np.arange(1, n + 1, dtype=np.float32))
+
+
+def test_capture_with_bsr_from_triplets_topology_only(test, device):
+    """``bsr_set_from_triplets(values=None)`` still needs the recorded topology op."""
+    from warp.sparse import bsr_set_from_triplets, bsr_zeros  # noqa: PLC0415
+
+    rows = wp.array(np.array([1, 0, 1], dtype=np.int32), dtype=wp.int32, device=device)
+    columns = wp.array(np.array([2, 1, 2], dtype=np.int32), dtype=wp.int32, device=device)
+    A = bsr_zeros(2, 3, block_type=wp.float32, device=device)
+
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        bsr_set_from_triplets(A, rows, columns, values=None)
+
+    A.offsets.zero_()
+    A.columns.fill_(-1)
+
+    wp.capture_launch(capture.graph)
+    wp.synchronize_device(device)
+
+    np.testing.assert_array_equal(A.offsets.numpy(), np.array([0, 1, 2], dtype=np.int32))
+    np.testing.assert_array_equal(A.columns.numpy()[:2], np.array([1, 2], dtype=np.int32))
+
+
+def test_capture_with_bsr_transpose(test, device):
+    """Regression: wp.sparse.bsr_transposed on CPU computes the transposed topology
+    via a host function (wp_bsr_transpose_host) that was invisible to the APIC byte
+    stream. The source matrix is (re)assembled from triplets produced inside the
+    capture, so replay must recompute both the from-triplets and the transpose
+    topology."""
+    from warp.sparse import bsr_set_from_triplets, bsr_set_transpose, bsr_zeros  # noqa: PLC0415
+
+    n = 6
+    rows = wp.zeros(n, dtype=wp.int32, device=device)
+    columns = wp.zeros(n, dtype=wp.int32, device=device)
+    values = wp.zeros(n, dtype=wp.float32, device=device)
+    A = bsr_zeros(n, n, block_type=wp.float32, device=device)
+    At = bsr_zeros(n, n, block_type=wp.float32, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.launch(fill_diag_triplets_kernel, dim=n, inputs=[rows, columns, values], device=device)
+        bsr_set_from_triplets(A, rows, columns, values)
+        bsr_set_transpose(At, A)
+
+    At.offsets.zero_()
+    At.columns.fill_(-1)
+    At.values.zero_()
+
+    wp.capture_launch(capture.graph)
+    wp.synchronize_device(device)
+
+    # Diagonal matrix transposes to itself: nnz=6, columns=[0..5], values=[1..6].
+    test.assertEqual(int(At.offsets.numpy()[n]), n)
+    np.testing.assert_array_equal(At.columns.numpy()[:n], np.arange(n, dtype=np.int32))
+    np.testing.assert_allclose(At.values.numpy()[:n], np.arange(1, n + 1, dtype=np.float32))
+
+
+def test_capture_with_padded_bsr_transpose(test, device):
+    """Padded BSR transpose replay must preserve row_counts and status pointers."""
+    from warp.sparse import (  # noqa: PLC0415
+        BSR_STATUS_ROW_CAPACITY_EXCEEDED,
+        bsr_set_from_triplets,
+        bsr_set_transpose,
+        bsr_zeros,
+    )
+
+    rows = wp.array(np.array([0, 0, 1, 1], dtype=np.int32), dtype=wp.int32, device=device)
+    columns = wp.array(np.array([0, 2, 1, 2], dtype=np.int32), dtype=wp.int32, device=device)
+    values = wp.array(np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float32), dtype=wp.float32, device=device)
+
+    A = bsr_zeros(2, 3, block_type=wp.float32, device=device, row_capacity=3)
+    bsr_set_from_triplets(A, rows, columns, values, topology="padded")
+
+    At = bsr_zeros(3, 2, block_type=wp.float32, device=device, row_capacity=2)
+    At_too_small = bsr_zeros(3, 2, block_type=wp.float32, device=device, row_capacity=1)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        bsr_set_transpose(At, A, topology="padded")
+        bsr_set_transpose(At_too_small, A, topology="padded")
+
+    At.row_counts.zero_()
+    At.columns.fill_(-1)
+    At.values.zero_()
+    At._ensure_status().zero_()
+    At_too_small.row_counts.zero_()
+    At_too_small.columns.fill_(-1)
+    At_too_small.values.zero_()
+    At_too_small._ensure_status().zero_()
+
+    wp.capture_launch(capture.graph)
+    wp.synchronize_device(device)
+
+    np.testing.assert_array_equal(At.row_counts.numpy(), np.array([1, 1, 2], dtype=np.int32))
+    columns_np = At.columns.numpy()
+    np.testing.assert_array_equal(columns_np[[0, 2, 4, 5]], np.array([0, 1, 0, 1], dtype=np.int32))
+    values_np = At.values.numpy()
+    np.testing.assert_allclose(values_np[[0, 2, 4, 5]], np.array([1.0, 3.0, 2.0, 4.0], dtype=np.float32))
+    test.assertEqual(At.status_sync(), 0)
+
+    np.testing.assert_array_equal(At_too_small.row_counts.numpy(), np.array([1, 1, 0], dtype=np.int32))
+    test.assertEqual(At_too_small.status_sync(), BSR_STATUS_ROW_CAPACITY_EXCEEDED)
+
+
+def test_capture_with_runlength_encode(test, device):
+    """Regression: wp.utils.runlength_encode on CPU dispatches to a host function
+    (wp_runlength_encode_int_host) that, like the sorts, was invisible to the APIC
+    byte stream and so didn't replay. The outputs are overwritten with sentinels
+    after capture, so only a replayed encode can restore the correct runs; without
+    recording the op, replay leaves the sentinels in place."""
+    n = 9
+    values = wp.zeros(n, dtype=wp.int32, device=device)
+    run_values = wp.zeros(n, dtype=wp.int32, device=device)
+    run_lengths = wp.zeros(n, dtype=wp.int32, device=device)
+    run_count = wp.zeros(1, dtype=wp.int32, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.launch(fill_runs_kernel, dim=n, inputs=[values], device=device)
+        wp.utils.runlength_encode(values, run_values, run_lengths, run_count=run_count, value_count=n)
+
+    # Clobber the outputs so a no-op replay cannot leave capture-time values behind.
+    run_values.fill_(-1)
+    run_lengths.fill_(-1)
+    run_count.fill_(-1)
+
+    wp.capture_launch(capture.graph)
+    wp.synchronize_device(device)
+    # [0,0,0,1,1,1,2,2,2] -> 3 runs of value 0/1/2, each length 3.
+    test.assertEqual(int(run_count.numpy()[0]), 3)
+    np.testing.assert_array_equal(run_values.numpy()[:3], np.array([0, 1, 2], dtype=np.int32))
+    np.testing.assert_array_equal(run_lengths.numpy()[:3], np.array([3, 3, 3], dtype=np.int32))
+
+
+def test_runlength_encode_host_return_rejected_during_cpu_apic_capture(test, device):
+    values = wp.array(np.array([1, 1, 2], dtype=np.int32), dtype=wp.int32, device=device)
+    run_values = wp.zeros(3, dtype=wp.int32, device=device)
+    run_lengths = wp.zeros(3, dtype=wp.int32, device=device)
+
+    with test.assertRaises(NotImplementedError):
+        with wp.ScopedCapture(device=device, apic=True, force_module_load=False):
+            wp.utils.runlength_encode(values, run_values, run_lengths)
+
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False):
+        test.assertEqual(wp.utils.runlength_encode(values, run_values, run_lengths, value_count=0), 0)
+
+
+def test_capture_auto_register_unknown_pointer_cpu(test, device):
+    """``wp_memset_host`` against a pointer APIC's tracker has never seen
+    previously dropped the op and emitted an error; the resulting graph
+    replayed as a no-op and left the buffer non-zero. The recording hooks
+    now auto-register unknown pointers as fresh regions so capture + replay
+    completes.
+
+    Bypass the high-level ``array.zero_()`` Python wrapper (which calls
+    ``track_array`` first) and invoke ``wp_memset_host`` directly via the
+    runtime ctypes binding to simulate a solver-owned buffer (e.g.
+    mujoco-warp's internal ``mjw_data`` arrays) that never flows through
+    Warp's tracking sites.
+    """
+    n = 64
+    arr = wp.empty(n, dtype=wp.int32, device=device)
+    arr.fill_(7)
+
+    runtime = wp_context.runtime
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        runtime.core.wp_memset_host(ctypes.c_void_p(arr.ptr), ctypes.c_int(0), ctypes.c_size_t(arr.size * 4))
+
+    # Re-prime with non-zero data, then replay; the captured memset must
+    # zero the buffer back out (proves the op landed in the byte stream).
+    arr.fill_(7)
+    wp.capture_launch(capture.graph)
+    wp.synchronize_device(device)
+    np.testing.assert_array_equal(arr.numpy(), np.zeros(n, dtype=np.int32))
+
+
+def test_save_load_auto_registered_native_pointer_cpu(test, device):
+    """Native-only auto-registered host regions must survive save/load.
+
+    The scratch pointer below never flows through Python's APIC tracker. It is
+    registered only by the native host hooks, then used as the source for a raw
+    host-to-host memcpy into a tracked output. Saving the graph must serialize
+    the scratch region too; otherwise loaded replay cannot resolve the source
+    pointer.
+    """
+    n = 64
+    output = wp.full(n, value=9, dtype=wp.uint8, device=device)
+    runtime = wp_context.runtime
+
+    scratch = runtime.core.wp_alloc_host(ctypes.c_size_t(n), None)
+    test.assertTrue(scratch)
+    try:
+        # Seed the tail with data that must be copied as initial data when the
+        # native region grows from n/2 bytes to n bytes during capture.
+        runtime.core.wp_memset_host(ctypes.c_void_p(scratch), ctypes.c_int(5), ctypes.c_size_t(n))
+
+        wp.load_module(device=device)
+        with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+            runtime.core.wp_memset_host(ctypes.c_void_p(scratch), ctypes.c_int(0), ctypes.c_size_t(n // 2))
+            runtime.core.wp_memcpy_h2h(ctypes.c_void_p(output.ptr), ctypes.c_void_p(scratch), ctypes.c_size_t(n))
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "native_only_region")
+            wp.capture_save(capture.graph, path, outputs={"output": output})
+
+            # Prove loaded replay is independent of the original native pointer.
+            runtime.core.wp_free_host(ctypes.c_void_p(scratch))
+            scratch = None
+
+            loaded = wp.capture_load(path, device=device)
+            wp.capture_launch(loaded)
+            wp.synchronize_device(device)
+
+            result = wp.empty(n, dtype=wp.uint8, device=device)
+            loaded.get_param("output", result)
+            expected = np.concatenate((np.zeros(n // 2, dtype=np.uint8), np.full(n - n // 2, 5, dtype=np.uint8)))
+            np.testing.assert_array_equal(result.numpy(), expected)
+    finally:
+        if scratch:
+            runtime.core.wp_free_host(ctypes.c_void_p(scratch))
 
 
 def test_end_recording_null_state_preserves_active(test, device):
@@ -1159,10 +2019,16 @@ def test_end_recording_null_state_preserves_active(test, device):
         # While capture is active, an external caller (e.g. error-cleanup path
         # in another component) calls wp_apic_end_recording(NULL).
         core = wp_context.runtime.core
-        active_before = core.wp_apic_get_recording_state()
+        # The host recording-state accessor is gated to CPU captures and the CUDA
+        # accessor to CUDA captures; pick the one matching this capture's
+        # device so this device-agnostic null-clobber check reads the active state.
+        get_state = (
+            core.wp_apic_get_recording_state if wp.get_device(device).is_cpu else core.wp_apic_get_cuda_recording_state
+        )
+        active_before = get_state()
         test.assertIsNotNone(active_before, "expected active recording state")
         core.wp_apic_end_recording(None)
-        active_after = core.wp_apic_get_recording_state()
+        active_after = get_state()
         # The active capture must still be recording.
         test.assertEqual(
             active_before,
@@ -1210,9 +2076,11 @@ def test_get_param_ptr(test, device):
 
 
 devices = get_test_devices()
-devices_with_mempool = get_test_devices_with_mempool()
+devices_with_graph_capture_allocation = get_test_devices_with_graph_capture_allocation()
 devices_with_cuda_graph_module_load = get_test_devices_with_cuda_graph_module_load()
-devices_with_mempool_and_cuda_graph_module_load = get_test_devices_with_mempool_and_cuda_graph_module_load()
+devices_with_graph_capture_allocation_and_cuda_graph_module_load = (
+    get_test_devices_with_graph_capture_allocation_and_cuda_graph_module_load()
+)
 
 add_function_test(
     TestApic,
@@ -1257,13 +2125,13 @@ add_function_test(
     TestApic,
     "test_internal_allocation",
     test_internal_allocation,
-    devices=devices_with_mempool_and_cuda_graph_module_load,
+    devices=devices_with_graph_capture_allocation_and_cuda_graph_module_load,
 )
 add_function_test(
     TestApic,
     "test_multiple_internal_allocations",
     test_multiple_internal_allocations,
-    devices=devices_with_mempool_and_cuda_graph_module_load,
+    devices=devices_with_graph_capture_allocation_and_cuda_graph_module_load,
 )
 add_function_test(
     TestApic,
@@ -1286,7 +2154,39 @@ add_function_test(
 add_function_test(
     TestApic, "test_save_load_fill", test_save_load_fill, devices=get_cuda_test_devices()
 )  # CPU: wp_memtile_host not recorded
-add_function_test(TestApic, "test_save_load_alloc_only", test_save_load_alloc_only, devices=devices_with_mempool)
+add_function_test(
+    TestApic, "test_save_load_alloc_only", test_save_load_alloc_only, devices=devices_with_graph_capture_allocation
+)
+add_function_test(
+    TestApic,
+    "test_apic_alloc_grow_during_capture",
+    test_apic_alloc_grow_during_capture,
+    devices=devices_with_graph_capture_allocation,
+)
+add_function_test(
+    TestApic,
+    "test_cpu_graph_alloc_not_leaked_on_relaunch",
+    test_cpu_graph_alloc_not_leaked_on_relaunch,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_capture_pause_resume_during_cpu_apic_capture",
+    test_capture_pause_resume_during_cpu_apic_capture,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_bsr_nnz_sync_during_cpu_apic_capture",
+    test_bsr_nnz_sync_during_cpu_apic_capture,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_bsr_nnz_sync_after_recorded_topology_rejected",
+    test_bsr_nnz_sync_after_recorded_topology_rejected,
+    devices=[d for d in devices if d.is_cpu],
+)
 add_function_test(TestApic, "test_capture_with_empty_array_input", test_capture_with_empty_array_input, devices=devices)
 add_function_test(
     TestApic,
@@ -1316,6 +2216,126 @@ add_function_test(
     TestApic, "test_capture_with_large_scalar_param", test_capture_with_large_scalar_param, devices=devices
 )
 add_function_test(TestApic, "test_capture_with_array_scan", test_capture_with_array_scan, devices=devices)
+add_function_test(
+    TestApic,
+    "test_cpu_helper_not_recorded_during_cuda_capture",
+    test_cpu_helper_not_recorded_during_cuda_capture,
+    devices=get_cuda_test_devices(),
+)
+add_function_test(
+    TestApic,
+    "test_capture_with_array_scan_extended_metadata",
+    test_capture_with_array_scan_extended_metadata,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_capture_with_segmented_sort",
+    test_capture_with_segmented_sort,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_save_load_segmented_sort",
+    test_save_load_segmented_sort,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_save_load_segmented_sort_explicit_end",
+    test_save_load_segmented_sort_explicit_end,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_capture_with_radix_sort",
+    test_capture_with_radix_sort,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_capture_with_radix_sort_extended_metadata",
+    test_capture_with_radix_sort_extended_metadata,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_borrow_temporary_not_recycled_during_apic_capture",
+    test_borrow_temporary_not_recycled_during_apic_capture,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_capture_with_runlength_encode",
+    test_capture_with_runlength_encode,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_runlength_encode_host_return_rejected_during_cpu_apic_capture",
+    test_runlength_encode_host_return_rejected_during_cpu_apic_capture,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_capture_replay_many_regions",
+    test_capture_replay_many_regions,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_capture_with_record_cmd_launch",
+    test_capture_with_record_cmd_launch,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_record_cmd_raw_array_ctype_rejected_during_apic_capture",
+    test_record_cmd_raw_array_ctype_rejected_during_apic_capture,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_capture_with_bsr_from_triplets",
+    test_capture_with_bsr_from_triplets,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_capture_with_bsr_from_triplets_topology_only",
+    test_capture_with_bsr_from_triplets_topology_only,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_capture_with_bsr_transpose",
+    test_capture_with_bsr_transpose,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_capture_with_padded_bsr_transpose",
+    test_capture_with_padded_bsr_transpose,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_save_load_array_scan_replay_with_updated_input",
+    test_save_load_array_scan_replay_with_updated_input,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_capture_auto_register_unknown_pointer_cpu",
+    test_capture_auto_register_unknown_pointer_cpu,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_save_load_auto_registered_native_pointer_cpu",
+    test_save_load_auto_registered_native_pointer_cpu,
+    devices=[d for d in devices if d.is_cpu],
+)
 # Backward kernel capture is currently CPU-only; CUDA backward path doesn't go through APIC yet.
 add_function_test(
     TestApic,
@@ -1358,6 +2378,18 @@ add_function_test(
 # IF / WHILE on CUDA isn't implemented yet.
 add_function_test(TestApic, "test_capture_if_cpu", test_capture_if_cpu, devices=[d for d in devices if d.is_cpu])
 add_function_test(TestApic, "test_capture_while_cpu", test_capture_while_cpu, devices=[d for d in devices if d.is_cpu])
+add_function_test(
+    TestApic,
+    "test_capture_distinct_modules_same_key_cpu",
+    test_capture_distinct_modules_same_key_cpu,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_save_load_distinct_modules_same_key_cpu",
+    test_save_load_distinct_modules_same_key_cpu,
+    devices=[d for d in devices if d.is_cpu],
+)
 add_function_test(
     TestApic,
     "test_end_recording_null_state_preserves_active",
