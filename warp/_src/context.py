@@ -2977,14 +2977,13 @@ class ModuleExec:
 
     # lookup and cache kernel entry points
     def get_kernel_hooks(self, kernel) -> KernelHooks:
-        # Use kernel.adj as a unique key for cache lookups instead of the kernel itself.
-        # This avoids holding a reference to the kernel and is faster than using
-        # a WeakKeyDictionary with kernels as keys.
-        hooks = self.kernel_hooks.get(kernel.adj)
+        # Key by the mangled name (compiled-symbol identity), not kernel.adj, which pinned one
+        # Adjoint per closure-recreated kernel -- a leak the live-kernel WeakSet can't reclaim.
+        name = kernel.get_mangled_name()
+
+        hooks = self.kernel_hooks.get(name)
         if hooks is not None:
             return hooks
-
-        name = kernel.get_mangled_name()
 
         options = kernel.module.options | kernel.options
 
@@ -3082,7 +3081,7 @@ class ModuleExec:
 
             hooks = KernelHooks(forward, backward)
 
-        self.kernel_hooks[kernel.adj] = hooks
+        self.kernel_hooks[name] = hooks
         return hooks
 
 

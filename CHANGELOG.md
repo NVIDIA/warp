@@ -100,6 +100,8 @@
 
 ### Fixed
 
+- Fix unbounded memory growth when repeatedly launching identical kernels created by a factory or closure
+  ([GH-1589](https://github.com/NVIDIA/warp/issues/1589)).
 - Fix `wp.load_module()` and `wp.ScopedCapture(force_module_load=True)` after CPU launches so CUDA graph capture
   precompiles the correct CUDA kernel variant. On CUDA drivers older than 12.3 this previously raised
   `CUDA_ERROR_STREAM_CAPTURE_UNSUPPORTED`; on newer drivers it silently recompiled inside the capture window
