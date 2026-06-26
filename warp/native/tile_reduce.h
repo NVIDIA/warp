@@ -29,36 +29,58 @@ template <typename T> int argmin_tracker(T champion_value, T current_value, int 
 
 #if defined(__CUDA_ARCH__)
 
+// half / float16 needs a dedicated overload: the generic template below builds an
+// anonymous union over T, whose default constructor is deleted when T has a
+// non-trivial default constructor (as half does). Shuffle the raw bits instead.
+inline CUDA_CALLABLE half warp_shuffle_down(half val, int offset, int mask)
+{
+    unsigned int bits = static_cast<unsigned int>(val.u);
+    bits = __shfl_down_sync(mask, bits, offset, WP_TILE_WARP_SIZE);
+
+    half result;
+    result.u = static_cast<unsigned short>(bits);
+    return result;
+}
+
+#ifndef WP_NO_BFLOAT16
+inline CUDA_CALLABLE bfloat16 warp_shuffle_down(bfloat16 val, int offset, int mask)
+{
+    unsigned int bits = static_cast<unsigned int>(val.u);
+    bits = __shfl_down_sync(mask, bits, offset, WP_TILE_WARP_SIZE);
+
+    bfloat16 result;
+    result.u = static_cast<unsigned short>(bits);
+    return result;
+}
+#endif  // WP_NO_BFLOAT16
+
 template <typename T> inline CUDA_CALLABLE T warp_shuffle_down(T val, int offset, int mask)
 {
+    // Shuffle word-by-word over the raw bytes so any trivially-copyable value type is
+    // supported. A plain word buffer (rather than a union over T) avoids the deleted
+    // default constructor that a union acquires when T has a non-trivial default
+    // constructor (e.g. quaternions and transforms), and is padded up to a word
+    // multiple so partial-word types stay in bounds. The buffers are over-aligned to
+    // max(alignof(T), alignof(Word)) so reinterpreting them as a T* is well-defined for
+    // over-aligned types such as wp::float64 (alignas cannot request less than the
+    // array's natural Word alignment, so the Word floor is required).
     typedef unsigned int Word;
-
-    union {
-        T output;
-        Word output_storage;
-    };
-
-    union {
-        T input;
-        Word input_storage;
-    };
-
-    input = val;
-
-    Word* dest = reinterpret_cast<Word*>(&output);
-    Word* src = reinterpret_cast<Word*>(&input);
-
-    unsigned int shuffle_word;
 
     constexpr int word_count = (sizeof(T) + sizeof(Word) - 1) / sizeof(Word);
 
+    constexpr size_t buffer_align = alignof(T) > alignof(Word) ? alignof(T) : alignof(Word);
+
+    alignas(buffer_align) Word input[word_count] = {};
+    alignas(buffer_align) Word output[word_count] = {};
+
+    *reinterpret_cast<T*>(input) = val;
+
     WP_PRAGMA_UNROLL
     for (int i = 0; i < word_count; ++i) {
-        shuffle_word = __shfl_down_sync(mask, src[i], offset, WP_TILE_WARP_SIZE);
-        dest[i] = shuffle_word;
+        output[i] = __shfl_down_sync(mask, input[i], offset, WP_TILE_WARP_SIZE);
     }
 
-    return output;
+    return *reinterpret_cast<T*>(output);
 }
 
 // vector overload
@@ -73,6 +95,31 @@ inline CUDA_CALLABLE wp::vec_t<Length, T> warp_shuffle_down(wp::vec_t<Length, T>
     return result;
 }
 
+template <unsigned Length>
+inline CUDA_CALLABLE wp::vec_t<Length, half> warp_shuffle_down(wp::vec_t<Length, half> val, int offset, int mask)
+{
+    wp::vec_t<Length, half> result;
+
+    for (unsigned i = 0; i < Length; ++i)
+        result[i] = warp_shuffle_down(val[i], offset, mask);
+
+    return result;
+}
+
+#ifndef WP_NO_BFLOAT16
+template <unsigned Length>
+inline CUDA_CALLABLE wp::vec_t<Length, bfloat16>
+warp_shuffle_down(wp::vec_t<Length, bfloat16> val, int offset, int mask)
+{
+    wp::vec_t<Length, bfloat16> result;
+
+    for (unsigned i = 0; i < Length; ++i)
+        result[i] = warp_shuffle_down(val[i], offset, mask);
+
+    return result;
+}
+#endif  // WP_NO_BFLOAT16
+
 // matrix overload
 template <unsigned Rows, unsigned Cols, typename T>
 inline CUDA_CALLABLE wp::mat_t<Rows, Cols, T> warp_shuffle_down(wp::mat_t<Rows, Cols, T> val, int offset, int mask)
@@ -82,6 +129,87 @@ inline CUDA_CALLABLE wp::mat_t<Rows, Cols, T> warp_shuffle_down(wp::mat_t<Rows, 
     for (unsigned i = 0; i < Rows; ++i)
         for (unsigned j = 0; j < Cols; ++j)
             result.data[i][j] = __shfl_down_sync(mask, val.data[i][j], offset, WP_TILE_WARP_SIZE);
+
+    return result;
+}
+
+template <unsigned Rows, unsigned Cols>
+inline CUDA_CALLABLE wp::mat_t<Rows, Cols, half>
+warp_shuffle_down(wp::mat_t<Rows, Cols, half> val, int offset, int mask)
+{
+    wp::mat_t<Rows, Cols, half> result;
+
+    for (unsigned i = 0; i < Rows; ++i)
+        for (unsigned j = 0; j < Cols; ++j)
+            result.data[i][j] = warp_shuffle_down(val.data[i][j], offset, mask);
+
+    return result;
+}
+
+#ifndef WP_NO_BFLOAT16
+template <unsigned Rows, unsigned Cols>
+inline CUDA_CALLABLE wp::mat_t<Rows, Cols, bfloat16>
+warp_shuffle_down(wp::mat_t<Rows, Cols, bfloat16> val, int offset, int mask)
+{
+    wp::mat_t<Rows, Cols, bfloat16> result;
+
+    for (unsigned i = 0; i < Rows; ++i)
+        for (unsigned j = 0; j < Cols; ++j)
+            result.data[i][j] = warp_shuffle_down(val.data[i][j], offset, mask);
+
+    return result;
+}
+#endif  // WP_NO_BFLOAT16
+
+
+template <typename T> inline CUDA_CALLABLE T* warp_shuffle_down(T* val, int offset, int mask)
+{
+    unsigned long long ptr = reinterpret_cast<unsigned long long>(val);
+    unsigned int ptr_lo = static_cast<unsigned int>(ptr);
+    unsigned int ptr_hi = static_cast<unsigned int>(ptr >> 32);
+    ptr_lo = __shfl_down_sync(mask, ptr_lo, offset, WP_TILE_WARP_SIZE);
+    ptr_hi = __shfl_down_sync(mask, ptr_hi, offset, WP_TILE_WARP_SIZE);
+    ptr = (static_cast<unsigned long long>(ptr_hi) << 32) | static_cast<unsigned long long>(ptr_lo);
+    return reinterpret_cast<T*>(ptr);
+}
+
+inline CUDA_CALLABLE wp::shape_t warp_shuffle_down(wp::shape_t val, int offset, int mask)
+{
+    wp::shape_t result;
+
+    for (int i = 0; i < wp::ARRAY_MAX_DIMS; ++i)
+        result.dims[i] = __shfl_down_sync(mask, val.dims[i], offset, WP_TILE_WARP_SIZE);
+
+    return result;
+}
+
+template <typename T> inline CUDA_CALLABLE wp::array_t<T> warp_shuffle_down(wp::array_t<T> val, int offset, int mask)
+{
+    wp::array_t<T> result;
+
+    result.data = wp::warp_shuffle_down(val.data, offset, mask);
+    result.grad = wp::warp_shuffle_down(val.grad, offset, mask);
+    result.shape = wp::warp_shuffle_down(val.shape, offset, mask);
+    for (int i = 0; i < wp::ARRAY_MAX_DIMS; ++i)
+        result.strides[i] = __shfl_down_sync(mask, val.strides[i], offset, WP_TILE_WARP_SIZE);
+    result.ndim
+        = static_cast<uint16_t>(__shfl_down_sync(mask, static_cast<unsigned int>(val.ndim), offset, WP_TILE_WARP_SIZE));
+    result.flags = static_cast<uint16_t>(
+        __shfl_down_sync(mask, static_cast<unsigned int>(val.flags), offset, WP_TILE_WARP_SIZE)
+    );
+
+    return result;
+}
+
+template <typename T>
+inline CUDA_CALLABLE wp::indexedarray_t<T> warp_shuffle_down(wp::indexedarray_t<T> val, int offset, int mask)
+{
+    wp::indexedarray_t<T> result;
+
+    result.arr = wp::warp_shuffle_down(val.arr, offset, mask);
+    for (int i = 0; i < wp::ARRAY_MAX_DIMS; ++i)
+        result.indices[i] = wp::warp_shuffle_down(val.indices[i], offset, mask);
+    result.shape = wp::warp_shuffle_down(val.shape, offset, mask);
 
     return result;
 }

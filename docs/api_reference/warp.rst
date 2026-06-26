@@ -387,6 +387,8 @@ CUDA Memory Management
    :toctree: _generated
 
    Allocator
+   CudaManagedAllocator
+   MemoryKind
    ScopedAllocator
    ScopedMempool
    ScopedMempoolAccess
@@ -609,6 +611,15 @@ Constants
    phi
    pi
    tau
+
+Configuration Modes
+-------------------
+
+.. autosummary::
+   :nosignatures:
+   :toctree: _generated
+
+   DeterministicMode
 
 Misc
 ----

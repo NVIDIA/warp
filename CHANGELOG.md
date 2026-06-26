@@ -19,6 +19,9 @@
 - Add `wp.cuda_profiler_start()`, `wp.cuda_profiler_stop()`, and the `wp.cuda_profiler_range()` context manager to
   control CUDA profiler data collection from Python (equivalent to `cudaProfilerStart`/`cudaProfilerStop`), for use with
   an external profiler's capture range.
+- Add support for `wp.Function`-typed parameters in user-defined `@wp.func` functions, allowing user-defined Warp
+  functions and simple built-in Warp functions such as `wp.sin()` and `wp.min()` to be used as function targets from
+  kernels or other functions, including through defaults ([GH-1424](https://github.com/NVIDIA/warp/issues/1424)).
 - Add mipmap (texture level-of-detail) support to `wp.Texture1D`, `wp.Texture2D`, and `wp.Texture3D` via the new
   `num_mip_levels` and `mip_filter_mode` constructor parameters, and allow `wp.texture_sample()` to accept an optional
   trailing `lod` argument for controlling sampled detail level ([GH-1409](https://github.com/NVIDIA/warp/issues/1409)).
@@ -30,6 +33,13 @@
 - Extend `wp.utils.array_scan()` to 64-bit scalar and vector types, and extend `wp.utils.radix_sort_pairs()` to 32- and
   64-bit signed, unsigned, and floating-point keys with 4- or 8-byte values
   ([GH-1538](https://github.com/NVIDIA/warp/issues/1538)).
+- Add deterministic execution mode for atomic operations via
+  `wp.config.deterministic = wp.DeterministicMode.RUN_TO_RUN`. Supported atomic accumulation and slot-allocation patterns
+  can produce bit-exact repeated results. Configurable at the global and module level. Use
+  `wp.config.deterministic_max_records` to raise the default per-thread record bound for deterministic atomics in modules
+  created after the config is set. Deterministic backward reductions are supported for generated and custom-adjoint
+  accumulation patterns; consumed-return counter atomics require explicit replay functions and are rejected in generated
+  backward replay to avoid incorrect gradients ([GH-1443](https://github.com/NVIDIA/warp/issues/1443)).
 - Add row-capacity support to `warp.sparse` BSR matrices, including padded topology policies for topology-changing
   sparse operations, `bsr_zeros(row_capacity=...)` for reserving row capacity, `bsr_compress()` for inplace compaction of sparse matrices, and sparse status constants for overflow checks ([GH-1537](https://github.com/NVIDIA/warp/issues/1537)).
 - `fem.integrate()` and `fem.interpolate()` can now leverage `sparse.bsr_compress()` to perform inplace matrix assembly, reducing peak memory usage ([GH-1537](https://github.com/NVIDIA/warp/issues/1537)).
@@ -38,6 +48,21 @@
   Grouped BVHs/meshes and mesh winding-number queries remain unsupported. ([GH-1467](https://github.com/NVIDIA/warp/issues/1467))
 - Add a `cluster_dim` option to `@wp.kernel` and a `wp.get_cuda_max_cluster_dim()` query helper for using CUDA Thread
   Block Clusters from `@wp.func_native` code ([GH-1401](https://github.com/NVIDIA/warp/issues/1401)).
+- Add `wp.CudaManagedAllocator()` for explicit CUDA managed-memory arrays. CPU kernels can use managed arrays as an
+  opt-in path to read and write CUDA managed-memory allocations through Unified Memory on systems where CUDA reports
+  compatible managed-memory access, while Warp CUDA arrays backed by non-managed memory still need explicit CPU
+  copies. Use `array.memory_kind` to inspect whether an array is backed by host, pinned host, CUDA device, CUDA
+  mempool, or CUDA managed memory. Preallocated managed arrays work in CUDA graph captures, but capture-time allocation
+  is a current limitation ([GH-1523](https://github.com/NVIDIA/warp/issues/1523)).
+- Add support for Warp struct tile elements in `wp.tile_map()` and Warp struct constants.
+  Support field-wise Warp struct addition and subtraction in tile arithmetic,
+  reductions, atomics, adjoints for supported data-movement and additive paths,
+  and forward `tile_sort()` value payloads ([GH-573](https://github.com/NVIDIA/warp/issues/573)).
+- Add CPU APIC capture support for contiguous `wp.array.fill_()`, `wp.utils.array_scan()`,
+  `wp.utils.radix_sort_pairs()`, `wp.utils.segmented_sort_pairs()`, `wp.utils.runlength_encode()`,
+  `wp.sparse.bsr_set_from_triplets()`, `wp.sparse.bsr_set_transpose()`, and reusable launches created with
+  `wp.launch(..., record_cmd=True)`, so saved CPU graphs replay them from current inputs
+  ([GH-1431](https://github.com/NVIDIA/warp/issues/1431)).
 
 ### Removed
 
@@ -70,6 +95,11 @@
   CUDA device-side assertions ([GH-1483](https://github.com/NVIDIA/warp/issues/1483)).
 - Reject non-`None` return annotations on kernels. Write results to output arguments and either omit the return annotation
   or use `-> None` ([GH-1471](https://github.com/NVIDIA/warp/issues/1471)).
+- **Breaking:** `wp.copy()` now validates its `src_offset`, `dest_offset`, and `count` arguments, raising a clear error
+  for non-integer values, negative offsets, and a negative `count` (previously a negative `count` silently copied the
+  entire array). It also rejects copies between contiguous arrays whose element sizes differ, matching the existing
+  behavior for non-contiguous arrays ([GH-1584](https://github.com/NVIDIA/warp/issues/1584)).
+- Speed up CPU APIC graph replay for launch-dense graphs ([GH-1431](https://github.com/NVIDIA/warp/issues/1431)).
 
 ### Fixed
 
@@ -127,6 +157,25 @@
   ([GH-1554](https://github.com/NVIDIA/warp/issues/1554)).
 - Fix `wp.array[...]`-style subscript annotations to allow for PEP 604 unions (for example, `wp.array[float] | float`)
   on Python methods ([GH-1548](https://github.com/NVIDIA/warp/issues/1548)).
+- Fix several CPU APIC correctness issues: replay now keys kernel dispatch by `(module_hash, kernel_key)` to prevent
+  collisions between kernels produced by the same factory with `module="unique"`; `Device.is_capturing` now reports
+  active CPU APIC capture; unsupported non-contiguous `wp.copy()` / `wp.array.fill_()` and
+  `wp.utils.runlength_encode()` in host-return mode now raise `NotImplementedError` instead of recording graphs that
+  cannot replay correctly ([GH-1431](https://github.com/NVIDIA/warp/issues/1431)).
+- Fix CPU APIC graph capture to retain capture-time allocations and temporary buffers, including `warp.fem`
+  temporaries, for the captured graph's lifetime instead of recycling them before replay
+  ([GH-1431](https://github.com/NVIDIA/warp/issues/1431)).
+- Fix CPU APIC graph capture of untracked or native-only host buffers used by memory operations, so saved graphs no
+  longer drop captured copies and fills or depend on capture-time pointers
+  ([GH-1431](https://github.com/NVIDIA/warp/issues/1431)).
+- Harden CPU APIC graph capture for loaded `.wrp` graphs and coexistence with CUDA captures: distinct unique-module
+  kernels now replay correctly after save/load, stale `BsrMatrix.nnz_sync()` readbacks of a topology recorded earlier
+  in the same capture are rejected, recording hooks are scoped to the capture's target device, and capture
+  pause/resume flows are preserved ([GH-1559](https://github.com/NVIDIA/warp/issues/1559)).
+- Reject raw ctype array launch parameters updated through `Launch.set_param_at_index_from_ctype()` under CPU APIC
+  capture, which APIC cannot record for replay ([GH-1559](https://github.com/NVIDIA/warp/issues/1559)).
+- Fix APIC graph capture for `warp.fem` workflows by making partition node counts graph-capture safe
+  ([GH-1407](https://github.com/NVIDIA/warp/issues/1407)).
 
 ### Documentation
 

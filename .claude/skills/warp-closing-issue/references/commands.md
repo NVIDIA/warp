@@ -47,6 +47,45 @@ Use `uv run build_lib.py --quick` only when the CUDA driver/toolkit check suppor
 ## GitHub Writes
 
 Post comments through the GitHub app/MCP connector when available, or `gh` if needed.
+
+Use `gh issue comment --body-file` for new issue comments with multiline bodies:
+
+```bash
+body_file=$(mktemp)
+cat > "$body_file" <<'EOF'
+<exact reviewed comment body>
+EOF
+
+comment_url=$(gh issue comment <issue> --repo NVIDIA/warp --body-file "$body_file")
+```
+
+Use `gh api --input` with JSON for editing existing comments or other endpoints
+that do not support `--body-file`:
+
+```bash
+body_file=$(mktemp)
+json_file=$(mktemp)
+
+cat > "$body_file" <<'EOF'
+<exact reviewed comment body>
+EOF
+
+jq -n --rawfile body "$body_file" '{body:$body}' > "$json_file"
+
+gh api -X PATCH repos/NVIDIA/warp/issues/comments/<comment-id> \
+  --input "$json_file"
+```
+
+Verify the public comment body before closing:
+
+```bash
+gh api repos/NVIDIA/warp/issues/comments/<comment-id> \
+  --jq '{id,html_url,body}'
+```
+
+Never use `gh api -f body=@file` or `gh api --raw-field body=@file` for
+multiline comment bodies; those forms can send `@file` literally.
+
 For closure:
 
 ```bash

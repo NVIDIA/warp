@@ -3179,6 +3179,7 @@ class array(Array[DType, NDim]):
     def __new__(cls, *args, **kwargs):
         instance = super().__new__(cls)
         instance.deleter = None
+        instance._memory_kind = None
         return instance
 
     def __init__(
@@ -3670,6 +3671,12 @@ class array(Array[DType, NDim]):
         self.pinned = pinned if device.is_cpu else False
         self.is_contiguous = is_contiguous
         self.deleter = deleter
+        if device.is_cpu:
+            self._memory_kind = (
+                warp._src.context.MemoryKind.PINNED if self.pinned else warp._src.context.MemoryKind.HOST
+            )
+        else:
+            self._memory_kind = None
 
     def _init_new(self, dtype, shape, strides, device, pinned):
         try:
@@ -3720,9 +3727,14 @@ class array(Array[DType, NDim]):
                 capacity = dtype_size
 
         allocator = device.get_allocator(pinned=pinned)
+        allocator_memory_kind = getattr(allocator, "memory_kind", None)
+        if not isinstance(allocator_memory_kind, warp._src.context.MemoryKind):
+            allocator_memory_kind = None
+
         # Resolve the deallocate callable before allocating so a bad descriptor/__getattr__
         # cannot leak a freshly-allocated pointer between allocate() and self.deleter assignment.
         deleter = allocator.deallocate
+
         if capacity > 0:
             if device.is_cuda:
                 with device.context_guard:
@@ -3744,6 +3756,7 @@ class array(Array[DType, NDim]):
         self.is_contiguous = is_contiguous
         self.deleter = deleter
         self._allocator = allocator
+        self._memory_kind = allocator_memory_kind
 
     def _init_annotation(self, dtype, ndim):
         self.dtype = dtype
@@ -3756,15 +3769,20 @@ class array(Array[DType, NDim]):
         self.device = None
         self.pinned = False
         self.is_contiguous = False
+        self._memory_kind = None
 
     def __del__(self):
         # Skip deallocation for partially-initialized arrays (e.g. when allocation failed)
         # and for zero-size arrays which were never allocated.
-        if not hasattr(self, "device") or self.device is None or self.ptr is None:
+        if not hasattr(self, "device") or self.device is None or self.ptr is None or self.deleter is None:
             return
         try:
-            with self.device.context_guard:
+            allocator = getattr(self, "_allocator", None)
+            if allocator is not None and not getattr(allocator, "deallocate_requires_context_guard", True):
                 self.deleter(self.ptr, self.capacity)
+            else:
+                with self.device.context_guard:
+                    self.deleter(self.ptr, self.capacity)
         except (TypeError, AttributeError):
             # Suppress TypeError and AttributeError when callables become None during shutdown
             pass
@@ -3888,6 +3906,11 @@ class array(Array[DType, NDim]):
 
     def __repr__(self):
         return type_repr(self)
+
+    @property
+    def memory_kind(self):
+        """Observed memory kind backing this array."""
+        return warp._src.context._get_array_memory_kind(self)
 
     def __getitem__(self, key):
         if isinstance(key, int):
@@ -4140,7 +4163,7 @@ class array(Array[DType, NDim]):
     def _apic_ensure_tracked(self):
         """Register this array as a memory region if an APIC capture is active."""
         apic_capture = getattr(warp._src.context.runtime, "_apic_capture", None)
-        if apic_capture is not None and self.ptr:
+        if apic_capture is not None:
             apic_capture.track_array(self)
 
     def zero_(self):
@@ -4219,6 +4242,15 @@ class array(Array[DType, NDim]):
         if self.is_contiguous:
             self.device.memtile(self.ptr, cvalue_ptr, cvalue_size, self.size)
         else:
+            # The non-contiguous host fill path (wp_array_fill_host) does not
+            # record into the APIC byte stream yet, so it would silently
+            # execute once at capture time and never replay. Surface the
+            # limitation now instead of producing wrong output at replay.
+            if self.device.is_cpu and warp._src.context.runtime._apic_capture is not None:
+                raise NotImplementedError(
+                    "APIC capture does not yet support fill_() on non-contiguous CPU arrays; "
+                    "fill the underlying contiguous array first or move the fill outside the capture."
+                )
             carr = self.__ctype__()
             carr_ptr = ctypes.pointer(carr)
 
@@ -4617,18 +4649,30 @@ class array(Array[DType, NDim]):
             RuntimeError: The array is not associated with a CUDA device.
             RuntimeError: The CUDA device does not appear to support IPC.
             RuntimeError: The array was allocated using the :ref:`mempool memory allocator <mempool_allocators>`.
+            RuntimeError: The array was allocated using the managed-memory allocator.
+            RuntimeError: The array wraps external CUDA memory.
+            RuntimeError: The array is a view into another allocation.
         """
 
         if self.device is None or not self.device.is_cuda:
             raise RuntimeError("IPC requires a CUDA device")
+
+        memory_kind = warp._src.context._get_array_memory_kind(self)
+        if memory_kind == warp._src.context.MemoryKind.CUDA_MANAGED:
+            raise RuntimeError("IPC is not supported for managed-memory arrays")
         elif self.device.is_ipc_supported is False:
             raise RuntimeError("IPC does not appear to be supported on this CUDA device")
-        elif isinstance(self._allocator, warp._src.context.CudaMempoolAllocator):
+
+        if memory_kind == warp._src.context.MemoryKind.CUDA_MEMPOOL:
             raise RuntimeError(
                 "Currently, IPC is only supported for arrays using the default memory allocator.\n"
                 "See https://nvidia.github.io/warp/stable/deep_dive/allocators.html for instructions on how to disable\n"
                 f"the mempool allocator on device {self.device}."
             )
+        elif getattr(self, "_ref", None) is not None:
+            raise RuntimeError("IPC is not supported for array views")
+        elif not isinstance(getattr(self, "_allocator", None), warp._src.context.CudaDefaultAllocator):
+            raise RuntimeError("IPC is not supported for externally wrapped arrays")
 
         # Allocate a buffer for the data (64-element char array)
         ipc_handle_buffer = (ctypes.c_char * 64)()
@@ -4909,6 +4953,16 @@ class noncontiguous_array_base(Array[DType, NDim]):
                     cvalue = self.dtype._type_(value)
         except Exception as e:
             raise ValueError(f"Failed to convert the value to the array data type: {e}") from e
+
+        # The indexed/fabric host fill path (wp_array_fill_host) does not
+        # record into the APIC byte stream yet, so it would silently execute
+        # once at capture time and never replay. Surface the limitation now
+        # instead of producing wrong output at replay.
+        if self.device.is_cpu and warp._src.context.runtime._apic_capture is not None:
+            raise NotImplementedError(
+                "APIC capture does not yet support fill_() on wp.indexedarray / wp.fabricarray on CPU; "
+                "fill the underlying contiguous array first or move the fill outside the capture."
+            )
 
         cvalue_ptr = ctypes.pointer(cvalue)
         cvalue_size = ctypes.sizeof(cvalue)
@@ -7323,11 +7377,31 @@ simple_type_codes = {
 }
 
 
+def is_warp_function_annotation(annotation) -> bool:
+    """Return whether an annotation denotes a type-erased Warp function."""
+
+    function_type = getattr(warp, "Function", None)
+    if function_type is not None and annotation is function_type:
+        return True
+
+    context = getattr(getattr(warp, "_src", None), "context", None)
+    context_function_type = getattr(context, "Function", None)
+    return context_function_type is not None and annotation is context_function_type
+
+
+def is_builtin_callable_annotation(annotation) -> bool:
+    """Return whether a built-in signature uses ``Callable`` for a function slot."""
+
+    return annotation is Callable or get_origin(annotation) is Callable
+
+
 def get_type_code(arg_type) -> str:
     if arg_type is Any:
         # special case for generics
         # note: since Python 3.11 Any is a type, so we check for it first
         return "?"
+    elif is_warp_function_annotation(arg_type):
+        return "c"
     elif (
         sys.version_info < (3, 11)
         and hasattr(types, "GenericAlias")
@@ -7411,9 +7485,6 @@ def get_type_code(arg_type) -> str:
     elif arg_type == Int:
         # generic int
         return "i?"
-    elif isinstance(arg_type, Callable):
-        # TODO: elaborate on Callable type?
-        return "c"
     elif arg_type is Ellipsis:
         return "?"
     elif isinstance(arg_type, Reference):

@@ -211,19 +211,69 @@ def test_mempool_access_exceptions_cpu(test, _):
     wp.set_mempool_access_enabled("cuda:0", "cpu", False)
 
 
+@unittest.skipUnless(wp.is_cpu_available(), "Requires a CPU device")
+def test_mempool_cpu_unsupported(test, _):
+    """CPU does not expose a CUDA-style memory pool: support/enabled are ``False`` and the pool
+    query/toggle APIs raise ``ValueError`` (the public mempool API is CUDA-only)."""
+    device = wp.get_device("cpu")
+
+    test.assertFalse(wp.is_mempool_supported(device))
+    test.assertFalse(device.is_mempool_supported)
+    test.assertFalse(wp.is_mempool_enabled(device))
+
+    with test.assertRaises(ValueError):
+        wp.set_mempool_enabled(device, True)
+    with test.assertRaises(ValueError):
+        wp.set_mempool_release_threshold(device, 42000)
+    with test.assertRaises(ValueError):
+        wp.get_mempool_release_threshold(device)
+    with test.assertRaises(ValueError):
+        wp.get_mempool_used_mem_current(device)
+    with test.assertRaises(ValueError):
+        wp.get_mempool_used_mem_high(device)
+
+
+@unittest.skipUnless(wp.is_cpu_available(), "Requires a CPU device")
+def test_graph_capture_allocation_capability(test, _):
+    """The internal graph-capture allocation capability is the gate the capture/allocation
+    paths use instead of the mempool flag. It is always ``True`` for CPU (host allocation +
+    APIC region retention) and, for CUDA, mirrors the device's memory-pool support / enabled
+    state."""
+    from warp._src.context import (  # noqa: PLC0415
+        _is_graph_capture_allocation_enabled,
+        _is_graph_capture_allocation_supported,
+    )
+
+    cpu = wp.get_device("cpu")
+    test.assertTrue(_is_graph_capture_allocation_supported(cpu))
+    test.assertTrue(_is_graph_capture_allocation_enabled(cpu))
+
+    for device in wp.get_cuda_devices():
+        test.assertEqual(_is_graph_capture_allocation_supported(device), device.is_mempool_supported)
+        test.assertEqual(_is_graph_capture_allocation_enabled(device), device.is_mempool_enabled)
+
+
 class TestMempool(unittest.TestCase):
     pass
 
 
-devices_with_mempools = [d for d in get_test_devices() if d.is_mempool_supported]
+# CUDA-only mempool semantics (threshold/usage/self-access). CPU has no memory pool, so it is
+# excluded here and covered by test_mempool_exceptions / test_mempool_cpu_unsupported instead.
+cuda_devices_with_mempools = get_cuda_test_devices_with_mempool()
 devices_without_mempools = [d for d in get_test_devices() if not d.is_mempool_supported]
 
 # test devices with mempool support
 add_function_test(
-    TestMempool, "test_mempool_release_threshold", test_mempool_release_threshold, devices=devices_with_mempools
+    TestMempool, "test_mempool_release_threshold", test_mempool_release_threshold, devices=cuda_devices_with_mempools
 )
-add_function_test(TestMempool, "test_mempool_usage_queries", test_mempool_usage_queries, devices=devices_with_mempools)
-add_function_test(TestMempool, "test_mempool_access_self", test_mempool_access_self, devices=devices_with_mempools)
+add_function_test(
+    TestMempool, "test_mempool_usage_queries", test_mempool_usage_queries, devices=cuda_devices_with_mempools
+)
+add_function_test(TestMempool, "test_mempool_access_self", test_mempool_access_self, devices=cuda_devices_with_mempools)
+
+# CPU has no CUDA-style mempool; it uses a separate graph-capture allocation capability.
+add_function_test(TestMempool, "test_mempool_cpu_unsupported", test_mempool_cpu_unsupported)
+add_function_test(TestMempool, "test_graph_capture_allocation_capability", test_graph_capture_allocation_capability)
 
 # test devices without mempool support
 add_function_test(TestMempool, "test_mempool_exceptions", test_mempool_exceptions, devices=devices_without_mempools)

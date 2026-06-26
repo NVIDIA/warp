@@ -152,6 +152,8 @@ struct DeviceInfo {
     int pageable_memory_access = 0;
     int direct_managed_mem_access_from_host = 0;
     int host_native_atomic_supported = 0;
+    int managed_memory = 0;
+    int concurrent_managed_access = 0;
     int is_mempool_supported = 0;
     int sm_count = 0;
     int is_ipc_supported = -1;
@@ -301,6 +303,12 @@ int cuda_init()
                 ));
                 check_cu(cuDeviceGetAttribute_f(
                     &g_devices[i].host_native_atomic_supported, CU_DEVICE_ATTRIBUTE_HOST_NATIVE_ATOMIC_SUPPORTED, device
+                ));
+                check_cu(
+                    cuDeviceGetAttribute_f(&g_devices[i].managed_memory, CU_DEVICE_ATTRIBUTE_MANAGED_MEMORY, device)
+                );
+                check_cu(cuDeviceGetAttribute_f(
+                    &g_devices[i].concurrent_managed_access, CU_DEVICE_ATTRIBUTE_CONCURRENT_MANAGED_ACCESS, device
                 ));
                 check_cu(cuDeviceGetAttribute_f(
                     &g_devices[i].is_mempool_supported, CU_DEVICE_ATTRIBUTE_MEMORY_POOLS_SUPPORTED, device
@@ -844,6 +852,29 @@ void* wp_alloc_device_async(void* context, size_t s, const char* tag)
     return ptr;
 }
 
+void* wp_alloc_device_managed(void* context, size_t s, const char* tag)
+{
+    ContextGuard guard(context);
+
+    ContextInfo* context_info = get_context_info(context);
+    if (!context_info || !context_info->device_info)
+        return NULL;
+
+    DeviceInfo* device_info = context_info->device_info;
+    if (!device_info->managed_memory)
+        return NULL;
+
+    void* ptr = NULL;
+
+    if (!check_cuda(cudaMallocManaged(&ptr, s, cudaMemAttachGlobal)))
+        return NULL;
+
+    if (g_alloc_tracker.enabled && ptr)
+        g_alloc_tracker.record_alloc(ptr, s, ALLOC_KIND_DEVICE, wp_cuda_context_get_device_ordinal(context), tag);
+
+    return ptr;
+}
+
 void wp_free_device_async(void* context, void* ptr, void** dbg_node_ret)
 {
     if (g_alloc_tracker.enabled && ptr)
@@ -1072,18 +1103,11 @@ bool wp_memcpy_d2d(void* context, void* dest, void* src, size_t n, void* stream)
     // make recording unconditional at capture time. For now we still execute
     // the CUDA op live under stream capture, but the record itself is API-
     // intent only and doesn't depend on the live call's result.
-    APICState* apic_state = wp_apic_get_recording_state();
-    if (apic_state) {
-        int32_t dst_region, src_region;
-        uint64_t dst_offset, src_offset;
-        bool dst_ok = apic_resolve_ptr(apic_state, (uint64_t)dest, &dst_region, &dst_offset);
-        bool src_ok = apic_resolve_ptr(apic_state, (uint64_t)src, &src_region, &src_offset);
-        if (!dst_ok)
-            fprintf(stderr, "APIC: Error - memcpy dst pointer not in any registered region\n");
-        if (!src_ok)
-            fprintf(stderr, "APIC: Error - memcpy src pointer not in any registered region\n");
-        if (dst_ok && src_ok)
-            apic_record_memcpy_d2d(apic_state, dst_region, dst_offset, src_region, src_offset, n);
+    APICState* apic_state = wp_apic_get_cuda_recording_state();
+    if (apic_state && n > 0) {
+        APICAddress dst_addr = apic_resolve_live_ptr(apic_state, (uint64_t)dest, n);
+        APICAddress src_addr = apic_resolve_live_ptr(apic_state, (uint64_t)src, n);
+        apic_record_memcpy_d2d(apic_state, dst_addr.region_id, dst_addr.offset, src_addr.region_id, src_addr.offset, n);
     }
 
     return result;
@@ -1256,14 +1280,10 @@ bool wp_memset_device(void* context, void* dest, int value, size_t n, void* stre
     // make recording unconditional at capture time. For now we still execute
     // the CUDA op live under stream capture, but the record itself is API-
     // intent only and doesn't depend on the live call's result.
-    APICState* apic_state = wp_apic_get_recording_state();
-    if (apic_state) {
-        int32_t region_id;
-        uint64_t offset;
-        if (apic_resolve_ptr(apic_state, (uint64_t)dest, &region_id, &offset))
-            apic_record_memset(apic_state, region_id, offset, n, value);
-        else
-            fprintf(stderr, "APIC: Error - memset dst pointer not in any registered region\n");
+    APICState* apic_state = wp_apic_get_cuda_recording_state();
+    if (apic_state && n > 0) {
+        APICAddress addr = apic_resolve_live_ptr(apic_state, (uint64_t)dest, n);
+        apic_record_memset(apic_state, addr.region_id, addr.offset, n, value);
     }
     return result;
 }
@@ -2490,6 +2510,59 @@ int wp_cuda_device_get_host_native_atomic_supported(int ordinal)
     return 0;
 }
 
+int wp_cuda_device_get_managed_memory_supported(int ordinal)
+{
+    if (ordinal >= 0 && ordinal < int(g_devices.size()))
+        return g_devices[ordinal].managed_memory;
+    return 0;
+}
+
+int wp_cuda_device_get_concurrent_managed_access_supported(int ordinal)
+{
+    if (ordinal >= 0 && ordinal < int(g_devices.size()))
+        return g_devices[ordinal].concurrent_managed_access;
+    return 0;
+}
+
+int wp_cuda_pointer_get_memory_kind(void* context, void* ptr)
+{
+    if (!ptr)
+        return WP_MEMORY_KIND_UNKNOWN;
+
+    ContextGuard guard(context);
+
+    unsigned int is_managed = 0;
+    CUresult managed_result
+        = cuPointerGetAttribute_f(&is_managed, CU_POINTER_ATTRIBUTE_IS_MANAGED, reinterpret_cast<CUdeviceptr>(ptr));
+    if (managed_result != CUDA_SUCCESS)
+        return WP_MEMORY_KIND_UNKNOWN;
+    if (is_managed)
+        return WP_MEMORY_KIND_CUDA_MANAGED;
+
+    unsigned int memory_type = 0;
+    CUresult memory_type_result
+        = cuPointerGetAttribute_f(&memory_type, CU_POINTER_ATTRIBUTE_MEMORY_TYPE, reinterpret_cast<CUdeviceptr>(ptr));
+    if (memory_type_result != CUDA_SUCCESS)
+        return WP_MEMORY_KIND_UNKNOWN;
+
+    if (memory_type == CU_MEMORYTYPE_HOST)
+        return WP_MEMORY_KIND_PINNED;
+
+    if (memory_type != CU_MEMORYTYPE_DEVICE)
+        return WP_MEMORY_KIND_UNKNOWN;
+
+    CUmemoryPool mempool = NULL;
+    CUresult mempool_result
+        = cuPointerGetAttribute_f(&mempool, CU_POINTER_ATTRIBUTE_MEMPOOL_HANDLE, reinterpret_cast<CUdeviceptr>(ptr));
+    if (mempool_result != CUDA_SUCCESS)
+        return WP_MEMORY_KIND_CUDA_DEVICE;
+
+    if (mempool)
+        return WP_MEMORY_KIND_CUDA_MEMPOOL;
+
+    return WP_MEMORY_KIND_CUDA_DEVICE;
+}
+
 int wp_cuda_device_is_mempool_supported(int ordinal)
 {
     if (ordinal >= 0 && ordinal < int(g_devices.size()))
@@ -3183,6 +3256,20 @@ int wp_cuda_stream_is_capturing(void* stream)
     check_cuda(cudaStreamIsCapturing(static_cast<cudaStream_t>(stream), &status));
 
     return int(status != cudaStreamCaptureStatusNone);
+}
+
+int wp_cuda_thread_exchange_capture_mode(int mode)
+{
+    // Swap this thread's stream capture mode and return the previous mode.
+    // Passing cudaStreamCaptureModeRelaxed allows otherwise-forbidden
+    // operations (e.g. legacy allocations on non-capturing streams) while a
+    // thread-local capture is active on another stream. Callers must restore
+    // the returned mode afterwards.
+    cudaStreamCaptureMode capture_mode = static_cast<cudaStreamCaptureMode>(mode);
+    if (!check_cuda(cudaThreadExchangeStreamCaptureMode(&capture_mode)))
+        return -1;
+
+    return int(capture_mode);
 }
 
 uint64_t wp_cuda_stream_get_capture_id(void* stream) { return get_capture_id(static_cast<CUstream>(stream)); }
@@ -5413,7 +5500,7 @@ size_t wp_cuda_launch_kernel(
 
     // APIC recording: record kernel launch to byte stream if capturing
     if (apic_info) {
-        APICState* state = wp_apic_get_recording_state();
+        APICState* state = wp_apic_get_cuda_recording_state();
         if (state) {
             // Read shape and size from launch_bounds_t<N> in args[0].
             int ndim = apic_info->kernel_dim;

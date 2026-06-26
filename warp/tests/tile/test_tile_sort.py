@@ -104,6 +104,55 @@ def test_tile_sort(test, device):
             test.assertTrue(values_match, f"Value sorting mismatch for dtype={dtype}!")
 
 
+def create_bfloat16_payload_sort_kernel(length):
+    @wp.kernel
+    def tile_sort_bfloat16_kernel(
+        input_keys: wp.array[wp.float32],
+        input_values: wp.array[wp.bfloat16],
+        output_keys: wp.array[wp.float32],
+        output_values: wp.array[wp.bfloat16],
+    ):
+        keys = wp.tile_load(input_keys, shape=length, storage="shared")
+        values = wp.tile_load(input_values, shape=length, storage="shared")
+        wp.tile_sort(keys, values)
+        wp.tile_store(output_keys, keys)
+        wp.tile_store(output_values, values)
+
+    return tile_sort_bfloat16_kernel
+
+
+def test_tile_sort_bfloat16_payload(test, device):
+    # Sorting with a bfloat16 value payload exercises the bfloat16 warp-shuffle
+    # overload in the radix sort (GH-573). Integer values are exact in bfloat16.
+    length = 8
+    np_keys = np.arange(length - 1, -1, -1, dtype=np.float32)
+    np_values = np.arange(1, length + 1, dtype=np.float32)
+
+    input_keys = wp.array(np_keys, dtype=wp.float32, device=device)
+    input_values = wp.array(np_values, dtype=wp.bfloat16, device=device)
+    output_keys = wp.zeros_like(input_keys, device=device)
+    output_values = wp.zeros_like(input_values, device=device)
+
+    wp.launch_tiled(
+        create_bfloat16_payload_sort_kernel(length),
+        dim=1,
+        inputs=[input_keys, input_values, output_keys, output_values],
+        block_dim=32,
+        device=device,
+    )
+
+    sorted_indices = np.argsort(np_keys)
+    np.testing.assert_allclose(output_keys.numpy(), np_keys[sorted_indices], atol=1e-6)
+
+    # Without ml_dtypes, .numpy() returns the raw uint16 bfloat16 bit patterns; decode to float32.
+    np_out = output_values.numpy()
+    if np_out.dtype == np.uint16:
+        decoded = (np_out.astype(np.uint32) << 16).view(np.float32)
+    else:
+        decoded = np_out.astype(np.float32)
+    assert_np_equal(decoded, np_values[sorted_indices])
+
+
 devices = get_test_devices()
 
 
@@ -112,6 +161,7 @@ class TestTileSort(unittest.TestCase):
 
 
 add_function_test(TestTileSort, "test_tile_sort", test_tile_sort, devices=devices)
+add_function_test(TestTileSort, "test_tile_sort_bfloat16_payload", test_tile_sort_bfloat16_payload, devices=devices)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2, failfast=True)

@@ -31,6 +31,7 @@
 #include <cstdio>
 #include <cstring>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #ifdef _WIN32
@@ -284,7 +285,7 @@ bool load_cpu_modules(APICGraph* graph, const char* modules_dir)
         return true;
 
     // Scan directory for .o files and load each one
-    std::vector<std::string> handles;
+    std::unordered_map<std::string, std::string> handles_by_filename;
 
 #ifdef _WIN32
     std::string pattern = std::string(modules_dir) + "\\*.o";
@@ -305,7 +306,7 @@ bool load_cpu_modules(APICGraph* graph, const char* modules_dir)
             FindClose(hFind);
             return false;
         }
-        handles.push_back(handle);
+        handles_by_filename[filename] = handle;
         printf("  Loaded: %s\n", filename.c_str());
     } while (FindNextFileA(hFind, &fd));
     FindClose(hFind);
@@ -329,7 +330,7 @@ bool load_cpu_modules(APICGraph* graph, const char* modules_dir)
             closedir(dir);
             return false;
         }
-        handles.push_back(handle);
+        handles_by_filename[filename] = handle;
         printf("  Loaded: %s\n", filename.c_str());
     }
     closedir(dir);
@@ -340,14 +341,27 @@ bool load_cpu_modules(APICGraph* graph, const char* modules_dir)
         const char* key = wp_apic_get_kernel_key(graph, i);
         if (!key)
             continue;
-        const char* fwd_name = wp_apic_get_kernel_forward_name(graph, key);
-        const char* bwd_name = wp_apic_get_kernel_backward_name(graph, key);
+        const char* module_hash = wp_apic_get_kernel_module_hash(graph, i);
+        const char* module_binary_filename = wp_apic_get_kernel_module_binary_filename(graph, i);
+        const char* fwd_name = wp_apic_get_kernel_forward_name(graph, i);
+        const char* bwd_name = wp_apic_get_kernel_backward_name(graph, i);
         if (!fwd_name)
             continue;
 
+        std::vector<std::string> candidate_handles;
+        if (module_binary_filename) {
+            auto it = handles_by_filename.find(module_binary_filename);
+            if (it != handles_by_filename.end())
+                candidate_handles.push_back(it->second);
+        }
+        if (candidate_handles.empty()) {
+            for (const auto& kv : handles_by_filename)
+                candidate_handles.push_back(kv.second);
+        }
+
         void* fwd_fn = nullptr;
         void* bwd_fn = nullptr;
-        for (const auto& h : handles) {
+        for (const auto& h : candidate_handles) {
             uint64_t fn = g_wp_lookup(h.c_str(), fwd_name);
             if (fn) {
                 fwd_fn = reinterpret_cast<void*>(fn);
@@ -358,7 +372,7 @@ bool load_cpu_modules(APICGraph* graph, const char* modules_dir)
         }
 
         if (fwd_fn)
-            wp_apic_register_loaded_cpu_kernel(graph, key, fwd_fn, bwd_fn);
+            wp_apic_register_loaded_cpu_kernel(graph, key, module_hash, fwd_fn, bwd_fn);
         else
             fprintf(stderr, "Warning: kernel '%s' not found in loaded modules\n", key);
     }

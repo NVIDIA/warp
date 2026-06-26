@@ -290,17 +290,13 @@ bool wp_memcpy_h2h(void* dest, void* src, size_t n)
     // During capture, record only — don't execute (matches CUDA graph semantics)
     APICState* state = wp_apic_get_recording_state();
     if (state) {
-        int32_t dst_region, src_region;
-        uint64_t dst_offset, src_offset;
-        bool dst_ok = apic_resolve_ptr(state, (uint64_t)dest, &dst_region, &dst_offset);
-        bool src_ok = apic_resolve_ptr(state, (uint64_t)src, &src_region, &src_offset);
-        if (!dst_ok)
-            fprintf(stderr, "APIC: Error - memcpy dst pointer not in any registered region\n");
-        if (!src_ok)
-            fprintf(stderr, "APIC: Error - memcpy src pointer not in any registered region\n");
-        if (!dst_ok || !src_ok)
-            return false;
-        apic_record_memcpy_d2d(state, dst_region, dst_offset, src_region, src_offset, n);
+        // Zero-byte copy is a no-op; skip recording so we don't auto-register
+        // a stray region for a possibly-null pointer.
+        if (n == 0)
+            return true;
+        APICAddress dst_addr = apic_resolve_host_ptr(state, (uint64_t)dest, n);
+        APICAddress src_addr = apic_resolve_host_ptr(state, (uint64_t)src, n);
+        apic_record_memcpy_d2d(state, dst_addr.region_id, dst_addr.offset, src_addr.region_id, src_addr.offset, n);
         return true;
     }
 
@@ -313,13 +309,12 @@ bool wp_memset_host(void* dest, int value, size_t n)
     // During capture, record only — don't execute (matches CUDA graph semantics)
     APICState* state = wp_apic_get_recording_state();
     if (state) {
-        int32_t region_id;
-        uint64_t offset;
-        if (!apic_resolve_ptr(state, (uint64_t)dest, &region_id, &offset)) {
-            fprintf(stderr, "APIC: Error - memset dst pointer not in any registered region\n");
-            return false;
-        }
-        apic_record_memset(state, region_id, offset, n, value);
+        // Zero-byte memset is a no-op; skip recording so we don't auto-register
+        // a stray region for a possibly-null pointer.
+        if (n == 0)
+            return true;
+        APICAddress addr = apic_resolve_host_ptr(state, (uint64_t)dest, n);
+        apic_record_memset(state, addr.region_id, addr.offset, n, value);
         return true;
     }
 
@@ -337,6 +332,18 @@ template <typename T> void memtile_value_host(T* dst, T value, size_t n)
 
 void wp_memtile_host(void* dst, const void* src, size_t srcsize, size_t n)
 {
+    // During capture, record only — don't execute (matches CUDA graph semantics)
+    APICState* state = wp_apic_get_recording_state();
+    if (state) {
+        // Zero-element / zero-size memtile is a no-op; skip recording so we
+        // don't auto-register a stray region for a possibly-null pointer.
+        if (n == 0 || srcsize == 0)
+            return;
+        APICAddress addr = apic_resolve_host_ptr(state, (uint64_t)dst, srcsize * n);
+        apic_record_memtile(state, addr.region_id, addr.offset, static_cast<uint32_t>(srcsize), src, n);
+        return;
+    }
+
     size_t dst_addr = reinterpret_cast<size_t>(dst);
     size_t src_addr = reinterpret_cast<size_t>(src);
 
@@ -358,10 +365,50 @@ void wp_memtile_host(void* dst, const void* src, size_t srcsize, size_t n)
     }
 }
 
+static uint64_t apic_scan_access_bytes(int len, int stride, int type_len, uint64_t scalar_size)
+{
+    if (len <= 0)
+        return 0;
+    if (stride < 0 || type_len <= 0 || scalar_size == 0)
+        return 0;
+    return static_cast<uint64_t>(len - 1) * static_cast<uint64_t>(stride)
+        + static_cast<uint64_t>(type_len) * scalar_size;
+}
+
+// Record a host scan into the active APIC byte stream; returns true if the
+// scan was recorded (and therefore should NOT execute), false otherwise. On
+// recording failure (unresolved pointers etc.) we fall through to the live
+// execute so the user-visible behaviour at capture time stays correct.
+static bool apic_capture_array_scan(
+    uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, uint8_t dtype, bool inclusive
+)
+{
+    APICState* state = wp_apic_get_recording_state();
+    if (!state)
+        return false;
+    // scan_host treats non-positive lengths as a no-op.
+    if (len <= 0)
+        return true;
+    uint64_t scalar_size = apic_type_size(dtype);
+    uint64_t src_bytes = apic_scan_access_bytes(len, in_stride, type_len, scalar_size);
+    uint64_t dst_bytes = apic_scan_access_bytes(len, out_stride, type_len, scalar_size);
+    if (src_bytes == 0 || dst_bytes == 0)
+        return false;
+    APICAddress dst_addr = apic_resolve_host_ptr(state, out, dst_bytes);
+    APICAddress src_addr = apic_resolve_host_ptr(state, in, src_bytes);
+    apic_record_scan(
+        state, dst_addr.region_id, dst_addr.offset, src_addr.region_id, src_addr.offset, static_cast<uint32_t>(len),
+        in_stride, out_stride, type_len, dtype, inclusive ? uint8_t(1) : uint8_t(0)
+    );
+    return true;
+}
+
 void wp_array_scan_int_host(
     uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
 )
 {
+    if (apic_capture_array_scan(in, out, len, in_stride, out_stride, type_len, APIC_TYPE_INT32, inclusive))
+        return;
     scan_host((const int*)in, (int*)out, len, in_stride, out_stride, type_len, inclusive);
 }
 
@@ -369,6 +416,8 @@ void wp_array_scan_int64_host(
     uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
 )
 {
+    if (apic_capture_array_scan(in, out, len, in_stride, out_stride, type_len, APIC_TYPE_INT64, inclusive))
+        return;
     scan_host((const int64_t*)in, (int64_t*)out, len, in_stride, out_stride, type_len, inclusive);
 }
 
@@ -376,6 +425,8 @@ void wp_array_scan_float_host(
     uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
 )
 {
+    if (apic_capture_array_scan(in, out, len, in_stride, out_stride, type_len, APIC_TYPE_FLOAT32, inclusive))
+        return;
     scan_host((const float*)in, (float*)out, len, in_stride, out_stride, type_len, inclusive);
 }
 
@@ -383,6 +434,8 @@ void wp_array_scan_double_host(
     uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
 )
 {
+    if (apic_capture_array_scan(in, out, len, in_stride, out_stride, type_len, APIC_TYPE_FLOAT64, inclusive))
+        return;
     scan_host((const double*)in, (double*)out, len, in_stride, out_stride, type_len, inclusive);
 }
 
@@ -979,6 +1032,8 @@ void* wp_alloc_device_default(void* context, size_t s, const char* tag) { return
 
 void* wp_alloc_device_async(void* context, size_t s, const char* tag) { return NULL; }
 
+void* wp_alloc_device_managed(void* context, size_t s, const char* tag) { return NULL; }
+
 void wp_free_device(void* context, void* ptr) { }
 
 void wp_free_device_default(void* context, void* ptr) { }
@@ -1031,6 +1086,9 @@ WP_API int wp_cuda_device_is_uva(int ordinal) { return 0; }
 WP_API int wp_cuda_device_get_pageable_memory_access(int ordinal) { return 0; }
 WP_API int wp_cuda_device_get_direct_managed_mem_access_from_host(int ordinal) { return 0; }
 WP_API int wp_cuda_device_get_host_native_atomic_supported(int ordinal) { return 0; }
+WP_API int wp_cuda_device_get_managed_memory_supported(int ordinal) { return 0; }
+WP_API int wp_cuda_device_get_concurrent_managed_access_supported(int ordinal) { return 0; }
+WP_API int wp_cuda_pointer_get_memory_kind(void* context, void* ptr) { return WP_MEMORY_KIND_UNKNOWN; }
 WP_API int wp_cuda_device_is_mempool_supported(int ordinal) { return 0; }
 WP_API int wp_cuda_device_is_ipc_supported(int ordinal) { return 0; }
 WP_API int wp_cuda_device_set_mempool_release_threshold(int ordinal, uint64_t threshold) { return 0; }
@@ -1078,6 +1136,7 @@ WP_API void wp_cuda_stream_synchronize(void* stream) { }
 WP_API void wp_cuda_stream_wait_event(void* stream, void* event, bool external) { }
 WP_API void wp_cuda_stream_wait_stream(void* stream, void* other_stream, void* event, bool external) { }
 WP_API int wp_cuda_stream_is_capturing(void* stream) { return 0; }
+WP_API int wp_cuda_thread_exchange_capture_mode(int mode) { return mode; }
 WP_API uint64_t wp_cuda_stream_get_capture_id(void* stream) { return 0; }
 WP_API int wp_cuda_stream_get_priority(void* stream) { return 0; }
 

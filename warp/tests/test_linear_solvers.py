@@ -437,12 +437,12 @@ class TestLinearSolvers(unittest.TestCase):
 
 
 devices = get_test_devices()
-devices_with_mempool = get_test_devices_with_mempool()
+devices_with_graph_capture_allocation = get_test_devices_with_graph_capture_allocation()
 
-add_function_test(TestLinearSolvers, "test_cg", test_cg, devices=devices_with_mempool)
-add_function_test(TestLinearSolvers, "test_cr", test_cr, devices=devices_with_mempool)
-add_function_test(TestLinearSolvers, "test_bicgstab", test_bicgstab, devices=devices_with_mempool)
-add_function_test(TestLinearSolvers, "test_gmres", test_gmres, devices=devices_with_mempool)
+add_function_test(TestLinearSolvers, "test_cg", test_cg, devices=devices_with_graph_capture_allocation)
+add_function_test(TestLinearSolvers, "test_cr", test_cr, devices=devices_with_graph_capture_allocation)
+add_function_test(TestLinearSolvers, "test_bicgstab", test_bicgstab, devices=devices_with_graph_capture_allocation)
+add_function_test(TestLinearSolvers, "test_gmres", test_gmres, devices=devices_with_graph_capture_allocation)
 add_function_test(
     TestLinearSolvers,
     "test_batched_host_loop_per_batch_tolerance",

@@ -62,6 +62,89 @@ def test_tile_reduce_sum(test, device):
 
 
 @wp.kernel
+def tile_sum_bfloat16_kernel(input: wp.array[wp.bfloat16], output: wp.array[wp.bfloat16]):
+    t = wp.tile_load(input, shape=TILE_M)
+    wp.tile_store(output, wp.tile_sum(t))
+
+
+def test_tile_reduce_sum_bfloat16(test, device):
+    # On CUDA this exercises the bfloat16 warp-shuffle reduction overload (GH-573).
+    # Values and partial sums stay below 256 so the result is exact in bfloat16.
+    values = np.arange(1, TILE_M + 1, dtype=np.float32)
+    input_wp = wp.array(values, dtype=wp.bfloat16, device=device)
+    output_wp = wp.zeros(1, dtype=wp.bfloat16, device=device)
+
+    wp.launch_tiled(tile_sum_bfloat16_kernel, dim=[1], inputs=[input_wp, output_wp], block_dim=32, device=device)
+
+    # Without ml_dtypes, .numpy() returns the raw uint16 bfloat16 bit patterns; decode to float32.
+    np_out = output_wp.numpy().flatten()
+    if np_out.dtype == np.uint16:
+        result = (np_out.astype(np.uint32) << 16).view(np.float32)
+    else:
+        result = np_out.astype(np.float32)
+    test.assertEqual(float(result[0]), float(values.sum()))
+
+
+@wp.kernel
+def tile_sum_float16_kernel(input: wp.array[wp.float16], output: wp.array[wp.float16]):
+    t = wp.tile_load(input, shape=TILE_M)
+    wp.tile_store(output, wp.tile_sum(t))
+
+
+def test_tile_reduce_sum_float16(test, device):
+    # On CUDA this exercises the float16 warp-shuffle reduction overload; before the fix the
+    # generic shuffle template failed to compile for half. Values and partial sums stay below
+    # 2048 so the result is exact in float16.
+    values = np.arange(1, TILE_M + 1, dtype=np.float32)
+    input_wp = wp.array(values, dtype=wp.float16, device=device)
+    output_wp = wp.zeros(1, dtype=wp.float16, device=device)
+
+    wp.launch_tiled(tile_sum_float16_kernel, dim=[1], inputs=[input_wp, output_wp], block_dim=32, device=device)
+
+    test.assertEqual(float(output_wp.numpy()[0]), float(values.sum()))
+
+
+@wp.kernel
+def tile_narrow_int_kernel(input: wp.array[wp.int8], store_out: wp.array[wp.int8], sum_out: wp.array[wp.int8]):
+    t = wp.tile_load(input, shape=TILE_M)
+    wp.tile_store(store_out, t)
+    wp.tile_store(sum_out, wp.tile_sum(t))
+
+
+def test_tile_reduce_narrow_int(test, device):
+    # Regression: plain narrow-integer tiles failed to compile on CUDA because the adjoint
+    # tile_load helper routed gradient accumulation through the forward atomic_add, which has
+    # no atomicAdd overload for int8. Load/store and reduction must work.
+    values = np.arange(1, TILE_M + 1, dtype=np.int8)
+    input_wp = wp.array(values, dtype=wp.int8, device=device)
+    store_wp = wp.zeros(TILE_M, dtype=wp.int8, device=device)
+    sum_wp = wp.zeros(1, dtype=wp.int8, device=device)
+
+    wp.launch_tiled(tile_narrow_int_kernel, dim=[1], inputs=[input_wp, store_wp, sum_wp], block_dim=32, device=device)
+
+    assert_np_equal(store_wp.numpy(), values)
+    test.assertEqual(int(sum_wp.numpy()[0]), int(values.sum()))
+
+
+def test_tile_atomic_add_unsupported_dtype(test, device):
+    # tile_atomic_add() has no CUDA atomicAdd for bool / narrow-integer scalar types and must
+    # reject them with a clear error rather than failing deep inside NVRTC.
+    @wp.kernel(module="unique")
+    def atomic_add_int8_kernel(input: wp.array[wp.int8], output: wp.array[wp.int8]):
+        wp.tile_atomic_add(output, wp.tile_load(input, shape=TILE_M))
+
+    @wp.kernel(module="unique")
+    def atomic_add_bool_kernel(input: wp.array[wp.bool], output: wp.array[wp.bool]):
+        wp.tile_atomic_add(output, wp.tile_load(input, shape=TILE_M))
+
+    for kernel_fn, dtype in ((atomic_add_int8_kernel, wp.int8), (atomic_add_bool_kernel, wp.bool)):
+        src = wp.zeros(TILE_M, dtype=dtype, device=device)
+        dst = wp.zeros(TILE_M, dtype=dtype, device=device)
+        with test.assertRaisesRegex(RuntimeError, "tile_atomic_add.*only supports"):
+            wp.launch_tiled(kernel_fn, dim=[1], inputs=[src], outputs=[dst], block_dim=32, device=device)
+
+
+@wp.kernel
 def tile_sum_to_shared_kernel(input: wp.array2d[float], output: wp.array[float]):
     i, _lane = wp.tid()
 
@@ -1027,6 +1110,12 @@ class TestTileReduce(unittest.TestCase):
 
 
 add_function_test(TestTileReduce, "test_tile_reduce_sum", test_tile_reduce_sum, devices=devices)
+add_function_test(TestTileReduce, "test_tile_reduce_sum_bfloat16", test_tile_reduce_sum_bfloat16, devices=devices)
+add_function_test(TestTileReduce, "test_tile_reduce_sum_float16", test_tile_reduce_sum_float16, devices=devices)
+add_function_test(TestTileReduce, "test_tile_reduce_narrow_int", test_tile_reduce_narrow_int, devices=devices)
+add_function_test(
+    TestTileReduce, "test_tile_atomic_add_unsupported_dtype", test_tile_atomic_add_unsupported_dtype, devices=devices
+)
 add_function_test(TestTileReduce, "test_tile_sum_to_shared", test_tile_sum_to_shared, devices=devices)
 add_function_test(TestTileReduce, "test_tile_reduce_min", test_tile_reduce_min, devices=devices)
 add_function_test(TestTileReduce, "test_tile_reduce_max", test_tile_reduce_max, devices=devices)

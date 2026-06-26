@@ -24,6 +24,10 @@ confirmation after the user sees the exact target issues and comment body.
   `keep open`, and `no public update`.
 - Never post comments or close issues before showing the assessment and exact draft.
 - Public comments use full 40-character SHAs as plain text for GitHub auto-linking.
+- For multiline GitHub comment bodies, never use `gh api -f body=@file`
+  or `gh api --raw-field body=@file`; these forms can send `@file`
+  literally. Use `gh issue comment --body-file <file>` for new issue
+  comments, or `gh api --input <json>` for PATCH/non-issue-comment writes.
 - Keep local execution noise out of public comments: no `WARP_CACHE_PATH`,
   `/tmp/...`, local worktree paths, or shell setup.
 - Do not use a local test command as the public test note. Public comments describe
@@ -48,6 +52,9 @@ fine for gaps or simple issue operations.
    symptoms, reproducers, expected behavior, follow-up comments, maintainer asks, and
    current state. For each commit, inspect message, diff, tests, docs/CHANGELOG
    changes, and touched areas such as `warp/native/`.
+   When the issue or commit appears to change public API behavior, inspect the
+   relevant code, docs, tests, and CHANGELOG entry for intended API surface and
+   examples.
 
 3. **Classify commits.**
 
@@ -63,7 +70,18 @@ fine for gaps or simple issue operations.
    coverage evidence, behavioral probe evidence if available, and status:
    addressed, partial, or missing.
 
-5. **Review tests.** Inspect the supplied commits for test changes. Use unordered
+5. **Assess public API behavior.** If the issue or commit changes public API
+   surface or behavior, identify:
+   - Python scope: constructors, functions, arguments, configuration, exceptions,
+     or unsupported combinations visible from `warp`.
+   - Kernel scope: existing or new Warp builtins callable only inside
+     `@wp.kernel` / `@wp.func`.
+   - Behavior type: new API, existing API now works in more cases, changed
+     semantics, explicit unsupported behavior, or deprecation/removal.
+   - Example accuracy: include short examples only when they clarify the issue;
+     never show kernel-only APIs as host-side Python calls.
+
+6. **Review tests.** Inspect the supplied commits for test changes. Use unordered
    bullets in the assessment/comment:
    - New tests: file path, test function/class names, and what each case checks.
    - Modified tests: file path, test names, and what behavior or expectation changed.
@@ -76,7 +94,7 @@ fine for gaps or simple issue operations.
    libraries when `warp/native/` changes require it. Do not put local verification
    commands in the public issue comment.
 
-6. **Probe issue-shaped behavior.** When the issue has a repro, expected behavior,
+7. **Probe issue-shaped behavior.** When the issue has a repro, expected behavior,
    or clear boundary conditions, create one or more temporary scripts that exercise
    the reported behavior on the supplied commit/worktree. These are transient
    working artifacts; do not add them to the repo unless the user explicitly asks.
@@ -103,7 +121,7 @@ fine for gaps or simple issue operations.
    - `not run`: explain why, such as unavailable hardware, excessive cost, or
      insufficient repro detail.
 
-7. **Decide action.**
+8. **Decide action.**
    - `close`: every reported symptom and expected behavior is addressed, relevant
      comments are covered, test coverage is adequate or the lack of tests is
      reasonable for the change, and behavioral probes pass or were not feasible for
@@ -120,7 +138,7 @@ fine for gaps or simple issue operations.
    user guidance, GitHub authenticated user data, or explicit user input rather than
    hardcoding a username.
 
-8. **Draft before writing.** Output:
+9. **Draft before writing.** Output:
 
    ```markdown
    Assessment: <close | comment-only | keep open | no public update>
@@ -129,6 +147,7 @@ fine for gaps or simple issue operations.
    - Requested outcome: <...>
    - Commits: <primary full SHA(s)>; supporting: <full SHA(s) or none>
    - What changed: <behavior summary>
+   - Public API behavior: <none | Python scope summary | kernel scope summary | unsupported cases>
    - Test coverage:
      - <new/modified/no tests detail>
    - Behavioral probes:
@@ -171,6 +190,30 @@ Include test coverage as unordered bullets. Name changed test files and test fun
 If no tests changed, say whether that is reasonable for the commit type or a potential
 oversight.
 
+When public API behavior is relevant, include a `Public API behavior` section
+before test coverage. Prefer prose bullets for small changes. Use short code blocks
+only when they make scope clearer. Use `Public API behavior`, not `Public API
+surface`, when APIs already existed and the commit expands or fixes their
+behavior.
+
+Split examples by scope when both Python and kernel APIs are involved. Python
+scope includes constructors, host-side functions, arguments, configuration, and
+exceptions. Kernel scope includes Warp builtins that must be called from
+`@wp.kernel` / `@wp.func`. For example:
+
+```markdown
+Public API behavior:
+
+Python scope:
+- `wp.Mesh(..., bvh_constructor="cubql")` now supports the fixed behavior.
+- `wp.Bvh(..., constructor="cubql")` is now supported.
+- Grouped meshes/BVHs and winding-number support remain unsupported for cuBQL.
+
+Kernel scope:
+- Existing `wp.mesh_query_point*`, `wp.mesh_query_furthest_point_no_sign`, and
+  `wp.mesh_query_aabb*` builtins now work with cuBQL-backed meshes.
+```
+
 Behavioral probe summaries are required in the private assessment. In the public
 comment, mention probes only when they clarify the outcome, explain residual risk, or
 help the requester verify the fix. When included publicly, summarize checked behavior
@@ -184,9 +227,11 @@ with issue-specific context.
 
 ## Write Actions
 
-After explicit confirmation, post the issue-specific comment. Close only issues that
-were both recommended for closure and explicitly confirmed for closure. Verify final
-GitHub state and report comment IDs, URLs, state, state reason, and close time.
+After explicit confirmation, post the issue-specific comment. For each posted or
+edited comment, fetch the comment by ID and verify the public body matches the
+reviewed draft before closing anything. Close only issues that were both
+recommended for closure and explicitly confirmed for closure. Verify final GitHub
+state and report comment IDs, URLs, state, state reason, and close time.
 
 If any write fails, stop and report the exact failure. Do not retry against a different
 issue by guess.
@@ -201,6 +246,10 @@ issue by guess.
 - The issue has a runnable repro but the assessment only reruns committed tests.
 - The private assessment omits behavioral probe results or a reason probes were not run.
 - The draft contains `/tmp/`, `WARP_CACHE_PATH`, or local paths.
+- A multiline `gh api` write uses `-f body=@file` or `--raw-field body=@file`
+  instead of `gh issue comment --body-file` or `gh api --input`.
+- The public comment shows a kernel-only Warp API as if it can be called directly
+  from Python scope.
 
 ## Maintenance
 

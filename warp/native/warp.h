@@ -18,6 +18,15 @@
 #define WP_CUDA_GRAPH_CAPTURE_MODE_THREAD_LOCAL 1
 #define WP_CUDA_GRAPH_CAPTURE_MODE_RELAXED      2
 
+enum wp_memory_kind {
+    WP_MEMORY_KIND_UNKNOWN = 0,
+    WP_MEMORY_KIND_HOST = 1,
+    WP_MEMORY_KIND_PINNED = 2,
+    WP_MEMORY_KIND_CUDA_DEVICE = 3,
+    WP_MEMORY_KIND_CUDA_MEMPOOL = 4,
+    WP_MEMORY_KIND_CUDA_MANAGED = 5,
+};
+
 struct timing_result_t;
 
 // this is the core runtime API exposed on the DLL level
@@ -54,6 +63,7 @@ WP_API void* wp_alloc_pinned(size_t s, const char* tag = nullptr);
 WP_API void* wp_alloc_device(void* context, size_t s, const char* tag = nullptr);
 WP_API void* wp_alloc_device_default(void* context, size_t s, const char* tag = nullptr);
 WP_API void* wp_alloc_device_async(void* context, size_t s, const char* tag = nullptr);
+WP_API void* wp_alloc_device_managed(void* context, size_t s, const char* tag = nullptr);
 
 WP_API void wp_free_host(void* ptr);
 WP_API void wp_free_pinned(void* ptr);
@@ -374,6 +384,38 @@ wp_runlength_encode_int_host(uint64_t values, uint64_t run_values, uint64_t run_
 WP_API void
 wp_runlength_encode_int_device(uint64_t values, uint64_t run_values, uint64_t run_lengths, uint64_t run_count, int n);
 
+// Deterministic mode: sort scatter buffer and apply component-wise segmented reduction.
+WP_API size_t
+wp_deterministic_sort_reduce_workspace_size(int count, int op, int scalar_type, int components, int determinism_level);
+WP_API void wp_deterministic_sort_reduce_device(
+    uint64_t keys,
+    uint64_t values,
+    int count,
+    uint64_t dest_array,
+    int dest_size,
+    int op,
+    int scalar_type,
+    int components,
+    int determinism_level,
+    uint64_t workspace,
+    size_t workspace_size
+);
+WP_API size_t wp_deterministic_counter_scan_workspace_size(int count);
+WP_API void wp_deterministic_counter_scan_device(
+    uint64_t keys,
+    uint64_t values,
+    int count,
+    uint64_t prefixes,
+    uint64_t counter_bases,
+    uint64_t counter_totals,
+    int counter_size,
+    uint64_t workspace,
+    size_t workspace_size
+);
+WP_API void wp_deterministic_counter_writeback_device(
+    uint64_t keys, int count, uint64_t counter_totals, uint64_t counters, int counter_size
+);
+
 WP_API void wp_bsr_matrix_from_triplets_host(
     int block_size,
     int scalar_size_in_bytes,
@@ -507,6 +549,9 @@ WP_API int wp_cuda_device_is_uva(int ordinal);
 WP_API int wp_cuda_device_get_pageable_memory_access(int ordinal);
 WP_API int wp_cuda_device_get_direct_managed_mem_access_from_host(int ordinal);
 WP_API int wp_cuda_device_get_host_native_atomic_supported(int ordinal);
+WP_API int wp_cuda_device_get_managed_memory_supported(int ordinal);
+WP_API int wp_cuda_device_get_concurrent_managed_access_supported(int ordinal);
+WP_API int wp_cuda_pointer_get_memory_kind(void* context, void* ptr);
 WP_API int wp_cuda_device_is_mempool_supported(int ordinal);
 WP_API int wp_cuda_device_is_ipc_supported(int ordinal);
 WP_API int wp_cuda_device_set_mempool_release_threshold(int ordinal, uint64_t threshold);
@@ -562,6 +607,7 @@ WP_API void wp_cuda_stream_synchronize(void* stream);
 WP_API void wp_cuda_stream_wait_event(void* stream, void* event, bool external = false);
 WP_API void wp_cuda_stream_wait_stream(void* stream, void* other_stream, void* event, bool external = false);
 WP_API int wp_cuda_stream_is_capturing(void* stream);
+WP_API int wp_cuda_thread_exchange_capture_mode(int mode);
 WP_API uint64_t wp_cuda_stream_get_capture_id(void* stream);
 WP_API int wp_cuda_stream_get_priority(void* stream);
 
