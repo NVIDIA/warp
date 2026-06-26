@@ -250,6 +250,11 @@ def _det_set_flag(flag: wp.array[wp.int32], mask: wp.int32):
     wp.atomic_xor(flag, 0, mask)
 
 
+@wp.func
+def _det_apply_flag_function(g: wp.Function, flag: wp.array[wp.int32], mask: wp.int32):
+    g(flag, mask)
+
+
 @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
 def counter_with_helper_atomic_xor_kernel(
     counter: wp.array[wp.int32],
@@ -259,6 +264,19 @@ def counter_with_helper_atomic_xor_kernel(
     """Counter kernel that delegates the bitwise atomic to a ``@wp.func`` helper."""
     tid = wp.tid()
     _det_set_flag(flag, 1)
+    slot = wp.atomic_add(counter, 0, 1)
+    output[slot] = tid
+
+
+@wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
+def counter_with_function_parameter_atomic_xor_kernel(
+    counter: wp.array[wp.int32],
+    flag: wp.array[wp.int32],
+    output: wp.array[wp.int32],
+):
+    """Counter kernel that delegates a bitwise atomic through a Function parameter."""
+    tid = wp.tid()
+    _det_apply_flag_function(_det_set_flag, flag, 1)
     slot = wp.atomic_add(counter, 0, 1)
     output[slot] = tid
 
@@ -471,6 +489,32 @@ def test_counter_phase0_skips_unconsumed_bitwise_atomics(test, device):
             test.assertEqual(int(flag.numpy()[0]), 1)
             test.assertEqual(int(counter.numpy()[0]), 1)
             test.assertEqual(int(output.numpy()[0]), 0)
+
+
+def test_counter_function_parameter_unconsumed_atomic(test, device):
+    """Verify deterministic Function-parameter side-effect atomics.
+
+    This covers a two-pass deterministic counter kernel that calls a
+    ``wp.Function``-typed user function target performing an unconsumed bitwise
+    atomic. Specializing the Function target must preserve that the atomic
+    call's return value is unused, otherwise deterministic lowering treats the
+    side-effect atomic as consumed and rejects a valid kernel.
+    """
+    counter = wp.zeros(1, dtype=wp.int32, device=device)
+    flag = wp.zeros(1, dtype=wp.int32, device=device)
+    output = wp.full(1, value=-1, dtype=wp.int32, device=device)
+
+    wp.launch(
+        counter_with_function_parameter_atomic_xor_kernel,
+        dim=1,
+        inputs=[counter, flag],
+        outputs=[output],
+        device=device,
+    )
+
+    test.assertEqual(int(flag.numpy()[0]), 1)
+    test.assertEqual(int(counter.numpy()[0]), 1)
+    test.assertEqual(int(output.numpy()[0]), 0)
 
 
 def test_counter_consumed_bitwise_atomic_rejected(test, device):
@@ -974,6 +1018,7 @@ for _name in (
     "test_counter_phase0_suppresses_array_writes",
     "test_counter_phase0_preserves_local_scratch_writes",
     "test_counter_phase0_skips_unconsumed_bitwise_atomics",
+    "test_counter_function_parameter_unconsumed_atomic",
     "test_counter_consumed_bitwise_atomic_rejected",
     "test_counter_phase0_suppresses_component_stores",
     "test_counter_nonzero_initial_value",
