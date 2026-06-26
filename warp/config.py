@@ -79,6 +79,8 @@ class _ConfigModule(_types.ModuleType):
             raise ValueError(
                 f"warp.config.launch_array_access_mode must be a warp.config.LaunchArrayAccessMode value, got {value!r}"
             )
+        if name == "deterministic" and not isinstance(value, DeterministicMode):
+            raise ValueError(f"warp.config.deterministic must be a warp.DeterministicMode value, got {value!r}")
         super().__setattr__(name, value)
 
 
@@ -97,6 +99,19 @@ class LaunchArrayAccessMode(_IntEnum):
 
     STRICT = 2
     """Require every Warp array argument to be allocated on the launch device."""
+
+
+class DeterministicMode(_IntEnum):
+    """Deterministic execution modes for supported atomic operations."""
+
+    NOT_GUARANTEED = 0
+    """Use normal atomic execution without constraining atomic ordering."""
+
+    RUN_TO_RUN = 1
+    """Produce bit-exact repeated results on the same GPU architecture."""
+
+    GPU_TO_GPU = 2
+    """Use a stronger path intended to preserve results across GPU architectures."""
 
 
 launch_array_access_mode: LaunchArrayAccessMode = LaunchArrayAccessMode.RELAXED
@@ -442,6 +457,41 @@ load_module_max_workers: int | None = 0
 For ``wp.load_module()`` and ``wp.force_load()``, if the ``max_workers`` parameter is not specified,
 the default number of worker threads is determined by this setting. ``0`` means serial loading.
 If ``None``, Warp determines the behavior (currently equal to ``min(os.cpu_count(), 4)``).
+"""
+
+deterministic: DeterministicMode = DeterministicMode.NOT_GUARANTEED
+"""Determinism guarantee for supported atomic operations.
+
+Accepted values are:
+
+- ``wp.DeterministicMode.NOT_GUARANTEED``: Default behavior.
+- ``wp.DeterministicMode.RUN_TO_RUN``: Bit-exact repeated results on the same GPU
+  architecture.
+- ``wp.DeterministicMode.GPU_TO_GPU``: Stronger cross-GPU reproducibility path.
+
+Set this before module creation/import for it to apply broadly. Existing
+modules can be changed by setting the ``"deterministic"`` module option.
+See :doc:`/user_guide/deterministic_execution` for supported patterns,
+performance considerations, and limitations.
+"""
+
+deterministic_max_records: int = 0
+"""Default per-target, per-thread record bound for deterministic atomics.
+
+The default ``0`` uses the code-generated lower bound. Increase this before
+module creation/import when kernels have data-dependent loops or repeated visits
+to the same atomic site that static analysis cannot bound.
+
+Modules can override this by setting the ``"deterministic_max_records"`` module
+option.
+"""
+
+deterministic_debug: bool = False
+"""Enable debug diagnostics for deterministic execution mode.
+
+When enabled, deterministic scatter overflows may emit device-side diagnostics.
+This setting is intended for debugging capacity issues and should remain disabled
+for normal execution, especially when CUDA graph capture is performance-critical.
 """
 
 _git_commit_hash: str | None = None

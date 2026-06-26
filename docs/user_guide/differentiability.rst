@@ -511,6 +511,8 @@ Now, the output of the above code is:
     ys      [1.        1.4142135 0.       ]
     xs.grad [0.5        0.35355338 0.        ]
 
+.. _custom-replay-function:
+
 Example 2: Custom Replay Function
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

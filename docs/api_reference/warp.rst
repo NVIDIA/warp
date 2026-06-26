@@ -601,6 +601,15 @@ Constants
    pi
    tau
 
+Configuration Modes
+-------------------
+
+.. autosummary::
+   :nosignatures:
+   :toctree: _generated
+
+   DeterministicMode
+
 Misc
 ----
 

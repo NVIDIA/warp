@@ -218,6 +218,7 @@ set(WARP_CPP_SOURCES
     warp/native/texture.cpp
     warp/native/mathdx.cpp
     warp/native/coloring.cpp
+    warp/native/deterministic.cpp
 )
 
 set(WARP_SOURCES ${WARP_CPP_SOURCES})
@@ -226,6 +227,7 @@ if(WARP_ENABLE_CUDA)
     list(
         APPEND WARP_SOURCES
         warp/native/bvh.cu
+        warp/native/deterministic.cu
         warp/native/bvh_cubql.cu
         warp/native/mesh.cu
         warp/native/sort.cu

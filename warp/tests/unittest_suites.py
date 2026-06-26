@@ -106,6 +106,11 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.cuda.test_streams import TestStreams
     from warp.tests.cuda.test_texture import TestTexture
     from warp.tests.cuda.test_unified_memory import TestUnifiedMemory
+    from warp.tests.deterministic.test_deterministic_backward import TestDeterministicBackward
+    from warp.tests.deterministic.test_deterministic_counter import TestDeterministicCounter
+    from warp.tests.deterministic.test_deterministic_graph_capture import TestDeterministicGraph
+    from warp.tests.deterministic.test_deterministic_options import TestDeterministicOptions
+    from warp.tests.deterministic.test_deterministic_scatter import TestDeterministicScatter
     from warp.tests.fem.test_fem_examples import TestFemDiffusionExamples, TestFemExamples
     from warp.tests.fem.test_fem_field import TestFemField
     from warp.tests.fem.test_fem_fp64 import TestFemFp64
@@ -301,6 +306,11 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestCudaArchSuffix,
         TestCustomAllocator,
         TestDense,
+        TestDeterministicBackward,
+        TestDeterministicCounter,
+        TestDeterministicGraph,
+        TestDeterministicOptions,
+        TestDeterministicScatter,
         TestDevices,
         TestDiagnostics,
         TestDLPack,

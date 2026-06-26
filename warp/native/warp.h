@@ -384,6 +384,38 @@ wp_runlength_encode_int_host(uint64_t values, uint64_t run_values, uint64_t run_
 WP_API void
 wp_runlength_encode_int_device(uint64_t values, uint64_t run_values, uint64_t run_lengths, uint64_t run_count, int n);
 
+// Deterministic mode: sort scatter buffer and apply component-wise segmented reduction.
+WP_API size_t
+wp_deterministic_sort_reduce_workspace_size(int count, int op, int scalar_type, int components, int determinism_level);
+WP_API void wp_deterministic_sort_reduce_device(
+    uint64_t keys,
+    uint64_t values,
+    int count,
+    uint64_t dest_array,
+    int dest_size,
+    int op,
+    int scalar_type,
+    int components,
+    int determinism_level,
+    uint64_t workspace,
+    size_t workspace_size
+);
+WP_API size_t wp_deterministic_counter_scan_workspace_size(int count);
+WP_API void wp_deterministic_counter_scan_device(
+    uint64_t keys,
+    uint64_t values,
+    int count,
+    uint64_t prefixes,
+    uint64_t counter_bases,
+    uint64_t counter_totals,
+    int counter_size,
+    uint64_t workspace,
+    size_t workspace_size
+);
+WP_API void wp_deterministic_counter_writeback_device(
+    uint64_t keys, int count, uint64_t counter_totals, uint64_t counters, int counter_size
+);
+
 WP_API void wp_bsr_matrix_from_triplets_host(
     int block_size,
     int scalar_size_in_bytes,
@@ -571,6 +603,7 @@ WP_API void wp_cuda_stream_synchronize(void* stream);
 WP_API void wp_cuda_stream_wait_event(void* stream, void* event, bool external = false);
 WP_API void wp_cuda_stream_wait_stream(void* stream, void* other_stream, void* event, bool external = false);
 WP_API int wp_cuda_stream_is_capturing(void* stream);
+WP_API int wp_cuda_thread_exchange_capture_mode(int mode);
 WP_API uint64_t wp_cuda_stream_get_capture_id(void* stream);
 WP_API int wp_cuda_stream_get_priority(void* stream);
 

@@ -183,6 +183,7 @@ warp/examples/tile
     user_guide/configuration
     user_guide/cpp_cuda_workflows
     user_guide/debugging
+    user_guide/deterministic_execution
     user_guide/limitations
     user_guide/contribution_guide
     user_guide/publications
