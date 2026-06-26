@@ -497,10 +497,14 @@
 <h1>warp.utils.array_scan<a class="headerlink" href="#warp-utils-array-scan" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.utils.array_scan">
-<span class="sig-prename descclassname"><span class="pre">warp.utils.</span></span><span class="sig-name descname"><span class="pre">array_scan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">in_array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inclusive</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/utils.py#L50-L134"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.utils.array_scan" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.utils.</span></span><span class="sig-name descname"><span class="pre">array_scan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">in_array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inclusive</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/utils.py#L50-L140"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.utils.array_scan" title="Link to this definition">#</a></dt>
 <dd><p>Perform a scan (prefix sum) operation on an array.</p>
 <p>This function computes the inclusive or exclusive scan of the input array and stores the result in the output array.
 The scan operation computes a running sum of elements in the array. Vector types are scanned component-wise.</p>
+<p>During CPU APIC graph capture (<a class="reference internal" href="warp.ScopedCapture.html#warp.ScopedCapture" title="warp.ScopedCapture"><code class="xref py py-class docutils literal notranslate"><span class="pre">ScopedCapture</span></code></a> with <code class="docutils literal notranslate"><span class="pre">apic=True</span></code>), <code class="docutils literal notranslate"><span class="pre">int32</span></code>,
+<code class="docutils literal notranslate"><span class="pre">float32</span></code>, <code class="docutils literal notranslate"><span class="pre">int64</span></code>, and <code class="docutils literal notranslate"><span class="pre">float64</span></code> scalar and vector scans are recorded into the byte stream, including
+positively-strided (non-contiguous) 1D arrays. Negatively-strided CPU arrays raise <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a>;
+run those scans outside the captured region.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -512,7 +516,11 @@ If <code class="docutils literal notranslate"><span class="pre">False</span></co
 </ul>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If array storage devices don’t match, if storage size is insufficient, or if data types are unsupported.</p>
+<dd class="field-even"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If array storage devices don’t match, if storage size is insufficient, or if data types are unsupported.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><strong>NotImplementedError</strong></a> – If called inside a CPU APIC <a class="reference internal" href="warp.ScopedCapture.html#warp.ScopedCapture" title="warp.ScopedCapture"><code class="xref py py-class docutils literal notranslate"><span class="pre">ScopedCapture</span></code></a> with a
+    negatively-strided array.</p></li>
+</ul>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>None</p>

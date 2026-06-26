@@ -603,6 +603,14 @@ and updates the nnz upper bound. For compact matrices, this is the active
 non-zero block count. For padded matrices, this is the total row-capacity
 storage size, not necessarily the active block count.</p>
 </div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>During CPU APIC graph capture, <a class="reference internal" href="../api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.nnz_sync" title="warp.sparse.BsrMatrix.nnz_sync"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BsrMatrix.nnz_sync()</span></code></a> performs its host
+readback outside the recorded stream when the matrix topology has not been
+changed by the capture. If the same capture has already recorded a topology
+update for that matrix, <a class="reference internal" href="../api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.nnz_sync" title="warp.sparse.BsrMatrix.nnz_sync"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BsrMatrix.nnz_sync()</span></code></a> raises
+<a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a>; read the count after replay instead.</p>
+</div>
 <p>If the number of non-zeros has been changed from outside of the <a class="reference internal" href="../api_reference/warp_sparse.html#module-warp.sparse" title="warp.sparse"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warp.sparse</span></code></a> builtin functions, for instance by direct modifications to the offsets array, use the <a class="reference internal" href="../api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.notify_nnz_changed" title="warp.sparse.BsrMatrix.notify_nnz_changed"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BsrMatrix.notify_nnz_changed()</span></code></a> method to ensure consistency.</p>
 </section>
 <section id="row-capacity-and-padded-topology">
