@@ -736,6 +736,31 @@ See <a class="reference internal" href="#vectorized-tile-loads"><span class="std
 <li><p><a class="reference internal" href="../language_reference/_generated/warp.tile_scan_min_inclusive.html#warp._src.lang.tile_scan_min_inclusive" title="warp._src.lang.tile_scan_min_inclusive"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_scan_min_inclusive</span></code></a></p></li>
 </ul>
 </section>
+<section id="struct-element-types">
+<h3>Struct Element Types<a class="headerlink" href="#struct-element-types" title="Link to this heading">#</a></h3>
+<p>Tiles can use user-defined <code class="docutils literal notranslate"><span class="pre">&#64;wp.struct</span></code> types as element types. Warp treats a struct tile as a
+value whose scalar, vector, matrix, and nested-struct fields participate recursively, so
+struct-valued tiles are supported by operations that:</p>
+<ul class="simple">
+<li><p>move or reshape elements,</p></li>
+<li><p>construct a tile from explicit struct values,</p></li>
+<li><p>map over elements with <a class="reference internal" href="../language_reference/_generated/warp.tile_map.html#warp._src.lang.tile_map" title="warp._src.lang.tile_map"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_map</span></code></a> (or a custom
+<a class="reference internal" href="../language_reference/_generated/warp.tile_reduce.html#warp._src.lang.tile_reduce" title="warp._src.lang.tile_reduce"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_reduce</span></code></a> whose operator accepts and returns the struct),</p></li>
+<li><p>sort structs as a value payload permuted by scalar keys, or</p></li>
+<li><p>perform field-wise additive accumulation.</p></li>
+</ul>
+<p>Operations that require a canonical numeric interpretation of the element — an ordering, a bitwise
+representation, a random or range fill, or a linear-algebra meaning — remain numeric-only and
+reject struct tiles.</p>
+<p>Field-wise additive accumulation combines only the fields whose scalar leaf type is accepted by
+<a class="reference internal" href="../language_reference/_generated/warp.atomic_add.html#warp._src.lang.atomic_add" title="warp._src.lang.atomic_add"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.atomic_add</span></code></a>: <code class="docutils literal notranslate"><span class="pre">[u]int32</span></code>, <code class="docutils literal notranslate"><span class="pre">[u]int64</span></code>, <code class="docutils literal notranslate"><span class="pre">float16</span></code>, <code class="docutils literal notranslate"><span class="pre">bfloat16</span></code>,
+<code class="docutils literal notranslate"><span class="pre">float32</span></code>, and <code class="docutils literal notranslate"><span class="pre">float64</span></code>. Vector and matrix fields accumulate component-wise when their scalar
+component is one of these types. All other fields — including <code class="docutils literal notranslate"><span class="pre">bool</span></code>, the narrow integers
+<code class="docutils literal notranslate"><span class="pre">[u]int8</span></code> and <code class="docutils literal notranslate"><span class="pre">[u]int16</span></code>, and array fields — are carried through the struct value unchanged
+rather than accumulated. Array fields are carried as descriptors with unspecified merge behavior; see
+<a class="reference internal" href="limitations.html#limitations-arrays-in-structs"><span class="std std-ref">Arrays in Structs</span></a>. Accumulation is differentiable for the accumulating fields,
+subject to the general CPU <code class="docutils literal notranslate"><span class="pre">block_dim=1</span></code> rule described under <a class="reference internal" href="#cpu-vs-gpu-behavior-differences">CPU vs. GPU behavior differences</a>.</p>
+</section>
 <section id="arithmetic">
 <h3>Arithmetic<a class="headerlink" href="#arithmetic" title="Link to this heading">#</a></h3>
 <p>Tiles support standard Python arithmetic operators for element-wise operations.
@@ -1560,7 +1585,7 @@ function. On CPU, Warp always forces <code class="docutils literal notranslate">
 CPU-specific caveats.</p>
 </section>
 <section id="cpu-vs-gpu-behavior-differences">
-<h3>CPU vs. GPU behavior differences<a class="headerlink" href="#cpu-vs-gpu-behavior-differences" title="Link to this heading">#</a></h3>
+<span id="tiles-cpu-gpu-behavior-differences"></span><h3>CPU vs. GPU behavior differences<a class="headerlink" href="#cpu-vs-gpu-behavior-differences" title="Link to this heading">#</a></h3>
 <p><em>Why does my kernel using tiles behave differently depending on whether I run it on a CPU or GPU?</em></p>
 <p>On CPU, Warp currently forces <code class="docutils literal notranslate"><span class="pre">block_dim=1</span></code> regardless of what you specify. This is a
 limitation of Warp’s single-threaded CPU execution model. The consequences are:</p>
@@ -1801,6 +1826,7 @@ values for continued SIMT work. See <a class="reference internal" href="#tiles-a
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#construction">Construction</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#load-store">Load/Store</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#maps-reductions">Maps/Reductions</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#struct-element-types">Struct Element Types</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#arithmetic">Arithmetic</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#linear-algebra">Linear Algebra</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#spatial-queries">Spatial Queries</a></li>

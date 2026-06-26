@@ -270,6 +270,33 @@ Maps/Reductions
 * :func:`tile_scan_max_inclusive <warp._src.lang.tile_scan_max_inclusive>`
 * :func:`tile_scan_min_inclusive <warp._src.lang.tile_scan_min_inclusive>`
 
+Struct Element Types
+^^^^^^^^^^^^^^^^^^^^
+
+Tiles can use user-defined ``@wp.struct`` types as element types. Warp treats a struct tile as a
+value whose scalar, vector, matrix, and nested-struct fields participate recursively, so
+struct-valued tiles are supported by operations that:
+
+* move or reshape elements,
+* construct a tile from explicit struct values,
+* map over elements with :func:`tile_map <warp._src.lang.tile_map>` (or a custom
+  :func:`tile_reduce <warp._src.lang.tile_reduce>` whose operator accepts and returns the struct),
+* sort structs as a value payload permuted by scalar keys, or
+* perform field-wise additive accumulation.
+
+Operations that require a canonical numeric interpretation of the element — an ordering, a bitwise
+representation, a random or range fill, or a linear-algebra meaning — remain numeric-only and
+reject struct tiles.
+
+Field-wise additive accumulation combines only the fields whose scalar leaf type is accepted by
+:func:`wp.atomic_add <warp.atomic_add>`: ``[u]int32``, ``[u]int64``, ``float16``, ``bfloat16``,
+``float32``, and ``float64``. Vector and matrix fields accumulate component-wise when their scalar
+component is one of these types. All other fields — including ``bool``, the narrow integers
+``[u]int8`` and ``[u]int16``, and array fields — are carried through the struct value unchanged
+rather than accumulated. Array fields are carried as descriptors with unspecified merge behavior; see
+:ref:`limitations-arrays-in-structs`. Accumulation is differentiable for the accumulating fields,
+subject to the general CPU ``block_dim=1`` rule described under `CPU vs. GPU behavior differences`_.
+
 Arithmetic
 ^^^^^^^^^^
 
@@ -1158,6 +1185,8 @@ Tile operations (:func:`wp.tile_load() <warp._src.lang.tile_load>`,
 :func:`wp.tile_matmul() <warp._src.lang.tile_matmul>`, etc.) work with either launch
 function. On CPU, Warp always forces ``block_dim=1``; see the next question for
 CPU-specific caveats.
+
+.. _tiles-cpu-gpu-behavior-differences:
 
 CPU vs. GPU behavior differences
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

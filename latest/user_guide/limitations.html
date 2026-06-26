@@ -676,7 +676,7 @@ Warp effectively makes <code class="docutils literal notranslate"><span class="p
 However, if <code class="docutils literal notranslate"><span class="pre">cond</span></code> is <code class="docutils literal notranslate"><span class="pre">False</span></code>, <code class="docutils literal notranslate"><span class="pre">out</span></code> will be uninitialized, leading to undefined behavior.</p>
 </section>
 <section id="arrays-in-structs">
-<h2>Arrays in Structs<a class="headerlink" href="#arrays-in-structs" title="Link to this heading">#</a></h2>
+<span id="limitations-arrays-in-structs"></span><h2>Arrays in Structs<a class="headerlink" href="#arrays-in-structs" title="Link to this heading">#</a></h2>
 <p>Modifying flags on arrays stored in structs may not trigger an update to the underlying struct memory, e.g.:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">struct</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">MyStruct</span><span class="p">:</span>
@@ -693,6 +693,58 @@ However, if <code class="docutils literal notranslate"><span class="pre">cond</s
 </div>
 <p>In this case the array stored in the struct will not have the <cite>requires_grad=True</cite> value propagated to it,
 which could lead to gradients not being computed during backward kernel launches.</p>
+<p>Array fields are also treated as descriptors when Warp combines struct values.
+For example, tile reductions and atomics on struct-valued tiles accumulate scalar, vector, matrix,
+and nested-struct fields field-wise, but do not accumulate the contents of array fields.
+In the example below, <a class="reference internal" href="../language_reference/_generated/warp.tile_sum.html#warp._src.lang.tile_sum" title="warp._src.lang.tile_sum"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_sum</span></code></a> reduces a tile of structs: the <code class="docutils literal notranslate"><span class="pre">weight</span></code>
+field is summed across the tile, while the <code class="docutils literal notranslate"><span class="pre">values</span></code> array field is carried through as a descriptor
+(the array pointer is copied, its contents are left untouched):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">TILE_N</span> <span class="o">=</span> <span class="mi">8</span>
+
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">struct</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ParticleBatch</span><span class="p">:</span>
+    <span class="n">weight</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span>
+    <span class="n">values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">]</span>
+
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">combine_batches</span><span class="p">(</span><span class="n">batches</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">ParticleBatch</span><span class="p">],</span> <span class="n">combined</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">ParticleBatch</span><span class="p">]):</span>
+    <span class="c1"># cooperatively reduce a tile of struct elements field-wise</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">batches</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="n">TILE_N</span><span class="p">,</span> <span class="n">storage</span><span class="o">=</span><span class="s2">&quot;shared&quot;</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">combined</span><span class="p">,</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_sum</span><span class="p">(</span><span class="n">t</span><span class="p">))</span>
+
+
+<span class="c1"># each batch references a *different* payload array</span>
+<span class="n">payloads</span> <span class="o">=</span> <span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">TILE_N</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">i</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">TILE_N</span><span class="p">)]</span>
+
+<span class="n">batches</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">TILE_N</span><span class="p">):</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">ParticleBatch</span><span class="p">()</span>
+    <span class="n">b</span><span class="o">.</span><span class="n">weight</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+    <span class="n">b</span><span class="o">.</span><span class="n">values</span> <span class="o">=</span> <span class="n">payloads</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+    <span class="n">batches</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+<span class="n">batches</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">batches</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">ParticleBatch</span><span class="p">)</span>
+
+<span class="n">combined</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">ParticleBatch</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch_tiled</span><span class="p">(</span><span class="n">combine_batches</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">batches</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">combined</span><span class="p">],</span> <span class="n">block_dim</span><span class="o">=</span><span class="n">TILE_N</span><span class="p">)</span>
+
+<span class="c1"># the weight field is summed field-wise across the tile: 0 + 1 + ... + 7</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;weight = </span><span class="si">{</span><span class="n">combined</span><span class="o">.</span><span class="n">numpy</span><span class="p">()[</span><span class="s1">&#39;weight&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>weight = 28.0
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">weight</span></code> field is summed field-wise, but the <code class="docutils literal notranslate"><span class="pre">values</span></code> array field is <em>not</em>. Each tile element
+holds a different array here, and the reduction carries exactly one of those descriptors through
+unchanged rather than reading, merging, or summing the array contents.</p>
+<p><strong>Which descriptor survives is unspecified.</strong> Field-wise combination is built from the generated
+struct <code class="docutils literal notranslate"><span class="pre">add(a,</span> <span class="pre">b)</span></code>, which begins from <code class="docutils literal notranslate"><span class="pre">ret</span> <span class="pre">=</span> <span class="pre">a</span></code> and leaves array fields untouched, so the
+descriptor from the left operand survives each pairwise step. For a full-tile reduction this is
+effectively the first participating element today, but that is an implementation detail callers must
+not rely on. To combine array payloads deterministically, accumulate their contents explicitly in a
+kernel rather than relying on struct-value accumulation.</p>
 </section>
 </section>
 
