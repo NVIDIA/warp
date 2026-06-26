@@ -3478,8 +3478,8 @@ class Module:
 
         return self.hashers[block_dim].get_hash()
 
-    def _refresh_deterministic_launch_metadata(self, block_dim: int, options: dict) -> None:
-        """Repopulate ``det_meta`` after a cache hit without firing tile LTO compilation."""
+    def _refresh_deterministic_metadata_for_cache_hit(self, block_dim: int, options: dict) -> None:
+        """Repopulate ``det_meta`` after a CPU or CUDA cache hit without firing tile LTO compilation."""
         if options.get("deterministic") == warp.config.DeterministicMode.NOT_GUARANTEED:
             return
 
@@ -3956,8 +3956,8 @@ class Module:
 
                 module_load_timer.extra_msg = " (compiled)" if compiled else " (cached)"
 
-            if device.is_cuda and not compiled:
-                self._refresh_deterministic_launch_metadata(active_block_dim, options)
+            if not compiled:
+                self._refresh_deterministic_metadata_for_cache_hit(active_block_dim, options)
 
             # -----------------------------------------------------------
             # Load CPU or CUDA binary

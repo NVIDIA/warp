@@ -2,8 +2,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
+import os
 import re
+import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -52,6 +55,37 @@ def test_metadata_refresh_struct_tile_stack(test, device):
     options = struct_tile_stack_kernel.module.resolve_options(wp.config) | {"output_arch": None}
     struct_tile_stack_kernel.adj.build(None, options)
     test.assertIsNotNone(struct_tile_stack_kernel.adj.det_meta)
+
+
+def test_cpu_cache_hit_refreshes_deterministic_replay_metadata(test, device):
+    """Verify cached CPU modules rebuild deterministic launch metadata."""
+    del device
+
+    command = [
+        sys.executable,
+        "-m",
+        "warp.tests.deterministic.test_deterministic_backward",
+        "TestDeterministicBackward.test_deterministic_backward_counter_store_rejected_cpu",
+    ]
+
+    with tempfile.TemporaryDirectory(prefix="wp_det_cpu_cache_") as cache_dir:
+        env = os.environ.copy()
+        env["WARP_CACHE_PATH"] = cache_dir
+        env["PYTHONFAULTHANDLER"] = "1"
+
+        first = subprocess.run(command, check=False, capture_output=True, text=True, env=env, timeout=120)
+        test.assertEqual(
+            first.returncode,
+            0,
+            msg=f"Initial CPU deterministic run failed:\nstdout:\n{first.stdout}\nstderr:\n{first.stderr}",
+        )
+
+        second = subprocess.run(command, check=False, capture_output=True, text=True, env=env, timeout=120)
+        test.assertEqual(
+            second.returncode,
+            0,
+            msg=f"Cached CPU deterministic run failed:\nstdout:\n{second.stdout}\nstderr:\n{second.stderr}",
+        )
 
 
 def test_config_deterministic_max_records_default(test, device):
@@ -308,6 +342,7 @@ def _add(name, devices=all_devices):
 
 
 _add("test_metadata_refresh_struct_tile_stack", devices=[cpu_device])
+_add("test_cpu_cache_hit_refreshes_deterministic_replay_metadata", devices=[cpu_device])
 _add("test_config_deterministic_max_records_default", devices=[cpu_device])
 _add("test_module_option_override")
 _add("test_deterministic_mode_validation", devices=[cpu_device])
