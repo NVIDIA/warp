@@ -390,6 +390,7 @@
 <li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deterministic_execution.html">Deterministic Execution</a></li>
 <li class="toctree-l1"><a class="reference internal" href="limitations.html">Limitations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="contribution_guide.html">Contribution Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="publications.html">Publications using Warp</a></li>
@@ -955,7 +956,7 @@ xs.grad [0.5        0.35355338 0.        ]
 </div>
 </section>
 <section id="example-2-custom-replay-function">
-<h3>Example 2: Custom Replay Function<a class="headerlink" href="#example-2-custom-replay-function" title="Link to this heading">#</a></h3>
+<span id="custom-replay-function"></span><h3>Example 2: Custom Replay Function<a class="headerlink" href="#example-2-custom-replay-function" title="Link to this heading">#</a></h3>
 <p>In the following, we increment an array index in each thread via <a class="reference internal" href="../language_reference/_generated/warp.atomic_add.html#warp._src.lang.atomic_add" title="warp._src.lang.atomic_add"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.atomic_add()</span></code></a> and compute
 the square root of an input array at the incremented index:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>

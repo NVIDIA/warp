@@ -1,0 +1,1431 @@
+
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Deterministic Execution &#8212; Warp 1.15.0.dev0</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=3d681599" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+
+
+    <script src="../_static/documentation_options.js?v=cfb6835f"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=fd10adb8"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'user_guide/deterministic_execution';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'latest';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+
+    <link rel="icon" href="../_static/favicon.png"/>
+
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Limitations" href="limitations.html" />
+    <link rel="prev" title="Debugging" href="debugging.html" />
+
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="1.15.0.dev0" />
+
+
+  </head>
+
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0.dev0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0.dev0 - Home"/>
+  
+  
+    <p class="title logo__title">Warp 1.15.0.dev0</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0.dev0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0.dev0 - Home"/>
+  
+  
+    <p class="title logo__title">Warp 1.15.0.dev0</p>
+  
+</a>
+
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">PyPI</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+
+
+<nav class="bd-docs-nav bd-links"
+     aria-label="Table of Contents">
+  <p class="bd-links__title" role="heading" aria-level="1">Table of Contents</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="basics.html">Basics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="runtime.html">Runtime</a></li>
+<li class="toctree-l1"><a class="reference internal" href="devices.html">Devices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="differentiability.html">Differentiability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generics.html">Generics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tiles.html">Tiles</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="interoperability.html">Interoperability</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="interoperability_pytorch.html">PyTorch Interoperability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="interoperability_jax.html">JAX Interoperability</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Deterministic Execution</a></li>
+<li class="toctree-l1"><a class="reference internal" href="limitations.html">Limitations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="contribution_guide.html">Contribution Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="publications.html">Publications using Warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="compatibility.html">Compatibility &amp; Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="faq.html">FAQ</a></li>
+<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Deep Dive</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/codegen.html">Code Generation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/allocators.html">Allocators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/memory_access.html">CPU/GPU cross-device memory access</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/concurrency.html">Concurrency</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../deep_dive/profiling.html">Profiling</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Domain Modules</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../domain_modules/sparse.html">Sparse Matrices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../domain_modules/fem.html">FEM Toolkit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../domain_modules/render.html">Rendering</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp.html">warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_autograd.html">warp.autograd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_config.html">warp.config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_fem.html">warp.fem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_optim.html">warp.optim</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_render.html">warp.render</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_sparse.html">warp.sparse</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_types.html">warp.types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_utils.html">warp.utils</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Language Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../language_reference/builtins.html">Built-Ins</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Deterministic Execution</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="d-flex justify-content-end w-100">
+  <a href="../_sources/user_guide/deterministic_execution.rst.txt">
+    <i class="fa-solid fa-file-code"></i> View page source
+  </a>
+</div>
+</div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="deterministic-execution">
+<span id="determinism"></span><h1>Deterministic Execution<a class="headerlink" href="#deterministic-execution" title="Link to this heading">#</a></h1>
+<p>Deterministic execution is useful when you want the same program, with the same
+inputs, to produce bit-exact results every time.  This matters for regression
+tests, debugging, validation, and simulation workloads where a small numerical
+change can make a later frame hard to compare.</p>
+<p>The most common source of non-determinism in Warp kernels is a floating-point
+atomic operation on CUDA.  If many threads execute <code class="docutils literal notranslate"><span class="pre">wp.atomic_add(out,</span> <span class="pre">i,</span>
+<span class="pre">value)</span></code> at the same time, CUDA is free to apply those updates in different
+orders.  Floating-point addition is not associative, so different orders can
+produce different rounded results.</p>
+<p>Warp’s deterministic mode recognizes the common atomic patterns and rewrites
+them into reproducible algorithms.  You keep writing ordinary Warp kernels; the
+deterministic lowering happens when the module is compiled.</p>
+<section id="quick-start">
+<h2>Quick Start<a class="headerlink" href="#quick-start" title="Link to this heading">#</a></h2>
+<p>For an existing Warp module, set a module option near the top of the Python
+file that defines your kernels, before the kernels are defined:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">set_module_options</span><span class="p">({</span><span class="s2">&quot;deterministic&quot;</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">DeterministicMode</span><span class="o">.</span><span class="n">RUN_TO_RUN</span><span class="p">})</span>
+
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">accumulate</span><span class="p">(</span>
+    <span class="n">values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span>
+    <span class="n">bins</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">],</span>
+    <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span>
+<span class="p">):</span>
+    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">atomic_add</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">bins</span><span class="p">[</span><span class="n">tid</span><span class="p">],</span> <span class="n">values</span><span class="p">[</span><span class="n">tid</span><span class="p">])</span>
+
+
+<span class="n">n</span> <span class="o">=</span> <span class="mi">4096</span>
+<span class="n">values</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
+<span class="n">bins</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
+<span class="n">out</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">accumulate</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">values</span><span class="p">,</span> <span class="n">bins</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This is the most common way to turn determinism on after the fact: every kernel
+defined in that Python module uses deterministic lowering when it contains a
+supported atomic pattern.</p>
+<p>For a process-wide default, set <a class="reference internal" href="../api_reference/_generated/warp.config.deterministic.html#warp.config.deterministic" title="warp.config.deterministic"><code class="xref py py-attr docutils literal notranslate"><span class="pre">wp.config.deterministic</span></code></a> before modules are compiled:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">deterministic</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">DeterministicMode</span><span class="o">.</span><span class="n">RUN_TO_RUN</span>
+</pre></div>
+</div>
+<p>If you only want to experiment with one kernel in an otherwise shared Python
+module, put that kernel in a unique module and pass module options:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">module</span><span class="o">=</span><span class="s2">&quot;unique&quot;</span><span class="p">,</span> <span class="n">module_options</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;deterministic&quot;</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">DeterministicMode</span><span class="o">.</span><span class="n">RUN_TO_RUN</span><span class="p">})</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">accumulate</span><span class="p">(</span><span class="o">...</span><span class="p">):</span>
+    <span class="o">...</span>
+</pre></div>
+</div>
+<p>The accepted modes are:</p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">wp.DeterministicMode.NOT_GUARANTEED</span></code></dt><dd><p>The default.  Warp uses normal atomics.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">wp.DeterministicMode.RUN_TO_RUN</span></code></dt><dd><p>Results are reproducible across repeated runs on the same GPU architecture.
+This is the usual setting for debugging and regression tests.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">wp.DeterministicMode.GPU_TO_GPU</span></code></dt><dd><p>Uses a stronger reduction path intended to preserve the same result across
+GPU architectures.  It is more conservative and can be slower.</p>
+</dd>
+</dl>
+</section>
+<section id="choosing-a-scope">
+<h2>Choosing a Scope<a class="headerlink" href="#choosing-a-scope" title="Link to this heading">#</a></h2>
+<p>Determinism is a compilation option.  In practice that means it belongs to a
+compiled module, not just to one line of Python.</p>
+<p>Use this rule of thumb:</p>
+<ul class="simple">
+<li><p>Use <a class="reference internal" href="../api_reference/_generated/warp.set_module_options.html#warp.set_module_options" title="warp.set_module_options"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.set_module_options()</span></code></a> when the kernels
+in the current Python file should all share the same deterministic setting.</p></li>
+<li><p>Use <a class="reference internal" href="../api_reference/_generated/warp.config.deterministic.html#warp.config.deterministic" title="warp.config.deterministic"><code class="xref py py-attr docutils literal notranslate"><span class="pre">wp.config.deterministic</span></code></a> when you want
+a global default for modules created later in a whole application or test run.</p></li>
+<li><p>Use <code class="docutils literal notranslate"><span class="pre">&#64;wp.kernel(module=&quot;unique&quot;,</span> <span class="pre">module_options={...})</span></code> when one kernel
+should have its own compiled module and deterministic setting.</p></li>
+</ul>
+<p>The kernel decorator does not accept a direct <code class="docutils literal notranslate"><span class="pre">deterministic=...</span></code> shorthand.
+Determinism is a module-level code-generation option because Warp normally
+compiles the kernels and <code class="docutils literal notranslate"><span class="pre">&#64;wp.func</span></code> helpers in a Python module into one module
+binary.  Deterministic lowering can change generated code for a kernel’s
+reachable helper functions, especially when supported atomics live in
+<code class="docutils literal notranslate"><span class="pre">&#64;wp.func</span></code> calls.  <code class="docutils literal notranslate"><span class="pre">module=&quot;unique&quot;</span></code> gives that kernel its own compiled
+module, so the deterministic and non-deterministic variants do not share helper
+code or module hashes.</p>
+<p>Changing <a class="reference internal" href="../api_reference/_generated/warp.config.deterministic.html#warp.config.deterministic" title="warp.config.deterministic"><code class="xref py py-attr docutils literal notranslate"><span class="pre">wp.config.deterministic</span></code></a> after a
+module has been created does not update that module.  To toggle an existing
+module on and off, use <code class="docutils literal notranslate"><span class="pre">wp.set_module_options()</span></code>.</p>
+</section>
+<section id="what-warp-supports">
+<h2>What Warp Supports<a class="headerlink" href="#what-warp-supports" title="Link to this heading">#</a></h2>
+<p>Deterministic mode currently handles:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">wp.atomic_add()</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">wp.atomic_sub()</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">wp.atomic_min()</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">wp.atomic_max()</span></code></p></li>
+<li><p>The shorthand forms <code class="docutils literal notranslate"><span class="pre">arr[i]</span> <span class="pre">+=</span> <span class="pre">value</span></code> and <code class="docutils literal notranslate"><span class="pre">arr[i]</span> <span class="pre">-=</span> <span class="pre">value</span></code></p></li>
+</ul>
+<p>Warp recognizes two patterns.</p>
+<section id="pattern-1-accumulation">
+<h3>Pattern 1: Accumulation<a class="headerlink" href="#pattern-1-accumulation" title="Link to this heading">#</a></h3>
+<p>This is the most common pattern.  Many threads contribute values to one or more
+output arrays, and the atomic return value is ignored:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">module</span><span class="o">=</span><span class="s2">&quot;unique&quot;</span><span class="p">,</span> <span class="n">module_options</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;deterministic&quot;</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">DeterministicMode</span><span class="o">.</span><span class="n">RUN_TO_RUN</span><span class="p">})</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">bin_values</span><span class="p">(</span>
+    <span class="n">values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span>
+    <span class="n">bins</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">],</span>
+    <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span>
+<span class="p">):</span>
+    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">atomic_add</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">bins</span><span class="p">[</span><span class="n">tid</span><span class="p">],</span> <span class="n">values</span><span class="p">[</span><span class="n">tid</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>With deterministic mode enabled, Warp does not apply the floating-point atomic
+directly.  Instead, each thread writes a temporary record containing:</p>
+<ul class="simple">
+<li><p>the output element that should be updated, and</p></li>
+<li><p>the value to add, subtract, minimize, or maximize.</p></li>
+</ul>
+<p>After the kernel finishes, Warp sorts those records into a stable order and
+then reduces each group.  This is similar to the “sort then reduce by key”
+pattern used in CUDA programming.  Internally, Warp uses CUB device-wide
+primitives from NVIDIA CCCL, including <a class="reference external" href="https://nvidia.github.io/cccl/cub/api/structcub_1_1DeviceRadixSort.html">CUB DeviceRadixSort</a> and
+<a class="reference external" href="https://nvidia.github.io/cccl/cub/api/structcub_1_1DeviceReduce.html">CUB DeviceReduce</a>, for the fast <code class="docutils literal notranslate"><span class="pre">wp.DeterministicMode.RUN_TO_RUN</span></code> scalar
+path.  Composite types and the stronger <code class="docutils literal notranslate"><span class="pre">wp.DeterministicMode.GPU_TO_GPU</span></code>
+path use a Warp-controlled segmented reduction so the accumulation order is
+explicit.</p>
+<p>The following operations are handled by this pattern:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Atomic</p></th>
+<th class="head"><p>Deterministic behavior</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">wp.atomic_add(out,</span> <span class="pre">i,</span> <span class="pre">value)</span></code></p></td>
+<td><p>Values are added in a fixed order.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">wp.atomic_sub(out,</span> <span class="pre">i,</span> <span class="pre">value)</span></code></p></td>
+<td><p>Values are negated and added in a fixed order.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">wp.atomic_min(out,</span> <span class="pre">i,</span> <span class="pre">value)</span></code></p></td>
+<td><p>Values are grouped by destination and minimized.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">wp.atomic_max(out,</span> <span class="pre">i,</span> <span class="pre">value)</span></code></p></td>
+<td><p>Values are grouped by destination and maximized.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Floating-point scalar arrays, vectors, matrices, quaternions, transforms, and
+<code class="docutils literal notranslate"><span class="pre">wp.Struct</span></code> fields that contain arrays can participate in this pattern.
+Integer atomics whose return value is ignored usually do not need rewriting
+because the final result is already deterministic for the supported operations.</p>
+</section>
+<section id="pattern-2-slot-allocation">
+<h3>Pattern 2: Slot Allocation<a class="headerlink" href="#pattern-2-slot-allocation" title="Link to this heading">#</a></h3>
+<p>Some kernels use an atomic return value as a slot number:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">module</span><span class="o">=</span><span class="s2">&quot;unique&quot;</span><span class="p">,</span> <span class="n">module_options</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;deterministic&quot;</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">DeterministicMode</span><span class="o">.</span><span class="n">RUN_TO_RUN</span><span class="p">})</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compact_positive</span><span class="p">(</span>
+    <span class="n">values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span>
+    <span class="n">count</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">],</span>
+    <span class="n">compacted</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span>
+<span class="p">):</span>
+    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">v</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">v</span> <span class="o">&gt;</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="n">slot</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">atomic_add</span><span class="p">(</span><span class="n">count</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">compacted</span><span class="p">[</span><span class="n">slot</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
+</pre></div>
+</div>
+<p>Normal atomic execution makes <code class="docutils literal notranslate"><span class="pre">slot</span></code> depend on the order in which threads
+arrive.  Deterministic mode turns this into the familiar count-scan-write
+workflow:</p>
+<ol class="arabic simple">
+<li><p>Run a counting pass.  Each thread records each slot reservation, including
+the counter element, the reservation order for that thread, and the number
+of slots requested.</p></li>
+<li><p>Sort reservations by counter element and deterministic thread order.</p></li>
+<li><p>Run a segmented prefix scan.  This computes the deterministic starting slot
+for each reservation and the final total for each touched counter element.</p></li>
+<li><p>Run the kernel again.  The atomic returns the deterministic slot.</p></li>
+</ol>
+<p>The prefix scan is the same concept as an exclusive scan in CUDA libraries.
+On CUDA, Warp’s scan utilities are implemented with CUB primitives such as
+<a class="reference external" href="https://nvidia.github.io/cccl/cub/api/structcub_1_1DeviceScan.html">CUB DeviceScan</a>.</p>
+<p>This pattern currently supports:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">slot</span> <span class="pre">=</span> <span class="pre">wp.atomic_add(counter,</span> <span class="pre">index,</span> <span class="pre">value)</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">counter</span></code> must be an <code class="docutils literal notranslate"><span class="pre">int32</span></code> array</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">index</span></code> may be constant or data-dependent</p></li>
+<li><p>Sliced counter views such as <code class="docutils literal notranslate"><span class="pre">wp.atomic_add(counters[world],</span> <span class="pre">0,</span> <span class="pre">1)</span></code></p></li>
+</ul>
+<p>Consumed-return <code class="docutils literal notranslate"><span class="pre">atomic_sub</span></code>, <code class="docutils literal notranslate"><span class="pre">atomic_min</span></code>, and <code class="docutils literal notranslate"><span class="pre">atomic_max</span></code> are rejected
+because their semantics are not prefix-sum slot allocation.</p>
+<p>When this pattern appears in differentiable code, generated backward replay is
+not supported automatically.  The backward pass would need the exact slot that
+each thread received in the forward pass, but the counter array has already
+been mutated and later launches may have appended more records.  Warp therefore
+raises an error before launching the generated adjoint instead of recomputing a
+possibly wrong slot.  If gradients need the slot, store the mapping explicitly
+and provide a custom replay function, as shown in
+<a class="reference internal" href="differentiability.html#custom-replay-function"><span class="std std-ref">Example 2: Custom Replay Function</span></a>.  If the kernel is only bookkeeping, mark it with
+<code class="docutils literal notranslate"><span class="pre">enable_backward=False</span></code> or disable deterministic mode for that kernel.</p>
+</section>
+</section>
+<section id="tape-and-backward-passes">
+<h2>Tape and Backward Passes<a class="headerlink" href="#tape-and-backward-passes" title="Link to this heading">#</a></h2>
+<p>Deterministic mode also applies to generated CUDA backward kernels launched by
+<a class="reference internal" href="../api_reference/_generated/warp.Tape.html#warp.Tape" title="warp.Tape"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Tape</span></code></a>.  This matters for differentiable simulations:
+the forward pass may be bit-exact, while the backward pass still scatters many
+per-thread contributions into the same input gradients.</p>
+<p>The most common example is a gather in the forward pass:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">module</span><span class="o">=</span><span class="s2">&quot;unique&quot;</span><span class="p">,</span> <span class="n">module_options</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;deterministic&quot;</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">DeterministicMode</span><span class="o">.</span><span class="n">RUN_TO_RUN</span><span class="p">})</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">gather</span><span class="p">(</span>
+    <span class="n">values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span>
+    <span class="n">indices</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">],</span>
+    <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span>
+<span class="p">):</span>
+    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">out</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">indices</span><span class="p">[</span><span class="n">tid</span><span class="p">]]</span>
+</pre></div>
+</div>
+<p>The forward kernel has no atomic operation.  During <code class="docutils literal notranslate"><span class="pre">Tape.backward()</span></code>,
+however, Warp’s generated adjoint accumulates <code class="docutils literal notranslate"><span class="pre">out.grad[tid]</span></code> into
+<code class="docutils literal notranslate"><span class="pre">values.grad[indices[tid]]</span></code>.  If several output lanes read the same input
+lane, that gradient accumulation is an atomic add.  With deterministic mode
+enabled, Warp routes that reverse accumulation through the same scatter,
+sort, and reduce path used for Pattern 1.</p>
+<p>User-defined custom adjoints are covered when their gradient accumulation is
+written in Warp code using supported atomic patterns:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func_grad</span><span class="p">(</span><span class="n">load_value</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">adj_load_value</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span> <span class="n">index</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">adj_ret</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">):</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">adjoint</span><span class="p">[</span><span class="n">values</span><span class="p">][</span><span class="n">index</span><span class="p">]</span> <span class="o">+=</span> <span class="n">adj_ret</span>
+</pre></div>
+</div>
+<p>The deterministic launcher distinguishes forward-only, backward-only, and
+shared deterministic targets.  Backward-only gradient targets are part of the
+compiled hidden ABI, but forward launches pass inert helper buffers for those
+targets and skip their sort/reduce work.  That keeps the forward path from
+paying for gradient reductions that only exist during <code class="docutils literal notranslate"><span class="pre">Tape.backward()</span></code>.
+When an input array has no adjoint buffer, for example because it was read by
+the forward pass but does not require gradients, deterministic mode treats the
+corresponding backward target as inactive and leaves the generated helper as a
+no-op.  Other gradients from the same backward kernel are still reduced
+deterministically.</p>
+<p>The unsupported autodiff case is Pattern 2 slot allocation with a consumed
+counter return.  A generated backward pass normally replays the original
+forward code before running reverse statements.  Replaying
+<code class="docutils literal notranslate"><span class="pre">slot</span> <span class="pre">=</span> <span class="pre">wp.atomic_add(counter,</span> <span class="pre">index,</span> <span class="pre">value)</span></code> would allocate new slots from
+the already-mutated counter, which can silently send adjoints to the wrong
+elements.  Deterministic mode rejects that launch instead.  The supported fix
+is to save the forward slot mapping yourself and use <code class="docutils literal notranslate"><span class="pre">&#64;wp.func_replay</span></code> so the
+backward replay reads the saved slot rather than running the counter atomic
+again.</p>
+</section>
+<section id="writing-manual-deterministic-code">
+<h2>Writing Manual Deterministic Code<a class="headerlink" href="#writing-manual-deterministic-code" title="Link to this heading">#</a></h2>
+<p>Warp’s deterministic mode is a convenience layer.  You can also write the
+deterministic algorithm directly when you want tighter control over memory,
+launch boundaries, or performance.</p>
+<p>For small output spaces, the simplest deterministic accumulation is to give
+each output element one thread and visit the inputs in a fixed order:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">reduce_by_bin</span><span class="p">(</span>
+    <span class="n">values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span>
+    <span class="n">bins</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">],</span>
+    <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span>
+    <span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+<span class="p">):</span>
+    <span class="n">bin_id</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">total</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">bins</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="n">bin_id</span><span class="p">:</span>
+            <span class="n">total</span> <span class="o">+=</span> <span class="n">values</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+    <span class="n">out</span><span class="p">[</span><span class="n">bin_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">total</span>
+</pre></div>
+</div>
+<p>This avoids atomics entirely and accumulates each bin in input-index order.  It
+is easy to reason about, but it is <code class="docutils literal notranslate"><span class="pre">O(num_bins</span> <span class="pre">*</span> <span class="pre">num_values)</span></code>, so it is most
+useful for debugging, validation, or small numbers of output bins.</p>
+<p>For slot allocation, write the count-scan-write pattern explicitly:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">count_positive</span><span class="p">(</span>
+    <span class="n">values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span>
+    <span class="n">counts</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">],</span>
+<span class="p">):</span>
+    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">counts</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">(</span><span class="n">values</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">0.0</span><span class="p">)</span>
+
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">write_positive</span><span class="p">(</span>
+    <span class="n">values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span>
+    <span class="n">offsets</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">],</span>
+    <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span>
+<span class="p">):</span>
+    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">values</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="n">out</span><span class="p">[</span><span class="n">offsets</span><span class="p">[</span><span class="n">tid</span><span class="p">]]</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span>
+
+
+<span class="n">counts</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
+<span class="n">offsets</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span>
+    <span class="n">count_positive</span><span class="p">,</span>
+    <span class="n">dim</span><span class="o">=</span><span class="n">n</span><span class="p">,</span>
+    <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">values</span><span class="p">],</span>
+    <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">counts</span><span class="p">],</span>
+    <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">array_scan</span><span class="p">(</span><span class="n">counts</span><span class="p">,</span> <span class="n">offsets</span><span class="p">,</span> <span class="n">inclusive</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span>
+    <span class="n">write_positive</span><span class="p">,</span>
+    <span class="n">dim</span><span class="o">=</span><span class="n">n</span><span class="p">,</span>
+    <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">values</span><span class="p">,</span> <span class="n">offsets</span><span class="p">],</span>
+    <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">compacted</span><span class="p">],</span>
+    <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>This is the same basic lowering that deterministic consumed-return counters use
+internally.  If you also need the final count, it is <code class="docutils literal notranslate"><span class="pre">offsets[n</span> <span class="pre">-</span> <span class="pre">1]</span> <span class="pre">+</span>
+<span class="pre">counts[n</span> <span class="pre">-</span> <span class="pre">1]</span></code>.</p>
+</section>
+<section id="picking-the-right-mode">
+<h2>Picking the Right Mode<a class="headerlink" href="#picking-the-right-mode" title="Link to this heading">#</a></h2>
+<p>Start with <code class="docutils literal notranslate"><span class="pre">wp.DeterministicMode.RUN_TO_RUN</span></code>.  It gives bit-exact repeated
+runs on the same GPU architecture and is the fastest deterministic mode.  For
+scalar accumulation atomics, Warp writes scatter records, sorts them by
+destination and linear thread index, and then uses <a class="reference external" href="https://nvidia.github.io/cccl/cub/api/structcub_1_1DeviceReduce.html">CUB DeviceReduce</a>
+reduce-by-key to combine records with the same destination.  This is stable for
+repeated runs on the same GPU architecture, but the internal reduction tree may
+vary across architectures.</p>
+<p>Use <code class="docutils literal notranslate"><span class="pre">wp.DeterministicMode.GPU_TO_GPU</span></code> when the same kernel should produce the
+same result across GPU architectures.  Warp still uses CUB radix sort to group
+records, but it does not use CUB’s scalar reduce-by-key path.  Instead, Warp
+launches a segmented reduction kernel that walks each sorted destination
+segment in thread-index order.  That fixed accumulation order is more
+conservative and can be slower, especially when many threads contribute to the
+same destination.</p>
+<p>Composite values such as vectors, matrices, quaternions, transforms, and
+<code class="docutils literal notranslate"><span class="pre">wp.Struct</span></code> fields already use Warp’s segmented reduction path in both modes.
+Pattern 2 slot allocation uses the same count-scan-write algorithm in both
+enabled modes.</p>
+<p>The enum values correspond to determinism levels used by NVIDIA CCCL.  Recent
+CCCL releases also expose determinism controls for some CUB reductions; see
+<a class="reference external" href="https://developer.nvidia.com/blog/controlling-floating-point-determinism-in-nvidia-cccl/">Controlling Floating-Point Determinism in NVIDIA CCCL</a> for background.  Warp’s
+feature is different in scope: it targets Warp kernel atomics and automatically
+rewrites the supported atomic patterns described above.</p>
+</section>
+<section id="capacity-and-dynamic-loops">
+<h2>Capacity and Dynamic Loops<a class="headerlink" href="#capacity-and-dynamic-loops" title="Link to this heading">#</a></h2>
+<p>For Pattern 1, Warp allocates temporary scatter buffers.  The default capacity
+comes from a static estimate of how many deterministic atomic records each
+thread can emit.</p>
+<p>Warp keeps a small floor of 1024 records per scatter target.  Very small
+launches can therefore allocate more scatter storage than their exact record
+count would require.  This keeps the common path simple and gives repeated
+launches enough room without adding another tuning parameter.</p>
+<p>If a thread can revisit the same atomic site inside a dynamic loop, Warp may
+not be able to prove the maximum number of records.  In that case, provide a
+per-target, per-thread upper bound.  For one module or kernel, use the module
+option directly:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span>
+    <span class="n">module</span><span class="o">=</span><span class="s2">&quot;unique&quot;</span><span class="p">,</span>
+    <span class="n">module_options</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;deterministic&quot;</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">DeterministicMode</span><span class="o">.</span><span class="n">RUN_TO_RUN</span><span class="p">,</span>
+        <span class="s2">&quot;deterministic_max_records&quot;</span><span class="p">:</span> <span class="mi">8</span><span class="p">,</span>
+    <span class="p">},</span>
+<span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">loop_accumulate</span><span class="p">(</span>
+    <span class="n">values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span>
+    <span class="n">loop_counts</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">],</span>
+    <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span>
+<span class="p">):</span>
+    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">loop_counts</span><span class="p">[</span><span class="n">tid</span><span class="p">]):</span>
+        <span class="n">wp</span><span class="o">.</span><span class="n">atomic_add</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">values</span><span class="p">[</span><span class="n">tid</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>To apply the same bound to modules created after the config is set, use the
+global default:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">deterministic_max_records</span> <span class="o">=</span> <span class="mi">8</span>
+</pre></div>
+</div>
+<p>If the runtime count exceeds the capacity, Warp truncates records and sets an
+overflow flag.  Outside CUDA graph capture, the launch reports this as an
+error.  For debugging capacity problems, enable:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">deterministic_debug</span> <span class="o">=</span> <span class="kc">True</span>
+</pre></div>
+</div>
+<p>Leave this off in performance-sensitive code.</p>
+</section>
+<section id="cuda-graph-capture">
+<h2>CUDA Graph Capture<a class="headerlink" href="#cuda-graph-capture" title="Link to this heading">#</a></h2>
+<p>Deterministic accumulation kernels can be captured and replayed with ordinary
+CUDA graphs:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">output</span><span class="o">.</span><span class="n">zero_</span><span class="p">()</span>
+
+<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedCapture</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">,</span> <span class="n">force_module_load</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="k">as</span> <span class="n">capture</span><span class="p">:</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">accumulate</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">values</span><span class="p">,</span> <span class="n">bins</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">output</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">capture_launch</span><span class="p">(</span><span class="n">capture</span><span class="o">.</span><span class="n">graph</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>There are a few details to know:</p>
+<ul class="simple">
+<li><p>During graph capture, Warp cannot read the scatter record count back to the
+host without synchronizing.  Captured Pattern 1 launches therefore sort the
+full fixed-capacity buffer, including unused sentinel records.  This is
+correct but can be slower than ordinary non-captured launches, which sort
+only the emitted record prefix.</p></li>
+<li><p>Overflow checks are disabled during graph capture and replay to keep graph
+launches asynchronous.  Size buffers conservatively with
+<code class="docutils literal notranslate"><span class="pre">deterministic_max_records</span></code>.</p></li>
+<li><p>Counter/slot-allocation kernels use sort and prefix-scan workspaces.  CUDA
+graph replay requires all temporary CUB storage used by captured work to
+remain valid for the lifetime of the graph.  Warp keeps these buffers alive
+on the captured graph object for ordinary CUDA graph capture.</p></li>
+<li><p>Deterministic kernels are not supported inside CUDA conditional body graphs,
+such as <a class="reference internal" href="../api_reference/_generated/warp.capture_while.html#warp.capture_while" title="warp.capture_while"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_while()</span></code></a> or
+<a class="reference internal" href="../api_reference/_generated/warp.capture_if.html#warp.capture_if" title="warp.capture_if"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_if()</span></code></a>, when the deterministic launch
+would need to allocate temporary buffers while capturing the conditional
+body.</p></li>
+<li><p>APIC serialization (<code class="docutils literal notranslate"><span class="pre">apic=True</span></code> with <a class="reference internal" href="../api_reference/_generated/warp.capture_save.html#warp.capture_save" title="warp.capture_save"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_save()</span></code></a>) is not currently supported for deterministic CUDA
+kernels.  Use ordinary CUDA graph capture or disable deterministic mode for
+APIC-captured kernels.</p></li>
+</ul>
+</section>
+<section id="performance">
+<h2>Performance<a class="headerlink" href="#performance" title="Link to this heading">#</a></h2>
+<p>Deterministic mode changes the algorithm, so there is no single overhead
+number.  The important question is which pattern the kernel uses and how much
+contention the atomics have.  The measurements below use CUDA event timing in
+both cases so they measure GPU work rather than Python wall-clock time.</p>
+<section id="pattern-a-accumulation-atomics">
+<h3>Pattern A: Accumulation Atomics<a class="headerlink" href="#pattern-a-accumulation-atomics" title="Link to this heading">#</a></h3>
+<p>Accumulation atomics can get faster when many threads write to the
+same output element.  Normal floating-point atomics serialize at the hot
+address.  Deterministic <code class="docutils literal notranslate"><span class="pre">wp.DeterministicMode.RUN_TO_RUN</span></code> mode instead writes
+temporary records, sorts them by destination, and reduces each group.  That
+extra work is not free, but it can remove enough atomic contention to win.
+Sparse atomics usually slow down because there is little contention to remove.</p>
+<p>The benchmark kernel for Pattern A is deliberately small:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">atomic_add_kernel</span><span class="p">(</span>
+    <span class="n">values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span>
+    <span class="n">indices</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">],</span>
+    <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span>
+<span class="p">):</span>
+    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">atomic_add</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">indices</span><span class="p">[</span><span class="n">tid</span><span class="p">],</span> <span class="n">values</span><span class="p">[</span><span class="n">tid</span><span class="p">])</span>
+
+
+<span class="n">out</span><span class="o">.</span><span class="n">zero_</span><span class="p">()</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span>
+    <span class="n">atomic_add_kernel</span><span class="p">,</span>
+    <span class="n">dim</span><span class="o">=</span><span class="n">num_writes</span><span class="p">,</span>
+    <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">values</span><span class="p">,</span> <span class="n">indices</span><span class="p">],</span>
+    <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">],</span>
+    <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>To compare modes, the benchmark uses the same kernel body compiled normally,
+with <code class="docutils literal notranslate"><span class="pre">module_options={&quot;deterministic&quot;:</span> <span class="pre">wp.DeterministicMode.RUN_TO_RUN}</span></code>,
+and with <code class="docutils literal notranslate"><span class="pre">module_options={&quot;deterministic&quot;:</span> <span class="pre">wp.DeterministicMode.GPU_TO_GPU}</span></code>.
+The timed path is CUDA graph replay of the output zeroing plus the kernel launch,
+measured with CUDA events.</p>
+<p>The table below is one local measurement, not a performance guarantee.  It was
+measured on an NVIDIA GeForce RTX 4090 with CUDA 12.4.  Each number is median
+CUDA event time in milliseconds.  <code class="docutils literal notranslate"><span class="pre">outputs=1</span></code> means every thread writes to the
+same element; <code class="docutils literal notranslate"><span class="pre">outputs=65,536</span></code> uses random output indices and much lower
+contention.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Writes</p></th>
+<th class="head"><p>Outputs</p></th>
+<th class="head"><p><code class="docutils literal notranslate"><span class="pre">NOT_GUARANTEED</span></code></p></th>
+<th class="head"><p><code class="docutils literal notranslate"><span class="pre">RUN_TO_RUN</span></code></p></th>
+<th class="head"><p><code class="docutils literal notranslate"><span class="pre">GPU_TO_GPU</span></code></p></th>
+<th class="head"><p><code class="docutils literal notranslate"><span class="pre">RUN_TO_RUN</span></code> ratio</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>65,536</p></td>
+<td><p>1</p></td>
+<td><p>0.099 ms</p></td>
+<td><p>0.075 ms</p></td>
+<td><p>7.66 ms</p></td>
+<td><p>0.76x</p></td>
+</tr>
+<tr class="row-odd"><td><p>262,144</p></td>
+<td><p>1</p></td>
+<td><p>0.364 ms</p></td>
+<td><p>0.096 ms</p></td>
+<td><p>31.0 ms</p></td>
+<td><p>0.26x</p></td>
+</tr>
+<tr class="row-even"><td><p>1,048,576</p></td>
+<td><p>1</p></td>
+<td><p>1.46 ms</p></td>
+<td><p>0.193 ms</p></td>
+<td><p>172 ms</p></td>
+<td><p>0.13x</p></td>
+</tr>
+<tr class="row-odd"><td><p>65,536</p></td>
+<td><p>65,536</p></td>
+<td><p>0.0058 ms</p></td>
+<td><p>0.079 ms</p></td>
+<td><p>0.076 ms</p></td>
+<td><p>13.6x</p></td>
+</tr>
+<tr class="row-even"><td><p>262,144</p></td>
+<td><p>65,536</p></td>
+<td><p>0.0081 ms</p></td>
+<td><p>0.192 ms</p></td>
+<td><p>0.187 ms</p></td>
+<td><p>23.9x</p></td>
+</tr>
+<tr class="row-odd"><td><p>1,048,576</p></td>
+<td><p>65,536</p></td>
+<td><p>0.020 ms</p></td>
+<td><p>0.201 ms</p></td>
+<td><p>0.228 ms</p></td>
+<td><p>10.0x</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The first three rows are the high-contention case:
+<code class="docutils literal notranslate"><span class="pre">wp.DeterministicMode.RUN_TO_RUN</span></code> gets faster as the number of writes to the
+one output grows.  The last three rows are the low-contention case: normal
+atomics are already cheap, so sorting dominates.
+<code class="docutils literal notranslate"><span class="pre">wp.DeterministicMode.GPU_TO_GPU</span></code> preserves a stricter order and is
+intentionally more expensive for one long destination segment.</p>
+</section>
+<section id="pattern-b-slot-allocation-counters">
+<h3>Pattern B: Slot Allocation Counters<a class="headerlink" href="#pattern-b-slot-allocation-counters" title="Link to this heading">#</a></h3>
+<p>Slot allocation has a different shape.  The kernel is:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">counter_kernel</span><span class="p">(</span>
+    <span class="n">values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span>
+    <span class="n">count</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">],</span>
+    <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span>
+<span class="p">):</span>
+    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">slot</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">atomic_add</span><span class="p">(</span><span class="n">count</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">out</span><span class="p">[</span><span class="n">slot</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span>
+
+
+<span class="n">count</span><span class="o">.</span><span class="n">zero_</span><span class="p">()</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">counter_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">num_writes</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">values</span><span class="p">,</span> <span class="n">count</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Deterministic mode turns this into a counting pass, a sort by counter element
+and deterministic reservation order, a segmented prefix scan, and an execution
+pass.  <code class="docutils literal notranslate"><span class="pre">wp.DeterministicMode.RUN_TO_RUN</span></code> and
+<code class="docutils literal notranslate"><span class="pre">wp.DeterministicMode.GPU_TO_GPU</span></code> use the same slot allocation algorithm.
+This table uses direct launches measured with CUDA events.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Writes</p></th>
+<th class="head"><p><code class="docutils literal notranslate"><span class="pre">NOT_GUARANTEED</span></code></p></th>
+<th class="head"><p>Deterministic</p></th>
+<th class="head"><p>Ratio</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>65,536</p></td>
+<td><p>0.020 ms</p></td>
+<td><p>0.129 ms</p></td>
+<td><p>6.3x</p></td>
+</tr>
+<tr class="row-odd"><td><p>262,144</p></td>
+<td><p>0.024 ms</p></td>
+<td><p>0.144 ms</p></td>
+<td><p>6.0x</p></td>
+</tr>
+<tr class="row-even"><td><p>1,048,576</p></td>
+<td><p>0.022 ms</p></td>
+<td><p>0.165 ms</p></td>
+<td><p>7.6x</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>These counter numbers measure the device work only.  Application wall time can
+be higher because this direct-launch path still allocates temporary prefix-scan
+buffers around the launch.  The practical advice is to use deterministic slot
+allocation where stable ordering matters, and benchmark it in the workload that
+matters to you.</p>
+</section>
+</section>
+<section id="limitations">
+<h2>Limitations<a class="headerlink" href="#limitations" title="Link to this heading">#</a></h2>
+<p>Deterministic mode is intentionally narrow.  It supports common reproducibility
+patterns without pretending that every parallel program can be made
+deterministic automatically.</p>
+<dl>
+<dt>Unsupported atomics</dt><dd><p><code class="docutils literal notranslate"><span class="pre">wp.atomic_cas()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.atomic_exch()</span></code>, and tile atomics such as
+<code class="docutils literal notranslate"><span class="pre">wp.tile_atomic_add()</span></code> are not transformed.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">module</span><span class="o">=</span><span class="s2">&quot;unique&quot;</span><span class="p">,</span> <span class="n">module_options</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;deterministic&quot;</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">DeterministicMode</span><span class="o">.</span><span class="n">RUN_TO_RUN</span><span class="p">})</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">not_rewritten</span><span class="p">(</span><span class="n">lock</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">]):</span>
+    <span class="c1"># Compare-and-swap is still the ordinary Warp atomic.</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">atomic_cas</span><span class="p">(</span><span class="n">lock</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd>
+<dt>Custom/native adjoint boundaries</dt><dd><p>User-defined custom adjoints are deterministic when their contended
+accumulation is written in Warp code with supported atomic patterns, such
+as <code class="docutils literal notranslate"><span class="pre">wp.adjoint[arr][i]</span> <span class="pre">+=</span> <span class="pre">value</span></code>.  Native C++ adjoint helpers and
+unsupported atomics remain outside the automatic rewrite.</p>
+</dd>
+<dt>One reduction family per target</dt><dd><p>A single output array cannot mix different deterministic families inside
+one function or kernel.  For example, using <code class="docutils literal notranslate"><span class="pre">wp.atomic_add(out,</span> <span class="pre">...)</span></code> and
+<code class="docutils literal notranslate"><span class="pre">wp.atomic_max(out,</span> <span class="pre">...)</span></code> on the same array in the same deterministic
+kernel is rejected.  Write to separate arrays or split the work into
+separate kernels.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">module</span><span class="o">=</span><span class="s2">&quot;unique&quot;</span><span class="p">,</span> <span class="n">module_options</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;deterministic&quot;</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">DeterministicMode</span><span class="o">.</span><span class="n">RUN_TO_RUN</span><span class="p">})</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">rejected</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span> <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">]):</span>
+    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">atomic_add</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">values</span><span class="p">[</span><span class="n">tid</span><span class="p">])</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">atomic_max</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">values</span><span class="p">[</span><span class="n">tid</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>One workaround is to write each reduction family to a separate target:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">module</span><span class="o">=</span><span class="s2">&quot;unique&quot;</span><span class="p">,</span> <span class="n">module_options</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;deterministic&quot;</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">DeterministicMode</span><span class="o">.</span><span class="n">RUN_TO_RUN</span><span class="p">})</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">allowed</span><span class="p">(</span>
+    <span class="n">values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span>
+    <span class="n">sum_out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span>
+    <span class="n">max_out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span>
+<span class="p">):</span>
+    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">atomic_add</span><span class="p">(</span><span class="n">sum_out</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">values</span><span class="p">[</span><span class="n">tid</span><span class="p">])</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">atomic_max</span><span class="p">(</span><span class="n">max_out</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">values</span><span class="p">[</span><span class="n">tid</span><span class="p">])</span>
+</pre></div>
+</div>
+</dd>
+<dt>Side effects in the counting pass</dt><dd><p>Pattern 2 runs the kernel once just to count.  During this pass, Warp
+suppresses side effects such as array writes, non-counter atomics, and
+<code class="docutils literal notranslate"><span class="pre">printf</span></code>.  If the number of slots a thread needs depends on scratch-array
+writes performed earlier in the same kernel, rewrite the code to use local
+variables or input arrays for that decision.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">module</span><span class="o">=</span><span class="s2">&quot;unique&quot;</span><span class="p">,</span> <span class="n">module_options</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;deterministic&quot;</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">DeterministicMode</span><span class="o">.</span><span class="n">RUN_TO_RUN</span><span class="p">})</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">avoid_scratch_dependency</span><span class="p">(</span>
+    <span class="n">values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span>
+    <span class="n">scratch</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span>
+    <span class="n">count</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">],</span>
+    <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span>
+<span class="p">):</span>
+    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">scratch</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span>
+
+    <span class="c1"># During the counting pass, the scratch write is suppressed.</span>
+    <span class="k">if</span> <span class="n">scratch</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mf">0.0</span><span class="p">:</span>
+        <span class="n">slot</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">atomic_add</span><span class="p">(</span><span class="n">count</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">out</span><span class="p">[</span><span class="n">slot</span><span class="p">]</span> <span class="o">=</span> <span class="n">scratch</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span>
+</pre></div>
+</div>
+</dd>
+<dt>Fixed scatter capacity</dt><dd><p>Pattern 1 uses fixed-capacity scatter buffers.  Dynamic loops that emit
+more records than the static estimate or <code class="docutils literal notranslate"><span class="pre">deterministic_max_records</span></code> can
+overflow.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span>
+    <span class="n">module</span><span class="o">=</span><span class="s2">&quot;unique&quot;</span><span class="p">,</span>
+    <span class="n">module_options</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">&quot;deterministic&quot;</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">DeterministicMode</span><span class="o">.</span><span class="n">RUN_TO_RUN</span><span class="p">,</span>
+        <span class="s2">&quot;deterministic_max_records&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>
+    <span class="p">},</span>
+<span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">can_overflow</span><span class="p">(</span><span class="n">loop_counts</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">],</span> <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">]):</span>
+    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">loop_counts</span><span class="p">[</span><span class="n">tid</span><span class="p">]):</span>
+        <span class="n">wp</span><span class="o">.</span><span class="n">atomic_add</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd>
+<dt>Consumed counters in backward replay</dt><dd><p>Generated backward replay of Pattern 2 is rejected.  Warp cannot safely
+recompute the consumed slot from a counter array that the forward pass
+already changed.  Store the forward slot mapping yourself and provide a
+<code class="docutils literal notranslate"><span class="pre">&#64;wp.func_replay</span></code> implementation when gradients need that slot.  Consumed
+counter atomics inside custom adjoint code are also rejected; move slot
+allocation to the forward pass and replay an explicit slot mapping instead.</p>
+</dd>
+<dt>Counter arrays are allocation counters</dt><dd><p>Pattern 2 snapshots the counter values before the counting pass and writes
+final totals after the execution pass.  This supports pre-existing
+nonzero counters and append-style multi-launch workflows.  It is still an
+allocation-counter pattern, not a general way to make arbitrary
+order-dependent counter mutations deterministic.</p>
+</dd>
+<dt>Large launches</dt><dd><p>Deterministic scatter and counter launches are limited to at most
+<code class="docutils literal notranslate"><span class="pre">2**31</span> <span class="pre">-</span> <span class="pre">1</span></code> records.  Scatter buffers use signed 32-bit record slots, and
+counter prefix buffers store per-record contributions as <code class="docutils literal notranslate"><span class="pre">int32</span></code> values.</p>
+</dd>
+</dl>
+</section>
+<section id="checklist">
+<h2>Checklist<a class="headerlink" href="#checklist" title="Link to this heading">#</a></h2>
+<p>When enabling deterministic mode in a new kernel:</p>
+<ol class="arabic simple">
+<li><p>Start with <code class="docutils literal notranslate"><span class="pre">wp.set_module_options({&quot;deterministic&quot;:</span> <span class="pre">wp.DeterministicMode.RUN_TO_RUN})</span></code>
+for an existing module, or a unique module with <code class="docutils literal notranslate"><span class="pre">module_options</span></code> for one
+targeted kernel.</p></li>
+<li><p>Run the kernel several times and compare outputs with
+<code class="docutils literal notranslate"><span class="pre">np.testing.assert_array_equal()</span></code> for bit-exact tests.</p></li>
+<li><p>If the kernel has dynamic loops around deterministic atomics, set
+<code class="docutils literal notranslate"><span class="pre">deterministic_max_records</span></code> to a real upper bound.</p></li>
+<li><p>If the kernel uses <code class="docutils literal notranslate"><span class="pre">slot</span> <span class="pre">=</span> <span class="pre">wp.atomic_add(counter,</span> <span class="pre">index,</span> <span class="pre">value)</span></code>, check
+that the counter is an <code class="docutils literal notranslate"><span class="pre">int32</span></code> array initialized for that launch.</p></li>
+<li><p>For differentiable kernels, run <code class="docutils literal notranslate"><span class="pre">Tape.backward()</span></code> several times and compare
+the gradients that matter with <code class="docutils literal notranslate"><span class="pre">np.testing.assert_array_equal()</span></code>.  If the
+kernel consumes a counter return, provide an explicit <code class="docutils literal notranslate"><span class="pre">&#64;wp.func_replay</span></code>
+slot mapping or keep that kernel out of the generated backward pass.</p></li>
+<li><p>If you capture the kernel in a CUDA graph, validate both capture and replay.
+Ordinary CUDA graph capture is supported for both Pattern 1 and Pattern 2;
+Warp keeps the temporary deterministic buffers alive on the captured graph
+object. Conditional body graphs and APIC serialization still have the
+limitations described above.</p></li>
+<li><p>If performance matters, benchmark both normal and deterministic modes.</p></li>
+</ol>
+</section>
+<section id="related-nvidia-libraries">
+<h2>Related NVIDIA Libraries<a class="headerlink" href="#related-nvidia-libraries" title="Link to this heading">#</a></h2>
+<p>Warp’s implementation is inspired by CUDA and CUB patterns that are already
+familiar in NVIDIA libraries:</p>
+<ul class="simple">
+<li><p><a class="reference external" href="https://nvidia.github.io/cccl/cub/">CUB</a> is part of <a class="reference external" href="https://nvidia.github.io/cccl/">NVIDIA CCCL</a> and provides optimized device-wide building
+blocks such as radix sort, reduce-by-key, and scan.</p></li>
+<li><p>Pattern 1 follows the same general shape as CUB sort plus reduce-by-key:
+group equal destinations, then reduce each group.</p></li>
+<li><p>Pattern 2 follows the standard count-scan-write pattern and uses scan
+primitives conceptually like CUB <code class="docutils literal notranslate"><span class="pre">DeviceScan</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">wp.DeterministicMode.NOT_GUARANTEED</span></code>,
+<code class="docutils literal notranslate"><span class="pre">wp.DeterministicMode.RUN_TO_RUN</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">wp.DeterministicMode.GPU_TO_GPU</span></code> correspond to the determinism levels
+described for CCCL reductions.</p></li>
+</ul>
+<p>These references are useful if you want to understand the lower-level CUDA
+building blocks behind Warp’s higher-level switch.</p>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="debugging.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Debugging</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="limitations.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Limitations</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+
+
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#quick-start">Quick Start</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#choosing-a-scope">Choosing a Scope</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-warp-supports">What Warp Supports</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pattern-1-accumulation">Pattern 1: Accumulation</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pattern-2-slot-allocation">Pattern 2: Slot Allocation</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#tape-and-backward-passes">Tape and Backward Passes</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#writing-manual-deterministic-code">Writing Manual Deterministic Code</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#picking-the-right-mode">Picking the Right Mode</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#capacity-and-dynamic-loops">Capacity and Dynamic Loops</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cuda-graph-capture">CUDA Graph Capture</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#performance">Performance</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pattern-a-accumulation-atomics">Pattern A: Accumulation Atomics</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pattern-b-slot-allocation-counters">Pattern B: Slot Allocation Counters</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#limitations">Limitations</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#checklist">Checklist</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#related-nvidia-libraries">Related NVIDIA Libraries</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+
+  
+  <div class="tocsection editthispage">
+    <a href="https://github.com/NVIDIA/warp/edit/main/docs/user_guide/deterministic_execution.rst">
+      <i class="fa-solid fa-pencil"></i>
+      
+      
+        
+          Edit on GitHub
+        
+      
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+<a class="footer-brand logo" href="https://www.nvidia.com">
+  <img src="../_static/nvidia-logo-horiz-rgb-1c-blk-for-screen.svg" class="logo__image only-light" alt="NVIDIA"/>
+  <img src="../_static/nvidia-logo-horiz-rgb-1c-wht-for-screen.svg" class="logo__image only-dark" alt="NVIDIA"/>
+</a></div>
+      
+        <div class="footer-item">
+
+<div class="footer-links">
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/privacy-policy/">Privacy Policy</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/privacy-center/">Your Privacy Choices</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/terms-of-service/">Terms of Service</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/accessibility/">Accessibility</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/company-policies/">Corporate Policies</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/product-security/">Product Security</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/contact/">Contact</a>
+  
+  
+  
+</div>
+</div>
+      
+        <div class="footer-item">
+
+
+
+
+  <p class="copyright">
+    
+      Copyright © 2022-2026 NVIDIA Corporation.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+</div>
+
+  </footer>
+  </body>
+</html>

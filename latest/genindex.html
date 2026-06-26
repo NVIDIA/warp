@@ -382,6 +382,7 @@
 <li class="toctree-l1"><a class="reference internal" href="user_guide/configuration.html">Configuration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="user_guide/cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
 <li class="toctree-l1"><a class="reference internal" href="user_guide/debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="user_guide/deterministic_execution.html">Deterministic Execution</a></li>
 <li class="toctree-l1"><a class="reference internal" href="user_guide/limitations.html">Limitations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="user_guide/contribution_guide.html">Contribution Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="user_guide/publications.html">Publications using Warp</a></li>
@@ -507,6 +508,8 @@
         <li><a href="api_reference/_generated/warp.config.LaunchArrayAccessMode.html#warp.config.LaunchArrayAccessMode.__init__">(warp.config.LaunchArrayAccessMode method)</a>
 </li>
         <li><a href="api_reference/_generated/warp.CudaManagedAllocator.html#warp.CudaManagedAllocator.__init__">(warp.CudaManagedAllocator method)</a>
+</li>
+        <li><a href="api_reference/_generated/warp.DeterministicMode.html#warp.DeterministicMode.__init__">(warp.DeterministicMode method)</a>
 </li>
         <li><a href="api_reference/_generated/warp.Device.html#warp.Device.__init__">(warp.Device method)</a>
 </li>
@@ -2330,6 +2333,14 @@
         <li><a href="api_reference/_generated/warp.fem.TemporaryStore.html#warp.fem.TemporaryStore.Pool.Deleter.detach">(warp.fem.TemporaryStore.Pool.Deleter method)</a>
 </li>
       </ul></li>
+      <li><a href="api_reference/_generated/warp.config.deterministic.html#warp.config.deterministic">deterministic (in module warp.config)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.config.deterministic_debug.html#warp.config.deterministic_debug">deterministic_debug (in module warp.config)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.config.deterministic_max_records.html#warp.config.deterministic_max_records">deterministic_max_records (in module warp.config)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.DeterministicMode.html#warp.DeterministicMode">DeterministicMode (class in warp)</a>
+</li>
       <li><a href="api_reference/_generated/warp.Device.html#warp.Device">Device (class in warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.array.html#warp.array.device">device (warp.array attribute)</a>
@@ -2396,10 +2407,10 @@
         <li><a href="api_reference/_generated/warp.fem.Tetmesh.html#warp.fem.Tetmesh.dimension">(warp.fem.Tetmesh attribute)</a>
 </li>
       </ul></li>
-      <li><a href="api_reference/_generated/warp.Event.html#warp.Event.Flags.DISABLE_TIMING">DISABLE_TIMING (warp.Event.Flags attribute)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api_reference/_generated/warp.Event.html#warp.Event.Flags.DISABLE_TIMING">DISABLE_TIMING (warp.Event.Flags attribute)</a>
+</li>
       <li><a href="api_reference/_generated/warp.fem.DiscreteField.html#warp.fem.DiscreteField">DiscreteField (class in warp.fem)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.div.html#warp.fem.div">div (in module warp.fem)</a>
@@ -3284,10 +3295,10 @@
 </li>
       <li><a href="api_reference/_generated/warp.get_mempool_used_mem_current.html#warp.get_mempool_used_mem_current">get_mempool_used_mem_current() (in module warp)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.get_mempool_used_mem_high.html#warp.get_mempool_used_mem_high">get_mempool_used_mem_high() (in module warp)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.get_module.html#warp.get_module">get_module() (in module warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.Module.html#warp.Module.get_module_hash">get_module_hash() (warp.Module method)</a>
@@ -3333,6 +3344,8 @@
       <li><a href="api_reference/_generated/warp.optim.linear.GMRES.html#warp.optim.linear.GMRES">GMRES (class in warp.optim.linear)</a>
 </li>
       <li><a href="api_reference/_generated/warp.optim.linear.gmres_function.html#warp.optim.linear.gmres">gmres() (in module warp.optim.linear)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.DeterministicMode.html#warp.DeterministicMode.GPU_TO_GPU">GPU_TO_GPU (warp.DeterministicMode attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.grad.html#warp.fem.grad">grad (in module warp.fem)</a>
 
@@ -4417,10 +4430,10 @@
 </li>
       <li><a href="api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.nnz">nnz (warp.sparse.BsrMatrix attribute)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.nnz_sync">nnz_sync() (warp.sparse.BsrMatrix method)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.fem.NodalQuadrature.html#warp.fem.NodalQuadrature">NodalQuadrature (class in warp.fem)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.SpaceRestriction.html#warp.fem.SpaceRestriction.node_arg_value">node_arg_value() (warp.fem.SpaceRestriction method)</a>
@@ -4516,6 +4529,8 @@
       <li><a href="api_reference/_generated/warp.fem.normalize_dirichlet_projector.html#warp.fem.normalize_dirichlet_projector">normalize_dirichlet_projector() (in module warp.fem)</a>
 </li>
       <li><a href="api_reference/_generated/warp.Texture.html#warp.Texture.normalized_coords">normalized_coords (warp.Texture property)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.DeterministicMode.html#warp.DeterministicMode.NOT_GUARANTEED">NOT_GUARANTEED (warp.DeterministicMode attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.notify_nnz_changed">notify_nnz_changed() (warp.sparse.BsrMatrix method)</a>
 </li>
@@ -4970,6 +4985,8 @@
       <li><a href="api_reference/_generated/warp.tile.html#warp.tile.round_up">round_up() (warp.tile static method)</a>
 </li>
       <li><a href="api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.row_counts">row_counts (warp.sparse.BsrMatrix attribute)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.DeterministicMode.html#warp.DeterministicMode.RUN_TO_RUN">RUN_TO_RUN (warp.DeterministicMode attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.utils.runlength_encode.html#warp.utils.runlength_encode">runlength_encode() (in module warp.utils)</a>
 </li>
