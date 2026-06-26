@@ -14,6 +14,7 @@
 #include <cstdlib>
 #include <fstream>
 
+#include <cuda_profiler_api.h>
 #include <nvPTXCompiler.h>
 #include <nvrtc.h>
 #if WP_ENABLE_MATHDX
@@ -2739,6 +2740,10 @@ void wp_cuda_context_synchronize(void* context)
 
     // check_cuda(cudaDeviceGraphMemTrim(wp_cuda_context_get_device_ordinal(context)));
 }
+
+void wp_cuda_profiler_start() { check_cuda(cudaProfilerStart()); }
+
+void wp_cuda_profiler_stop() { check_cuda(cudaProfilerStop()); }
 
 uint64_t wp_cuda_context_check(void* context)
 {

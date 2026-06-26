@@ -203,6 +203,9 @@ from warp._src.utils import TIMING_MEMCPY as TIMING_MEMCPY
 from warp._src.utils import TIMING_MEMSET as TIMING_MEMSET
 from warp._src.utils import TIMING_GRAPH as TIMING_GRAPH
 from warp._src.utils import TIMING_ALL as TIMING_ALL
+from warp._src.context import cuda_profiler_start as cuda_profiler_start
+from warp._src.context import cuda_profiler_stop as cuda_profiler_stop
+from warp._src.context import cuda_profiler_range as cuda_profiler_range
 from warp._src.logger import LOG_DEBUG as LOG_DEBUG
 from warp._src.logger import LOG_INFO as LOG_INFO
 from warp._src.logger import LOG_WARNING as LOG_WARNING

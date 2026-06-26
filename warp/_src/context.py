@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import ast
 import collections
+import contextlib
 import ctypes
 import enum
 import functools
@@ -6238,6 +6239,11 @@ class Runtime:
             self.core.wp_cuda_context_check.argtypes = [ctypes.c_void_p]
             self.core.wp_cuda_context_check.restype = ctypes.c_uint64
 
+            self.core.wp_cuda_profiler_start.argtypes = None
+            self.core.wp_cuda_profiler_start.restype = None
+            self.core.wp_cuda_profiler_stop.argtypes = None
+            self.core.wp_cuda_profiler_stop.restype = None
+
             self.core.wp_cuda_context_get_device_ordinal.argtypes = [ctypes.c_void_p]
             self.core.wp_cuda_context_get_device_ordinal.restype = ctypes.c_int
             self.core.wp_cuda_context_is_primary.argtypes = [ctypes.c_void_p]
@@ -10046,6 +10052,52 @@ def synchronize_stream(stream_or_device: Stream | DeviceLike | None = None):
         if stream.device.is_capturing:
             raise RuntimeError("Cannot synchronize stream while graph capture is active")
         runtime.core.wp_cuda_stream_synchronize(stream.cuda_stream)
+
+
+def cuda_profiler_start():
+    """Begin CUDA profiler data collection.
+
+    This is equivalent to ``cudaProfilerStart`` and applies process-wide rather than
+    to a specific device. It lets an external profiler (e.g. Nsight Systems or Nsight
+    Compute launched with ``--capture-range cudaProfilerApi``) restrict data collection
+    to a region of interest::
+
+        wp.cuda_profiler_start()
+        # ... kernel launches to profile ...
+        wp.cuda_profiler_stop()
+
+    Has no effect on CPU-only builds. Profiler control is global, so nested or
+    overlapping start/stop calls are not tracked—each call maps directly to the
+    underlying CUDA call.
+    """
+
+    runtime.core.wp_cuda_profiler_start()
+
+
+def cuda_profiler_stop():
+    """End CUDA profiler data collection.
+
+    This is equivalent to ``cudaProfilerStop``. See :func:`cuda_profiler_start`.
+    """
+
+    runtime.core.wp_cuda_profiler_stop()
+
+
+@contextlib.contextmanager
+def cuda_profiler_range():
+    """Bracket a region with :func:`cuda_profiler_start` and :func:`cuda_profiler_stop`.
+
+    Example::
+
+        with wp.cuda_profiler_range():
+            # ... kernel launches to profile ...
+    """
+
+    cuda_profiler_start()
+    try:
+        yield
+    finally:
+        cuda_profiler_stop()
 
 
 def synchronize_event(event: Event):

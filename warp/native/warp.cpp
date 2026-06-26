@@ -1048,6 +1048,8 @@ WP_API void wp_cuda_context_pop_current() { }
 WP_API void* wp_cuda_context_create(int device_ordinal) { return NULL; }
 WP_API void wp_cuda_context_destroy(void* context) { }
 WP_API void wp_cuda_context_synchronize(void* context) { }
+WP_API void wp_cuda_profiler_start() { }
+WP_API void wp_cuda_profiler_stop() { }
 WP_API uint64_t wp_cuda_context_check(void* context) { return 0; }
 WP_API int wp_cuda_context_get_device_ordinal(void* context) { return -1; }
 WP_API int wp_cuda_context_is_primary(void* context) { return 0; }

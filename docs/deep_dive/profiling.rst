@@ -345,6 +345,60 @@ Events created with the ``enable_timing=True`` flag can be used for timing insid
         elapsed = wp.get_event_elapsed_time(e1, e2)
         print(elapsed)
 
+.. _profiler-capture-range:
+
+Limiting the Profiler Capture Range
+-----------------------------------
+
+When profiling with an external tool such as Nsight Systems or Nsight Compute, it is often useful to restrict data
+collection to a region of interest—for example, a few simulation steps after warm-up—rather than capturing the entire
+run.  Warp exposes the CUDA profiler control API for this purpose:
+
+- :func:`wp.cuda_profiler_start() <warp.cuda_profiler_start>` begins profiler data collection (equivalent to
+  ``cudaProfilerStart``).
+- :func:`wp.cuda_profiler_stop() <warp.cuda_profiler_stop>` ends it (equivalent to ``cudaProfilerStop``).
+- :func:`wp.cuda_profiler_range() <warp.cuda_profiler_range>` is a context manager that brackets a region with the two
+  calls.
+
+These calls are process-global rather than tied to a particular device, and they have no effect on CPU-only builds.
+
+.. code:: python
+
+    # warm up before the region of interest
+    for _ in range(num_warmup_steps):
+        example.step()
+
+    with wp.cuda_profiler_range():
+        for _ in range(num_profiled_steps):
+            example.step()
+        # ensure asynchronous work finishes before collection stops;
+        # synchronize every participating device for multi-GPU runs
+        wp.synchronize_device()
+
+The profiler control API only marks the region; the external tool must be told to honor it.  With Nsight Systems, pass
+``--capture-range=cudaProfilerApi`` so that collection starts at the first ``cudaProfilerStart`` and stops at
+``cudaProfilerStop``:
+
+.. code-block:: bash
+
+    nsys profile --capture-range=cudaProfilerApi python my_app.py
+
+With Nsight Compute, pass ``--profile-from-start off`` so that profiling stays disabled until ``cudaProfilerStart`` is
+called:
+
+.. code-block:: bash
+
+    ncu --profile-from-start off -o my_app python my_app.py
+
+Because the calls are asynchronous with respect to the device, all CUDA work that should appear in the capture must
+complete before :func:`wp.cuda_profiler_stop() <warp.cuda_profiler_stop>` is reached—including when
+:func:`wp.cuda_profiler_range() <warp.cuda_profiler_range>` exits—otherwise trailing kernels and memory transfers are
+dropped from the captured range.  A single :func:`wp.synchronize_device() <warp.synchronize_device>` flushes only the
+device it targets, so multi-device workloads must synchronize *every* participating device (or call
+:func:`wp.synchronize() <warp.synchronize>` to flush them all) before collection ends.  Likewise, if you synchronize
+individual streams with :func:`wp.synchronize_stream() <warp.synchronize_stream>` rather than whole devices, flush every
+stream that contributed work to the region.
+
 Nsight Compute Profiling
 ------------------------
 
@@ -479,6 +533,10 @@ we can drop the ``-k`` option and increase the value of the ``-c`` option to 20:
 .. code-block:: bash
 
     ncu --open-in-ui -f -o example_sph --set full -c 20 python example_sph.py --stage-path None --num-frames 10
+
+Alternatively, to target a specific region of the run rather than a launch count, bracket the region of interest with
+the :ref:`profiler capture range API <profiler-capture-range>` and run ``ncu`` with ``--profile-from-start off`` so
+collection begins only at ``cudaProfilerStart``.
 
 Preserving source code context in Nsight Compute reports
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

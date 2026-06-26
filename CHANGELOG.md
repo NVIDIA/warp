@@ -16,6 +16,9 @@
   to an addressable expression for use with native snippets, and allow `@wp.func_native` ref-parameter functions to
   provide manual adjoints with `adj_snippet`
   ([GH-1277](https://github.com/NVIDIA/warp/issues/1277)).
+- Add `wp.cuda_profiler_start()`, `wp.cuda_profiler_stop()`, and the `wp.cuda_profiler_range()` context manager to
+  control CUDA profiler data collection from Python (equivalent to `cudaProfilerStart`/`cudaProfilerStop`), for use with
+  an external profiler's capture range.
 - Add mipmap (texture level-of-detail) support to `wp.Texture1D`, `wp.Texture2D`, and `wp.Texture3D` via the new
   `num_mip_levels` and `mip_filter_mode` constructor parameters, and allow `wp.texture_sample()` to accept an optional
   trailing `lod` argument for controlling sampled detail level ([GH-1409](https://github.com/NVIDIA/warp/issues/1409)).
