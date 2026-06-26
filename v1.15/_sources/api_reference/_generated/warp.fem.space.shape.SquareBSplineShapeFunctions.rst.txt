@@ -1,0 +1,46 @@
+﻿warp.fem.space.shape.SquareBSplineShapeFunctions
+================================================
+
+.. currentmodule:: warp.fem.space.shape
+
+.. autoclass:: SquareBSplineShapeFunctions
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~SquareBSplineShapeFunctions.__init__
+      ~SquareBSplineShapeFunctions.element_node_quads
+      ~SquareBSplineShapeFunctions.element_node_triangulation
+      ~SquareBSplineShapeFunctions.element_vtk_cells
+      ~SquareBSplineShapeFunctions.make_element_inner_weight
+      ~SquareBSplineShapeFunctions.make_element_inner_weight_gradient
+      ~SquareBSplineShapeFunctions.make_node_coords_in_element
+      ~SquareBSplineShapeFunctions.make_node_quadrature_weight
+      ~SquareBSplineShapeFunctions.make_trace_node_quadrature_weight
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~SquareBSplineShapeFunctions.EDGE_X
+      ~SquareBSplineShapeFunctions.EDGE_Y
+      ~SquareBSplineShapeFunctions.INTERIOR
+      ~SquareBSplineShapeFunctions.VERTEX
+      ~SquareBSplineShapeFunctions.name
+      ~SquareBSplineShapeFunctions.value
+      ~SquareBSplineShapeFunctions.VERTEX_NODE_COUNT
+      ~SquareBSplineShapeFunctions.EDGE_NODE_COUNT
+      ~SquareBSplineShapeFunctions.INTERIOR_NODE_COUNT
+      ~SquareBSplineShapeFunctions.ORDER
+      ~SquareBSplineShapeFunctions.NODES_PER_ELEMENT
+   
+   

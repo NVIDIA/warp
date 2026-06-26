@@ -1,0 +1,6 @@
+﻿warp.capture\_while
+===================
+
+.. currentmodule:: warp
+
+.. autofunction:: capture_while

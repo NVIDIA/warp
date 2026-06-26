@@ -1,0 +1,6 @@
+﻿warp.get\_cuda\_max\_cluster\_dim
+=================================
+
+.. currentmodule:: warp
+
+.. autofunction:: get_cuda_max_cluster_dim

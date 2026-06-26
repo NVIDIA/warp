@@ -1,0 +1,22 @@
+﻿warp.optim.linear.GMRES
+=======================
+
+.. currentmodule:: warp.optim.linear
+
+.. autoclass:: GMRES
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~GMRES.__init__
+   
+   
+
+   
+   
+   

@@ -1,0 +1,42 @@
+﻿warp.fem.GeometryPartition
+==========================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: GeometryPartition
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~GeometryPartition.__init__
+      ~GeometryPartition.boundary_side_count
+      ~GeometryPartition.boundary_side_index
+      ~GeometryPartition.cell_arg_value
+      ~GeometryPartition.cell_count
+      ~GeometryPartition.cell_index
+      ~GeometryPartition.fill_cell_arg
+      ~GeometryPartition.fill_side_arg
+      ~GeometryPartition.frontier_side_count
+      ~GeometryPartition.frontier_side_index
+      ~GeometryPartition.partition_cell_index
+      ~GeometryPartition.side_arg_value
+      ~GeometryPartition.side_count
+      ~GeometryPartition.side_index
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~GeometryPartition.name
+      ~GeometryPartition.geometry
+   
+   

@@ -1,0 +1,22 @@
+﻿warp.ScopedMempool
+==================
+
+.. currentmodule:: warp
+
+.. autoclass:: ScopedMempool
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~ScopedMempool.__init__
+   
+   
+
+   
+   
+   

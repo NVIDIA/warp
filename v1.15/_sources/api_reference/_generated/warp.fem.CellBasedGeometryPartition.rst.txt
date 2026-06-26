@@ -1,0 +1,45 @@
+﻿warp.fem.CellBasedGeometryPartition
+===================================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: CellBasedGeometryPartition
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~CellBasedGeometryPartition.__init__
+      ~CellBasedGeometryPartition.boundary_side_count
+      ~CellBasedGeometryPartition.cell_arg_value
+      ~CellBasedGeometryPartition.cell_count
+      ~CellBasedGeometryPartition.cell_index
+      ~CellBasedGeometryPartition.compute_side_indices_from_cells
+      ~CellBasedGeometryPartition.fill_cell_arg
+      ~CellBasedGeometryPartition.fill_side_arg
+      ~CellBasedGeometryPartition.frontier_side_count
+      ~CellBasedGeometryPartition.partition_cell_index
+      ~CellBasedGeometryPartition.side_arg_value
+      ~CellBasedGeometryPartition.side_count
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~CellBasedGeometryPartition.SideArg
+      ~CellBasedGeometryPartition.boundary_side_index
+      ~CellBasedGeometryPartition.frontier_side_index
+      ~CellBasedGeometryPartition.name
+      ~CellBasedGeometryPartition.side_index
+      ~CellBasedGeometryPartition.side_to_cell_arg
+      ~CellBasedGeometryPartition.geometry
+   
+   

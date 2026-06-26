@@ -1,0 +1,6 @@
+﻿warp.config.deterministic
+=========================
+
+.. currentmodule:: warp.config
+
+.. autodata:: deterministic

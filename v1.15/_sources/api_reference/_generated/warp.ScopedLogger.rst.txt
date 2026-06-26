@@ -1,0 +1,22 @@
+﻿warp.ScopedLogger
+=================
+
+.. currentmodule:: warp
+
+.. autoclass:: ScopedLogger
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~ScopedLogger.__init__
+   
+   
+
+   
+   
+   

@@ -1,0 +1,6 @@
+﻿warp.can\_access
+================
+
+.. currentmodule:: warp
+
+.. autofunction:: can_access

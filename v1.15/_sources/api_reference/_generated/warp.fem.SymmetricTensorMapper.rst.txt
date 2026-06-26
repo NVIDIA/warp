@@ -1,0 +1,41 @@
+﻿warp.fem.SymmetricTensorMapper
+==============================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: SymmetricTensorMapper
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~SymmetricTensorMapper.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~SymmetricTensorMapper.dof_to_value
+      ~SymmetricTensorMapper.dof_to_value_2d
+      ~SymmetricTensorMapper.dof_to_value_2d_voigt
+      ~SymmetricTensorMapper.dof_to_value_3d
+      ~SymmetricTensorMapper.dof_to_value_3d_voigt
+      ~SymmetricTensorMapper.value_to_dof
+      ~SymmetricTensorMapper.value_to_dof_2d
+      ~SymmetricTensorMapper.value_to_dof_2d_voigt
+      ~SymmetricTensorMapper.value_to_dof_3d
+      ~SymmetricTensorMapper.value_to_dof_3d_voigt
+      ~SymmetricTensorMapper.mapping
+      ~SymmetricTensorMapper.value_dtype
+      ~SymmetricTensorMapper.dof_dtype
+      ~SymmetricTensorMapper.DOF_SIZE
+   
+   

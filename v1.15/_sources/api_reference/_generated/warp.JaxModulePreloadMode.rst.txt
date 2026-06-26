@@ -1,0 +1,41 @@
+﻿warp.JaxModulePreloadMode
+=========================
+
+.. currentmodule:: warp
+
+.. autoclass:: JaxModulePreloadMode
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~JaxModulePreloadMode.conjugate
+      ~JaxModulePreloadMode.bit_length
+      ~JaxModulePreloadMode.bit_count
+      ~JaxModulePreloadMode.to_bytes
+      ~JaxModulePreloadMode.from_bytes
+      ~JaxModulePreloadMode.as_integer_ratio
+      ~JaxModulePreloadMode.is_integer
+      ~JaxModulePreloadMode.__init__
+   
+   
+
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~JaxModulePreloadMode.real
+      ~JaxModulePreloadMode.imag
+      ~JaxModulePreloadMode.numerator
+      ~JaxModulePreloadMode.denominator
+      ~JaxModulePreloadMode.NONE
+      ~JaxModulePreloadMode.CURRENT_DEVICE
+      ~JaxModulePreloadMode.ALL_DEVICES
+   
+   

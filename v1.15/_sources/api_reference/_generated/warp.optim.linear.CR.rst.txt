@@ -1,0 +1,22 @@
+﻿warp.optim.linear.CR
+====================
+
+.. currentmodule:: warp.optim.linear
+
+.. autoclass:: CR
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~CR.__init__
+   
+   
+
+   
+   
+   

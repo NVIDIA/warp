@@ -1,0 +1,6 @@
+﻿warp.fem.project\_system\_rhs
+=============================
+
+.. currentmodule:: warp.fem
+
+.. autofunction:: project_system_rhs

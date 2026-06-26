@@ -1,0 +1,24 @@
+﻿warp.utils.AllocatorRmm
+=======================
+
+.. currentmodule:: warp.utils
+
+.. autoclass:: AllocatorRmm
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~AllocatorRmm.__init__
+      ~AllocatorRmm.allocate
+      ~AllocatorRmm.deallocate
+   
+   
+
+   
+   
+   

@@ -1,0 +1,22 @@
+﻿warp.optim.linear.BiCGSTAB
+==========================
+
+.. currentmodule:: warp.optim.linear
+
+.. autoclass:: BiCGSTAB
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~BiCGSTAB.__init__
+   
+   
+
+   
+   
+   
