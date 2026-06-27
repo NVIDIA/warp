@@ -179,6 +179,7 @@ struct FreeInfo {
 
 struct CaptureInfo {
     CUstream stream = NULL;  // the main stream where capture begins and ends
+    CUcontext context = NULL;  // context where capture was started
     uint64_t id = 0;  // unique capture id from CUDA
     bool external = false;  // whether this is an external capture
     cudaStreamCaptureMode mode = cudaStreamCaptureModeThreadLocal;  // mode used to open the capture (for pause/resume)
@@ -431,6 +432,20 @@ static inline CaptureInfo* get_capture_info(CUstream stream)
             return capture_iter->second;
     }
     return NULL;
+}
+
+static inline bool is_context_capturing(CUcontext context)
+{
+    if (g_captures.empty())
+        return false;
+
+    for (const auto& capture_iter : g_captures) {
+        CaptureInfo* capture = capture_iter.second;
+        if (capture && capture->context == context)
+            return true;
+    }
+
+    return false;
 }
 
 // helper function to copy a value to device memory in a graph-friendly way
@@ -2821,13 +2836,19 @@ uint64_t wp_cuda_context_check(void* context)
     cudaError_t e = cudaGetLastError();
     check_cuda(e);
 
-    cudaStreamCaptureStatus status = cudaStreamCaptureStatusNone;
-    check_cuda(cudaStreamIsCapturing(get_current_stream(), &status));
+    CUcontext current_context = get_current_context();
 
-    // synchronize if the stream is not capturing
-    if (status == cudaStreamCaptureStatusNone) {
-        check_cuda(cudaDeviceSynchronize());
-        e = cudaGetLastError();
+    // Device-wide synchronization is illegal while a Warp-known stream capture
+    // is active in this context, even if the current stream itself is not capturing.
+    if (!is_context_capturing(current_context)) {
+        cudaStreamCaptureStatus status = cudaStreamCaptureStatusNone;
+        check_cuda(cudaStreamIsCapturing(get_current_stream(), &status));
+
+        // synchronize if the stream is not capturing
+        if (status == cudaStreamCaptureStatusNone) {
+            check_cuda(cudaDeviceSynchronize());
+            e = cudaGetLastError();
+        }
     }
 
     return static_cast<uint64_t>(e);
@@ -3371,6 +3392,7 @@ bool wp_cuda_graph_begin_capture(void* context, void* stream, int external, int 
 
     CaptureInfo* capture = new CaptureInfo();
     capture->stream = cuda_stream;
+    capture->context = context ? static_cast<CUcontext>(context) : get_current_context();
     capture->id = capture_id;
     capture->external = bool(external);
     capture->mode = capture_mode;
