@@ -26,6 +26,8 @@ import ctypes
 import ctypes.util
 import unittest
 
+import numpy as np
+
 import warp as wp
 from warp.tests.unittest_utils import *
 
@@ -73,6 +75,47 @@ def test_relaxed_allows_capture_unsafe_runtime_call(test, device):
         test.assertIsNotNone(capture.graph)
 
 
+def test_relaxed_capture_allows_side_stream_fill(test, device):
+    """Built-in kernels on side streams remain valid during relaxed capture."""
+    with wp.ScopedDevice(device):
+        capture_stream = wp.Stream(device)
+        side_stream = wp.Stream(device)
+
+        with wp.ScopedStream(capture_stream, sync_enter=False, sync_exit=False):
+            captured = wp.empty(1, dtype=wp.int32, device=device)
+        with wp.ScopedStream(side_stream, sync_enter=False, sync_exit=False):
+            side = wp.empty(8, dtype=wp.int32, device=device)
+
+        with wp.ScopedStream(capture_stream, sync_enter=False, sync_exit=False):
+            with wp.ScopedCapture(
+                stream=capture_stream,
+                capture_mode=wp.CaptureMode.RELAXED,
+                force_module_load=False,
+            ) as capture:
+                captured.fill_(3)
+
+                fork_event = wp.Event(device)
+                capture_stream.record_event(fork_event)
+                side_stream.wait_event(fork_event)
+
+                with wp.ScopedStream(side_stream, sync_enter=False, sync_exit=False):
+                    side.fill_(7)
+
+                join_event = wp.Event(device)
+                side_stream.record_event(join_event)
+                capture_stream.wait_event(join_event)
+
+        test.assertIsNotNone(capture.graph)
+
+        with wp.ScopedStream(capture_stream, sync_enter=False, sync_exit=False):
+            captured.zero_()
+            side.zero_()
+            wp.capture_launch(capture.graph)
+
+        np.testing.assert_array_equal(captured.numpy(), np.full(1, 3, dtype=np.int32))
+        np.testing.assert_array_equal(side.numpy(), np.full(8, 7, dtype=np.int32))
+
+
 def test_thread_local_rejects_capture_unsafe_runtime_call(test, device):
     """``CaptureMode.THREAD_LOCAL`` rejects ``cudaFree(0)`` during capture.
 
@@ -102,6 +145,12 @@ add_function_test(
     TestCaptureMode,
     "test_relaxed_allows_capture_unsafe_runtime_call",
     test_relaxed_allows_capture_unsafe_runtime_call,
+    devices=devices,
+)
+add_function_test(
+    TestCaptureMode,
+    "test_relaxed_capture_allows_side_stream_fill",
+    test_relaxed_capture_allows_side_stream_fill,
     devices=devices,
 )
 add_function_test(
