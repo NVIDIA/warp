@@ -129,9 +129,11 @@ class Adam:
                 else:
                     raise RuntimeError(f"Unsupported dtype for Warp Adam optimizer: {param.dtype}")
 
-                if self.m[i] is None or self.m[i].shape != param.shape or self.m[i].dtype != param.dtype:
+                # Moments are always fp32 even for fp16 params, so compare against ``dtype`` (the moment
+                # buffer dtype), not ``param.dtype``, otherwise the buffers are re-zeroed on every call.
+                if self.m[i] is None or self.m[i].shape != param.shape or self.m[i].dtype != dtype:
                     self.m[i] = wp.zeros(shape=param.shape, dtype=dtype, device=param.device)
-                if self.v[i] is None or self.v[i].shape != param.shape or self.v[i].dtype != param.dtype:
+                if self.v[i] is None or self.v[i].shape != param.shape or self.v[i].dtype != dtype:
                     self.v[i] = wp.zeros(shape=param.shape, dtype=dtype, device=param.device)
 
     def reset_internal_state(self):

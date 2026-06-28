@@ -133,6 +133,32 @@ def test_adam_solve_two_inputs(test, device):
                 test.assertLessEqual(v, tol)
 
 
+def test_adam_set_params_preserves_fp16_state(test, device):
+    """Verify repeated ``set_params()`` calls with unchanged params reuse the existing moment buffers.
+
+    The buffers must not be re-allocated (and zeroed). Moments are always fp32, so for fp16 params
+    the realloc guard must compare against the moment dtype, not the param dtype, otherwise fp16
+    optimizer state is silently reset on every call.
+    """
+    with wp.ScopedDevice(device):
+        for param_dtype in (wp.float32, wp.float16, wp.vec3):
+            params = wp.zeros(4, dtype=param_dtype, requires_grad=True)
+            opt = warp.optim.Adam([params], lr=0.02)
+
+            m_buffer, v_buffer = opt.m[0], opt.v[0]
+            # Dirty the moment state so a spurious realloc would be observable.
+            m_buffer.fill_(1.0)
+            v_buffer.fill_(1.0)
+
+            for _ in range(2):
+                opt.set_params([params])  # same params -> must be a no-op
+
+                test.assertIs(opt.m[0], m_buffer, f"first moment re-allocated for {param_dtype}")
+                test.assertIs(opt.v[0], v_buffer, f"second moment re-allocated for {param_dtype}")
+                test.assertTrue((opt.m[0].numpy() == 1.0).all(), f"first moment reset for {param_dtype}")
+                test.assertTrue((opt.v[0].numpy() == 1.0).all(), f"second moment reset for {param_dtype}")
+
+
 devices = get_test_devices()
 
 
@@ -143,6 +169,9 @@ class TestAdam(unittest.TestCase):
 add_function_test(TestAdam, "test_adam_solve_float", test_adam_solve_float, devices=devices)
 add_function_test(TestAdam, "test_adam_solve_vec3", test_adam_solve_vec3, devices=devices)
 add_function_test(TestAdam, "test_adam_solve_two_inputs", test_adam_solve_two_inputs, devices=devices)
+add_function_test(
+    TestAdam, "test_adam_set_params_preserves_fp16_state", test_adam_set_params_preserves_fp16_state, devices=devices
+)
 
 
 if __name__ == "__main__":

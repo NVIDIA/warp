@@ -204,6 +204,10 @@
   capture, which APIC cannot record for replay ([GH-1559](https://github.com/NVIDIA/warp/issues/1559)).
 - Fix APIC graph capture for `warp.fem` workflows by making partition node counts graph-capture safe
   ([GH-1407](https://github.com/NVIDIA/warp/issues/1407)).
+- Fix `warp.optim.Adam.set_params()` re-zeroing the optimizer moment buffers on every call for `fp16`
+  parameters, which silently discarded accumulated state. The reuse check now compares against the
+  moment-buffer dtype rather than the parameter dtype
+  ([GH-1593](https://github.com/NVIDIA/warp/issues/1593)).
 
 ### Documentation
 
