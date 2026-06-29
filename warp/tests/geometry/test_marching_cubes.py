@@ -94,7 +94,6 @@ def test_marching_cubes(test, device):
         nx=node_dim,
         ny=node_dim,
         nz=node_dim,
-        device=device,
         domain_bounds_lower_corner=bounds_low,
         domain_bounds_upper_corner=bounds_high,
     )
@@ -121,7 +120,7 @@ def test_marching_cubes(test, device):
     error = np.abs(length - radius)
     test.assertTrue(np.max(error) < 1.0)
 
-    iso.resize(nx=node_dim * 2, ny=node_dim * 2, nz=node_dim * 2)  # smoke test for deprecated function
+    iso.resize(nx=node_dim * 2, ny=node_dim * 2, nz=node_dim * 2)  # smoke test reuse with new dimensions
 
 
 def test_marching_cubes_functional(test, device):
@@ -170,7 +169,6 @@ def test_marching_cubes_nonuniform(test, device):
         nx=dimX,
         ny=dimY,
         nz=dimZ,
-        device=device,
         domain_bounds_lower_corner=bounds_low,
         domain_bounds_upper_corner=bounds_high,
     )
@@ -195,7 +193,7 @@ def test_marching_cubes_empty_output(test, device):
     dim = 64
     field = wp.zeros(shape=(dim, dim, dim), dtype=float, device=device)
 
-    iso = wp.MarchingCubes(nx=dim, ny=dim, nz=dim, device=device)
+    iso = wp.MarchingCubes(nx=dim, ny=dim, nz=dim)
 
     wp.launch(make_field_sphere_sdf, dim=field.shape, inputs=[field, wp.vec3(0.5, 0.5, 0.5), 0.25], device=device)
 
@@ -350,10 +348,7 @@ devices = get_test_devices()
 
 
 class TestMarchingCubes(unittest.TestCase):
-    def test_marching_cubes_new_del(self):
-        # test the scenario in which a MarchingCubes instance is created but not initialized before gc
-        instance = wp.MarchingCubes.__new__(wp.MarchingCubes)
-        instance.__del__()
+    pass
 
 
 add_function_test(TestMarchingCubes, "test_marching_cubes", test_marching_cubes, devices=devices)

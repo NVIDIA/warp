@@ -102,8 +102,6 @@ class Example:
         self.verbose = verbose
 
         self.dim = 64
-        self.max_verts = int(1e6)
-        self.max_tris = int(1e6)
 
         self.torus_altitude = -0.5
         self.torus_major_radius = 0.5
@@ -114,7 +112,7 @@ class Example:
         self.frame = 0
 
         self.field = wp.zeros((self.dim, self.dim, self.dim), dtype=float)
-        self.mc = wp.MarchingCubes(self.dim, self.dim, self.dim, self.max_verts, self.max_tris)
+        self.mc = wp.MarchingCubes(self.dim, self.dim, self.dim)
 
         self.renderer = None
         if stage_path:

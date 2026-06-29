@@ -75,6 +75,11 @@
 ### Deprecated
 
 - Deprecate `masked=True` arguments in `warp.sparse` topology-changing operations; use `topology="masked"` instead.
+- Formally deprecate the unused `max_verts`, `max_tris`, and `device` arguments and the `max_verts`, `max_tris`,
+  `device`, `id`, and `runtime` compatibility attributes of `wp.MarchingCubes`
+  ([GH-1594](https://github.com/NVIDIA/warp/issues/1594)). The arguments and attributes now emit `DeprecationWarning`
+  and are scheduled for removal in Warp 1.19. Output arrays are sized dynamically, extraction runs on the input field's
+  device, and the `id` and `runtime` attributes have no replacement.
 
 ### Changed
 
