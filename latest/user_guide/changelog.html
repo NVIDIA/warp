@@ -559,6 +559,8 @@ and forward <code class="docutils literal notranslate"><span class="pre">tile_so
 <section id="removed">
 <h3>Removed<a class="headerlink" href="#removed" title="Link to this heading">#</a></h3>
 <ul class="simple">
+<li><p>Remove the deprecated, non-functional <code class="docutils literal notranslate"><span class="pre">warp.render.UsdRenderer.update_body_transforms()</span></code> method. Use supported
+<code class="docutils literal notranslate"><span class="pre">UsdRenderer</span></code> shape rendering methods to author time-varying USD transforms instead.</p></li>
 <li><p>Remove the native Python C API fast-call path for <code class="docutils literal notranslate"><span class="pre">wp.float16</span></code> conversions. Warp now uses the existing <code class="docutils literal notranslate"><span class="pre">ctypes</span></code>
 bindings for this surface, avoiding Python development header requirements when building from source and keeping
 source-built binaries compatible with free-threaded Python builds
