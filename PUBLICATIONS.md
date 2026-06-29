@@ -7,6 +7,8 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 
 ## 2026
 
+- **Embodiment-conditioned Generalist Control for Multirotor Aerial Robots**. *O. Konstantaropoulos, W. Rehberg, M. Kulkarni, K. Alexis*. June 2026. [arXiv:2606.10857](https://arxiv.org/abs/2606.10857)
+- **PhysAgent: Automating Physics-Based 4D Synthesis via Trajectory-Grounded Multi-Agent Feedback**. *C. Lv, J. Ye, Y. Jiang, R. Lin, C. Li*. June 2026. [arXiv:2606.08688](https://arxiv.org/abs/2606.08688)
 - **SSR: Scaling Surefooted and Symmetric Humanoid Traversal to the Open World**. *R. Yu, Y. Wang, Y. Hao, J. Wu, Q. Zhu*. May 2026. [arXiv:2605.30770](https://arxiv.org/abs/2605.30770)
 - **EndoGSim: Physics-Aware 4D Dynamic Endoscopic Scene Simulations via MLLM-Guided Gaussian Splatting**. *C. Liu, Y. Huang, L. Bai, B. Cui, H. Ren*. May 2026. [arXiv:2605.16022](https://arxiv.org/abs/2605.16022)
 - **Learning-augmented robotic automation for real-world manufacturing**. *Y. Kim, Q. Nguyen, T. Kim, Y. Heo, J. Lee*. April 2026. [arXiv:2604.22235](https://arxiv.org/abs/2604.22235)
