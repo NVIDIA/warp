@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 import warp as wp
-from warp._src.logger import log_error, log_info, log_warning
+from warp._src.logger import log_error, log_info
 
 if TYPE_CHECKING:
     from pxr import Usd
@@ -1023,36 +1023,6 @@ class UsdRenderer:
 
         instancer.GetVisibilityAttr().Set("inherited" if visible else "invisible", self.time)
         return instancer.GetPath()
-
-    def update_body_transforms(self, body_q):
-        """Update body transforms (deprecated).
-
-        .. deprecated:: 1.11
-            This method references non-existent attributes (`self.model` and `self.body_names`)
-            and will be removed in a future release.
-        """
-        log_warning(
-            "UsdRenderer.update_body_transforms() is deprecated and non-functional. "
-            "It references attributes that do not exist (self.model, self.body_names) "
-            "and will be removed in a future release.",
-            category=DeprecationWarning,
-            stacklevel=2,
-        )
-        # Original broken code preserved for now
-        from pxr import Sdf, UsdGeom  # noqa: PLC0415
-
-        if isinstance(body_q, wp.array):
-            body_q = body_q.numpy()
-
-        with Sdf.ChangeBlock():
-            for b in range(self.model.body_count):
-                node_name = self.body_names[b]
-                node = UsdGeom.Xform(self.stage.GetPrimAtPath(self.root.GetPath().AppendChild(node_name)))
-
-                # unpack rigid transform
-                X_sb = wp.transform_expand(body_q[b])
-
-                _usd_set_xform(node, X_sb.p, X_sb.q, (1.0, 1.0, 1.0), self.time)
 
     def save(self):
         """Save the USD stage to disk.
