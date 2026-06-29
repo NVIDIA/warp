@@ -133,6 +133,31 @@ def test_adam_solve_two_inputs(test, device):
                 test.assertLessEqual(v, tol)
 
 
+def test_adam_fp16_moments_preserved_on_set_params(test, device):
+    # Regression test for #1593: for fp16 params, set_params() reallocated (and
+    # therefore zeroed) the fp32 moment buffers on every call, because the
+    # realloc guard compared the moment dtype against param.dtype (fp32 != fp16)
+    # instead of the intended moment dtype.
+    with wp.ScopedDevice(device):
+        params = wp.array(np.array([0.1, 0.2], dtype=np.float16), dtype=wp.float16, requires_grad=True)
+        opt = warp.optim.Adam([params], lr=0.02)
+
+        m0, v0 = opt.m[0], opt.v[0]
+        # Moments are kept in fp32 even when the params are fp16.
+        test.assertEqual(m0.dtype, wp.float32)
+        # Write a sentinel so a spurious reset is observable.
+        m0.fill_(1.0)
+        v0.fill_(1.0)
+
+        # Re-setting the same params must not reallocate or zero the moments.
+        opt.set_params([params])
+
+        test.assertIs(opt.m[0], m0)
+        test.assertIs(opt.v[0], v0)
+        assert_np_equal(opt.m[0].numpy(), np.ones(2, dtype=np.float32))
+        assert_np_equal(opt.v[0].numpy(), np.ones(2, dtype=np.float32))
+
+
 devices = get_test_devices()
 
 
@@ -143,6 +168,12 @@ class TestAdam(unittest.TestCase):
 add_function_test(TestAdam, "test_adam_solve_float", test_adam_solve_float, devices=devices)
 add_function_test(TestAdam, "test_adam_solve_vec3", test_adam_solve_vec3, devices=devices)
 add_function_test(TestAdam, "test_adam_solve_two_inputs", test_adam_solve_two_inputs, devices=devices)
+add_function_test(
+    TestAdam,
+    "test_adam_fp16_moments_preserved_on_set_params",
+    test_adam_fp16_moments_preserved_on_set_params,
+    devices=devices,
+)
 
 
 if __name__ == "__main__":
