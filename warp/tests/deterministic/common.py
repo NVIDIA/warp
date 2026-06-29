@@ -20,6 +20,8 @@ def _reference_scatter_add_float32(data_np, idx_np, out_size):
 
 
 def _bfloat16_numpy_bits(values):
+    if values.dtype == np.uint16:
+        return values.astype(np.uint16, copy=False)
     return (values.astype(np.float32).view(np.uint32) >> np.uint32(16)).astype(np.uint16)
 
 
