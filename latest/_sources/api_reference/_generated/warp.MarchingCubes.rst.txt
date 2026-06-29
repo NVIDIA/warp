@@ -30,5 +30,10 @@
       ~MarchingCubes.CUBE_CORNER_OFFSETS
       ~MarchingCubes.EDGE_TO_CORNERS
       ~MarchingCubes.TRI_LOCAL_INDICES
+      ~MarchingCubes.device
+      ~MarchingCubes.id
+      ~MarchingCubes.max_tris
+      ~MarchingCubes.max_verts
+      ~MarchingCubes.runtime
    
    
