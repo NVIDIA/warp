@@ -6,6 +6,7 @@ from __future__ import annotations
 from typing import Final
 
 import warp as wp
+from warp._src.logger import log_warning
 
 _wp_module_name_ = "warp.marching_cubes"
 
@@ -490,6 +491,36 @@ def _get_mc_edge_offset_table(device) -> wp.array:
     return _mc_edge_offset_cache[device]
 
 
+class _DeprecatedArgumentDefault:
+    """Represent an old public default while detecting whether it was supplied."""
+
+    def __init__(self, value):
+        self.value = value
+
+    def __repr__(self):
+        return repr(self.value)
+
+
+_DEFAULT_ZERO = _DeprecatedArgumentDefault(0)
+_DEFAULT_NONE = _DeprecatedArgumentDefault(None)
+
+
+def _warn_deprecated_argument(call: str, argument: str, guidance: str) -> None:
+    log_warning(
+        f"{call} argument `{argument}` is deprecated and will be removed in Warp 1.19. {guidance}",
+        category=DeprecationWarning,
+        stacklevel=3,
+    )
+
+
+def _warn_deprecated_attribute(attribute: str, guidance: str) -> None:
+    log_warning(
+        f"MarchingCubes.{attribute} is deprecated and will be removed in Warp 1.19. {guidance}",
+        category=DeprecationWarning,
+        stacklevel=3,
+    )
+
+
 class MarchingCubes:
     """A reusable context for marching cubes surface extraction.
 
@@ -500,6 +531,24 @@ class MarchingCubes:
 
     For a simpler, stateless operation, use the static method
     :meth:`~.extract_surface_marching_cubes`.
+
+    Args:
+        nx: Number of grid nodes in the x-direction.
+        ny: Number of grid nodes in the y-direction.
+        nz: Number of grid nodes in the z-direction.
+        max_verts: Deprecated since Warp 1.9 and scheduled for removal in
+          Warp 1.19. Output arrays are sized dynamically; remove this argument
+          from calls.
+        max_tris: Deprecated since Warp 1.9 and scheduled for removal in Warp
+          1.19. Output arrays are sized dynamically; remove this argument from
+          calls.
+        device: Deprecated since Warp 1.9 and scheduled for removal in Warp
+          1.19. The input field determines where extraction runs; remove this
+          argument from calls.
+        domain_bounds_lower_corner: See the documentation in
+          :meth:`~.extract_surface_marching_cubes`.
+        domain_bounds_upper_corner: See the documentation in
+          :meth:`~.extract_surface_marching_cubes`.
 
     Attributes:
         nx (int): The number of grid nodes in the x-direction.
@@ -517,9 +566,6 @@ class MarchingCubes:
         indices (warp.array | None): An array of triangle indices of type
           :class:`warp.int32` for the output mesh.
           This is populated by calling the :meth:`~.surface` method.
-        device (warp.Device): The device on which the context was created. This
-          attribute is for backward compatibility and is not used by the
-          class's methods.
     """
 
     # =========================================================================
@@ -552,37 +598,44 @@ class MarchingCubes:
     values defines a triangle by specifying edge indices (0-11) where the vertices lie.
     """
 
-    def __new__(cls, *args, **kwargs):
-        instance = super().__new__(cls)
-        return instance
-
     def __init__(
         self,
         nx: int,
         ny: int,
         nz: int,
-        max_verts: int = 0,
-        max_tris: int = 0,
-        device: wp.DeviceLike = None,
+        max_verts: int = _DEFAULT_ZERO,
+        max_tris: int = _DEFAULT_ZERO,
+        device: wp.DeviceLike = _DEFAULT_NONE,
         domain_bounds_lower_corner=None,
         domain_bounds_upper_corner=None,
     ):
-        """Initialize the marching cubes context with a grid configuration.
+        if max_verts is _DEFAULT_ZERO:
+            max_verts = 0
+        else:
+            _warn_deprecated_argument(
+                "MarchingCubes()",
+                "max_verts",
+                "Output arrays are sized dynamically; remove this argument from calls.",
+            )
 
-        Args:
-            nx: Number of grid nodes in the x-direction.
-            ny: Number of grid nodes in the y-direction.
-            nz: Number of grid nodes in the z-direction.
-            max_verts: (Deprecated) This argument is ignored.
-            max_tris: (Deprecated) This argument is ignored.
-            device: (Deprecated) The value is assigned to
-              ``self.device`` for backward compatibility but is not used by the
-              class's methods. It may be removed in a future version.
-            domain_bounds_lower_corner: See the documentation in
-              :meth:`~.extract_surface_marching_cubes`.
-            domain_bounds_upper_corner: See the documentation in
-              :meth:`~.extract_surface_marching_cubes`.
-        """
+        if max_tris is _DEFAULT_ZERO:
+            max_tris = 0
+        else:
+            _warn_deprecated_argument(
+                "MarchingCubes()",
+                "max_tris",
+                "Output arrays are sized dynamically; remove this argument from calls.",
+            )
+
+        if device is _DEFAULT_NONE:
+            device = None
+        else:
+            _warn_deprecated_argument(
+                "MarchingCubes()",
+                "device",
+                "The input field determines where extraction runs; remove this argument from calls.",
+            )
+
         # Input domain sizes, as number of nodes in the grid (note this is 1 more than the number of cubes)
         self.nx = nx
         self.ny = ny
@@ -593,20 +646,106 @@ class MarchingCubes:
         self.domain_bounds_lower_corner = domain_bounds_lower_corner
         self.domain_bounds_upper_corner = domain_bounds_upper_corner
 
-        # These are unused, but retained for backwards-compatibility for code which might use them
-        self.max_verts = max_verts
-        self.max_tris = max_tris
+        # These are unused, but retained for backwards compatibility during the deprecation period.
+        self._max_verts = max_verts
+        self._max_tris = max_tris
 
         # Output arrays
         self.verts: wp.array(dtype=wp.vec3f) | None = None
         self.indices: wp.array(dtype=wp.int32) | None = None
 
-        # These are unused, but retained for backwards-compatibility for code which might use them
-        self.id = 0
-        self.runtime = wp._src.context.runtime
-        self.device = self.runtime.get_device(device)
+        # These are unused, but retained for backwards compatibility during the deprecation period.
+        self._id = 0
+        self._device = wp.get_device(device)
+        self._runtime = wp._src.context.runtime
 
-    def resize(self, nx: int, ny: int, nz: int, max_verts: int = 0, max_tris: int = 0) -> None:
+    @property
+    def max_verts(self):
+        """Deprecated compatibility value that is not used.
+
+        .. deprecated:: 1.9.0
+            Output arrays are sized dynamically. This attribute will be removed
+            in Warp 1.19.
+        """
+        _warn_deprecated_attribute("max_verts", "Output arrays are sized dynamically; remove this access.")
+        return self._max_verts
+
+    @max_verts.setter
+    def max_verts(self, value):
+        _warn_deprecated_attribute("max_verts", "Output arrays are sized dynamically; remove this access.")
+        self._max_verts = value
+
+    @property
+    def max_tris(self):
+        """Deprecated compatibility value that is not used.
+
+        .. deprecated:: 1.9.0
+            Output arrays are sized dynamically. This attribute will be removed
+            in Warp 1.19.
+        """
+        _warn_deprecated_attribute("max_tris", "Output arrays are sized dynamically; remove this access.")
+        return self._max_tris
+
+    @max_tris.setter
+    def max_tris(self, value):
+        _warn_deprecated_attribute("max_tris", "Output arrays are sized dynamically; remove this access.")
+        self._max_tris = value
+
+    @property
+    def device(self):
+        """Deprecated device value that is not used for extraction.
+
+        .. deprecated:: 1.9.0
+            Use the input field's :attr:`warp.array.device` instead. This
+            attribute will be removed in Warp 1.19.
+        """
+        _warn_deprecated_attribute("device", "Use the input field's `device` attribute instead.")
+        return self._device
+
+    @device.setter
+    def device(self, value):
+        _warn_deprecated_attribute("device", "Use the input field's `device` attribute instead.")
+        self._device = value
+
+    @property
+    def id(self):
+        """Deprecated compatibility value that does not identify a resource.
+
+        .. deprecated:: 1.15.0
+            This attribute has no replacement and will be removed in Warp 1.19.
+        """
+        _warn_deprecated_attribute("id", "This value no longer identifies a native resource; remove this access.")
+        return self._id
+
+    @id.setter
+    def id(self, value):
+        _warn_deprecated_attribute("id", "This value no longer identifies a native resource; remove this access.")
+        self._id = value
+
+    @property
+    def runtime(self):
+        """Deprecated compatibility reference that is not used.
+
+        .. deprecated:: 1.15.0
+            Use public Warp APIs instead. This attribute will be removed in Warp
+            1.19.
+        """
+        _warn_deprecated_attribute("runtime", "Use public Warp APIs instead of accessing the runtime directly.")
+        return self._runtime
+
+    @runtime.setter
+    def runtime(self, value):
+        _warn_deprecated_attribute("runtime", "Use public Warp APIs instead of accessing the runtime directly.")
+        self._runtime = value
+
+    def resize(
+        self,
+        nx: int,
+        ny: int,
+        nz: int,
+        max_verts: int = _DEFAULT_ZERO,
+        max_tris: int = _DEFAULT_ZERO,
+    ) -> None:
         """Update the grid dimensions for the context.
 
         This allows the instance to be reused for scalar fields of a different
@@ -617,9 +756,28 @@ class MarchingCubes:
           nx: New number of nodes in the x-direction.
           ny: New number of nodes in the y-direction.
           nz: New number of nodes in the z-direction.
-          max_verts: (Deprecated) This argument is ignored.
-          max_tris: (Deprecated) This argument is ignored.
+          max_verts: Deprecated since Warp 1.9 and scheduled for removal in
+            Warp 1.19. Output arrays are sized dynamically; remove this
+            argument from calls.
+          max_tris: Deprecated since Warp 1.9 and scheduled for removal in Warp
+            1.19. Output arrays are sized dynamically; remove this argument
+            from calls.
         """
+        if max_verts is not _DEFAULT_ZERO:
+            _warn_deprecated_argument(
+                "MarchingCubes.resize()",
+                "max_verts",
+                "Output arrays are sized dynamically; remove this argument from calls.",
+            )
+            self._max_verts = max_verts
+        if max_tris is not _DEFAULT_ZERO:
+            _warn_deprecated_argument(
+                "MarchingCubes.resize()",
+                "max_tris",
+                "Output arrays are sized dynamically; remove this argument from calls.",
+            )
+            self._max_tris = max_tris
+
         self.nx = nx
         self.ny = ny
         self.nz = nz
@@ -742,21 +900,3 @@ class MarchingCubes:
         tris = marching_cubes_extract_faces(field, threshold, edge_generated_vert_ind)
 
         return verts, tris
-
-    def __del__(self):
-        return
-
-
-# =============================================================================
-# Deprecated aliases (remove in Warp 1.13)
-# =============================================================================
-# These were previously used internally and may have been accessed by external code.
-# They are preserved for backward compatibility with the deprecated warp.marching_cubes
-# namespace. Once that namespace is removed, these can be deleted.
-
-import numpy as np  # noqa: E402
-
-mc_cube_corner_offsets = MC_CUBE_CORNER_OFFSETS
-mc_case_to_tri_range_np = np.array(MC_CASE_TO_TRI_RANGE, dtype=np.int32)
-mc_tri_local_inds = np.array(MC_TRI_LOCAL_INDICES, dtype=np.int32)
-mc_edge_offset_np = np.array(_MC_EDGE_OFFSETS, dtype=np.int32)

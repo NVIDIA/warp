@@ -2503,7 +2503,7 @@ file using the :class:`warp.render.UsdRenderer`.
     dim = 16
     field = wp.zeros((dim, dim, dim), dtype=float, device="cuda:0")
     wp.launch(make_sphere_sdf, dim=field.shape, inputs=[field, wp.vec3(8.0, 8.0, 8.0), 4.0], device="cuda:0")
-    mc = wp.MarchingCubes(nx=dim, ny=dim, nz=dim, device="cuda:0")
+    mc = wp.MarchingCubes(nx=dim, ny=dim, nz=dim)
     mc.surface(field, threshold=0.0)
     print(mc.verts.shape[0] > 0)
     print(mc.indices.shape[0] % 3 == 0)
