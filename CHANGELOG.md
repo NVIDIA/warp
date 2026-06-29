@@ -63,6 +63,8 @@
 
 ### Removed
 
+- Remove the deprecated, non-functional `warp.render.UsdRenderer.update_body_transforms()` method. Use supported
+  `UsdRenderer` shape rendering methods to author time-varying USD transforms instead.
 - Remove the native Python C API fast-call path for `wp.float16` conversions. Warp now uses the existing `ctypes`
   bindings for this surface, avoiding Python development header requirements when building from source and keeping
   source-built binaries compatible with free-threaded Python builds
