@@ -13,9 +13,31 @@ from warp._src.context import ModuleBuilder
 from warp.tests.unittest_utils import add_function_test, assert_np_equal, get_cuda_test_devices, get_test_devices
 
 
-def hopper_devices():
-    """CUDA test devices that support thread block clusters (compute capability >= 9.0)."""
-    return [d for d in get_cuda_test_devices() if d.arch >= 90]
+# A GPU architecture newer than the bundled NVRTC cannot be compiled as a CUBIN,
+# so Warp falls back to PTX and may select the default sm75 target. Positive cluster
+# tests must still exercise clustering on capable future hardware, so they use the
+# highest NVRTC-supported PTX target from sm90 through the device's architecture.
+# PTX forward compatibility lets the newer GPU execute that target. The cross-device
+# test below deliberately keeps the ambient target to cover the sub-sm90 error path.
+def get_cluster_compile_arch(device):
+    """Return the highest cluster-capable PTX target supported by ``device`` and NVRTC."""
+    return max((arch for arch in wp.get_cuda_supported_archs() if 90 <= arch <= device.arch), default=None)
+
+
+def cluster_compile_devices():
+    """CUDA test devices that can compile and run thread block clusters."""
+    return [d for d in get_cuda_test_devices() if d.arch >= 90 and get_cluster_compile_arch(d) is not None]
+
+
+def set_cluster_compile_arch(test, device):
+    """Use the highest compatible PTX target for the duration of a cluster test."""
+    compile_arch = get_cluster_compile_arch(device)
+    if compile_arch is None:
+        test.skipTest("NVRTC has no cluster-capable PTX target for this device.")
+
+    original = wp.config.ptx_target_arch
+    test.addCleanup(setattr, wp.config, "ptx_target_arch", original)
+    wp.config.ptx_target_arch = compile_arch
 
 
 def cuda_kernel_source(kernel) -> str:
@@ -134,11 +156,22 @@ def run_cluster_probe(test, probe, cluster_total, n_clusters, device, block_dim=
 def test_cluster_kernel_runs_on_all_devices(test, device):
     # cluster_dim is silently ignored on CPU and sub-Hopper CUDA; clustered
     # kernels -- including a launch_bounds + cluster_dim combination -- must
-    # still run and produce correct results everywhere. Block counts are kept
-    # cluster-aligned (a multiple of cluster_dim) since Hopper+ rejects padded
-    # launch shapes; on CPU and sub-Hopper the alignment is irrelevant.
+    # still run and produce correct results there. On Hopper+ devices compiling
+    # below sm90, the cluster attribute would be dropped, so loading must raise
+    # instead. Block counts are kept cluster-aligned (a multiple of cluster_dim)
+    # since active cluster targets reject padded launch shapes; elsewhere the
+    # alignment is irrelevant.
     n = 256
     a = wp.zeros(n, dtype=int, device=device)
+
+    # Keep the ambient target here rather than calling set_cluster_compile_arch(),
+    # so Hopper+ devices compiling below sm90 exercise the dropped-attribute error.
+    compile_arch = device.get_cuda_compile_arch() if device.is_cuda else None
+    if device.is_cuda and device.arch >= 90 and compile_arch < 90:
+        with test.assertRaisesRegex(RuntimeError, rf"compiling for sm_{compile_arch}.*cluster attribute is dropped"):
+            wp.launch(fill_index, dim=n, inputs=[a], device=device, block_dim=128)
+        return
+
     # cluster_dim=2, block_dim=128 -> 2 blocks (aligned).
     wp.launch(fill_index, dim=n, inputs=[a], device=device, block_dim=128)
     assert_np_equal(a.numpy(), np.arange(n, dtype=np.int32))
@@ -150,6 +183,8 @@ def test_cluster_kernel_runs_on_all_devices(test, device):
 
 
 def test_clusters_form_with_requested_size(test, device):
+    set_cluster_compile_arch(test, device)
+
     max_cluster_dim = wp.get_cuda_max_cluster_dim(query_probe, device)
     test.assertGreaterEqual(max_cluster_dim, 2)
     for (cluster_total, grid_stride), probe in CLUSTER_PROBES.items():
@@ -160,6 +195,8 @@ def test_clusters_form_with_requested_size(test, device):
 
 
 def test_unaligned_cluster_launch_rejected(test, device):
+    set_cluster_compile_arch(test, device)
+
     # A clustered launch whose natural block count (ceil(dim / block_dim)) is not
     # a multiple of cluster_dim must be rejected rather than padded: padded CTAs
     # would skip the kernel body yet still join their cluster, breaking native
@@ -176,6 +213,8 @@ def test_unaligned_cluster_launch_rejected(test, device):
 
 
 def test_max_blocks_cluster_rounding(test, device):
+    set_cluster_compile_arch(test, device)
+
     # max_blocks caps an *aligned* launch grid into a grid-stride loop. The grid
     # is rounded *down* to a valid cluster multiple (never padded up); every
     # launched CTA still runs the body via the grid-stride loop, so all elements
@@ -192,6 +231,8 @@ def test_max_blocks_cluster_rounding(test, device):
 
 
 def test_cluster_hooks_use_loaded_module_arch(test, device):
+    set_cluster_compile_arch(test, device)
+
     # Regression: the first kernel-hook lookup must classify cluster support from
     # the arch the loaded binary was compiled for (frozen on ModuleExec at load),
     # not from the current global config, which can change between load and first
@@ -220,6 +261,8 @@ def test_cluster_hooks_use_loaded_module_arch(test, device):
 
 
 def test_clustered_launch_set_dim_revalidates(test, device):
+    set_cluster_compile_arch(test, device)
+
     # A recorded clustered Launch re-validates cluster alignment on set_dim, so a
     # relaunch with a misaligned shape raises a clear Python error rather than
     # surfacing only as an opaque native CUDA error at launch time. fill_ones is
@@ -239,6 +282,8 @@ def test_clustered_launch_set_dim_revalidates(test, device):
 
 
 def test_clustered_lean_set_dim_zero(test, device):
+    set_cluster_compile_arch(test, device)
+
     # A recorded clustered lean (grid_stride=False) launch resized to zero work items must be a
     # no-op, not a CUDA error. Zero blocks passes the cluster alignment check, but the empty-grid
     # fallback uses gridDim.x=1, which is not a multiple of cluster_dim; the native launch must be
@@ -252,6 +297,8 @@ def test_clustered_lean_set_dim_zero(test, device):
 
 
 def test_clustered_kernel_in_cuda_graph(test, device):
+    set_cluster_compile_arch(test, device)
+
     # A clustered launch must form clusters at the requested size when captured
     # into a standard (non-APIC) CUDA graph and replayed -- distinct from the
     # APIC capture path covered above. A rank probe verifies every CTA sees the
@@ -289,6 +336,8 @@ def test_clustered_kernel_in_cuda_graph(test, device):
 
 
 def test_apic_save_load_preserves_clusters(test, device):
+    set_cluster_compile_arch(test, device)
+
     # A clustered kernel must survive APIC capture/save/load: cluster_dim is
     # serialized into the APIC record and replayed on load.
     n = 512
@@ -491,7 +540,7 @@ class TestClusterDim(unittest.TestCase):
 
 devices = get_test_devices()
 cuda_devices = get_cuda_test_devices()
-hopper = hopper_devices()
+cluster_devices = cluster_compile_devices()
 
 add_function_test(
     TestClusterDim, "test_cluster_kernel_runs_on_all_devices", test_cluster_kernel_runs_on_all_devices, devices=devices
@@ -509,30 +558,46 @@ add_function_test(
     devices=cuda_devices,
 )
 add_function_test(
-    TestClusterDim, "test_clusters_form_with_requested_size", test_clusters_form_with_requested_size, devices=hopper
+    TestClusterDim,
+    "test_clusters_form_with_requested_size",
+    test_clusters_form_with_requested_size,
+    devices=cluster_devices,
 )
-add_function_test(TestClusterDim, "test_max_blocks_cluster_rounding", test_max_blocks_cluster_rounding, devices=hopper)
 add_function_test(
-    TestClusterDim, "test_unaligned_cluster_launch_rejected", test_unaligned_cluster_launch_rejected, devices=hopper
+    TestClusterDim, "test_max_blocks_cluster_rounding", test_max_blocks_cluster_rounding, devices=cluster_devices
+)
+add_function_test(
+    TestClusterDim,
+    "test_unaligned_cluster_launch_rejected",
+    test_unaligned_cluster_launch_rejected,
+    devices=cluster_devices,
 )
 add_function_test(
     TestClusterDim,
     "test_cluster_hooks_use_loaded_module_arch",
     test_cluster_hooks_use_loaded_module_arch,
-    devices=hopper,
+    devices=cluster_devices,
 )
 add_function_test(
     TestClusterDim,
     "test_clustered_launch_set_dim_revalidates",
     test_clustered_launch_set_dim_revalidates,
-    devices=hopper,
-)
-add_function_test(TestClusterDim, "test_clustered_lean_set_dim_zero", test_clustered_lean_set_dim_zero, devices=hopper)
-add_function_test(
-    TestClusterDim, "test_clustered_kernel_in_cuda_graph", test_clustered_kernel_in_cuda_graph, devices=hopper
+    devices=cluster_devices,
 )
 add_function_test(
-    TestClusterDim, "test_apic_save_load_preserves_clusters", test_apic_save_load_preserves_clusters, devices=hopper
+    TestClusterDim, "test_clustered_lean_set_dim_zero", test_clustered_lean_set_dim_zero, devices=cluster_devices
+)
+add_function_test(
+    TestClusterDim,
+    "test_clustered_kernel_in_cuda_graph",
+    test_clustered_kernel_in_cuda_graph,
+    devices=cluster_devices,
+)
+add_function_test(
+    TestClusterDim,
+    "test_apic_save_load_preserves_clusters",
+    test_apic_save_load_preserves_clusters,
+    devices=cluster_devices,
 )
 
 
