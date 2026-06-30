@@ -220,6 +220,9 @@ def test_apic_capture_while_body_raises_cleanup(test, device):
     capture state consistent (parent graph restored, parent capture resumed, APIC recording
     torn down, no leaked branch) so a subsequent capture works. The broken capture is never
     launched -- its while node has an empty body and would loop forever."""
+    if device.is_cuda and not wp.is_conditional_graph_supported():
+        test.skipTest("CUDA conditional graph nodes require Toolkit and driver 12.4+")
+
     cond = wp.ones(1, dtype=wp.int32, device=device)
 
     class Sentinel(Exception):
@@ -250,6 +253,9 @@ def test_apic_capture_if_body_raises_cleanup(test, device):
     """Companion to the capture_while case -- a raising capture_if branch body
     propagates cleanly (branch rolled back, parent graph restored and capture resumed) and
     leaves the device reusable for a subsequent capture."""
+    if device.is_cuda and not wp.is_conditional_graph_supported():
+        test.skipTest("CUDA conditional graph nodes require Toolkit and driver 12.4+")
+
     cond = wp.ones(1, dtype=wp.int32, device=device)
 
     class Sentinel(Exception):
@@ -1317,6 +1323,9 @@ def decrement_counter_kernel(c: wp.array(dtype=wp.int32)):
 
 def test_capture_if_cpu(test, device):
     """APIC_OP_IF on CPU: condition selects which branch runs at replay."""
+    if device.is_cuda and not wp.is_conditional_graph_supported():
+        test.skipTest("CUDA conditional graph nodes require Toolkit and driver 12.4+")
+
     n = 4
     out = wp.zeros(n, dtype=float, device=device)
     cond = wp.array([1], dtype=wp.int32, device=device)
@@ -1350,6 +1359,9 @@ def test_save_load_capture_if_cuda(test, device):
     apic_replay_ops_into_cuda_capture rebuilds the conditional nodes from the
     byte stream. Save/load a capture_if graph and confirm the recorded branch
     runs on the rebuilt graph."""
+    if not wp.is_conditional_graph_supported():
+        test.skipTest("CUDA conditional graph nodes require Toolkit and driver 12.4+")
+
     n = 4
     out = wp.zeros(n, dtype=float, device=device)
     cond = wp.array([1], dtype=wp.int32, device=device)  # selects on_true at capture
@@ -1379,6 +1391,9 @@ def test_save_load_capture_if_cuda(test, device):
 
 def test_capture_while_cpu(test, device):
     """APIC_OP_WHILE on CPU: body re-runs while the condition int32 is nonzero."""
+    if device.is_cuda and not wp.is_conditional_graph_supported():
+        test.skipTest("CUDA conditional graph nodes require Toolkit and driver 12.4+")
+
     counter = wp.array([5], dtype=wp.int32, device=device)
 
     def body():
