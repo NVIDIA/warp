@@ -1371,9 +1371,32 @@ template <typename T> __global__ void memtile_value_kernel(T* dst, T value, size
     }
 }
 
+// Record-and-execute a contiguous memtile (multi-byte arr.fill_) under CUDA APIC
+// capture: record the fill value and destination into the byte stream, then fall
+// through so the live tile issues onto the captured stream. Only small fills are
+// recordable -- the value is embedded inline and replayed by value. Large fills
+// (> WP_FILL_VALUE_INLINE_BYTES_2) use capturable_tmp_alloc (pause/resume +
+// device staging) that the byte-stream rebuild cannot reproduce; the Python
+// fill_() path rejects those under CUDA APIC capture, so they never reach here
+// during a capture. No-op outside a CUDA APIC capture.
+static void apic_capture_memtile_device(void* dst, const void* src, size_t srcsize, size_t n)
+{
+    APICState* state = wp_apic_get_cuda_recording_state();
+    if (!state || n == 0 || srcsize == 0 || srcsize > WP_FILL_VALUE_INLINE_BYTES_2)
+        return;
+    // Guard the byte-span multiplication against overflow (srcsize is already
+    // bounded above, so this is defensive) before resolving the region.
+    if (n > (~static_cast<size_t>(0)) / srcsize)
+        return;
+    APICAddress addr = apic_resolve_live_ptr(state, reinterpret_cast<uint64_t>(dst), srcsize * n);
+    apic_record_memtile(state, addr.region_id, addr.offset, static_cast<uint32_t>(srcsize), src, n);
+}
+
 void wp_memtile_device(void* context, void* dst, const void* src, size_t srcsize, size_t n)
 {
     ContextGuard guard(context);
+
+    apic_capture_memtile_device(dst, src, srcsize, n);
 
     size_t dst_addr = reinterpret_cast<size_t>(dst);
     size_t src_addr = reinterpret_cast<size_t>(src);
@@ -2345,10 +2368,38 @@ WP_API void wp_array_fill_device(void* context, void* arr_ptr, int arr_type, con
     }
 }
 
+// Record an array_scan into the APIC byte stream during a CUDA capture, then
+// fall through so the live device scan still issues onto the captured stream
+// (record-and-execute). Unlike the CPU host path (record-only), the CUDA op
+// must execute so the driver captures it into the native graph; the byte
+// stream additionally carries it for persistent .wrp save/load. No-op outside
+// a CUDA APIC capture (wp_apic_get_cuda_recording_state returns null, including
+// during a CPU-targeted capture and during graph rebuild).
+static void apic_capture_array_scan_device(
+    uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, uint8_t dtype, bool inclusive
+)
+{
+    APICState* state = wp_apic_get_cuda_recording_state();
+    if (!state || len <= 0)
+        return;
+    uint64_t scalar_size = apic_type_size(dtype);
+    uint64_t src_bytes = apic_strided_access_bytes(len, in_stride, type_len, scalar_size);
+    uint64_t dst_bytes = apic_strided_access_bytes(len, out_stride, type_len, scalar_size);
+    if (src_bytes == 0 || dst_bytes == 0)
+        return;
+    APICAddress dst_addr = apic_resolve_live_ptr(state, out, dst_bytes);
+    APICAddress src_addr = apic_resolve_live_ptr(state, in, src_bytes);
+    apic_record_scan(
+        state, dst_addr.region_id, dst_addr.offset, src_addr.region_id, src_addr.offset, static_cast<uint32_t>(len),
+        in_stride, out_stride, type_len, dtype, inclusive ? uint8_t(1) : uint8_t(0)
+    );
+}
+
 void wp_array_scan_int_device(
     uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
 )
 {
+    apic_capture_array_scan_device(in, out, len, in_stride, out_stride, type_len, APIC_TYPE_INT32, inclusive);
     scan_device((const int*)in, (int*)out, len, in_stride, out_stride, type_len, inclusive);
 }
 
@@ -2356,6 +2407,7 @@ void wp_array_scan_int64_device(
     uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
 )
 {
+    apic_capture_array_scan_device(in, out, len, in_stride, out_stride, type_len, APIC_TYPE_INT64, inclusive);
     scan_device((const int64_t*)in, (int64_t*)out, len, in_stride, out_stride, type_len, inclusive);
 }
 
@@ -2363,6 +2415,7 @@ void wp_array_scan_float_device(
     uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
 )
 {
+    apic_capture_array_scan_device(in, out, len, in_stride, out_stride, type_len, APIC_TYPE_FLOAT32, inclusive);
     scan_device((const float*)in, (float*)out, len, in_stride, out_stride, type_len, inclusive);
 }
 
@@ -2370,6 +2423,7 @@ void wp_array_scan_double_device(
     uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
 )
 {
+    apic_capture_array_scan_device(in, out, len, in_stride, out_stride, type_len, APIC_TYPE_FLOAT64, inclusive);
     scan_device((const double*)in, (double*)out, len, in_stride, out_stride, type_len, inclusive);
 }
 
@@ -3384,6 +3438,12 @@ bool wp_cuda_graph_begin_capture(void* context, void* stream, int external, int 
             return false;
         }
     } else {
+        // Lazily registering a context warms up CUDA mempool state with default-stream
+        // cudaMallocAsync/cudaFreeAsync calls; do that before capture starts.
+        if (!get_context_info(static_cast<CUcontext>(context))) {
+            wp::set_error_string("Warp error: failed to initialize CUDA context info");
+            return false;
+        }
         if (!check_cuda(cudaStreamBeginCapture(cuda_stream, capture_mode)))
             return false;
     }

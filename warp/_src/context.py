@@ -47,6 +47,8 @@ from typing import (
 
 if TYPE_CHECKING:
     from typing import ParamSpec
+
+    from warp._src.apic.capture import APICapture
 else:
     try:
         from typing import ParamSpec
@@ -4845,7 +4847,7 @@ class Device:
         # behave identically on CPU and CUDA. Match the capture's target device so a CUDA
         # capture (e.g. a deferred one, which also sets the global runtime._apic_capture) does
         # not make the CPU device report as capturing.
-        return runtime is not None and runtime._apic_capture is not None and runtime._apic_capture.device == self
+        return _get_apic_capture_for_device(self) is not None
 
     @property
     def context(self):
@@ -5204,6 +5206,7 @@ class Graph:
         self.apic: bool = False  # Whether APIC serialization is allowed
         self.apic_state: ctypes.c_void_p | None = None  # C++ APICState*
         self._apic_capture = None  # APICapture instance
+        self._apic_recording_suspended: bool = False
 
         # APIC loaded graph (from .wrp file)
         self._native_graph: ctypes.c_void_p | None = None  # APICGraph*
@@ -5747,8 +5750,8 @@ class Runtime:
             ]
             self.core.wp_apic_register_memory_region.restype = None
             self.core.wp_apic_register_mesh.argtypes = [ctypes.c_void_p, ctypes.c_uint64]
-            self.core.wp_apic_register_mesh.restype = None
-            self.core.wp_apic_state_save.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_int]
+            self.core.wp_apic_register_mesh.restype = ctypes.c_bool
+            self.core.wp_apic_state_save.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_int, ctypes.c_void_p]
             self.core.wp_apic_state_save.restype = ctypes.c_bool
 
             # APIC loading bindings
@@ -8874,6 +8877,8 @@ def empty(
 
     # During APIC capture, register the region immediately so that subsequent
     # operations (zero_(), fill_(), copy()) can be recorded in the byte stream.
+    # track_array marks the region transient if this array was allocated by the
+    # active capture (see array._init_new / APICapture.track_array).
     if runtime._apic_capture is not None:
         runtime._apic_capture.track_array(arr)
 
@@ -9905,8 +9910,9 @@ class Launch:
         Args:
             stream: The stream to launch on.
         """
+        apic_capture = _get_apic_capture_for_device(self.device)
         if self.device.is_cpu:
-            if runtime._apic_capture is not None and runtime._apic_capture.device.is_cpu:
+            if apic_capture is not None:
                 # Under an active APIC CPU capture, record the launch so it
                 # replays from the byte stream. fwd_args is required to emit
                 # data-pointer relocations; raise rather than silently skipping
@@ -9932,6 +9938,26 @@ class Launch:
                 if graph is not None:
                     graph._retain_module_exec(self.module_exec)
 
+            # Under an active CUDA APIC capture, record this reusable launch into
+            # the byte stream (mirrors _apic_record_cpu) so it replays on the CUDA
+            # byte-stream path; the live launch still issues onto the captured
+            # stream (record-and-execute). fwd_args is required to emit
+            # data-pointer relocations; when it is unavailable the launch falls
+            # back to a non-recorded execution.
+            apic_info = None
+            apic_info_ptr = None
+            if apic_capture is not None and self.fwd_args is not None:
+                apic_info = apic_capture.build_launch_info(
+                    self.kernel,
+                    self.module_exec,
+                    self.hooks,
+                    self.params,
+                    self.fwd_args,
+                    self.adjoint,
+                    adj_args=self.adj_args if self.adjoint else None,
+                )
+                apic_info_ptr = ctypes.byref(apic_info)
+
             if self.adjoint:
                 if runtime.core.wp_cuda_launch_kernel(
                     self.device.context,
@@ -9944,7 +9970,7 @@ class Launch:
                     self.hooks.backward_smem_bytes,
                     self.params_addr,
                     stream.cuda_stream,
-                    None,  # apic_info: replayed launches don't re-record
+                    apic_info_ptr,
                 ):
                     _raise_cuda_launch_error(self.kernel, self.device)
             else:
@@ -9959,7 +9985,7 @@ class Launch:
                     self.hooks.forward_smem_bytes,
                     self.params_addr,
                     stream.cuda_stream,
-                    None,  # apic_info: replayed launches don't re-record
+                    apic_info_ptr,
                 ):
                     _raise_cuda_launch_error(self.kernel, self.device)
 
@@ -10303,9 +10329,12 @@ def launch(
                 )
                 return launch
 
-            # Check if CPU capture is active
-            if runtime._apic_capture is not None and device.is_cpu:
-                apic_capture = runtime._apic_capture
+            # Record into the APIC byte stream only when a CPU APIC capture
+            # targets this device. runtime._apic_capture is global, so guard on
+            # the capture's device (mirrors the CUDA launch paths below); a CPU
+            # launch during an unrelated CUDA capture must execute normally.
+            apic_capture = _get_apic_capture_for_device(device)
+            if apic_capture is not None:
                 # Retain the module_exec on the graph so its LLVM shared object
                 # (and therefore the kernel function pointers stored in
                 # APICCPUKernel) stays alive until the graph is destroyed.
@@ -10382,15 +10411,29 @@ def launch(
                         max_blocks=max_blocks,
                         block_dim=block_dim,
                         adjoint=adjoint,
+                        fwd_args=fwd_args,
+                        adj_args=adj_args,
                     )
                     return launch
                 else:
-                    # APIC capture does not support backward kernel launches
-                    if runtime._apic_capture is not None and not device.is_cpu:
-                        raise RuntimeError(
-                            "Backward kernel launches are not supported during APIC graph capture. "
-                            "Use wp.Tape outside of capture scope instead."
+                    # Build APIC info if a CUDA APIC capture is active so the
+                    # adjoint launch is recorded into the byte stream. The CUDA
+                    # rebuild replays is_forward=0 launches with their adjoint
+                    # parameter block (record-and-execute: the live launch still
+                    # issues onto the captured stream).
+                    apic_info_ptr = None
+                    apic_capture = _get_apic_capture_for_device(device)
+                    if apic_capture is not None:
+                        apic_info = apic_capture.build_launch_info(
+                            kernel,
+                            module_exec,
+                            hooks,
+                            params,
+                            fwd_args,
+                            True,
+                            adj_args=adj_args,
                         )
+                        apic_info_ptr = ctypes.byref(apic_info)
                     if runtime.core.wp_cuda_launch_kernel(
                         device.context,
                         hooks.backward,
@@ -10402,7 +10445,7 @@ def launch(
                         hooks.backward_smem_bytes,
                         kernel_params,
                         stream.cuda_stream,
-                        None,
+                        apic_info_ptr,
                     ):
                         _raise_cuda_launch_error(kernel, device)
 
@@ -10422,13 +10465,15 @@ def launch(
                         device=device,
                         max_blocks=max_blocks,
                         block_dim=block_dim,
+                        fwd_args=fwd_args,
                     )
                     return launch
                 else:
                     # Build APIC info if CUDA APIC capture is active
                     apic_info_ptr = None
-                    if runtime._apic_capture is not None and not device.is_cpu:
-                        apic_info = runtime._apic_capture.build_launch_info(
+                    apic_capture = _get_apic_capture_for_device(device)
+                    if apic_capture is not None:
+                        apic_info = apic_capture.build_launch_info(
                             kernel,
                             module_exec,
                             hooks,
@@ -11278,6 +11323,19 @@ def _register_capture(device: Device, stream: Stream, graph: Graph, capture_id: 
     runtime.captures[capture_id] = graph
 
 
+def _get_apic_capture_for_device(device: Device) -> APICapture | None:
+    """Return the active APIC capture if it targets ``device``, else ``None``.
+
+    ``runtime._apic_capture`` is a global shared across CPU and CUDA captures, so
+    device-scoped call sites (launch, copy, conditionals, region tracking) must
+    confirm it targets the op's device before recording.
+    """
+    apic_capture = runtime._apic_capture if runtime is not None else None
+    if apic_capture is not None and apic_capture.device == device:
+        return apic_capture
+    return None
+
+
 def capture_begin(
     device: DeviceLike = None,
     stream: Stream | None = None,
@@ -11430,6 +11488,7 @@ def capture_end(device: DeviceLike = None, stream: Stream | None = None) -> Grap
         apic_capture = graph._apic_capture
         if apic_capture is not None:
             apic_capture.end_recording()
+        graph._apic_recording_suspended = False  # an ended graph is not resumable
         runtime._apic_capture = None
         runtime._apic_graph = None
         return graph
@@ -11516,7 +11575,12 @@ def is_conditional_graph_supported() -> bool:
     )
 
 
-def capture_pause(device: DeviceLike = None, stream: Stream | None = None) -> Graph:
+def capture_pause(
+    device: DeviceLike = None,
+    stream: Stream | None = None,
+    *,
+    _suspend_apic_recording: bool = True,
+) -> Graph:
     # ---- CPU APIC capture path ----
     # A CPU APIC capture has no CUDA stream to pause; suspend byte-stream
     # recording instead so host operations performed while paused (e.g. creating
@@ -11527,6 +11591,7 @@ def capture_pause(device: DeviceLike = None, stream: Stream | None = None) -> Gr
         apic_capture = graph._apic_capture
         if apic_capture is not None:
             apic_capture.end_recording()
+        graph._apic_recording_suspended = True
         runtime._apic_capture = None
         runtime._apic_graph = None
         return graph
@@ -11553,15 +11618,35 @@ def capture_pause(device: DeviceLike = None, stream: Stream | None = None) -> Gr
 
     graph.graph = g
 
+    if _suspend_apic_recording and graph._apic_capture is not None:
+        graph._apic_capture.end_recording()
+        graph._apic_recording_suspended = True
+        runtime._apic_capture = None
+        runtime._apic_graph = None
+    else:
+        graph._apic_recording_suspended = False
+
     return graph
 
 
-def capture_resume(graph: Graph, device: DeviceLike = None, stream: Stream | None = None):
+def capture_resume(
+    graph: Graph,
+    device: DeviceLike = None,
+    stream: Stream | None = None,
+    *,
+    _resume_apic_recording: bool = True,
+):
     # ---- CPU APIC capture path ---- (mirror of capture_pause)
     if graph is not None and graph.device.is_cpu and graph._apic_capture is not None:
+        # After capture_end() the graph keeps _apic_capture for replay, so guard
+        # against resuming a finished (never-paused) graph and restarting
+        # recording on it.
+        if not getattr(graph, "_apic_recording_suspended", False):
+            raise RuntimeError("CPU graph capture is not paused")
         runtime._apic_capture = graph._apic_capture
         runtime._apic_graph = graph
         graph._apic_capture.begin_recording()
+        graph._apic_recording_suspended = False
         return
 
     if stream is not None:
@@ -11579,6 +11664,12 @@ def capture_resume(graph: Graph, device: DeviceLike = None, stream: Stream | Non
     graph.capture_id = capture_id
 
     _register_capture(device, stream, graph, capture_id)
+
+    if _resume_apic_recording and graph._apic_recording_suspended and graph._apic_capture is not None:
+        runtime._apic_capture = graph._apic_capture
+        runtime._apic_graph = graph
+        graph._apic_capture.begin_recording()
+        graph._apic_recording_suspended = False
 
 
 # reusable pinned readback buffer for conditions
@@ -11705,7 +11796,8 @@ def capture_if(
     # skip execution while recording is live, so the callback's side
     # effects on tracked arrays only land at replay time (matches CUDA
     # graph capture semantics).
-    if device.is_cpu and runtime._apic_capture is not None:
+    apic_capture = _get_apic_capture_for_device(device)
+    if device.is_cpu and apic_capture is not None:
         _apic_record_capture_if(condition, on_true, on_false, **kwargs)
         return
 
@@ -11744,6 +11836,27 @@ def capture_if(
     # ensure conditional graph nodes are supported
     assert_conditional_graph_support()
 
+    # Under a CUDA APIC capture, record an APIC_OP_IF op alongside building the
+    # live conditional nodes (record-and-execute). Each branch callback runs
+    # exactly once: its kernel launches are captured into the native body graph
+    # AND recorded into an APIC branch sub-stream (the launch hook records while a
+    # CUDA APIC capture is active), so a saved .wrp can rebuild the conditional.
+    # Graph branches are not yet supported under APIC capture.
+    apic_capture = _get_apic_capture_for_device(device)
+    apic_recording = apic_capture is not None
+    cond_region_id = -1
+    cond_offset = 0
+    if apic_recording:
+        if (on_true is not None and not isinstance(on_true, Callable)) or (
+            on_false is not None and not isinstance(on_false, Callable)
+        ):
+            raise NotImplementedError(
+                "APIC capture_if with Graph branches is not yet implemented; pass a Callable instead"
+            )
+        cond_region_id, cond_offset = apic_capture.track_array(condition)
+        if cond_region_id < 0:
+            raise RuntimeError("capture_if(): condition array could not be tracked for APIC capture (null pointer?)")
+
     # insert conditional node
     graph_on_true = ctypes.c_void_p()
     graph_on_false = ctypes.c_void_p()
@@ -11759,61 +11872,116 @@ def capture_if(
         raise RuntimeError(runtime.get_error_string())
 
     # pause capturing parent graph
-    main_graph = capture_pause(stream=stream)
+    main_graph = capture_pause(stream=stream, _suspend_apic_recording=False)
     # store the pointer to the cuda graph to restore it later
     main_graph_ptr = main_graph.graph
 
-    # capture if-graph
-    if on_true is not None:
-        # temporarily repurpose the main_graph python object such that all dependencies
-        # added through _retain_module_exec() end up in the correct python graph object
-        main_graph.graph = graph_on_true
-        capture_resume(main_graph, stream=stream)
-        if isinstance(on_true, Callable):
-            on_true(**kwargs)
-        elif isinstance(on_true, Graph):
-            if not runtime.core.wp_cuda_graph_insert_child_graph(
-                device.context,
-                stream.cuda_stream,
-                on_true.graph,
-            ):
+    branch_a = ctypes.c_void_p()
+    branch_b = ctypes.c_void_p()
+    # Begin handles are hoisted so the except can roll back a branch begun but not yet
+    # ended (body raised before wp_apic_end_branch). branch_capture_active tracks whether
+    # a branch sub-capture is currently live, so cleanup knows whether it must
+    # capture_pause(stream) before restoring the parent graph and resuming its capture.
+    branch_a_start = None
+    branch_b_start = None
+    branch_capture_active = False
+    try:
+        # capture if-graph
+        if on_true is not None:
+            # temporarily repurpose the main_graph python object such that all dependencies
+            # added through _retain_module_exec() end up in the correct python graph object
+            main_graph.graph = graph_on_true
+            branch_a_start = runtime.core.wp_apic_begin_branch(apic_capture.apic_state) if apic_recording else None
+            capture_resume(main_graph, stream=stream, _resume_apic_recording=False)
+            branch_capture_active = True
+            if isinstance(on_true, Callable):
+                on_true(**kwargs)
+            elif isinstance(on_true, Graph):
+                if not runtime.core.wp_cuda_graph_insert_child_graph(
+                    device.context,
+                    stream.cuda_stream,
+                    on_true.graph,
+                ):
+                    raise RuntimeError(runtime.get_error_string())
+            else:
+                raise TypeError("on_true must be a Callable or a Graph")
+            capture_pause(stream=stream, _suspend_apic_recording=False)
+            branch_capture_active = False
+            if apic_recording:
+                branch_a.value = runtime.core.wp_apic_end_branch(apic_capture.apic_state, branch_a_start)
+
+            # check the if-body graph
+            if not runtime.core.wp_cuda_graph_check_conditional_body(graph_on_true):
                 raise RuntimeError(runtime.get_error_string())
-        else:
-            raise TypeError("on_true must be a Callable or a Graph")
-        capture_pause(stream=stream)
 
-        # check the if-body graph
-        if not runtime.core.wp_cuda_graph_check_conditional_body(graph_on_true):
-            raise RuntimeError(runtime.get_error_string())
+        # capture else-graph
+        if on_false is not None:
+            # temporarily repurpose the main_graph python object such that all dependencies
+            # added through _retain_module_exec() end up in the correct python graph object
+            main_graph.graph = graph_on_false
+            branch_b_start = runtime.core.wp_apic_begin_branch(apic_capture.apic_state) if apic_recording else None
+            capture_resume(main_graph, stream=stream, _resume_apic_recording=False)
+            branch_capture_active = True
+            if isinstance(on_false, Callable):
+                on_false(**kwargs)
+            elif isinstance(on_false, Graph):
+                if not runtime.core.wp_cuda_graph_insert_child_graph(
+                    device.context,
+                    stream.cuda_stream,
+                    on_false.graph,
+                ):
+                    raise RuntimeError(runtime.get_error_string())
+            else:
+                raise TypeError("on_false must be a Callable or a Graph")
+            capture_pause(stream=stream, _suspend_apic_recording=False)
+            branch_capture_active = False
+            if apic_recording:
+                branch_b.value = runtime.core.wp_apic_end_branch(apic_capture.apic_state, branch_b_start)
 
-    # capture else-graph
-    if on_false is not None:
-        # temporarily repurpose the main_graph python object such that all dependencies
-        # added through _retain_module_exec() end up in the correct python graph object
-        main_graph.graph = graph_on_false
-        capture_resume(main_graph, stream=stream)
-        if isinstance(on_false, Callable):
-            on_false(**kwargs)
-        elif isinstance(on_false, Graph):
-            if not runtime.core.wp_cuda_graph_insert_child_graph(
-                device.context,
-                stream.cuda_stream,
-                on_false.graph,
-            ):
+            # check the else-body graph
+            if not runtime.core.wp_cuda_graph_check_conditional_body(graph_on_false):
                 raise RuntimeError(runtime.get_error_string())
-        else:
-            raise TypeError("on_false must be a Callable or a Graph")
-        capture_pause(stream=stream)
-
-        # check the else-body graph
-        if not runtime.core.wp_cuda_graph_check_conditional_body(graph_on_false):
-            raise RuntimeError(runtime.get_error_string())
+    except Exception:
+        # Roll back any branch begun-but-not-ended (so its partial ops leave the main
+        # stream) and free the extracted bodies, so APIC branch state does not leak.
+        if apic_recording:
+            if not branch_a.value and branch_a_start is not None:
+                branch_a.value = runtime.core.wp_apic_end_branch(apic_capture.apic_state, branch_a_start)
+            if branch_a.value:
+                runtime.core.wp_apic_free_branch_body(branch_a)
+            if not branch_b.value and branch_b_start is not None:
+                branch_b.value = runtime.core.wp_apic_end_branch(apic_capture.apic_state, branch_b_start)
+            if branch_b.value:
+                runtime.core.wp_apic_free_branch_body(branch_b)
+        # Leave the stream/graph consistent so the outer capture tears down cleanly: if a
+        # branch sub-capture was still live, stop it; restore the python graph object;
+        # resume the parent capture. Full recovery is impossible (the parent already holds
+        # the conditional node), so this is best-effort -- guard each step so a secondary
+        # failure cannot mask the original exception.
+        if branch_capture_active:
+            try:
+                capture_pause(stream=stream, _suspend_apic_recording=False)
+            except Exception:
+                pass
+        main_graph.graph = main_graph_ptr
+        try:
+            capture_resume(main_graph, stream=stream, _resume_apic_recording=False)
+        except Exception:
+            pass
+        raise
 
     # restore the main graph to its original state
     main_graph.graph = main_graph_ptr
 
     # resume capturing parent graph
-    capture_resume(main_graph, stream=stream)
+    capture_resume(main_graph, stream=stream, _resume_apic_recording=False)
+
+    if apic_recording:
+        from warp._src.apic.types import APIC_OP_IF  # noqa: PLC0415
+
+        runtime.core.wp_apic_record_conditional(
+            apic_capture.apic_state, APIC_OP_IF, cond_region_id, cond_offset, branch_a, branch_b
+        )
 
 
 def capture_while(condition: warp.array[int], while_body: Callable | Graph, stream: Stream | None = None, **kwargs):
@@ -11852,7 +12020,8 @@ def capture_while(condition: warp.array[int], while_body: Callable | Graph, stre
     # Under CPU APIC capture, record an APIC_OP_WHILE op with the body
     # captured as a nested sub-stream. See capture_if() above for why the
     # callback's side effects only land at replay time.
-    if device.is_cpu and runtime._apic_capture is not None:
+    apic_capture = _get_apic_capture_for_device(device)
+    if device.is_cpu and apic_capture is not None:
         _apic_record_capture_while(condition, while_body, **kwargs)
         return
 
@@ -11886,6 +12055,25 @@ def capture_while(condition: warp.array[int], while_body: Callable | Graph, stre
     # ensure conditional graph nodes are supported
     assert_conditional_graph_support()
 
+    # Under a CUDA APIC capture, record an APIC_OP_WHILE op alongside building the
+    # live while-node (record-and-execute). The body callback runs exactly once:
+    # its kernel launches are captured into the native body graph AND recorded
+    # into an APIC branch sub-stream (the set_condition kernel is launched
+    # internally and is not APIC-recorded -- the rebuild re-issues it after the
+    # body). Graph bodies are not yet supported under APIC capture.
+    apic_capture = _get_apic_capture_for_device(device)
+    apic_recording = apic_capture is not None
+    cond_region_id = -1
+    cond_offset = 0
+    if apic_recording:
+        if not isinstance(while_body, Callable):
+            raise NotImplementedError(
+                "APIC capture_while with a Graph body is not yet implemented; pass a Callable instead"
+            )
+        cond_region_id, cond_offset = apic_capture.track_array(condition)
+        if cond_region_id < 0:
+            raise RuntimeError("capture_while(): condition array could not be tracked for APIC capture (null pointer?)")
+
     # insert conditional while-node
     body_graph = ctypes.c_void_p()
     cond_handle = ctypes.c_uint64()
@@ -11901,49 +12089,93 @@ def capture_while(condition: warp.array[int], while_body: Callable | Graph, stre
         raise RuntimeError(runtime.get_error_string())
 
     # pause capturing parent graph and start capturing child graph
-    main_graph = capture_pause(stream=stream)
+    main_graph = capture_pause(stream=stream, _suspend_apic_recording=False)
     # store the pointer to the cuda graph to restore it later
     main_graph_ptr = main_graph.graph
 
     # temporarily repurpose the main_graph python object such that all dependencies
     # added through _retain_module_exec() end up in the correct python graph object
     main_graph.graph = body_graph
-    capture_resume(main_graph, stream=stream)
+    body = ctypes.c_void_p()
+    branch_start = runtime.core.wp_apic_begin_branch(apic_capture.apic_state) if apic_recording else None
+    # Track whether the body sub-capture is currently live, so the except knows whether
+    # it must capture_pause(stream) before restoring the parent graph and resuming it.
+    body_capture_active = False
+    try:
+        capture_resume(main_graph, stream=stream, _resume_apic_recording=False)
+        body_capture_active = True
 
-    # capture while-body
-    if isinstance(while_body, Callable):
-        while_body(**kwargs)
-    elif isinstance(while_body, Graph):
-        if not runtime.core.wp_cuda_graph_insert_child_graph(
+        # capture while-body
+        if isinstance(while_body, Callable):
+            while_body(**kwargs)
+        elif isinstance(while_body, Graph):
+            if not runtime.core.wp_cuda_graph_insert_child_graph(
+                device.context,
+                stream.cuda_stream,
+                while_body.graph,
+            ):
+                raise RuntimeError(runtime.get_error_string())
+        else:
+            raise TypeError("while_body must be a callable or a graph")
+
+        # update condition
+        if not runtime.core.wp_cuda_graph_set_condition(
             device.context,
             stream.cuda_stream,
-            while_body.graph,
+            device.get_cuda_compile_arch(),
+            device.get_cuda_output_format() == "ptx",
+            ctypes.cast(condition.ptr, ctypes.POINTER(ctypes.c_int32)),
+            cond_handle,
         ):
             raise RuntimeError(runtime.get_error_string())
-    else:
-        raise TypeError("while_body must be a callable or a graph")
 
-    # update condition
-    if not runtime.core.wp_cuda_graph_set_condition(
-        device.context,
-        stream.cuda_stream,
-        device.get_cuda_compile_arch(),
-        device.get_cuda_output_format() == "ptx",
-        ctypes.cast(condition.ptr, ctypes.POINTER(ctypes.c_int32)),
-        cond_handle,
-    ):
-        raise RuntimeError(runtime.get_error_string())
+        # stop capturing while-body
+        capture_pause(stream=stream, _suspend_apic_recording=False)
+        body_capture_active = False
 
-    # stop capturing while-body
-    capture_pause(stream=stream)
+        if apic_recording:
+            body.value = runtime.core.wp_apic_end_branch(apic_capture.apic_state, branch_start)
 
-    # check the while-body graph
-    if not runtime.core.wp_cuda_graph_check_conditional_body(body_graph):
-        raise RuntimeError(runtime.get_error_string())
+        # check the while-body graph
+        if not runtime.core.wp_cuda_graph_check_conditional_body(body_graph):
+            raise RuntimeError(runtime.get_error_string())
+    except Exception:
+        # Mirror capture_if: don't leak the recorded branch body on failure. If
+        # the body was begun but not ended (e.g. while_body raised), end it now
+        # so the partial branch ops are rolled back out of the main stream, then
+        # free the extracted body.
+        if apic_recording:
+            if not body.value and branch_start is not None:
+                body.value = runtime.core.wp_apic_end_branch(apic_capture.apic_state, branch_start)
+            if body.value:
+                runtime.core.wp_apic_free_branch_body(body)
+        # Leave the stream/graph consistent so the outer capture tears down cleanly: if the
+        # body sub-capture was still live, stop it; restore the python graph object; resume
+        # the parent capture. Full recovery is impossible (the parent already holds the
+        # while node), so this is best-effort -- guard each step so a secondary failure
+        # cannot mask the original exception.
+        if body_capture_active:
+            try:
+                capture_pause(stream=stream, _suspend_apic_recording=False)
+            except Exception:
+                pass
+        main_graph.graph = main_graph_ptr
+        try:
+            capture_resume(main_graph, stream=stream, _resume_apic_recording=False)
+        except Exception:
+            pass
+        raise
 
     # restore the main graph to its original state
     main_graph.graph = main_graph_ptr
-    capture_resume(main_graph, stream=stream)
+    capture_resume(main_graph, stream=stream, _resume_apic_recording=False)
+
+    if apic_recording:
+        from warp._src.apic.types import APIC_OP_WHILE  # noqa: PLC0415
+
+        runtime.core.wp_apic_record_conditional(
+            apic_capture.apic_state, APIC_OP_WHILE, cond_region_id, cond_offset, body, None
+        )
 
 
 def capture_launch(graph: Graph, stream: Stream | None = None):
@@ -12084,6 +12316,13 @@ def capture_save(graph: Graph, path: str, inputs: dict | None = None, outputs: d
     # Snapshot memory: copy device data to host and register with C++
     for _base_id, (region_id, base_ptr, capacity, _base) in apic_capture._regions.items():
         if graph.device.is_cuda:
+            if region_id in apic_capture._transient_regions:
+                # Allocated during capture (graph-scoped): its backing is gone now
+                # and its content is regenerated on replay. Serialize the size only
+                # and skip the device-to-host copy (which would fail and poison the
+                # CUDA context for the rebuild).
+                runtime.core.wp_apic_register_memory_region(state, region_id, capacity, 1, ctypes.c_void_p(0))
+                continue
             # D2H copy for device memory
             host_buf = (ctypes.c_uint8 * capacity)()
             ok = runtime.core.wp_memcpy_d2h(
@@ -12095,9 +12334,15 @@ def capture_save(graph: Graph, path: str, inputs: dict | None = None, outputs: d
             )
             warp.synchronize_device(graph.device)
             if not ok:
+                # Graph-scoped (capture-time) allocations are handled above via the
+                # transient-region branch (size-only, regenerated on replay). Any
+                # non-transient region whose memory is not host-readable here is
+                # unexpected: saving it size-only would silently drop its initial data
+                # and corrupt the replay, so fail loudly instead.
                 raise RuntimeError(
-                    f"APIC: Failed to copy device memory for region_id={region_id}, "
-                    f"base_ptr=0x{base_ptr:x}, capacity={capacity}"
+                    f"APIC: region {region_id} could not be snapshotted for capture_save "
+                    f"(device-to-host copy failed for a non-transient region); the saved "
+                    f"graph would be missing this region's initial data."
                 )
             runtime.core.wp_apic_register_memory_region(
                 state,
@@ -12145,13 +12390,15 @@ def capture_save(graph: Graph, path: str, inputs: dict | None = None, outputs: d
 
     # Register meshes used during capture
     for mesh_id in apic_capture.collected_mesh_ids:
-        runtime.core.wp_apic_register_mesh(state, ctypes.c_uint64(mesh_id))
+        if not runtime.core.wp_apic_register_mesh(state, ctypes.c_uint64(mesh_id)):
+            raise RuntimeError(f"APIC: failed to register mesh for capture_save. {runtime.get_error_string()}")
 
     # Write .wrp file
     target_arch = graph.device.get_cuda_compile_arch() if graph.device.is_cuda else 0
-    result = runtime.core.wp_apic_state_save(state, wrp_path.encode("utf-8"), target_arch)
+    context = graph.device.context if graph.device.is_cuda else None
+    result = runtime.core.wp_apic_state_save(state, wrp_path.encode("utf-8"), target_arch, context)
     if not result:
-        raise RuntimeError(f"Failed to save APIC graph to {wrp_path}")
+        raise RuntimeError(f"Failed to save APIC graph to {wrp_path}. {runtime.get_error_string()}")
 
 
 def capture_load(path: str, device: DeviceLike = None) -> Graph:
@@ -12345,6 +12592,33 @@ def copy(
         elif src.device.is_cuda:
             stream = src.device.stream
 
+    # APIC cannot reproduce a host-to-device (or peer) transfer into the captured
+    # device on replay: wp_memcpy_h2d / wp_memcpy_p2p are not recorded into the byte
+    # stream and the source is not retained, so a saved/replayed graph would leave the
+    # destination uninitialized. Reject rather than silently corrupt. (Same-device D2D
+    # is recorded; D2H is rejected separately below.)
+    if _get_apic_capture_for_device(dest.device) is not None and dest.device.is_cuda and src.device != dest.device:
+        raise NotImplementedError(
+            "APIC capture does not support host-to-device (or peer) copies into the "
+            "captured device during capture (e.g. wp.array(data=..., device='cuda') or "
+            "wp.copy() from a host array): the transfer is not recorded and cannot be "
+            "reproduced on replay. Allocate and initialize the array before the capture, "
+            "or populate it with a recorded kernel or fill_()."
+        )
+
+    # APIC cannot yet round-trip a device-to-host copy: wp_memcpy_d2h is not recorded
+    # into the byte stream, and the .wrp region model has no host-destination regions
+    # (capture_load allocates every region with cudaMalloc, and track_array ignores
+    # arrays whose device differs from the capture device). Reject loudly so a saved
+    # graph never silently omits the copy; full D2H support is a separate mixed
+    # host/device region design.
+    if _get_apic_capture_for_device(src.device) is not None and src.device.is_cuda and dest.device.is_cpu:
+        raise NotImplementedError(
+            "APIC capture does not yet support device-to-host wp.copy() during capture "
+            "(CUDA save/load has no host-destination region model yet); move the readback "
+            "outside the captured region."
+        )
+
     # Copying between different devices requires contiguous arrays.  If the arrays
     # are not contiguous, we must use temporary staging buffers for the transfer.
     # TODO: We can skip the staging if device access is enabled.
@@ -12508,6 +12782,16 @@ def copy(
         dst_type = warp._src.types.array_type_id(dest_nc)
 
         if dest.device.is_cuda:
+            # The non-contiguous device copy path (wp_array_copy_device) launches copy
+            # kernels but does not record into the APIC byte stream yet, so a saved graph
+            # would silently drop it. Surface the limitation now (mirrors the CPU guard
+            # below) instead of producing wrong output at replay.
+            if _get_apic_capture_for_device(dest.device) is not None:
+                raise NotImplementedError(
+                    "APIC capture does not yet support wp.copy() between non-contiguous CUDA arrays "
+                    "(strided / indexed / fabric); copy the underlying contiguous arrays first or "
+                    "move the copy outside the capture."
+                )
             # This work involves a kernel launch, so it must run on the destination device.
             # If the copy stream is different, we need to synchronize it.
             if stream == dest.device.stream:
@@ -12525,7 +12809,7 @@ def copy(
             # record into the APIC byte stream yet, so it would silently
             # execute once at capture time and never replay. Surface the
             # limitation now instead of producing wrong output at replay.
-            if runtime._apic_capture is not None:
+            if _get_apic_capture_for_device(dest.device) is not None:
                 raise NotImplementedError(
                     "APIC capture does not yet support wp.copy() between non-contiguous CPU arrays "
                     "(strided / indexed / fabric); copy the underlying contiguous arrays first or "

@@ -208,8 +208,12 @@ bool apic_capture_bsr_transpose(
     uint64_t int_bytes = static_cast<uint64_t>(nnz) * sizeof(int32_t);
     uint64_t rowp1_bytes = (static_cast<uint64_t>(row_count) + 1) * sizeof(int32_t);
     uint64_t colp1_bytes = (static_cast<uint64_t>(col_count) + 1) * sizeof(int32_t);
-    // transposed_bsr_offsets is an output under capture and may not be initialized yet.
-    // Replay re-reads padded capacity from the live offsets before executing.
+    // For a padded destination, transposed_bsr_offsets holds the fixed row-capacity
+    // layout (a read-only input the transpose never writes). Snapshot it so replay
+    // can restore it even if the caller resets the destination offsets before
+    // capture_launch (GH-1587). For a compact destination it is an output the
+    // transpose recomputes, so no snapshot is taken.
+    const bool padded = transposed_bsr_row_counts != nullptr;
     uint64_t block_indices_bytes = int_bytes;
 
     APICAddress bo_addr = apic_resolve_host_ptr(state, reinterpret_cast<uint64_t>(bsr_offsets), rowp1_bytes);
@@ -234,10 +238,13 @@ bool apic_capture_bsr_transpose(
     if (status)
         status_addr = apic_resolve_host_ptr(state, reinterpret_cast<uint64_t>(status), sizeof(int32_t));
 
+    const int32_t* padded_capacity_offsets = padded ? transposed_bsr_offsets : nullptr;
+    int32_t padded_capacity_offset_count = padded ? (col_count + 1) : 0;
     apic_record_bsr_transpose(
         state, row_count, col_count, nnz, bo_addr.region_id, bo_addr.offset, brc_addr.region_id, brc_addr.offset,
         bc_addr.region_id, bc_addr.offset, to_addr.region_id, to_addr.offset, trc_addr.region_id, trc_addr.offset,
-        tc_addr.region_id, tc_addr.offset, bi_addr.region_id, bi_addr.offset, status_addr.region_id, status_addr.offset
+        tc_addr.region_id, tc_addr.offset, bi_addr.region_id, bi_addr.offset, status_addr.region_id, status_addr.offset,
+        padded_capacity_offsets, padded_capacity_offset_count
     );
     return true;
 }

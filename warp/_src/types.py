@@ -3757,6 +3757,18 @@ class array(Array[DType, NDim]):
         self.deleter = deleter
         self._allocator = allocator
         self._memory_kind = allocator_memory_kind
+        # Record the originating APIC capture's identity when this allocation is made
+        # under an APIC capture targeting this CUDA device. Such memory is graph-scoped
+        # (its backing is freed when the capture ends) and only *this* capture's
+        # recorded ops regenerate it, so APICapture.track_array marks the region
+        # transient (serialized size-only on save, repopulated on replay). Store the
+        # capture's apic_state -- not a bare is_capturing flag, which outlives its
+        # capture and is also true under non-APIC captures -- so the marker is not
+        # applied to allocations from a different/non-APIC capture or merely first used
+        # here. _init_new is the single device-allocation chokepoint, so this covers the
+        # bare constructor, wp.empty/zeros/full, and auto-allocated gradients.
+        _apic = warp._src.context._get_apic_capture_for_device(device)
+        self._apic_capture_origin = _apic.apic_state if (_apic is not None and device.is_cuda) else None
 
     def _init_annotation(self, dtype, ndim):
         self.dtype = dtype
@@ -4240,15 +4252,34 @@ class array(Array[DType, NDim]):
 
         # prefer using memtile for contiguous arrays, because it should be faster than generic fill
         if self.is_contiguous:
+            # Large multi-byte fills (> WP_FILL_VALUE_INLINE_BYTES_2 = 3968 bytes,
+            # defined in warp/native/warp.cu -- keep the literal below in sync)
+            # take a capturable_tmp_alloc fallback in wp_memtile_device (pause/resume
+            # + device staging) that the APIC byte-stream rebuild cannot reproduce,
+            # so a saved CUDA graph could not replay them. Surface the limitation
+            # instead of recording an unreplayable op. Small fills embed the value
+            # inline in the byte stream and replay fine.
+            apic_capture = warp._src.context._get_apic_capture_for_device(self.device)
+            if (
+                cvalue_size > 3968  # WP_FILL_VALUE_INLINE_BYTES_2 (warp/native/warp.cu)
+                and self.device.is_cuda
+                and apic_capture is not None
+            ):
+                raise NotImplementedError(
+                    "APIC capture does not yet support fill_() with values larger than 3968 bytes on CUDA arrays; "
+                    "use a smaller element type or move the fill outside the capture."
+                )
             self.device.memtile(self.ptr, cvalue_ptr, cvalue_size, self.size)
         else:
-            # The non-contiguous host fill path (wp_array_fill_host) does not
-            # record into the APIC byte stream yet, so it would silently
-            # execute once at capture time and never replay. Surface the
-            # limitation now instead of producing wrong output at replay.
-            if self.device.is_cpu and warp._src.context.runtime._apic_capture is not None:
+            # The non-contiguous fill path (wp_array_fill_host / wp_array_fill_device)
+            # does not record into the APIC byte stream, so it would silently execute
+            # once at capture time and never replay. Surface the limitation now
+            # instead of producing wrong output at replay. Applies to both CPU
+            # (record-only) and CUDA (record-and-execute) captures.
+            apic_capture = warp._src.context._get_apic_capture_for_device(self.device)
+            if apic_capture is not None:
                 raise NotImplementedError(
-                    "APIC capture does not yet support fill_() on non-contiguous CPU arrays; "
+                    "APIC capture does not yet support fill_() on non-contiguous arrays; "
                     "fill the underlying contiguous array first or move the fill outside the capture."
                 )
             carr = self.__ctype__()
@@ -4954,13 +4985,14 @@ class noncontiguous_array_base(Array[DType, NDim]):
         except Exception as e:
             raise ValueError(f"Failed to convert the value to the array data type: {e}") from e
 
-        # The indexed/fabric host fill path (wp_array_fill_host) does not
-        # record into the APIC byte stream yet, so it would silently execute
-        # once at capture time and never replay. Surface the limitation now
-        # instead of producing wrong output at replay.
-        if self.device.is_cpu and warp._src.context.runtime._apic_capture is not None:
+        # The indexed/fabric fill path (wp_array_fill_host / wp_array_fill_device)
+        # does not record into the APIC byte stream yet, so it would silently
+        # execute once at capture time and never replay. Surface the limitation
+        # now instead of producing wrong output at replay.
+        apic_capture = warp._src.context._get_apic_capture_for_device(self.device)
+        if apic_capture is not None:
             raise NotImplementedError(
-                "APIC capture does not yet support fill_() on wp.indexedarray / wp.fabricarray on CPU; "
+                "APIC capture does not yet support fill_() on wp.indexedarray / wp.fabricarray; "
                 "fill the underlying contiguous array first or move the fill outside the capture."
             )
 

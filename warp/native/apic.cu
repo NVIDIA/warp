@@ -19,47 +19,97 @@
 #include <algorithm>
 
 // Register a memory region, copying data from device memory to host for serialization.
-static void apic_register_region_from_device(
+// Returns false (with an error string set) if the device-to-host copy fails, so the
+// caller can abort the save rather than emit a region missing its initial data.
+static bool apic_register_region_from_device(
     APICState* state, uint32_t region_id, uint64_t size, uint32_t element_size, const void* device_ptr
 )
 {
     if (!device_ptr || size == 0) {
         wp_apic_register_memory_region(state, region_id, size, element_size, nullptr);
-        return;
+        return true;
     }
 
     // Copy device memory to host buffer for serialization
     std::vector<uint8_t> host_buf(size);
     cudaError_t err = cudaMemcpy(host_buf.data(), device_ptr, size, cudaMemcpyDeviceToHost);
     if (err != cudaSuccess) {
-        fprintf(stderr, "APIC: Error - cudaMemcpy D2H failed for region %u: %d\n", region_id, err);
-        return;
+        wp::set_error_string(
+            "APIC: device-to-host copy failed for region %u (CUDA error %d); the saved graph "
+            "would be missing this region's initial data",
+            region_id, err
+        );
+        return false;
     }
     wp_apic_register_memory_region(state, region_id, size, element_size, host_buf.data());
+    return true;
 }
 
-void wp_apic_register_mesh(APICState* state, uint64_t mesh_id)
+// D2H-snapshot device regions that native hooks auto-registered during capture
+// (memset/memcpy/scan/sort/...) into memory_regions so a saved CUDA graph
+// carries their initial data. Python's capture_save snapshots only the regions
+// it tracks in apic_capture._regions; internal inputs Python never sees -- e.g. a
+// segmented sort's segment-index array -- live only in regions_by_id. Regions
+// already present in memory_regions (snapshotted by Python) are left untouched;
+// only the gaps are filled. Called from wp_apic_state_save for CUDA saves.
+// Returns false (with an error string set) if any gap region's device-to-host copy
+// fails; the caller aborts the save rather than emit a referenced region with no
+// initial data. Transient (size-only) regions are pre-registered in memory_regions
+// by Python's capture_save and skipped here, so a failure is always a content region.
+bool apic_snapshot_device_regions(APICState* state, void* context)
+{
+    if (!state)
+        return true;
+
+    ContextGuard guard(context);
+    for (uint32_t region_id = 0; region_id < state->regions_by_id.size(); region_id++) {
+        const APICState::RegionEntry& entry = state->regions_by_id[region_id];
+        if (!entry.valid || entry.base_ptr == 0 || entry.size == 0)
+            continue;
+        if (state->memory_regions.find(region_id) != state->memory_regions.end())
+            continue;  // already serialized (e.g. a Python-tracked region)
+
+        std::vector<uint8_t> host_buf(entry.size);
+        cudaError_t err = cudaMemcpy(
+            host_buf.data(), reinterpret_cast<const void*>(entry.base_ptr), entry.size, cudaMemcpyDeviceToHost
+        );
+        if (err != cudaSuccess) {
+            wp::set_error_string(
+                "APIC: device-region D2H snapshot failed for region %u (CUDA error %d); the saved "
+                "graph would be missing this region's initial data",
+                region_id, err
+            );
+            return false;
+        }
+        wp_apic_register_memory_region(state, region_id, entry.size, 1, host_buf.data());
+    }
+    return true;
+}
+
+bool wp_apic_register_mesh(APICState* state, uint64_t mesh_id)
 {
     if (!state || mesh_id == 0)
-        return;
+        return true;
 
     // Try descriptor table first. If the mesh is not a device mesh, delegate to
     // the host-mesh helper in apic.cpp (mesh_id is a host pointer to wp::Mesh).
     wp::Mesh mesh;
     if (!wp::mesh_get_descriptor(mesh_id, mesh)) {
         apic_register_cpu_mesh(state, mesh_id);
-        return;
+        return true;
     }
 
     // Device mesh: check-if-registered and register device arrays (cudaMemcpy D2H).
     for (const auto& rec : state->mesh_records) {
         if (rec.original_ptr == mesh_id)
-            return;
+            return true;
     }
 
+    bool ok = true;
     auto register_region = [&](uint64_t ptr, uint64_t size, uint32_t elem_size) -> uint32_t {
         uint32_t rid = wp_apic_register_memory_region_by_ptr(state, ptr, size, elem_size);
-        apic_register_region_from_device(state, rid, size, elem_size, reinterpret_cast<void*>(ptr));
+        if (!apic_register_region_from_device(state, rid, size, elem_size, reinterpret_cast<void*>(ptr)))
+            ok = false;
         return rid;
     };
 
@@ -78,6 +128,11 @@ void wp_apic_register_mesh(APICState* state, uint64_t mesh_id)
             = register_region(reinterpret_cast<uint64_t>(mesh.velocities.data), vel_size, sizeof(wp::vec3));
     }
 
+    // A D2H snapshot of one of the mesh arrays failed; abort before recording the
+    // mesh so capture_save fails loudly instead of saving a mesh missing its data.
+    if (!ok)
+        return false;
+
     APICMeshRecord rec = {};
     rec.num_points = mesh.num_points;
     rec.num_tris = mesh.num_tris;
@@ -90,6 +145,7 @@ void wp_apic_register_mesh(APICState* state, uint64_t mesh_id)
     rec.original_ptr = mesh_id;
 
     state->mesh_records.push_back(rec);
+    return true;
 }
 
 
@@ -259,34 +315,21 @@ static bool apic_configure_kernel_cluster_attrs(APICGraph* graph)
     return true;
 }
 
-static bool apic_rebuild_cuda_graph(APICGraph* graph, CUstream stream)
+// Replay a (sub-)stream of ops onto an already-capturing `stream`. No begin/end
+// capture here: the caller (apic_rebuild_cuda_graph) owns the capture lifetime,
+// so this function can recurse into IF/WHILE branch sub-streams via the same
+// pause/resume mechanism the live capture_if/while path uses. `arch`/`use_ptx`
+// are forwarded to the conditional helpers, which JIT the set-condition kernels.
+static bool apic_replay_ops_into_cuda_capture(
+    APICGraph* graph, CUstream stream, const uint8_t* op_data, size_t op_size, uint32_t op_count, int arch, bool use_ptx
+)
 {
-    // Precondition: graph->operations_validated is true. Enforced by
-    // wp_apic_load_graph, which is the only path that produces an APICGraph.
-    if (graph->cuda_graph_exec) {
-        cudaGraphExecDestroy((cudaGraphExec_t)graph->cuda_graph_exec);
-        graph->cuda_graph_exec = nullptr;
-    }
-    if (graph->cuda_graph) {
-        cudaGraphDestroy((cudaGraph_t)graph->cuda_graph);
-        graph->cuda_graph = nullptr;
-    }
-
-    if (!apic_configure_kernel_cluster_attrs(graph))
-        return false;
-
-    cudaError_t cuda_err = cudaStreamBeginCapture((cudaStream_t)stream, cudaStreamCaptureModeThreadLocal);
-    if (cuda_err != cudaSuccess) {
-        wp::set_error_string("Failed to begin graph capture: %d", cuda_err);
-        return false;
-    }
-
     bool success = true;
 
-    const uint8_t* ptr = graph->operation_stream.data();
-    const uint8_t* end = ptr + graph->operation_stream.size();
+    const uint8_t* ptr = op_data;
+    const uint8_t* end = ptr + op_size;
 
-    for (uint32_t i = 0; i < graph->operation_count && ptr < end && success; i++) {
+    for (uint32_t i = 0; i < op_count && ptr < end && success; i++) {
         const APICOpHeader* header = reinterpret_cast<const APICOpHeader*>(ptr);
         const uint8_t* op_start = ptr;
 
@@ -483,13 +526,346 @@ static bool apic_rebuild_cuda_graph(APICGraph* graph, CUstream stream)
         case APIC_OP_ALLOC:
             break;  // Allocations handled by region setup
 
-        case APIC_OP_IF:
-        case APIC_OP_WHILE:
-            // CUDA rebuild of conditional ops is not yet supported (CPU only
-            // for now). Reject instead of silently skipping.
-            wp::set_error_string("APIC conditional ops (IF / WHILE) are not yet supported on CUDA loaded graphs");
-            success = false;
+        case APIC_OP_MEMTILE: {
+            const APICMemtileRecord* rec = reinterpret_cast<const APICMemtileRecord*>(ptr);
+            const void* value = ptr + sizeof(APICMemtileRecord);
+            uint64_t total_bytes = rec->count * rec->srcsize;
+            void* dst = apic_resolve_region_ptr(graph, rec->region_id, rec->offset, total_bytes);
+            if (!dst) {
+                wp::set_error_string("APIC memtile: failed to resolve region (op %u)", i);
+                success = false;
+                break;
+            }
+            // g_apic_state is null during rebuild, so this executes (not record)
+            // on the capture stream set as current above.
+            wp_memtile_device(graph->cuda_context, dst, value, rec->srcsize, rec->count);
             break;
+        }
+
+        case APIC_OP_SCAN: {
+            const APICScanRecord* rec = reinterpret_cast<const APICScanRecord*>(ptr);
+            size_t scalar_size = apic_type_size(rec->dtype);
+            size_t src_bytes = apic_strided_access_bytes(rec->length, rec->in_stride, rec->type_len, scalar_size);
+            size_t dst_bytes = apic_strided_access_bytes(rec->length, rec->out_stride, rec->type_len, scalar_size);
+            void* dst = apic_resolve_region_ptr(graph, rec->dst_region_id, rec->dst_offset, dst_bytes);
+            void* src = apic_resolve_region_ptr(graph, rec->src_region_id, rec->src_offset, src_bytes);
+            if (!dst || !src) {
+                wp::set_error_string("APIC scan: failed to resolve region (op %u)", i);
+                success = false;
+                break;
+            }
+            // g_apic_state is null during rebuild, so these execute (not record)
+            // on the capture stream set as current above. Same entry points
+            // wp.utils.array_scan() dispatches to.
+            if (rec->dtype == APIC_TYPE_INT32)
+                wp_array_scan_int_device(
+                    reinterpret_cast<uint64_t>(src), reinterpret_cast<uint64_t>(dst), static_cast<int>(rec->length),
+                    rec->in_stride, rec->out_stride, rec->type_len, rec->inclusive != 0
+                );
+            else if (rec->dtype == APIC_TYPE_INT64)
+                wp_array_scan_int64_device(
+                    reinterpret_cast<uint64_t>(src), reinterpret_cast<uint64_t>(dst), static_cast<int>(rec->length),
+                    rec->in_stride, rec->out_stride, rec->type_len, rec->inclusive != 0
+                );
+            else if (rec->dtype == APIC_TYPE_FLOAT32)
+                wp_array_scan_float_device(
+                    reinterpret_cast<uint64_t>(src), reinterpret_cast<uint64_t>(dst), static_cast<int>(rec->length),
+                    rec->in_stride, rec->out_stride, rec->type_len, rec->inclusive != 0
+                );
+            else
+                wp_array_scan_double_device(
+                    reinterpret_cast<uint64_t>(src), reinterpret_cast<uint64_t>(dst), static_cast<int>(rec->length),
+                    rec->in_stride, rec->out_stride, rec->type_len, rec->inclusive != 0
+                );
+            break;
+        }
+
+        case APIC_OP_SEGMENTED_SORT: {
+            const APICSegmentedSortRecord* rec = reinterpret_cast<const APICSegmentedSortRecord*>(ptr);
+            size_t key_size = (rec->dtype == APIC_TYPE_INT32 ? sizeof(int32_t) : sizeof(float));
+            // keys/values buffers span 2*count elements (sort scratch).
+            size_t keys_bytes = static_cast<size_t>(2) * rec->count * key_size;
+            size_t values_bytes = static_cast<size_t>(2) * rec->count * sizeof(int32_t);
+            // Inferred-end captures alias segment_end into the start array (same
+            // region), so the start region spans num_segments+1 entries; explicit-end
+            // captures use two separate num_segments-entry arrays. Match the
+            // span recorded at capture.
+            bool segments_inferred_end = (rec->segstart_region_id == rec->segend_region_id);
+            size_t segstart_bytes
+                = (static_cast<size_t>(rec->num_segments) + (segments_inferred_end ? 1 : 0)) * sizeof(int32_t);
+            size_t segend_bytes = static_cast<size_t>(rec->num_segments) * sizeof(int32_t);
+            void* keys = apic_resolve_region_ptr(graph, rec->keys_region_id, rec->keys_offset, keys_bytes);
+            void* values = apic_resolve_region_ptr(graph, rec->values_region_id, rec->values_offset, values_bytes);
+            void* segstart
+                = apic_resolve_region_ptr(graph, rec->segstart_region_id, rec->segstart_offset, segstart_bytes);
+            void* segend = apic_resolve_region_ptr(graph, rec->segend_region_id, rec->segend_offset, segend_bytes);
+            if (!keys || !values || !segstart || !segend) {
+                wp::set_error_string("APIC segmented-sort: failed to resolve region (op %u)", i);
+                success = false;
+                break;
+            }
+            // g_apic_state is null during rebuild, so these execute (not record)
+            // on the capture stream set as current above.
+            if (rec->dtype == APIC_TYPE_INT32)
+                wp_segmented_sort_pairs_int_device(
+                    reinterpret_cast<uint64_t>(keys), reinterpret_cast<uint64_t>(values), static_cast<int>(rec->count),
+                    reinterpret_cast<uint64_t>(segstart), reinterpret_cast<uint64_t>(segend),
+                    static_cast<int>(rec->num_segments)
+                );
+            else
+                wp_segmented_sort_pairs_float_device(
+                    reinterpret_cast<uint64_t>(keys), reinterpret_cast<uint64_t>(values), static_cast<int>(rec->count),
+                    reinterpret_cast<uint64_t>(segstart), reinterpret_cast<uint64_t>(segend),
+                    static_cast<int>(rec->num_segments)
+                );
+            break;
+        }
+
+        case APIC_OP_RADIX_SORT: {
+            const APICRadixSortRecord* rec = reinterpret_cast<const APICRadixSortRecord*>(ptr);
+            size_t key_size = apic_type_size(rec->dtype);
+            size_t keys_bytes = static_cast<size_t>(2) * rec->count * key_size;
+            size_t values_bytes = static_cast<size_t>(2) * rec->count * static_cast<size_t>(rec->value_size);
+            void* keys = apic_resolve_region_ptr(graph, rec->keys_region_id, rec->keys_offset, keys_bytes);
+            void* values = apic_resolve_region_ptr(graph, rec->values_region_id, rec->values_offset, values_bytes);
+            if (!keys || !values) {
+                wp::set_error_string("APIC radix-sort: failed to resolve region (op %u)", i);
+                success = false;
+                break;
+            }
+            // g_apic_state is null during rebuild, so these execute (not record)
+            // on the capture stream set as current above.
+            if (rec->dtype == APIC_TYPE_INT32)
+                wp_radix_sort_pairs_int_device(
+                    reinterpret_cast<uint64_t>(keys), reinterpret_cast<uint64_t>(values), static_cast<int>(rec->count),
+                    rec->begin_bit, rec->end_bit, rec->value_size
+                );
+            else if (rec->dtype == APIC_TYPE_UINT32)
+                wp_radix_sort_pairs_uint_device(
+                    reinterpret_cast<uint64_t>(keys), reinterpret_cast<uint64_t>(values), static_cast<int>(rec->count),
+                    rec->begin_bit, rec->end_bit, rec->value_size
+                );
+            else if (rec->dtype == APIC_TYPE_INT64)
+                wp_radix_sort_pairs_int64_device(
+                    reinterpret_cast<uint64_t>(keys), reinterpret_cast<uint64_t>(values), static_cast<int>(rec->count),
+                    rec->begin_bit, rec->end_bit, rec->value_size
+                );
+            else if (rec->dtype == APIC_TYPE_UINT64)
+                wp_radix_sort_pairs_uint64_device(
+                    reinterpret_cast<uint64_t>(keys), reinterpret_cast<uint64_t>(values), static_cast<int>(rec->count),
+                    rec->begin_bit, rec->end_bit, rec->value_size
+                );
+            else if (rec->dtype == APIC_TYPE_FLOAT32)
+                wp_radix_sort_pairs_float_device(
+                    reinterpret_cast<uint64_t>(keys), reinterpret_cast<uint64_t>(values), static_cast<int>(rec->count),
+                    rec->begin_bit, rec->end_bit, rec->value_size
+                );
+            else
+                wp_radix_sort_pairs_double_device(
+                    reinterpret_cast<uint64_t>(keys), reinterpret_cast<uint64_t>(values), static_cast<int>(rec->count),
+                    rec->begin_bit, rec->end_bit, rec->value_size
+                );
+            break;
+        }
+
+        case APIC_OP_RUNLENGTH_ENCODE: {
+            const APICRunlengthEncodeRecord* rec = reinterpret_cast<const APICRunlengthEncodeRecord*>(ptr);
+            size_t n = rec->value_count;
+            size_t in_bytes = n * sizeof(int32_t);
+            void* values = apic_resolve_region_ptr(graph, rec->values_region_id, rec->values_offset, in_bytes);
+            // run_values / run_lengths hold up to value_count entries.
+            void* run_values
+                = apic_resolve_region_ptr(graph, rec->run_values_region_id, rec->run_values_offset, in_bytes);
+            void* run_lengths
+                = apic_resolve_region_ptr(graph, rec->run_lengths_region_id, rec->run_lengths_offset, in_bytes);
+            void* run_count
+                = apic_resolve_region_ptr(graph, rec->run_count_region_id, rec->run_count_offset, sizeof(int32_t));
+            if (!values || !run_values || !run_lengths || !run_count) {
+                wp::set_error_string("APIC runlength-encode: failed to resolve region (op %u)", i);
+                success = false;
+                break;
+            }
+            // g_apic_state is null during rebuild, so this executes (not record)
+            // on the capture stream set as current above.
+            wp_runlength_encode_int_device(
+                reinterpret_cast<uint64_t>(values), reinterpret_cast<uint64_t>(run_values),
+                reinterpret_cast<uint64_t>(run_lengths), reinterpret_cast<uint64_t>(run_count),
+                static_cast<int>(rec->value_count)
+            );
+            break;
+        }
+
+        case APIC_OP_BSR_TRANSPOSE: {
+            const APICBsrTransposeRecord* rec = reinterpret_cast<const APICBsrTransposeRecord*>(ptr);
+            size_t nnz = static_cast<size_t>(rec->nnz_upper_bound);
+            size_t int_bytes = nnz * sizeof(int32_t);
+            size_t rowp1_bytes = (static_cast<size_t>(rec->row_count) + 1) * sizeof(int32_t);
+            size_t colp1_bytes = (static_cast<size_t>(rec->col_count) + 1) * sizeof(int32_t);
+            void* bsr_offsets
+                = apic_resolve_region_ptr(graph, rec->bsr_offsets_region_id, rec->bsr_offsets_offset, rowp1_bytes);
+            void* bsr_row_counts = rec->bsr_row_counts_region_id >= 0
+                ? apic_resolve_region_ptr(
+                      graph, rec->bsr_row_counts_region_id, rec->bsr_row_counts_offset,
+                      static_cast<size_t>(rec->row_count) * sizeof(int32_t)
+                  )
+                : nullptr;
+            void* bsr_columns
+                = apic_resolve_region_ptr(graph, rec->bsr_columns_region_id, rec->bsr_columns_offset, int_bytes);
+            void* t_offsets = apic_resolve_region_ptr(
+                graph, rec->transposed_offsets_region_id, rec->transposed_offsets_offset, colp1_bytes
+            );
+            void* t_row_counts = rec->transposed_row_counts_region_id >= 0
+                ? apic_resolve_region_ptr(
+                      graph, rec->transposed_row_counts_region_id, rec->transposed_row_counts_offset,
+                      static_cast<size_t>(rec->col_count) * sizeof(int32_t)
+                  )
+                : nullptr;
+            // The transposed-columns and block-index regions are allocated at
+            // their full registered (padded) capacity, so resolve them with the
+            // source span -- apic_resolve_region_ptr bounds-checks the access
+            // against the region size. Do NOT read t_offsets[col_count] on the
+            // host to size them: t_offsets is device memory and dereferencing it
+            // here, during the active rebuild capture, is undefined behavior
+            // (GH-1431).
+            void* t_columns = apic_resolve_region_ptr(
+                graph, rec->transposed_columns_region_id, rec->transposed_columns_offset, int_bytes
+            );
+            void* block_indices
+                = apic_resolve_region_ptr(graph, rec->block_indices_region_id, rec->block_indices_offset, int_bytes);
+            void* status = rec->status_region_id >= 0
+                ? apic_resolve_region_ptr(graph, rec->status_region_id, rec->status_offset, sizeof(int32_t))
+                : nullptr;
+            if (!bsr_offsets || !bsr_columns || !t_offsets || !t_columns || !block_indices
+                || (rec->bsr_row_counts_region_id >= 0 && !bsr_row_counts)
+                || (rec->transposed_row_counts_region_id >= 0 && !t_row_counts)
+                || (rec->status_region_id >= 0 && !status)) {
+                wp::set_error_string("APIC bsr-transpose: failed to resolve region (op %u)", i);
+                success = false;
+                break;
+            }
+            // g_apic_state is null during rebuild, so this executes (not record)
+            // on the capture stream set as current above.
+            wp_bsr_transpose_device(
+                rec->row_count, rec->col_count, rec->nnz_upper_bound, reinterpret_cast<const int*>(bsr_offsets),
+                reinterpret_cast<const int*>(bsr_row_counts), reinterpret_cast<const int*>(bsr_columns),
+                reinterpret_cast<int*>(t_offsets), reinterpret_cast<int*>(t_row_counts),
+                reinterpret_cast<int*>(t_columns), reinterpret_cast<int*>(block_indices), reinterpret_cast<int*>(status)
+            );
+            break;
+        }
+
+        case APIC_OP_IF: {
+            const APICCondRecord* rec = reinterpret_cast<const APICCondRecord*>(ptr);
+            const uint8_t* branch_a = ptr + sizeof(APICCondRecord);
+            const uint8_t* branch_b = branch_a + rec->branch_a_size;
+
+            void* cond_ptr = apic_resolve_region_ptr(graph, rec->cond_region_id, rec->cond_offset, sizeof(int32_t));
+            if (!cond_ptr) {
+                wp::set_error_string("APIC if: failed to resolve condition region (op %u)", i);
+                success = false;
+                break;
+            }
+
+            // Insert the conditional node(s), then populate each branch body by
+            // redirecting the same stream's capture into it -- the exact mechanism
+            // the live capture_if uses (pause the outer capture, resume into the
+            // body graph, replay the branch sub-stream, pause, check, then resume
+            // the outer capture).
+            void* graph_on_true = nullptr;
+            void* graph_on_false = nullptr;
+            if (!wp_cuda_graph_insert_if_else(
+                    graph->cuda_context, (void*)stream, arch, use_ptx, reinterpret_cast<int*>(cond_ptr),
+                    rec->branch_a_size > 0 ? &graph_on_true : nullptr,
+                    rec->branch_b_size > 0 ? &graph_on_false : nullptr
+                )) {
+                success = false;
+                break;
+            }
+
+            void* outer_graph = nullptr;
+            if (!wp_cuda_graph_pause_capture(graph->cuda_context, (void*)stream, &outer_graph)) {
+                success = false;
+                break;
+            }
+
+            void* tmp = nullptr;
+            if (success && rec->branch_a_size > 0) {
+                if (!wp_cuda_graph_resume_capture(graph->cuda_context, (void*)stream, graph_on_true)
+                    || !apic_replay_ops_into_cuda_capture(
+                        graph, stream, branch_a, rec->branch_a_size, rec->branch_a_op_count, arch, use_ptx
+                    )
+                    || !wp_cuda_graph_pause_capture(graph->cuda_context, (void*)stream, &tmp)
+                    || !wp_cuda_graph_check_conditional_body(graph_on_true)) {
+                    success = false;
+                }
+            }
+            if (success && rec->branch_b_size > 0) {
+                if (!wp_cuda_graph_resume_capture(graph->cuda_context, (void*)stream, graph_on_false)
+                    || !apic_replay_ops_into_cuda_capture(
+                        graph, stream, branch_b, rec->branch_b_size, rec->branch_b_op_count, arch, use_ptx
+                    )
+                    || !wp_cuda_graph_pause_capture(graph->cuda_context, (void*)stream, &tmp)
+                    || !wp_cuda_graph_check_conditional_body(graph_on_false)) {
+                    success = false;
+                }
+            }
+
+            // Always resume the outer capture so the caller's end_capture has a
+            // capturing stream to close, even on a mid-branch failure.
+            if (!wp_cuda_graph_resume_capture(graph->cuda_context, (void*)stream, outer_graph))
+                success = false;
+            break;
+        }
+
+        case APIC_OP_WHILE: {
+            const APICCondRecord* rec = reinterpret_cast<const APICCondRecord*>(ptr);
+            const uint8_t* body = ptr + sizeof(APICCondRecord);
+
+            void* cond_ptr = apic_resolve_region_ptr(graph, rec->cond_region_id, rec->cond_offset, sizeof(int32_t));
+            if (!cond_ptr) {
+                wp::set_error_string("APIC while: failed to resolve condition region (op %u)", i);
+                success = false;
+                break;
+            }
+
+            // Mirror the live capture_while: insert the while node, capture the
+            // body into its body graph, then set_condition re-evaluates the
+            // condition after each iteration (the body updates it).
+            void* body_graph = nullptr;
+            uint64_t cond_handle = 0;
+            if (!wp_cuda_graph_insert_while(
+                    graph->cuda_context, (void*)stream, arch, use_ptx, reinterpret_cast<int*>(cond_ptr), &body_graph,
+                    &cond_handle
+                )) {
+                success = false;
+                break;
+            }
+
+            void* outer_graph = nullptr;
+            if (!wp_cuda_graph_pause_capture(graph->cuda_context, (void*)stream, &outer_graph)) {
+                success = false;
+                break;
+            }
+
+            void* tmp = nullptr;
+            if (success && rec->branch_a_size > 0) {
+                if (!wp_cuda_graph_resume_capture(graph->cuda_context, (void*)stream, body_graph)
+                    || !apic_replay_ops_into_cuda_capture(
+                        graph, stream, body, rec->branch_a_size, rec->branch_a_op_count, arch, use_ptx
+                    )
+                    || !wp_cuda_graph_set_condition(
+                        graph->cuda_context, (void*)stream, arch, use_ptx, reinterpret_cast<int*>(cond_ptr), cond_handle
+                    )
+                    || !wp_cuda_graph_pause_capture(graph->cuda_context, (void*)stream, &tmp)
+                    || !wp_cuda_graph_check_conditional_body(body_graph)) {
+                    success = false;
+                }
+            }
+
+            if (!wp_cuda_graph_resume_capture(graph->cuda_context, (void*)stream, outer_graph))
+                success = false;
+            break;
+        }
 
         default:
             wp::set_error_string("Unknown operation type: %d", header->op_type);
@@ -500,15 +876,59 @@ static bool apic_rebuild_cuda_graph(APICGraph* graph, CUstream stream)
         ptr = op_start + header->total_size;
     }
 
-    cudaGraph_t captured_graph;
-    cuda_err = cudaStreamEndCapture((cudaStream_t)stream, &captured_graph);
-    if (cuda_err != cudaSuccess) {
-        wp::set_error_string("Failed to end graph capture: %d", cuda_err);
+    return success;
+}
+
+static bool apic_rebuild_cuda_graph(APICGraph* graph, CUstream stream)
+{
+    // Precondition: graph->operations_validated is true. Enforced by
+    // wp_apic_load_graph, which is the only path that produces an APICGraph.
+    if (graph->cuda_graph_exec) {
+        cudaGraphExecDestroy((cudaGraphExec_t)graph->cuda_graph_exec);
+        graph->cuda_graph_exec = nullptr;
+    }
+    if (graph->cuda_graph) {
+        cudaGraphDestroy((cudaGraph_t)graph->cuda_graph);
+        graph->cuda_graph = nullptr;
+    }
+
+    if (!apic_configure_kernel_cluster_attrs(graph))
+        return false;
+
+    // Use Warp's capture management (not a raw cudaStreamBeginCapture) so the
+    // allocator knows a capture is active. Extended ops (scan/sort/bsr) allocate
+    // CUB scratch during capture; the allocator only routes those allocs/frees
+    // to graph memory nodes when it sees an active Warp capture, otherwise it
+    // would cudaFreeAsync on the null stream and invalidate the capture.
+    if (!wp_cuda_graph_begin_capture(graph->cuda_context, (void*)stream, 0, WP_CUDA_GRAPH_CAPTURE_MODE_THREAD_LOCAL)) {
+        return false;
+    }
+
+    // Extended ops (SCAN/SORT/RUNLENGTH/BSR/MEMTILE) issue their kernels on the
+    // context's current stream rather than the passed stream. Point the current
+    // stream at the capture stream so they are recorded into the graph, then
+    // restore it after the replay loop.
+    void* prev_current_stream = wp_cuda_context_get_stream(graph->cuda_context);
+    wp_cuda_context_set_stream(graph->cuda_context, (void*)stream, 0);
+
+    // use_ptx is only consulted for IF/WHILE conditional kernels; loaded .wrp
+    // graphs use the cubin path for the JIT-compiled set-condition kernels.
+    bool success = apic_replay_ops_into_cuda_capture(
+        graph, stream, graph->operation_stream.data(), graph->operation_stream.size(), graph->operation_count,
+        graph->target_arch, false
+    );
+
+    wp_cuda_context_set_stream(graph->cuda_context, prev_current_stream, 0);
+
+    cudaGraph_t captured_graph = nullptr;
+    if (!wp_cuda_graph_end_capture(graph->cuda_context, (void*)stream, (void**)&captured_graph)) {
+        // wp_cuda_graph_end_capture terminates the capture on failure.
         return false;
     }
 
     if (!success) {
-        cudaGraphDestroy(captured_graph);
+        if (captured_graph)
+            cudaGraphDestroy(captured_graph);
         return false;
     }
 
@@ -597,14 +1017,13 @@ void* wp_apic_get_cuda_graph(APICGraph* graph)
     ContextGuard guard(graph->cuda_context);
 
     if (!graph->cuda_graph) {
-        CUstream stream;
-        CUresult res = cuStreamCreate_f(&stream, CU_STREAM_DEFAULT);
-        if (res != CUDA_SUCCESS) {
-            wp::set_error_string("Failed to create CUDA stream for graph rebuild: %d", res);
+        CUstream stream = (CUstream)wp_cuda_stream_create(graph->cuda_context, 0);
+        if (!stream) {
+            wp::set_error_string("Failed to create CUDA stream for graph rebuild");
             return nullptr;
         }
         bool success = apic_rebuild_cuda_graph(graph, stream);
-        cuStreamDestroy_f(stream);
+        wp_cuda_stream_destroy(graph->cuda_context, stream);
         if (!success)
             return nullptr;
     }

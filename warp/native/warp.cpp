@@ -339,6 +339,10 @@ void wp_memtile_host(void* dst, const void* src, size_t srcsize, size_t n)
         // don't auto-register a stray region for a possibly-null pointer.
         if (n == 0 || srcsize == 0)
             return;
+        // Guard the byte-span multiplication: an overflow would under-register
+        // the region and let replay write past the tracked bounds.
+        if (n > (~static_cast<size_t>(0)) / srcsize)
+            return;
         APICAddress addr = apic_resolve_host_ptr(state, (uint64_t)dst, srcsize * n);
         apic_record_memtile(state, addr.region_id, addr.offset, static_cast<uint32_t>(srcsize), src, n);
         return;
