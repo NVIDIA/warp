@@ -316,6 +316,14 @@ class BsrMatrix(Generic[_BlockType]):
     def _ensure_status(self) -> wp.array:
         status = self._status_if_any()
         if status is None or status.device != self.device:
+            if self.device.is_capturing and not self.device.is_cpu:
+                raise RuntimeError(
+                    "The BSR row-capacity status buffer must be allocated before a CUDA graph "
+                    "capture begins. Materialize the matrix outside the capture (e.g. via "
+                    "bsr_zeros() or bsr_set_zero() with the intended topology) before capturing. "
+                    "Allocating it during capture would produce a graph-scoped buffer that is "
+                    "invalid for host-side use once the capture ends."
+                )
             status = wp.zeros(shape=(1,), dtype=int, device=self.device)
             BsrMatrix.__setattr__(self, "_status", status)
 
@@ -323,6 +331,27 @@ class BsrMatrix(Generic[_BlockType]):
 
     def _status_if_any(self) -> wp.array | None:
         return getattr(self, "_status", None)
+
+    def _capacity_snapshot_if_any(self) -> wp.array | None:
+        return getattr(self, "_offsets_capacity", None)
+
+    def _refresh_capacity_snapshot(self) -> None:
+        # Snapshot the padded row-capacity offsets so a CUDA APIC capture can
+        # restore them on replay: the padded transpose reads these offsets as
+        # capacity but never writes them, and the native graph re-reads the live
+        # buffer, so a caller that resets the destination offsets before replay
+        # would otherwise lose the capacity layout (GH-1587). CUDA only -- the
+        # CPU byte-stream replay restores the capacity from the record instead.
+        # Must run outside a capture so the snapshot is a stable (non
+        # graph-scoped) allocation.
+        if self.device.is_cpu or self.device.is_capturing:
+            return
+        n = self.nrow + 1
+        snap = self._capacity_snapshot_if_any()
+        if snap is None or snap.device != self.device or snap.size < n:
+            snap = wp.empty(shape=(n,), dtype=int, device=self.device)
+            BsrMatrix.__setattr__(self, "_offsets_capacity", snap)
+        wp.copy(dest=snap, src=self.offsets, count=n)
 
     # Overloaded math operators
     def __add__(self, y):
@@ -537,6 +566,16 @@ def _bsr_set_zero_topology(
             bsr.offsets.zero_()
             nnz = 0
         _bsr_ensure_independent_row_counts(bsr, preserve_row_counts=False)
+        # Eagerly allocate the row-capacity status scalar while outside a CUDA
+        # graph capture, so padded ops recorded during a capture
+        # (bsr_set_transpose / bsr_set_from_triplets) find it already allocated.
+        # Allocating it mid-capture would create a graph-scoped buffer that is
+        # invalid for host-side use once the capture ends.
+        if not (bsr.device.is_capturing and not bsr.device.is_cpu):
+            bsr._ensure_status()
+            # Snapshot the capacity layout so a later CUDA capture can restore it
+            # (no-op on CPU and during capture; see _refresh_capacity_snapshot).
+            bsr._refresh_capacity_snapshot()
     else:
         bsr.offsets.zero_()
         _bsr_set_compact_row_counts(bsr)
@@ -930,9 +969,23 @@ def _bsr_set_from_triplets_native(
     nnz_buf: wp.array | None,
     nnz_event: wp.Event | None,
 ) -> None:
-    from warp._src.context import runtime  # noqa: PLC0415
+    from warp._src.context import _get_apic_capture_for_device, runtime  # noqa: PLC0415
 
     device = dest.device
+
+    # from_triplets does a host nnz readback (bsr_offsets[row_count]) after its own
+    # offset kernels, which cannot be captured into a CUDA graph and cannot be
+    # recorded into the APIC byte stream for replay. Reject under a CUDA APIC
+    # capture at this native choke point so direct and internal callers (bsr_mm,
+    # bsr_axpy, ...) are all caught before the device function runs. The CPU path
+    # records APIC_OP_BSR_FROM_TRIPLETS and is unaffected.
+    apic_capture = _get_apic_capture_for_device(device)
+    if device.is_cuda and apic_capture is not None:
+        raise NotImplementedError(
+            "APIC capture does not support bsr_set_from_triplets() on CUDA arrays: it requires a host nnz "
+            "readback that cannot be captured. Build the BSR topology outside the captured region."
+        )
+
     if device.is_cpu:
         native_func = runtime.core.wp_bsr_matrix_from_triplets_host
     else:
@@ -1234,10 +1287,10 @@ def bsr_set_from_triplets(
         values_3d = _as_3d_array(values, dest.block_shape) if values is not None else None
         zero_value_mask = _zero_value_masks.get(scalar_type, 0) if prune_numerical_zeros and values is not None else 0
 
-        from warp._src.context import runtime  # noqa: PLC0415
+        from warp._src.context import _get_apic_capture_for_device  # noqa: PLC0415
 
-        apic_capture = runtime._apic_capture if device.is_cpu else None
-        cpu_apic_capture = apic_capture is not None and apic_capture.device.is_cpu
+        apic_capture = _get_apic_capture_for_device(device) if device.is_cpu else None
+        cpu_apic_capture = apic_capture is not None
 
         compact_offsets = wp.empty(shape=(dest.nrow + 1,), dtype=wp.int32, device=device)
         compact_columns = wp.empty(shape=(nnz,), dtype=wp.int32, device=device)
@@ -1347,10 +1400,10 @@ def bsr_set_from_triplets(
     apic_capture = None
     cpu_apic_capture = False
     if device.is_cpu:
-        from warp._src.context import runtime  # noqa: PLC0415
+        from warp._src.context import _get_apic_capture_for_device  # noqa: PLC0415
 
-        apic_capture = runtime._apic_capture
-        cpu_apic_capture = apic_capture is not None and apic_capture.device.is_cpu
+        apic_capture = _get_apic_capture_for_device(device)
+        cpu_apic_capture = apic_capture is not None
 
     nnz_buf, nnz_event = dest._setup_nnz_transfer()
     needs_summed_triplets = values is not None or cpu_apic_capture
@@ -2576,7 +2629,7 @@ def bsr_set_transpose(
 
         _bsr_ensure_independent_row_counts(dest)
 
-        from warp._src.context import runtime  # noqa: PLC0415
+        from warp._src.context import _get_apic_capture_for_device, runtime  # noqa: PLC0415
 
         if dest.values.device.is_cpu:
             native_func = runtime.core.wp_bsr_transpose_host
@@ -2585,19 +2638,32 @@ def bsr_set_transpose(
 
         dest_nnz = dest.columns.size
         block_index_map = wp.empty(shape=max(dest_nnz, 2 * nnz), dtype=int, device=src.device)
-        if dest.values.device.is_cpu:
-            apic_capture = runtime._apic_capture
-            if apic_capture is not None and apic_capture.device.is_cpu:
-                apic_capture.track_array(src.offsets)
-                if src.row_counts is not None:
-                    apic_capture.track_array(src.row_counts)
-                apic_capture.track_array(src.columns)
-                apic_capture.track_array(dest.offsets)
-                apic_capture.track_array(dest.row_counts)
-                apic_capture.track_array(dest.columns)
-                apic_capture.track_array(block_index_map)
-                apic_capture.track_array(status)
+        # The transpose records an APIC_OP_BSR_TRANSPOSE op under capture (CPU
+        # record-only, CUDA record-and-execute). Track the input/output base
+        # regions first so the recorded op references real region IDs.
+        apic_capture = _get_apic_capture_for_device(dest.values.device)
+        restore_capacity = None
+        if apic_capture is not None:
+            apic_capture.track_array(src.offsets)
+            if src.row_counts is not None:
+                apic_capture.track_array(src.row_counts)
+            apic_capture.track_array(src.columns)
+            apic_capture.track_array(dest.offsets)
+            apic_capture.track_array(dest.row_counts)
+            apic_capture.track_array(dest.columns)
+            apic_capture.track_array(block_index_map)
+            apic_capture.track_array(status)
+            # On CUDA the captured graph re-reads the destination capacity offsets
+            # in place at replay, so restore them from a stable snapshot before the
+            # transpose runs (GH-1587). The CPU byte-stream replay restores the
+            # capacity from the recorded op and needs no such copy.
+            if not dest.device.is_cpu:
+                restore_capacity = dest._capacity_snapshot_if_any()
+                if restore_capacity is not None:
+                    apic_capture.track_array(restore_capacity)
         with wp.ScopedDevice(dest.device):
+            if restore_capacity is not None:
+                wp.copy(dest=dest.offsets, src=restore_capacity, count=dest.nrow + 1)
             native_func(
                 src.nrow,
                 src.ncol,
@@ -2650,7 +2716,7 @@ def bsr_set_transpose(
         # Increase dest array sizes if needed
         _bsr_ensure_fits(dest, nnz=nnz)
 
-        from warp._src.context import runtime  # noqa: PLC0415
+        from warp._src.context import _get_apic_capture_for_device, runtime  # noqa: PLC0415
 
         if dest.values.device.is_cpu:
             native_func = runtime.core.wp_bsr_transpose_host
@@ -2659,22 +2725,25 @@ def bsr_set_transpose(
 
         block_index_map = wp.empty(shape=2 * nnz, dtype=int, device=src.device)
 
-        if dest.values.device.is_cpu:
-            # On CPU the transpose dispatches to wp_bsr_transpose_host, which
-            # records an APIC_OP_BSR_TRANSPOSE op under capture. Track the
-            # input/output base regions first so the recorded op references real
-            # region IDs.
-            apic_capture = runtime._apic_capture
-            if apic_capture is not None and apic_capture.device.is_cpu:
-                apic_capture.track_array(src.offsets)
-                if src.row_counts is not None:
-                    apic_capture.track_array(src.row_counts)
-                apic_capture.track_array(src.columns)
-                apic_capture.track_array(dest.offsets)
-                if dest.row_counts is not None:
-                    apic_capture.track_array(dest.row_counts)
-                apic_capture.track_array(dest.columns)
-                apic_capture.track_array(block_index_map)
+        # The transpose dispatches to wp_bsr_transpose_host/device, which records an
+        # APIC_OP_BSR_TRANSPOSE op under capture (CPU record-only, CUDA
+        # record-and-execute). Track the input/output base regions first so the
+        # recorded op references real region IDs.
+        apic_capture = _get_apic_capture_for_device(dest.values.device)
+        if apic_capture is not None:
+            apic_capture.track_array(src.offsets)
+            if src.row_counts is not None:
+                apic_capture.track_array(src.row_counts)
+            apic_capture.track_array(src.columns)
+            apic_capture.track_array(dest.offsets)
+            if dest.row_counts is not None:
+                apic_capture.track_array(dest.row_counts)
+            apic_capture.track_array(dest.columns)
+            apic_capture.track_array(block_index_map)
+            # CPU capture records-only (the transpose does not execute now), so dest
+            # nnz is unavailable until replay; flag it so nnz_sync raises. CUDA
+            # capture executes the transpose live, so nnz is available -- no defer.
+            if dest.values.device.is_cpu:
                 _mark_apic_deferred_nnz_update(dest, apic_capture)
 
         with wp.ScopedDevice(dest.device):

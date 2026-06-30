@@ -84,6 +84,24 @@ def test_runlength_encode_error_run_count_unsupported_dtype(test, device):
         runlength_encode(values, run_values, run_lengths, run_count=run_count)
 
 
+def test_runlength_encode_error_negative_value_count(test, device):
+    # A negative value_count must be rejected in Python before reaching the
+    # native path (which would otherwise leave outputs untouched, and in
+    # host-return mode return a stale/uninitialized count).
+    values = wp.zeros(8, dtype=int, device=device)
+    run_values = wp.empty(8, dtype=int, device=device)
+    run_lengths = wp.empty(8, dtype=int, device=device)
+    run_count = wp.empty(shape=(1,), dtype=int, device=device)
+
+    # Explicit run_count.
+    with test.assertRaisesRegex(RuntimeError, r"value_count must be non-negative, got -1$"):
+        runlength_encode(values, run_values, run_lengths, run_count=run_count, value_count=-1)
+
+    # Host-return mode (no run_count).
+    with test.assertRaisesRegex(RuntimeError, r"value_count must be non-negative, got -5$"):
+        runlength_encode(values, run_values, run_lengths, value_count=-5)
+
+
 def test_runlength_encode_error_unsupported_dtype(test, device):
     values = wp.zeros(123, dtype=float, device=device)
     run_values = wp.empty(123, dtype=float, device=device)
@@ -175,6 +193,12 @@ add_function_test(
     TestRunlengthEncode,
     "test_runlength_encode_error_unsupported_dtype",
     test_runlength_encode_error_unsupported_dtype,
+    devices=devices,
+)
+add_function_test(
+    TestRunlengthEncode,
+    "test_runlength_encode_error_negative_value_count",
+    test_runlength_encode_error_negative_value_count,
     devices=devices,
 )
 

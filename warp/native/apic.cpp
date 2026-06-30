@@ -669,14 +669,22 @@ void apic_record_bsr_transpose(
     int32_t block_indices_region_id,
     uint64_t block_indices_offset,
     int32_t status_region_id,
-    uint64_t status_offset
+    uint64_t status_offset,
+    const int32_t* padded_capacity_offsets,
+    int32_t padded_capacity_offset_count
 )
 {
     if (!state)
         return;
+    // Snapshot the padded destination's row-capacity offsets (read-only input
+    // the padded transpose never writes) so replay can restore them; compact
+    // destinations recompute the offsets and append no tail (GH-1587).
+    uint32_t tail_bytes = (padded_capacity_offsets && padded_capacity_offset_count > 0)
+        ? static_cast<uint32_t>(padded_capacity_offset_count) * static_cast<uint32_t>(sizeof(int32_t))
+        : 0;
     APICBsrTransposeRecord rec = {};
     rec.header.op_type = APIC_OP_BSR_TRANSPOSE;
-    rec.header.total_size = sizeof(rec);
+    rec.header.total_size = static_cast<uint32_t>(sizeof(rec)) + tail_bytes;
     rec.row_count = row_count;
     rec.col_count = col_count;
     rec.nnz_upper_bound = nnz_upper_bound;
@@ -697,6 +705,8 @@ void apic_record_bsr_transpose(
     rec.block_indices_offset = block_indices_offset;
     rec.status_offset = status_offset;
     state->append_bytes(&rec, sizeof(rec));
+    if (tail_bytes)
+        state->append_bytes(padded_capacity_offsets, tail_bytes);
     state->operation_count++;
 }
 
@@ -856,7 +866,11 @@ void apic_register_cpu_mesh(APICState* state, uint64_t mesh_id)
 
 #if !WP_ENABLE_CUDA
 // Non-CUDA build: mesh_id is always a host pointer (no descriptor table).
-void wp_apic_register_mesh(APICState* state, uint64_t mesh_id) { apic_register_cpu_mesh(state, mesh_id); }
+bool wp_apic_register_mesh(APICState* state, uint64_t mesh_id)
+{
+    apic_register_cpu_mesh(state, mesh_id);
+    return true;
+}
 #endif  // !WP_ENABLE_CUDA
 
 // ============================================================================
@@ -1201,13 +1215,6 @@ static bool apic_is_scan_dtype(uint8_t dtype)
 {
     return dtype == APIC_TYPE_INT32 || dtype == APIC_TYPE_FLOAT32 || dtype == APIC_TYPE_INT64
         || dtype == APIC_TYPE_FLOAT64;
-}
-
-static size_t apic_strided_access_bytes(uint32_t length, int32_t stride, int32_t type_len, size_t scalar_size)
-{
-    if (length == 0 || stride < 0 || type_len <= 0 || scalar_size == 0)
-        return 0;
-    return static_cast<size_t>(length - 1) * static_cast<size_t>(stride) + static_cast<size_t>(type_len) * scalar_size;
 }
 
 static bool apic_is_radix_dtype(uint8_t dtype)
@@ -2123,6 +2130,15 @@ static bool apic_cpu_replay_stream(
                 fprintf(stderr, "APIC: Error - bsr-transpose pointer resolution failed at operation %u\n", i);
                 return false;
             }
+            // Restore the padded destination's row-capacity offsets recorded at
+            // capture time, so replay reconstructs the destination even if the
+            // caller reset its offsets buffer before capture_launch. Compact
+            // transposes recompute the offsets and carry no tail (GH-1587).
+            if (rec->transposed_row_counts_region_id >= 0) {
+                size_t tail_bytes = static_cast<size_t>(rec->header.total_size) - sizeof(APICBsrTransposeRecord);
+                if (tail_bytes >= colp1_bytes)
+                    memcpy(t_offsets, ptr + sizeof(APICBsrTransposeRecord), colp1_bytes);
+            }
             // g_apic_state is null during replay, so this executes the real
             // transpose. Same entry point wp.sparse.bsr_set_transpose uses.
             wp_bsr_transpose_host(
@@ -2290,12 +2306,23 @@ static void apic_write_string_nc(std::vector<uint8_t>& buf, const std::string& s
     }
 }
 
-bool wp_apic_state_save(APICState* state, const char* path, int target_arch)
+bool wp_apic_state_save(APICState* state, const char* path, int target_arch, void* context)
 {
     if (!state || !path) {
         fprintf(stderr, "APIC: Null %s passed to wp_apic_state_save\n", !state ? "state" : "path");
         return false;
     }
+
+#if WP_ENABLE_CUDA
+    // Snapshot device regions auto-registered by native hooks (and thus absent
+    // from Python's capture_save snapshot of apic_capture._regions) so a saved
+    // CUDA graph carries their initial data. CPU saves (target_arch == 0) skip this.
+    // Abort the save if a snapshot fails rather than emit a region missing its data.
+    if (target_arch != 0 && !apic_snapshot_device_regions(state, context))
+        return false;  // error string set by apic_snapshot_device_regions
+#else
+    (void)context;
+#endif
 
     // Build metadata
     std::vector<uint8_t> metadata_section;

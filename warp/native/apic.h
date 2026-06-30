@@ -110,8 +110,10 @@ WP_API void wp_apic_register_ptr_location(APICState* state, uint32_t region_id, 
 
 // Register a mesh for serialization. Looks up the mesh by ID in the global
 // mesh descriptor table, registers its arrays as memory regions with initial
-// data, and stores an APICMeshRecord for the save path.
-WP_API void wp_apic_register_mesh(APICState* state, uint64_t mesh_id);
+// data, and stores an APICMeshRecord for the save path. Returns false (with an
+// error string set) if a device-to-host snapshot of a mesh array fails, so the
+// caller can abort the save rather than record a mesh missing its data.
+WP_API bool wp_apic_register_mesh(APICState* state, uint64_t mesh_id);
 
 // =============================================================================
 // Conditional / Loop ops (APIC_OP_IF / APIC_OP_WHILE)
@@ -173,8 +175,10 @@ WP_API bool wp_apic_cpu_replay_graph(APICGraph* graph);
 // Serialization: Save to .wrp file
 // =============================================================================
 
-// Returns true on success, false on failure
-WP_API bool wp_apic_state_save(APICState* state, const char* path, int target_arch);
+// Returns true on success, false on failure. ``context`` is the CUDA context for
+// device-region D2H snapshotting on CUDA saves (target_arch != 0); pass null for
+// CPU saves.
+WP_API bool wp_apic_state_save(APICState* state, const char* path, int target_arch, void* context);
 
 // State queries
 WP_API uint32_t wp_apic_get_operation_count(APICState* state);

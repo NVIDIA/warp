@@ -100,20 +100,21 @@ def array_scan(in_array: wp.array, out_array: wp.array, inclusive: bool = True) 
     in_stride = in_array.strides[0] if in_array.ndim == 1 and not in_array.is_contiguous else dtype_size
     out_stride = out_array.strides[0] if out_array.ndim == 1 and not out_array.is_contiguous else dtype_size
 
-    from warp._src.context import runtime  # noqa: PLC0415
+    from warp._src.context import _get_apic_capture_for_device, runtime  # noqa: PLC0415
+
+    # array_scan is recorded into the APIC byte stream on both CPU (record-only)
+    # and CUDA (record-and-execute) captures. Track both arrays' base regions so
+    # the recorded op references real region IDs and capture_save can bind them by
+    # name. Gate on the capture device matching the array device (the capture
+    # singleton is shared across CPU and CUDA captures).
+    apic_capture = _get_apic_capture_for_device(in_array.device)
+    if apic_capture is not None:
+        if in_stride < 0 or out_stride < 0:
+            raise NotImplementedError("APIC capture does not yet support array_scan() with negative strides")
+        apic_capture.track_array(in_array)
+        apic_capture.track_array(out_array)
 
     if in_array.device.is_cpu:
-        # CPU scan recording requires both arrays' base regions to be tracked
-        # so the captured op references real region IDs (and so capture_save
-        # can bind them by name). Register only when a CPU APIC capture is active.
-        apic_capture = runtime._apic_capture
-        if apic_capture is not None and apic_capture.device.is_cpu:
-            if in_stride < 0 or out_stride < 0:
-                raise NotImplementedError(
-                    "APIC capture does not yet support array_scan() on CPU arrays with negative strides"
-                )
-            apic_capture.track_array(in_array)
-            apic_capture.track_array(out_array)
         if scalar_type == wp.int32:
             native_func = runtime.core.wp_array_scan_int_host
         elif scalar_type == wp.int64:
@@ -206,16 +207,17 @@ def radix_sort_pairs(
     if key_bit_width is not None and begin_bit == end_bit:
         return
 
-    from warp._src.context import runtime  # noqa: PLC0415
+    from warp._src.context import _get_apic_capture_for_device, runtime  # noqa: PLC0415
+
+    # Both CPU (record-only) and CUDA (record-and-execute) APIC captures record an
+    # APIC_OP_RADIX_SORT op. Track keys/values base regions first so the recorded
+    # op references real region IDs and capture_save can bind them by name.
+    apic_capture = _get_apic_capture_for_device(keys.device)
+    if apic_capture is not None:
+        apic_capture.track_array(keys)
+        apic_capture.track_array(values)
 
     if keys.device.is_cpu:
-        # CPU radix sort dispatches to a host function that records an
-        # APIC_OP_RADIX_SORT op under capture. Track keys/values base regions
-        # first so the recorded op references real region IDs.
-        apic_capture = runtime._apic_capture
-        if apic_capture is not None and apic_capture.device.is_cpu:
-            apic_capture.track_array(keys)
-            apic_capture.track_array(values)
         if keys.dtype == wp.int32:
             runtime.core.wp_radix_sort_pairs_int_host(keys.ptr, values.ptr, count, begin_bit, end_bit, value_size)
         elif keys.dtype == wp.uint32:
@@ -289,7 +291,7 @@ def segmented_sort_pairs(
     if keys.size < 2 * count or values.size < 2 * count:
         raise RuntimeError("Array storage must be large enough to contain 2*count elements")
 
-    from warp._src.context import runtime  # noqa: PLC0415
+    from warp._src.context import _get_apic_capture_for_device, runtime  # noqa: PLC0415
 
     if segment_start_indices.dtype != wp.int32:
         raise RuntimeError("segment_start_indices array must be of type int32")
@@ -310,18 +312,18 @@ def segmented_sort_pairs(
         segment_end_indices_ptr = segment_end_indices.ptr
         segment_start_indices_ptr = segment_start_indices.ptr
 
+    # Both CPU (record-only) and CUDA (record-and-execute) APIC captures record an
+    # APIC_OP_SEGMENTED_SORT op. Track the keys/values/segment base regions first
+    # so the recorded op references real region IDs and capture_save can bind them
+    # by name (the capture singleton is shared across CPU and CUDA captures).
+    apic_capture = _get_apic_capture_for_device(keys.device)
+    if apic_capture is not None:
+        apic_capture.track_array(keys)
+        apic_capture.track_array(values)
+        apic_capture.track_array(segment_start_indices)
+        apic_capture.track_array(segment_end_indices)
+
     if keys.device.is_cpu:
-        # CPU segmented sort dispatches to a host function that records an
-        # APIC_OP_SEGMENTED_SORT op under capture. Track the keys/values/segment
-        # base regions first so the recorded op references real region IDs (and
-        # so capture_save can bind them by name). Only when a CPU APIC capture is
-        # active — the capture singleton is shared with CUDA captures.
-        apic_capture = runtime._apic_capture
-        if apic_capture is not None and apic_capture.device.is_cpu:
-            apic_capture.track_array(keys)
-            apic_capture.track_array(values)
-            apic_capture.track_array(segment_start_indices)
-            apic_capture.track_array(segment_end_indices)
         if keys.dtype == wp.int32 and values.dtype == wp.int32:
             runtime.core.wp_segmented_sort_pairs_int_host(
                 keys.ptr,
@@ -390,13 +392,16 @@ def runlength_encode(
         Number of runs if ``run_count`` is ``None``, otherwise returns the ``run_count`` array.
 
     Raises:
-        RuntimeError: If array storage devices don't match, if storage size is insufficient, or if data types are unsupported.
+        RuntimeError: If array storage devices don't match, if storage size is insufficient, if data types are
+          unsupported, or if ``value_count`` is negative.
     """
     if run_values.device != values.device or run_lengths.device != values.device:
         raise RuntimeError("run_values, run_lengths and values storage devices do not match")
 
     if value_count is None:
         value_count = values.size
+    elif value_count < 0:
+        raise RuntimeError(f"value_count must be non-negative, got {value_count}")
 
     if run_values.size < value_count or run_lengths.size < value_count:
         raise RuntimeError(f"Output array storage sizes must be at least equal to value_count ({value_count})")
@@ -409,17 +414,20 @@ def runlength_encode(
     if run_lengths.dtype != wp.int32:
         raise RuntimeError("run_lengths array must be of type int32")
 
-    from warp._src.context import runtime  # noqa: PLC0415
+    from warp._src.context import _get_apic_capture_for_device, runtime  # noqa: PLC0415
 
-    apic_capture = runtime._apic_capture if values.device.is_cpu else None
-    cpu_apic_capture = apic_capture is not None and apic_capture.device.is_cpu
+    apic_capture = _get_apic_capture_for_device(values.device)
+    active_apic_capture = apic_capture is not None
 
-    # User can provide a device output array for storing the number of runs
-    # For convenience, if no such array is provided, number of runs is returned on host
+    # User can provide a device output array for storing the number of runs.
+    # For convenience, if no such array is provided, the number of runs is returned
+    # on host. That host-return form needs a D2H readback, which cannot be recorded
+    # into an APIC byte stream (CPU record-only or CUDA record-and-execute), so
+    # require an explicit run_count under any matching-device APIC capture.
     if run_count is None:
         if value_count == 0:
             return 0
-        if cpu_apic_capture:
+        if active_apic_capture:
             raise NotImplementedError("APIC capture requires runlength_encode() to receive an explicit run_count array")
         run_count = wp.empty(shape=(1,), dtype=int, device=values.device)
         host_return = True
@@ -433,15 +441,16 @@ def runlength_encode(
             return run_count
         host_return = False
 
+    # Both CPU (record-only) and CUDA (record-and-execute) APIC captures record an
+    # APIC_OP_RUNLENGTH_ENCODE op. Track the base regions first so the recorded op
+    # references real region IDs and capture_save can bind them by name.
+    if active_apic_capture:
+        apic_capture.track_array(values)
+        apic_capture.track_array(run_values)
+        apic_capture.track_array(run_lengths)
+        apic_capture.track_array(run_count)
+
     if values.device.is_cpu:
-        # CPU run-length-encode dispatches to a host function that records an
-        # APIC_OP_RUNLENGTH_ENCODE op under capture. Track the base regions first
-        # so the recorded op references real region IDs.
-        if cpu_apic_capture:
-            apic_capture.track_array(values)
-            apic_capture.track_array(run_values)
-            apic_capture.track_array(run_lengths)
-            apic_capture.track_array(run_count)
         if values.dtype == wp.int32:
             runtime.core.wp_runlength_encode_int_host(
                 values.ptr, run_values.ptr, run_lengths.ptr, run_count.ptr, value_count

@@ -4,6 +4,8 @@
 #include "builtin.h"
 #include "warp.h"
 
+#include "apic.h"
+#include "apic_internal.h"
 #include "cuda_util.h"
 #include "sparse_util.h"
 #include "temp_buffer.h"
@@ -1309,6 +1311,71 @@ WP_API void wp_bsr_matrix_from_triplets_device(
     }
 }
 
+// Record-and-execute a BSR transpose under CUDA APIC capture: record the source
+// and (output) transposed region addresses into the byte stream, then fall
+// through so the live transpose issues onto the captured stream. Mirror of
+// apic_capture_bsr_transpose in sparse.cpp, device-scoped and non-skipping. The
+// transpose does only D2D copies + a CUB sort + temp allocs (no host readback),
+// so it is fully capturable. No-op outside a CUDA APIC capture.
+static void apic_capture_bsr_transpose_device(
+    int row_count,
+    int col_count,
+    int nnz,
+    const int* bsr_offsets,
+    const int* bsr_row_counts,
+    const int* bsr_columns,
+    int* transposed_bsr_offsets,
+    int* transposed_bsr_row_counts,
+    int* transposed_bsr_columns,
+    int* src_block_indices,
+    int* status
+)
+{
+    APICState* state = wp_apic_get_cuda_recording_state();
+    if (!state || nnz <= 0)
+        return;
+    if (!bsr_offsets || !bsr_columns || !transposed_bsr_offsets || !transposed_bsr_columns || !src_block_indices)
+        return;
+
+    uint64_t int_bytes = static_cast<uint64_t>(nnz) * sizeof(int32_t);
+    uint64_t rowp1_bytes = (static_cast<uint64_t>(row_count) + 1) * sizeof(int32_t);
+    uint64_t colp1_bytes = (static_cast<uint64_t>(col_count) + 1) * sizeof(int32_t);
+    // transposed_bsr_offsets is a device buffer holding the padded capacity (for
+    // padded destinations) that the live CUDA replay re-reads in place, so no
+    // host-side capacity snapshot is recorded here (unlike the CPU path, which
+    // snapshots it for byte-stream replay -- GH-1587).
+    uint64_t block_indices_bytes = int_bytes;
+
+    APICAddress bo_addr = apic_resolve_live_ptr(state, reinterpret_cast<uint64_t>(bsr_offsets), rowp1_bytes);
+    APICAddress brc_addr;
+    if (bsr_row_counts)
+        brc_addr = apic_resolve_live_ptr(
+            state, reinterpret_cast<uint64_t>(bsr_row_counts), static_cast<uint64_t>(row_count) * sizeof(int32_t)
+        );
+    APICAddress bc_addr = apic_resolve_live_ptr(state, reinterpret_cast<uint64_t>(bsr_columns), int_bytes);
+    APICAddress to_addr = apic_resolve_live_ptr(state, reinterpret_cast<uint64_t>(transposed_bsr_offsets), colp1_bytes);
+    APICAddress trc_addr;
+    if (transposed_bsr_row_counts)
+        trc_addr = apic_resolve_live_ptr(
+            state, reinterpret_cast<uint64_t>(transposed_bsr_row_counts),
+            static_cast<uint64_t>(col_count) * sizeof(int32_t)
+        );
+    APICAddress tc_addr
+        = apic_resolve_live_ptr(state, reinterpret_cast<uint64_t>(transposed_bsr_columns), block_indices_bytes);
+    APICAddress bi_addr
+        = apic_resolve_live_ptr(state, reinterpret_cast<uint64_t>(src_block_indices), block_indices_bytes);
+    APICAddress status_addr;
+    if (status)
+        status_addr = apic_resolve_live_ptr(state, reinterpret_cast<uint64_t>(status), sizeof(int32_t));
+
+    apic_record_bsr_transpose(
+        state, row_count, col_count, nnz, bo_addr.region_id, bo_addr.offset, brc_addr.region_id, brc_addr.offset,
+        bc_addr.region_id, bc_addr.offset, to_addr.region_id, to_addr.offset, trc_addr.region_id, trc_addr.offset,
+        tc_addr.region_id, tc_addr.offset, bi_addr.region_id, bi_addr.offset, status_addr.region_id, status_addr.offset,
+        nullptr, 0
+    );
+}
+
 WP_API void wp_bsr_transpose_device(
     int row_count,
     int col_count,
@@ -1325,6 +1392,11 @@ WP_API void wp_bsr_transpose_device(
 {
     void* context = wp_cuda_context_get_current();
     ContextGuard guard(context);
+
+    apic_capture_bsr_transpose_device(
+        row_count, col_count, nnz, bsr_offsets, bsr_row_counts, bsr_columns, transposed_bsr_offsets,
+        transposed_bsr_row_counts, transposed_bsr_columns, src_block_indices, status
+    );
 
     cudaStream_t stream = static_cast<cudaStream_t>(wp_cuda_stream_get_current());
     const bool padded = transposed_bsr_row_counts != nullptr;

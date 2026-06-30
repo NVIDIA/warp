@@ -43,6 +43,18 @@ inline uint32_t apic_type_size(uint8_t dtype)
     }
 }
 
+// Byte span touched by a strided array_scan operand: the last element starts at
+// (length-1)*stride scalars and spans type_len scalars. Returns 0 for an empty
+// or malformed descriptor (length 0, negative stride, non-positive type_len, or
+// unknown scalar size). Shared by the scan capture/replay paths (apic.cpp) and
+// the CUDA rebuild (apic.cu).
+inline size_t apic_strided_access_bytes(uint32_t length, int32_t stride, int32_t type_len, size_t scalar_size)
+{
+    if (length == 0 || stride < 0 || type_len <= 0 || scalar_size == 0)
+        return 0;
+    return static_cast<size_t>(length - 1) * static_cast<size_t>(stride) + static_cast<size_t>(type_len) * scalar_size;
+}
+
 namespace apic_detail {
 
 constexpr size_t launch_bounds_align8(size_t offset) { return (offset + 7) & ~size_t(7); }
@@ -369,7 +381,10 @@ void apic_record_bsr_from_triplets(
     uint64_t bsr_nnz_offset
 );
 
-// Records a wp_bsr_transpose_host() call.
+// Records a wp_bsr_transpose_host() call. For padded destinations,
+// ``padded_capacity_offsets`` carries a ``padded_capacity_offset_count`` int32
+// snapshot of the destination row-capacity layout so replay can restore it
+// (pass nullptr / 0 for compact destinations, which recompute the offsets).
 void apic_record_bsr_transpose(
     APICState* state,
     int32_t row_count,
@@ -390,7 +405,9 @@ void apic_record_bsr_transpose(
     int32_t block_indices_region_id,
     uint64_t block_indices_offset,
     int32_t status_region_id,
-    uint64_t status_offset
+    uint64_t status_offset,
+    const int32_t* padded_capacity_offsets,
+    int32_t padded_capacity_offset_count
 );
 
 // ----- Pointer resolution (for memcpy/memset hooks that receive raw pointers) -----
@@ -511,6 +528,13 @@ void apic_fixup_ptr_locations(APICGraph* graph);
 // Reads uint64_t at (base + offset), remaps via graph->handle_ptr_remap,
 // writes back. Returns false on cudaMemcpy failure.
 bool apic_fixup_handle_cuda(APICGraph* graph, uint8_t* base, uint64_t offset);
+
+// D2H-snapshot auto-registered device regions (present in regions_by_id but
+// missing from memory_regions) into memory_regions before serialization, so a
+// saved CUDA graph carries their initial data. Called from wp_apic_state_save.
+// Returns false (with an error string set) if a region's device-to-host copy
+// fails, so the save is aborted rather than emit a region missing initial data.
+bool apic_snapshot_device_regions(APICState* state, void* context);
 
 // Host-to-device copy for wp_apic_set_param on CUDA graphs.
 bool apic_set_param_cuda(APICGraph* graph, void* dst, const void* src, size_t size);

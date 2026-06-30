@@ -234,7 +234,7 @@ def test_graph_fill_noncontiguous_cpu_rejected(test, device):
 def test_graph_fill_indexed_cpu_rejected(test, device):
     # Indexedarray.fill_() during CPU APIC capture has no recording path yet.
     if not device.is_cpu:
-        test.skipTest("CPU-only: CUDA indexed fills go through wp_array_fill_device")
+        test.skipTest("CPU-only: CUDA indexed fill APIC rejection is covered in test_apic")
     arr = wp.zeros(8, dtype=wp.int32, device=device)
     idx = wp.array([0, 2, 4, 6], dtype=wp.int32, device=device)
     indexed = wp.indexedarray(arr, [idx])

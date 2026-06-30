@@ -10,7 +10,7 @@
 // APIC Format Constants
 // =============================================================================
 
-#define APIC_FORMAT_VERSION 13
+#define APIC_FORMAT_VERSION 14
 #define APIC_MIN_SUPPORTED_FORMAT_VERSION 13
 #define APIC_MAGIC "WRP1"
 #define APIC_MAGIC_VALUE 0x31505257  // "WRP1" as little-endian uint32
@@ -414,6 +414,14 @@ struct APICBsrFromTripletsRecord {
 // the recorded _bsr_transpose_values kernel reads) from the current source
 // topology. Same rationale as APICBsrFromTripletsRecord. Buffer sizes derive
 // from ``nnz_upper_bound`` and row/col counts.
+//
+// For padded destinations (``transposed_row_counts_region_id >= 0``) the
+// transpose reads ``transposed_offsets`` as the fixed row-capacity layout but
+// never writes it, so a ``col_count + 1`` int32 snapshot of that capacity is
+// appended after the fixed record (format version >= 14). Replay restores it
+// into the destination offsets before executing, so the captured graph rebuilds
+// the destination even if the caller reset its offsets buffer before replay
+// (GH-1587). Compact destinations recompute the offsets and append no tail.
 struct APICBsrTransposeRecord {
     APICOpHeader header;  // op_type = APIC_OP_BSR_TRANSPOSE
     int32_t row_count;

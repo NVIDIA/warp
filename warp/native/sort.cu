@@ -3,6 +3,8 @@
 
 #include "warp.h"
 
+#include "apic.h"
+#include "apic_internal.h"
 #include "cuda_util.h"
 #include "error.h"
 #include "sort.h"
@@ -145,8 +147,64 @@ void radix_sort_pairs_device(void* context, uint64_t* keys, int* values, int n, 
     radix_sort_pairs_device_dispatch_value(context, keys, values, n, begin_bit, end_bit, sizeof(int));
 }
 
+// Record-and-execute a radix sort under CUDA APIC capture: record params into
+// the byte stream, then fall through so the live sort issues onto the captured
+// stream. Mirror of apic_capture_radix_sort in sort.cpp, but device-scoped and
+// non-skipping (the CUDA op must execute so the driver captures it into the
+// native graph; the byte stream carries it for persistent .wrp save/load).
+// No-op outside a CUDA APIC capture and during graph rebuild.
+static void apic_capture_radix_sort_device(
+    uint64_t keys, uint64_t values, int n, int begin_bit, int end_bit, int value_size, uint8_t dtype, uint64_t key_size
+)
+{
+    APICState* state = wp_apic_get_cuda_recording_state();
+    if (!state || n <= 0)
+        return;
+    if (value_size != 4 && value_size != 8)
+        return;
+    uint64_t keys_bytes = static_cast<uint64_t>(2) * static_cast<uint64_t>(n) * key_size;
+    uint64_t values_bytes = static_cast<uint64_t>(2) * static_cast<uint64_t>(n) * static_cast<uint64_t>(value_size);
+    APICAddress keys_addr = apic_resolve_live_ptr(state, keys, keys_bytes);
+    APICAddress values_addr = apic_resolve_live_ptr(state, values, values_bytes);
+    apic_record_radix_sort(
+        state, keys_addr.region_id, keys_addr.offset, values_addr.region_id, values_addr.offset,
+        static_cast<uint32_t>(n), begin_bit, end_bit, value_size, dtype
+    );
+}
+
+// Record-and-execute a segmented sort under CUDA APIC capture. Mirror of
+// apic_capture_segmented_sort in sort.cpp, device-scoped and non-skipping.
+static void apic_capture_segmented_sort_device(
+    uint64_t keys, uint64_t values, int n, uint64_t segment_start, uint64_t segment_end, int num_segments, uint8_t dtype
+)
+{
+    APICState* state = wp_apic_get_cuda_recording_state();
+    if (!state || n <= 0)
+        return;
+    // keys/values span 2*n elements (sort scratch). Keys are int32 or float32
+    // (both 4 bytes); values are always int32.
+    uint64_t kv_bytes = static_cast<uint64_t>(2) * static_cast<uint64_t>(n) * sizeof(uint32_t);
+    // Inferred-end captures alias segment_end into the start array one element
+    // in, so the start array spans num_segments+1 entries; explicit-end captures
+    // use two separate num_segments-entry arrays. Match the recorded span.
+    bool inferred_end = (segment_end == segment_start + sizeof(int32_t));
+    uint64_t segstart_count = static_cast<uint64_t>(num_segments) + (inferred_end ? 1u : 0u);
+    uint64_t segstart_bytes = segstart_count * sizeof(int32_t);
+    uint64_t segend_bytes = static_cast<uint64_t>(num_segments) * sizeof(int32_t);
+    APICAddress keys_addr = apic_resolve_live_ptr(state, keys, kv_bytes);
+    APICAddress values_addr = apic_resolve_live_ptr(state, values, kv_bytes);
+    APICAddress segstart_addr = apic_resolve_live_ptr(state, segment_start, segstart_bytes);
+    APICAddress segend_addr = apic_resolve_live_ptr(state, segment_end, segend_bytes);
+    apic_record_segmented_sort(
+        state, keys_addr.region_id, keys_addr.offset, values_addr.region_id, values_addr.offset,
+        segstart_addr.region_id, segstart_addr.offset, segend_addr.region_id, segend_addr.offset,
+        static_cast<uint32_t>(n), static_cast<uint32_t>(num_segments), dtype
+    );
+}
+
 void wp_radix_sort_pairs_int_device(uint64_t keys, uint64_t values, int n, int begin_bit, int end_bit, int value_size)
 {
+    apic_capture_radix_sort_device(keys, values, n, begin_bit, end_bit, value_size, APIC_TYPE_INT32, sizeof(int32_t));
     radix_sort_pairs_device_dispatch_value(
         WP_CURRENT_CONTEXT, reinterpret_cast<int*>(keys), reinterpret_cast<void*>(values), n, begin_bit, end_bit,
         value_size
@@ -155,6 +213,7 @@ void wp_radix_sort_pairs_int_device(uint64_t keys, uint64_t values, int n, int b
 
 void wp_radix_sort_pairs_uint_device(uint64_t keys, uint64_t values, int n, int begin_bit, int end_bit, int value_size)
 {
+    apic_capture_radix_sort_device(keys, values, n, begin_bit, end_bit, value_size, APIC_TYPE_UINT32, sizeof(uint32_t));
     radix_sort_pairs_device_dispatch_value(
         WP_CURRENT_CONTEXT, reinterpret_cast<uint32_t*>(keys), reinterpret_cast<void*>(values), n, begin_bit, end_bit,
         value_size
@@ -163,6 +222,7 @@ void wp_radix_sort_pairs_uint_device(uint64_t keys, uint64_t values, int n, int 
 
 void wp_radix_sort_pairs_float_device(uint64_t keys, uint64_t values, int n, int begin_bit, int end_bit, int value_size)
 {
+    apic_capture_radix_sort_device(keys, values, n, begin_bit, end_bit, value_size, APIC_TYPE_FLOAT32, sizeof(float));
     radix_sort_pairs_device_dispatch_value(
         WP_CURRENT_CONTEXT, reinterpret_cast<float*>(keys), reinterpret_cast<void*>(values), n, begin_bit, end_bit,
         value_size
@@ -173,6 +233,7 @@ void wp_radix_sort_pairs_double_device(
     uint64_t keys, uint64_t values, int n, int begin_bit, int end_bit, int value_size
 )
 {
+    apic_capture_radix_sort_device(keys, values, n, begin_bit, end_bit, value_size, APIC_TYPE_FLOAT64, sizeof(double));
     radix_sort_pairs_device_dispatch_value(
         WP_CURRENT_CONTEXT, reinterpret_cast<double*>(keys), reinterpret_cast<void*>(values), n, begin_bit, end_bit,
         value_size
@@ -181,6 +242,7 @@ void wp_radix_sort_pairs_double_device(
 
 void wp_radix_sort_pairs_int64_device(uint64_t keys, uint64_t values, int n, int begin_bit, int end_bit, int value_size)
 {
+    apic_capture_radix_sort_device(keys, values, n, begin_bit, end_bit, value_size, APIC_TYPE_INT64, sizeof(int64_t));
     radix_sort_pairs_device_dispatch_value(
         WP_CURRENT_CONTEXT, reinterpret_cast<int64_t*>(keys), reinterpret_cast<void*>(values), n, begin_bit, end_bit,
         value_size
@@ -191,6 +253,7 @@ void wp_radix_sort_pairs_uint64_device(
     uint64_t keys, uint64_t values, int n, int begin_bit, int end_bit, int value_size
 )
 {
+    apic_capture_radix_sort_device(keys, values, n, begin_bit, end_bit, value_size, APIC_TYPE_UINT64, sizeof(uint64_t));
     radix_sort_pairs_device_dispatch_value(
         WP_CURRENT_CONTEXT, reinterpret_cast<uint64_t*>(keys), reinterpret_cast<void*>(values), n, begin_bit, end_bit,
         value_size
@@ -276,6 +339,9 @@ void wp_segmented_sort_pairs_float_device(
     int num_segments
 )
 {
+    apic_capture_segmented_sort_device(
+        keys, values, n, segment_start_indices, segment_end_indices, num_segments, APIC_TYPE_FLOAT32
+    );
     segmented_sort_pairs_device(
         WP_CURRENT_CONTEXT, reinterpret_cast<float*>(keys), reinterpret_cast<int*>(values), n,
         reinterpret_cast<int*>(segment_start_indices), reinterpret_cast<int*>(segment_end_indices), num_segments
@@ -321,6 +387,9 @@ void wp_segmented_sort_pairs_int_device(
     int num_segments
 )
 {
+    apic_capture_segmented_sort_device(
+        keys, values, n, segment_start_indices, segment_end_indices, num_segments, APIC_TYPE_INT32
+    );
     segmented_sort_pairs_device(
         WP_CURRENT_CONTEXT, reinterpret_cast<int*>(keys), reinterpret_cast<int*>(values), n,
         reinterpret_cast<int*>(segment_start_indices), reinterpret_cast<int*>(segment_end_indices), num_segments

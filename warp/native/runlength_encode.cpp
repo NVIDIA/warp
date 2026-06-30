@@ -69,6 +69,10 @@ void runlength_encode_host(int n, const T* values, T* run_values, int* run_lengt
 
 void wp_runlength_encode_int_host(uint64_t values, uint64_t run_values, uint64_t run_lengths, uint64_t run_count, int n)
 {
+    // A negative count is invalid; reject it before the host fallback so a bad
+    // length can't drive an out-of-bounds walk in runlength_encode_host().
+    if (n < 0)
+        return;
     if (apic_capture_runlength_encode(values, run_values, run_lengths, run_count, n))
         return;
     runlength_encode_host<int>(
