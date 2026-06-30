@@ -117,6 +117,9 @@
 
 - Fix eager Python calls to generic `@wp.func` functions to resolve a matching generic template after other concrete
   overloads have already been instantiated ([GH-1603](https://github.com/NVIDIA/warp/issues/1603)).
+- Fix `wp.tile_dot()` compilation failure for scalar `wp.float64` and `wp.float16` tiles, which previously narrowed
+  the result to `float` and mismatched the inferred result type
+  ([GH-1563](https://github.com/NVIDIA/warp/issues/1563)).
 - Fix `wp.load_module()` and `wp.ScopedCapture(force_module_load=True)` after CPU launches so CUDA graph capture
   precompiles the correct CUDA kernel variant. On CUDA drivers older than 12.3 this previously raised
   `CUDA_ERROR_STREAM_CAPTURE_UNSUPPORTED`; on newer drivers it silently recompiled inside the capture window
