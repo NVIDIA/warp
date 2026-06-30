@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Changelog &#8212; Warp 1.15.0rc1</title>
+    <title>Changelog &#8212; Warp 1.15.0rc2</title>
   
   
   
@@ -68,7 +68,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.15.0rc1" />
+  <meta name="docsearch:version" content="1.15.0rc2" />
 
 
   </head>
@@ -139,11 +139,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0rc1 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0rc1 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0rc2 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0rc2 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.15.0rc1</p>
+    <p class="title logo__title">Warp 1.15.0rc2</p>
   
 </a></div>
     
@@ -278,11 +278,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0rc1 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0rc1 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0rc2 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0rc2 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.15.0rc1</p>
+    <p class="title logo__title">Warp 1.15.0rc2</p>
   
 </a>
 
@@ -554,11 +554,21 @@ and forward <code class="docutils literal notranslate"><span class="pre">tile_so
 <code class="docutils literal notranslate"><span class="pre">wp.sparse.bsr_set_from_triplets()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.sparse.bsr_set_transpose()</span></code>, and reusable launches created with
 <code class="docutils literal notranslate"><span class="pre">wp.launch(...,</span> <span class="pre">record_cmd=True)</span></code>, so saved CPU graphs replay them from current inputs
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1431">GH-1431</a>).</p></li>
+<li><p>Add CUDA APIC capture support for <code class="docutils literal notranslate"><span class="pre">wp.utils.array_scan()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.utils.radix_sort_pairs()</span></code>,
+<code class="docutils literal notranslate"><span class="pre">wp.utils.segmented_sort_pairs()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.utils.runlength_encode()</span></code> (with an explicit <code class="docutils literal notranslate"><span class="pre">run_count</span></code>), contiguous
+<code class="docutils literal notranslate"><span class="pre">wp.array.fill_()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.sparse.bsr_set_transpose()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.capture_if()</span></code> / <code class="docutils literal notranslate"><span class="pre">wp.capture_while()</span></code>, and adjoint and
+reusable (<code class="docutils literal notranslate"><span class="pre">wp.launch(...,</span> <span class="pre">record_cmd=True)</span></code>) launches, so saved CUDA graphs replay them from current inputs.
+<code class="docutils literal notranslate"><span class="pre">wp.sparse.bsr_set_from_triplets()</span></code>, unsupported <code class="docutils literal notranslate"><span class="pre">wp.array.fill_()</span></code> variants, the
+host-return form of <code class="docutils literal notranslate"><span class="pre">wp.utils.runlength_encode()</span></code>, and <code class="docutils literal notranslate"><span class="pre">wp.copy()</span></code> other than a contiguous same-device copy
+(cross-device or non-contiguous copies) cannot be captured on CUDA and raise during APIC capture
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1431">GH-1431</a>).</p></li>
 </ul>
 </section>
 <section id="removed">
 <h3>Removed<a class="headerlink" href="#removed" title="Link to this heading">#</a></h3>
 <ul class="simple">
+<li><p>Remove the deprecated, non-functional <code class="docutils literal notranslate"><span class="pre">warp.render.UsdRenderer.update_body_transforms()</span></code> method. Use supported
+<code class="docutils literal notranslate"><span class="pre">UsdRenderer</span></code> shape rendering methods to author time-varying USD transforms instead.</p></li>
 <li><p>Remove the native Python C API fast-call path for <code class="docutils literal notranslate"><span class="pre">wp.float16</span></code> conversions. Warp now uses the existing <code class="docutils literal notranslate"><span class="pre">ctypes</span></code>
 bindings for this surface, avoiding Python development header requirements when building from source and keeping
 source-built binaries compatible with free-threaded Python builds
@@ -573,6 +583,11 @@ source-built binaries compatible with free-threaded Python builds
 <h3>Deprecated<a class="headerlink" href="#deprecated" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Deprecate <code class="docutils literal notranslate"><span class="pre">masked=True</span></code> arguments in <code class="docutils literal notranslate"><span class="pre">warp.sparse</span></code> topology-changing operations; use <code class="docutils literal notranslate"><span class="pre">topology=&quot;masked&quot;</span></code> instead.</p></li>
+<li><p>Formally deprecate the unused <code class="docutils literal notranslate"><span class="pre">max_verts</span></code>, <code class="docutils literal notranslate"><span class="pre">max_tris</span></code>, and <code class="docutils literal notranslate"><span class="pre">device</span></code> arguments and the <code class="docutils literal notranslate"><span class="pre">max_verts</span></code>, <code class="docutils literal notranslate"><span class="pre">max_tris</span></code>,
+<code class="docutils literal notranslate"><span class="pre">device</span></code>, <code class="docutils literal notranslate"><span class="pre">id</span></code>, and <code class="docutils literal notranslate"><span class="pre">runtime</span></code> compatibility attributes of <code class="docutils literal notranslate"><span class="pre">wp.MarchingCubes</span></code>. The arguments and attributes now emit
+<code class="docutils literal notranslate"><span class="pre">DeprecationWarning</span></code> and are scheduled for removal in Warp 1.19. Output arrays are sized dynamically, extraction runs
+on the input field’s device, and the <code class="docutils literal notranslate"><span class="pre">id</span></code> and <code class="docutils literal notranslate"><span class="pre">runtime</span></code> attributes have no replacement
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1594">GH-1594</a>).</p></li>
 </ul>
 </section>
 <section id="changed">
@@ -602,6 +617,11 @@ behavior for non-contiguous arrays (<a class="reference external" href="https://
 <section id="fixed">
 <h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">#</a></h3>
 <ul class="simple">
+<li><p>Fix eager Python calls to generic <code class="docutils literal notranslate"><span class="pre">&#64;wp.func</span></code> functions to resolve a matching generic template after other concrete
+overloads have already been instantiated (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1603">GH-1603</a>).</p></li>
+<li><p>Fix <code class="docutils literal notranslate"><span class="pre">wp.tile_dot()</span></code> compilation failure for scalar <code class="docutils literal notranslate"><span class="pre">wp.float64</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.float16</span></code> tiles, which previously narrowed
+the result to <code class="docutils literal notranslate"><span class="pre">float</span></code> and mismatched the inferred result type
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1563">GH-1563</a>).</p></li>
 <li><p>Fix <code class="docutils literal notranslate"><span class="pre">wp.load_module()</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.ScopedCapture(force_module_load=True)</span></code> after CPU launches so CUDA graph capture
 precompiles the correct CUDA kernel variant. On CUDA drivers older than 12.3 this previously raised
 <code class="docutils literal notranslate"><span class="pre">CUDA_ERROR_STREAM_CAPTURE_UNSUPPORTED</span></code>; on newer drivers it silently recompiled inside the capture window
@@ -667,6 +687,16 @@ temporaries, for the captured graph’s lifetime instead of recycling them befor
 <li><p>Fix CPU APIC graph capture of untracked or native-only host buffers used by memory operations, so saved graphs no
 longer drop captured copies and fills or depend on capture-time pointers
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1431">GH-1431</a>).</p></li>
+<li><p>Fix CUDA graph capture of padded <code class="docutils literal notranslate"><span class="pre">wp.sparse.bsr_set_transpose()</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.sparse.bsr_set_from_triplets()</span></code>: the
+row-capacity status buffer is now allocated when the matrix is created rather than during capture, so capturing
+these operations no longer leaves an invalid capture-scoped buffer that fails on later host access and disrupts
+subsequent CUDA operations (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1431">GH-1431</a>).</p></li>
+<li><p>Fix CUDA graph capture that begins as the first operation on a context: the one-time memory-pool warm-up now runs
+before capture starts instead of on the legacy stream mid-capture, which previously invalidated the capture and
+left the graph unbuildable (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1431">GH-1431</a>).</p></li>
+<li><p>Fix APIC replay of padded <code class="docutils literal notranslate"><span class="pre">wp.sparse.bsr_set_transpose()</span></code> so the destination row-capacity offsets are reconstructed
+on replay, allowing the captured graph to rebuild the destination even when its offsets were reset
+before <code class="docutils literal notranslate"><span class="pre">wp.capture_launch()</span></code> (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1587">GH-1587</a>).</p></li>
 <li><p>Harden CPU APIC graph capture for loaded <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> graphs and coexistence with CUDA captures: distinct unique-module
 kernels now replay correctly after save/load, stale <code class="docutils literal notranslate"><span class="pre">BsrMatrix.nnz_sync()</span></code> readbacks of a topology recorded earlier
 in the same capture are rejected, recording hooks are scoped to the capture’s target device, and capture

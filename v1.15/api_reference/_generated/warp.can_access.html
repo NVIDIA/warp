@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.can_access &#8212; Warp 1.15.0rc1</title>
+    <title>warp.can_access &#8212; Warp 1.15.0rc2</title>
   
   
   
@@ -68,7 +68,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.15.0rc1" />
+  <meta name="docsearch:version" content="1.15.0rc2" />
 
 
   </head>
@@ -139,11 +139,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0rc1 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0rc1 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0rc2 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0rc2 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.15.0rc1</p>
+    <p class="title logo__title">Warp 1.15.0rc2</p>
   
 </a></div>
     
@@ -278,11 +278,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0rc1 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0rc1 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0rc2 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0rc2 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.15.0rc1</p>
+    <p class="title logo__title">Warp 1.15.0rc2</p>
   
 </a>
 
@@ -497,7 +497,7 @@
 <h1>warp.can_access<a class="headerlink" href="#warp-can-access" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.can_access">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">can_access</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resource</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/context.py#L9026-L9051"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.can_access" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">can_access</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resource</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/context.py#L9031-L9056"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.can_access" title="Link to this definition">#</a></dt>
 <dd><p>Return whether <code class="docutils literal notranslate"><span class="pre">device</span></code> can directly access <code class="docutils literal notranslate"><span class="pre">resource</span></code>.</p>
 <p>In this release, <code class="docutils literal notranslate"><span class="pre">resource</span></code> must be a concrete Warp array. The query uses the resource’s observed memory kind
 where available, including CUDA managed, CUDA device, CUDA mempool, and pinned host memory, and returns <code class="docutils literal notranslate"><span class="pre">False</span></code>

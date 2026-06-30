@@ -1736,6 +1736,35 @@ capture; on CPU the byte stream is always recorded (it is the only replay
 mechanism), and ``apic=True`` simply unlocks
 :func:`wp.capture_save() <warp.capture_save>`.
 
+On CUDA, ``apic=True`` records the same extended operation set as the CPU path so saved
+graphs replay it from current inputs: kernel launches (forward, adjoint, and reusable
+``record_cmd=True`` launches), contiguous same-device memory copies and memsets, contiguous
+:meth:`array.fill_() <warp.array.fill_>`, :func:`wp.utils.array_scan() <warp.utils.array_scan>`,
+:func:`wp.utils.radix_sort_pairs() <warp.utils.radix_sort_pairs>`,
+:func:`wp.utils.segmented_sort_pairs() <warp.utils.segmented_sort_pairs>`,
+:func:`wp.utils.runlength_encode() <warp.utils.runlength_encode>` (with an explicit
+``run_count``), :func:`wp.sparse.bsr_set_transpose() <warp.sparse.bsr_set_transpose>`, and
+:func:`wp.capture_if() <warp.capture_if>` / :func:`wp.capture_while() <warp.capture_while>`
+conditionals. Unlike the CPU path (which records only), these still execute during capture so
+the driver also records them into the native CUDA graph.
+
+A few operations cannot be captured for save/load on CUDA and raise
+:exc:`NotImplementedError` during an ``apic=True`` capture; build these outside the captured
+region:
+
+- :func:`wp.sparse.bsr_set_from_triplets() <warp.sparse.bsr_set_from_triplets>` (and the
+  ``warp.sparse`` matrix products that build topology with it), because it reads the resulting
+  ``nnz`` back to the host after its own kernels, which a captured graph cannot reproduce.
+- Non-contiguous :meth:`array.fill_() <warp.array.fill_>`, indexed/Fabric ``fill_()``, and
+  contiguous fills whose value is larger than 3968 bytes.
+- The host-return form of :func:`wp.utils.runlength_encode() <warp.utils.runlength_encode>`
+  (``run_count=None``).
+- :func:`wp.copy() <warp.copy>` other than a contiguous same-device copy: cross-device copies
+  (host-to-device, device-to-host, and peer-to-peer) and non-contiguous (strided / indexed /
+  Fabric) copies. Only contiguous same-device copies are recorded; the rest raise so a saved
+  graph cannot silently omit them (device-to-host save/load additionally needs a
+  host-destination region model that does not exist yet).
+
 .. testsetup:: apic_save
 
     import os
@@ -1987,7 +2016,7 @@ options, controls, and platform-specific notes.
 
 Current limitations of API Capture:
 
-- The recorded operation set covers kernel launches, :func:`wp.copy() <warp.copy>`,
+- The recorded operation set covers kernel launches, supported :func:`wp.copy() <warp.copy>` variants,
   :meth:`array.zero_() <warp.array.zero_>`, contiguous :meth:`array.fill_() <warp.array.fill_>`,
   and the host library helpers (:func:`wp.utils.array_scan() <warp.utils.array_scan>`,
   :func:`wp.utils.radix_sort_pairs() <warp.utils.radix_sort_pairs>`,
@@ -2007,11 +2036,10 @@ Current limitations of API Capture:
   ``_modules`` directory with the recorded CPU kernel object files. It does not
   require a CUDA-enabled Warp native library. Loading CUDA ``.wrp`` graphs still
   requires a CUDA-enabled build.
-- CUDA loaded-graph replay does not yet support APIC conditional and loop ops.
-  CPU ``.wrp`` graph replay supports CPU-captured
+- Both CPU and CUDA ``.wrp`` graph replay support APIC-captured
   :func:`wp.capture_if() <warp.capture_if>` and
-  :func:`wp.capture_while() <warp.capture_while>` graphs. Stream events and
-  texture array copies are not recorded.
+  :func:`wp.capture_while() <warp.capture_while>` conditionals and loops. Stream
+  events and texture array copies are not recorded.
 
 
 Spatial Computing Primitives
@@ -2503,7 +2531,7 @@ file using the :class:`warp.render.UsdRenderer`.
     dim = 16
     field = wp.zeros((dim, dim, dim), dtype=float, device="cuda:0")
     wp.launch(make_sphere_sdf, dim=field.shape, inputs=[field, wp.vec3(8.0, 8.0, 8.0), 4.0], device="cuda:0")
-    mc = wp.MarchingCubes(nx=dim, ny=dim, nz=dim, device="cuda:0")
+    mc = wp.MarchingCubes(nx=dim, ny=dim, nz=dim)
     mc.surface(field, threshold=0.0)
     print(mc.verts.shape[0] > 0)
     print(mc.indices.shape[0] % 3 == 0)
