@@ -873,11 +873,14 @@ def test_capture_replay_with_tile_kernel_no_stack_overflow(test, device):
     itself takes was enough to blow the 1 MB Windows main-thread stack —
     Newton's basic_conveyor / basic_plotting / IK examples all hit this."""
     n = 32
+    block_dim = 64
     out = wp.zeros(n, dtype=float, device=device)
 
     wp.load_module(device=device)
+    if device.is_cuda:
+        wp.load_module(module=_tile_using_kernel.module, device=device, block_dim=block_dim)
     with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
-        wp.launch_tiled(_tile_using_kernel, dim=n, inputs=[out], block_dim=64, device=device)
+        wp.launch_tiled(_tile_using_kernel, dim=n, inputs=[out], block_dim=block_dim, device=device)
 
     # Multiple launches verify there's no slow leak / cumulative stack use.
     for _ in range(3):
@@ -2101,6 +2104,9 @@ def test_capture_with_padded_bsr_transpose(test, device):
     At_too_small = bsr_zeros(3, 2, block_type=wp.float32, device=device, row_capacity=1)
 
     wp.load_module(device=device)
+    if device.is_cuda:
+        # Specialize and load the internal values kernel before CUDA graph capture.
+        bsr_set_transpose(At, A, topology="padded")
     with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
         bsr_set_transpose(At, A, topology="padded")
         bsr_set_transpose(At_too_small, A, topology="padded")
@@ -2152,6 +2158,9 @@ def test_capture_padded_bsr_transpose_rebuilds_offsets(test, device):
     At = bsr_zeros(2, 2, block_type=wp.float32, device=device, row_capacity=2)
 
     wp.load_module(device=device)
+    if device.is_cuda:
+        # Specialize and load the internal values kernel before CUDA graph capture.
+        bsr_set_transpose(At, A, topology="padded")
     with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
         bsr_set_transpose(At, A, topology="padded")
 
@@ -2186,6 +2195,8 @@ def test_save_load_padded_bsr_transpose_cuda_rebuild(test, device):
     At = bsr_zeros(3, 2, block_type=wp.float32, device=device, row_capacity=2)
 
     wp.load_module(device=device)
+    # Specialize and load the internal values kernel before CUDA graph capture.
+    bsr_set_transpose(At, A, topology="padded")
     with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
         bsr_set_transpose(At, A, topology="padded")
 
