@@ -164,7 +164,7 @@ linux-x86_64 debug build:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
   extends:
     - .save_warp_bin_artifact
-    - .ipp_lnx_x86_64_cpu_medium
+    - .ipp_lnx_x86_64_cpu_large
   before_script:
     - gcc --version
   script:
