@@ -499,6 +499,48 @@ def test_tile_dot_grad_extract_shared(test, device):
     assert_np_equal(b_in.grad.numpy(), a_np, tol=1e-4)
 
 
+def test_tile_dot_float(test, device):
+    """tile_dot preserves the scalar dtype of its operands across float widths."""
+    N = 64
+
+    def run(wp_dtype, rtol):
+        np_dtype = wp.dtype_to_numpy(wp_dtype)
+
+        @wp.kernel
+        def compute(
+            a_in: wp.array[wp_dtype],
+            b_in: wp.array[wp_dtype],
+            out: wp.array[wp_dtype],
+        ):
+            a = wp.tile_load(a_in, shape=N, offset=0, storage="register")
+            b = wp.tile_load(b_in, shape=N, offset=0, storage="shared")
+            result = wp.tile_dot(a, b)
+            wp.tile_store(out, result)
+
+        a_np = (np.arange(N) % 4).astype(np_dtype)
+        b_np = (np.arange(N) % 3).astype(np_dtype)
+
+        a_in = wp.array(a_np, dtype=wp_dtype, requires_grad=True, device=device)
+        b_in = wp.array(b_np, dtype=wp_dtype, requires_grad=True, device=device)
+        out = wp.zeros(1, dtype=wp_dtype, requires_grad=True, device=device)
+
+        with wp.Tape() as tape:
+            wp.launch_tiled(compute, dim=[1], inputs=[a_in, b_in, out], block_dim=BLOCK_DIM, device=device)
+
+        expected = np.dot(a_np.astype(np.float64), b_np.astype(np.float64))
+        np.testing.assert_allclose(out.numpy()[0].astype(np.float64), expected, rtol=rtol)
+
+        # d(dot)/da = b, d(dot)/db = a
+        out.grad = wp.ones_like(out, device=device)
+        tape.backward()
+        np.testing.assert_allclose(a_in.grad.numpy().astype(np.float64), b_np.astype(np.float64), rtol=rtol)
+        np.testing.assert_allclose(b_in.grad.numpy().astype(np.float64), a_np.astype(np.float64), rtol=rtol)
+
+    run(wp.float32, 1e-5)
+    run(wp.float64, 1e-12)
+    run(wp.float16, 1e-2)
+
+
 def test_tile_dot_vec3(test, device):
     """tile_dot on vec3 tiles returns a single-element tile (full contraction via tensordot)."""
     N = 16
@@ -651,6 +693,7 @@ add_function_test(TestTileFusedOps, "test_tile_dot_grad_extract", test_tile_dot_
 add_function_test(
     TestTileFusedOps, "test_tile_dot_grad_extract_shared", test_tile_dot_grad_extract_shared, devices=devices
 )
+add_function_test(TestTileFusedOps, "test_tile_dot_float", test_tile_dot_float, devices=devices)
 add_function_test(TestTileFusedOps, "test_tile_dot_vec3", test_tile_dot_vec3, devices=devices)
 add_function_test(TestTileFusedOps, "test_tile_dot_mat33", test_tile_dot_mat33, devices=devices)
 add_function_test(TestTileFusedOps, "test_tile_axpy_vec3", test_tile_axpy_vec3, devices=devices)
