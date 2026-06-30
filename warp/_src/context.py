@@ -401,9 +401,15 @@ class Function:
                 warp._src.codegen.apply_defaults(bound_args, self.defaults)
 
             arguments = tuple(bound_args.arguments.values())
-            arg_types = tuple(warp._src.codegen.get_arg_type(x) for x in arguments)
+            arg_types = []
+            for argument in arguments:
+                arg_type = warp._src.codegen.get_arg_type(argument)
+                if type(arg_type) in warp._src.types._ARRAY_ANNOTATION_MAP:
+                    # Runtime arrays own or reference backing allocations, so cache only lightweight annotations.
+                    arg_type = type(arg_type)[arg_type.dtype, arg_type.ndim]
+                arg_types.append(arg_type)
 
-            overload = self.get_overload(arg_types, {})
+            overload = self.get_overload(tuple(arg_types), {})
             if overload is not None:
                 template_types = list(overload.input_types.values())
                 arg_names = list(overload.input_types.keys())

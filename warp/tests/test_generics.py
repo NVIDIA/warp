@@ -1,8 +1,10 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import gc
 import types
 import unittest
+import weakref
 from typing import Any
 
 import numpy as np
@@ -42,6 +44,41 @@ def test_eager_generic_func_after_concrete_overload(test, device):
 
     result = eager_generic_norm(wp.vec3(1.0, 2.0, 3.0))
     np.testing.assert_allclose(result, np.sqrt(14.0), rtol=1.0e-6)
+
+
+@wp.func
+def eager_generic_array_length(x: wp.array(dtype=Any)):
+    return x.shape[0]
+
+
+@wp.kernel
+def eager_generic_array_length_use_float32(x: wp.array(dtype=wp.float32), out: wp.array(dtype=wp.int32)):
+    out[0] = eager_generic_array_length(x)
+
+
+def test_eager_generic_func_does_not_retain_array(test, device):
+    seed = wp.empty(1, dtype=wp.float32, device=device)
+    out = wp.empty(1, dtype=wp.int32, device=device)
+    wp.launch(eager_generic_array_length_use_float32, dim=1, inputs=[seed], outputs=[out], device=device)
+    test.assertEqual(out.numpy()[0], 1)
+
+    initial_overload_count = len(eager_generic_array_length.user_overloads)
+    array = wp.empty(2, dtype=wp.int32, device=device)
+    array_ref = weakref.ref(array)
+    test.assertEqual(eager_generic_array_length(array), 2)
+
+    overload_ids = {id(overload) for overload in eager_generic_array_length.user_overloads.values()}
+    overload_count = len(overload_ids)
+    test.assertEqual(overload_count, initial_overload_count + 1)
+
+    del array
+    gc.collect()
+    test.assertIsNone(array_ref())
+
+    other = wp.empty(3, dtype=wp.int32, device=device)
+    test.assertEqual(eager_generic_array_length(other), 3)
+    test.assertEqual(len(eager_generic_array_length.user_overloads), overload_count)
+    test.assertSetEqual({id(overload) for overload in eager_generic_array_length.user_overloads.values()}, overload_ids)
 
 
 # regular functions for floats
@@ -638,6 +675,12 @@ add_function_test(
     TestGenerics,
     "test_eager_generic_func_after_concrete_overload",
     test_eager_generic_func_after_concrete_overload,
+    devices="cpu",
+)
+add_function_test(
+    TestGenerics,
+    "test_eager_generic_func_does_not_retain_array",
+    test_eager_generic_func_does_not_retain_array,
     devices="cpu",
 )
 add_function_test(TestGenerics, "test_generic_array_kernel", test_generic_array_kernel, devices=devices)
