@@ -403,14 +403,8 @@ class Function:
             arguments = tuple(bound_args.arguments.values())
             arg_types = tuple(warp._src.codegen.get_arg_type(x) for x in arguments)
 
-            # try and find a matching overload
-            for overload in self.user_overloads.values():
-                if len(overload.input_types) != len(arguments):
-                    continue
-
-                if not warp._src.codegen.func_match_args(overload, arg_types, {}):
-                    continue
-
+            overload = self.get_overload(arg_types, {})
+            if overload is not None:
                 template_types = list(overload.input_types.values())
                 arg_names = list(overload.input_types.keys())
 

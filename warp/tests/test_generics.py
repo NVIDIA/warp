@@ -25,6 +25,25 @@ def test_generic_adder():
     wp.expect_eq(generic_adder(v1, v2), wp.vec3(11.0, 22.0, 33.0))
 
 
+@wp.func
+def eager_generic_norm(x: Any):
+    return wp.length(x)
+
+
+@wp.kernel
+def eager_generic_norm_use_vec2(out: wp.array(dtype=wp.float32)):
+    out[0] = eager_generic_norm(wp.vec2(1.0, 2.0))
+
+
+def test_eager_generic_func_after_concrete_overload(test, device):
+    out = wp.empty(1, dtype=wp.float32, device=device)
+    wp.launch(eager_generic_norm_use_vec2, dim=1, outputs=[out], device=device)
+    np.testing.assert_allclose(out.numpy()[0], np.sqrt(5.0), rtol=1.0e-6)
+
+    result = eager_generic_norm(wp.vec3(1.0, 2.0, 3.0))
+    np.testing.assert_allclose(result, np.sqrt(14.0), rtol=1.0e-6)
+
+
 # regular functions for floats
 @wp.func
 def specialized_func(a: float, b: float):
@@ -615,6 +634,12 @@ devices = get_test_devices()
 add_kernel_test(TestGenerics, name="test_generic_adder", kernel=test_generic_adder, dim=1, devices=devices)
 add_kernel_test(TestGenerics, name="test_specialized_func", kernel=test_specialized_func, dim=1, devices=devices)
 
+add_function_test(
+    TestGenerics,
+    "test_eager_generic_func_after_concrete_overload",
+    test_eager_generic_func_after_concrete_overload,
+    devices="cpu",
+)
 add_function_test(TestGenerics, "test_generic_array_kernel", test_generic_array_kernel, devices=devices)
 add_function_test(TestGenerics, "test_generic_accumulator_kernel", test_generic_accumulator_kernel, devices=devices)
 add_function_test(TestGenerics, "test_generic_fill", test_generic_fill, devices=devices)
