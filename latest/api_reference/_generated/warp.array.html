@@ -497,7 +497,7 @@
 <h1>warp.array<a class="headerlink" href="#warp-array" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.array">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L3147-L4683"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L3147-L4714"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array" title="Link to this definition">#</a></dt>
 <dd><p>A fixed-size multi-dimensional array containing values of the same type.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.array.dtype">
@@ -771,57 +771,57 @@ then a gradient array will be allocated automatically.</p></li>
 </div>
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.array.memory_kind">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">memory_kind</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L3910-L3914"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.memory_kind" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">memory_kind</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L3922-L3926"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.memory_kind" title="Link to this definition">#</a></dt>
 <dd><p>Observed memory kind backing this array.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.array.grad">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">grad</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4058-L4061"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.grad" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">grad</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4070-L4073"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.grad" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.array.requires_grad">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">requires_grad</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4091-L4094"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.requires_grad" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">requires_grad</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4103-L4106"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.requires_grad" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.array.retain_grad">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">retain_grad</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4108-L4111"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.retain_grad" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">retain_grad</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4120-L4123"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.retain_grad" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.array.vars">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">vars</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4128-L4135"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.vars" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">vars</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4140-L4147"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.vars" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.array.mark_init">
-<span class="sig-name descname"><span class="pre">mark_init</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4136-L4139"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.mark_init" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">mark_init</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4148-L4151"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.mark_init" title="Link to this definition">#</a></dt>
 <dd><p>Reset this array’s read flag.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.array.mark_read">
-<span class="sig-name descname"><span class="pre">mark_read</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4140-L4150"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.mark_read" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">mark_read</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4152-L4162"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.mark_read" title="Link to this definition">#</a></dt>
 <dd><p>Mark this array as having been read from in a kernel or recorded function on the tape.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.array.mark_write">
-<span class="sig-name descname"><span class="pre">mark_write</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4151-L4162"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.mark_write" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">mark_write</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4163-L4174"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.mark_write" title="Link to this definition">#</a></dt>
 <dd><p>Detect if we are writing to an array that has already been read from.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.array.zero_">
-<span class="sig-name descname"><span class="pre">zero_</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4169-L4178"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.zero_" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">zero_</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4181-L4190"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.zero_" title="Link to this definition">#</a></dt>
 <dd><p>Zero out the array entries.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.array.fill_">
-<span class="sig-name descname"><span class="pre">fill_</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4179-L4265"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.fill_" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">fill_</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4191-L4296"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.fill_" title="Link to this definition">#</a></dt>
 <dd><p>Set all array entries to <cite>value</cite></p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -853,13 +853,13 @@ then a gradient array will be allocated automatically.</p></li>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.array.assign">
-<span class="sig-name descname"><span class="pre">assign</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4266-L4272"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.assign" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">assign</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">src</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4297-L4303"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.assign" title="Link to this definition">#</a></dt>
 <dd><p>Wrap <code class="docutils literal notranslate"><span class="pre">src</span></code> in an <a class="reference internal" href="#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a> if it is not already one and copy the contents to <code class="docutils literal notranslate"><span class="pre">self</span></code>.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.array.numpy">
-<span class="sig-name descname"><span class="pre">numpy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">_suppress_bfloat16_warning</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4273-L4323"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.numpy" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">numpy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">_suppress_bfloat16_warning</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4304-L4354"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.numpy" title="Link to this definition">#</a></dt>
 <dd><p>Convert the array to a <a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></a> (aliasing memory through the array interface protocol)
 If the array is on the GPU, a synchronous device-to-host copy (on the CUDA default stream) will be
 automatically performed to ensure that any outstanding work is completed.</p>
@@ -867,7 +867,7 @@ automatically performed to ensure that any outstanding work is completed.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.array.cptr">
-<span class="sig-name descname"><span class="pre">cptr</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4324-L4351"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.cptr" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">cptr</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4355-L4382"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.cptr" title="Link to this definition">#</a></dt>
 <dd><p>Return a ctypes cast of the array address.</p>
 <p>Notes:</p>
 <ol class="arabic simple">
@@ -880,25 +880,25 @@ automatically performed to ensure that any outstanding work is completed.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.array.list">
-<span class="sig-name descname"><span class="pre">list</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4352-L4379"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.list" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">list</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4383-L4410"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.list" title="Link to this definition">#</a></dt>
 <dd><p>Return a flattened list of items in the array as a Python list.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.array.to">
-<span class="sig-name descname"><span class="pre">to</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">requires_grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4380-L4387"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.to" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">to</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">requires_grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4411-L4418"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.to" title="Link to this definition">#</a></dt>
 <dd><p>Return a Warp array with this array’s data moved to the specified device, no-op if already on device.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.array.flatten">
-<span class="sig-name descname"><span class="pre">flatten</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4388-L4412"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.flatten" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">flatten</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4419-L4443"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.flatten" title="Link to this definition">#</a></dt>
 <dd><p>Return a zero-copy view of the array collapsed to 1-D. Only supported for contiguous arrays.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.array.reshape">
-<span class="sig-name descname"><span class="pre">reshape</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shape</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4413-L4476"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.reshape" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">reshape</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shape</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4444-L4507"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.reshape" title="Link to this definition">#</a></dt>
 <dd><p>Return a reshaped array. Only supported for contiguous arrays.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -909,7 +909,7 @@ automatically performed to ensure that any outstanding work is completed.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.array.view">
-<span class="sig-name descname"><span class="pre">view</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dtype</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4477-L4569"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.view" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">view</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dtype</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4508-L4600"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.view" title="Link to this definition">#</a></dt>
 <dd><p>Return a zero-copy view of this array’s memory with a different data type.
 The array’s contents are not modified in any way.</p>
 <dl class="field-list simple">
@@ -955,13 +955,13 @@ in which case the resulting shape and strides are adjusted as needed.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.array.contiguous">
-<span class="sig-name descname"><span class="pre">contiguous</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4570-L4578"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.contiguous" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">contiguous</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4601-L4609"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.contiguous" title="Link to this definition">#</a></dt>
 <dd><p>Return a contiguous array with this array’s data. No-op if array is already contiguous.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.array.transpose">
-<span class="sig-name descname"><span class="pre">transpose</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">axes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4579-L4625"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.transpose" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">transpose</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">axes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4610-L4656"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.transpose" title="Link to this definition">#</a></dt>
 <dd><p>Return a zero-copy view of the array with axes transposed.</p>
 <p>Note: The transpose operation will return an array with a non-contiguous access pattern.</p>
 <dl class="field-list simple">
@@ -973,7 +973,7 @@ in which case the resulting shape and strides are adjusted as needed.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.array.ipc_handle">
-<span class="sig-name descname"><span class="pre">ipc_handle</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4626-L4683"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.ipc_handle" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">ipc_handle</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4657-L4714"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.ipc_handle" title="Link to this definition">#</a></dt>
 <dd><p>Return an IPC handle of the array as a 64-byte <code class="docutils literal notranslate"><span class="pre">bytes</span></code> object</p>
 <p><a class="reference internal" href="warp.from_ipc_handle.html#warp.from_ipc_handle" title="warp.from_ipc_handle"><code class="xref py py-func docutils literal notranslate"><span class="pre">from_ipc_handle()</span></code></a> can be used with this handle in another process
 to obtain a <a class="reference internal" href="#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">array</span></code></a> that shares the same underlying memory

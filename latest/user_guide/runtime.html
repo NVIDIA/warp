@@ -2183,6 +2183,34 @@ On CUDA this enables API Capture byte-stream recording alongside the native CUDA
 capture; on CPU the byte stream is always recorded (it is the only replay
 mechanism), and <code class="docutils literal notranslate"><span class="pre">apic=True</span></code> simply unlocks
 <a class="reference internal" href="../api_reference/_generated/warp.capture_save.html#warp.capture_save" title="warp.capture_save"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_save()</span></code></a>.</p>
+<p>On CUDA, <code class="docutils literal notranslate"><span class="pre">apic=True</span></code> records the same extended operation set as the CPU path so saved
+graphs replay it from current inputs: kernel launches (forward, adjoint, and reusable
+<code class="docutils literal notranslate"><span class="pre">record_cmd=True</span></code> launches), contiguous same-device memory copies and memsets, contiguous
+<a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.fill_" title="warp.array.fill_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.fill_()</span></code></a>, <a class="reference internal" href="../api_reference/_generated/warp.utils.array_scan.html#warp.utils.array_scan" title="warp.utils.array_scan"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_scan()</span></code></a>,
+<a class="reference internal" href="../api_reference/_generated/warp.utils.radix_sort_pairs.html#warp.utils.radix_sort_pairs" title="warp.utils.radix_sort_pairs"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.radix_sort_pairs()</span></code></a>,
+<a class="reference internal" href="../api_reference/_generated/warp.utils.segmented_sort_pairs.html#warp.utils.segmented_sort_pairs" title="warp.utils.segmented_sort_pairs"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.segmented_sort_pairs()</span></code></a>,
+<a class="reference internal" href="../api_reference/_generated/warp.utils.runlength_encode.html#warp.utils.runlength_encode" title="warp.utils.runlength_encode"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.runlength_encode()</span></code></a> (with an explicit
+<code class="docutils literal notranslate"><span class="pre">run_count</span></code>), <a class="reference internal" href="../api_reference/_generated/warp.sparse.bsr_set_transpose.html#warp.sparse.bsr_set_transpose" title="warp.sparse.bsr_set_transpose"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.sparse.bsr_set_transpose()</span></code></a>, and
+<a class="reference internal" href="../api_reference/_generated/warp.capture_if.html#warp.capture_if" title="warp.capture_if"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_if()</span></code></a> / <a class="reference internal" href="../api_reference/_generated/warp.capture_while.html#warp.capture_while" title="warp.capture_while"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_while()</span></code></a>
+conditionals. Unlike the CPU path (which records only), these still execute during capture so
+the driver also records them into the native CUDA graph.</p>
+<p>A few operations cannot be captured for save/load on CUDA and raise
+<a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a> during an <code class="docutils literal notranslate"><span class="pre">apic=True</span></code> capture; build these outside the captured
+region:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.sparse.bsr_set_from_triplets.html#warp.sparse.bsr_set_from_triplets" title="warp.sparse.bsr_set_from_triplets"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.sparse.bsr_set_from_triplets()</span></code></a> (and the
+<code class="docutils literal notranslate"><span class="pre">warp.sparse</span></code> matrix products that build topology with it), because it reads the resulting
+<code class="docutils literal notranslate"><span class="pre">nnz</span></code> back to the host after its own kernels, which a captured graph cannot reproduce.</p></li>
+<li><p>Non-contiguous <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.fill_" title="warp.array.fill_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.fill_()</span></code></a>, indexed/Fabric <code class="docutils literal notranslate"><span class="pre">fill_()</span></code>, and
+contiguous fills whose value is larger than 3968 bytes.</p></li>
+<li><p>The host-return form of <a class="reference internal" href="../api_reference/_generated/warp.utils.runlength_encode.html#warp.utils.runlength_encode" title="warp.utils.runlength_encode"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.runlength_encode()</span></code></a>
+(<code class="docutils literal notranslate"><span class="pre">run_count=None</span></code>).</p></li>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.copy.html#warp.copy" title="warp.copy"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.copy()</span></code></a> other than a contiguous same-device copy: cross-device copies
+(host-to-device, device-to-host, and peer-to-peer) and non-contiguous (strided / indexed /
+Fabric) copies. Only contiguous same-device copies are recorded; the rest raise so a saved
+graph cannot silently omit them (device-to-host save/load additionally needs a
+host-destination region model that does not exist yet).</p></li>
+</ul>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
 
 <span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">module</span><span class="o">=</span><span class="s2">&quot;unique&quot;</span><span class="p">)</span>
@@ -2397,7 +2425,7 @@ cmake<span class="w"> </span>--build<span class="w"> </span>build<span class="w"
 options, controls, and platform-specific notes.</p>
 <p>Current limitations of API Capture:</p>
 <ul class="simple">
-<li><p>The recorded operation set covers kernel launches, <a class="reference internal" href="../api_reference/_generated/warp.copy.html#warp.copy" title="warp.copy"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.copy()</span></code></a>,
+<li><p>The recorded operation set covers kernel launches, supported <a class="reference internal" href="../api_reference/_generated/warp.copy.html#warp.copy" title="warp.copy"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.copy()</span></code></a> variants,
 <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.zero_" title="warp.array.zero_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.zero_()</span></code></a>, contiguous <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.fill_" title="warp.array.fill_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.fill_()</span></code></a>,
 and the host library helpers (<a class="reference internal" href="../api_reference/_generated/warp.utils.array_scan.html#warp.utils.array_scan" title="warp.utils.array_scan"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_scan()</span></code></a>,
 <a class="reference internal" href="../api_reference/_generated/warp.utils.radix_sort_pairs.html#warp.utils.radix_sort_pairs" title="warp.utils.radix_sort_pairs"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.radix_sort_pairs()</span></code></a>,
@@ -2417,11 +2445,10 @@ supported.</p></li>
 <code class="docutils literal notranslate"><span class="pre">_modules</span></code> directory with the recorded CPU kernel object files. It does not
 require a CUDA-enabled Warp native library. Loading CUDA <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> graphs still
 requires a CUDA-enabled build.</p></li>
-<li><p>CUDA loaded-graph replay does not yet support APIC conditional and loop ops.
-CPU <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> graph replay supports CPU-captured
+<li><p>Both CPU and CUDA <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> graph replay support APIC-captured
 <a class="reference internal" href="../api_reference/_generated/warp.capture_if.html#warp.capture_if" title="warp.capture_if"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_if()</span></code></a> and
-<a class="reference internal" href="../api_reference/_generated/warp.capture_while.html#warp.capture_while" title="warp.capture_while"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_while()</span></code></a> graphs. Stream events and
-texture array copies are not recorded.</p></li>
+<a class="reference internal" href="../api_reference/_generated/warp.capture_while.html#warp.capture_while" title="warp.capture_while"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_while()</span></code></a> conditionals and loops. Stream
+events and texture array copies are not recorded.</p></li>
 </ul>
 </section>
 </section>

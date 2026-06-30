@@ -507,7 +507,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">value_count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/utils.py#L368-L462"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.utils.runlength_encode" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/utils.py#L370-L471"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.utils.runlength_encode" title="Link to this definition">#</a></dt>
 <dd><p>Perform run-length encoding on an array.</p>
 <p>This function compresses an array by replacing consecutive identical values with a single value
 and its count.
@@ -527,7 +527,8 @@ If <code class="docutils literal notranslate"><span class="pre">None</span></cod
 <dd class="field-even"><p>Number of runs if <code class="docutils literal notranslate"><span class="pre">run_count</span></code> is <code class="docutils literal notranslate"><span class="pre">None</span></code>, otherwise returns the <code class="docutils literal notranslate"><span class="pre">run_count</span></code> array.</p>
 </dd>
 <dt class="field-odd">Raises<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If array storage devices don’t match, if storage size is insufficient, or if data types are unsupported.</p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If array storage devices don’t match, if storage size is insufficient, if data types are
+    unsupported, or if <code class="docutils literal notranslate"><span class="pre">value_count</span></code> is negative.</p>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a> | <a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a></p>
