@@ -220,6 +220,9 @@ def test_apic_capture_while_body_raises_cleanup(test, device):
     capture state consistent (parent graph restored, parent capture resumed, APIC recording
     torn down, no leaked branch) so a subsequent capture works. The broken capture is never
     launched -- its while node has an empty body and would loop forever."""
+    if device.is_cuda and not wp.is_conditional_graph_supported():
+        test.skipTest("CUDA conditional graph nodes require Toolkit and driver 12.4+")
+
     cond = wp.ones(1, dtype=wp.int32, device=device)
 
     class Sentinel(Exception):
@@ -250,6 +253,9 @@ def test_apic_capture_if_body_raises_cleanup(test, device):
     """Companion to the capture_while case -- a raising capture_if branch body
     propagates cleanly (branch rolled back, parent graph restored and capture resumed) and
     leaves the device reusable for a subsequent capture."""
+    if device.is_cuda and not wp.is_conditional_graph_supported():
+        test.skipTest("CUDA conditional graph nodes require Toolkit and driver 12.4+")
+
     cond = wp.ones(1, dtype=wp.int32, device=device)
 
     class Sentinel(Exception):
@@ -867,11 +873,14 @@ def test_capture_replay_with_tile_kernel_no_stack_overflow(test, device):
     itself takes was enough to blow the 1 MB Windows main-thread stack —
     Newton's basic_conveyor / basic_plotting / IK examples all hit this."""
     n = 32
+    block_dim = 64
     out = wp.zeros(n, dtype=float, device=device)
 
     wp.load_module(device=device)
+    if device.is_cuda:
+        wp.load_module(module=_tile_using_kernel.module, device=device, block_dim=block_dim)
     with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
-        wp.launch_tiled(_tile_using_kernel, dim=n, inputs=[out], block_dim=64, device=device)
+        wp.launch_tiled(_tile_using_kernel, dim=n, inputs=[out], block_dim=block_dim, device=device)
 
     # Multiple launches verify there's no slow leak / cumulative stack use.
     for _ in range(3):
@@ -1317,6 +1326,9 @@ def decrement_counter_kernel(c: wp.array(dtype=wp.int32)):
 
 def test_capture_if_cpu(test, device):
     """APIC_OP_IF on CPU: condition selects which branch runs at replay."""
+    if device.is_cuda and not wp.is_conditional_graph_supported():
+        test.skipTest("CUDA conditional graph nodes require Toolkit and driver 12.4+")
+
     n = 4
     out = wp.zeros(n, dtype=float, device=device)
     cond = wp.array([1], dtype=wp.int32, device=device)
@@ -1350,6 +1362,9 @@ def test_save_load_capture_if_cuda(test, device):
     apic_replay_ops_into_cuda_capture rebuilds the conditional nodes from the
     byte stream. Save/load a capture_if graph and confirm the recorded branch
     runs on the rebuilt graph."""
+    if not wp.is_conditional_graph_supported():
+        test.skipTest("CUDA conditional graph nodes require Toolkit and driver 12.4+")
+
     n = 4
     out = wp.zeros(n, dtype=float, device=device)
     cond = wp.array([1], dtype=wp.int32, device=device)  # selects on_true at capture
@@ -1379,6 +1394,9 @@ def test_save_load_capture_if_cuda(test, device):
 
 def test_capture_while_cpu(test, device):
     """APIC_OP_WHILE on CPU: body re-runs while the condition int32 is nonzero."""
+    if device.is_cuda and not wp.is_conditional_graph_supported():
+        test.skipTest("CUDA conditional graph nodes require Toolkit and driver 12.4+")
+
     counter = wp.array([5], dtype=wp.int32, device=device)
 
     def body():
@@ -2086,6 +2104,9 @@ def test_capture_with_padded_bsr_transpose(test, device):
     At_too_small = bsr_zeros(3, 2, block_type=wp.float32, device=device, row_capacity=1)
 
     wp.load_module(device=device)
+    if device.is_cuda:
+        # Specialize and load the internal values kernel before CUDA graph capture.
+        bsr_set_transpose(At, A, topology="padded")
     with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
         bsr_set_transpose(At, A, topology="padded")
         bsr_set_transpose(At_too_small, A, topology="padded")
@@ -2137,6 +2158,9 @@ def test_capture_padded_bsr_transpose_rebuilds_offsets(test, device):
     At = bsr_zeros(2, 2, block_type=wp.float32, device=device, row_capacity=2)
 
     wp.load_module(device=device)
+    if device.is_cuda:
+        # Specialize and load the internal values kernel before CUDA graph capture.
+        bsr_set_transpose(At, A, topology="padded")
     with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
         bsr_set_transpose(At, A, topology="padded")
 
@@ -2171,6 +2195,8 @@ def test_save_load_padded_bsr_transpose_cuda_rebuild(test, device):
     At = bsr_zeros(3, 2, block_type=wp.float32, device=device, row_capacity=2)
 
     wp.load_module(device=device)
+    # Specialize and load the internal values kernel before CUDA graph capture.
+    bsr_set_transpose(At, A, topology="padded")
     with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
         bsr_set_transpose(At, A, topology="padded")
 
