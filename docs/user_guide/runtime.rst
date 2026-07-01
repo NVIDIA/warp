@@ -2757,6 +2757,8 @@ and will remain cached even if :func:`wp.clear_kernel_cache() <warp.clear_kernel
 :func:`wp.clear_lto_cache() <warp.clear_lto_cache>` can be used to clear the LTO cache.
 
 
+.. _random_number_generation:
+
 Random Number Generation
 ------------------------
 
@@ -2812,6 +2814,8 @@ numbers, e.g.:
 .. testoutput::
 
     [0.86597514 0.1859147 ]
+
+.. _avoiding_correlated_sequences:
 
 Avoiding Correlated Sequences
 #############################

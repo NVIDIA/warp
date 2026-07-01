@@ -5227,119 +5227,307 @@ def texture_sample(tex: Texture3D, u: float32, v: float32, w: float32, dtype: An
 
 @over
 def rand_init(seed: int32) -> uint32:
-    """Initialize a random number generator.
+    """Initialize a random number generator (RNG) state from a seed.
 
-    Initialize from a user-defined seed.
+    Warp's RNG is a stateless PCG hash (Jarzynski & Olano, 2020): ``rand_init``
+    turns a seed into a 32-bit ``state`` that is passed to the ``rand*`` and
+    ``sample_*`` built-ins. In a kernel, these built-ins advance ``state`` in place,
+    so repeated calls on the same local variable return different values. When
+    called directly from the Python scope, they do not modify ``state``: calling
+    ``wp.randf(state)`` twice with the same ``state`` returns the same value both
+    times. Results are deterministic and reproducible for a given seed and call
+    order on every device.
+
+    ``state`` is just a local value, not a persistent generator object: it lives
+    only for the duration of the kernel invocation and does not carry over between
+    launches. Re-launching with the same seed and per-thread offsets reproduces the
+    same sequences. To draw different sequences across launches, change the seed or
+    include a launch-specific value in the ``rand_init(seed, offset)`` offset. See
+    :ref:`Avoiding Correlated Sequences <avoiding_correlated_sequences>` for examples.
+
+    For parallel kernels, prefer the ``rand_init(seed, offset)`` overload with a
+    unique per-thread ``offset`` so each thread draws a distinct sequence. See
+    the :ref:`Random Number Generation <random_number_generation>` user guide
+    section for more details.
+
+    Args:
+        seed: Seed value used to derive the initial state.
 
     Returns:
-        A 32-bit integer representing the RNG state."""
+        A 32-bit unsigned integer holding the initial RNG state."""
     ...
 
 @over
 def rand_init(seed: int32, offset: int32) -> uint32:
-    """Initialize a random number generator.
+    """Initialize a random number generator (RNG) state from a seed and an offset.
 
-    Initialize from a user-defined seed and an offset.
+    Both ``seed`` and ``offset`` are hashed into the returned state. This is the
+    recommended constructor for parallel kernels: share ``seed`` across the launch
+    and pass a unique per-thread ``offset`` (typically ``wp.tid()``) so each thread
+    starts from a distinct RNG state and avoids sharing the same sequence:
 
-    This alternative constructor can be useful in parallel programs, where a kernel as a whole should share a seed,
-    but each thread should generate uncorrelated values. In this case usage should be ``r = rand_init(seed, tid)``."""
+    .. code-block:: python
+
+        @wp.kernel
+        def sample_kernel(seed: int, out: wp.array[float]):
+            tid = wp.tid()
+            rng = wp.rand_init(seed, tid)
+            out[tid] = wp.randf(rng)
+
+    See the :ref:`Random Number Generation <random_number_generation>` user guide
+    section for the RNG model and guidance on avoiding correlated sequences.
+
+    Args:
+        seed: Seed shared across a kernel launch.
+        offset: Per-thread offset selecting a distinct sequence.
+
+    Returns:
+        A 32-bit unsigned integer holding the initial RNG state."""
     ...
 
 @over
 def randi(state: uint32) -> int:
-    """Generate a random integer.
+    """Generate a uniform random 32-bit signed integer in the range [-2^31, 2^31).
 
-    Sample in the range [-2^31, 2^31)."""
+    In a kernel, advances ``state`` in place, so successive calls return different
+    values; called from the Python scope, it does not modify ``state``, so repeated
+    calls with the same ``state`` return the same value (see :func:`rand_init`)."""
     ...
 
 @over
 def randi(state: uint32, low: int32, high: int32) -> int:
-    """Generate a random integer.
+    """Generate a uniform random integer in the range [low, high).
 
-    Sample in the range [low, high)."""
+    In a kernel, advances ``state`` in place, so successive calls return different
+    values; called from the Python scope, it does not modify ``state``, so repeated
+    calls with the same ``state`` return the same value (see :func:`rand_init`).
+    Requires ``high > low``. Uses modulo reduction, so the distribution is slightly
+    biased toward lower values for very large ranges."""
     ...
 
 @over
 def randu(state: uint32) -> uint32:
-    """Generate a random unsigned integer.
+    """Generate a uniform random unsigned 32-bit integer in the range [0, 2^32).
 
-    Sample in the range [0, 2^32)."""
+    In a kernel, advances ``state`` in place, so successive calls return different
+    values; called from the Python scope, it does not modify ``state``, so repeated
+    calls with the same ``state`` return the same value (see :func:`rand_init`)."""
     ...
 
 @over
 def randu(state: uint32, low: uint32, high: uint32) -> uint32:
-    """Generate a random unsigned integer.
+    """Generate a uniform random unsigned integer in the range [low, high).
 
-    Sample in the range [low, high)."""
+    In a kernel, advances ``state`` in place, so successive calls return different
+    values; called from the Python scope, it does not modify ``state``, so repeated
+    calls with the same ``state`` return the same value (see :func:`rand_init`).
+    Requires ``high > low``. Uses modulo reduction, so the distribution is slightly
+    biased toward lower values for very large ranges."""
     ...
 
 @over
 def randf(state: uint32) -> float:
-    """Generate a random float.
+    """Generate a uniform random float in the range [0.0, 1.0).
 
-    Sample in the range [0.0, 1.0)."""
+    In a kernel, advances ``state`` in place, so successive calls return different
+    values; called from the Python scope, it does not modify ``state``, so repeated
+    calls with the same ``state`` return the same value (see :func:`rand_init`).
+    Values are multiples of 2^-24, matching the 24 bits of precision in a 32-bit float.
+
+    Random built-ins take an RNG ``state`` produced by :func:`rand_init`;
+    initialize it once per thread, then draw values:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def random_floats(seed: int, out: wp.array[wp.vec2]):
+            i = wp.tid()
+            rng = wp.rand_init(seed, i)
+            # Each call advances rng, so the two draws differ.
+            out[i] = wp.vec2(wp.randf(rng), wp.randf(rng))
+
+    :func:`randi`, :func:`randu`, and :func:`randn` are used the same way:
+    initialize ``rng`` once with :func:`rand_init`, then pass it to each call."""
     ...
 
 @over
 def randf(state: uint32, low: float32, high: float32) -> float:
-    """Generate a random float.
+    """Generate a uniform random float in the range [low, high).
 
-    Sample in the range [low, high)."""
+    In a kernel, advances ``state`` in place, so successive calls return different
+    values; called from the Python scope, it does not modify ``state``, so repeated
+    calls with the same ``state`` return the same value (see :func:`rand_init`).
+    Equivalent to ``low + (high - low) * wp.randf(state)``."""
     ...
 
 def randn(state: uint32) -> float:
-    """Sample a normal (Gaussian) distribution of mean 0 and variance 1."""
+    """Sample the standard normal (Gaussian) distribution with mean 0 and variance 1.
+
+    Uses the Box-Muller transform, consuming two uniform draws. In a kernel, this
+    advances ``state`` in place; called from the Python scope, it does not modify
+    ``state``, so repeated calls with the same ``state`` return the same value
+    (see :func:`rand_init`). For a general normal, scale and shift the result:
+    ``mean + stddev * wp.randn(state)``."""
     ...
 
 def sample_cdf(state: uint32, cdf: Array[float32]) -> int:
-    """Inverse-transform sample a cumulative distribution function."""
+    """Sample a discrete distribution by inverse-transform sampling of a CDF.
+
+    Draws a uniform value ``u`` in [0.0, 1.0) and returns the index of the first
+    entry of ``cdf`` greater than or equal to ``u`` via binary search. ``cdf`` must
+    be a 1D, monotonically non-decreasing array normalized so its last element is
+    1.0 (for example, a cumulative sum of non-negative weights divided by their
+    total). The returned index lies in ``[0, len(cdf) - 1]`` and selects the
+    sampled bin.
+
+    Unlike the other random built-ins, this function is only callable from within
+    kernels, where it advances ``state`` in place (see :func:`rand_init`).
+
+    Build a normalized CDF in Python, then sample it inside a kernel:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def sample_bins(seed: int, cdf: wp.array[float], out: wp.array[int]):
+            i = wp.tid()
+            rng = wp.rand_init(seed, i)
+            out[i] = wp.sample_cdf(rng, cdf)  # index in [0, len(cdf) - 1]
+
+        weights = np.array([0.1, 0.4, 0.5], dtype=np.float32)
+        cdf = wp.array(np.cumsum(weights) / weights.sum(), dtype=float)
+        out = wp.empty(1000, dtype=int)
+        wp.launch(sample_bins, dim=out.shape, inputs=[42, cdf], outputs=[out])
+
+    Args:
+        state: RNG state, advanced in place (see :func:`rand_init`).
+        cdf: Normalized, non-decreasing cumulative distribution (1D float array).
+
+    Returns:
+        The sampled index into ``cdf``."""
     ...
 
 def sample_triangle(state: uint32) -> vec2f:
-    """Uniformly sample a triangle.
+    """Uniformly sample a point in a triangle, returned as barycentric coordinates.
+
+    In a kernel, advances ``state`` in place; called from the Python scope, it does
+    not modify ``state``, so repeated calls with the same ``state`` return the same
+    point (see :func:`rand_init`). The third coordinate is ``w = 1 - u - v``; recover
+    a point on a triangle with vertices ``a``, ``b``, ``c`` as ``u*a + v*b + w*c``:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def points_in_triangle(
+            seed: int, a: wp.vec3, b: wp.vec3, c: wp.vec3, out: wp.array[wp.vec3]
+        ):
+            i = wp.tid()
+            rng = wp.rand_init(seed, i)
+            bary = wp.sample_triangle(rng)
+            w = 1.0 - bary[0] - bary[1]
+            out[i] = bary[0] * a + bary[1] * b + w * c
 
     Returns:
-        Sample barycentric coordinates."""
+        The barycentric coordinates ``(u, v)`` of the sampled point."""
     ...
 
 def sample_unit_ring(state: uint32) -> vec2f:
-    """Uniformly sample a ring in the xy plane."""
+    """Uniformly sample a point on the unit circle (radius 1) in the xy-plane.
+
+    Returns a ``vec2`` of unit length. In a kernel, advances ``state`` in
+    place; called from the Python scope, it does not modify ``state``, so repeated
+    calls with the same ``state`` return the same point (see :func:`rand_init`)."""
     ...
 
 def sample_unit_disk(state: uint32) -> vec2f:
-    """Uniformly sample a disk in the xy plane."""
+    """Uniformly sample a point inside the unit disk (radius <= 1) in the xy-plane.
+
+    Returns a ``vec2``. In a kernel, advances ``state`` in
+    place; called from the Python scope, it does not modify ``state``, so repeated
+    calls with the same ``state`` return the same point (see :func:`rand_init`)."""
     ...
 
 def sample_unit_sphere_surface(state: uint32) -> vec3f:
-    """Uniformly sample a unit sphere surface."""
+    """Uniformly sample a point on the surface of the unit sphere (radius 1).
+
+    Returns a ``vec3`` of unit length. In a kernel, advances ``state`` in
+    place; called from the Python scope, it does not modify ``state``, so repeated
+    calls with the same ``state`` return the same point (see :func:`rand_init`)."""
     ...
 
 def sample_unit_sphere(state: uint32) -> vec3f:
-    """Uniformly sample a unit sphere."""
+    """Uniformly sample a point inside the unit ball (radius <= 1).
+
+    Returns a ``vec3``. In a kernel, advances ``state`` in
+    place; called from the Python scope, it does not modify ``state``, so repeated
+    calls with the same ``state`` return the same point (see :func:`rand_init`).
+
+    The other ``sample_unit_*`` helpers are called the same way (initialize ``rng``
+    with :func:`rand_init`, then pass it), differing only in the domain they sample:
+
+    .. code-block:: python
+
+        @wp.kernel
+        def random_points(seed: int, out: wp.array[wp.vec3]):
+            i = wp.tid()
+            rng = wp.rand_init(seed, i)
+            out[i] = wp.sample_unit_sphere(rng)"""
     ...
 
 def sample_unit_hemisphere_surface(state: uint32) -> vec3f:
-    """Uniformly sample a unit hemisphere surface."""
+    """Uniformly sample a point on the surface of the unit hemisphere (radius 1, z >= 0).
+
+    Returns a ``vec3`` of unit length. In a kernel, advances ``state`` in
+    place; called from the Python scope, it does not modify ``state``, so repeated
+    calls with the same ``state`` return the same point (see :func:`rand_init`)."""
     ...
 
 def sample_unit_hemisphere(state: uint32) -> vec3f:
-    """Uniformly sample a unit hemisphere."""
+    """Uniformly sample a point inside the unit hemisphere (radius <= 1, z >= 0).
+
+    Returns a ``vec3``. In a kernel, advances ``state`` in
+    place; called from the Python scope, it does not modify ``state``, so repeated
+    calls with the same ``state`` return the same point (see :func:`rand_init`)."""
     ...
 
 def sample_unit_square(state: uint32) -> vec2f:
-    """Uniformly sample a unit square."""
+    """Uniformly sample a point in the unit square ``[-0.5, 0.5)^2``, centered at the origin.
+
+    Returns a ``vec2``. In a kernel, advances ``state`` in
+    place; called from the Python scope, it does not modify ``state``, so repeated
+    calls with the same ``state`` return the same point (see :func:`rand_init`)."""
     ...
 
 def sample_unit_cube(state: uint32) -> vec3f:
-    """Uniformly sample a unit cube."""
+    """Uniformly sample a point in the unit cube ``[-0.5, 0.5)^3``, centered at the origin.
+
+    Returns a ``vec3``. In a kernel, advances ``state`` in
+    place; called from the Python scope, it does not modify ``state``, so repeated
+    calls with the same ``state`` return the same point (see :func:`rand_init`)."""
     ...
 
 def poisson(state: uint32, lam: float32) -> uint32:
     """Generate a random sample from a Poisson distribution.
 
+    In a kernel, advances ``state`` in place when ``lam > 0`` (and returns ``0``
+    without consuming RNG state when ``lam == 0``); called from the Python scope, it
+    does not modify ``state``, so repeated calls with the same ``state`` return the
+    same count (see :func:`rand_init`). The returned count has mean and variance
+    both equal to ``lam``.
+
+    .. code-block:: python
+
+        @wp.kernel
+        def counts(seed: int, rate: float, out: wp.array[wp.uint32]):
+            i = wp.tid()
+            rng = wp.rand_init(seed, i)
+            out[i] = wp.poisson(rng, rate)
+
     Args:
-        state: RNG state
-        lam: The expected value of the distribution."""
+        state: RNG state; advanced in place when called in a kernel (see :func:`rand_init`).
+        lam: Expected value (rate) of the distribution; must be non-negative.
+
+    Returns:
+        A ``uint32`` sample drawn from ``Poisson(lam)``."""
     ...
 
 @over
