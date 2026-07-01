@@ -9,6 +9,7 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 
 - **Embodiment-conditioned Generalist Control for Multirotor Aerial Robots**. *O. Konstantaropoulos, W. Rehberg, M. Kulkarni, K. Alexis*. June 2026. [arXiv:2606.10857](https://arxiv.org/abs/2606.10857)
 - **PhysAgent: Automating Physics-Based 4D Synthesis via Trajectory-Grounded Multi-Agent Feedback**. *C. Lv, J. Ye, Y. Jiang, R. Lin, C. Li*. June 2026. [arXiv:2606.08688](https://arxiv.org/abs/2606.08688)
+- **Digital twin–ready acceleration of production–scale wire laser additive manufacturing using NVIDIA omniverse**. *T. Jochman, A. Mehdi, V. Voltr, O. Svec, P. Burget, V. Hlavac*. June 2026. [DOI:10.1016/j.rineng.2026.111005](https://doi.org/10.1016/j.rineng.2026.111005)
 - **SSR: Scaling Surefooted and Symmetric Humanoid Traversal to the Open World**. *R. Yu, Y. Wang, Y. Hao, J. Wu, Q. Zhu*. May 2026. [arXiv:2605.30770](https://arxiv.org/abs/2605.30770)
 - **EndoGSim: Physics-Aware 4D Dynamic Endoscopic Scene Simulations via MLLM-Guided Gaussian Splatting**. *C. Liu, Y. Huang, L. Bai, B. Cui, H. Ren*. May 2026. [arXiv:2605.16022](https://arxiv.org/abs/2605.16022)
 - **Learning-augmented robotic automation for real-world manufacturing**. *Y. Kim, Q. Nguyen, T. Kim, Y. Heo, J. Lee*. April 2026. [arXiv:2604.22235](https://arxiv.org/abs/2604.22235)
@@ -91,7 +92,7 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 - **One-Shot Real-to-Sim via End-to-End Differentiable Simulation and Rendering**. *Y. Zhu, T. Xiang, A. Dollar, Z. Pan*. November 2024. [arXiv:2412.00259](https://arxiv.org/abs/2412.00259)
 - **DiffSim2Real: Deploying Quadrupedal Locomotion Policies Purely Trained in Differentiable Simulation**. *J. Bagajo, C. Schwarke, V. Klemm, I. Georgiev, J. Sleiman, J. Tordesillas, A. Garg, M. Hutter*. November 2024. [arXiv:2411.02189](https://arxiv.org/abs/2411.02189)
 - **Adaptive Distributed Simulation of Fluids and Rigid Bodies**. *H. Shi, V. Zordan, Y. Yang, S. Andrews*. November 2024. [DOI:10.1145/3677388.3696334](https://doi.org/10.1145/3677388.3696334)
-- **FF-SRL: High Performance GPU-Based Surgical Simulation For Robot Learning**. *D. Dall' Alba, M. Nasket, S. Kaminska, P. Korzeniowski*. October 2024. [arXiv:2503.18616](https://arxiv.org/abs/2503.18616)
+- **FF-SRL: High Performance GPU-Based Surgical Simulation For Robot Learning**. *D. Dall'Alba, M. Nasket, S. Kaminska, P. Korzeniowski*. October 2024. [arXiv:2503.18616](https://arxiv.org/abs/2503.18616)
 - **Learning Object Properties Using Robot Proprioception via Differentiable Robot-Object Interaction**. *P. Y. Chen, C. Liu, P. Ma, J. Eastman, D. Rus, D. Randle, Y. Ivanov, W. Matusik*. October 2024. [arXiv:2410.03920](https://arxiv.org/abs/2410.03920)
 - **Hardware-Accelerated Ray Tracing for Discrete and Continuous Collision Detection on GPUs**. *S. Sui, L. Sentis, A. Bylard*. September 2024. [arXiv:2409.09918](https://arxiv.org/abs/2409.09918)
 - **UKAN: Unbound Kolmogorov-Arnold Network Accompanied with Accelerated Library**. *A. Moradzadeh, L. Wawrzyniak, M. Macklin, S. G. Paliwal*. August 2024. [arXiv:2408.11200](https://arxiv.org/abs/2408.11200)
@@ -109,7 +110,7 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 - **Differentiable Rendering as a Way to Program Cable-Driven Soft Robots**. *K. Arnavaz, K. Erleben*. April 2024. [arXiv:2404.07590](https://arxiv.org/abs/2404.07590)
 - **Learning Deployable Locomotion Control via Differentiable Simulation**. *C. Schwarke, V. Klemm, J. Bagajo, J. Sleiman, I. Georgiev, J. Tordesillas, M. Hutter*. April 2024. [arXiv:2404.02887](https://arxiv.org/abs/2404.02887)
 - **Sailing Through Point Clouds: Safe Navigation Using Point Cloud Based Control Barrier Functions**. *B. Dai, R. Khorrambakht, P. Krishnamurthy, F. Khorrami*. March 2024. [arXiv:2403.18206](https://arxiv.org/abs/2403.18206)
-- **Fast Explicit-Input Assistance for Teleoperation in Clutter**. *N. Walker, X. Yang, A. Garg, M. Cakmak, D. Fox, C. Pérez-D' Arpino*. February 2024. [arXiv:2402.02612](https://arxiv.org/abs/2402.02612)
+- **Fast Explicit-Input Assistance for Teleoperation in Clutter**. *N. Walker, X. Yang, A. Garg, M. Cakmak, D. Fox, C. Pérez-D'Arpino*. February 2024. [arXiv:2402.02612](https://arxiv.org/abs/2402.02612)
 
 ## 2023
 
@@ -122,7 +123,7 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 - **Dynamic Mesh-Aware Radiance Fields**. *Y. Qiao, A. Gao, Y. Xu, Y. Feng, J. Huang, M. C. Lin*. September 2023. [arXiv:2309.04581](https://arxiv.org/abs/2309.04581)
 - **PHYFU: Fuzzing Modern Physics Simulation Engines**. *D. Xiao, Z. Liu, S. Wang*. July 2023. [arXiv:2307.10818](https://arxiv.org/abs/2307.10818)
 - **ANYmal Parkour: Learning Agile Navigation for Quadrupedal Robots**. *D. Hoeller, N. Rudin, D. Sako, M. Hutter*. June 2023. [arXiv:2306.14874](https://arxiv.org/abs/2306.14874)
-- **Fast-Grasp' D: Dexterous Multi-finger Grasp Generation Through Differentiable Simulation**. *D. Turpin, T. Zhong, S. Zhang, G. Zhu, J. Liu, R. Singh, E. Heiden, M. Macklin, S. Tsogkas, S. Dickinson, A. Garg*. June 2023. [arXiv:2306.08132](https://arxiv.org/abs/2306.08132)
+- **Fast-Grasp'D: Dexterous Multi-finger Grasp Generation Through Differentiable Simulation**. *D. Turpin, T. Zhong, S. Zhang, G. Zhu, J. Liu, R. Singh, E. Heiden, M. Macklin, S. Tsogkas, S. Dickinson, A. Garg*. June 2023. [arXiv:2306.08132](https://arxiv.org/abs/2306.08132)
 - **IndustReal: Transferring Contact-Rich Assembly Tasks from Simulation to Reality**. *B. Tang, M. A. Lin, I. Akinola, A. Handa, G. S. Sukhatme, F. Ramos, D. Fox, Y. Narang*. May 2023. [arXiv:2305.17110](https://arxiv.org/abs/2305.17110)
 - **Improving Gradient Computation for Differentiable Physics Simulation with Contacts**. *Y. D. Zhong, J. Han, B. Dey, G. O. Brikis*. April 2023. [arXiv:2305.00092](https://arxiv.org/abs/2305.00092)
 - **SLoMo: A General System for Legged Robot Motion Imitation from Casual Videos**. *J. Z. Zhang, S. Yang, G. Yang, A. L. Bishop, D. Ramanan, Z. Manchester*. April 2023. [arXiv:2304.14389](https://arxiv.org/abs/2304.14389)
