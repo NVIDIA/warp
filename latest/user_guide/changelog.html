@@ -687,10 +687,11 @@ temporaries, for the captured graph’s lifetime instead of recycling them befor
 <li><p>Fix CPU APIC graph capture of untracked or native-only host buffers used by memory operations, so saved graphs no
 longer drop captured copies and fills or depend on capture-time pointers
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1431">GH-1431</a>).</p></li>
-<li><p>Fix CUDA graph capture of padded <code class="docutils literal notranslate"><span class="pre">wp.sparse.bsr_set_transpose()</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.sparse.bsr_set_from_triplets()</span></code>: the
-row-capacity status buffer is now allocated when the matrix is created rather than during capture, so capturing
-these operations no longer leaves an invalid capture-scoped buffer that fails on later host access and disrupts
-subsequent CUDA operations (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1431">GH-1431</a>).</p></li>
+<li><p>Fix CUDA graph capture for padded <code class="docutils literal notranslate"><span class="pre">warp.sparse</span></code> matrices so <code class="docutils literal notranslate"><span class="pre">bsr_zeros(row_capacity=...)</span></code> can create padded
+temporary matrices inside capture when graph-capture allocation is available. Padded sparse status storage follows
+normal graph-capture allocation semantics, and <code class="docutils literal notranslate"><span class="pre">BsrMatrix.status_sync()</span></code> (and <code class="docutils literal notranslate"><span class="pre">BsrMatrix.nnz_sync()</span></code> for its
+block-count readback) now raise a clear error when a host readback is requested during a live CUDA graph capture;
+<code class="docutils literal notranslate"><span class="pre">status_sync()</span></code> is likewise rejected during a CPU APIC capture (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1611">GH-1611</a>).</p></li>
 <li><p>Fix CUDA graph capture that begins as the first operation on a context: the one-time memory-pool warm-up now runs
 before capture starts instead of on the legacy stream mid-capture, which previously invalidated the capture and
 left the graph unbuildable (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1431">GH-1431</a>).</p></li>

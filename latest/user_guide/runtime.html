@@ -2149,6 +2149,10 @@ object to describe replay-time pointer relocation.</p></li>
 <li><p><a class="reference internal" href="../api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.nnz_sync" title="warp.sparse.BsrMatrix.nnz_sync"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BsrMatrix.nnz_sync()</span></code></a> cannot read the
 result of a topology update recorded earlier in the same CPU capture. Read the
 count after replay, or avoid the readback inside the captured region.</p></li>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.status_sync" title="warp.sparse.BsrMatrix.status_sync"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BsrMatrix.status_sync()</span></code></a> cannot read
+the sparse status during a live CUDA graph capture (it requires a device-to-host
+readback) or during a CPU APIC capture (a recorded status update is applied only
+on replay). Read the status after replay instead.</p></li>
 <li><p>Recording is scoped to the capture’s device: a host (CPU) helper op invoked while a CUDA
 graph capture is active executes immediately instead of being recorded into the CUDA graph,
 and vice versa.</p></li>
