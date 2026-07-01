@@ -9,6 +9,7 @@ import numpy as np
 import warp as wp
 from warp.sparse import (
     BSR_STATUS_ROW_CAPACITY_EXCEEDED,
+    BSR_STATUS_SUCCESS,
     BsrMatrix,
     bsr_assign,
     bsr_axpy,
@@ -1034,6 +1035,190 @@ def test_bsr_compress_compact_capturability(test, device):
     assert_np_equal(_bsr_to_dense(A), np.array([[2.0, 3.0, 4.0], [0.0, 0.0, 8.0]]))
 
 
+def test_padded_bsr_capture_constructs_matrix(test, device):
+    """Test that padded BSR matrices can be constructed during CUDA graph capture."""
+
+    uniform_offsets = wp.empty(3, dtype=int, device=device)
+    uniform_status = wp.empty(1, dtype=int, device=device)
+    row_capacity = wp.array([1, 0, 3], dtype=int, device=device)
+    per_row_offsets = wp.empty(4, dtype=int, device=device)
+    per_row_status = wp.empty(1, dtype=int, device=device)
+    captured_matrices = []
+
+    def reset_outputs():
+        uniform_offsets.fill_(-1)
+        uniform_status.fill_(-1)
+        per_row_offsets.fill_(-1)
+        per_row_status.fill_(-1)
+
+    def test_body(retain=False):
+        uniform = bsr_zeros(2, 3, float, device=device, row_capacity=2)
+        per_row = bsr_zeros(3, 4, float, device=device, row_capacity=row_capacity, nnz_capacity=4)
+
+        if retain:
+            captured_matrices.extend((uniform, per_row))
+
+        wp.copy(dest=uniform_offsets, src=uniform.offsets, count=uniform.nrow + 1)
+        wp.copy(dest=uniform_status, src=uniform._ensure_status(), count=1)
+        wp.copy(dest=per_row_offsets, src=per_row.offsets, count=per_row.nrow + 1)
+        wp.copy(dest=per_row_status, src=per_row._ensure_status(), count=1)
+
+    test_body()
+    reset_outputs()
+
+    with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+        test_body(retain=True)
+
+    wp.capture_launch(capture.graph)
+
+    np.testing.assert_array_equal(uniform_offsets.numpy(), np.array([0, 2, 4], dtype=np.int32))
+    np.testing.assert_array_equal(uniform_status.numpy(), np.array([BSR_STATUS_SUCCESS], dtype=np.int32))
+    np.testing.assert_array_equal(per_row_offsets.numpy(), np.array([0, 1, 1, 4], dtype=np.int32))
+    np.testing.assert_array_equal(per_row_status.numpy(), np.array([BSR_STATUS_SUCCESS], dtype=np.int32))
+
+
+def test_padded_bsr_capture_triplets_and_overflow(test, device):
+    """Test padded BSR triplet capture, including row-capacity overflow status."""
+
+    rows = wp.array([0, 0, 1], dtype=int, device=device)
+    columns = wp.array([0, 2, 1], dtype=int, device=device)
+    values = wp.array([1.0, 2.0, 3.0], dtype=float, device=device)
+
+    success_offsets = wp.empty(3, dtype=int, device=device)
+    success_row_counts = wp.empty(2, dtype=int, device=device)
+    success_columns = wp.empty(4, dtype=int, device=device)
+    success_values = wp.empty(4, dtype=float, device=device)
+    success_status = wp.empty(1, dtype=int, device=device)
+    overflow_status = wp.empty(1, dtype=int, device=device)
+    captured_matrices = []
+
+    def reset_outputs():
+        for array in (
+            success_offsets,
+            success_row_counts,
+            success_columns,
+            success_values,
+            success_status,
+            overflow_status,
+        ):
+            array.fill_(-1)
+
+    def test_body(retain=False):
+        success = bsr_zeros(2, 3, float, device=device, row_capacity=2)
+        overflow = bsr_zeros(2, 3, float, device=device, row_capacity=1)
+
+        if retain:
+            captured_matrices.extend((success, overflow))
+
+        bsr_set_from_triplets(success, rows, columns, values, topology="padded")
+        bsr_set_from_triplets(overflow, rows, columns, values, topology="padded")
+
+        wp.copy(dest=success_offsets, src=success.offsets, count=success.nrow + 1)
+        wp.copy(dest=success_row_counts, src=success.row_counts, count=success.nrow)
+        wp.copy(dest=success_columns, src=success.columns, count=success.nnz)
+        wp.copy(dest=success_values, src=success.values, count=success.nnz)
+        wp.copy(dest=success_status, src=success._ensure_status(), count=1)
+        wp.copy(dest=overflow_status, src=overflow._ensure_status(), count=1)
+
+    test_body()
+    reset_outputs()
+
+    with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+        test_body(retain=True)
+
+    wp.capture_launch(capture.graph)
+
+    np.testing.assert_array_equal(success_offsets.numpy(), np.array([0, 2, 4], dtype=np.int32))
+    np.testing.assert_array_equal(success_row_counts.numpy(), np.array([2, 1], dtype=np.int32))
+    np.testing.assert_array_equal(success_columns.numpy()[:3], np.array([0, 2, 1], dtype=np.int32))
+    assert_np_equal(success_values.numpy()[:3], np.array([1.0, 2.0, 3.0]))
+    np.testing.assert_array_equal(success_status.numpy(), np.array([BSR_STATUS_SUCCESS], dtype=np.int32))
+    np.testing.assert_array_equal(overflow_status.numpy(), np.array([BSR_STATUS_ROW_CAPACITY_EXCEEDED], dtype=np.int32))
+
+
+def test_padded_bsr_capture_reblock_copy(test, device):
+    """Test lazy padded status allocation during captured reblocked BSR copy."""
+
+    src = bsr_zeros(1, 1, wp.mat22, device=device, row_capacity=1)
+    rows = wp.array([0], dtype=int, device=device)
+    columns = wp.array([0], dtype=int, device=device)
+    values = wp.array(np.array([[[1.0, 2.0], [3.0, 4.0]]], dtype=np.float32), dtype=float, device=device)
+    bsr_set_from_triplets(src, rows, columns, values, topology="padded")
+
+    copy_offsets = wp.empty(3, dtype=int, device=device)
+    copy_row_counts = wp.empty(2, dtype=int, device=device)
+    copy_columns = wp.empty(4, dtype=int, device=device)
+    copy_values = wp.empty(4, dtype=float, device=device)
+    copy_status = wp.empty(1, dtype=int, device=device)
+    captured_matrices = []
+
+    def reset_outputs():
+        for array in (copy_offsets, copy_row_counts, copy_columns, copy_values, copy_status):
+            array.fill_(-1)
+
+    def test_body(retain=False):
+        dest = bsr_copy(src, block_shape=(1, 1), topology="padded")
+
+        if retain:
+            captured_matrices.append(dest)
+
+        wp.copy(dest=copy_offsets, src=dest.offsets, count=dest.nrow + 1)
+        wp.copy(dest=copy_row_counts, src=dest.row_counts, count=dest.nrow)
+        wp.copy(dest=copy_columns, src=dest.columns, count=dest.nnz)
+        wp.copy(dest=copy_values, src=dest.values, count=dest.nnz)
+        wp.copy(dest=copy_status, src=dest._ensure_status(), count=1)
+
+    test_body()
+    reset_outputs()
+
+    with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+        test_body(retain=True)
+
+    wp.capture_launch(capture.graph)
+
+    np.testing.assert_array_equal(copy_offsets.numpy(), np.array([0, 2, 4], dtype=np.int32))
+    np.testing.assert_array_equal(copy_row_counts.numpy(), np.array([2, 2], dtype=np.int32))
+    np.testing.assert_array_equal(copy_columns.numpy(), np.array([0, 1, 0, 1], dtype=np.int32))
+    assert_np_equal(copy_values.numpy(), np.array([1.0, 2.0, 3.0, 4.0]))
+    np.testing.assert_array_equal(copy_status.numpy(), np.array([BSR_STATUS_SUCCESS], dtype=np.int32))
+
+
+def test_padded_bsr_status_sync_cuda_capture_rejected(test, device):
+    """Test that live CUDA capture rejects padded BSR status readback."""
+
+    bsr = bsr_zeros(1, 1, float, device=device, row_capacity=1)
+    test.assertEqual(bsr.status_sync(), BSR_STATUS_SUCCESS)
+
+    with test.assertRaisesRegex(RuntimeError, "cannot read sparse status during a live CUDA graph capture"):
+        with wp.ScopedCapture(device=device, force_module_load=False):
+            bsr.status_sync()
+
+    # Raising inside the capture must leave the device cleanly recoverable.
+    test.assertFalse(device.is_capturing)
+
+    with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+        bsr.clear_status()
+
+    wp.capture_launch(capture.graph)
+    test.assertEqual(bsr.status_sync(), BSR_STATUS_SUCCESS)
+
+
+def test_padded_bsr_capture_per_row_without_nnz_capacity_rejected(test, device):
+    """A per-row ``row_capacity`` array without an explicit ``nnz_capacity`` needs
+    a host nnz readback, which is rejected with a clear error during a live CUDA
+    graph capture rather than failing obscurely."""
+
+    row_capacity = wp.array([1, 0, 3], dtype=int, device=device)
+
+    # Warm up the construction path (with nnz_capacity) outside capture so the
+    # force_module_load=False capture does not trigger an in-capture module load.
+    bsr_zeros(3, 4, float, device=device, row_capacity=row_capacity, nnz_capacity=4)
+
+    with test.assertRaisesRegex(RuntimeError, "device-to-host readback"):
+        with wp.ScopedCapture(device=device, force_module_load=False):
+            bsr_zeros(3, 4, float, device=device, row_capacity=row_capacity)
+
+
 def test_bsr_alloc(test, device):
     rows_of_blocks, cols_of_blocks = 3, 4
 
@@ -1184,6 +1369,36 @@ add_function_test(
     TestSparse,
     "test_bsr_compress_compact_capturability",
     test_bsr_compress_compact_capturability,
+    devices=cuda_test_devices_with_mempool,
+)
+add_function_test(
+    TestSparse,
+    "test_padded_bsr_capture_constructs_matrix",
+    test_padded_bsr_capture_constructs_matrix,
+    devices=cuda_test_devices_with_mempool,
+)
+add_function_test(
+    TestSparse,
+    "test_padded_bsr_capture_triplets_and_overflow",
+    test_padded_bsr_capture_triplets_and_overflow,
+    devices=cuda_test_devices_with_mempool,
+)
+add_function_test(
+    TestSparse,
+    "test_padded_bsr_capture_reblock_copy",
+    test_padded_bsr_capture_reblock_copy,
+    devices=cuda_test_devices_with_mempool,
+)
+add_function_test(
+    TestSparse,
+    "test_padded_bsr_status_sync_cuda_capture_rejected",
+    test_padded_bsr_status_sync_cuda_capture_rejected,
+    devices=cuda_test_devices_with_mempool,
+)
+add_function_test(
+    TestSparse,
+    "test_padded_bsr_capture_per_row_without_nnz_capacity_rejected",
+    test_padded_bsr_capture_per_row_without_nnz_capacity_rejected,
     devices=cuda_test_devices_with_mempool,
 )
 add_function_test(TestSparse, "test_bsr_mm_max_new_nnz", test_bsr_mm_max_new_nnz, devices=devices, check_output=False)

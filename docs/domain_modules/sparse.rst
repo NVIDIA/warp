@@ -174,6 +174,9 @@ Use ``row_capacity`` with :func:`bsr_zeros` to allocate an empty padded matrix w
 
 Providing ``row_capacity`` implies ``topology="padded"`` unless an explicit topology is passed. Passing ``row_capacity`` with ``topology="compact"`` raises ``ValueError``.
 The convenience constructor :func:`bsr_from_triplets` always builds compact storage. To build COO triplets into reserved row capacity, allocate with :func:`bsr_zeros` using ``row_capacity`` and then call :func:`bsr_set_from_triplets` with ``topology="padded"``.
+Padded matrices created during CUDA graph capture follow normal graph-capture allocation semantics.
+Inside CUDA capture, use a uniform integer ``row_capacity`` or pass an explicit ``nnz_capacity`` with per-row
+``row_capacity`` arrays; otherwise construction requires a host readback of the total row capacity.
 
 Operations that may change topology accept a ``topology`` policy where supported:
 
@@ -223,6 +226,9 @@ Functions such as :func:`bsr_assign`, :func:`bsr_set_from_triplets`, and :func:`
     bsr_set_transpose(dest, src, topology="padded")
     if dest.status_sync() != BSR_STATUS_SUCCESS:
         raise RuntimeError(dest.status_message())
+
+Because :meth:`BsrMatrix.status_sync` reads device status on the host, it raises during live CUDA graph capture.
+Call it after the graph launch instead, keeping the matrix alive beyond the capture; :meth:`BsrMatrix.clear_status` is device-side and may be called inside the capture.
 
 Row-ordered candidate entries can be compressed with :func:`bsr_compress`. With ``inplace=True``, matrices whose scalar type is ``float32`` or ``float64`` have each active row range sorted, duplicate columns accumulated, optional numerical zero blocks pruned, and ``row_counts`` updated in place using native compression support without ``O(nnz)`` temporary allocation. This path is not differentiable. Pass ``topology="compact"`` to additionally pack active blocks into compact row storage:
 

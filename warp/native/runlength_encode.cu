@@ -62,6 +62,11 @@ void wp_runlength_encode_int_device(
     uint64_t values, uint64_t run_values, uint64_t run_lengths, uint64_t run_count, int n
 )
 {
+    // A negative count is invalid; reject it before the device fallback so a bad
+    // length can't drive CUB DeviceRunLengthEncode with a negative num_items.
+    // Mirrors wp_runlength_encode_int_host().
+    if (n < 0)
+        return;
     apic_capture_runlength_encode_device(values, run_values, run_lengths, run_count, n);
     return runlength_encode_device<int>(
         n, reinterpret_cast<const int*>(values), reinterpret_cast<int*>(run_values),

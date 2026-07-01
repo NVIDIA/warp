@@ -1637,6 +1637,22 @@ def test_bsr_nnz_sync_after_recorded_topology_rejected(test, device):
             A.nnz_sync()
 
 
+def test_bsr_status_sync_during_cpu_apic_capture_rejected(test, device):
+    """BsrMatrix.status_sync() must reject a host readback during a CPU APIC
+    capture: a padded op recorded in the capture writes the status only on
+    replay, so a status read inside the capture would observe a pre-replay
+    value. Outside the capture the readback works normally."""
+    from warp.sparse import BSR_STATUS_SUCCESS, bsr_zeros  # noqa: PLC0415
+
+    bsr = bsr_zeros(2, 3, wp.float32, device=device, row_capacity=2)
+    test.assertEqual(bsr.status_sync(), BSR_STATUS_SUCCESS)
+
+    wp.load_module(device=device)
+    with test.assertRaisesRegex(NotImplementedError, "CPU APIC graph capture"):
+        with wp.ScopedCapture(device=device, apic=True, force_module_load=False):
+            bsr.status_sync()
+
+
 def test_save_load_array_scan_replay_with_updated_input(test, device):
     """``wp.utils.array_scan`` must be recorded into the byte stream so a saved
     + loaded graph recomputes against the current input rather than returning
@@ -2179,12 +2195,21 @@ def test_capture_padded_bsr_transpose_rebuilds_offsets(test, device):
 
 
 def test_save_load_padded_bsr_transpose_cuda_rebuild(test, device):
-    """Save/load of a CUDA APIC padded bsr_set_transpose graph. The
-    transpose allocates block-index scratch during capture (graph-scoped on a
-    memory-pool device); capture_save must store that region's size only (its
-    content regenerates on replay), and the rebuild
-    (apic_replay_ops_into_cuda_capture) must size the transposed-columns /
-    block-index regions without dereferencing the device offsets on the host."""
+    """Save/load of a CUDA APIC padded bsr_set_transpose graph. The transpose
+    allocates block-index scratch during capture (graph-scoped on a memory-pool
+    device); capture_save stores that region's size only (its content regenerates
+    on replay), and the rebuild (apic_replay_ops_into_cuda_capture) sizes the
+    transposed-columns / block-index regions without dereferencing the device
+    offsets on the host.
+
+    A padded destination's offsets are the fixed row-capacity layout, which the
+    transpose reads but never writes; a recorded device-to-device copy restores
+    that layout before the transpose so replay is correct even if the destination
+    offsets are stale (GH-1587). This test asserts the full transposed result
+    (offsets, row_counts, and active columns/values) round-trips through save/load,
+    and -- by zeroing the destination offsets before save so their content snapshot
+    is no longer the capacity layout -- that the recorded restore copy alone
+    re-establishes the layout on replay (the copy is the load-bearing mechanism)."""
     from warp.sparse import bsr_set_from_triplets, bsr_set_transpose, bsr_zeros  # noqa: PLC0415
 
     rows = wp.array(np.array([0, 0, 1, 1], dtype=np.int32), dtype=wp.int32, device=device)
@@ -2200,17 +2225,58 @@ def test_save_load_padded_bsr_transpose_cuda_rebuild(test, device):
     with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
         bsr_set_transpose(At, A, topology="padded")
 
+    # The 2x3 -> 3x2 padded transpose yields 3 rows at row_capacity 2 (6 slots);
+    # row_counts [1, 1, 2] makes the active slots [0, 2, 4, 5] (offsets are the
+    # fixed capacity layout [0, 2, 4, 6]). Inactive padding slots are not compared.
+    expected_offsets = np.array([0, 2, 4, 6], dtype=np.int32)
+    expected_row_counts = np.array([1, 1, 2], dtype=np.int32)
+    active_slots = [0, 2, 4, 5]
+    expected_columns = np.array([0, 1, 0, 1], dtype=np.int32)
+    expected_values = np.array([1.0, 3.0, 2.0, 4.0], dtype=np.float32)
+    outputs = {"offsets": At.offsets, "row_counts": At.row_counts, "columns": At.columns, "values": At.values}
+
+    def assert_loaded_matches(loaded, label):
+        off = wp.zeros_like(At.offsets)
+        rc = wp.zeros_like(At.row_counts)
+        cols = wp.zeros_like(At.columns)
+        vals = wp.zeros_like(At.values)
+        loaded.get_param("offsets", off)
+        loaded.get_param("row_counts", rc)
+        loaded.get_param("columns", cols)
+        loaded.get_param("values", vals)
+        wp.synchronize_device(device)
+        np.testing.assert_array_equal(off.numpy(), expected_offsets, err_msg=f"{label}: offsets")
+        np.testing.assert_array_equal(rc.numpy(), expected_row_counts, err_msg=f"{label}: row_counts")
+        np.testing.assert_array_equal(
+            cols.numpy().reshape(-1)[active_slots], expected_columns, err_msg=f"{label}: columns"
+        )
+        np.testing.assert_allclose(vals.numpy().reshape(-1)[active_slots], expected_values, err_msg=f"{label}: values")
+
+    # (1) Normal save/load: the full transposed result must round-trip, and the
+    # loaded graph must stay correct across repeated launches.
     with tempfile.TemporaryDirectory() as tmpdir:
         path = os.path.join(tmpdir, "padded_transpose")
-        wp.capture_save(capture.graph, path, outputs={"row_counts": At.row_counts})
+        wp.capture_save(capture.graph, path, outputs=outputs)
+        loaded = wp.capture_load(path, device=device)
+        for i in range(2):
+            wp.capture_launch(loaded)
+            wp.synchronize_device(device)
+            assert_loaded_matches(loaded, f"normal save/load (launch {i + 1})")
 
+    # (2) Stale-offsets save/load: zero the destination offsets before save so their
+    # content snapshot is no longer the capacity layout. Correct replay then depends
+    # solely on the recorded device-to-device capacity-restore copy (GH-1587) -- if
+    # it were dropped from the byte stream, the transpose would read zeroed offsets
+    # and produce wrong results.
+    At.offsets.zero_()
+    wp.synchronize_device(device)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "padded_transpose_stale")
+        wp.capture_save(capture.graph, path, outputs=outputs)
         loaded = wp.capture_load(path, device=device)
         wp.capture_launch(loaded)
         wp.synchronize_device(device)
-
-        result = wp.zeros(3, dtype=wp.int32, device=device)
-        loaded.get_param("row_counts", result)
-        np.testing.assert_array_equal(result.numpy(), np.array([1, 1, 2], dtype=np.int32))
+        assert_loaded_matches(loaded, "stale-offsets save/load")
 
 
 def test_apic_cpu_op_not_rejected_under_cuda_capture(test, device):
@@ -2653,6 +2719,12 @@ add_function_test(
     TestApic,
     "test_bsr_nnz_sync_after_recorded_topology_rejected",
     test_bsr_nnz_sync_after_recorded_topology_rejected,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_bsr_status_sync_during_cpu_apic_capture_rejected",
+    test_bsr_status_sync_during_cpu_apic_capture_rejected,
     devices=[d for d in devices if d.is_cpu],
 )
 add_function_test(TestApic, "test_capture_with_empty_array_input", test_capture_with_empty_array_input, devices=devices)
