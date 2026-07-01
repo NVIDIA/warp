@@ -517,8 +517,23 @@
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Generate a random float.</p>
-<p>Sample in the range [0.0, 1.0).</p>
+<p>Generate a uniform random float in the range [0.0, 1.0).</p>
+<p>In a kernel, advances <code class="docutils literal notranslate"><span class="pre">state</span></code> in place, so successive calls return different
+values; called from the Python scope, it does not modify <code class="docutils literal notranslate"><span class="pre">state</span></code>, so repeated
+calls with the same <code class="docutils literal notranslate"><span class="pre">state</span></code> return the same value (see <a class="reference internal" href="warp.rand_init.html#warp._src.lang.rand_init" title="warp._src.lang.rand_init"><code class="xref py py-func docutils literal notranslate"><span class="pre">rand_init()</span></code></a>).
+Values are multiples of 2^-24, matching the 24 bits of precision in a 32-bit float.</p>
+<p>Random built-ins take an RNG <code class="docutils literal notranslate"><span class="pre">state</span></code> produced by <a class="reference internal" href="warp.rand_init.html#warp._src.lang.rand_init" title="warp._src.lang.rand_init"><code class="xref py py-func docutils literal notranslate"><span class="pre">rand_init()</span></code></a>;
+initialize it once per thread, then draw values:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">random_floats</span><span class="p">(</span><span class="n">seed</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec2</span><span class="p">]):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">rng</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">rand_init</span><span class="p">(</span><span class="n">seed</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+    <span class="c1"># Each call advances rng, so the two draws differ.</span>
+    <span class="n">out</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec2</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">randf</span><span class="p">(</span><span class="n">rng</span><span class="p">),</span> <span class="n">wp</span><span class="o">.</span><span class="n">randf</span><span class="p">(</span><span class="n">rng</span><span class="p">))</span>
+</pre></div>
+</div>
+<p><a class="reference internal" href="warp.randi.html#warp._src.lang.randi" title="warp._src.lang.randi"><code class="xref py py-func docutils literal notranslate"><span class="pre">randi()</span></code></a>, <a class="reference internal" href="warp.randu.html#warp._src.lang.randu" title="warp._src.lang.randu"><code class="xref py py-func docutils literal notranslate"><span class="pre">randu()</span></code></a>, and <a class="reference internal" href="warp.randn.html#warp._src.lang.randn" title="warp._src.lang.randn"><code class="xref py py-func docutils literal notranslate"><span class="pre">randn()</span></code></a> are used the same way:
+initialize <code class="docutils literal notranslate"><span class="pre">rng</span></code> once with <a class="reference internal" href="warp.rand_init.html#warp._src.lang.rand_init" title="warp._src.lang.rand_init"><code class="xref py py-func docutils literal notranslate"><span class="pre">rand_init()</span></code></a>, then pass it to each call.</p>
 </dd></dl>
 
 <dl class="py function">
@@ -551,8 +566,11 @@
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Generate a random float.</p>
-<p>Sample in the range [low, high).</p>
+<p>Generate a uniform random float in the range [low, high).</p>
+<p>In a kernel, advances <code class="docutils literal notranslate"><span class="pre">state</span></code> in place, so successive calls return different
+values; called from the Python scope, it does not modify <code class="docutils literal notranslate"><span class="pre">state</span></code>, so repeated
+calls with the same <code class="docutils literal notranslate"><span class="pre">state</span></code> return the same value (see <a class="reference internal" href="warp.rand_init.html#warp._src.lang.rand_init" title="warp._src.lang.rand_init"><code class="xref py py-func docutils literal notranslate"><span class="pre">rand_init()</span></code></a>).
+Equivalent to <code class="docutils literal notranslate"><span class="pre">low</span> <span class="pre">+</span> <span class="pre">(high</span> <span class="pre">-</span> <span class="pre">low)</span> <span class="pre">*</span> <span class="pre">wp.randf(state)</span></code>.</p>
 </dd></dl>
 
 </section>

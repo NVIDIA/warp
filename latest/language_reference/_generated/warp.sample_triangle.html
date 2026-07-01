@@ -517,10 +517,25 @@
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Uniformly sample a triangle.</p>
+<p>Uniformly sample a point in a triangle, returned as barycentric coordinates.</p>
+<p>In a kernel, advances <code class="docutils literal notranslate"><span class="pre">state</span></code> in place; called from the Python scope, it does
+not modify <code class="docutils literal notranslate"><span class="pre">state</span></code>, so repeated calls with the same <code class="docutils literal notranslate"><span class="pre">state</span></code> return the same
+point (see <a class="reference internal" href="warp.rand_init.html#warp._src.lang.rand_init" title="warp._src.lang.rand_init"><code class="xref py py-func docutils literal notranslate"><span class="pre">rand_init()</span></code></a>). The third coordinate is <code class="docutils literal notranslate"><span class="pre">w</span> <span class="pre">=</span> <span class="pre">1</span> <span class="pre">-</span> <span class="pre">u</span> <span class="pre">-</span> <span class="pre">v</span></code>; recover
+a point on a triangle with vertices <code class="docutils literal notranslate"><span class="pre">a</span></code>, <code class="docutils literal notranslate"><span class="pre">b</span></code>, <code class="docutils literal notranslate"><span class="pre">c</span></code> as <code class="docutils literal notranslate"><span class="pre">u*a</span> <span class="pre">+</span> <span class="pre">v*b</span> <span class="pre">+</span> <span class="pre">w*c</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">points_in_triangle</span><span class="p">(</span>
+    <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span> <span class="n">c</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span> <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">]</span>
+<span class="p">):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">rng</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">rand_init</span><span class="p">(</span><span class="n">seed</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+    <span class="n">bary</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">sample_triangle</span><span class="p">(</span><span class="n">rng</span><span class="p">)</span>
+    <span class="n">w</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">bary</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">bary</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">out</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">bary</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">a</span> <span class="o">+</span> <span class="n">bary</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">b</span> <span class="o">+</span> <span class="n">w</span> <span class="o">*</span> <span class="n">c</span>
+</pre></div>
+</div>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>Sample barycentric coordinates.</p>
+<dd class="field-odd"><p>The barycentric coordinates <code class="docutils literal notranslate"><span class="pre">(u,</span> <span class="pre">v)</span></code> of the sampled point.</p>
 </dd>
 </dl>
 </dd></dl>

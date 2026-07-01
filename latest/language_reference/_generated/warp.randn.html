@@ -517,7 +517,12 @@
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Sample a normal (Gaussian) distribution of mean 0 and variance 1.</p>
+<p>Sample the standard normal (Gaussian) distribution with mean 0 and variance 1.</p>
+<p>Uses the Box-Muller transform, consuming two uniform draws. In a kernel, this
+advances <code class="docutils literal notranslate"><span class="pre">state</span></code> in place; called from the Python scope, it does not modify
+<code class="docutils literal notranslate"><span class="pre">state</span></code>, so repeated calls with the same <code class="docutils literal notranslate"><span class="pre">state</span></code> return the same value
+(see <a class="reference internal" href="warp.rand_init.html#warp._src.lang.rand_init" title="warp._src.lang.rand_init"><code class="xref py py-func docutils literal notranslate"><span class="pre">rand_init()</span></code></a>). For a general normal, scale and shift the result:
+<code class="docutils literal notranslate"><span class="pre">mean</span> <span class="pre">+</span> <span class="pre">stddev</span> <span class="pre">*</span> <span class="pre">wp.randn(state)</span></code>.</p>
 </dd></dl>
 
 </section>

@@ -517,7 +517,10 @@
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Uniformly sample a unit hemisphere.</p>
+<p>Uniformly sample a point inside the unit hemisphere (radius &lt;= 1, z &gt;= 0).</p>
+<p>Returns a <code class="docutils literal notranslate"><span class="pre">vec3</span></code>. In a kernel, advances <code class="docutils literal notranslate"><span class="pre">state</span></code> in
+place; called from the Python scope, it does not modify <code class="docutils literal notranslate"><span class="pre">state</span></code>, so repeated
+calls with the same <code class="docutils literal notranslate"><span class="pre">state</span></code> return the same point (see <a class="reference internal" href="warp.rand_init.html#warp._src.lang.rand_init" title="warp._src.lang.rand_init"><code class="xref py py-func docutils literal notranslate"><span class="pre">rand_init()</span></code></a>).</p>
 </dd></dl>
 
 </section>

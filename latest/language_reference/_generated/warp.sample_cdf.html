@@ -516,7 +516,39 @@
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Inverse-transform sample a cumulative distribution function.</p>
+<p>Sample a discrete distribution by inverse-transform sampling of a CDF.</p>
+<p>Draws a uniform value <code class="docutils literal notranslate"><span class="pre">u</span></code> in [0.0, 1.0) and returns the index of the first
+entry of <code class="docutils literal notranslate"><span class="pre">cdf</span></code> greater than or equal to <code class="docutils literal notranslate"><span class="pre">u</span></code> via binary search. <code class="docutils literal notranslate"><span class="pre">cdf</span></code> must
+be a 1D, monotonically non-decreasing array normalized so its last element is
+1.0 (for example, a cumulative sum of non-negative weights divided by their
+total). The returned index lies in <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">len(cdf)</span> <span class="pre">-</span> <span class="pre">1]</span></code> and selects the
+sampled bin.</p>
+<p>Unlike the other random built-ins, this function is only callable from within
+kernels, where it advances <code class="docutils literal notranslate"><span class="pre">state</span></code> in place (see <a class="reference internal" href="warp.rand_init.html#warp._src.lang.rand_init" title="warp._src.lang.rand_init"><code class="xref py py-func docutils literal notranslate"><span class="pre">rand_init()</span></code></a>).</p>
+<p>Build a normalized CDF in Python, then sample it inside a kernel:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">sample_bins</span><span class="p">(</span><span class="n">seed</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">cdf</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">int</span><span class="p">]):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">rng</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">rand_init</span><span class="p">(</span><span class="n">seed</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+    <span class="n">out</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">sample_cdf</span><span class="p">(</span><span class="n">rng</span><span class="p">,</span> <span class="n">cdf</span><span class="p">)</span>  <span class="c1"># index in [0, len(cdf) - 1]</span>
+
+<span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="n">cdf</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">weights</span><span class="p">)</span> <span class="o">/</span> <span class="n">weights</span><span class="o">.</span><span class="n">sum</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+<span class="n">out</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">sample_bins</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">out</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="mi">42</span><span class="p">,</span> <span class="n">cdf</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">])</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>state</strong> – RNG state, advanced in place (see <a class="reference internal" href="warp.rand_init.html#warp._src.lang.rand_init" title="warp._src.lang.rand_init"><code class="xref py py-func docutils literal notranslate"><span class="pre">rand_init()</span></code></a>).</p></li>
+<li><p><strong>cdf</strong> – Normalized, non-decreasing cumulative distribution (1D float array).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The sampled index into <code class="docutils literal notranslate"><span class="pre">cdf</span></code>.</p>
+</dd>
+</dl>
 </dd></dl>
 
 </section>

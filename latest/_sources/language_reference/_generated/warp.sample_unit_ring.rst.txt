@@ -9,4 +9,8 @@
       * Kernel
       * Python
 
-   Uniformly sample a ring in the xy plane.
+   Uniformly sample a point on the unit circle (radius 1) in the xy-plane.
+   
+   Returns a ``vec2`` of unit length. In a kernel, advances ``state`` in
+   place; called from the Python scope, it does not modify ``state``, so repeated
+   calls with the same ``state`` return the same point (see :func:`rand_init`).

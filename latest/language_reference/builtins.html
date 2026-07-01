@@ -1292,49 +1292,49 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <td><p>Generate a random sample from a Poisson distribution.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.rand_init.html#warp._src.lang.rand_init" title="warp._src.lang.rand_init"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rand_init</span></code></a></p></td>
-<td><p>Initialize a random number generator.</p></td>
+<td><p>Initialize a random number generator (RNG) state from a seed.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.randf.html#warp._src.lang.randf" title="warp._src.lang.randf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">randf</span></code></a></p></td>
-<td><p>Generate a random float.</p></td>
+<td><p>Generate a uniform random float in the range [0.0, 1.0).</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.randi.html#warp._src.lang.randi" title="warp._src.lang.randi"><code class="xref py py-obj docutils literal notranslate"><span class="pre">randi</span></code></a></p></td>
-<td><p>Generate a random integer.</p></td>
+<td><p>Generate a uniform random 32-bit signed integer in the range [-2^31, 2^31).</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.randn.html#warp._src.lang.randn" title="warp._src.lang.randn"><code class="xref py py-obj docutils literal notranslate"><span class="pre">randn</span></code></a></p></td>
-<td><p>Sample a normal (Gaussian) distribution of mean 0 and variance 1.</p></td>
+<td><p>Sample the standard normal (Gaussian) distribution with mean 0 and variance 1.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.randu.html#warp._src.lang.randu" title="warp._src.lang.randu"><code class="xref py py-obj docutils literal notranslate"><span class="pre">randu</span></code></a></p></td>
-<td><p>Generate a random unsigned integer.</p></td>
+<td><p>Generate a uniform random unsigned 32-bit integer in the range [0, 2^32).</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.sample_cdf.html#warp._src.lang.sample_cdf" title="warp._src.lang.sample_cdf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample_cdf</span></code></a></p></td>
-<td><p>Inverse-transform sample a cumulative distribution function.</p></td>
+<td><p>Sample a discrete distribution by inverse-transform sampling of a CDF.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.sample_triangle.html#warp._src.lang.sample_triangle" title="warp._src.lang.sample_triangle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample_triangle</span></code></a></p></td>
-<td><p>Uniformly sample a triangle.</p></td>
+<td><p>Uniformly sample a point in a triangle, returned as barycentric coordinates.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.sample_unit_cube.html#warp._src.lang.sample_unit_cube" title="warp._src.lang.sample_unit_cube"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample_unit_cube</span></code></a></p></td>
-<td><p>Uniformly sample a unit cube.</p></td>
+<td><p>Uniformly sample a point in the unit cube <code class="docutils literal notranslate"><span class="pre">[-0.5,</span> <span class="pre">0.5)^3</span></code>, centered at the origin.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.sample_unit_disk.html#warp._src.lang.sample_unit_disk" title="warp._src.lang.sample_unit_disk"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample_unit_disk</span></code></a></p></td>
-<td><p>Uniformly sample a disk in the xy plane.</p></td>
+<td><p>Uniformly sample a point inside the unit disk (radius &lt;= 1) in the xy-plane.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.sample_unit_hemisphere.html#warp._src.lang.sample_unit_hemisphere" title="warp._src.lang.sample_unit_hemisphere"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample_unit_hemisphere</span></code></a></p></td>
-<td><p>Uniformly sample a unit hemisphere.</p></td>
+<td><p>Uniformly sample a point inside the unit hemisphere (radius &lt;= 1, z &gt;= 0).</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.sample_unit_hemisphere_surface.html#warp._src.lang.sample_unit_hemisphere_surface" title="warp._src.lang.sample_unit_hemisphere_surface"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample_unit_hemisphere_surface</span></code></a></p></td>
-<td><p>Uniformly sample a unit hemisphere surface.</p></td>
+<td><p>Uniformly sample a point on the surface of the unit hemisphere (radius 1, z &gt;= 0).</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.sample_unit_ring.html#warp._src.lang.sample_unit_ring" title="warp._src.lang.sample_unit_ring"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample_unit_ring</span></code></a></p></td>
-<td><p>Uniformly sample a ring in the xy plane.</p></td>
+<td><p>Uniformly sample a point on the unit circle (radius 1) in the xy-plane.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.sample_unit_sphere.html#warp._src.lang.sample_unit_sphere" title="warp._src.lang.sample_unit_sphere"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample_unit_sphere</span></code></a></p></td>
-<td><p>Uniformly sample a unit sphere.</p></td>
+<td><p>Uniformly sample a point inside the unit ball (radius &lt;= 1).</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.sample_unit_sphere_surface.html#warp._src.lang.sample_unit_sphere_surface" title="warp._src.lang.sample_unit_sphere_surface"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample_unit_sphere_surface</span></code></a></p></td>
-<td><p>Uniformly sample a unit sphere surface.</p></td>
+<td><p>Uniformly sample a point on the surface of the unit sphere (radius 1).</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.sample_unit_square.html#warp._src.lang.sample_unit_square" title="warp._src.lang.sample_unit_square"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample_unit_square</span></code></a></p></td>
-<td><p>Uniformly sample a unit square.</p></td>
+<td><p>Uniformly sample a point in the unit square <code class="docutils literal notranslate"><span class="pre">[-0.5,</span> <span class="pre">0.5)^2</span></code>, centered at the origin.</p></td>
 </tr>
 </tbody>
 </table>

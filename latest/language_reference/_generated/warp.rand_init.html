@@ -517,11 +517,31 @@
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Initialize a random number generator.</p>
-<p>Initialize from a user-defined seed.</p>
+<p>Initialize a random number generator (RNG) state from a seed.</p>
+<p>Warp’s RNG is a stateless PCG hash (Jarzynski &amp; Olano, 2020): <code class="docutils literal notranslate"><span class="pre">rand_init</span></code>
+turns a seed into a 32-bit <code class="docutils literal notranslate"><span class="pre">state</span></code> that is passed to the <code class="docutils literal notranslate"><span class="pre">rand*</span></code> and
+<code class="docutils literal notranslate"><span class="pre">sample_*</span></code> built-ins. In a kernel, these built-ins advance <code class="docutils literal notranslate"><span class="pre">state</span></code> in place,
+so repeated calls on the same local variable return different values. When
+called directly from the Python scope, they do not modify <code class="docutils literal notranslate"><span class="pre">state</span></code>: calling
+<code class="docutils literal notranslate"><span class="pre">wp.randf(state)</span></code> twice with the same <code class="docutils literal notranslate"><span class="pre">state</span></code> returns the same value both
+times. Results are deterministic and reproducible for a given seed and call
+order on every device.</p>
+<p><code class="docutils literal notranslate"><span class="pre">state</span></code> is just a local value, not a persistent generator object: it lives
+only for the duration of the kernel invocation and does not carry over between
+launches. Re-launching with the same seed and per-thread offsets reproduces the
+same sequences. To draw different sequences across launches, change the seed or
+include a launch-specific value in the <code class="docutils literal notranslate"><span class="pre">rand_init(seed,</span> <span class="pre">offset)</span></code> offset. See
+<a class="reference internal" href="../../user_guide/runtime.html#avoiding-correlated-sequences"><span class="std std-ref">Avoiding Correlated Sequences</span></a> for examples.</p>
+<p>For parallel kernels, prefer the <code class="docutils literal notranslate"><span class="pre">rand_init(seed,</span> <span class="pre">offset)</span></code> overload with a
+unique per-thread <code class="docutils literal notranslate"><span class="pre">offset</span></code> so each thread draws a distinct sequence. See
+the <a class="reference internal" href="../../user_guide/runtime.html#random-number-generation"><span class="std std-ref">Random Number Generation</span></a> user guide
+section for more details.</p>
 <dl class="field-list simple">
-<dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>A 32-bit integer representing the RNG state.</p>
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>seed</strong> – Seed value used to derive the initial state.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A 32-bit unsigned integer holding the initial RNG state.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -548,10 +568,31 @@
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Initialize a random number generator.</p>
-<p>Initialize from a user-defined seed and an offset.</p>
-<p>This alternative constructor can be useful in parallel programs, where a kernel as a whole should share a seed,
-but each thread should generate uncorrelated values. In this case usage should be <code class="docutils literal notranslate"><span class="pre">r</span> <span class="pre">=</span> <span class="pre">rand_init(seed,</span> <span class="pre">tid)</span></code>.</p>
+<p>Initialize a random number generator (RNG) state from a seed and an offset.</p>
+<p>Both <code class="docutils literal notranslate"><span class="pre">seed</span></code> and <code class="docutils literal notranslate"><span class="pre">offset</span></code> are hashed into the returned state. This is the
+recommended constructor for parallel kernels: share <code class="docutils literal notranslate"><span class="pre">seed</span></code> across the launch
+and pass a unique per-thread <code class="docutils literal notranslate"><span class="pre">offset</span></code> (typically <code class="docutils literal notranslate"><span class="pre">wp.tid()</span></code>) so each thread
+starts from a distinct RNG state and avoids sharing the same sequence:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">sample_kernel</span><span class="p">(</span><span class="n">seed</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">rng</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">rand_init</span><span class="p">(</span><span class="n">seed</span><span class="p">,</span> <span class="n">tid</span><span class="p">)</span>
+    <span class="n">out</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">randf</span><span class="p">(</span><span class="n">rng</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>See the <a class="reference internal" href="../../user_guide/runtime.html#random-number-generation"><span class="std std-ref">Random Number Generation</span></a> user guide
+section for the RNG model and guidance on avoiding correlated sequences.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>seed</strong> – Seed shared across a kernel launch.</p></li>
+<li><p><strong>offset</strong> – Per-thread offset selecting a distinct sequence.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A 32-bit unsigned integer holding the initial RNG state.</p>
+</dd>
+</dl>
 </dd></dl>
 
 </section>

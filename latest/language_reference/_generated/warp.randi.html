@@ -517,8 +517,10 @@
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Generate a random integer.</p>
-<p>Sample in the range [-2^31, 2^31).</p>
+<p>Generate a uniform random 32-bit signed integer in the range [-2^31, 2^31).</p>
+<p>In a kernel, advances <code class="docutils literal notranslate"><span class="pre">state</span></code> in place, so successive calls return different
+values; called from the Python scope, it does not modify <code class="docutils literal notranslate"><span class="pre">state</span></code>, so repeated
+calls with the same <code class="docutils literal notranslate"><span class="pre">state</span></code> return the same value (see <a class="reference internal" href="warp.rand_init.html#warp._src.lang.rand_init" title="warp._src.lang.rand_init"><code class="xref py py-func docutils literal notranslate"><span class="pre">rand_init()</span></code></a>).</p>
 </dd></dl>
 
 <dl class="py function">
@@ -543,8 +545,12 @@
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Generate a random integer.</p>
-<p>Sample in the range [low, high).</p>
+<p>Generate a uniform random integer in the range [low, high).</p>
+<p>In a kernel, advances <code class="docutils literal notranslate"><span class="pre">state</span></code> in place, so successive calls return different
+values; called from the Python scope, it does not modify <code class="docutils literal notranslate"><span class="pre">state</span></code>, so repeated
+calls with the same <code class="docutils literal notranslate"><span class="pre">state</span></code> return the same value (see <a class="reference internal" href="warp.rand_init.html#warp._src.lang.rand_init" title="warp._src.lang.rand_init"><code class="xref py py-func docutils literal notranslate"><span class="pre">rand_init()</span></code></a>).
+Requires <code class="docutils literal notranslate"><span class="pre">high</span> <span class="pre">&gt;</span> <span class="pre">low</span></code>. Uses modulo reduction, so the distribution is slightly
+biased toward lower values for very large ranges.</p>
 </dd></dl>
 
 </section>

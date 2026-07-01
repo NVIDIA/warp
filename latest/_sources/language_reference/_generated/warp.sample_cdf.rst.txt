@@ -8,4 +8,35 @@
 
       * Kernel
 
-   Inverse-transform sample a cumulative distribution function.
+   Sample a discrete distribution by inverse-transform sampling of a CDF.
+   
+   Draws a uniform value ``u`` in [0.0, 1.0) and returns the index of the first
+   entry of ``cdf`` greater than or equal to ``u`` via binary search. ``cdf`` must
+   be a 1D, monotonically non-decreasing array normalized so its last element is
+   1.0 (for example, a cumulative sum of non-negative weights divided by their
+   total). The returned index lies in ``[0, len(cdf) - 1]`` and selects the
+   sampled bin.
+   
+   Unlike the other random built-ins, this function is only callable from within
+   kernels, where it advances ``state`` in place (see :func:`rand_init`).
+   
+   Build a normalized CDF in Python, then sample it inside a kernel:
+   
+   .. code-block:: python
+   
+       @wp.kernel
+       def sample_bins(seed: int, cdf: wp.array[float], out: wp.array[int]):
+           i = wp.tid()
+           rng = wp.rand_init(seed, i)
+           out[i] = wp.sample_cdf(rng, cdf)  # index in [0, len(cdf) - 1]
+   
+       weights = np.array([0.1, 0.4, 0.5], dtype=np.float32)
+       cdf = wp.array(np.cumsum(weights) / weights.sum(), dtype=float)
+       out = wp.empty(1000, dtype=int)
+       wp.launch(sample_bins, dim=out.shape, inputs=[42, cdf], outputs=[out])
+   
+   :param state: RNG state, advanced in place (see :func:`rand_init`).
+   :param cdf: Normalized, non-decreasing cumulative distribution (1D float array).
+   
+   :returns: The sampled index into ``cdf``.
+   

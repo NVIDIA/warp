@@ -9,9 +9,11 @@
       * Kernel
       * Python
 
-   Generate a random integer.
+   Generate a uniform random 32-bit signed integer in the range [-2^31, 2^31).
    
-   Sample in the range [-2^31, 2^31).
+   In a kernel, advances ``state`` in place, so successive calls return different
+   values; called from the Python scope, it does not modify ``state``, so repeated
+   calls with the same ``state`` return the same value (see :func:`rand_init`).
 
 .. function:: warp._src.lang.randi(state: uint32, low: int32, high: int32) -> int
    :noindex:
@@ -22,6 +24,10 @@
       * Kernel
       * Python
 
-   Generate a random integer.
+   Generate a uniform random integer in the range [low, high).
    
-   Sample in the range [low, high).
+   In a kernel, advances ``state`` in place, so successive calls return different
+   values; called from the Python scope, it does not modify ``state``, so repeated
+   calls with the same ``state`` return the same value (see :func:`rand_init`).
+   Requires ``high > low``. Uses modulo reduction, so the distribution is slightly
+   biased toward lower values for very large ranges.

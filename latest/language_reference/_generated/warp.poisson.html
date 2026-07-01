@@ -518,12 +518,27 @@
 </ul>
 </td></tr></table>
 <p>Generate a random sample from a Poisson distribution.</p>
+<p>In a kernel, advances <code class="docutils literal notranslate"><span class="pre">state</span></code> in place when <code class="docutils literal notranslate"><span class="pre">lam</span> <span class="pre">&gt;</span> <span class="pre">0</span></code> (and returns <code class="docutils literal notranslate"><span class="pre">0</span></code>
+without consuming RNG state when <code class="docutils literal notranslate"><span class="pre">lam</span> <span class="pre">==</span> <span class="pre">0</span></code>); called from the Python scope, it
+does not modify <code class="docutils literal notranslate"><span class="pre">state</span></code>, so repeated calls with the same <code class="docutils literal notranslate"><span class="pre">state</span></code> return the
+same count (see <a class="reference internal" href="warp.rand_init.html#warp._src.lang.rand_init" title="warp._src.lang.rand_init"><code class="xref py py-func docutils literal notranslate"><span class="pre">rand_init()</span></code></a>). The returned count has mean and variance
+both equal to <code class="docutils literal notranslate"><span class="pre">lam</span></code>.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">counts</span><span class="p">(</span><span class="n">seed</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">rate</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">uint32</span><span class="p">]):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">rng</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">rand_init</span><span class="p">(</span><span class="n">seed</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+    <span class="n">out</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">poisson</span><span class="p">(</span><span class="n">rng</span><span class="p">,</span> <span class="n">rate</span><span class="p">)</span>
+</pre></div>
+</div>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>state</strong> – RNG state</p></li>
-<li><p><strong>lam</strong> – The expected value of the distribution.</p></li>
+<li><p><strong>state</strong> – RNG state; advanced in place when called in a kernel (see <a class="reference internal" href="warp.rand_init.html#warp._src.lang.rand_init" title="warp._src.lang.rand_init"><code class="xref py py-func docutils literal notranslate"><span class="pre">rand_init()</span></code></a>).</p></li>
+<li><p><strong>lam</strong> – Expected value (rate) of the distribution; must be non-negative.</p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A <code class="docutils literal notranslate"><span class="pre">uint32</span></code> sample drawn from <code class="docutils literal notranslate"><span class="pre">Poisson(lam)</span></code>.</p>
 </dd>
 </dl>
 </dd></dl>

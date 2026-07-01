@@ -9,9 +9,11 @@
       * Kernel
       * Python
 
-   Generate a random unsigned integer.
+   Generate a uniform random unsigned 32-bit integer in the range [0, 2^32).
    
-   Sample in the range [0, 2^32).
+   In a kernel, advances ``state`` in place, so successive calls return different
+   values; called from the Python scope, it does not modify ``state``, so repeated
+   calls with the same ``state`` return the same value (see :func:`rand_init`).
 
 .. function:: warp._src.lang.randu(state: uint32, low: uint32, high: uint32) -> uint32
    :noindex:
@@ -22,6 +24,10 @@
       * Kernel
       * Python
 
-   Generate a random unsigned integer.
+   Generate a uniform random unsigned integer in the range [low, high).
    
-   Sample in the range [low, high).
+   In a kernel, advances ``state`` in place, so successive calls return different
+   values; called from the Python scope, it does not modify ``state``, so repeated
+   calls with the same ``state`` return the same value (see :func:`rand_init`).
+   Requires ``high > low``. Uses modulo reduction, so the distribution is slightly
+   biased toward lower values for very large ranges.
