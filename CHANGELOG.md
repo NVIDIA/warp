@@ -207,6 +207,9 @@
 
 ### Documentation
 
+- Document the tiled kernel patterns that diverge between CPU and CUDA under the forced CPU `block_dim=1`, along with
+  portable workarounds ([GH-1580](https://github.com/NVIDIA/warp/issues/1580)).
+
 ## [1.14.0] - 2026-06-01
 
 ### Added

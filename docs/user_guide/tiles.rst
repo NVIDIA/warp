@@ -850,6 +850,228 @@ in this example by adding ``block_dim=128`` to the :func:`wp.launch() <warp.laun
 the kernel only takes about 0.436 ms to complete, while the pure SIMT kernel is
 relatively unaffected.
 
+.. _cpu_tile_semantics:
+
+CPU Tile Semantics
+------------------
+
+Tile operations are **block-cooperative** on the GPU: the ``block_dim`` threads of a block
+share tile storage and cooperate on reductions, scans, scatters, and stores. The CPU
+backend is single-threaded, so it executes tiled kernels with an effective ``block_dim``
+of ``1``, regardless of the value you pass to :func:`wp.launch() <warp.launch>` or
+:func:`wp.launch_tiled() <warp.launch_tiled>`. The consequences are:
+
+- :func:`wp.block_dim() <warp._src.lang.block_dim>` returns ``1``.
+- For :func:`wp.launch_tiled() <warp.launch_tiled>`, the trailing lane index added to
+  :func:`wp.tid() <warp._src.lang.tid>` is always ``0``.
+- :func:`wp.tile(value) <warp._src.lang.tile>` builds a **1-element** tile, even if the
+  launch requested ``block_dim > 1``.
+- Tile state is not cooperatively populated by ``block_dim`` lanes on CPU. On the GPU,
+  lanes ``0`` through ``block_dim - 1`` can each contribute values to the same block tile.
+  On CPU the effective lane count is ``1``, so only lane ``0`` participates.
+
+Crucially, this does **not** make all tile code non-portable. Whole-tile cooperative
+operations on explicitly shaped tiles still produce the same result on CPU and GPU. A
+pattern such as :func:`tile_load() <warp._src.lang.tile_load>`, then
+:func:`tile_sum() <warp._src.lang.tile_sum>`, then
+:func:`tile_store() <warp._src.lang.tile_store>` remains correct on CPU, because CPU
+execution still processes the full explicit tile shape. Divergence appears only when a
+kernel uses ``block_dim`` or the lane index in its arithmetic, reduces or scans over
+``wp.tile(value)``, or relies on multiple lanes cooperating on one tile — the three cases
+detailed below.
+
+Patterns that do not produce identical CPU/GPU results
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Every divergence below traces to one fact: **a CPU block has a single lane.** A kernel's
+result differs across devices only when it depends on a block having *more than one* lane.
+That dependence enters in three ways. The CPU and GPU outputs are shown as comments.
+
+**Problem 1: arithmetic that uses** ``block_dim`` **or the lane index.** On CPU,
+:func:`wp.block_dim() <warp._src.lang.block_dim>` returns ``1`` and the lane index (the
+trailing value of :func:`wp.tid() <warp._src.lang.tid>` in a tiled launch) is always ``0``.
+Any offset, stride, count, loop bound, or index derived from them therefore changes. This
+includes the common ``thread_idx=wp.block_dim() - 1`` broadcast idiom used with
+:func:`tile_from_thread() <warp._src.lang.tile_from_thread>`, which selects thread ``0`` on
+CPU. Here ``block_dim()`` drives the load offset, so each block reads the wrong slice:
+
+.. code-block:: python
+
+    TILE_SIZE = wp.constant(4)
+
+    @wp.kernel
+    def copy_tiles(inp: wp.array[int], out: wp.array[int]):
+        block_idx = wp.tid()
+        load_offset = block_idx * wp.block_dim()
+        tile = wp.tile_load(inp, shape=TILE_SIZE, offset=load_offset)
+        wp.tile_store(out, tile, offset=block_idx * TILE_SIZE)
+
+    wp.launch_tiled(copy_tiles, dim=[4], inputs=[inp], outputs=[out], block_dim=TILE_SIZE)
+
+    # input inp: [0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15]
+    # GPU  out:  [0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15]
+    # CPU  out:  [0 1 2 3 1 2 3 4 2 3 4 5 3 4 5 6]
+
+**Problem 2: reductions or scans over** ``wp.tile(value)``. :func:`wp.tile(value)
+<warp._src.lang.tile>` builds a ``block_dim``-wide tile from each lane's scalar, but a
+**1-element** tile on CPU. A block reduction or scan over it aggregates the whole block on
+the GPU and collapses to the lane's own value on CPU:
+
+.. code-block:: python
+
+    TILE_DIM = 4
+
+    @wp.kernel
+    def block_reduce(output: wp.array[int]):
+        i = wp.tid()
+        t = wp.tile(i)               # block_dim-wide on the GPU, 1 element on CPU
+        s = wp.tile_sum(t)
+        wp.tile_store(output, s, offset=i)
+
+    wp.launch(block_reduce, dim=12, outputs=[output], block_dim=TILE_DIM)
+
+    # GPU:  [ 6  0  0  0 22  0  0  0 38  0  0  0]   (block sums at 0, 4, 8)
+    # CPU:  [ 0  1  2  3  4  5  6  7  8  9 10 11]   (each lane's own value)
+
+**Problem 3: results that require lanes to cooperate on one tile.** When each lane fills its
+own part of a tile that the block then consumes as a whole, only one lane's contribution
+lands on CPU. This is the mechanism behind per-lane element writes (``t[i] = ...``,
+``t[i][c]``, ``t[i][r, c]``), :func:`tile_scatter_add() <warp._src.lang.tile_scatter_add>`,
+and :func:`tile_stack_push() <warp._src.lang.tile_stack_push>` /
+:func:`tile_stack_pop() <warp._src.lang.tile_stack_pop>`. The adjoint collapses the same
+way — only the surviving lane receives a gradient.
+
+The exact wrong answer depends on the launch. Under :func:`wp.launch() <warp.launch>` each
+thread becomes its own single-lane block, so cooperative stores to the same output race and
+the last write wins:
+
+.. code-block:: python
+
+    TILE_SIZE = wp.constant(8)
+
+    @wp.kernel
+    def lane_store(x: wp.array[float], out: wp.array[float]):
+        i = wp.tid()
+        t = wp.tile_zeros(shape=(TILE_SIZE,), dtype=float)
+        t[i] = x[i] * 2.0
+        wp.tile_store(out, t)
+
+    wp.launch(lane_store, dim=8, inputs=[x], outputs=[out], block_dim=TILE_SIZE)
+
+    # input  x: [0, 1, 2, 3, 4, 5, 6, 7]
+    # GPU  out: [0, 2, 4, 6, 8, 10, 12, 14]
+    # CPU  out: [0, 0, 0, 0, 0, 0, 0, 14]          (only the last thread's store remains)
+
+Under :func:`wp.launch_tiled() <warp.launch_tiled>` the block runs once with lane ``0``, so
+only lane 0's contribution is present:
+
+.. code-block:: python
+
+    TILE_SIZE = wp.constant(8)
+
+    @wp.kernel
+    def scatter(inp: wp.array[float], out: wp.array[float]):
+        _b, lane = wp.tid()
+        t = wp.tile_zeros(shape=(TILE_SIZE,), dtype=float, storage="shared")
+        wp.tile_scatter_add(t, lane, inp[lane], True, False)
+        wp.tile_store(out, t)
+
+    wp.launch_tiled(scatter, dim=[1], inputs=[inp], outputs=[out], block_dim=TILE_SIZE)
+
+    # input  inp: [1, 2, 3, 4, 5, 6, 7, 8]
+    # GPU  out:   [1, 2, 3, 4, 5, 6, 7, 8]
+    # CPU  out:   [1, 0, 0, 0, 0, 0, 0, 0]
+
+Finally, **seeded random tiles are not reproducible across devices.**
+:func:`tile_randf() <warp._src.lang.tile_randf>` and
+:func:`tile_randi() <warp._src.lang.tile_randi>` partition the RNG stream across lanes. On
+CPU's single lane the whole tile is drawn from lane 0's stream, so only the first element
+matches the GPU result while the rest differ, even though the tile shape is the same.
+
+Writing device-portable tile kernels
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The unifying principle is to **make the result independent of** ``block_dim`` so that a
+kernel computes the *intended* result on both devices — a genuine block reduction, say,
+rather than a per-lane no-op. Three approaches produce equivalent CPU and GPU results
+today, in rough order of preference:
+
+**1. Accumulate block results into a global with**
+:func:`tile_atomic_add() <warp._src.lang.tile_atomic_add>`. This replaces a
+first-lane :func:`tile_store() <warp._src.lang.tile_store>` of a block aggregate with a
+global accumulation that does not depend on how many lanes a block has. See the
+:ref:`blockwise reduction example <tile_reduce_blockwise_example>`.
+
+**2. Write architecture-specific kernels.** When a kernel needs full cooperative
+parallelism on the GPU that does not reduce to a global accumulation, write a cooperative
+GPU kernel and a separate serial CPU kernel and dispatch on the launch device. This is the
+only approach that preserves cooperative execution on the GPU, at the cost of two code
+paths to keep in sync:
+
+.. code-block:: python
+
+    TILE_SIZE = wp.constant(256)
+
+    @wp.kernel
+    def gpu_reduce(x: wp.array2d(dtype=float), out: wp.array2d(dtype=float)):
+        i = wp.tid()
+        t = wp.tile_load(x[i], TILE_SIZE)
+        wp.tile_store(out[i], wp.tile_sum(t))   # cooperative block reduction
+
+    @wp.kernel
+    def cpu_reduce(x: wp.array2d(dtype=float), out: wp.array2d(dtype=float)):
+        i = wp.tid()
+        s = float(0.0)
+        for k in range(TILE_SIZE):
+            s += x[i, k]                        # serial reduction
+        out[i, 0] = s
+
+    device = wp.get_device()
+    if device.is_cuda:
+        wp.launch_tiled(gpu_reduce, dim=x.shape[0], inputs=[x], outputs=[out], block_dim=TILE_SIZE)
+    else:
+        wp.launch(cpu_reduce, dim=x.shape[0], inputs=[x], outputs=[out])
+
+**3. Have one thread own the tile and loop over the lanes** *(last resort).* As a
+compatibility or debugging fallback, launch with one thread per block (``block_dim=1`` on
+both devices) and iterate over what would be the lanes. This keeps a single kernel and
+produces the intended result everywhere, but it serializes the work and forfeits the
+cooperative execution model that tiles exist to provide, so it is not recommended for
+production GPU kernels:
+
+.. code-block:: python
+
+    NBLOCKS = wp.constant(2)
+    TILE_SIZE = wp.constant(8)
+
+    @wp.kernel
+    def owned_tile(x: wp.array[float], out: wp.array[float]):
+        b = wp.tid()
+        t = wp.tile_zeros(shape=(TILE_SIZE,), dtype=float)
+        for lane in range(TILE_SIZE):
+            t[lane] = x[b * TILE_SIZE + lane] * 2.0
+        wp.tile_store(out, t, offset=b * TILE_SIZE)
+
+    wp.launch(owned_tile, dim=NBLOCKS, inputs=[x], outputs=[out], block_dim=1)
+
+For :func:`wp.block_dim() <warp._src.lang.block_dim>`, use a compile-time constant for the
+intended block width instead of querying it at runtime, and pass the same value as
+``block_dim`` at launch.
+
+Separately, if a kernel's work is *purely per-lane* — each thread only reads and writes
+its own element — tiles are the wrong abstraction altogether. Skip the block-shared tile
+and have each thread write directly to the global array (e.g. ``out[i] = x[i] * 2.0``).
+This is ordinary SIMT code rather than a tile kernel, but it already runs identically on
+both devices and avoids the cooperative machinery entirely.
+
+.. note::
+
+    Approach 3 trades away the in-block SIMT parallelism that tiles exist to provide.
+    There is currently no way to preserve **both** cross-device parity **and** the
+    cooperative block execution model within a *single* kernel on CPU. We intend to emulate
+    ``block_dim`` on the CPU in the future so that valid tiled kernels behave the same on
+    both devices without this workaround.
+
 Automatic Differentiation
 -------------------------
 
@@ -1193,23 +1415,9 @@ CPU vs. GPU behavior differences
 
 *Why does my kernel using tiles behave differently depending on whether I run it on a CPU or GPU?*
 
-On CPU, Warp currently forces ``block_dim=1`` regardless of what you specify. This is a
-limitation of Warp's single-threaded CPU execution model. The consequences are:
-
-- :func:`wp.tile() <warp._src.lang.tile>` produces a 1-element tile instead of a
-  block-wide tile of ``block_dim`` elements.
-- Block-wide aggregation operations become effectively no-ops, because the "block"
-  is a single thread, so there is nothing to reduce or cooperate across.
-
-Kernels that use :func:`wp.tile() <warp._src.lang.tile>` to aggregate values across a
-block will produce per-thread results on CPU instead of block-aggregated results.
-
-To write kernels that produce consistent results on both devices, use
-:func:`wp.tile_atomic_add() <warp._src.lang.tile_atomic_add>` to accumulate each block's
-result into a global array rather than relying on
-:func:`wp.tile_store() <warp._src.lang.tile_store>` writing only from the first thread of
-each block. See the :ref:`blockwise reduction example <tile_reduce_blockwise_example>` in
-`Tiles and SIMT Code`_.
+On CPU, Warp forces ``block_dim=1``, which collapses the logical block to a single lane.
+See :ref:`CPU Tile Semantics <cpu_tile_semantics>` for the affected patterns
+and the workarounds that produce identical results on both devices.
 
 Tile operations in divergent branches
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
