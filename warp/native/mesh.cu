@@ -56,7 +56,7 @@ __global__ void compute_mesh_edge_lengths(int n, const vec3* points, const int* 
 
 __global__ void compute_average_mesh_edge_length(int n, float* sum_edge_lengths, Mesh* m)
 {
-    m->average_edge_length = sum_edge_lengths[n - 1] / (3 * n);
+    m->average_edge_length = (n > 0) ? sum_edge_lengths[n - 1] / (3.0f * n) : 0.0f;
 }
 
 __global__ void bvh_refit_with_solid_angle_kernel(
@@ -224,6 +224,11 @@ void bvh_refit_with_solid_angle_device(BVH& bvh, Mesh& mesh)
 {
     ContextGuard guard(bvh.context);
 
+    if (!bvh.node_lowers || !bvh.node_uppers || !bvh.node_parents || !bvh.node_counts || !bvh.primitive_indices
+        || bvh.num_leaf_nodes <= 0) {
+        return;
+    }
+
     // clear child counters
     wp_memset_device(WP_CURRENT_CONTEXT, bvh.node_counts, 0, sizeof(int) * bvh.max_nodes);
     wp_launch_device(
@@ -279,7 +284,7 @@ uint64_t wp_mesh_create_device(
     mesh.lowers = (wp::vec3*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::vec3) * num_tris, "(native:mesh)");
     mesh.uppers = (wp::vec3*)wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(wp::vec3) * num_tris, "(native:mesh)");
 
-    if (support_winding_number && !use_cubql) {
+    if (support_winding_number && !use_cubql && num_tris > 0) {
         int num_bvh_nodes = 2 * num_tris;
         mesh.solid_angle_props = (wp::SolidAngleProps*)wp_alloc_device(
             WP_CURRENT_CONTEXT, sizeof(wp::SolidAngleProps) * num_bvh_nodes, "(native:mesh)"
@@ -295,16 +300,18 @@ uint64_t wp_mesh_create_device(
     // we compute mesh the average edge length
     // for use in mesh_query_point_sign_normal()
     // since it relies on an epsilon for welding
-    // reuse bounds memory temporarily for computing edge lengths
-    float* length_tmp_ptr = (float*)mesh.lowers;
-    wp_launch_device(
-        WP_CURRENT_CONTEXT, wp::compute_mesh_edge_lengths, mesh.num_tris,
-        (mesh.num_tris, mesh.points, mesh.indices, length_tmp_ptr)
-    );
-    scan_device(length_tmp_ptr, length_tmp_ptr, mesh.num_tris, true);
-    wp_launch_device(
-        WP_CURRENT_CONTEXT, wp::compute_average_mesh_edge_length, 1, (mesh.num_tris, length_tmp_ptr, mesh_device)
-    );
+    if (mesh.num_tris > 0) {
+        // reuse bounds memory temporarily for computing edge lengths
+        float* length_tmp_ptr = (float*)mesh.lowers;
+        wp_launch_device(
+            WP_CURRENT_CONTEXT, wp::compute_mesh_edge_lengths, mesh.num_tris,
+            (mesh.num_tris, mesh.points, mesh.indices, length_tmp_ptr)
+        );
+        scan_device(length_tmp_ptr, length_tmp_ptr, mesh.num_tris, true);
+        wp_launch_device(
+            WP_CURRENT_CONTEXT, wp::compute_average_mesh_edge_length, 1, (mesh.num_tris, length_tmp_ptr, mesh_device)
+        );
+    }
 
     // compute triangle bound and construct BVH
     wp_launch_device(
@@ -338,7 +345,7 @@ uint64_t wp_mesh_create_device(
 
     mesh_add_descriptor(mesh_id, mesh);
 
-    if (support_winding_number && !use_cubql)
+    if (support_winding_number && !use_cubql && num_tris > 0)
         wp_mesh_refit_device(mesh_id);
 
     return mesh_id;
@@ -376,24 +383,26 @@ int wp_mesh_refit_device(uint64_t id)
         // for use in mesh_query_point_sign_normal()
         // since it relies on an epsilon for welding
 
-        // reuse bounds memory temporarily for computing edge lengths
-        float* length_tmp_ptr = (float*)m.lowers;
-        wp_launch_device(
-            WP_CURRENT_CONTEXT, wp::compute_mesh_edge_lengths, m.num_tris,
-            (m.num_tris, m.points, m.indices, length_tmp_ptr)
-        );
+        if (m.num_tris > 0) {
+            // reuse bounds memory temporarily for computing edge lengths
+            float* length_tmp_ptr = (float*)m.lowers;
+            wp_launch_device(
+                WP_CURRENT_CONTEXT, wp::compute_mesh_edge_lengths, m.num_tris,
+                (m.num_tris, m.points, m.indices, length_tmp_ptr)
+            );
 
-        scan_device(length_tmp_ptr, length_tmp_ptr, m.num_tris, true);
+            scan_device(length_tmp_ptr, length_tmp_ptr, m.num_tris, true);
 
-        wp_launch_device(
-            WP_CURRENT_CONTEXT, wp::compute_average_mesh_edge_length, 1, (m.num_tris, length_tmp_ptr, (wp::Mesh*)id)
-        );
+            wp_launch_device(
+                WP_CURRENT_CONTEXT, wp::compute_average_mesh_edge_length, 1, (m.num_tris, length_tmp_ptr, (wp::Mesh*)id)
+            );
+        }
         wp_launch_device(
             WP_CURRENT_CONTEXT, wp::compute_triangle_bounds, m.num_tris,
             (m.num_tris, m.points, m.indices, m.lowers, m.uppers)
         );
 
-        if (m.solid_angle_props) {
+        if (m.solid_angle_props && m.num_tris > 0) {
             // update solid angle data
             bvh_refit_with_solid_angle_device(m.bvh, m);
         } else {
