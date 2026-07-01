@@ -1696,6 +1696,10 @@ Current limitations of CPU graph capture:
 - :meth:`BsrMatrix.nnz_sync() <warp.sparse.BsrMatrix.nnz_sync>` cannot read the
   result of a topology update recorded earlier in the same CPU capture. Read the
   count after replay, or avoid the readback inside the captured region.
+- :meth:`BsrMatrix.status_sync() <warp.sparse.BsrMatrix.status_sync>` cannot read
+  the sparse status during a live CUDA graph capture (it requires a device-to-host
+  readback) or during a CPU APIC capture (a recorded status update is applied only
+  on replay). Read the status after replay instead.
 - Recording is scoped to the capture's device: a host (CPU) helper op invoked while a CUDA
   graph capture is active executes immediately instead of being recorded into the CUDA graph,
   and vice versa.

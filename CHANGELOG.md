@@ -185,10 +185,11 @@
 - Fix CPU APIC graph capture of untracked or native-only host buffers used by memory operations, so saved graphs no
   longer drop captured copies and fills or depend on capture-time pointers
   ([GH-1431](https://github.com/NVIDIA/warp/issues/1431)).
-- Fix CUDA graph capture of padded `wp.sparse.bsr_set_transpose()` and `wp.sparse.bsr_set_from_triplets()`: the
-  row-capacity status buffer is now allocated when the matrix is created rather than during capture, so capturing
-  these operations no longer leaves an invalid capture-scoped buffer that fails on later host access and disrupts
-  subsequent CUDA operations ([GH-1431](https://github.com/NVIDIA/warp/issues/1431)).
+- Fix CUDA graph capture for padded `warp.sparse` matrices so `bsr_zeros(row_capacity=...)` can create padded
+  temporary matrices inside capture when graph-capture allocation is available. Padded sparse status storage follows
+  normal graph-capture allocation semantics, and `BsrMatrix.status_sync()` (and `BsrMatrix.nnz_sync()` for its
+  block-count readback) now raise a clear error when a host readback is requested during a live CUDA graph capture;
+  `status_sync()` is likewise rejected during a CPU APIC capture ([GH-1611](https://github.com/NVIDIA/warp/issues/1611)).
 - Fix CUDA graph capture that begins as the first operation on a context: the one-time memory-pool warm-up now runs
   before capture starts instead of on the legacy stream mid-capture, which previously invalidated the capture and
   left the graph unbuildable ([GH-1431](https://github.com/NVIDIA/warp/issues/1431)).

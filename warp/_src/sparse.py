@@ -195,7 +195,18 @@ class BsrMatrix(Generic[_BlockType]):
         not necessarily the active non-zero block count.
 
         See also :meth:`notify_nnz_changed`.
+
+        Raises:
+            RuntimeError: If called during a live CUDA graph capture because
+              reading ``offsets[nrow]`` requires a device-to-host transfer.
         """
+
+        if self.device.is_capturing and not self.device.is_cpu:
+            raise RuntimeError(
+                "BsrMatrix.nnz_sync() cannot read the block count during a live CUDA graph "
+                "capture because it requires a device-to-host readback. Provide an explicit "
+                "nnz_capacity for padded construction, or query the count outside the capture."
+            )
 
         # A nnz readback reads the current value "now". Under a CPU APIC capture
         # the host copy/readback would otherwise be recorded (deferred), leaving
@@ -231,11 +242,37 @@ class BsrMatrix(Generic[_BlockType]):
         The status code is sticky: sparse operations can set it, but successful
         operations do not clear it. Use :meth:`clear_status` before an operation
         when checking only that operation's status.
+
+        Raises:
+            RuntimeError: If called during a live CUDA graph capture because
+              reading the status requires a device-to-host transfer.
+            NotImplementedError: If called during a CPU APIC graph capture,
+              because a status update recorded in the capture is applied only on
+              replay. Query the status after graph replay.
         """
 
         status = self._status_if_any()
         if status is None:
             return _BSR_STATUS_SUCCESS
+
+        if self.device.is_capturing and not self.device.is_cpu:
+            raise RuntimeError(
+                "BsrMatrix.status_sync() cannot read sparse status during a live CUDA graph capture "
+                "because it requires a device-to-host readback. Query the status outside the capture."
+            )
+
+        # Unlike nnz_sync(), status_sync() is never called internally during an
+        # operation, so it can reject any CPU APIC capture readback outright: a
+        # padded op recorded in the capture writes status only on replay, so a
+        # status read inside the capture would observe a pre-replay value.
+        from warp._src.context import runtime  # noqa: PLC0415
+
+        apic_graph = runtime._apic_graph
+        if apic_graph is not None and apic_graph.device.is_cpu and apic_graph.device == self.device:
+            raise NotImplementedError(
+                "BsrMatrix.status_sync() cannot read sparse status recorded during a CPU APIC graph "
+                "capture because the update is applied only on replay. Query the status after graph replay."
+            )
 
         return int(status.numpy()[0])
 
@@ -316,14 +353,6 @@ class BsrMatrix(Generic[_BlockType]):
     def _ensure_status(self) -> wp.array:
         status = self._status_if_any()
         if status is None or status.device != self.device:
-            if self.device.is_capturing and not self.device.is_cpu:
-                raise RuntimeError(
-                    "The BSR row-capacity status buffer must be allocated before a CUDA graph "
-                    "capture begins. Materialize the matrix outside the capture (e.g. via "
-                    "bsr_zeros() or bsr_set_zero() with the intended topology) before capturing. "
-                    "Allocating it during capture would produce a graph-scoped buffer that is "
-                    "invalid for host-side use once the capture ends."
-                )
             status = wp.zeros(shape=(1,), dtype=int, device=self.device)
             BsrMatrix.__setattr__(self, "_status", status)
 
@@ -566,16 +595,10 @@ def _bsr_set_zero_topology(
             bsr.offsets.zero_()
             nnz = 0
         _bsr_ensure_independent_row_counts(bsr, preserve_row_counts=False)
-        # Eagerly allocate the row-capacity status scalar while outside a CUDA
-        # graph capture, so padded ops recorded during a capture
-        # (bsr_set_transpose / bsr_set_from_triplets) find it already allocated.
-        # Allocating it mid-capture would create a graph-scoped buffer that is
-        # invalid for host-side use once the capture ends.
-        if not (bsr.device.is_capturing and not bsr.device.is_cpu):
-            bsr._ensure_status()
-            # Snapshot the capacity layout so a later CUDA capture can restore it
-            # (no-op on CPU and during capture; see _refresh_capacity_snapshot).
-            bsr._refresh_capacity_snapshot()
+        bsr._ensure_status()
+        # Snapshot the capacity layout so a later CUDA APIC capture can restore
+        # it (no-op on CPU and during capture; see _refresh_capacity_snapshot).
+        bsr._refresh_capacity_snapshot()
     else:
         bsr.offsets.zero_()
         _bsr_set_compact_row_counts(bsr)
@@ -614,7 +637,9 @@ def bsr_zeros(
           and ``values``. This is mainly useful with per-row ``row_capacity``
           arrays when an upper bound is already known. When ``row_capacity`` is
           an array, the caller is responsible for ensuring ``nnz_capacity`` is
-          at least the total row capacity.
+          at least the total row capacity. During CUDA graph capture, per-row
+          ``row_capacity`` arrays require an explicit ``nnz_capacity`` to avoid
+          a host readback.
     """
 
     if topology is None:
