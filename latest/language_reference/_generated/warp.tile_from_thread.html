@@ -576,6 +576,14 @@ all threads in a block using minimal shared memory (only 1 element).</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>[ 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15]
 </pre></div>
 </div>
+<p>The output above assumes GPU execution. On CPU, <code class="docutils literal notranslate"><span class="pre">wp.block_dim()</span></code> returns <code class="docutils literal notranslate"><span class="pre">1</span></code>,
+so <code class="docutils literal notranslate"><span class="pre">offset</span></code> becomes <code class="docutils literal notranslate"><span class="pre">i</span> <span class="pre">*</span> <span class="pre">1</span></code> instead of <code class="docutils literal notranslate"><span class="pre">i</span> <span class="pre">*</span> <span class="pre">TILE_SIZE</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">thread_idx=wp.block_dim()</span> <span class="pre">-</span> <span class="pre">1</span></code> selects thread <code class="docutils literal notranslate"><span class="pre">0</span></code>. The CPU output is:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>[0 1 2 3 4 5 6 7 1 2 3 4 5 6 7 8]
+</pre></div>
+</div>
+<p>See <a class="reference internal" href="../../user_guide/tiles.html#cpu-tile-semantics"><span class="std std-ref">CPU Tile Semantics</span></a> for more detail on the CPU/GPU
+differences that affect portable tile code.</p>
 </dd></dl>
 
 <dl class="py function">
