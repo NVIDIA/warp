@@ -9,4 +9,19 @@
       * Kernel
       * Python
 
-   Uniformly sample a unit sphere.
+   Uniformly sample a point inside the unit ball (radius <= 1).
+   
+   Returns a ``vec3``. In a kernel, advances ``state`` in
+   place; called from the Python scope, it does not modify ``state``, so repeated
+   calls with the same ``state`` return the same point (see :func:`rand_init`).
+   
+   The other ``sample_unit_*`` helpers are called the same way (initialize ``rng``
+   with :func:`rand_init`, then pass it), differing only in the domain they sample:
+   
+   .. code-block:: python
+   
+       @wp.kernel
+       def random_points(seed: int, out: wp.array[wp.vec3]):
+           i = wp.tid()
+           rng = wp.rand_init(seed, i)
+           out[i] = wp.sample_unit_sphere(rng)

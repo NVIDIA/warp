@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Changelog &#8212; Warp 1.15.0rc2</title>
+    <title>Changelog &#8212; Warp 1.15.0rc3</title>
   
   
   
@@ -68,7 +68,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.15.0rc2" />
+  <meta name="docsearch:version" content="1.15.0rc3" />
 
 
   </head>
@@ -139,11 +139,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0rc2 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0rc2 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0rc3 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0rc3 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.15.0rc2</p>
+    <p class="title logo__title">Warp 1.15.0rc3</p>
   
 </a></div>
     
@@ -278,11 +278,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0rc2 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0rc2 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0rc3 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0rc3 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.15.0rc2</p>
+    <p class="title logo__title">Warp 1.15.0rc3</p>
   
 </a>
 
@@ -498,217 +498,183 @@
 <section id="added">
 <h3>Added<a class="headerlink" href="#added" title="Link to this heading">#</a></h3>
 <ul class="simple">
+<li><p>Add deterministic execution mode for atomic operations via
+<code class="docutils literal notranslate"><span class="pre">wp.config.deterministic</span> <span class="pre">=</span> <span class="pre">wp.DeterministicMode.RUN_TO_RUN</span></code>. Supported atomic accumulation and slot-allocation
+patterns can produce bit-exact repeated results. Configure the mode globally or per module, and use
+<code class="docutils literal notranslate"><span class="pre">wp.config.deterministic_max_records</span></code> to raise the default per-thread record bound for deterministic atomics in
+modules created after setting the configuration. Deterministic backward reductions support generated and
+custom-adjoint accumulation patterns; consumed-return counter atomics require explicit replay functions and are
+rejected in generated backward replay to avoid incorrect gradients
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1443">GH-1443</a>).</p></li>
+<li><p>Add <code class="docutils literal notranslate"><span class="pre">wp.ref[T]</span></code> parameter annotation for <code class="docutils literal notranslate"><span class="pre">&#64;wp.func</span></code> and <code class="docutils literal notranslate"><span class="pre">&#64;wp.func_native</span></code>, enabling explicit pass-by-reference
+semantics for scalar, vector, matrix, quaternion, and struct types. Mutations to a <code class="docutils literal notranslate"><span class="pre">wp.ref[T]</span></code> parameter are visible
+in the caller’s storage without a return value. Add <code class="docutils literal notranslate"><span class="pre">wp.address_of(expr)</span> <span class="pre">-&gt;</span> <span class="pre">wp.uint64</span></code> for obtaining a raw pointer
+to an addressable expression for use with native snippets, and allow <code class="docutils literal notranslate"><span class="pre">&#64;wp.func_native</span></code> ref-parameter functions to
+provide manual adjoints with <code class="docutils literal notranslate"><span class="pre">adj_snippet</span></code> (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1277">GH-1277</a>).</p></li>
+<li><p>Add mipmap (texture level-of-detail) support to <code class="docutils literal notranslate"><span class="pre">wp.Texture1D</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.Texture2D</span></code>, and <code class="docutils literal notranslate"><span class="pre">wp.Texture3D</span></code> via the new
+<code class="docutils literal notranslate"><span class="pre">num_mip_levels</span></code> and <code class="docutils literal notranslate"><span class="pre">mip_filter_mode</span></code> constructor parameters, and allow <code class="docutils literal notranslate"><span class="pre">wp.texture_sample()</span></code> to accept an optional
+trailing <code class="docutils literal notranslate"><span class="pre">lod</span></code> argument for controlling sampled detail level (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1409">GH-1409</a>).</p></li>
+<li><p>Add <code class="docutils literal notranslate"><span class="pre">wp.CudaManagedAllocator()</span></code> for explicit CUDA managed-memory arrays. CPU kernels can use managed arrays as an
+opt-in path to read and write CUDA managed-memory allocations through Unified Memory on systems where CUDA reports
+compatible managed-memory access, while Warp CUDA arrays backed by non-managed memory still need explicit CPU
+copies. Use <code class="docutils literal notranslate"><span class="pre">wp.array.memory_kind</span></code> to inspect whether an array is backed by host, pinned host, CUDA device, CUDA
+mempool, or CUDA managed memory. Preallocated managed arrays work in CUDA graph captures, but capture-time
+allocations remain unsupported (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1523">GH-1523</a>).</p></li>
+<li><p><strong>Experimental:</strong> Extend APIC capture and replay on CPU and CUDA so saved graphs replay contiguous array fills,
+scanning, sorting, run-length encoding, supported sparse BSR operations, and reusable launches created with
+<code class="docutils literal notranslate"><span class="pre">wp.launch(...,</span> <span class="pre">record_cmd=True)</span></code> from current inputs. Also replay CUDA conditional graph nodes created with
+<code class="docutils literal notranslate"><span class="pre">wp.capture_if()</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.capture_while()</span></code>, as well as adjoint launches
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1431">GH-1431</a>).</p></li>
 <li><p>Add <code class="docutils literal notranslate"><span class="pre">&#64;wp.kernel(grid_stride=False)</span></code> (and the <code class="docutils literal notranslate"><span class="pre">&quot;default_grid_stride&quot;</span></code> module option / <code class="docutils literal notranslate"><span class="pre">wp.config.default_grid_stride</span></code>
 for a whole module or process) to compile a kernel without the grid-stride loop. Removing the loop lowers per-thread
 overhead and register pressure, which can speed up launch-bound kernels; it still handles launches of any size, but
 the block count can no longer be capped, so launching such a kernel with <code class="docutils literal notranslate"><span class="pre">max_blocks</span> <span class="pre">&gt;</span> <span class="pre">0</span></code> raises an error pointing
 back at the grid-stride default. The default launch is unchanged
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1270">GH-1270</a>).</p></li>
-<li><p>Add <code class="docutils literal notranslate"><span class="pre">wp.ref[T]</span></code> parameter annotation for <code class="docutils literal notranslate"><span class="pre">&#64;wp.func</span></code> and <code class="docutils literal notranslate"><span class="pre">&#64;wp.func_native</span></code>, enabling explicit pass-by-reference
-semantics for scalar, vector, matrix, quaternion, and struct types. Mutations to a <code class="docutils literal notranslate"><span class="pre">wp.ref[T]</span></code> parameter are visible
-in the caller’s storage without a return value. Add <code class="docutils literal notranslate"><span class="pre">wp.address_of(expr)</span> <span class="pre">-&gt;</span> <span class="pre">wp.uint64</span></code> for obtaining a raw pointer
-to an addressable expression for use with native snippets, and allow <code class="docutils literal notranslate"><span class="pre">&#64;wp.func_native</span></code> ref-parameter functions to
-provide manual adjoints with <code class="docutils literal notranslate"><span class="pre">adj_snippet</span></code>
-(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1277">GH-1277</a>).</p></li>
+<li><p>Expand Warp struct support across tile operations: allow <code class="docutils literal notranslate"><span class="pre">wp.tile_map()</span></code> to process struct elements and broadcast
+non-tile struct arguments; support field-wise addition, subtraction, reductions, atomic addition, and gradients
+through compatible data-movement and additive operations; and allow <code class="docutils literal notranslate"><span class="pre">wp.tile_sort()</span></code> to reorder structs as value
+payloads in the forward pass (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/573">GH-573</a>).</p></li>
+<li><p>Add row-capacity support to <code class="docutils literal notranslate"><span class="pre">warp.sparse.BsrMatrix</span></code>, including padded topology policies for topology-changing
+operations, <code class="docutils literal notranslate"><span class="pre">warp.sparse.bsr_zeros(row_capacity=...)</span></code> for reserving capacity, <code class="docutils literal notranslate"><span class="pre">warp.sparse.bsr_compress()</span></code> for
+in-place compaction, and <code class="docutils literal notranslate"><span class="pre">warp.sparse.BSR_STATUS_SUCCESS</span></code> and <code class="docutils literal notranslate"><span class="pre">warp.sparse.BSR_STATUS_ROW_CAPACITY_EXCEEDED</span></code>
+for status checks (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1537">GH-1537</a>).</p></li>
+<li><p>Allow <code class="docutils literal notranslate"><span class="pre">warp.fem.integrate()</span></code> and <code class="docutils literal notranslate"><span class="pre">warp.fem.interpolate()</span></code> to use <code class="docutils literal notranslate"><span class="pre">warp.sparse.bsr_compress()</span></code> for in-place matrix
+assembly, reducing peak memory usage (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1537">GH-1537</a>).</p></li>
 <li><p>Add support for <code class="docutils literal notranslate"><span class="pre">wp.Function</span></code>-typed parameters in user-defined <code class="docutils literal notranslate"><span class="pre">&#64;wp.func</span></code> functions, allowing user-defined Warp
 functions and simple built-in Warp functions such as <code class="docutils literal notranslate"><span class="pre">wp.sin()</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.min()</span></code> to be used as function targets from
 kernels or other functions, including through defaults (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1424">GH-1424</a>).</p></li>
-<li><p>Add mipmap (texture level-of-detail) support to <code class="docutils literal notranslate"><span class="pre">wp.Texture1D</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.Texture2D</span></code>, and <code class="docutils literal notranslate"><span class="pre">wp.Texture3D</span></code> via the new
-<code class="docutils literal notranslate"><span class="pre">num_mip_levels</span></code> and <code class="docutils literal notranslate"><span class="pre">mip_filter_mode</span></code> constructor parameters, and allow <code class="docutils literal notranslate"><span class="pre">wp.texture_sample()</span></code> to accept an optional
-trailing <code class="docutils literal notranslate"><span class="pre">lod</span></code> argument for controlling sampled detail level (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1409">GH-1409</a>).</p></li>
-<li><p>Add optional CMake source builds for <code class="docutils literal notranslate"><span class="pre">warp</span></code> and <code class="docutils literal notranslate"><span class="pre">warp-clang</span></code> with Packman-managed dependencies and support for
-parallel and incremental developer builds (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1495">GH-1495</a>).</p></li>
-<li><p>Extend AddressSanitizer support to JIT-compiled CPU kernels: when <code class="docutils literal notranslate"><span class="pre">warp-clang</span></code> is built with <code class="docutils literal notranslate"><span class="pre">--sanitize=address</span></code>, CPU
-kernels are automatically instrumented and share the host’s single in-process ASan runtime, so out-of-bounds accesses
-into a <code class="docutils literal notranslate"><span class="pre">wp.array</span></code> are reported as <code class="docutils literal notranslate"><span class="pre">heap-buffer-overflow</span></code> (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1387">GH-1387</a>).</p></li>
 <li><p>Extend <code class="docutils literal notranslate"><span class="pre">wp.utils.array_scan()</span></code> to 64-bit scalar and vector types, and extend <code class="docutils literal notranslate"><span class="pre">wp.utils.radix_sort_pairs()</span></code> to 32- and
 64-bit signed, unsigned, and floating-point keys with 4- or 8-byte values
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1538">GH-1538</a>).</p></li>
-<li><p>Add deterministic execution mode for atomic operations via
-<code class="docutils literal notranslate"><span class="pre">wp.config.deterministic</span> <span class="pre">=</span> <span class="pre">wp.DeterministicMode.RUN_TO_RUN</span></code>. Supported atomic accumulation and slot-allocation patterns
-can produce bit-exact repeated results. Configurable at the global and module level. Use
-<code class="docutils literal notranslate"><span class="pre">wp.config.deterministic_max_records</span></code> to raise the default per-thread record bound for deterministic atomics in modules
-created after the config is set. Deterministic backward reductions are supported for generated and custom-adjoint
-accumulation patterns; consumed-return counter atomics require explicit replay functions and are rejected in generated
-backward replay to avoid incorrect gradients (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1443">GH-1443</a>).</p></li>
-<li><p>Add row-capacity support to <code class="docutils literal notranslate"><span class="pre">warp.sparse</span></code> BSR matrices, including padded topology policies for topology-changing
-sparse operations, <code class="docutils literal notranslate"><span class="pre">bsr_zeros(row_capacity=...)</span></code> for reserving row capacity, <code class="docutils literal notranslate"><span class="pre">bsr_compress()</span></code> for inplace compaction of sparse matrices, and sparse status constants for overflow checks (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1537">GH-1537</a>).</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">fem.integrate()</span></code> and <code class="docutils literal notranslate"><span class="pre">fem.interpolate()</span></code> can now leverage <code class="docutils literal notranslate"><span class="pre">sparse.bsr_compress()</span></code> to perform inplace matrix assembly, reducing peak memory usage (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1537">GH-1537</a>).</p></li>
-<li><p>Add <code class="docutils literal notranslate"><span class="pre">constructor=&quot;cubql&quot;</span></code> support to <code class="docutils literal notranslate"><span class="pre">wp.Bvh</span></code> and allow <code class="docutils literal notranslate"><span class="pre">wp.Mesh(...,</span> <span class="pre">bvh_constructor=&quot;cubql&quot;)</span></code>
-to use AABB, point, furthest-point, and ray queries when Warp is built with cuBQL.
-Grouped BVHs/meshes and mesh winding-number queries remain unsupported. (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1467">GH-1467</a>)</p></li>
+<li><p><strong>Experimental:</strong> Add <code class="docutils literal notranslate"><span class="pre">constructor=&quot;cubql&quot;</span></code> support to <code class="docutils literal notranslate"><span class="pre">wp.Bvh</span></code> and allow <code class="docutils literal notranslate"><span class="pre">wp.Mesh(...,</span> <span class="pre">bvh_constructor=&quot;cubql&quot;)</span></code> to
+use AABB, point, furthest-point, and ray queries when Warp is built with cuBQL. Grouped BVHs/meshes and mesh
+winding-number queries remain unsupported (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1467">GH-1467</a>).</p></li>
 <li><p>Add a <code class="docutils literal notranslate"><span class="pre">cluster_dim</span></code> option to <code class="docutils literal notranslate"><span class="pre">&#64;wp.kernel</span></code> and a <code class="docutils literal notranslate"><span class="pre">wp.get_cuda_max_cluster_dim()</span></code> query helper for using CUDA Thread
 Block Clusters from <code class="docutils literal notranslate"><span class="pre">&#64;wp.func_native</span></code> code (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1401">GH-1401</a>).</p></li>
-<li><p>Add <code class="docutils literal notranslate"><span class="pre">wp.CudaManagedAllocator()</span></code> for explicit CUDA managed-memory arrays. CPU kernels can use managed arrays as an
-opt-in path to read and write CUDA managed-memory allocations through Unified Memory on systems where CUDA reports
-compatible managed-memory access, while Warp CUDA arrays backed by non-managed memory still need explicit CPU
-copies. Use <code class="docutils literal notranslate"><span class="pre">array.memory_kind</span></code> to inspect whether an array is backed by host, pinned host, CUDA device, CUDA
-mempool, or CUDA managed memory. Preallocated managed arrays work in CUDA graph captures, but capture-time allocation
-is a current limitation (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1523">GH-1523</a>).</p></li>
-<li><p>Add support for Warp struct tile elements in <code class="docutils literal notranslate"><span class="pre">wp.tile_map()</span></code> and Warp struct constants.
-Support field-wise Warp struct addition and subtraction in tile arithmetic,
-reductions, atomics, adjoints for supported data-movement and additive paths,
-and forward <code class="docutils literal notranslate"><span class="pre">tile_sort()</span></code> value payloads (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/573">GH-573</a>).</p></li>
-<li><p>Add CPU APIC capture support for contiguous <code class="docutils literal notranslate"><span class="pre">wp.array.fill_()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.utils.array_scan()</span></code>,
-<code class="docutils literal notranslate"><span class="pre">wp.utils.radix_sort_pairs()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.utils.segmented_sort_pairs()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.utils.runlength_encode()</span></code>,
-<code class="docutils literal notranslate"><span class="pre">wp.sparse.bsr_set_from_triplets()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.sparse.bsr_set_transpose()</span></code>, and reusable launches created with
-<code class="docutils literal notranslate"><span class="pre">wp.launch(...,</span> <span class="pre">record_cmd=True)</span></code>, so saved CPU graphs replay them from current inputs
-(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1431">GH-1431</a>).</p></li>
-<li><p>Add CUDA APIC capture support for <code class="docutils literal notranslate"><span class="pre">wp.utils.array_scan()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.utils.radix_sort_pairs()</span></code>,
-<code class="docutils literal notranslate"><span class="pre">wp.utils.segmented_sort_pairs()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.utils.runlength_encode()</span></code> (with an explicit <code class="docutils literal notranslate"><span class="pre">run_count</span></code>), contiguous
-<code class="docutils literal notranslate"><span class="pre">wp.array.fill_()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.sparse.bsr_set_transpose()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.capture_if()</span></code> / <code class="docutils literal notranslate"><span class="pre">wp.capture_while()</span></code>, and adjoint and
-reusable (<code class="docutils literal notranslate"><span class="pre">wp.launch(...,</span> <span class="pre">record_cmd=True)</span></code>) launches, so saved CUDA graphs replay them from current inputs.
-<code class="docutils literal notranslate"><span class="pre">wp.sparse.bsr_set_from_triplets()</span></code>, unsupported <code class="docutils literal notranslate"><span class="pre">wp.array.fill_()</span></code> variants, the
-host-return form of <code class="docutils literal notranslate"><span class="pre">wp.utils.runlength_encode()</span></code>, and <code class="docutils literal notranslate"><span class="pre">wp.copy()</span></code> other than a contiguous same-device copy
-(cross-device or non-contiguous copies) cannot be captured on CUDA and raise during APIC capture
-(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1431">GH-1431</a>).</p></li>
+<li><p>Add optional CMake source builds for <code class="docutils literal notranslate"><span class="pre">warp</span></code> and <code class="docutils literal notranslate"><span class="pre">warp-clang</span></code> with Packman-managed dependencies and support for
+parallel and incremental developer builds (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1495">GH-1495</a>).</p></li>
+<li><p>Add optional AddressSanitizer support for JIT-compiled CPU kernels when Warp is built from source with
+<code class="docutils literal notranslate"><span class="pre">build_lib.py</span> <span class="pre">--sanitize=address</span></code>. These builds report out-of-bounds <code class="docutils literal notranslate"><span class="pre">wp.array</span></code> accesses as <code class="docutils literal notranslate"><span class="pre">heap-buffer-overflow</span></code>.
+Standard <code class="docutils literal notranslate"><span class="pre">pip</span></code> installations are unaffected (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1387">GH-1387</a>).</p></li>
 </ul>
 </section>
 <section id="removed">
 <h3>Removed<a class="headerlink" href="#removed" title="Link to this heading">#</a></h3>
 <ul class="simple">
+<li><p>Remove deprecated arguments from <code class="docutils literal notranslate"><span class="pre">warp.fem</span></code> APIs: <code class="docutils literal notranslate"><span class="pre">quadrature</span></code> and <code class="docutils literal notranslate"><span class="pre">domain</span></code> from <code class="docutils literal notranslate"><span class="pre">warp.fem.interpolate()</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">space</span></code> from <code class="docutils literal notranslate"><span class="pre">warp.fem.make_space_partition()</span></code> and <code class="docutils literal notranslate"><span class="pre">warp.fem.make_space_restriction()</span></code>. Pass a
+<code class="docutils literal notranslate"><span class="pre">warp.fem.Quadrature</span></code> or <code class="docutils literal notranslate"><span class="pre">warp.fem.GeometryDomain</span></code> to <code class="docutils literal notranslate"><span class="pre">at</span></code> when interpolating. Use <code class="docutils literal notranslate"><span class="pre">space_topology</span></code> for partitions
+and either <code class="docutils literal notranslate"><span class="pre">space_topology</span></code> or <code class="docutils literal notranslate"><span class="pre">space_partition</span></code> for restrictions.</p></li>
 <li><p>Remove the deprecated, non-functional <code class="docutils literal notranslate"><span class="pre">warp.render.UsdRenderer.update_body_transforms()</span></code> method. Use supported
-<code class="docutils literal notranslate"><span class="pre">UsdRenderer</span></code> shape rendering methods to author time-varying USD transforms instead.</p></li>
-<li><p>Remove the native Python C API fast-call path for <code class="docutils literal notranslate"><span class="pre">wp.float16</span></code> conversions. Warp now uses the existing <code class="docutils literal notranslate"><span class="pre">ctypes</span></code>
-bindings for this surface, avoiding Python development header requirements when building from source and keeping
-source-built binaries compatible with free-threaded Python builds
-(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1339">GH-1339</a>).</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">warp.fem</span></code>: Remove the deprecated <code class="docutils literal notranslate"><span class="pre">quadrature</span></code> and <code class="docutils literal notranslate"><span class="pre">domain</span></code> arguments of <code class="docutils literal notranslate"><span class="pre">fem.interpolate()</span></code>, and the deprecated
-<code class="docutils literal notranslate"><span class="pre">space</span></code> argument of <code class="docutils literal notranslate"><span class="pre">fem.make_space_restriction()</span></code> and <code class="docutils literal notranslate"><span class="pre">fem.make_space_partition()</span></code>. Pass a <code class="docutils literal notranslate"><span class="pre">Quadrature</span></code> or
-<code class="docutils literal notranslate"><span class="pre">GeometryDomain</span></code> to <code class="docutils literal notranslate"><span class="pre">at</span></code> when interpolating, pass <code class="docutils literal notranslate"><span class="pre">space_topology</span></code> to <code class="docutils literal notranslate"><span class="pre">fem.make_space_partition()</span></code>, and pass
-<code class="docutils literal notranslate"><span class="pre">space_topology</span></code> or <code class="docutils literal notranslate"><span class="pre">space_partition</span></code> to <code class="docutils literal notranslate"><span class="pre">fem.make_space_restriction()</span></code>.</p></li>
+<code class="docutils literal notranslate"><span class="pre">warp.render.UsdRenderer</span></code> shape-rendering methods to author time-varying USD transforms instead.</p></li>
 </ul>
 </section>
 <section id="deprecated">
 <h3>Deprecated<a class="headerlink" href="#deprecated" title="Link to this heading">#</a></h3>
 <ul class="simple">
-<li><p>Deprecate <code class="docutils literal notranslate"><span class="pre">masked=True</span></code> arguments in <code class="docutils literal notranslate"><span class="pre">warp.sparse</span></code> topology-changing operations; use <code class="docutils literal notranslate"><span class="pre">topology=&quot;masked&quot;</span></code> instead.</p></li>
-<li><p>Formally deprecate the unused <code class="docutils literal notranslate"><span class="pre">max_verts</span></code>, <code class="docutils literal notranslate"><span class="pre">max_tris</span></code>, and <code class="docutils literal notranslate"><span class="pre">device</span></code> arguments and the <code class="docutils literal notranslate"><span class="pre">max_verts</span></code>, <code class="docutils literal notranslate"><span class="pre">max_tris</span></code>,
-<code class="docutils literal notranslate"><span class="pre">device</span></code>, <code class="docutils literal notranslate"><span class="pre">id</span></code>, and <code class="docutils literal notranslate"><span class="pre">runtime</span></code> compatibility attributes of <code class="docutils literal notranslate"><span class="pre">wp.MarchingCubes</span></code>. The arguments and attributes now emit
-<code class="docutils literal notranslate"><span class="pre">DeprecationWarning</span></code> and are scheduled for removal in Warp 1.19. Output arrays are sized dynamically, extraction runs
-on the input field’s device, and the <code class="docutils literal notranslate"><span class="pre">id</span></code> and <code class="docutils literal notranslate"><span class="pre">runtime</span></code> attributes have no replacement
-(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1594">GH-1594</a>).</p></li>
+<li><p>Deprecate the unused <code class="docutils literal notranslate"><span class="pre">max_verts</span></code>, <code class="docutils literal notranslate"><span class="pre">max_tris</span></code>, and <code class="docutils literal notranslate"><span class="pre">device</span></code> arguments to <code class="docutils literal notranslate"><span class="pre">wp.MarchingCubes</span></code>, the <code class="docutils literal notranslate"><span class="pre">max_verts</span></code> and
+<code class="docutils literal notranslate"><span class="pre">max_tris</span></code> arguments to <code class="docutils literal notranslate"><span class="pre">wp.MarchingCubes.resize()</span></code>, and the corresponding compatibility attributes, <code class="docutils literal notranslate"><span class="pre">id</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">runtime</span></code>. They are scheduled for removal in Warp 1.19. Output arrays are dynamically sized, and extraction uses the
+input field’s device. <code class="docutils literal notranslate"><span class="pre">id</span></code> and <code class="docutils literal notranslate"><span class="pre">runtime</span></code> have no replacement (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1594">GH-1594</a>).</p></li>
+<li><p>Deprecate <code class="docutils literal notranslate"><span class="pre">masked=True</span></code> arguments in <code class="docutils literal notranslate"><span class="pre">warp.sparse</span></code> topology-changing operations; use <code class="docutils literal notranslate"><span class="pre">topology=&quot;masked&quot;</span></code> instead
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1537">GH-1537</a>).</p></li>
 </ul>
 </section>
 <section id="changed">
 <h3>Changed<a class="headerlink" href="#changed" title="Link to this heading">#</a></h3>
 <ul class="simple">
+<li><p><strong>Breaking:</strong> Validate the <code class="docutils literal notranslate"><span class="pre">src_offset</span></code>, <code class="docutils literal notranslate"><span class="pre">dest_offset</span></code>, and <code class="docutils literal notranslate"><span class="pre">count</span></code> arguments to <code class="docutils literal notranslate"><span class="pre">wp.copy()</span></code>, raising a clear error
+for non-integer values, negative offsets, and a negative <code class="docutils literal notranslate"><span class="pre">count</span></code> (previously a negative <code class="docutils literal notranslate"><span class="pre">count</span></code> silently copied the
+entire array). Also reject copies between contiguous arrays whose element sizes differ, matching the existing
+behavior for non-contiguous arrays (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1584">GH-1584</a>).</p></li>
 <li><p><strong>Breaking:</strong> Raise an error during <code class="docutils literal notranslate"><span class="pre">wp.init()</span></code> when the Warp Python package version does not match the loaded native
 libraries (<code class="docutils literal notranslate"><span class="pre">warp.dll</span></code>, <code class="docutils literal notranslate"><span class="pre">warp-clang.dll</span></code>, and platform equivalents), instead of warning and continuing. Treat missing
 or unreadable native version symbols the same way (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1508">GH-1508</a>).</p></li>
-<li><p>Speed up Warp kernel creation, particularly for workloads that declare many kernels programmatically (e.g. dynamic
-factory patterns) (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1486">GH-1486</a>).</p></li>
+<li><p>Restore support for building Warp from source without <code class="docutils literal notranslate"><span class="pre">Python.h</span></code> and compatibility with free-threaded Python by
+reverting the <code class="docutils literal notranslate"><span class="pre">wp.float16</span></code> fast-call optimization added in Warp 1.14. Python-scope <code class="docutils literal notranslate"><span class="pre">wp.float16</span></code> conversions again use
+the <code class="docutils literal notranslate"><span class="pre">ctypes</span></code> path, with higher per-call overhead (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1339">GH-1339</a>).</p></li>
+<li><p>Speed up Python-side kernel declaration, especially for <code class="docutils literal notranslate"><span class="pre">&#64;wp.kernel(module=&quot;unique&quot;)</span></code> kernels created by factory
+functions, by avoiding repeated source inspection and redundant scans of each kernel’s Python code. This reduces
+import time without changing native compilation or execution (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1486">GH-1486</a>).</p></li>
 <li><p>Improve <code class="docutils literal notranslate"><span class="pre">wp.mesh_query_ray()</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.mesh_query_ray_anyhit()</span></code> BVH traversal performance by visiting the nearer child
 first at each inner node, enabling earlier tightening of the closest-hit bound and more aggressive subtree pruning;
 reusing loaded node payloads across traversal stack operations; and using a faster AABB intersection path for
 non-parallel rays. These traversal changes use additional per-thread temporary storage
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1529">GH-1529</a>).</p></li>
-<li><p>Report out-of-bounds shared and register tile indexing with coordinate-specific debug-mode diagnostics, including
-CUDA device-side assertions (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1483">GH-1483</a>).</p></li>
-<li><p>Reject non-<code class="docutils literal notranslate"><span class="pre">None</span></code> return annotations on kernels. Write results to output arguments and either omit the return annotation
-or use <code class="docutils literal notranslate"><span class="pre">-&gt;</span> <span class="pre">None</span></code> (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1471">GH-1471</a>).</p></li>
-<li><p><strong>Breaking:</strong> <code class="docutils literal notranslate"><span class="pre">wp.copy()</span></code> now validates its <code class="docutils literal notranslate"><span class="pre">src_offset</span></code>, <code class="docutils literal notranslate"><span class="pre">dest_offset</span></code>, and <code class="docutils literal notranslate"><span class="pre">count</span></code> arguments, raising a clear error
-for non-integer values, negative offsets, and a negative <code class="docutils literal notranslate"><span class="pre">count</span></code> (previously a negative <code class="docutils literal notranslate"><span class="pre">count</span></code> silently copied the
-entire array). It also rejects copies between contiguous arrays whose element sizes differ, matching the existing
-behavior for non-contiguous arrays (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1584">GH-1584</a>).</p></li>
-<li><p>Speed up CPU APIC graph replay for launch-dense graphs (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1431">GH-1431</a>).</p></li>
+<li><p>Improve debug-mode diagnostics for out-of-bounds shared and register tile indexing with coordinate-specific messages
+and CUDA device-side assertions (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1483">GH-1483</a>).</p></li>
 </ul>
 </section>
 <section id="fixed">
 <h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">#</a></h3>
 <ul class="simple">
-<li><p>Fix eager Python calls to generic <code class="docutils literal notranslate"><span class="pre">&#64;wp.func</span></code> functions to resolve a matching generic template after other concrete
-overloads have already been instantiated (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1603">GH-1603</a>).</p></li>
-<li><p>Fix <code class="docutils literal notranslate"><span class="pre">wp.tile_dot()</span></code> compilation failure for scalar <code class="docutils literal notranslate"><span class="pre">wp.float64</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.float16</span></code> tiles, which previously narrowed
-the result to <code class="docutils literal notranslate"><span class="pre">float</span></code> and mismatched the inferred result type
-(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1563">GH-1563</a>).</p></li>
+<li><p>Fix <code class="docutils literal notranslate"><span class="pre">wp.init()</span></code> segfault while loading <code class="docutils literal notranslate"><span class="pre">warp-clang.so</span></code> on some Linux systems caused by aggressive symbol stripping
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1554">GH-1554</a>).</p></li>
+<li><p>Fix CUDA kernel launch failures to raise a Python <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code> instead of only logging native CUDA stderr and
+continuing with stale outputs or gradients (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1535">GH-1535</a>).</p></li>
+<li><p>Fix unary minus being silently dropped from referenced 64-bit scalar constants, such as values declared with
+<code class="docutils literal notranslate"><span class="pre">wp.constant(wp.float64(...))</span></code>, when the constant is the leading operand of a multiplication or division expression
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1540">GH-1540</a>).</p></li>
+<li><p>Fix the gradient of <code class="docutils literal notranslate"><span class="pre">wp.copy()</span></code> when <code class="docutils literal notranslate"><span class="pre">src_offset</span></code> and <code class="docutils literal notranslate"><span class="pre">dest_offset</span></code> differ
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1533">GH-1533</a>).</p></li>
+<li><p>Fix <code class="docutils literal notranslate"><span class="pre">wp.copy()</span></code> to honor <code class="docutils literal notranslate"><span class="pre">src_offset</span></code>, <code class="docutils literal notranslate"><span class="pre">dest_offset</span></code>, and <code class="docutils literal notranslate"><span class="pre">count</span></code> for one-dimensional non-contiguous arrays such as
+strided slices (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1533">GH-1533</a>).</p></li>
+<li><p>Fix replacing a <code class="docutils literal notranslate"><span class="pre">&#64;wp.struct</span></code> plain-array field with <code class="docutils literal notranslate"><span class="pre">None</span></code> or a non-gradient array to release stale gradient
+references (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1520">GH-1520</a>).</p></li>
+<li><p>Fix <code class="docutils literal notranslate"><span class="pre">wp.mesh_query_ray()</span></code> and related functions silently missing intersections for axis-aligned rays whose origin lies
+on a BVH node’s AABB slab boundary. Handle parallel slabs explicitly instead of relying on fixed epsilon inflation
+that can round away at larger <code class="docutils literal notranslate"><span class="pre">wp.float32</span></code> coordinate scales (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1530">GH-1530</a>).</p></li>
+<li><p>Fix CUDA BVH refit out-of-bounds access for single-node and packed-root trees
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/860">GH-860</a>, <a class="reference external" href="https://github.com/NVIDIA/warp/issues/1506">GH-1506</a>).</p></li>
+<li><p>Fix intermittent failures when loading modules in parallel with <code class="docutils literal notranslate"><span class="pre">wp.force_load(max_workers</span> <span class="pre">&gt;</span> <span class="pre">1)</span></code> that could cause
+modules sharing a <code class="docutils literal notranslate"><span class="pre">&#64;wp.func</span></code> to fail to compile or raise a <code class="docutils literal notranslate"><span class="pre">KeyError</span></code> during module loading
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1474">GH-1474</a>, <a class="reference external" href="https://github.com/NVIDIA/warp/issues/1532">GH-1532</a>).</p></li>
+<li><p>Fix colliding LTO cache entries and stale FFT metadata by using longer cache keys and rebuilding invalid metadata
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1511">GH-1511</a>).</p></li>
+<li><p>Fix CPU APIC capture and replay for <code class="docutils literal notranslate"><span class="pre">module=&quot;unique&quot;</span></code> kernels, capture-time allocations, untracked host buffers,
+coexisting CPU and CUDA captures, and <code class="docutils literal notranslate"><span class="pre">warp.fem</span></code> partition node counts. Report capture state correctly and reject
+operations that cannot replay safely
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1431">GH-1431</a>,
+<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1559">GH-1559</a>, <a class="reference external" href="https://github.com/NVIDIA/warp/issues/1407">GH-1407</a>).</p></li>
 <li><p>Fix <code class="docutils literal notranslate"><span class="pre">wp.load_module()</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.ScopedCapture(force_module_load=True)</span></code> after CPU launches so CUDA graph capture
 precompiles the correct CUDA kernel variant. On CUDA drivers older than 12.3 this previously raised
 <code class="docutils literal notranslate"><span class="pre">CUDA_ERROR_STREAM_CAPTURE_UNSUPPORTED</span></code>; on newer drivers it silently recompiled inside the capture window
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/564">GH-564</a>).</p></li>
-<li><p>Fix intermittent failures when loading modules in parallel with <code class="docutils literal notranslate"><span class="pre">wp.force_load(max_workers</span> <span class="pre">&gt;</span> <span class="pre">1)</span></code> that could cause
-modules sharing a <code class="docutils literal notranslate"><span class="pre">&#64;wp.func</span></code> to fail to compile or to raise a <code class="docutils literal notranslate"><span class="pre">KeyError</span></code> in <code class="docutils literal notranslate"><span class="pre">Module.load</span></code>
-(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1474">GH-1474</a>, <a class="reference external" href="https://github.com/NVIDIA/warp/issues/1532">GH-1532</a>).</p></li>
-<li><p>Fix binding a Warp function to a kernel-local variable, so patterns like <code class="docutils literal notranslate"><span class="pre">f</span> <span class="pre">=</span> <span class="pre">my_func</span></code>,
-<code class="docutils literal notranslate"><span class="pre">f</span> <span class="pre">=</span> <span class="pre">module.my_func</span></code>, assigning a <code class="docutils literal notranslate"><span class="pre">wp.static(...)</span></code> function result to <code class="docutils literal notranslate"><span class="pre">f</span></code>, and <code class="docutils literal notranslate"><span class="pre">wp.grad(f)</span></code> where <code class="docutils literal notranslate"><span class="pre">f</span></code> is such
-a local now compile and call correctly instead of failing during code generation. Rebinding a function-valued
-local to a different function or to a non-function value raises a clear error
-(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1423">GH-1423</a>).</p></li>
 <li><p>Fix CUDA graph capture for contiguous <code class="docutils literal notranslate"><span class="pre">wp.bool</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.int8</span></code>, and <code class="docutils literal notranslate"><span class="pre">wp.uint8</span></code> <code class="docutils literal notranslate"><span class="pre">wp.array.fill_()</span></code> calls
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1525">GH-1525</a>).</p></li>
-<li><p>Fix CUDA BVH refit out-of-bounds access for single-node and packed-root trees
-(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/860">GH-860</a>, <a class="reference external" href="https://github.com/NVIDIA/warp/issues/1506">GH-1506</a>).</p></li>
-<li><p>Fix Clang CUDA compilation failures so they report immediately instead of surfacing later as downstream CUDA module
-load errors (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1325">GH-1325</a>).</p></li>
-<li><p>Allocate host arrays at exact requested size so AddressSanitizer reports out-of-bounds accesses at the logical
-<code class="docutils literal notranslate"><span class="pre">wp.array</span></code> boundary instead of the 64-byte-aligned allocation. The POSIX path previously rounded requests up to a
-multiple of the alignment, hiding overflows that landed in padding
-(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1513">GH-1513</a>).</p></li>
-<li><p>Fix <code class="docutils literal notranslate"><span class="pre">wp.Tape.record_scope_end()</span></code> to raise a clear error for unmatched scope ends and preserve nested non-empty tape
-visualization scopes (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1515">GH-1515</a>).</p></li>
-<li><p>Fix rebinding a kernel-local variable that holds <code class="docutils literal notranslate"><span class="pre">wp.grad()</span></code> to a non-grad value to raise a clear <code class="docutils literal notranslate"><span class="pre">WarpCodegenError</span></code>
-instead of an internal <code class="docutils literal notranslate"><span class="pre">AttributeError</span></code> (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1487">GH-1487</a>).</p></li>
-<li><p>Fix stale gradient keepalive references when replacing a <code class="docutils literal notranslate"><span class="pre">&#64;wp.struct</span></code> plain-array field with <code class="docutils literal notranslate"><span class="pre">None</span></code> or a
-non-gradient array (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1520">GH-1520</a>).</p></li>
-<li><p>Fix CUDA kernel launch failures to raise a Python <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code> instead of only logging native CUDA stderr and
-continuing with stale outputs or gradients (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1535">GH-1535</a>).</p></li>
-<li><p>Fix unary minus on referenced 64-bit scalar constants, such as values declared with <code class="docutils literal notranslate"><span class="pre">wp.constant(wp.float64(...))</span></code>,
-being silently dropped when the constant appears as the leading operand of a multiply or divide expression, e.g.
-<code class="docutils literal notranslate"><span class="pre">-a</span> <span class="pre">*</span> <span class="pre">b</span></code> producing the wrong sign (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1540">GH-1540</a>).</p></li>
-<li><p>Fix <code class="docutils literal notranslate"><span class="pre">wp.mesh_query_ray()</span></code> and related functions silently missing intersections for
-axis-aligned rays whose origin lies on a BVH node’s AABB slab boundary. The previous
-traversal relied on fixed <code class="docutils literal notranslate"><span class="pre">eps</span> <span class="pre">=</span> <span class="pre">1e-3</span></code> AABB inflation to avoid <code class="docutils literal notranslate"><span class="pre">0</span> <span class="pre">*</span> <span class="pre">inf</span></code> cases in the
-slab calculation, but that offset is not robust at larger coordinate scales where it
-can round away in float32. Parallel slabs are now handled explicitly, and the
-per-traversal epsilon expansion is removed
-(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1530">GH-1530</a>).</p></li>
+<li><p>Fix binding a Warp function to a kernel-local variable, so patterns like <code class="docutils literal notranslate"><span class="pre">f</span> <span class="pre">=</span> <span class="pre">my_func</span></code>, <code class="docutils literal notranslate"><span class="pre">f</span> <span class="pre">=</span> <span class="pre">module.my_func</span></code>,
+assigning a <code class="docutils literal notranslate"><span class="pre">wp.static(...)</span></code> function result to <code class="docutils literal notranslate"><span class="pre">f</span></code>, and <code class="docutils literal notranslate"><span class="pre">wp.grad(f)</span></code> where <code class="docutils literal notranslate"><span class="pre">f</span></code> is such a local now compile and call
+correctly instead of failing during code generation. Rebinding a function-valued local to a different function or
+to a non-function value raises a clear error (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1423">GH-1423</a>).</p></li>
+<li><p>Fix <code class="docutils literal notranslate"><span class="pre">wp.tile_dot()</span></code> compilation failure for scalar <code class="docutils literal notranslate"><span class="pre">wp.float64</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.float16</span></code> tiles, which previously narrowed
+the result to <code class="docutils literal notranslate"><span class="pre">float</span></code> and mismatched the inferred result type (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1563">GH-1563</a>).</p></li>
 <li><p>Fix parameterized <code class="docutils literal notranslate"><span class="pre">&#64;wp.func(...)</span></code> decorators, such as <code class="docutils literal notranslate"><span class="pre">&#64;wp.func(module=&quot;unique&quot;)</span></code>, in directly executed scripts to
 register successfully instead of raising <code class="docutils literal notranslate"><span class="pre">AttributeError</span></code> during decoration
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1544">GH-1544</a>).</p></li>
-<li><p>Fix LTO cache collisions and stale FFT metadata handling by using longer cache keys and rebuilding invalid metadata
-(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1511">GH-1511</a>).</p></li>
+<li><p>Fix CUDA graph capture on CUDA contexts not previously seen by Warp by initializing memory-pool state before capture
+begins (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1431">GH-1431</a>).</p></li>
 <li><p>Fix <code class="docutils literal notranslate"><span class="pre">&#64;wp.overload</span></code> kernel stubs defined in nested scopes to register correctly instead of raising
 <code class="docutils literal notranslate"><span class="pre">IndentationError</span></code> (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1557">GH-1557</a>).</p></li>
-<li><p>Fix <code class="docutils literal notranslate"><span class="pre">wp.copy()</span></code> ignoring <code class="docutils literal notranslate"><span class="pre">src_offset</span></code>, <code class="docutils literal notranslate"><span class="pre">dest_offset</span></code>, and <code class="docutils literal notranslate"><span class="pre">count</span></code> for 1D non-contiguous arrays such as strided slices
-(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1533">GH-1533</a>).</p></li>
-<li><p>Fix the gradient of <code class="docutils literal notranslate"><span class="pre">wp.copy()</span></code> when <code class="docutils literal notranslate"><span class="pre">src_offset</span></code> and <code class="docutils literal notranslate"><span class="pre">dest_offset</span></code> differ.</p></li>
-<li><p>Fix <code class="docutils literal notranslate"><span class="pre">warp.init()</span></code> segfault while loading <code class="docutils literal notranslate"><span class="pre">warp-clang.so</span></code> on some Linux systems caused by aggressive symbol stripping.
-(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1554">GH-1554</a>).</p></li>
 <li><p>Fix <code class="docutils literal notranslate"><span class="pre">wp.array[...]</span></code>-style subscript annotations to allow for PEP 604 unions (for example, <code class="docutils literal notranslate"><span class="pre">wp.array[float]</span> <span class="pre">|</span> <span class="pre">float</span></code>)
 on Python methods (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1548">GH-1548</a>).</p></li>
-<li><p>Fix several CPU APIC correctness issues: replay now keys kernel dispatch by <code class="docutils literal notranslate"><span class="pre">(module_hash,</span> <span class="pre">kernel_key)</span></code> to prevent
-collisions between kernels produced by the same factory with <code class="docutils literal notranslate"><span class="pre">module=&quot;unique&quot;</span></code>; <code class="docutils literal notranslate"><span class="pre">Device.is_capturing</span></code> now reports
-active CPU APIC capture; unsupported non-contiguous <code class="docutils literal notranslate"><span class="pre">wp.copy()</span></code> / <code class="docutils literal notranslate"><span class="pre">wp.array.fill_()</span></code> and
-<code class="docutils literal notranslate"><span class="pre">wp.utils.runlength_encode()</span></code> in host-return mode now raise <code class="docutils literal notranslate"><span class="pre">NotImplementedError</span></code> instead of recording graphs that
-cannot replay correctly (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1431">GH-1431</a>).</p></li>
-<li><p>Fix CPU APIC graph capture to retain capture-time allocations and temporary buffers, including <code class="docutils literal notranslate"><span class="pre">warp.fem</span></code>
-temporaries, for the captured graph’s lifetime instead of recycling them before replay
-(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1431">GH-1431</a>).</p></li>
-<li><p>Fix CPU APIC graph capture of untracked or native-only host buffers used by memory operations, so saved graphs no
-longer drop captured copies and fills or depend on capture-time pointers
-(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1431">GH-1431</a>).</p></li>
-<li><p>Fix CUDA graph capture of padded <code class="docutils literal notranslate"><span class="pre">wp.sparse.bsr_set_transpose()</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.sparse.bsr_set_from_triplets()</span></code>: the
-row-capacity status buffer is now allocated when the matrix is created rather than during capture, so capturing
-these operations no longer leaves an invalid capture-scoped buffer that fails on later host access and disrupts
-subsequent CUDA operations (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1431">GH-1431</a>).</p></li>
-<li><p>Fix CUDA graph capture that begins as the first operation on a context: the one-time memory-pool warm-up now runs
-before capture starts instead of on the legacy stream mid-capture, which previously invalidated the capture and
-left the graph unbuildable (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1431">GH-1431</a>).</p></li>
-<li><p>Fix APIC replay of padded <code class="docutils literal notranslate"><span class="pre">wp.sparse.bsr_set_transpose()</span></code> so the destination row-capacity offsets are reconstructed
-on replay, allowing the captured graph to rebuild the destination even when its offsets were reset
-before <code class="docutils literal notranslate"><span class="pre">wp.capture_launch()</span></code> (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1587">GH-1587</a>).</p></li>
-<li><p>Harden CPU APIC graph capture for loaded <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> graphs and coexistence with CUDA captures: distinct unique-module
-kernels now replay correctly after save/load, stale <code class="docutils literal notranslate"><span class="pre">BsrMatrix.nnz_sync()</span></code> readbacks of a topology recorded earlier
-in the same capture are rejected, recording hooks are scoped to the capture’s target device, and capture
-pause/resume flows are preserved (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1559">GH-1559</a>).</p></li>
-<li><p>Reject raw ctype array launch parameters updated through <code class="docutils literal notranslate"><span class="pre">Launch.set_param_at_index_from_ctype()</span></code> under CPU APIC
-capture, which APIC cannot record for replay (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1559">GH-1559</a>).</p></li>
-<li><p>Fix APIC graph capture for <code class="docutils literal notranslate"><span class="pre">warp.fem</span></code> workflows by making partition node counts graph-capture safe
-(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1407">GH-1407</a>).</p></li>
+<li><p>Fix Clang CUDA compilation failures so they report immediately instead of surfacing later as downstream CUDA module
+load errors (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1325">GH-1325</a>).</p></li>
+<li><p>Fix <code class="docutils literal notranslate"><span class="pre">wp.Tape.record_scope_end()</span></code> to raise a clear error for unmatched scope ends and preserve nested non-empty tape
+visualization scopes (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1515">GH-1515</a>).</p></li>
+<li><p>Fix kernels with non-<code class="docutils literal notranslate"><span class="pre">None</span></code> return annotations to raise a clear error instead of silently ignoring the annotation.
+Write results to output arguments and omit the return annotation or use <code class="docutils literal notranslate"><span class="pre">-&gt;</span> <span class="pre">None</span></code>
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1471">GH-1471</a>).</p></li>
+<li><p>Fix rebinding a kernel-local variable that holds <code class="docutils literal notranslate"><span class="pre">wp.grad()</span></code> to a non-gradient value to raise a clear code-generation
+error instead of an internal <code class="docutils literal notranslate"><span class="pre">AttributeError</span></code> (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1487">GH-1487</a>).</p></li>
 </ul>
 </section>
 <section id="documentation">
 <h3>Documentation<a class="headerlink" href="#documentation" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>Document the tiled kernel patterns that diverge between CPU and CUDA under the forced CPU <code class="docutils literal notranslate"><span class="pre">block_dim=1</span></code>, along with
+portable workarounds (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1580">GH-1580</a>).</p></li>
+</ul>
 </section>
 </section>
 <section id="id1">

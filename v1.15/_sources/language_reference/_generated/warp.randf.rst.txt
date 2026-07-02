@@ -9,9 +9,27 @@
       * Kernel
       * Python
 
-   Generate a random float.
+   Generate a uniform random float in the range [0.0, 1.0).
    
-   Sample in the range [0.0, 1.0).
+   In a kernel, advances ``state`` in place, so successive calls return different
+   values; called from the Python scope, it does not modify ``state``, so repeated
+   calls with the same ``state`` return the same value (see :func:`rand_init`).
+   Values are multiples of 2^-24, matching the 24 bits of precision in a 32-bit float.
+   
+   Random built-ins take an RNG ``state`` produced by :func:`rand_init`;
+   initialize it once per thread, then draw values:
+   
+   .. code-block:: python
+   
+       @wp.kernel
+       def random_floats(seed: int, out: wp.array[wp.vec2]):
+           i = wp.tid()
+           rng = wp.rand_init(seed, i)
+           # Each call advances rng, so the two draws differ.
+           out[i] = wp.vec2(wp.randf(rng), wp.randf(rng))
+   
+   :func:`randi`, :func:`randu`, and :func:`randn` are used the same way:
+   initialize ``rng`` once with :func:`rand_init`, then pass it to each call.
 
 .. function:: warp._src.lang.randf(state: uint32, low: float32, high: float32) -> float
    :noindex:
@@ -22,6 +40,9 @@
       * Kernel
       * Python
 
-   Generate a random float.
+   Generate a uniform random float in the range [low, high).
    
-   Sample in the range [low, high).
+   In a kernel, advances ``state`` in place, so successive calls return different
+   values; called from the Python scope, it does not modify ``state``, so repeated
+   calls with the same ``state`` return the same value (see :func:`rand_init`).
+   Equivalent to ``low + (high - low) * wp.randf(state)``.

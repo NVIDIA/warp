@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Tiles &#8212; Warp 1.15.0rc2</title>
+    <title>Tiles &#8212; Warp 1.15.0rc3</title>
   
   
   
@@ -68,7 +68,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.15.0rc2" />
+  <meta name="docsearch:version" content="1.15.0rc3" />
 
 
   </head>
@@ -139,11 +139,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0rc2 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0rc2 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0rc3 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0rc3 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.15.0rc2</p>
+    <p class="title logo__title">Warp 1.15.0rc3</p>
   
 </a></div>
     
@@ -278,11 +278,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0rc2 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0rc2 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0rc3 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0rc3 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.15.0rc2</p>
+    <p class="title logo__title">Warp 1.15.0rc3</p>
   
 </a>
 
@@ -493,7 +493,7 @@
   <section id="tiles">
 <h1>Tiles<a class="headerlink" href="#tiles" title="Link to this heading">#</a></h1>
 <p>Block-based programming models such as those in OpenAI Triton have proved to be effective ways of expressing high-performance kernels that can leverage cooperative operations on modern GPUs.
-With Warp 1.5.0 <a class="footnote-reference brackets" href="#id3" id="id1" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a>, developers now have access to new tile-based programming primitives in Warp kernels.
+With Warp 1.5.0 <a class="footnote-reference brackets" href="#id4" id="id1" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a>, developers now have access to new tile-based programming primitives in Warp kernels.
 Leveraging cuBLASDx and cuFFTDx, these new tools provide developers with efficient matrix multiplication and Fourier transforms for accelerated simulation and scientific computing.</p>
 <section id="requirements">
 <h2>Requirements<a class="headerlink" href="#requirements" title="Link to this heading">#</a></h2>
@@ -543,7 +543,15 @@ which partitions the thread grid into smaller sets of threads that are executed 
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>b = [   0.  256.  512.  768. 1024. 1280. 1536. 1792. 2048. 2304.]
 </pre></div>
 </div>
-<p>Here, we have used the new <a class="reference internal" href="../api_reference/_generated/warp.launch_tiled.html#warp.launch_tiled" title="warp.launch_tiled"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.launch_tiled()</span></code></a> function which assigns <code class="docutils literal notranslate"><span class="pre">TILE_THREADS</span></code> threads to each of the elements in the launch grid. Each block of <code class="docutils literal notranslate"><span class="pre">TILE_THREADS</span></code> threads then loads an entire row of 256 values from the global memory array and computes its sum (cooperatively).</p>
+<p>Here, <a class="reference internal" href="../api_reference/_generated/warp.launch_tiled.html#warp.launch_tiled" title="warp.launch_tiled"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.launch_tiled()</span></code></a> assigns a block of <code class="docutils literal notranslate"><span class="pre">TILE_THREADS</span></code> threads to each
+element in the launch grid. Each block then loads an entire row of 256 values from the
+global memory array and computes its sum cooperatively.</p>
+<p><code class="docutils literal notranslate"><span class="pre">TILE_SIZE</span></code> and <code class="docutils literal notranslate"><span class="pre">TILE_THREADS</span></code> describe independent quantities. <code class="docutils literal notranslate"><span class="pre">TILE_SIZE</span></code> defines
+the tile’s logical data shape, while <code class="docutils literal notranslate"><span class="pre">TILE_THREADS</span></code> selects how many GPU threads
+cooperate to process it. A tile does not need one thread per element: in this example, 64
+threads process a 256-element tile. Define tile dimensions explicitly and use them for
+shapes, offsets, bounds, and other data-model arithmetic. Treat <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> as an
+execution and performance choice rather than as the tile’s logical extent.</p>
 </section>
 <section id="tile-properties">
 <h2>Tile Properties<a class="headerlink" href="#tile-properties" title="Link to this heading">#</a></h2>
@@ -597,17 +605,17 @@ Otherwise, kernel compilation may fail.</p>
 <h4>Shared Tile Load Performance<a class="headerlink" href="#shared-tile-load-performance" title="Link to this heading">#</a></h4>
 <p>When loading tiles into shared memory, Warp uses a three-tier cascade to maximize memory bandwidth:</p>
 <ol class="arabic simple">
-<li><p><strong>Vectorized float4 (2D+ tiles)</strong> — Reinterprets memory as 128-bit <code class="docutils literal notranslate"><span class="pre">float4</span></code> values for wide loads.
+<li><p><strong>Vectorized float4 (2D+ tiles):</strong> Reinterprets memory as 128-bit <code class="docutils literal notranslate"><span class="pre">float4</span></code> values for wide loads.
 Requires the last dimension to be float4-aligned (<code class="docutils literal notranslate"><span class="pre">last_dim</span> <span class="pre">*</span> <span class="pre">sizeof(T)</span> <span class="pre">%</span> <span class="pre">16</span> <span class="pre">==</span> <span class="pre">0</span></code>), a contiguous
 source array, 16-byte aligned base address, tile in-bounds, and float4-aligned outer-dimension strides.
 Use <code class="docutils literal notranslate"><span class="pre">aligned=True</span></code> on <a class="reference internal" href="../language_reference/_generated/warp.tile_load.html#warp._src.lang.tile_load" title="warp._src.lang.tile_load"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_load</span></code></a> to skip runtime alignment checks
 when you can guarantee these conditions.</p></li>
-<li><p><strong>Coalesced byte-copy (large element types, ``sizeof(T) &gt; 16``)</strong> — For types like <code class="docutils literal notranslate"><span class="pre">mat33</span></code>, <code class="docutils literal notranslate"><span class="pre">mat44</span></code>,
+<li><p><strong>Coalesced byte-copy (large element types, ``sizeof(T) &gt; 16``):</strong> For types like <code class="docutils literal notranslate"><span class="pre">mat33</span></code>, <code class="docutils literal notranslate"><span class="pre">mat44</span></code>,
 and <code class="docutils literal notranslate"><span class="pre">mat66</span></code>, copies raw bytes as <code class="docutils literal notranslate"><span class="pre">float*</span></code> with thread-striped access for perfect memory coalescing.
 This avoids the scalar path’s per-element strided access pattern where each element load strides across
 multiple cache lines. Requires a contiguous source array, the tile must fit within array bounds, and the
 tile must span the full inner dimensions.</p></li>
-<li><p><strong>Scalar fallback (universal)</strong> — Per-element loads with bounds-checked zero-padding. Handles
+<li><p><strong>Scalar fallback (universal):</strong> Per-element loads with bounds-checked zero-padding. Handles
 non-contiguous arrays, partial tiles, transposed layouts, and CPU execution. 1D tiles do not use the
 vectorized float4 path, but may use the coalesced byte-copy path for large element types.</p></li>
 </ol>
@@ -750,14 +758,14 @@ struct-valued tiles are supported by operations that:</p>
 <li><p>sort structs as a value payload permuted by scalar keys, or</p></li>
 <li><p>perform field-wise additive accumulation.</p></li>
 </ul>
-<p>Operations that require a canonical numeric interpretation of the element — an ordering, a bitwise
-representation, a random or range fill, or a linear-algebra meaning — remain numeric-only and
-reject struct tiles.</p>
+<p>Operations that require a canonical numeric interpretation of the element, such as an ordering, a
+bitwise representation, a random or range fill, or a linear-algebra meaning, remain numeric-only
+and reject struct tiles.</p>
 <p>Field-wise additive accumulation combines only the fields whose scalar leaf type is accepted by
 <a class="reference internal" href="../language_reference/_generated/warp.atomic_add.html#warp._src.lang.atomic_add" title="warp._src.lang.atomic_add"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.atomic_add</span></code></a>: <code class="docutils literal notranslate"><span class="pre">[u]int32</span></code>, <code class="docutils literal notranslate"><span class="pre">[u]int64</span></code>, <code class="docutils literal notranslate"><span class="pre">float16</span></code>, <code class="docutils literal notranslate"><span class="pre">bfloat16</span></code>,
 <code class="docutils literal notranslate"><span class="pre">float32</span></code>, and <code class="docutils literal notranslate"><span class="pre">float64</span></code>. Vector and matrix fields accumulate component-wise when their scalar
-component is one of these types. All other fields — including <code class="docutils literal notranslate"><span class="pre">bool</span></code>, the narrow integers
-<code class="docutils literal notranslate"><span class="pre">[u]int8</span></code> and <code class="docutils literal notranslate"><span class="pre">[u]int16</span></code>, and array fields — are carried through the struct value unchanged
+component is one of these types. All other fields, including <code class="docutils literal notranslate"><span class="pre">bool</span></code>, the narrow integers
+<code class="docutils literal notranslate"><span class="pre">[u]int8</span></code> and <code class="docutils literal notranslate"><span class="pre">[u]int16</span></code>, and array fields, are carried through the struct value unchanged
 rather than accumulated. Array fields are carried as descriptors with unspecified merge behavior; see
 <a class="reference internal" href="limitations.html#limitations-arrays-in-structs"><span class="std std-ref">Arrays in Structs</span></a>. Accumulation is differentiable for the accumulating fields,
 subject to the general CPU <code class="docutils literal notranslate"><span class="pre">block_dim=1</span></code> rule described under <a class="reference internal" href="#cpu-vs-gpu-behavior-differences">CPU vs. GPU behavior differences</a>.</p>
@@ -766,9 +774,8 @@ subject to the general CPU <code class="docutils literal notranslate"><span clas
 <h3>Arithmetic<a class="headerlink" href="#arithmetic" title="Link to this heading">#</a></h3>
 <p>Tiles support standard Python arithmetic operators for element-wise operations.
 These operations are cooperative and execute across all threads in the block.</p>
-<p><strong>Addition and Subtraction</strong></p>
-<p>The <code class="docutils literal notranslate"><span class="pre">+</span></code> and <code class="docutils literal notranslate"><span class="pre">-</span></code> operators perform element-wise addition and subtraction between two tiles
-of the same shape and dtype:</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">+</span></code> and <code class="docutils literal notranslate"><span class="pre">-</span></code> operators perform element-wise addition and subtraction between two
+tiles of the same shape and dtype:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">add_sub_example</span><span class="p">(</span><span class="n">arr_a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">arr_b</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
     <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">arr_a</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="n">TILE_SIZE</span><span class="p">)</span>
@@ -780,8 +787,7 @@ of the same shape and dtype:</p>
 </pre></div>
 </div>
 <p>Tiles also support the <code class="docutils literal notranslate"><span class="pre">+=</span></code> and <code class="docutils literal notranslate"><span class="pre">-=</span></code> in-place operators.</p>
-<p><strong>Multiplication</strong> (<code class="docutils literal notranslate"><span class="pre">*</span></code>)</p>
-<p>The <code class="docutils literal notranslate"><span class="pre">*</span></code> operator supports three forms:</p>
+<p>The multiplication operator (<code class="docutils literal notranslate"><span class="pre">*</span></code>) supports three forms:</p>
 <div class="pst-scrollable-table-container"><table class="table">
 <colgroup>
 <col style="width: 30.0%" />
@@ -833,8 +839,8 @@ scalar types must match. For example:</p>
     <span class="n">f</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">)</span> <span class="o">*</span> <span class="n">a</span>
 </pre></div>
 </div>
-<p><strong>Division</strong> (<code class="docutils literal notranslate"><span class="pre">/</span></code>)</p>
-<p>The <code class="docutils literal notranslate"><span class="pre">/</span></code> operator supports three forms with the same type rules as multiplication:</p>
+<p>The division operator (<code class="docutils literal notranslate"><span class="pre">/</span></code>) supports three forms with the same type rules as
+multiplication:</p>
 <div class="pst-scrollable-table-container"><table class="table">
 <colgroup>
 <col style="width: 30.0%" />
@@ -889,9 +895,7 @@ a scalar, and the underlying scalar types must match. For example:</p>
     <span class="n">g</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">)</span> <span class="o">/</span> <span class="n">a</span>
 </pre></div>
 </div>
-<p><strong>Type Promotion Rules</strong></p>
-<p>The following table summarizes the result type for <code class="docutils literal notranslate"><span class="pre">*</span></code> and <code class="docutils literal notranslate"><span class="pre">/</span></code> operations between
-tiles and constants:</p>
+<p>The type-promotion rules for <code class="docutils literal notranslate"><span class="pre">*</span></code> and <code class="docutils literal notranslate"><span class="pre">/</span></code> operations between tiles and constants are:</p>
 <div class="pst-scrollable-table-container"><table class="table">
 <colgroup>
 <col style="width: 35.0%" />
@@ -979,8 +983,8 @@ component-wise vector/matrix operations.</p>
 <p>Tile stacks provide a cooperative, block-scoped stack data structure in shared memory.
 They enable patterns such as stream compaction and dynamic load balancing where threads
 within a block need to collectively build and consume a shared work-list.</p>
-<p>Most tile stack operations are <strong>cooperative</strong> — every thread in the block must call them,
-even if a particular thread has no data to contribute, because they contain internal
+<p>Most tile stack operations are cooperative. Every thread in the block must call them, even
+if a particular thread has no data to contribute, because they contain internal
 synchronization barriers. The exception is <a class="reference internal" href="../language_reference/_generated/warp.tile_stack_count.html#warp._src.lang.tile_stack_count" title="warp._src.lang.tile_stack_count"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_stack_count</span></code></a>, which contains no barrier and may be called by a
 single thread or from within a divergent branch.</p>
 <section id="creating-a-stack">
@@ -1000,7 +1004,7 @@ The <code class="docutils literal notranslate"><span class="pre">capacity</span>
 <section id="push-and-pop">
 <h3>Push and Pop<a class="headerlink" href="#push-and-pop" title="Link to this heading">#</a></h3>
 <p><a class="reference internal" href="../language_reference/_generated/warp.tile_stack_push.html#warp._src.lang.tile_stack_push" title="warp._src.lang.tile_stack_push"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_stack_push()</span></code></a> conditionally pushes a value
-onto the stack. Each thread provides a value and a boolean <code class="docutils literal notranslate"><span class="pre">has_value</span></code> flag — only threads
+onto the stack. Each thread provides a value and a boolean <code class="docutils literal notranslate"><span class="pre">has_value</span></code> flag. Only threads
 with <code class="docutils literal notranslate"><span class="pre">has_value=True</span></code> write to the stack. The function returns the slot index where the
 value was written, or <code class="docutils literal notranslate"><span class="pre">-1</span></code> if the thread did not push (either because <code class="docutils literal notranslate"><span class="pre">has_value</span></code> was
 <code class="docutils literal notranslate"><span class="pre">False</span></code> or because the stack overflowed):</p>
@@ -1010,8 +1014,9 @@ value was written, or <code class="docutils literal notranslate"><span class="pr
 <p><a class="reference internal" href="../language_reference/_generated/warp.tile_stack_pop.html#warp._src.lang.tile_stack_pop" title="warp._src.lang.tile_stack_pop"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_stack_pop()</span></code></a> removes values from the stack.
 Each calling thread races for a slot. It returns a tuple <code class="docutils literal notranslate"><span class="pre">(value,</span> <span class="pre">slot)</span></code> where <code class="docutils literal notranslate"><span class="pre">slot</span></code>
 identifies which stack slot was popped (in <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">capacity-1]</span></code> when non-negative), or
-<code class="docutils literal notranslate"><span class="pre">-1</span></code> if the stack was empty — consistent with
-<a class="reference internal" href="../language_reference/_generated/warp.tile_stack_push.html#warp._src.lang.tile_stack_push" title="warp._src.lang.tile_stack_push"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_stack_push()</span></code></a> which also returns <code class="docutils literal notranslate"><span class="pre">-1</span></code> on failure:</p>
+<code class="docutils literal notranslate"><span class="pre">-1</span></code> if the stack was empty. This matches
+<a class="reference internal" href="../language_reference/_generated/warp.tile_stack_push.html#warp._src.lang.tile_stack_push" title="warp._src.lang.tile_stack_push"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_stack_push()</span></code></a>, which also returns <code class="docutils literal notranslate"><span class="pre">-1</span></code> on
+failure:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">value</span><span class="p">,</span> <span class="n">slot</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_stack_pop</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
 <span class="k">if</span> <span class="n">slot</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
     <span class="n">out</span><span class="p">[</span><span class="n">slot</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
@@ -1026,10 +1031,10 @@ allowing it to be reused within the same kernel invocation:</p>
 </pre></div>
 </div>
 <p><a class="reference internal" href="../language_reference/_generated/warp.tile_stack_count.html#warp._src.lang.tile_stack_count" title="warp._src.lang.tile_stack_count"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_stack_count()</span></code></a> returns the current number of
-elements. Unlike the other operations it is <strong>not</strong> cooperative — it contains no
-synchronization barrier and may be called by a single thread or from within a divergent
-branch. It is safe to call after any push, pop, or clear, all of which end with a barrier
-that makes the count visible:</p>
+elements. Unlike the other operations, it is not cooperative: it contains no synchronization
+barrier and may be called by a single thread or from within a divergent branch. It is safe
+to call after any push, pop, or clear, all of which end with a barrier that makes the count
+visible:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">n</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_stack_count</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -1044,8 +1049,8 @@ that makes the count visible:</p>
 <p>A common use case is filtering elements that satisfy a condition. Because
 <code class="docutils literal notranslate"><span class="pre">tile_stack</span></code> is a within-block primitive, the slot returned by
 <a class="reference internal" href="../language_reference/_generated/warp.tile_stack_pop.html#warp._src.lang.tile_stack_pop" title="warp._src.lang.tile_stack_pop"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_stack_pop()</span></code></a> is compact only
-within a single tile — for a single-tile launch this maps directly to a compact
-output array:</p>
+within a single tile. For a single-tile launch, this maps directly to a compact output
+array:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">BLOCK_DIM</span> <span class="o">=</span> <span class="mi">256</span>
 <span class="n">CAPACITY</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="n">BLOCK_DIM</span><span class="p">)</span>  <span class="c1"># at most one output per thread</span>
 
@@ -1056,12 +1061,12 @@ output array:</p>
     <span class="n">val</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
     <span class="n">keep</span> <span class="o">=</span> <span class="n">val</span> <span class="o">&gt;</span> <span class="mf">0.5</span>
 
-    <span class="c1"># Cooperative push — only threads with keep=True write to the stack</span>
+    <span class="c1"># Cooperative push: only threads with keep=True write to the stack</span>
     <span class="n">s</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_stack</span><span class="p">(</span><span class="n">capacity</span><span class="o">=</span><span class="n">CAPACITY</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
     <span class="n">wp</span><span class="o">.</span><span class="n">tile_stack_push</span><span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">val</span><span class="p">,</span> <span class="n">keep</span><span class="p">)</span>
 
     <span class="c1"># Each thread races for a slot. The returned slot is a unique compact</span>
-    <span class="c1"># index in [0, capacity-1] — use it directly as the output index.</span>
+    <span class="c1"># index in [0, capacity-1], so use it directly as the output index.</span>
     <span class="n">result</span><span class="p">,</span> <span class="n">slot</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_stack_pop</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">slot</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
         <span class="n">out</span><span class="p">[</span><span class="n">slot</span><span class="p">]</span> <span class="o">=</span> <span class="n">result</span>
@@ -1095,7 +1100,7 @@ backward pass of a differentiable kernel.</p>
 <section id="tiles-and-simt-code">
 <h2>Tiles and SIMT Code<a class="headerlink" href="#tiles-and-simt-code" title="Link to this heading">#</a></h2>
 <p>Traditionally, Warp kernels are primarily written in the SIMT programming model, where each thread’s execution happens independently.
-Tiles, on the other hand, allow threads to work <strong>cooperatively</strong> to perform operations.
+Tiles, on the other hand, allow threads to work cooperatively to perform operations.
 Warp exposes the <a class="reference internal" href="../language_reference/_generated/warp.tile.html#warp._src.lang.tile" title="warp._src.lang.tile"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.tile</span></code></a>, and <a class="reference internal" href="../language_reference/_generated/warp.untile.html#warp._src.lang.untile" title="warp._src.lang.untile"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.untile</span></code></a> methods to convert data between per-thread value types and
 the equivalent tile representation. For example:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">TILE_THREADS</span> <span class="o">=</span> <span class="mi">64</span>
@@ -1296,6 +1301,255 @@ the kernel only takes about 0.436 ms to complete, while the pure SIMT kernel is
 relatively unaffected.</p>
 </section>
 </section>
+<section id="cpu-tile-semantics">
+<span id="id2"></span><h2>CPU Tile Semantics<a class="headerlink" href="#cpu-tile-semantics" title="Link to this heading">#</a></h2>
+<p>Tile operations are block-cooperative on the GPU: the <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> threads of a block
+share tile storage and cooperate on reductions, scans, scatters, and stores. The CPU
+backend is currently single-threaded, so it executes tiled kernels with an effective <code class="docutils literal notranslate"><span class="pre">block_dim</span></code>
+of <code class="docutils literal notranslate"><span class="pre">1</span></code>, regardless of the value you pass to <a class="reference internal" href="../api_reference/_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch()</span></code></a> or
+<a class="reference internal" href="../api_reference/_generated/warp.launch_tiled.html#warp.launch_tiled" title="warp.launch_tiled"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch_tiled()</span></code></a>. The consequences are:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="../language_reference/_generated/warp.block_dim.html#warp._src.lang.block_dim" title="warp._src.lang.block_dim"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.block_dim()</span></code></a> returns <code class="docutils literal notranslate"><span class="pre">1</span></code>.</p></li>
+<li><p>For <a class="reference internal" href="../api_reference/_generated/warp.launch_tiled.html#warp.launch_tiled" title="warp.launch_tiled"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch_tiled()</span></code></a>, the trailing lane index added to
+<a class="reference internal" href="../language_reference/_generated/warp.tid.html#warp._src.lang.tid" title="warp._src.lang.tid"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tid()</span></code></a> is always <code class="docutils literal notranslate"><span class="pre">0</span></code>.</p></li>
+<li><p><a class="reference internal" href="../language_reference/_generated/warp.tile.html#warp._src.lang.tile" title="warp._src.lang.tile"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile(value)</span></code></a> builds a one-element tile, even if the
+launch requested <code class="docutils literal notranslate"><span class="pre">block_dim</span> <span class="pre">&gt;</span> <span class="pre">1</span></code>.</p></li>
+<li><p>Tile state is not cooperatively populated by <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> lanes on CPU. On the GPU,
+lanes <code class="docutils literal notranslate"><span class="pre">0</span></code> through <code class="docutils literal notranslate"><span class="pre">block_dim</span> <span class="pre">-</span> <span class="pre">1</span></code> can each contribute values to the same block tile.
+On CPU the effective lane count is <code class="docutils literal notranslate"><span class="pre">1</span></code>, so only lane <code class="docutils literal notranslate"><span class="pre">0</span></code> participates.</p></li>
+</ul>
+<p>This does not make all tile code non-portable. Whole-tile cooperative
+operations on explicitly shaped tiles still produce the same result on CPU and GPU. A
+pattern such as <a class="reference internal" href="../language_reference/_generated/warp.tile_load.html#warp._src.lang.tile_load" title="warp._src.lang.tile_load"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_load()</span></code></a>, then
+<a class="reference internal" href="../language_reference/_generated/warp.tile_sum.html#warp._src.lang.tile_sum" title="warp._src.lang.tile_sum"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_sum()</span></code></a>, then
+<a class="reference internal" href="../language_reference/_generated/warp.tile_store.html#warp._src.lang.tile_store" title="warp._src.lang.tile_store"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_store()</span></code></a> remains correct on CPU, because CPU
+execution still processes the full explicit tile shape. Divergence appears only when a
+kernel uses <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> or the lane index in its arithmetic, reduces or scans over
+<code class="docutils literal notranslate"><span class="pre">wp.tile(value)</span></code>, or relies on multiple lanes cooperating on one tile. These are the three
+cases detailed below.</p>
+<section id="patterns-that-do-not-produce-identical-cpu-gpu-results">
+<h3>Patterns that do not produce identical CPU/GPU results<a class="headerlink" href="#patterns-that-do-not-produce-identical-cpu-gpu-results" title="Link to this heading">#</a></h3>
+<p>Every divergence below traces to one fact: a CPU block has a single lane. A kernel’s
+result differs across devices only when it depends on a block having <em>more than one</em> lane.
+That dependence enters in three ways. The CPU and GPU outputs are shown as comments.</p>
+<p><strong>Problem 1: arithmetic that uses</strong> <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> <strong>or the lane index.</strong> On CPU,
+<a class="reference internal" href="../language_reference/_generated/warp.block_dim.html#warp._src.lang.block_dim" title="warp._src.lang.block_dim"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.block_dim()</span></code></a> returns <code class="docutils literal notranslate"><span class="pre">1</span></code> and the lane index (the
+trailing value of <a class="reference internal" href="../language_reference/_generated/warp.tid.html#warp._src.lang.tid" title="warp._src.lang.tid"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tid()</span></code></a> in a tiled launch) is always <code class="docutils literal notranslate"><span class="pre">0</span></code>.
+Any offset, stride, count, loop bound, or index derived from them therefore changes. This
+includes the common <code class="docutils literal notranslate"><span class="pre">thread_idx=wp.block_dim()</span> <span class="pre">-</span> <span class="pre">1</span></code> broadcast idiom used with
+<a class="reference internal" href="../language_reference/_generated/warp.tile_from_thread.html#warp._src.lang.tile_from_thread" title="warp._src.lang.tile_from_thread"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_from_thread()</span></code></a>, which selects thread <code class="docutils literal notranslate"><span class="pre">0</span></code> on
+CPU. Here <code class="docutils literal notranslate"><span class="pre">block_dim()</span></code> drives the load offset, so each block reads the wrong slice:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">TILE_SIZE</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">copy_tiles</span><span class="p">(</span><span class="n">inp</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">int</span><span class="p">]):</span>
+    <span class="n">block_idx</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">load_offset</span> <span class="o">=</span> <span class="n">block_idx</span> <span class="o">*</span> <span class="n">wp</span><span class="o">.</span><span class="n">block_dim</span><span class="p">()</span>
+    <span class="n">tile</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">inp</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="n">TILE_SIZE</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="n">load_offset</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">tile</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="n">block_idx</span> <span class="o">*</span> <span class="n">TILE_SIZE</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch_tiled</span><span class="p">(</span><span class="n">copy_tiles</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="p">[</span><span class="mi">4</span><span class="p">],</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">inp</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">],</span> <span class="n">block_dim</span><span class="o">=</span><span class="n">TILE_SIZE</span><span class="p">)</span>
+
+<span class="c1"># input inp: [0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15]</span>
+<span class="c1"># GPU  out:  [0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15]</span>
+<span class="c1"># CPU  out:  [0 1 2 3 1 2 3 4 2 3 4 5 3 4 5 6]</span>
+</pre></div>
+</div>
+<p>Replacing <a class="reference internal" href="../language_reference/_generated/warp.block_dim.html#warp._src.lang.block_dim" title="warp._src.lang.block_dim"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.block_dim()</span></code></a> with an explicit tile dimension
+repairs data arithmetic that incorrectly derives the logical tile extent from the execution
+width, but it cannot make lane-dependent code portable. On CPU only lane <code class="docutils literal notranslate"><span class="pre">0</span></code> executes,
+so a kernel cannot obtain a value that would have been computed by a nonzero lane. For
+example, replacing every use of <code class="docutils literal notranslate"><span class="pre">wp.block_dim()</span></code> in a
+<a class="reference internal" href="../language_reference/_generated/warp.tile_from_thread.html#warp._src.lang.tile_from_thread" title="warp._src.lang.tile_from_thread"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_from_thread()</span></code></a> broadcast with <code class="docutils literal notranslate"><span class="pre">TILE_SIZE</span></code>
+still produces different results:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">TILE_SIZE</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mi">8</span><span class="p">)</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">constant_width_broadcast</span><span class="p">(</span><span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">int</span><span class="p">]):</span>
+    <span class="n">block</span><span class="p">,</span> <span class="n">lane</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+
+    <span class="n">offset</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">if</span> <span class="n">lane</span> <span class="o">==</span> <span class="n">TILE_SIZE</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">offset</span> <span class="o">=</span> <span class="n">block</span> <span class="o">*</span> <span class="n">TILE_SIZE</span>
+
+    <span class="n">offset_tile</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_from_thread</span><span class="p">(</span>
+        <span class="n">shape</span><span class="o">=</span><span class="n">TILE_SIZE</span><span class="p">,</span>
+        <span class="n">value</span><span class="o">=</span><span class="n">offset</span><span class="p">,</span>
+        <span class="n">thread_idx</span><span class="o">=</span><span class="n">TILE_SIZE</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">indices</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">TILE_SIZE</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">offset_tile</span> <span class="o">+</span> <span class="n">indices</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="n">block</span> <span class="o">*</span> <span class="n">TILE_SIZE</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch_tiled</span><span class="p">(</span>
+    <span class="n">constant_width_broadcast</span><span class="p">,</span>
+    <span class="n">dim</span><span class="o">=</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span>
+    <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">],</span>
+    <span class="n">block_dim</span><span class="o">=</span><span class="n">TILE_SIZE</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># GPU: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]</span>
+<span class="c1"># CPU: [0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7]</span>
+</pre></div>
+</div>
+<p>For block <code class="docutils literal notranslate"><span class="pre">1</span></code>, only GPU lane <code class="docutils literal notranslate"><span class="pre">7</span></code> assigns <code class="docutils literal notranslate"><span class="pre">offset</span> <span class="pre">=</span> <span class="pre">8</span></code>. CPU executes lane <code class="docutils literal notranslate"><span class="pre">0</span></code>
+only, so <code class="docutils literal notranslate"><span class="pre">offset</span></code> remains zero; its implementation of <code class="docutils literal notranslate"><span class="pre">tile_from_thread()</span></code> returns the
+current invocation’s value because the selected lane never ran.</p>
+<p><strong>Problem 2: reductions or scans over</strong> <code class="docutils literal notranslate"><span class="pre">wp.tile(value)</span></code>. <a class="reference internal" href="../language_reference/_generated/warp.tile.html#warp._src.lang.tile" title="warp._src.lang.tile"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile(value)</span></code></a> builds a <code class="docutils literal notranslate"><span class="pre">block_dim</span></code>-wide tile from each lane’s scalar, but a
+one-element tile on CPU. A block reduction or scan over it aggregates the whole block on
+the GPU and collapses to the lane’s own value on CPU:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">TILE_DIM</span> <span class="o">=</span> <span class="mi">4</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">block_reduce</span><span class="p">(</span><span class="n">output</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">int</span><span class="p">]):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>               <span class="c1"># block_dim-wide on the GPU, 1 element on CPU</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_sum</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="n">i</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">block_reduce</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">output</span><span class="p">],</span> <span class="n">block_dim</span><span class="o">=</span><span class="n">TILE_DIM</span><span class="p">)</span>
+
+<span class="c1"># GPU:  [ 6  0  0  0 22  0  0  0 38  0  0  0]   (block sums at 0, 4, 8)</span>
+<span class="c1"># CPU:  [ 0  1  2  3  4  5  6  7  8  9 10 11]   (each lane&#39;s own value)</span>
+</pre></div>
+</div>
+<p><a class="reference internal" href="../language_reference/_generated/warp.tile.html#warp._src.lang.tile" title="warp._src.lang.tile"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile(value)</span></code></a> is an explicit exception to the separation
+between logical tile shape and execution width: by definition, its trailing lane dimension
+has size <code class="docutils literal notranslate"><span class="pre">block_dim</span></code>. For a scalar value, it therefore constructs a
+<code class="docutils literal notranslate"><span class="pre">block_dim</span></code>-element tile on GPU and a one-element tile on CPU. For vector and matrix
+values, the value dimensions remain, but the trailing lane dimension still becomes one on
+CPU. An explicit tile-size constant used for offsets, bounds, or loop counts does not
+change this lane dimension.</p>
+<p><strong>Problem 3: results that require lanes to cooperate on one tile.</strong> When each lane fills its
+own part of a tile that the block then consumes as a whole, only one lane’s contribution
+lands on CPU. This is the mechanism behind per-lane element writes (<code class="docutils literal notranslate"><span class="pre">t[i]</span> <span class="pre">=</span> <span class="pre">...</span></code>,
+<code class="docutils literal notranslate"><span class="pre">t[i][c]</span></code>, <code class="docutils literal notranslate"><span class="pre">t[i][r,</span> <span class="pre">c]</span></code>), <a class="reference internal" href="../language_reference/_generated/warp.tile_scatter_add.html#warp._src.lang.tile_scatter_add" title="warp._src.lang.tile_scatter_add"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_scatter_add()</span></code></a>,
+and <a class="reference internal" href="../language_reference/_generated/warp.tile_stack_push.html#warp._src.lang.tile_stack_push" title="warp._src.lang.tile_stack_push"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_stack_push()</span></code></a> /
+<a class="reference internal" href="../language_reference/_generated/warp.tile_stack_pop.html#warp._src.lang.tile_stack_pop" title="warp._src.lang.tile_stack_pop"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_stack_pop()</span></code></a>.</p>
+<p>The exact wrong answer depends on the launch. Under <a class="reference internal" href="../api_reference/_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch()</span></code></a>, each
+logical CPU thread runs as a separate single-lane task, so each task performs a full-tile
+store to the same output. CPU tasks execute in ascending order, so the last task’s store
+remains:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">TILE_SIZE</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mi">8</span><span class="p">)</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">lane_store</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">TILE_SIZE</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">t</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="mf">2.0</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">lane_store</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">x</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">],</span> <span class="n">block_dim</span><span class="o">=</span><span class="n">TILE_SIZE</span><span class="p">)</span>
+
+<span class="c1"># input  x: [0, 1, 2, 3, 4, 5, 6, 7]</span>
+<span class="c1"># GPU  out: [0, 2, 4, 6, 8, 10, 12, 14]</span>
+<span class="c1"># CPU  out: [0, 0, 0, 0, 0, 0, 0, 14]          (only the last thread&#39;s store remains)</span>
+
+<span class="c1"># With an all-ones out.grad:</span>
+<span class="c1"># GPU  x.grad: [2, 2, 2, 2, 2, 2, 2, 2]</span>
+<span class="c1"># CPU  x.grad: [2, 0, 0, 0, 0, 0, 0, 0]</span>
+</pre></div>
+</div>
+<p>The CPU forward survivor does not receive the gradient. In the current CPU implementation,
+forward and backward tasks both execute in ascending order. Task <code class="docutils literal notranslate"><span class="pre">7</span></code> performs the final
+forward store, but task <code class="docutils literal notranslate"><span class="pre">0</span></code> consumes and clears <code class="docutils literal notranslate"><span class="pre">out.grad</span></code> before the remaining backward
+tasks run. This CPU adjoint is a consequence of the overlapping full-tile stores created
+when <code class="docutils literal notranslate"><span class="pre">wp.launch()</span></code> executes each logical thread as a separate single-lane task. It reflects
+the current CPU execution order, not a rule that the task whose value survives the forward
+pass also receives the gradient.</p>
+<p>Under <a class="reference internal" href="../api_reference/_generated/warp.launch_tiled.html#warp.launch_tiled" title="warp.launch_tiled"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch_tiled()</span></code></a>, there are no overlapping CPU tasks for
+a tile. The block runs once with lane <code class="docutils literal notranslate"><span class="pre">0</span></code>, so only lane 0’s contribution is present in the
+forward pass and only lane 0 can receive a gradient in the backward pass:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">TILE_SIZE</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mi">8</span><span class="p">)</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">scatter</span><span class="p">(</span><span class="n">inp</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+    <span class="n">_b</span><span class="p">,</span> <span class="n">lane</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">TILE_SIZE</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">storage</span><span class="o">=</span><span class="s2">&quot;shared&quot;</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_scatter_add</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">lane</span><span class="p">,</span> <span class="n">inp</span><span class="p">[</span><span class="n">lane</span><span class="p">],</span> <span class="kc">True</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch_tiled</span><span class="p">(</span><span class="n">scatter</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">inp</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">],</span> <span class="n">block_dim</span><span class="o">=</span><span class="n">TILE_SIZE</span><span class="p">)</span>
+
+<span class="c1"># input  inp: [1, 2, 3, 4, 5, 6, 7, 8]</span>
+<span class="c1"># GPU  out:   [1, 2, 3, 4, 5, 6, 7, 8]</span>
+<span class="c1"># CPU  out:   [1, 0, 0, 0, 0, 0, 0, 0]</span>
+</pre></div>
+</div>
+<p>Finally, seeded random tiles do not provide cross-device reproducibility.
+<a class="reference internal" href="../language_reference/_generated/warp.tile_randf.html#warp._src.lang.tile_randf" title="warp._src.lang.tile_randf"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_randf()</span></code></a> and
+<a class="reference internal" href="../language_reference/_generated/warp.tile_randi.html#warp._src.lang.tile_randi" title="warp._src.lang.tile_randi"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_randi()</span></code></a> derive per-lane RNG states. CPU lane <code class="docutils literal notranslate"><span class="pre">0</span></code>
+generates the entire tile, while a multi-lane GPU distributes generation across lanes.
+Element <code class="docutils literal notranslate"><span class="pre">0</span></code> uses the same lane-0 RNG state on both devices, but subsequent elements do
+not follow the same RNG-state progression and should not be expected to match. Individual
+values may still coincide.</p>
+</section>
+<section id="writing-device-portable-tile-kernels">
+<h3>Writing device-portable tile kernels<a class="headerlink" href="#writing-device-portable-tile-kernels" title="Link to this heading">#</a></h3>
+<p>The unifying principle is to make the result independent of <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> so that a kernel
+computes the <em>intended</em> result on both devices, such as a genuine block reduction rather
+than a per-lane no-op. Three approaches produce equivalent CPU and GPU results today, in
+rough order of preference:</p>
+<p>Before applying one of these approaches, check whether the work is purely per-lane, with
+each thread reading and writing only its own element. In that case, tiles are the wrong
+abstraction: have each thread write directly to the global array (for example,
+<code class="docutils literal notranslate"><span class="pre">out[i]</span> <span class="pre">=</span> <span class="pre">x[i]</span> <span class="pre">*</span> <span class="pre">2.0</span></code>). Ordinary SIMT code already runs identically on both devices and
+avoids the cooperative machinery entirely.</p>
+<p><strong>1. Accumulate block results into a global with</strong>
+<a class="reference internal" href="../language_reference/_generated/warp.tile_atomic_add.html#warp._src.lang.tile_atomic_add" title="warp._src.lang.tile_atomic_add"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_atomic_add()</span></code></a>. This replaces a
+first-lane <a class="reference internal" href="../language_reference/_generated/warp.tile_store.html#warp._src.lang.tile_store" title="warp._src.lang.tile_store"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_store()</span></code></a> of a block aggregate with a
+global accumulation that does not depend on how many lanes a block has. See the
+<a class="reference internal" href="#tile-reduce-blockwise-example"><span class="std std-ref">blockwise reduction example</span></a>.</p>
+<p><strong>2. Write architecture-specific kernels.</strong> When a kernel needs full cooperative
+parallelism on the GPU that does not reduce to a global accumulation, write a cooperative
+GPU kernel and a separate serial CPU kernel and dispatch on the launch device. This is the
+only approach that preserves cooperative execution on the GPU, at the cost of two code
+paths to keep in sync:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">TILE_SIZE</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mi">256</span><span class="p">)</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">gpu_reduce</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array2d</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">),</span> <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array2d</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">TILE_SIZE</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_sum</span><span class="p">(</span><span class="n">t</span><span class="p">))</span>   <span class="c1"># cooperative block reduction</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">cpu_reduce</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array2d</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">),</span> <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array2d</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">TILE_SIZE</span><span class="p">):</span>
+        <span class="n">s</span> <span class="o">+=</span> <span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">k</span><span class="p">]</span>                        <span class="c1"># serial reduction</span>
+    <span class="n">out</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">s</span>
+
+<span class="n">device</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_device</span><span class="p">()</span>
+<span class="k">if</span> <span class="n">device</span><span class="o">.</span><span class="n">is_cuda</span><span class="p">:</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch_tiled</span><span class="p">(</span><span class="n">gpu_reduce</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">x</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">],</span> <span class="n">block_dim</span><span class="o">=</span><span class="n">TILE_SIZE</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">cpu_reduce</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">x</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">])</span>
+</pre></div>
+</div>
+<p><strong>3. Have one thread own the tile and loop over the lanes</strong> <em>(last resort).</em> For
+lane-dependent work that cannot use the global-accumulation approach, a compatibility or
+debugging fallback is to launch with one thread per block (<code class="docutils literal notranslate"><span class="pre">block_dim=1</span></code> on both devices)
+and iterate over what would be the lanes. This keeps a single kernel and produces the
+intended result on CPU and GPU, but it serializes the work and forfeits cooperative GPU
+execution, so it is not recommended for production GPU kernels:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">NBLOCKS</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">TILE_SIZE</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mi">8</span><span class="p">)</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">owned_tile</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">TILE_SIZE</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">lane</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">TILE_SIZE</span><span class="p">):</span>
+        <span class="n">t</span><span class="p">[</span><span class="n">lane</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">b</span> <span class="o">*</span> <span class="n">TILE_SIZE</span> <span class="o">+</span> <span class="n">lane</span><span class="p">]</span> <span class="o">*</span> <span class="mf">2.0</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="n">b</span> <span class="o">*</span> <span class="n">TILE_SIZE</span><span class="p">)</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">owned_tile</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">NBLOCKS</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">x</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">],</span> <span class="n">block_dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
 <section id="automatic-differentiation">
 <h2>Automatic Differentiation<a class="headerlink" href="#automatic-differentiation" title="Link to this heading">#</a></h2>
 <p>Warp can automatically generate the backward version of tile-based programs.
@@ -1306,7 +1560,7 @@ Please see the <a class="reference internal" href="differentiability.html#differ
 </section>
 <section id="tiles-in-wp-func-functions">
 <h2>Tiles in <code class="docutils literal notranslate"><span class="pre">&#64;wp.func</span></code> Functions<a class="headerlink" href="#tiles-in-wp-func-functions" title="Link to this heading">#</a></h2>
-<p>Tile parameters in <a class="reference internal" href="../api_reference/_generated/warp.func.html#warp.func" title="warp.func"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.func</span></code></a> functions are <strong>passed by reference</strong>. This is
+<p>Tile parameters in <a class="reference internal" href="../api_reference/_generated/warp.func.html#warp.func" title="warp.func"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.func</span></code></a> functions are passed by reference. This is
 a departure from other Warp types (scalars, vectors, matrices, etc.), which are passed by value.
 The difference is observable when a function modifies a tile in place:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
@@ -1317,11 +1571,11 @@ The difference is observable when a function modifies a tile in place:</p>
 <span class="k">def</span><span class="w"> </span><span class="nf">compute</span><span class="p">(</span><span class="nb">input</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array2d</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array2d</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
     <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
     <span class="n">t</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="nb">input</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">TILE_M</span><span class="p">,</span> <span class="n">TILE_N</span><span class="p">),</span> <span class="n">offset</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">storage</span><span class="o">=</span><span class="s2">&quot;shared&quot;</span><span class="p">)</span>
-    <span class="n">add_bias</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>          <span class="c1"># modifies t in place — caller sees the change</span>
+    <span class="n">add_bias</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>          <span class="c1"># modifies t in place; caller sees the change</span>
     <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span> <span class="c1"># t now contains input + 5.0</span>
 </pre></div>
 </div>
-<p>This behavior applies to <strong>both</strong> shared-memory and register tiles, and matches Python’s
+<p>This behavior applies to shared-memory and register tiles, and matches Python’s
 semantics for mutable objects. The reasons for pass-by-reference are:</p>
 <ul class="simple">
 <li><p>Shared-memory tiles are handles to a fixed region of shared memory and cannot be copied.
@@ -1339,11 +1593,11 @@ original parameter mutate the tile through the reference regardless of storage t
 </div>
 </section>
 <section id="vectorized-tile-loads">
-<span id="id2"></span><h2>Vectorized Tile Loads<a class="headerlink" href="#vectorized-tile-loads" title="Link to this heading">#</a></h2>
-<p>When loading shared-memory tiles, Warp automatically attempts a <strong>vectorized path</strong>
+<span id="id3"></span><h2>Vectorized Tile Loads<a class="headerlink" href="#vectorized-tile-loads" title="Link to this heading">#</a></h2>
+<p>When loading shared-memory tiles, Warp automatically attempts a vectorized path
 that uses 128-bit (<code class="docutils literal notranslate"><span class="pre">float4</span></code>) memory transactions instead of per-element loads. This
 gives up to 1.3× higher bandwidth because each thread issues fewer, wider loads.</p>
-<p>The vectorized path activates when <strong>all</strong> of the following hold:</p>
+<p>The vectorized path activates when all of the following hold:</p>
 <ol class="arabic simple">
 <li><p><strong>Last-dimension alignment:</strong> <code class="docutils literal notranslate"><span class="pre">tile_last_dim</span> <span class="pre">×</span> <span class="pre">sizeof(element)</span> <span class="pre">%</span> <span class="pre">16</span> <span class="pre">==</span> <span class="pre">0</span></code>.
 For <code class="docutils literal notranslate"><span class="pre">float32</span></code> (4 bytes), the last dimension must be divisible by 4.
@@ -1363,15 +1617,14 @@ must be multiples of 16 bytes. A contiguous <code class="docutils literal notran
 has <code class="docutils literal notranslate"><span class="pre">strides[0]=140</span></code> bytes, and <code class="docutils literal notranslate"><span class="pre">140</span> <span class="pre">%</span> <span class="pre">16</span> <span class="pre">!=</span> <span class="pre">0</span></code>, so vectorization is rejected
 even if the tile’s last dimension is aligned.</p></li>
 </ol>
-<p>When any condition fails, Warp tries a <strong>coalesced byte-copy path</strong> for large element
+<p>When any condition fails, Warp tries a coalesced byte-copy path for large element
 types (<code class="docutils literal notranslate"><span class="pre">sizeof(T)</span> <span class="pre">&gt;</span> <span class="pre">16</span></code>) such as <code class="docutils literal notranslate"><span class="pre">mat33</span></code>, <code class="docutils literal notranslate"><span class="pre">mat44</span></code>, and <code class="docutils literal notranslate"><span class="pre">mat66</span></code>. This path copies
 raw bytes as <code class="docutils literal notranslate"><span class="pre">float*</span></code> with thread-striped access for perfect memory coalescing, and works
-for both 1D and N-D tiles. If that path is also ineligible, Warp falls back to a <strong>scalar
-load path</strong> that handles arbitrary alignment, strides, and partial (out-of-bounds) tiles
+for both 1D and N-D tiles. If that path is also ineligible, Warp falls back to a scalar
+load path that handles arbitrary alignment, strides, and partial (out-of-bounds) tiles
 with zero-padding.</p>
-<p><strong>Padding for vectorized loads:</strong> if your data dimensions are not naturally aligned, pad
-them to hit the vectorized path. For example, with <code class="docutils literal notranslate"><span class="pre">float32</span></code> tiles of width 30 (not
-divisible by 4), pad to 32:</p>
+<p>To use vectorized loads, pad data dimensions that are not naturally aligned. For example,
+pad <code class="docutils literal notranslate"><span class="pre">float32</span></code> tiles of width 30 (not divisible by 4) to 32:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Pad array width from 30 → 32 for vectorized float4 loads</span>
 <span class="n">data_np</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">pad</span><span class="p">(</span><span class="n">data_np</span><span class="p">,</span> <span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">)),</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;constant&#39;</span><span class="p">)</span>
 <span class="n">data</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">data_np</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
@@ -1380,8 +1633,8 @@ divisible by 4), pad to 32:</p>
 <span class="n">t</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">32</span><span class="p">),</span> <span class="n">offset</span><span class="o">=</span><span class="p">(</span><span class="n">i</span> <span class="o">*</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">storage</span><span class="o">=</span><span class="s2">&quot;shared&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p><strong>The ``aligned`` parameter:</strong> when you know all conditions above are met, pass
-<code class="docutils literal notranslate"><span class="pre">aligned=True</span></code> to skip the runtime eligibility checks:</p>
+<p>When you know all conditions above are met, pass <code class="docutils literal notranslate"><span class="pre">aligned=True</span></code> to skip the runtime
+eligibility checks:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Caller guarantees: contiguous array, 16-byte aligned, tile fits in bounds</span>
 <span class="n">t</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">32</span><span class="p">),</span> <span class="n">offset</span><span class="o">=</span><span class="p">(</span><span class="n">i</span> <span class="o">*</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">storage</span><span class="o">=</span><span class="s2">&quot;shared&quot;</span><span class="p">,</span> <span class="n">aligned</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="p">(</span><span class="n">i</span> <span class="o">*</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">aligned</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -1400,11 +1653,10 @@ contiguity checks are debug-only.</p>
 </section>
 <section id="software-pipelining-with-register-tiles">
 <span id="software-pipelining"></span><h2>Software Pipelining with Register Tiles<a class="headerlink" href="#software-pipelining-with-register-tiles" title="Link to this heading">#</a></h2>
-<p>When a kernel iterates over many tiles, the default pattern — load, compute, store,
-repeat — leaves the GPU’s memory pipeline idle during compute and the ALU idle during
-loads.</p>
-<p><strong>Sequential (baseline):</strong> each iteration loads a tile, processes it, stores the result,
-then moves on. The next load cannot begin until the current store completes:</p>
+<p>When a kernel iterates over many tiles, the default load-compute-store pattern leaves the
+GPU’s memory pipeline idle during compute and the ALU idle during loads.</p>
+<p>In the sequential baseline, each iteration loads a tile, processes it, stores the result,
+and then moves on. The next load cannot begin until the current store completes:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
@@ -1450,7 +1702,7 @@ then moves on. The next load cannot begin until the current store completes:</p>
     <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">inp</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">TILE_N</span><span class="p">),</span> <span class="n">offset</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">storage</span><span class="o">=</span><span class="s2">&quot;register&quot;</span><span class="p">)</span>
 
     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">N_ROWS</span><span class="p">):</span>
-        <span class="c1"># Issue next load — GPU fetches in background during compute below</span>
+        <span class="c1"># Issue next load; GPU fetches in background during compute below</span>
         <span class="n">b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">inp</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">TILE_N</span><span class="p">),</span> <span class="n">offset</span><span class="o">=</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">storage</span><span class="o">=</span><span class="s2">&quot;register&quot;</span><span class="p">)</span>
 
         <span class="c1"># Heavy compute overlaps with the memory fetch for b</span>
@@ -1515,9 +1767,9 @@ Speedup:    ...x
 GPU’s memory pipeline immediately, but the result registers are not read until <code class="docutils literal notranslate"><span class="pre">a</span> <span class="pre">=</span> <span class="pre">b</span></code>
 on the next iteration. The GPU’s instruction scheduler fills the gap with the ALU-heavy
 <code class="docutils literal notranslate"><span class="pre">tile_map</span></code> calls, effectively hiding the memory latency for free.</p>
-<p>No special parameters or API calls are needed — the hardware pipeline handles the overlap
-automatically. The benefit scales with the amount of compute per tile: with four
-transcendental <code class="docutils literal notranslate"><span class="pre">tile_map</span></code> calls per iteration (as above), expect <strong>1.2–1.6× speedup</strong>
+<p>No special parameters or API calls are needed because the hardware pipeline handles the
+overlap automatically. The benefit scales with the amount of compute per tile. With four
+transcendental <code class="docutils literal notranslate"><span class="pre">tile_map</span></code> calls per iteration, as above, expect a 1.2–1.6× speedup
 depending on the GPU.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
@@ -1588,27 +1840,14 @@ CPU-specific caveats.</p>
 <section id="cpu-vs-gpu-behavior-differences">
 <span id="tiles-cpu-gpu-behavior-differences"></span><h3>CPU vs. GPU behavior differences<a class="headerlink" href="#cpu-vs-gpu-behavior-differences" title="Link to this heading">#</a></h3>
 <p><em>Why does my kernel using tiles behave differently depending on whether I run it on a CPU or GPU?</em></p>
-<p>On CPU, Warp currently forces <code class="docutils literal notranslate"><span class="pre">block_dim=1</span></code> regardless of what you specify. This is a
-limitation of Warp’s single-threaded CPU execution model. The consequences are:</p>
-<ul class="simple">
-<li><p><a class="reference internal" href="../language_reference/_generated/warp.tile.html#warp._src.lang.tile" title="warp._src.lang.tile"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile()</span></code></a> produces a 1-element tile instead of a
-block-wide tile of <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> elements.</p></li>
-<li><p>Block-wide aggregation operations become effectively no-ops, because the “block”
-is a single thread, so there is nothing to reduce or cooperate across.</p></li>
-</ul>
-<p>Kernels that use <a class="reference internal" href="../language_reference/_generated/warp.tile.html#warp._src.lang.tile" title="warp._src.lang.tile"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile()</span></code></a> to aggregate values across a
-block will produce per-thread results on CPU instead of block-aggregated results.</p>
-<p>To write kernels that produce consistent results on both devices, use
-<a class="reference internal" href="../language_reference/_generated/warp.tile_atomic_add.html#warp._src.lang.tile_atomic_add" title="warp._src.lang.tile_atomic_add"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_atomic_add()</span></code></a> to accumulate each block’s
-result into a global array rather than relying on
-<a class="reference internal" href="../language_reference/_generated/warp.tile_store.html#warp._src.lang.tile_store" title="warp._src.lang.tile_store"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_store()</span></code></a> writing only from the first thread of
-each block. See the <a class="reference internal" href="#tile-reduce-blockwise-example"><span class="std std-ref">blockwise reduction example</span></a> in
-<a class="reference internal" href="#tiles-and-simt-code">Tiles and SIMT Code</a>.</p>
+<p>On CPU, Warp forces <code class="docutils literal notranslate"><span class="pre">block_dim=1</span></code>, which collapses the logical block to a single lane.
+See <a class="reference internal" href="#cpu-tile-semantics"><span class="std std-ref">CPU Tile Semantics</span></a> for the affected patterns
+and the workarounds that produce identical results on both devices.</p>
 </section>
 <section id="tile-operations-in-divergent-branches">
 <h3>Tile operations in divergent branches<a class="headerlink" href="#tile-operations-in-divergent-branches" title="Link to this heading">#</a></h3>
 <p><em>Can I use tile operations inside</em> <code class="docutils literal notranslate"><span class="pre">if</span></code> <em>statements or loops with early exits?</em></p>
-<p>Most tile operations are <strong>cooperative</strong>: every thread in the block must call them,
+<p>Most tile operations are cooperative: every thread in the block must call them,
 because they contain internal synchronization barriers (analogous to CUDA’s
 <code class="docutils literal notranslate"><span class="pre">__syncthreads()</span></code>). Calling a cooperative tile operation from a divergent branch, where
 only some threads execute it, will deadlock or produce undefined behavior.</p>
@@ -1623,11 +1862,11 @@ this. The default assumption should be that a tile op is cooperative.</p>
 <section id="register-vs-shared-memory-tiles">
 <h3>Register vs. shared memory tiles<a class="headerlink" href="#register-vs-shared-memory-tiles" title="Link to this heading">#</a></h3>
 <p><em>How do I choose between register and shared memory for my tile?</em></p>
-<p><strong>Register tiles</strong> (the default) distribute data across threads: with 64 threads and a
+<p>Register tiles (the default) distribute data across threads: with 64 threads and a
 tile of 256 elements, each thread holds 4 elements. Register storage is the fastest on
 most hardware but does not support random per-element access, because a thread cannot
 directly read elements assigned to other threads. See <a class="reference internal" href="#register-tiles">Register Tiles</a>.</p>
-<p><strong>Shared memory tiles</strong> store data in a region accessible by all threads in the block,
+<p>Shared memory tiles store data in a region accessible by all threads in the block,
 enabling random access. They are required for operations such as
 <a class="reference internal" href="../language_reference/_generated/warp.tile_matmul.html#warp._src.lang.tile_matmul" title="warp._src.lang.tile_matmul"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_matmul()</span></code></a> that need to read arbitrary
 elements. Shared memory is a limited per-block resource whose size varies by
@@ -1653,14 +1892,14 @@ automatically in these cases.</p>
 <h3>Debugging garbage or NaN output<a class="headerlink" href="#debugging-garbage-or-nan-output" title="Link to this heading">#</a></h3>
 <p><em>My kernel produces garbage or NaNs. What are the most common causes?</em></p>
 <ol class="arabic simple">
-<li><p><strong>Uninitialized output tile passed to</strong> <a class="reference internal" href="../language_reference/_generated/warp.tile_matmul.html#warp._src.lang.tile_matmul" title="warp._src.lang.tile_matmul"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_matmul()</span></code></a> <strong>.</strong>
-<a class="reference internal" href="../language_reference/_generated/warp.tile_matmul.html#warp._src.lang.tile_matmul" title="warp._src.lang.tile_matmul"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_matmul()</span></code></a> accumulates into <code class="docutils literal notranslate"><span class="pre">out</span></code>,
+<li><p><strong>Uninitialized output tile:</strong> <a class="reference internal" href="../language_reference/_generated/warp.tile_matmul.html#warp._src.lang.tile_matmul" title="warp._src.lang.tile_matmul"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_matmul()</span></code></a>
+accumulates into <code class="docutils literal notranslate"><span class="pre">out</span></code>,
 computing <code class="docutils literal notranslate"><span class="pre">alpha</span> <span class="pre">*</span> <span class="pre">a</span> <span class="pre">&#64;</span> <span class="pre">b</span> <span class="pre">+</span> <span class="pre">beta</span> <span class="pre">*</span> <span class="pre">out</span></code>.
 With the default <code class="docutils literal notranslate"><span class="pre">beta=1.0</span></code>, an uninitialized <code class="docutils literal notranslate"><span class="pre">out</span></code> tile produces garbage. Always
 initialize the accumulator with <a class="reference internal" href="../language_reference/_generated/warp.tile_zeros.html#warp._src.lang.tile_zeros" title="warp._src.lang.tile_zeros"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_zeros()</span></code></a>
 before calling <a class="reference internal" href="../language_reference/_generated/warp.tile_matmul.html#warp._src.lang.tile_matmul" title="warp._src.lang.tile_matmul"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_matmul()</span></code></a>.</p></li>
-<li><p><strong>aligned=True with unmet conditions.</strong>
-Passing <code class="docutils literal notranslate"><span class="pre">aligned=True</span></code> to <a class="reference internal" href="../language_reference/_generated/warp.tile_load.html#warp._src.lang.tile_load" title="warp._src.lang.tile_load"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_load()</span></code></a> or
+<li><p><strong>Invalid alignment assumptions:</strong> Passing <code class="docutils literal notranslate"><span class="pre">aligned=True</span></code> to
+<a class="reference internal" href="../language_reference/_generated/warp.tile_load.html#warp._src.lang.tile_load" title="warp._src.lang.tile_load"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_load()</span></code></a> or
 <a class="reference internal" href="../language_reference/_generated/warp.tile_store.html#warp._src.lang.tile_store" title="warp._src.lang.tile_store"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_store()</span></code></a> skips runtime eligibility checks
 for the vectorized load path. Address-alignment violations trap unconditionally (even
 in release builds), but bounds and contiguity violations are caught only by debug-only
@@ -1689,7 +1928,7 @@ to see the budget. See <a class="reference internal" href="#mathdx"><span class=
 <h3>Out-of-bounds handling<a class="headerlink" href="#out-of-bounds-handling" title="Link to this heading">#</a></h3>
 <p><em>How do</em> <code class="docutils literal notranslate"><span class="pre">wp.tile_load()</span></code> <em>and</em> <code class="docutils literal notranslate"><span class="pre">wp.tile_store()</span></code> <em>handle out-of-bounds accesses?</em></p>
 <p><a class="reference internal" href="../language_reference/_generated/warp.tile_load.html#warp._src.lang.tile_load" title="warp._src.lang.tile_load"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_load()</span></code></a> handles out-of-bounds accesses
-automatically: positions past the array edge are <strong>zero-padded</strong>, so boundary tiles are
+automatically: positions past the array edge are zero-padded, so boundary tiles are
 always safe to load without special handling. For
 <a class="reference internal" href="../language_reference/_generated/warp.tile_store.html#warp._src.lang.tile_store" title="warp._src.lang.tile_store"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_store()</span></code></a>, out-of-bounds writes are silently
 dropped.</p>
@@ -1753,7 +1992,7 @@ the tile into a global memory array with atomic additions.</p></li>
 values for continued SIMT work. See <a class="reference internal" href="#tiles-and-simt-code">Tiles and SIMT Code</a>.</p></li>
 </ul>
 <aside class="footnote-list brackets">
-<aside class="footnote brackets" id="id3" role="doc-footnote">
+<aside class="footnote brackets" id="id4" role="doc-footnote">
 <span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id1">1</a><span class="fn-bracket">]</span></span>
 <p><a class="reference external" href="https://developer.nvidia.com/blog/introducing-tile-based-programming-in-warp-1-5-0/">Technical Blog: Introducing Tile-Based Programming in Warp 1.5.0</a></p>
 </aside>
@@ -1844,6 +2083,11 @@ values for continued SIMT work. See <a class="reference internal" href="#tiles-a
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#tiles-and-simt-code">Tiles and SIMT Code</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#type-preservation">Type Preservation</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#example-using-tiles-to-accelerate-array-wide-reductions">Example: Using tiles to accelerate array-wide reductions</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cpu-tile-semantics">CPU Tile Semantics</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#patterns-that-do-not-produce-identical-cpu-gpu-results">Patterns that do not produce identical CPU/GPU results</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#writing-device-portable-tile-kernels">Writing device-portable tile kernels</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#automatic-differentiation">Automatic Differentiation</a></li>

@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Runtime &#8212; Warp 1.15.0rc2</title>
+    <title>Runtime &#8212; Warp 1.15.0rc3</title>
   
   
   
@@ -68,7 +68,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.15.0rc2" />
+  <meta name="docsearch:version" content="1.15.0rc3" />
 
 
   </head>
@@ -139,11 +139,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0rc2 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0rc2 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0rc3 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0rc3 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.15.0rc2</p>
+    <p class="title logo__title">Warp 1.15.0rc3</p>
   
 </a></div>
     
@@ -278,11 +278,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0rc2 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0rc2 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0rc3 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0rc3 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.15.0rc2</p>
+    <p class="title logo__title">Warp 1.15.0rc3</p>
   
 </a>
 
@@ -2149,6 +2149,10 @@ object to describe replay-time pointer relocation.</p></li>
 <li><p><a class="reference internal" href="../api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.nnz_sync" title="warp.sparse.BsrMatrix.nnz_sync"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BsrMatrix.nnz_sync()</span></code></a> cannot read the
 result of a topology update recorded earlier in the same CPU capture. Read the
 count after replay, or avoid the readback inside the captured region.</p></li>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.status_sync" title="warp.sparse.BsrMatrix.status_sync"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BsrMatrix.status_sync()</span></code></a> cannot read
+the sparse status during a live CUDA graph capture (it requires a device-to-host
+readback) or during a CPU APIC capture (a recorded status update is applied only
+on replay). Read the status after replay instead.</p></li>
 <li><p>Recording is scoped to the capture’s device: a host (CPU) helper op invoked while a CUDA
 graph capture is active executes immediately instead of being recorded into the CUDA graph,
 and vice versa.</p></li>
@@ -3081,7 +3085,7 @@ and will remain cached even if <a class="reference internal" href="../api_refere
 <a class="reference internal" href="../api_reference/_generated/warp.clear_lto_cache.html#warp.clear_lto_cache" title="warp.clear_lto_cache"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.clear_lto_cache()</span></code></a> can be used to clear the LTO cache.</p>
 </section>
 <section id="random-number-generation">
-<h2>Random Number Generation<a class="headerlink" href="#random-number-generation" title="Link to this heading">#</a></h2>
+<span id="id9"></span><h2>Random Number Generation<a class="headerlink" href="#random-number-generation" title="Link to this heading">#</a></h2>
 <p>To generate random numbers in a Warp kernel, use the <a class="reference internal" href="../language_reference/_generated/warp.rand_init.html#warp._src.lang.rand_init" title="warp._src.lang.rand_init"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.rand_init()</span></code></a> built-in
 inside the kernel to initialize a random number generator, followed by a call to any of Warp’s random number
 built-ins. For example:</p>
@@ -3103,7 +3107,7 @@ built-ins. For example:</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[0.1415146 0.9632247 0.6449367]
 </pre></div>
 </div>
-<p>Warp uses a PCG (Permuted Congruential Generator) for pseudo-random number generation <a class="footnote-reference brackets" href="#id10" id="id9" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a>.
+<p>Warp uses a PCG (Permuted Congruential Generator) for pseudo-random number generation <a class="footnote-reference brackets" href="#id12" id="id10" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a>.
 <a class="reference internal" href="../language_reference/_generated/warp.rand_init.html#warp._src.lang.rand_init" title="warp._src.lang.rand_init"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.rand_init()</span></code></a> hashes the seed and offset with two nested calls
 to a PCG routine to produce a 32-bit unsigned integer representing the RNG state. The offset
 in a kernel is necessary to ensure that each thread generates a unique sequence of numbers. Were it
@@ -3129,7 +3133,7 @@ numbers, e.g.:</p>
 </pre></div>
 </div>
 <section id="avoiding-correlated-sequences">
-<h3>Avoiding Correlated Sequences<a class="headerlink" href="#avoiding-correlated-sequences" title="Link to this heading">#</a></h3>
+<span id="id11"></span><h3>Avoiding Correlated Sequences<a class="headerlink" href="#avoiding-correlated-sequences" title="Link to this heading">#</a></h3>
 <p>Care must be taken when two different kernels generate random numbers. If the same seed is used for both,
 any quantities computed from the generated random numbers will be correlated. Similarly, if the same seed
 is passed to a kernel that is launched multiple times, the same random numbers will be generated for each launch.
@@ -3160,8 +3164,8 @@ To generate different sequences across launches, use a different seed for each l
 </pre></div>
 </div>
 <aside class="footnote-list brackets">
-<aside class="footnote brackets" id="id10" role="doc-footnote">
-<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id9">1</a><span class="fn-bracket">]</span></span>
+<aside class="footnote brackets" id="id12" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id10">1</a><span class="fn-bracket">]</span></span>
 <p>Mark Jarzynski and Marc Olano, <a class="reference external" href="https://jcgt.org/published/0009/03/02/">Hash Functions for GPU Rendering</a>,
 Journal of Computer Graphics Techniques (JCGT), vol. 9, no. 3, 20–38, 2020.</p>
 </aside>

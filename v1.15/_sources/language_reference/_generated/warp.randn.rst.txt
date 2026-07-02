@@ -9,4 +9,10 @@
       * Kernel
       * Python
 
-   Sample a normal (Gaussian) distribution of mean 0 and variance 1.
+   Sample the standard normal (Gaussian) distribution with mean 0 and variance 1.
+   
+   Uses the Box-Muller transform, consuming two uniform draws. In a kernel, this
+   advances ``state`` in place; called from the Python scope, it does not modify
+   ``state``, so repeated calls with the same ``state`` return the same value
+   (see :func:`rand_init`). For a general normal, scale and shift the result:
+   ``mean + stddev * wp.randn(state)``.

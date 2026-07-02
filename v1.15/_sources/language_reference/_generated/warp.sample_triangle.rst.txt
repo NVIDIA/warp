@@ -9,7 +9,24 @@
       * Kernel
       * Python
 
-   Uniformly sample a triangle.
+   Uniformly sample a point in a triangle, returned as barycentric coordinates.
    
-   :returns: Sample barycentric coordinates.
+   In a kernel, advances ``state`` in place; called from the Python scope, it does
+   not modify ``state``, so repeated calls with the same ``state`` return the same
+   point (see :func:`rand_init`). The third coordinate is ``w = 1 - u - v``; recover
+   a point on a triangle with vertices ``a``, ``b``, ``c`` as ``u*a + v*b + w*c``:
+   
+   .. code-block:: python
+   
+       @wp.kernel
+       def points_in_triangle(
+           seed: int, a: wp.vec3, b: wp.vec3, c: wp.vec3, out: wp.array[wp.vec3]
+       ):
+           i = wp.tid()
+           rng = wp.rand_init(seed, i)
+           bary = wp.sample_triangle(rng)
+           w = 1.0 - bary[0] - bary[1]
+           out[i] = bary[0] * a + bary[1] * b + w * c
+   
+   :returns: The barycentric coordinates ``(u, v)`` of the sampled point.
    

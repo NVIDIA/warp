@@ -9,4 +9,8 @@
       * Kernel
       * Python
 
-   Uniformly sample a unit square.
+   Uniformly sample a point in the unit square ``[-0.5, 0.5)^2``, centered at the origin.
+   
+   Returns a ``vec2``. In a kernel, advances ``state`` in
+   place; called from the Python scope, it does not modify ``state``, so repeated
+   calls with the same ``state`` return the same point (see :func:`rand_init`).
