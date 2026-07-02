@@ -684,8 +684,6 @@ inline CUDA_CALLABLE void radix_sort_thread_block_core(
     const int lowest_bits_mask = (1 << bits_per_pass) - 1;
     const int num_scan_buckets = (1 << bits_per_pass);
 
-    const int num_warp_passes = (num_scan_buckets + num_warps - 1) / num_warps;
-
     __shared__ int buckets[num_scan_buckets];
     __shared__ int buckets2[num_scan_buckets];
     __shared__ int buckets_cumulative_sum[num_scan_buckets];
@@ -718,7 +716,7 @@ inline CUDA_CALLABLE void radix_sort_thread_block_core(
             }
             __syncthreads();
 
-            for (int b = warp_id; b < num_warp_passes * num_warps; b += num_warps) {
+            for (int b = warp_id; b < num_scan_buckets; b += num_warps) {
                 int f = lane_id < num_warps ? shared_mem[lane_id][b] : 0;
                 f = warp_scan_inclusive(lane_id, f);
                 if (lane_id == 31)
