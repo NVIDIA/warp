@@ -223,6 +223,9 @@
   ([GH-1562](https://github.com/NVIDIA/warp/issues/1562)).
 - Fix CUDA graph capture when constructing an environment-first `warp.fem` space partition with a fixed
   `max_node_count` capacity ([GH-1607](https://github.com/NVIDIA/warp/issues/1607)).
+- Fix `warp.optim.Adam.set_params()` and `warp.optim.SGD.set_params()` reusing optimizer state on the wrong device
+  when replacement parameters move devices. Compatible buffers now migrate with the parameters while preserving
+  accumulated state ([GH-1615](https://github.com/NVIDIA/warp/issues/1615)).
 
 ### Documentation
 
