@@ -710,6 +710,9 @@ capture, which APIC cannot record for replay (<a class="reference external" href
 parameters, which silently discarded accumulated state. The reuse check now compares against the
 moment-buffer dtype rather than the parameter dtype
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1593">GH-1593</a>).</p></li>
+<li><p>Fix CPU kernel compilation failures by registering the <code class="docutils literal notranslate"><span class="pre">exp2</span></code> and <code class="docutils literal notranslate"><span class="pre">ldexp</span></code> math symbols that LLVM
+may emit when simplifying power-of-two <code class="docutils literal notranslate"><span class="pre">pow</span></code> calls
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1562">GH-1562</a>).</p></li>
 </ul>
 </section>
 <section id="documentation">
