@@ -790,6 +790,42 @@ The main benefit of using the manual event timing API is that it allows timing a
 </div>
 </section>
 </section>
+<section id="limiting-the-profiler-capture-range">
+<span id="profiler-capture-range"></span><h2>Limiting the Profiler Capture Range<a class="headerlink" href="#limiting-the-profiler-capture-range" title="Link to this heading">#</a></h2>
+<p>When profiling with an external tool such as Nsight Systems or Nsight Compute, it is often useful to restrict data
+collection to a specific region of interest (for example, a few simulation steps after warm-up) rather than capturing
+the entire run.  Warp exposes the CUDA profiler control API for this purpose:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.cuda_profiler_start.html#warp.cuda_profiler_start" title="warp.cuda_profiler_start"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.cuda_profiler_start()</span></code></a> begins profiler data collection (equivalent to the driver
+API <code class="docutils literal notranslate"><span class="pre">cuProfilerStart</span></code>).</p></li>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.cuda_profiler_stop.html#warp.cuda_profiler_stop" title="warp.cuda_profiler_stop"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.cuda_profiler_stop()</span></code></a> ends it (equivalent to <code class="docutils literal notranslate"><span class="pre">cuProfilerStop</span></code>).</p></li>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.ScopedCudaProfiler.html#warp.ScopedCudaProfiler" title="warp.ScopedCudaProfiler"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedCudaProfiler</span></code></a> is a context manager that brackets a region
+with the two calls.</p></li>
+</ul>
+<p>These calls act on the selected <code class="docutils literal notranslate"><span class="pre">device</span></code>’s CUDA context (the current device by default), and a CUDA context must be
+active for the profiler to intercept them; they have no effect on CPU-only builds.  Note that the external profiler’s
+<em>capture range</em> is process-wide—the first start opens it and the stop closes it for the whole process.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedCudaProfiler</span><span class="p">():</span>
+    <span class="n">run_workload</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>The profiler control API only marks the region; the external tool must be told to honor it.  With Nsight Systems, pass
+<code class="docutils literal notranslate"><span class="pre">--capture-range=cudaProfilerApi</span></code> so that collection starts at the first
+<a class="reference internal" href="../api_reference/_generated/warp.cuda_profiler_start.html#warp.cuda_profiler_start" title="warp.cuda_profiler_start"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.cuda_profiler_start()</span></code></a> call and stops at
+<a class="reference internal" href="../api_reference/_generated/warp.cuda_profiler_stop.html#warp.cuda_profiler_stop" title="warp.cuda_profiler_stop"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.cuda_profiler_stop()</span></code></a>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>nsys<span class="w"> </span>profile<span class="w"> </span>--capture-range<span class="o">=</span>cudaProfilerApi<span class="w"> </span>python<span class="w"> </span>my_app.py
+</pre></div>
+</div>
+<p>With Nsight Compute, pass <code class="docutils literal notranslate"><span class="pre">--profile-from-start</span> <span class="pre">off</span></code> so that profiling stays disabled until
+<a class="reference internal" href="../api_reference/_generated/warp.cuda_profiler_start.html#warp.cuda_profiler_start" title="warp.cuda_profiler_start"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.cuda_profiler_start()</span></code></a> is called:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ncu<span class="w"> </span>--profile-from-start<span class="w"> </span>off<span class="w"> </span>-o<span class="w"> </span>my_app<span class="w"> </span>python<span class="w"> </span>my_app.py
+</pre></div>
+</div>
+<p>The attached profiler and its configuration determine which activities are collected and how outstanding device work
+is handled when <code class="docutils literal notranslate"><span class="pre">cuProfilerStop</span></code> is called.  The CUDA API does not guarantee that this call synchronizes the device.
+Consult the profiler’s documentation to determine whether explicit synchronization is needed to include work that is
+still in flight.</p>
+</section>
 <section id="nsight-compute-profiling">
 <h2>Nsight Compute Profiling<a class="headerlink" href="#nsight-compute-profiling" title="Link to this heading">#</a></h2>
 <p>While Nsight Systems provides a system-wide visualization of software and hardware activity for an application,
@@ -909,6 +945,9 @@ we can drop the <code class="docutils literal notranslate"><span class="pre">-k<
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>ncu<span class="w"> </span>--open-in-ui<span class="w"> </span>-f<span class="w"> </span>-o<span class="w"> </span>example_sph<span class="w"> </span>--set<span class="w"> </span>full<span class="w"> </span>-c<span class="w"> </span><span class="m">20</span><span class="w"> </span>python<span class="w"> </span>example_sph.py<span class="w"> </span>--stage-path<span class="w"> </span>None<span class="w"> </span>--num-frames<span class="w"> </span><span class="m">10</span>
 </pre></div>
 </div>
+<p>Alternatively, to target a specific region of the run rather than a launch count, bracket the region of interest with
+the <a class="reference internal" href="#profiler-capture-range"><span class="std std-ref">profiler capture range API</span></a> and run <code class="docutils literal notranslate"><span class="pre">ncu</span></code> with <code class="docutils literal notranslate"><span class="pre">--profile-from-start</span> <span class="pre">off</span></code> so
+collection begins only at <code class="docutils literal notranslate"><span class="pre">wp.cuda_profiler_start()</span></code>.</p>
 </section>
 <section id="preserving-source-code-context-in-nsight-compute-reports">
 <h3>Preserving source code context in Nsight Compute reports<a class="headerlink" href="#preserving-source-code-context-in-nsight-compute-reports" title="Link to this heading">#</a></h3>
@@ -1079,6 +1118,7 @@ while Option B eliminates all cache-related overhead.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#timing-in-cuda-graphs">Timing in CUDA Graphs</a></li>
 </ul>
 </li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#limiting-the-profiler-capture-range">Limiting the Profiler Capture Range</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#nsight-compute-profiling">Nsight Compute Profiling</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#source-code-correlation-options">Source code correlation options</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#example-profiling-kernels-from-example-sph-py">Example: Profiling kernels from <code class="docutils literal notranslate"><span class="pre">example_sph.py</span></code></a></li>

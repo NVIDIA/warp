@@ -507,7 +507,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">dynamic_smem_bytes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L7844-L7905"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.get_cuda_max_cluster_dim" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L7849-L7910"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.get_cuda_max_cluster_dim" title="Link to this definition">#</a></dt>
 <dd><p>Return the maximum <code class="docutils literal notranslate"><span class="pre">cluster_dim</span></code> <em>kernel</em> can launch with on <em>device</em>.</p>
 <p>Probes the CUDA driver via <code class="docutils literal notranslate"><span class="pre">cuOccupancyMaxActiveClusters</span></code> for cluster
 sizes from 16 down to 2 and returns the largest one the driver reports as

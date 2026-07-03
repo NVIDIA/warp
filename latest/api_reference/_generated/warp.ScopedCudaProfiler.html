@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.capture_launch &#8212; Warp 1.16.0.dev0</title>
+    <title>warp.ScopedCudaProfiler &#8212; Warp 1.16.0.dev0</title>
   
   
   
@@ -49,7 +49,7 @@
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.capture_launch';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.ScopedCudaProfiler';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
@@ -62,8 +62,8 @@
 
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="warp.capture_load" href="warp.capture_load.html" />
-    <link rel="prev" title="warp.capture_if" href="warp.capture_if.html" />
+    <link rel="next" title="warp.cuda_profiler_start" href="warp.cuda_profiler_start.html" />
+    <link rel="prev" title="warp.TIMING_MEMSET" href="warp.TIMING_MEMSET.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -463,7 +463,7 @@
     
     <li class="breadcrumb-item"><a href="../warp.html" class="nav-link">warp</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.capture_launch</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.ScopedCudaProfiler</span></li>
   </ul>
 </nav>
 </div>
@@ -476,7 +476,7 @@
         <div class="header-article-item">
 
 <div class="d-flex justify-content-end w-100">
-  <a href="../../_sources/api_reference/_generated/warp.capture_launch.rst.txt">
+  <a href="../../_sources/api_reference/_generated/warp.ScopedCudaProfiler.rst.txt">
     <i class="fa-solid fa-file-code"></i> View page source
   </a>
 </div>
@@ -493,22 +493,48 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="warp-capture-launch">
-<h1>warp.capture_launch<a class="headerlink" href="#warp-capture-launch" title="Link to this heading">#</a></h1>
-<dl class="py function">
-<dt class="sig sig-object py" id="warp.capture_launch">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">capture_launch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">graph</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stream</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L12240-L12302"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.capture_launch" title="Link to this definition">#</a></dt>
-<dd><p>Launch a previously captured graph.</p>
-<p>For CUDA graphs, this launches via <code class="docutils literal notranslate"><span class="pre">cudaGraphLaunch()</span></code>.
-For CPU graphs, this replays recorded operations in a tight native C loop.</p>
+  <section id="warp-scopedcudaprofiler">
+<h1>warp.ScopedCudaProfiler<a class="headerlink" href="#warp-scopedcudaprofiler" title="Link to this heading">#</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="warp.ScopedCudaProfiler">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">ScopedCudaProfiler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/utils.py#L1586-L1623"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.ScopedCudaProfiler" title="Link to this definition">#</a></dt>
+<dd><p>Context manager for limiting an external CUDA profiler’s capture range.</p>
+<p>Calls <a class="reference internal" href="warp.cuda_profiler_start.html#warp.cuda_profiler_start" title="warp.cuda_profiler_start"><code class="xref py py-func docutils literal notranslate"><span class="pre">cuda_profiler_start()</span></code></a> on entry and <a class="reference internal" href="warp.cuda_profiler_stop.html#warp.cuda_profiler_stop" title="warp.cuda_profiler_stop"><code class="xref py py-func docutils literal notranslate"><span class="pre">cuda_profiler_stop()</span></code></a> on
+exit. The device is resolved during construction, and the same CUDA context
+is used when profiling starts and stops even if the current device changes
+inside the block.</p>
+<p>The attached profiler and its configuration determine which activity is
+collected, including CUDA API calls, allocations, transfers, kernels, and
+synchronization.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>graph</strong> (<a class="reference internal" href="warp.Graph.html#warp.Graph" title="warp._src.context.Graph"><em>Graph</em></a>) – A <a class="reference internal" href="warp.Graph.html#warp.Graph" title="warp.Graph"><code class="xref py py-class docutils literal notranslate"><span class="pre">Graph</span></code></a> as returned by <a class="reference internal" href="warp.capture_end.html#warp.capture_end" title="warp.capture_end"><code class="xref py py-func docutils literal notranslate"><span class="pre">capture_end()</span></code></a></p></li>
-<li><p><strong>stream</strong> (<a class="reference internal" href="warp.Stream.html#warp.Stream" title="warp._src.context.Stream"><em>Stream</em></a><em> | </em><em>None</em>) – A <a class="reference internal" href="warp.Stream.html#warp.Stream" title="warp.Stream"><code class="xref py py-class docutils literal notranslate"><span class="pre">Stream</span></code></a> to launch the graph on (CUDA only)</p></li>
-</ul>
+<dd class="field-odd"><p><strong>device</strong> (<em>DeviceLike</em>) – Device whose CUDA context profiling is controlled for.</p>
 </dd>
 </dl>
+<p class="rubric">Example</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">warp</span><span class="o">.</span><span class="n">ScopedCudaProfiler</span><span class="p">():</span>
+    <span class="n">run_workload</span><span class="p">()</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.ScopedCudaProfiler.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/utils.py#L1608-L1610"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.ScopedCudaProfiler.__init__" title="Link to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>device</strong> (<a class="reference internal" href="warp.Device.html#warp.Device" title="warp._src.context.Device"><em>Device</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<p class="rubric">Methods</p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.ScopedCudaProfiler.__init__" title="warp.ScopedCudaProfiler.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>([device])</p></td>
+<td><p></p></td>
+</tr>
+</tbody>
+</table>
+</div>
 </dd></dl>
 
 </section>
@@ -524,20 +550,20 @@ For CPU graphs, this replays recorded operations in a tight native C loop.</p>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.capture_if.html"
+       href="warp.TIMING_MEMSET.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.capture_if</p>
+        <p class="prev-next-title">warp.TIMING_MEMSET</p>
       </div>
     </a>
     <a class="right-next"
-       href="warp.capture_load.html"
+       href="warp.cuda_profiler_start.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.capture_load</p>
+        <p class="prev-next-title">warp.cuda_profiler_start</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -562,7 +588,10 @@ For CPU graphs, this replays recorded operations in a tight native C loop.</p>
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.capture_launch"><code class="docutils literal notranslate"><span class="pre">capture_launch()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.ScopedCudaProfiler"><code class="docutils literal notranslate"><span class="pre">ScopedCudaProfiler</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.ScopedCudaProfiler.__init__"><code class="docutils literal notranslate"><span class="pre">__init__()</span></code></a></li>
+</ul>
+</li>
 </ul>
   </nav></div>
 
@@ -570,7 +599,7 @@ For CPU graphs, this replays recorded operations in a tight native C loop.</p>
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/_generated/warp.capture_launch.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/_generated/warp.ScopedCudaProfiler.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

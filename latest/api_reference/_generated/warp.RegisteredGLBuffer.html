@@ -497,7 +497,7 @@
 <h1>warp.RegisteredGLBuffer<a class="headerlink" href="#warp-registeredglbuffer" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.RegisteredGLBuffer">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">RegisteredGLBuffer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L8426-L8579"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.RegisteredGLBuffer" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">RegisteredGLBuffer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L8431-L8584"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.RegisteredGLBuffer" title="Link to this definition">#</a></dt>
 <dd><p>Helper class to register a GL buffer with CUDA so that it can be mapped to a Warp array.</p>
 <p>Example usage:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
@@ -538,7 +538,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">fallback_to_copy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L8485-L8514"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.RegisteredGLBuffer.__init__" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L8490-L8519"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.RegisteredGLBuffer.__init__" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -609,7 +609,7 @@ stored in the resource will be preserved.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.RegisteredGLBuffer.map">
-<span class="sig-name descname"><span class="pre">map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dtype</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shape</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L8527-L8562"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.RegisteredGLBuffer.map" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dtype</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">shape</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L8532-L8567"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.RegisteredGLBuffer.map" title="Link to this definition">#</a></dt>
 <dd><p>Map the OpenGL buffer to a Warp array.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -629,7 +629,7 @@ stored in the resource will be preserved.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.RegisteredGLBuffer.unmap">
-<span class="sig-name descname"><span class="pre">unmap</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L8563-L8579"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.RegisteredGLBuffer.unmap" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">unmap</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L8568-L8584"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.RegisteredGLBuffer.unmap" title="Link to this definition">#</a></dt>
 <dd><p>Unmap the OpenGL buffer.</p>
 </dd></dl>
 

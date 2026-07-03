@@ -1,0 +1,22 @@
+﻿warp.ScopedCudaProfiler
+=======================
+
+.. currentmodule:: warp
+
+.. autoclass:: ScopedCudaProfiler
+
+   
+   .. automethod:: __init__
+
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~ScopedCudaProfiler.__init__
+   
+   
+
+   
+   
+   
