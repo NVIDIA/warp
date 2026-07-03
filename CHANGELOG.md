@@ -208,6 +208,9 @@
   parameters, which silently discarded accumulated state. The reuse check now compares against the
   moment-buffer dtype rather than the parameter dtype
   ([GH-1593](https://github.com/NVIDIA/warp/issues/1593)).
+- Fix CPU kernel compilation failures by registering the `exp2` and `ldexp` math symbols that LLVM
+  may emit when simplifying power-of-two `pow` calls
+  ([GH-1562](https://github.com/NVIDIA/warp/issues/1562)).
 
 ### Documentation
 

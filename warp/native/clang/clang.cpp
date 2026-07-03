@@ -812,7 +812,11 @@ WP_API int wp_load_obj(const char* object_file, const char* module_name, bool us
             SYMBOL(printf), SYMBOL(puts), SYMBOL(putchar), SYMBOL_T(abs, int (*)(int)), SYMBOL(llabs), SYMBOL(fmodf),
                 SYMBOL_T(fmod, double (*)(double, double)), SYMBOL(logf), SYMBOL_T(log, double (*)(double)),
                 SYMBOL(log2f), SYMBOL_T(log2, double (*)(double)), SYMBOL(log10f), SYMBOL_T(log10, double (*)(double)),
-                SYMBOL(expf), SYMBOL_T(exp, double (*)(double)), SYMBOL(sqrtf), SYMBOL_T(sqrt, double (*)(double)),
+                SYMBOL(expf), SYMBOL_T(exp, double (*)(double)),
+                // LLVM may simplify power-of-two pow calls to exp2, then simplify exp2 with an integer-valued
+                // exponent to ldexp. The JIT must resolve both libcall families (GH-1562).
+                SYMBOL(exp2f), SYMBOL_T(exp2, double (*)(double)), SYMBOL(ldexpf),
+                SYMBOL_T(ldexp, double (*)(double, int)), SYMBOL(sqrtf), SYMBOL_T(sqrt, double (*)(double)),
                 SYMBOL(cbrtf), SYMBOL_T(cbrt, double (*)(double)), SYMBOL(powf),
                 SYMBOL_T(pow, double (*)(double, double)), SYMBOL(floorf), SYMBOL_T(floor, double (*)(double)),
                 SYMBOL(ceilf), SYMBOL_T(ceil, double (*)(double)), SYMBOL(fabsf), SYMBOL_T(fabs, double (*)(double)),

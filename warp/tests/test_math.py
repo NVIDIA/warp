@@ -36,6 +36,14 @@ def scalar_float_kernel(
         out[0] = wp.radians(x[0])
 
 
+@wp.kernel
+def power_of_two_pow_kernel(exponent: int, out_f32: wp.array[wp.float32], out_f64: wp.array[wp.float64]):
+    out_f32[0] = wp.float32(0.5) ** wp.float32(exponent)
+    out_f32[1] = wp.float32(2.0) ** wp.float32(exponent)
+    out_f64[0] = wp.float64(0.5) ** wp.float64(exponent)
+    out_f64[1] = wp.float64(2.0) ** wp.float64(exponent)
+
+
 def test_scalar_math(test, device):
     float_values = ScalarFloatValues(degrees=(0.123,), radians=(123.0,))
     float_results_expected = ScalarFloatValues(degrees=7.047381, radians=2.146755)
@@ -328,6 +336,21 @@ devices = get_test_devices()
 
 
 class TestMath(unittest.TestCase):
+    def test_power_of_two_pow_cpu(self):
+        """Verify CPU kernels can resolve power-of-two ``pow`` calls after LLVM optimization.
+
+        A reciprocal power-of-two base may lower to ``exp2``. A base of two with an integer-derived exponent may
+        lower to ``ldexp``. The CPU JIT must resolve both the float and double variants of these functions.
+        """
+        out_f32 = wp.empty(2, dtype=wp.float32, device="cpu")
+        out_f64 = wp.empty(2, dtype=wp.float64, device="cpu")
+
+        wp.launch(power_of_two_pow_kernel, dim=1, inputs=[4], outputs=[out_f32, out_f64], device="cpu")
+
+        expected = np.array([0.0625, 16.0])
+        np.testing.assert_allclose(out_f32.numpy(), expected)
+        np.testing.assert_allclose(out_f64.numpy(), expected)
+
     def test_vec_type(self):
         vec5 = wp.types.vector(length=5, dtype=float)
         v = vec5()
