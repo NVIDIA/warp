@@ -135,6 +135,13 @@ def test_cuda_shared_tile_oob_reports_tile_index(test, device):
 
 # The CPU OOB checks abort the process, so run them as fixed-device tests
 # against "cpu" rather than parameterizing over all test devices.
+@unittest.skipIf(
+    sys.platform == "win32",
+    "Tile OOB tests intentionally trigger device-side asserts and host aborts. On the "
+    "Windows release-qualification rig (debug driver with bsod-on-release-assert and a "
+    "short TDR) the CUDA device-side assert escalates to a kernel bugcheck "
+    "(0x116 VIDEO_TDR_FAILURE), crashing the machine. Covered on Linux.",
+)
 class TestTileOOB(unittest.TestCase):
     def test_shared_tile_oob_reports_tile_index(self):
         returncode, stdout, stderr = _run_in_subprocess("_trigger_shared_tile_oob", "cpu")
