@@ -45,6 +45,12 @@ typedef CUresult(CUDAAPI* PFN_cuGraphicsGLRegisterImage_v3000)(
     CUgraphicsResource* pCudaResource, wp::GLuint image, wp::GLenum target, unsigned int Flags
 );
 
+// function prototypes adapted from <cudaProfilerTypedefs.h>. We declare these locally to avoid
+// including the header, which pulls in <cudaProfiler.h>; that header ships only in the separate
+// cuda_profiler_api redist component, not the cuda_cudart component used by the builder images.
+typedef CUresult(CUDAAPI* PFN_cuProfilerStart_v4000)(void);
+typedef CUresult(CUDAAPI* PFN_cuProfilerStop_v4000)(void);
+
 
 // function pointers to driver API entry points
 // these are explicitly versioned according to cudaTypedefs.h from CUDA Toolkit WP_CUDA_TOOLKIT_VERSION
@@ -125,6 +131,10 @@ static PFN_cuIpcOpenEventHandle_v4010 pfn_cuIpcOpenEventHandle;
 static PFN_cuIpcGetMemHandle_v4010 pfn_cuIpcGetMemHandle;
 static PFN_cuIpcOpenMemHandle_v11000 pfn_cuIpcOpenMemHandle;
 static PFN_cuIpcCloseMemHandle_v4010 pfn_cuIpcCloseMemHandle;
+
+// Profiler control functions
+static PFN_cuProfilerStart_v4000 pfn_cuProfilerStart;
+static PFN_cuProfilerStop_v4000 pfn_cuProfilerStop;
 
 // Texture functions
 static PFN_cuArrayCreate_v3020 pfn_cuArrayCreate;
@@ -299,6 +309,10 @@ bool init_cuda_driver()
     get_driver_entry_point("cuIpcGetMemHandle", 4010, &(void*&)pfn_cuIpcGetMemHandle);
     get_driver_entry_point("cuIpcOpenMemHandle", 11000, &(void*&)pfn_cuIpcOpenMemHandle);
     get_driver_entry_point("cuIpcCloseMemHandle", 4010, &(void*&)pfn_cuIpcCloseMemHandle);
+
+    // Profiler control functions
+    get_driver_entry_point("cuProfilerStart", 4000, &(void*&)pfn_cuProfilerStart);
+    get_driver_entry_point("cuProfilerStop", 4000, &(void*&)pfn_cuProfilerStop);
 
     // Texture functions
     get_driver_entry_point("cuArrayCreate", 3020, &(void*&)pfn_cuArrayCreate);
@@ -689,6 +703,10 @@ CUresult cuCtxPopCurrent_f(CUcontext* ctx)
 }
 
 CUresult cuCtxSynchronize_f() { return pfn_cuCtxSynchronize ? pfn_cuCtxSynchronize() : DRIVER_ENTRY_POINT_ERROR; }
+
+CUresult cuProfilerStart_f() { return pfn_cuProfilerStart ? pfn_cuProfilerStart() : DRIVER_ENTRY_POINT_ERROR; }
+
+CUresult cuProfilerStop_f() { return pfn_cuProfilerStop ? pfn_cuProfilerStop() : DRIVER_ENTRY_POINT_ERROR; }
 
 CUresult cuCtxGetDevice_f(CUdevice* dev)
 {

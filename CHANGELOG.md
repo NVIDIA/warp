@@ -10,6 +10,10 @@
   the block count can no longer be capped, so launching such a kernel with `max_blocks > 0` raises an error pointing
   back at the grid-stride default. The default launch is unchanged
   ([GH-1270](https://github.com/NVIDIA/warp/issues/1270)).
+- Add `wp.cuda_profiler_start()`, `wp.cuda_profiler_stop()`, and the `wp.ScopedCudaProfiler` context manager to
+  control CUDA profiler data collection from Python (equivalent to `cuProfilerStart`/`cuProfilerStop`), for use with an
+  external profiler's capture range. They accept an optional `device` argument and act on that device's current CUDA
+  context ([GH-1596](https://github.com/NVIDIA/warp/issues/1596)).
 - Add `wp.ref[T]` parameter annotation for `@wp.func` and `@wp.func_native`, enabling explicit pass-by-reference
   semantics for scalar, vector, matrix, quaternion, and struct types. Mutations to a `wp.ref[T]` parameter are visible
   in the caller's storage without a return value. Add `wp.address_of(expr) -> wp.uint64` for obtaining a raw pointer

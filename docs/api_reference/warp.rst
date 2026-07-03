@@ -470,6 +470,17 @@ Timing Flags
    TIMING_MEMCPY
    TIMING_MEMSET
 
+CUDA Profiler Control
+^^^^^^^^^^^^^^^^^^^^^
+
+.. autosummary::
+   :nosignatures:
+   :toctree: _generated
+
+   ScopedCudaProfiler
+   cuda_profiler_start
+   cuda_profiler_stop
+
 Logging
 -------
 

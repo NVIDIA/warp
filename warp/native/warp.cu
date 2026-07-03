@@ -2882,6 +2882,18 @@ void wp_cuda_context_synchronize(void* context)
     // check_cuda(cudaDeviceGraphMemTrim(wp_cuda_context_get_device_ordinal(context)));
 }
 
+bool wp_cuda_profiler_start(void* context)
+{
+    ContextGuard guard(context, true);
+    return check_cu(cuProfilerStart_f());
+}
+
+bool wp_cuda_profiler_stop(void* context)
+{
+    ContextGuard guard(context, true);
+    return check_cu(cuProfilerStop_f());
+}
+
 uint64_t wp_cuda_context_check(void* context)
 {
     ContextGuard guard(context);

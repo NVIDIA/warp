@@ -395,6 +395,13 @@ from warp._src.utils import TIMING_GRAPH as TIMING_GRAPH
 from warp._src.utils import TIMING_ALL as TIMING_ALL
 
 
+# category: Profiling > CUDA Profiler Control
+
+from warp._src.context import cuda_profiler_start as cuda_profiler_start
+from warp._src.context import cuda_profiler_stop as cuda_profiler_stop
+from warp._src.utils import ScopedCudaProfiler as ScopedCudaProfiler
+
+
 # category: Logging
 
 from warp._src.logger import LOG_DEBUG as LOG_DEBUG

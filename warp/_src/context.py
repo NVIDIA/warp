@@ -6619,6 +6619,11 @@ class Runtime:
             self.core.wp_cuda_context_check.argtypes = [ctypes.c_void_p]
             self.core.wp_cuda_context_check.restype = ctypes.c_uint64
 
+            self.core.wp_cuda_profiler_start.argtypes = [ctypes.c_void_p]
+            self.core.wp_cuda_profiler_start.restype = ctypes.c_bool
+            self.core.wp_cuda_profiler_stop.argtypes = [ctypes.c_void_p]
+            self.core.wp_cuda_profiler_stop.restype = ctypes.c_bool
+
             self.core.wp_cuda_context_get_device_ordinal.argtypes = [ctypes.c_void_p]
             self.core.wp_cuda_context_get_device_ordinal.restype = ctypes.c_int
             self.core.wp_cuda_context_is_primary.argtypes = [ctypes.c_void_p]
@@ -10726,6 +10731,60 @@ def synchronize_stream(stream_or_device: Stream | DeviceLike | None = None):
         if stream.device.is_capturing:
             raise RuntimeError("Cannot synchronize stream while graph capture is active")
         runtime.core.wp_cuda_stream_synchronize(stream.cuda_stream)
+
+
+def cuda_profiler_start(device: DeviceLike = None):
+    """Begin CUDA profiler data collection.
+
+    This is equivalent to the driver API ``cuProfilerStart`` and operates on the CUDA
+    context of ``device`` (the current device by default) rather than process-wide.
+    Configure Nsight Systems with ``--capture-range=cudaProfilerApi`` or Nsight
+    Compute with ``--profile-from-start off`` to restrict data collection to the
+    selected region. The attached profiler and its configuration determine which
+    activity is collected, including CUDA API calls, allocations, transfers, kernels,
+    and synchronization.
+
+    Example:
+        .. code-block:: python
+
+            wp.cuda_profiler_start()
+            run_workload()
+            wp.cuda_profiler_stop()
+
+    Has no effect on CPU-only builds or when ``device`` is not a CUDA device. Profiler
+    control is not reference-counted, so nested or overlapping start/stop calls on the
+    same context are not tracked—each call maps directly to the underlying CUDA call.
+
+    Args:
+        device: Device whose CUDA context profiling is started for.
+    """
+
+    init()
+
+    device = runtime.get_device(device)
+    if not device.is_cuda:
+        return
+    if not runtime.core.wp_cuda_profiler_start(device.context):
+        raise RuntimeError(f"cuda_profiler_start failed: {runtime.get_error_string()}")
+
+
+def cuda_profiler_stop(device: DeviceLike = None):
+    """End CUDA profiler data collection.
+
+    This is equivalent to the driver API ``cuProfilerStop`` and operates on the CUDA
+    context of ``device`` (the current device by default). See :func:`cuda_profiler_start`.
+
+    Args:
+        device: Device whose CUDA context profiling is stopped for.
+    """
+
+    init()
+
+    device = runtime.get_device(device)
+    if not device.is_cuda:
+        return
+    if not runtime.core.wp_cuda_profiler_stop(device.context):
+        raise RuntimeError(f"cuda_profiler_stop failed: {runtime.get_error_string()}")
 
 
 def synchronize_event(event: Event):

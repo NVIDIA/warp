@@ -77,6 +77,8 @@ CUresult cuCtxSetCurrent_f(CUcontext ctx);
 CUresult cuCtxPushCurrent_f(CUcontext ctx);
 CUresult cuCtxPopCurrent_f(CUcontext* ctx);
 CUresult cuCtxSynchronize_f();
+CUresult cuProfilerStart_f();
+CUresult cuProfilerStop_f();
 CUresult cuCtxGetDevice_f(CUdevice* dev);
 CUresult cuCtxCreate_f(CUcontext* ctx, unsigned int flags, CUdevice dev);
 CUresult cuCtxDestroy_f(CUcontext ctx);

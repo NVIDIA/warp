@@ -1583,6 +1583,45 @@ class ScopedTimer:
                 ScopedTimer._thread_local.indent -= 1
 
 
+class ScopedCudaProfiler:
+    """Context manager for limiting an external CUDA profiler's capture range.
+
+    Calls :func:`cuda_profiler_start` on entry and :func:`cuda_profiler_stop` on
+    exit. The device is resolved during construction, and the same CUDA context
+    is used when profiling starts and stops even if the current device changes
+    inside the block.
+
+    The attached profiler and its configuration determine which activity is
+    collected, including CUDA API calls, allocations, transfers, kernels, and
+    synchronization.
+
+    Args:
+        device: Device whose CUDA context profiling is controlled for.
+
+    Example:
+        .. code-block:: python
+
+            with wp.ScopedCudaProfiler():
+                run_workload()
+    """
+
+    def __init__(self, device: DeviceLike = None):
+        self.device = wp.get_device(device)
+
+    def __enter__(self):
+        wp.cuda_profiler_start(self.device)
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        try:
+            wp.cuda_profiler_stop(self.device)
+        except Exception:
+            # Only report this exception if __exit__() was reached without an exception,
+            # otherwise re-raise the original exception.
+            if exc_type is None:
+                raise
+
+
 # Allow temporarily enabling/disabling mempool allocators
 class ScopedMempool:
     """Context manager to temporarily enable or disable memory pool allocators.
