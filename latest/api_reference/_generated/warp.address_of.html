@@ -497,7 +497,7 @@
 <h1>warp.address_of<a class="headerlink" href="#warp-address-of" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.address_of">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">address_of</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">expr</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L3110-L3145"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.address_of" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">address_of</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">expr</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L3109-L3144"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.address_of" title="Link to this definition">#</a></dt>
 <dd><p>Return the address of an addressable expression as a <code class="docutils literal notranslate"><span class="pre">warp.uint64</span></code>.</p>
 <p>Only valid inside <code class="docutils literal notranslate"><span class="pre">&#64;warp.kernel</span></code> and <code class="docutils literal notranslate"><span class="pre">&#64;warp.func</span></code> bodies.  The codegen
 intercepts this call and emits a pointer cast; it is not a normal Python

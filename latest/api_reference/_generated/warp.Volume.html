@@ -497,11 +497,11 @@
 <h1>warp.Volume<a class="headerlink" href="#warp-volume" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.Volume">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Volume</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6054-L7029"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Volume</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6053-L7028"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume" title="Link to this definition">#</a></dt>
 <dd><p>Sparse volumetric data structure based on NanoVDB for efficient 3D sampling.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Volume.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">copy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6067-L6094"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.__init__" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">copy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6066-L6093"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.__init__" title="Link to this definition">#</a></dt>
 <dd><p>Class representing a sparse grid.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -608,7 +608,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Volume.array">
-<span class="sig-name descname"><span class="pre">array</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6110-L6117"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.array" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">array</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6109-L6116"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.array" title="Link to this definition">#</a></dt>
 <dd><p>Return the raw memory buffer of the <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> as an array.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -619,7 +619,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Volume.get_tile_count">
-<span class="sig-name descname"><span class="pre">get_tile_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6118-L6129"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.get_tile_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_tile_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6117-L6128"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.get_tile_count" title="Link to this definition">#</a></dt>
 <dd><p>Return the number of tiles (NanoVDB leaf nodes) of the volume.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -630,7 +630,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Volume.get_tiles">
-<span class="sig-name descname"><span class="pre">get_tiles</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">out</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6130-L6159"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.get_tiles" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_tiles</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">out</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6129-L6158"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.get_tiles" title="Link to this definition">#</a></dt>
 <dd><p>Return the integer coordinates of all allocated tiles for this volume.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -647,7 +647,7 @@ on the same device as this volume.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Volume.get_voxel_count">
-<span class="sig-name descname"><span class="pre">get_voxel_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6160-L6171"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.get_voxel_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_voxel_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6159-L6170"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.get_voxel_count" title="Link to this definition">#</a></dt>
 <dd><p>Return the total number of allocated voxels for this volume</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -658,7 +658,7 @@ on the same device as this volume.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Volume.get_voxels">
-<span class="sig-name descname"><span class="pre">get_voxels</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">out</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6172-L6200"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.get_voxels" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_voxels</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">out</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6171-L6199"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.get_voxels" title="Link to this definition">#</a></dt>
 <dd><p>Return the integer coordinates of all allocated voxels for this volume.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -674,7 +674,7 @@ on the same device as this volume.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Volume.get_voxel_size">
-<span class="sig-name descname"><span class="pre">get_voxel_size</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6201-L6210"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.get_voxel_size" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_voxel_size</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6200-L6209"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.get_voxel_size" title="Link to this definition">#</a></dt>
 <dd><p>Return the voxel size, i.e, world coordinates of voxel’s diagonal vector</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -697,7 +697,7 @@ on the same device as this volume.</p>
 <dd><em class="sig-param"><span class="n"><span class="pre">transform_matrix</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6211-L6230"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.GridInfo" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6210-L6229"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.GridInfo" title="Link to this definition">#</a></dt>
 <dd><p>Grid metadata</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -758,7 +758,7 @@ on the same device as this volume.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Volume.get_grid_info">
-<span class="sig-name descname"><span class="pre">get_grid_info</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6231-L6263"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.get_grid_info" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_grid_info</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6230-L6262"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.get_grid_info" title="Link to this definition">#</a></dt>
 <dd><p>Return the metadata associated with this Volume.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -769,7 +769,7 @@ on the same device as this volume.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.Volume.dtype">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dtype</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6282-L6290"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.dtype" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dtype</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6281-L6289"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.dtype" title="Link to this definition">#</a></dt>
 <dd><p>Type of the Volume’s values as a Warp type.</p>
 <p>If the grid does not contain values (e.g. index grids) or if the NanoVDB type is not
 representable as a Warp type, returns <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
@@ -777,14 +777,14 @@ representable as a Warp type, returns <code class="docutils literal notranslate"
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.Volume.is_index">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_index</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp._src.types.bool"><span class="pre">bool</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6293-L6300"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.is_index" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_index</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp._src.types.bool"><span class="pre">bool</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6292-L6299"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.is_index" title="Link to this definition">#</a></dt>
 <dd><p>Whether this Volume contains an index grid, that is, a type of grid that does
 not explicitly store values but associates each voxel to linearized index.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Volume.get_feature_array_count">
-<span class="sig-name descname"><span class="pre">get_feature_array_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6301-L6305"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.get_feature_array_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_feature_array_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6300-L6304"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.get_feature_array_count" title="Link to this definition">#</a></dt>
 <dd><p>Return the number of supplemental data arrays stored alongside the grid</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -795,7 +795,7 @@ not explicitly store values but associates each voxel to linearized index.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.Volume.FeatureArrayInfo">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">FeatureArrayInfo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ptr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value_count</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type_str</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6306-L6320"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.FeatureArrayInfo" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">FeatureArrayInfo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ptr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value_count</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type_str</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6305-L6319"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.FeatureArrayInfo" title="Link to this definition">#</a></dt>
 <dd><p>Metadata for a supplemental data array</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -842,7 +842,7 @@ not explicitly store values but associates each voxel to linearized index.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Volume.get_feature_array_info">
-<span class="sig-name descname"><span class="pre">get_feature_array_info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">feature_index</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6321-L6348"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.get_feature_array_info" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_feature_array_info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">feature_index</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6320-L6347"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.get_feature_array_info" title="Link to this definition">#</a></dt>
 <dd><p>Return the metadata associated to the feature array at <code class="docutils literal notranslate"><span class="pre">feature_index</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -856,7 +856,7 @@ not explicitly store values but associates each voxel to linearized index.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Volume.feature_array">
-<span class="sig-name descname"><span class="pre">feature_array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">feature_index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6349-L6383"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.feature_array" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">feature_array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">feature_index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6348-L6382"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.feature_array" title="Link to this definition">#</a></dt>
 <dd><p>Return one the grid’s feature data arrays as a Warp array.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -874,7 +874,7 @@ If not provided, will be deduced from the array metadata.</p></li>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Volume.load_from_nvdb">
-<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">load_from_nvdb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_or_buffer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6384-L6446"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.load_from_nvdb" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">load_from_nvdb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_or_buffer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6383-L6445"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.load_from_nvdb" title="Link to this definition">#</a></dt>
 <dd><p>Create a <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> object from a serialized NanoVDB file or in-memory buffer.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -888,7 +888,7 @@ If not provided, will be deduced from the array metadata.</p></li>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Volume.save_to_nvdb">
-<span class="sig-name descname"><span class="pre">save_to_nvdb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">codec</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'none'</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6447-L6581"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.save_to_nvdb" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">save_to_nvdb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">codec</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'none'</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6446-L6580"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.save_to_nvdb" title="Link to this definition">#</a></dt>
 <dd><p>Serialize the <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> into a NanoVDB (<code class="docutils literal notranslate"><span class="pre">.nvdb</span></code>) file.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -909,7 +909,7 @@ Available options:</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Volume.load_from_address">
-<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">load_from_address</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">grid_ptr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">buffer_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6582-L6623"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.load_from_address" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">load_from_address</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">grid_ptr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">buffer_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6581-L6622"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.load_from_address" title="Link to this definition">#</a></dt>
 <dd><p>Create a new <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> aliasing an in-memory grid buffer.</p>
 <p>In contrast to <a class="reference internal" href="#warp.Volume.load_from_nvdb" title="warp.Volume.load_from_nvdb"><code class="xref py py-meth docutils literal notranslate"><span class="pre">load_from_nvdb()</span></code></a> which should be used to load serialized NanoVDB grids,
 here the buffer must be uncompressed and must not contain file header information.
@@ -941,7 +941,7 @@ If not provided, the current Warp device is assumed.</p></li>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Volume.load_next_grid">
-<span class="sig-name descname"><span class="pre">load_next_grid</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6624-L6649"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.load_next_grid" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">load_next_grid</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6623-L6648"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.load_next_grid" title="Link to this definition">#</a></dt>
 <dd><p>Create a new <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> for the next grid that is linked to by this <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a>.</p>
 <p>The existence of a next grid is determined by checking if there are more grids in the sequence
 (based on <code class="docutils literal notranslate"><span class="pre">grid_index</span></code> and <code class="docutils literal notranslate"><span class="pre">grid_count</span></code> metadata) and if there is sufficient buffer space
@@ -968,7 +968,7 @@ remaining in this <a class="reference internal" href="#warp.Volume" title="warp.
 <dd><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6650-L6742"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.load_from_numpy" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6649-L6741"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.load_from_numpy" title="Link to this definition">#</a></dt>
 <dd><p>Create a <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> object from a dense 3D NumPy array.</p>
 <p>This function is only supported for CUDA devices.</p>
 <dl class="field-list simple">
@@ -1006,7 +1006,7 @@ sequence <code class="docutils literal notranslate"><span class="pre">(sx,</span
 <dd><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6743-L6796"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.allocate" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6742-L6795"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.allocate" title="Link to this definition">#</a></dt>
 <dd><p>Allocate a new Volume based on the bounding box defined by min and max.</p>
 <p>This function is only supported for CUDA devices.</p>
 <p>Allocate a volume that is large enough to contain voxels [min[0], min[1], min[2]] - [max[0], max[1], max[2]], inclusive.
@@ -1046,7 +1046,7 @@ a <a class="reference internal" href="warp.vec3.html#warp.vec3" title="warp.vec3
 <dd><em class="sig-param"><span class="n"><span class="pre">transform</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6853-L6963"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.allocate_by_tiles" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6852-L6962"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.allocate_by_tiles" title="Link to this definition">#</a></dt>
 <dd><p>Allocate a new <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> with active tiles for each point <code class="docutils literal notranslate"><span class="pre">tile_points</span></code>.</p>
 <p>This function is only supported for CUDA devices.</p>
 <p>The smallest unit of allocation is a dense tile of 8x8x8 voxels.
@@ -1094,7 +1094,7 @@ If <code class="docutils literal notranslate"><span class="pre">None</span></cod
 <dd><em class="sig-param"><span class="n"><span class="pre">transform</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6964-L7029"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.allocate_by_voxels" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6963-L7028"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.allocate_by_voxels" title="Link to this definition">#</a></dt>
 <dd><p>Allocate a new <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> with active voxel for each point <code class="docutils literal notranslate"><span class="pre">voxel_points</span></code>.</p>
 <p>This function creates an <em>index</em> volume, a special kind of volume that does not any store any
 explicit payload but encodes a linearized index for each active voxel, allowing to lookup and
