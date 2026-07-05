@@ -28,7 +28,6 @@ from typing import (
 )
 
 import numpy as np
-import numpy.typing as npt
 
 import warp
 import warp.config
@@ -3184,7 +3183,7 @@ class array(Array[DType, NDim]):
 
     def __init__(
         self,
-        data: list | tuple | npt.NDArray | None = None,
+        data: list | tuple | np.ndarray | None = None,
         dtype: Any = Any,
         shape: int | tuple[int, ...] | list[int] | None = None,
         strides: tuple[int, ...] | None = None,
