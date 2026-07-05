@@ -155,6 +155,8 @@ def dtype_from_dlpack(dl_dtype):
 
     if dl_dtype == (DLDataTypeCode.kDLUInt, 1):
         raise RuntimeError("Warp does not support bit boolean types")
+    elif dl_dtype == (DLDataTypeCode.kDLBool, 8):
+        return warp._src.types.bool
     elif dl_dtype == (DLDataTypeCode.kDLInt, 8):
         return warp._src.types.int8
     elif dl_dtype == (DLDataTypeCode.kDLInt, 16):
@@ -312,7 +314,9 @@ def dtype_is_compatible(dl_dtype, wp_dtype):
     if dl_dtype.bits % 8 != 0:
         raise RuntimeError("Data types with less than 8 bits are not supported")
 
-    if dl_dtype.type_code.value == DLDataTypeCode.kDLFloat:
+    if dl_dtype.type_code.value == DLDataTypeCode.kDLBool:
+        return dl_dtype.bits == 8 and wp_dtype == warp.bool
+    elif dl_dtype.type_code.value == DLDataTypeCode.kDLFloat:
         if dl_dtype.bits == 16:
             return wp_dtype == warp.float16
         elif dl_dtype.bits == 32:

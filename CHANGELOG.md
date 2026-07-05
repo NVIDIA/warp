@@ -223,6 +223,8 @@
   ([GH-1562](https://github.com/NVIDIA/warp/issues/1562)).
 - Fix CUDA graph capture when constructing an environment-first `warp.fem` space partition with a fixed
   `max_node_count` capacity ([GH-1607](https://github.com/NVIDIA/warp/issues/1607)).
+- Fix `wp.from_dlpack()` support for standards-conformant 8-bit Boolean tensors
+  ([GH-1619](https://github.com/NVIDIA/warp/issues/1619)).
 
 ### Documentation
 
