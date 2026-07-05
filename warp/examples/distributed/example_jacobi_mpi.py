@@ -35,7 +35,7 @@ wptype = wp.float32  # Global precision setting, can set wp.float64 here for dou
 pi = wptype(math.pi)  # GitHub #485
 
 
-def calc_default_device(mpi_comm: "MPI.Comm") -> wp.context.Device:
+def calc_default_device(mpi_comm: "MPI.Comm") -> wp.Device:
     """Return the device that should be used for the current rank.
 
     This function is used to ensure that multiple MPI ranks running on the same
