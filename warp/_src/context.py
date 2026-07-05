@@ -3211,8 +3211,9 @@ class Module:
         if "cluster_dim" in options:
             options["cluster_dim"] = _normalize_cluster_dim(options["cluster_dim"])
         # None means "use target-specific default": O2 for CPU, O3 for CUDA.
-        # Resolved at compile time in _compile() so the hash distinguishes
-        # explicit levels from the default.
+        # A dict means per-backend config (e.g. {"cpu": 2, "cuda": 3}).
+        # Both are resolved at compile time in _compile() so the hash
+        # distinguishes explicit levels from resolved defaults.
         options["cpu_compiler_flags"] = _resolve_cpu_compiler_flags(
             options["cpu_compiler_flags"], config.cpu_compiler_flags
         )
@@ -3744,6 +3745,8 @@ class Module:
 
         mode = options["mode"]
         opt = options["optimization_level"]
+        if isinstance(opt, dict):
+            opt = warp.config._resolve_optimization_level(opt, is_cpu, device)
         if opt is None:
             # Default to O2 for CPU, O3 for CUDA
             opt = 2 if is_cpu else 3
