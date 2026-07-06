@@ -5,9 +5,9 @@
 ### Added
 
 - Add per-backend `optimization_level` support to `wp.config`: accepts a dict
-  with ``"cpu"`` and ``"cuda"`` keys for independent CPU/CUDA optimization levels,
-  plus optional ``"cuda:N"`` keys for per-device overrides (e.g.
-  ``{"cpu": 2, "cuda": 3, "cuda:0": 1}``). Plain ``int`` and ``None`` continue
+  with `"cpu"` and `"cuda"` keys for independent CPU/CUDA optimization levels,
+  plus optional `"cuda:N"` keys for per-device overrides (e.g.
+  `{"cpu": 2, "cuda": 3, "cuda:0": 1}`). Plain `int` and `None` continue
   to work as before
   ([GH-1322](https://github.com/NVIDIA/warp/issues/1322)).
 - Add `@wp.kernel(grid_stride=False)` (and the `"default_grid_stride"` module option / `wp.config.default_grid_stride`

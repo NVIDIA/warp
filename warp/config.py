@@ -178,7 +178,7 @@ Note: Debug mode may impact performance.
 This setting can be overridden at the module level by setting the ``"mode"`` module option.
 """
 
-optimization_level: int | None | dict = None
+optimization_level: int | None | dict[str, int | None] = None
 """Optimization level for Warp kernels.
 
 Args:
@@ -198,18 +198,29 @@ def _validate_optimization_level(value):
     """Validate optimization_level value."""
     if value is None:
         return
+    if isinstance(value, bool):
+        raise ValueError("optimization_level must be int, None, or dict, got bool")
     if isinstance(value, int):
         if not (0 <= value <= 3):
             raise ValueError(f"optimization_level must be in range 0-3, got {value!r}")
         return
     if isinstance(value, dict):
         for key in value:
+            if not isinstance(key, str):
+                raise ValueError(
+                    f"Invalid key type {type(key).__name__!r} in optimization_level dict. "
+                    "Keys must be strings: 'cpu', 'cuda', or 'cuda:N' (e.g. 'cuda:0')"
+                )
             if key not in ("cpu", "cuda") and not (key.startswith("cuda:") and key[5:].isdigit()):
                 raise ValueError(
                     f"Invalid key {key!r} in optimization_level dict. "
                     "Must be 'cpu', 'cuda', or 'cuda:N' (e.g. 'cuda:0')"
                 )
             v = value[key]
+            if isinstance(v, bool):
+                raise ValueError(
+                    f"Invalid value {v!r} for key {key!r} in optimization_level dict. Expected int or None, got bool"
+                )
             if v is not None and not isinstance(v, int):
                 raise ValueError(
                     f"Invalid value for key {key!r} in optimization_level dict. "
