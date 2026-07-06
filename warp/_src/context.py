@@ -3216,9 +3216,7 @@ class Module:
         if isinstance(options["optimization_level"], dict):
             warp.config._validate_optimization_level(options["optimization_level"])
             # Normalize to sorted keys for deterministic hashing
-            options["optimization_level"] = dict(
-                sorted(options["optimization_level"].items())
-            )
+            options["optimization_level"] = dict(sorted(options["optimization_level"].items()))
         if "cluster_dim" in options:
             options["cluster_dim"] = _normalize_cluster_dim(options["cluster_dim"])
         # None means "use target-specific default": O2 for CPU, O3 for CUDA.
