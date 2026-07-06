@@ -211,11 +211,18 @@ def _validate_optimization_level(value):
                     f"Invalid key type {type(key).__name__!r} in optimization_level dict. "
                     "Keys must be strings: 'cpu', 'cuda', or 'cuda:N' (e.g. 'cuda:0')"
                 )
-            if key not in ("cpu", "cuda") and not (key.startswith("cuda:") and key[5:].isdigit()):
-                raise ValueError(
-                    f"Invalid key {key!r} in optimization_level dict. "
-                    "Must be 'cpu', 'cuda', or 'cuda:N' (e.g. 'cuda:0')"
-                )
+            if key not in ("cpu", "cuda"):
+                if not key.startswith("cuda:"):
+                    raise ValueError(
+                        f"Invalid key {key!r} in optimization_level dict. "
+                        "Must be 'cpu', 'cuda', or 'cuda:N' (e.g. 'cuda:0')"
+                    )
+                ordinal = key[5:]
+                if not ordinal.isdigit() or (ordinal != "0" and ordinal.startswith("0")):
+                    raise ValueError(
+                        f"Invalid key {key!r} in optimization_level dict. "
+                        "Must be 'cpu', 'cuda', or 'cuda:N' with no leading zeros (e.g. 'cuda:0', 'cuda:1')"
+                    )
             v = value[key]
             if isinstance(v, bool):
                 raise ValueError(
