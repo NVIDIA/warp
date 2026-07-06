@@ -3208,6 +3208,17 @@ class Module:
             options["mode"] = config.mode
         if options["optimization_level"] is None:
             options["optimization_level"] = config.optimization_level
+
+        # Validate and normalize dict optimization_level values.
+        # This catches invalid values from any path (config, set_module_options,
+        # module_options= on wp.kernel) since resolve_options() is the common
+        # sink.
+        if isinstance(options["optimization_level"], dict):
+            warp.config._validate_optimization_level(options["optimization_level"])
+            # Normalize to sorted keys for deterministic hashing
+            options["optimization_level"] = dict(
+                sorted(options["optimization_level"].items())
+            )
         if "cluster_dim" in options:
             options["cluster_dim"] = _normalize_cluster_dim(options["cluster_dim"])
         # None means "use target-specific default": O2 for CPU, O3 for CUDA.

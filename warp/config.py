@@ -196,7 +196,13 @@ This setting can be overridden at the module level by setting the ``"optimizatio
 
 def _validate_optimization_level(value):
     """Validate optimization_level value."""
-    if value is None or isinstance(value, int):
+    if value is None:
+        return
+    if isinstance(value, int):
+        if not (0 <= value <= 3):
+            raise ValueError(
+                f"optimization_level must be in range 0-3, got {value!r}"
+            )
         return
     if isinstance(value, dict):
         for key in value:
@@ -210,6 +216,11 @@ def _validate_optimization_level(value):
                 raise ValueError(
                     f"Invalid value for key {key!r} in optimization_level dict. "
                     f"Expected int or None, got {type(v).__name__}"
+                )
+            if isinstance(v, int) and not (0 <= v <= 3):
+                raise ValueError(
+                    f"Invalid value {v!r} for key {key!r} in optimization_level dict. "
+                    f"Expected int in range 0-3"
                 )
         return
     raise ValueError(f"optimization_level must be int, None, or dict, got {type(value).__name__}")
