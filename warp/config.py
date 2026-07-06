@@ -182,10 +182,11 @@ optimization_level: int | None | dict[str, int | None] = None
 """Optimization level for Warp kernels.
 
 Args:
-    optimization_level: An integer (0-3) for both backends, a dict with optional
-        ``"cpu"`` and/or ``"cuda"`` keys for per-backend control (missing keys fall back to
-        target-specific defaults), or ``None`` for target-specific defaults (``-O2`` for
-        CPU, ``-O3`` for CUDA). Per-device CUDA overrides are supported via ``"cuda:N"`` keys
+    optimization_level: An integer (0-3) for both backends, a dict with
+        ``"cpu"``, ``"cuda"``, and/or ``"cuda:N"`` keys mapping to an ``int`` (0-3) or ``None``
+        (target-specific default; missing keys also fall back to target-specific defaults),
+        or ``None`` for target-specific defaults (``-O2`` for CPU, ``-O3`` for CUDA).
+        Per-device CUDA overrides are supported via ``"cuda:N"`` keys
         (e.g. ``{"cpu": 2, "cuda": 3, "cuda:0": 1}``).
 
 Note: Higher optimization levels increase compilation time but may improve run-time performance.

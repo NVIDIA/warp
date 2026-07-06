@@ -3209,12 +3209,13 @@ class Module:
         if options["optimization_level"] is None:
             options["optimization_level"] = config.optimization_level
 
-        # Validate and normalize dict optimization_level values.
+        # Validate and normalize optimization_level.
         # This catches invalid values from any path (config, set_module_options,
         # module_options= on wp.kernel) since resolve_options() is the common
-        # sink.
+        # sink. Must run unconditionally so int/bool values from module_options
+        # are also caught.
+        warp.config._validate_optimization_level(options["optimization_level"])
         if isinstance(options["optimization_level"], dict):
-            warp.config._validate_optimization_level(options["optimization_level"])
             # Normalize to sorted keys for deterministic hashing
             options["optimization_level"] = dict(sorted(options["optimization_level"].items()))
         if "cluster_dim" in options:
@@ -11327,7 +11328,7 @@ def set_module_options(options: dict[str, Any], module: Any = None):
     * **lineinfo**: Emit line-number debug info for CUDA kernels, defaults to the value of ``warp.config.lineinfo``.
     * **cuda_output**: CUDA compilation output format: ``"ptx"``, ``"cubin"``, or ``None`` (automatic), defaults to ``None``.
     * **mode**: The compilation mode to use, can be ``"debug"`` or ``"release"``, defaults to the value of ``warp.config.mode``.
-    * **optimization_level**: Compiler optimization level. Accepts an ``int`` (0-3) for both backends, or a ``dict`` with ``"cpu"`` and/or ``"cuda"`` keys for per-backend control (missing keys fall back to target-specific defaults). Per-device CUDA overrides are supported via ``"cuda:N"`` keys (e.g. ``{"cpu": 2, "cuda": 3, "cuda:0": 1}``). When ``None``, falls back to ``warp.config.optimization_level``; if that is also ``None``, uses target-specific defaults (``-O2`` for CPU, ``-O3`` for CUDA).
+    * **optimization_level**: Compiler optimization level. Accepts an ``int`` (0-3) for both backends, or a ``dict`` with ``"cpu"``/``"cuda"``/``"cuda:N"`` keys mapping to an ``int`` (0-3) or ``None`` (target-specific default); missing keys fall back to target-specific defaults. When ``None``, falls back to ``warp.config.optimization_level``; if that is also ``None``, uses target-specific defaults (``-O2`` for CPU, ``-O3`` for CUDA).
     * **cpu_compiler_flags**: CPU compiler flags (see ``warp.config.cpu_compiler_flags``), defaults to the global config value when ``None``.
     * **deterministic**: Determinism guarantee for supported atomic operations. Accepted values are ``warp.DeterministicMode.NOT_GUARANTEED``, ``warp.DeterministicMode.RUN_TO_RUN``, and ``warp.DeterministicMode.GPU_TO_GPU``. Defaults to the value of ``warp.config.deterministic`` when the module is created.
     * **deterministic_max_records**: Per-target, per-thread upper bound for deterministic scatter records. Defaults to ``0``, which means use the code-generated lower bound only. This is useful when dynamic loops or repeated visits to the same atomic site can emit more records than static analysis can prove.

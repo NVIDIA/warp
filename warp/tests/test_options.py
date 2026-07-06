@@ -254,7 +254,7 @@ def test_options_opt_level_dict_per_device(test, device):
     module.options["optimization_level"] = None
     module.hashers.clear()
     try:
-        # cuda:0 = 2 but cuda = 3, the per-device key must win for cuda:0
+        # cuda:N = 2 but cuda = 3, the per-device key must win for cuda:N
         cuda_key = f"cuda:{device.ordinal}"
         opt = {"cpu": 2, "cuda": 3, cuda_key: 2}
         wp.config.optimization_level = opt
