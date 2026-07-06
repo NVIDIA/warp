@@ -590,6 +590,15 @@ def scale_sum_square_kernel_subscript(a: wp.array[float], b: wp.array[float], s:
     c[tid] = (a[tid] * s + b[tid]) ** 2.0
 
 
+TILE_ONES_N = 64
+
+
+@wp.kernel
+def tile_ones_store_kernel(output: wp.array[float]):
+    t = wp.tile_ones(dtype=float, shape=TILE_ONES_N)
+    wp.tile_store(output, t)
+
+
 # The Python function to call.
 # Note the argument annotations, just like Warp kernels.
 def scale_func(
@@ -1255,6 +1264,282 @@ def test_ffi_callback(test, device):
 
     assert_np_equal(c, 2 * np.arange(ARRAY_SIZE, dtype=np.float32))
     assert_np_equal(d, 2 * np.arange(ARRAY_SIZE, dtype=np.float32).reshape((ARRAY_SIZE // 2, 2)))
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
+@unittest.skipUnless(wp.is_cpu_available(), "Requires CPU backend")
+def test_ffi_jax_kernel_host_add(test, device):
+    import jax.numpy as jp  # noqa: PLC0415
+
+    jax_kernel = wp.jax_kernel
+
+    jax_add = jax_kernel(add_kernel)
+
+    @jax.jit
+    def f():
+        n = ARRAY_SIZE
+        a = jp.arange(n, dtype=jp.float32)
+        b = jp.ones(n, dtype=jp.float32)
+        return jax_add(a, b)
+
+    with jax.default_device(jax.devices("cpu")[0]):
+        (y,) = f()
+
+    jax.block_until_ready(y)
+
+    result = np.asarray(y)
+    expected = np.arange(1, ARRAY_SIZE + 1, dtype=np.float32)
+
+    assert_np_equal(result, expected)
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
+@unittest.skipUnless(wp.is_cpu_available(), "Requires CPU backend")
+def test_ffi_jax_kernel_host_sincos(test, device):
+    import jax.numpy as jp  # noqa: PLC0415
+
+    jax_kernel = wp.jax_kernel
+
+    jax_sincos = jax_kernel(sincos_kernel, num_outputs=2)
+
+    @jax.jit
+    def f():
+        n = ARRAY_SIZE
+        # bounded inputs to avoid precision issues with float32 for large values
+        a = jp.linspace(-jp.pi, jp.pi, n, dtype=jp.float32)
+        return jax_sincos(a)
+
+    with jax.default_device(jax.devices("cpu")[0]):
+        s, c = f()
+
+    jax.block_until_ready([s, c])
+
+    ref_a = np.linspace(-np.pi, np.pi, ARRAY_SIZE, dtype=np.float32)
+    ref_s = np.sin(ref_a)
+    ref_c = np.cos(ref_a)
+
+    assert_np_equal(np.asarray(s), ref_s, tol=1e-4)
+    assert_np_equal(np.asarray(c), ref_c, tol=1e-4)
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
+@unittest.skipUnless(wp.is_cpu_available(), "Requires CPU backend")
+def test_ffi_jax_kernel_host_in_out(test, device):
+    import jax.numpy as jp  # noqa: PLC0415
+
+    jax_kernel = wp.jax_kernel
+
+    # b is in-out, c is out only
+    jax_in_out = jax_kernel(in_out_kernel, num_outputs=2, in_out_argnames=["b"])
+
+    @jax.jit
+    def f():
+        n = ARRAY_SIZE
+        a = jp.ones(n, dtype=jp.float32)
+        b = jp.arange(n, dtype=jp.float32)
+        return jax_in_out(a, b)
+
+    with jax.default_device(jax.devices("cpu")[0]):
+        b, c = f()
+
+    jax.block_until_ready([b, c])
+
+    assert_np_equal(np.asarray(b), np.arange(1, ARRAY_SIZE + 1, dtype=np.float32))
+    assert_np_equal(np.asarray(c), np.full(ARRAY_SIZE, 2, dtype=np.float32))
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
+@unittest.skipUnless(wp.is_cpu_available(), "Requires CPU backend")
+def test_ffi_jax_kernel_host_scale_vec_constant(test, device):
+    import jax.numpy as jp  # noqa: PLC0415
+
+    jax_kernel = wp.jax_kernel
+
+    jax_scale_vec = jax_kernel(scale_vec_kernel)
+
+    @jax.jit
+    def f():
+        a = jp.arange(ARRAY_SIZE, dtype=jp.float32).reshape((ARRAY_SIZE // 2, 2))
+        s = 2.0
+        return jax_scale_vec(a, s)
+
+    with jax.default_device(jax.devices("cpu")[0]):
+        (b,) = f()
+
+    jax.block_until_ready(b)
+
+    expected = 2 * np.arange(ARRAY_SIZE, dtype=np.float32).reshape((ARRAY_SIZE // 2, 2))
+
+    assert_np_equal(b, expected)
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
+@unittest.skipUnless(wp.is_cpu_available(), "Requires CPU backend")
+def test_ffi_jax_callable_host_scale_constant(test, device):
+    import jax.numpy as jp  # noqa: PLC0415
+
+    jax_callable = wp.jax_callable
+
+    jax_func = jax_callable(scale_func, num_outputs=2)
+
+    @jax.jit
+    def f():
+        a = jp.arange(ARRAY_SIZE, dtype=jp.float32)
+        b = jp.arange(ARRAY_SIZE, dtype=jp.float32).reshape((ARRAY_SIZE // 2, 2))  # array of vec2
+        s = 2.0
+
+        # output shapes
+        output_dims = {"c": a.shape, "d": b.shape}
+
+        return jax_func(a, b, s, output_dims=output_dims)
+
+    with jax.default_device(jax.devices("cpu")[0]):
+        result1, result2 = f()
+
+    jax.block_until_ready([result1, result2])
+
+    assert_np_equal(result1, 2 * np.arange(ARRAY_SIZE, dtype=np.float32))
+    assert_np_equal(result2, 2 * np.arange(ARRAY_SIZE, dtype=np.float32).reshape((ARRAY_SIZE // 2, 2)))
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
+@unittest.skipUnless(wp.is_cpu_available(), "Requires CPU backend")
+def test_ffi_jax_callable_host_in_out(test, device):
+    import jax.numpy as jp  # noqa: PLC0415
+
+    jax_callable = wp.jax_callable
+
+    # alpha is static (scalar attribute), b is in-out, c is output only
+    jax_func = jax_callable(in_out_func, num_outputs=2, in_out_argnames=["b"])
+
+    @jax.jit
+    def f():
+        n = ARRAY_SIZE
+        a = jp.ones(n, dtype=jp.float32)
+        b = jp.arange(n, dtype=jp.float32)
+        return jax_func(a, b)
+
+    with jax.default_device(jax.devices("cpu")[0]):
+        b, c = f()
+
+    jax.block_until_ready([b, c])
+
+    assert_np_equal(np.asarray(b), np.arange(1, ARRAY_SIZE + 1, dtype=np.float32))
+    assert_np_equal(np.asarray(c), np.full(ARRAY_SIZE, 2, dtype=np.float32))
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
+@unittest.skipUnless(wp.is_cpu_available(), "Requires CPU backend")
+def test_ffi_callback_host(test, device):
+    jax = _import_jax()
+    import jax.numpy as jp  # noqa: PLC0415
+
+    from warp._src.jax.ffi import register_ffi_callback  # noqa: PLC0415
+
+    # the Python function to call
+    def warp_func(inputs, outputs, attrs, ctx):
+        # input arrays
+        a = inputs[0]
+        b = inputs[1]
+
+        test.assertEqual(ctx.stream, None)
+        test.assertTrue(hasattr(a, "__array_interface__"))
+        test.assertFalse(hasattr(a, "__cuda_array_interface__"))
+
+        # scalar attributes
+        s = attrs["scale"]
+
+        # output arrays
+        c = outputs[0]
+        d = outputs[1]
+
+        # launch with arrays of scalars
+        wp.launch(scale_kernel, dim=a.shape, inputs=[a, s], outputs=[c], device="cpu")
+
+        # launch with arrays of vec2
+        # NOTE: the input shapes are from JAX arrays, we need to strip the inner dimension for vec2 arrays
+        wp.launch(scale_vec_kernel, dim=b.shape[0], inputs=[b, s], outputs=[d], device="cpu")
+
+    # register callback
+    register_ffi_callback("warp_func_host", warp_func)
+
+    n = ARRAY_SIZE
+
+    with jax.default_device(jax.devices("cpu")[0]):
+        # inputs
+        a = jp.arange(n, dtype=jp.float32)
+        b = jp.arange(n, dtype=jp.float32).reshape((n // 2, 2))  # array of wp.vec2
+        s = 2.0
+
+        # set up call
+        out_types = [
+            jax.ShapeDtypeStruct(a.shape, jp.float32),
+            jax.ShapeDtypeStruct(b.shape, jp.float32),  # array of wp.vec2
+        ]
+        call = jax.ffi.ffi_call("warp_func_host", out_types)
+
+        # call it
+        c, d = call(a, b, scale=s)
+
+    jax.block_until_ready([c, d])
+
+    assert_np_equal(np.asarray(c), 2 * np.arange(ARRAY_SIZE, dtype=np.float32))
+    assert_np_equal(np.asarray(d), 2 * np.arange(ARRAY_SIZE, dtype=np.float32).reshape((ARRAY_SIZE // 2, 2)))
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
+@unittest.skipUnless(wp.is_cpu_available(), "Requires CPU backend")
+def test_ffi_jax_kernel_host_tile_ones(test, device):
+    """Regression: Host callbacks must compile WP_TILE_BLOCK_DIM=1 so that
+    explicitly shaped tile operations (e.g. tile_ones(shape=64)) write all
+    elements, not just lane 0's portion of the tile."""
+
+    jax_kernel = wp.jax_kernel
+
+    jax_tile_ones = jax_kernel(tile_ones_store_kernel, launch_dims=1)
+
+    @jax.jit
+    def f():
+        return jax_tile_ones(output_dims=(TILE_ONES_N,))
+
+    with jax.default_device(jax.devices("cpu")[0]):
+        (y,) = f()
+
+    jax.block_until_ready(y)
+
+    result = np.asarray(y)
+    expected = np.ones(TILE_ONES_N, dtype=np.float32)
+
+    assert_np_equal(result, expected)
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
+@unittest.skipUnless(wp.is_cpu_available(), "Requires CPU backend")
+def test_ffi_jax_callable_host_tile_ones(test, device):
+    """Regression: Host callbacks must compile WP_TILE_BLOCK_DIM=1 so that
+    explicitly shaped tile operations (e.g. tile_ones(shape=64)) write all
+    elements, not just lane 0's portion of the tile."""
+
+    jax_callable = wp.jax_callable
+
+    def tile_ones_store_func(output: wp.array[float]):
+        wp.launch_tiled(tile_ones_store_kernel, dim=1, block_dim=1, inputs=[output], device="cpu")
+
+    jax_tile_ones = jax_callable(tile_ones_store_func, graph_mode=wp.JaxCallableGraphMode.JAX)
+
+    @jax.jit
+    def f():
+        return jax_tile_ones(output_dims=(TILE_ONES_N,))
+
+    with jax.default_device(jax.devices("cpu")[0]):
+        (y,) = f()
+
+    jax.block_until_ready(y)
+
+    result = np.asarray(y)
+    expected = np.ones(TILE_ONES_N, dtype=np.float32)
+
+    assert_np_equal(result, expected)
 
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
@@ -2528,6 +2813,47 @@ try:
                 partial(test_ffi_vmap_lookup, vmap_method=vmap_method),
                 devices=jax_compatible_cuda_devices,
             )
+
+    # ffi Host (CPU) tests — always registered (not gated on CUDA availability)
+    add_function_test(TestJax, "test_ffi_jax_kernel_host_add", test_ffi_jax_kernel_host_add, devices=None)
+    add_function_test(TestJax, "test_ffi_jax_kernel_host_sincos", test_ffi_jax_kernel_host_sincos, devices=None)
+    add_function_test(TestJax, "test_ffi_jax_kernel_host_in_out", test_ffi_jax_kernel_host_in_out, devices=None)
+    add_function_test(
+        TestJax,
+        "test_ffi_jax_kernel_host_scale_vec_constant",
+        test_ffi_jax_kernel_host_scale_vec_constant,
+        devices=None,
+    )
+    add_function_test(
+        TestJax,
+        "test_ffi_jax_callable_host_scale_constant",
+        test_ffi_jax_callable_host_scale_constant,
+        devices=None,
+    )
+    add_function_test(
+        TestJax,
+        "test_ffi_jax_callable_host_in_out",
+        test_ffi_jax_callable_host_in_out,
+        devices=None,
+    )
+    add_function_test(
+        TestJax,
+        "test_ffi_callback_host",
+        test_ffi_callback_host,
+        devices=None,
+    )
+    add_function_test(
+        TestJax,
+        "test_ffi_jax_kernel_host_tile_ones",
+        test_ffi_jax_kernel_host_tile_ones,
+        devices=None,
+    )
+    add_function_test(
+        TestJax,
+        "test_ffi_jax_callable_host_tile_ones",
+        test_ffi_jax_callable_host_tile_ones,
+        devices=None,
+    )
 
     # bfloat16 tests require arch >= 80
     bf16_jax_devices = [d for d in jax_compatible_devices if d.is_cpu or (d.is_cuda and d.arch >= 80)]

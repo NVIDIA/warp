@@ -645,28 +645,45 @@ def jax_dtype_from_ffi(ffi_dtype):
 class ExecutionContext:
     stage: XLA_FFI_ExecutionStage
     stream: int
+    platform: str
 
-    def __init__(self, callframe: XLA_FFI_CallFrame):
+    def __init__(self, callframe: XLA_FFI_CallFrame, platform="CUDA"):
         self.stage = XLA_FFI_ExecutionStage(callframe.stage)
-        self.stream = get_stream_from_callframe(callframe)
+        self.platform = platform
+        self.stream = get_stream_from_callframe(callframe) if platform == "CUDA" else None
 
 
 class FfiBuffer:
     dtype: str
     data: int
     shape: tuple[int]
+    platform: str
 
-    def __init__(self, xla_buffer):
+    def __init__(self, xla_buffer, platform="CUDA"):
         # TODO check if valid
         self.dtype = _jnp_dtype_for_xla(xla_buffer.dtype)
         self.shape = tuple(xla_buffer.dims[i] for i in range(xla_buffer.rank))
         self.data = xla_buffer.data
+        self.platform = platform
 
     @property
     def __cuda_array_interface__(self):
+        if self.platform != "CUDA":
+            raise AttributeError("__cuda_array_interface__ is only available on CUDA platform")
         return {
             "shape": self.shape,
             "typestr": self.dtype.char,
             "data": (self.data, False),
             "version": 2,
+        }
+
+    @property
+    def __array_interface__(self):
+        if self.platform != "Host":
+            raise AttributeError("__array_interface__ is only available on Host platform")
+        return {
+            "shape": self.shape,
+            "typestr": self.dtype.char,
+            "data": (self.data, False),
+            "version": 3,
         }

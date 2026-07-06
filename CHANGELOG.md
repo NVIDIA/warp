@@ -72,6 +72,8 @@
   host-return form of `wp.utils.runlength_encode()`, and `wp.copy()` other than a contiguous same-device copy
   (cross-device or non-contiguous copies) cannot be captured on CUDA and raise during APIC capture
   ([GH-1431](https://github.com/NVIDIA/warp/issues/1431)).
+- Add support for running JAX FFI callbacks on the CPU (Host) platform in addition to CUDA
+  ([GH-1446](https://github.com/NVIDIA/warp/issues/1446)).
 
 ### Removed
 
