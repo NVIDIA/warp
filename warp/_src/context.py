@@ -3535,20 +3535,32 @@ class Module:
         arch_suffix: str = "",
         use_ptx: bool | None = None,
         block_dim: int | None = None,
+        optimization_level: int | None = None,
     ) -> str:
         """Get the filename to use for the compiled module binary.
 
-        This is only the filename, e.g. ``wp___main___0340cd1.sm86.ptx`` or
-        ``wp___main___0340cd1.sm90a.cubin`` when an arch suffix is active.
+        This is only the filename, e.g. ``wp___main___0340cd1_o3.sm86.ptx`` or
+        ``wp___main___0340cd1_o3.sm90a.cubin`` when an arch suffix is active.
         It should be used to form a path.
 
         For CPU targets compiled with ``-march=native``, a short hash of
         the host CPU's ISA features is included in the filename (e.g.
-        ``wp___main___0340cd1.cpu1a2b3c4d.o``), ensuring different CPUs
+        ``wp___main___0340cd1_o2.cpu1a2b3c4d.o``), ensuring different CPUs
         produce distinct ``.o`` filenames without affecting the shared
         module directory (and thus CUDA caches).
+
+        The resolved optimization level is embedded in the filename so that
+        two same-arch devices with different per-device overrides (e.g.
+        ``{"cuda:0": 1, "cuda:1": 3}``) never collide in the kernel cache.
         """
         module_name_short = self.get_module_identifier(block_dim=block_dim)
+
+        # Include the resolved optimization level so per-device overrides
+        # produce distinct filenames even when the module hash is identical.
+        if optimization_level is not None:
+            name_base = f"{module_name_short}_o{optimization_level}"
+        else:
+            name_base = module_name_short
 
         if device and device.is_cpu:
             resolved_flags = _resolve_cpu_compiler_flags(
@@ -3557,8 +3569,8 @@ class Module:
             if _uses_march_native(resolved_flags):
                 cpu_isa_hash = _get_cpu_isa_hash()
                 if cpu_isa_hash:
-                    return f"{module_name_short}.cpu{cpu_isa_hash}.o"
-            return f"{module_name_short}.o"
+                    return f"{name_base}.cpu{cpu_isa_hash}.o"
+            return f"{name_base}.o"
 
         # For CUDA compilation, we must have an architecture.
         final_arch = output_arch
@@ -3587,9 +3599,9 @@ class Module:
                 arch_suffix = ""
 
         if use_ptx:
-            output_name = f"{module_name_short}.sm{final_arch}{arch_suffix}.ptx"
+            output_name = f"{name_base}.sm{final_arch}{arch_suffix}.ptx"
         else:
-            output_name = f"{module_name_short}.sm{final_arch}{arch_suffix}.cubin"
+            output_name = f"{name_base}.sm{final_arch}{arch_suffix}.cubin"
 
         return output_name
 
@@ -3709,9 +3721,22 @@ class Module:
         else:
             arch_suffix = ""
 
+        # Resolve per-device optimization level early so the cache key
+        # (output filename) differs when two same-arch devices have
+        # different per-device overrides.
+        opt = options["optimization_level"]
+        if isinstance(opt, dict):
+            opt = warp.config._resolve_optimization_level(opt, is_cpu, device)
+            options["optimization_level"] = opt  # replace dict with resolved int
+
         if output_name is None:
             output_name = self._get_compile_output_name(
-                device, output_arch, arch_suffix, use_ptx, block_dim=active_block_dim
+                device,
+                output_arch,
+                arch_suffix,
+                use_ptx,
+                block_dim=active_block_dim,
+                optimization_level=options["optimization_level"],
             )
 
         # Resolve output directory early so we can check for cached binaries
