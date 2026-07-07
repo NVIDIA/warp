@@ -13,7 +13,6 @@ from warp._src.logger import log_error, log_info
 if TYPE_CHECKING:
     from pxr import Usd
 
-_wp_module_name_ = "warp.render.render_usd"
 
 UP_AXIS_TOKEN = ("X", "Y", "Z")
 UP_AXIS_VEC = (

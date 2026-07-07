@@ -13,8 +13,6 @@ from warp._src.fem.integrate import interpolate
 from warp._src.fem.operator import integrand, lookup
 from warp._src.fem.types import NULL_ELEMENT_INDEX, Domain, Field, Sample
 
-_wp_module_name_ = "warp.fem.adaptivity"
-
 
 def adaptive_nanogrid_from_hierarchy(
     grids: list[wp.Volume], grading: str | None = None, temporary_store: cache.TemporaryStore | None = None

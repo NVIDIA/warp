@@ -5,8 +5,6 @@ import math
 
 from warp._src.types import constant
 
-_wp_module_name_ = "warp.constants"
-
 __all__ = [  # noqa: RUF022
     "E",
     "e",

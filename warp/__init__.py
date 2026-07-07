@@ -17,6 +17,88 @@ element methods, and :mod:`warp.sparse` for sparse linear algebra.
 
 # isort: skip_file
 
+# Top-down Warp module declarations. These map the internal `warp._src` source
+# modules to the public Warp modules their kernels/functions/structs belong to.
+# This is the single place the mapping lives, including for the optional
+# subpackages (`warp.optim`, `warp.render`, `warp.fem`). Declaring everything
+# here — rather than in each subpackage's `__init__` — guarantees a mapping is in
+# effect before its source module is imported: Python runs this `__init__` to
+# completion before any `warp._src.*` submodule can be imported, and
+# `register_module_source` imports nothing, so constructs always register under
+# their public Warp module name on first creation. Keep this block at the very
+# top, since importing `warp._src.context` below eagerly creates Warp modules.
+from warp._src.module_registry import register_module_source as _register_module_source
+
+# Keep every declaration on a single line: ``warp._src.context.export_stubs``
+# parses this file line-by-line and only skips lines starting with the call
+# below, so a formatter-wrapped (multi-line) call would leak into the generated
+# stubs. ``# fmt: off`` stops the formatter from wrapping the longer lines.
+# fmt: off
+_register_module_source("warp.autograd", "warp._src.autograd")
+_register_module_source("warp.marching_cubes", "warp._src.marching_cubes")
+_register_module_source("warp.math", "warp._src.math")
+_register_module_source("warp.sparse", "warp._src.sparse")
+_register_module_source("warp.utils", "warp._src.utils")
+
+_register_module_source("warp.optim.adam", "warp._src.optim.adam")
+_register_module_source("warp.optim.linear", "warp._src.optim.linear")
+_register_module_source("warp.optim.sgd", "warp._src.optim.sgd")
+
+_register_module_source("warp.render.imgui_manager", "warp._src.render.imgui_manager")
+_register_module_source("warp.render.render_opengl", "warp._src.render.render_opengl")
+_register_module_source("warp.render.render_usd", "warp._src.render.render_usd")
+_register_module_source("warp.render.utils", "warp._src.render.utils")
+
+_register_module_source("warp.fem.adaptivity", "warp._src.fem.adaptivity")
+_register_module_source("warp.fem.cache", "warp._src.fem.cache")
+_register_module_source("warp.fem.dirichlet", "warp._src.fem.dirichlet")
+_register_module_source("warp.fem.domain", "warp._src.fem.domain")
+_register_module_source("warp.fem.field.field", "warp._src.fem.field.field")
+_register_module_source("warp.fem.field.nodal_field", "warp._src.fem.field.nodal_field")
+_register_module_source("warp.fem.field.restriction", "warp._src.fem.field.restriction")
+_register_module_source("warp.fem.field.virtual", "warp._src.fem.field.virtual")
+_register_module_source("warp.fem.geometry.adaptive_nanogrid", "warp._src.fem.geometry.adaptive_nanogrid")
+_register_module_source("warp.fem.geometry.closest_point", "warp._src.fem.geometry.closest_point")
+_register_module_source("warp.fem.geometry.deformed_geometry", "warp._src.fem.geometry.deformed_geometry")
+_register_module_source("warp.fem.geometry.element", "warp._src.fem.geometry.element")
+_register_module_source("warp.fem.geometry.geometry", "warp._src.fem.geometry.geometry")
+_register_module_source("warp.fem.geometry.grid_2d", "warp._src.fem.geometry.grid_2d")
+_register_module_source("warp.fem.geometry.grid_3d", "warp._src.fem.geometry.grid_3d")
+_register_module_source("warp.fem.geometry.hexmesh", "warp._src.fem.geometry.hexmesh")
+_register_module_source("warp.fem.geometry.nanogrid", "warp._src.fem.geometry.nanogrid")
+_register_module_source("warp.fem.geometry.partition", "warp._src.fem.geometry.partition")
+_register_module_source("warp.fem.geometry.quadmesh", "warp._src.fem.geometry.quadmesh")
+_register_module_source("warp.fem.geometry.tetmesh", "warp._src.fem.geometry.tetmesh")
+_register_module_source("warp.fem.geometry.trimesh", "warp._src.fem.geometry.trimesh")
+_register_module_source("warp.fem.integrate", "warp._src.fem.integrate")
+_register_module_source("warp.fem.linalg", "warp._src.fem.linalg")
+_register_module_source("warp.fem.operator", "warp._src.fem.operator")
+_register_module_source("warp.fem.polynomial", "warp._src.fem.polynomial")
+_register_module_source("warp.fem.quadrature.pic_quadrature", "warp._src.fem.quadrature.pic_quadrature")
+_register_module_source("warp.fem.quadrature.quadrature", "warp._src.fem.quadrature.quadrature")
+_register_module_source("warp.fem.space.basis_function_space", "warp._src.fem.space.basis_function_space")
+_register_module_source("warp.fem.space.basis_space", "warp._src.fem.space.basis_space")
+_register_module_source("warp.fem.space.dof_mapper", "warp._src.fem.space.dof_mapper")
+_register_module_source("warp.fem.space.function_space", "warp._src.fem.space.function_space")
+_register_module_source("warp.fem.space.grid_2d_function_space", "warp._src.fem.space.grid_2d_function_space")
+_register_module_source("warp.fem.space.grid_3d_function_space", "warp._src.fem.space.grid_3d_function_space")
+_register_module_source("warp.fem.space.hexmesh_function_space", "warp._src.fem.space.hexmesh_function_space")
+_register_module_source("warp.fem.space.nanogrid_function_space", "warp._src.fem.space.nanogrid_function_space")
+_register_module_source("warp.fem.space.partition", "warp._src.fem.space.partition")
+_register_module_source("warp.fem.space.quadmesh_function_space", "warp._src.fem.space.quadmesh_function_space")
+_register_module_source("warp.fem.space.restriction", "warp._src.fem.space.restriction")
+_register_module_source("warp.fem.space.shape.cube_shape_function", "warp._src.fem.space.shape.cube_shape_function")
+_register_module_source("warp.fem.space.shape.shape_function", "warp._src.fem.space.shape.shape_function")
+_register_module_source("warp.fem.space.shape.square_shape_function", "warp._src.fem.space.shape.square_shape_function")
+_register_module_source("warp.fem.space.shape.tet_shape_function", "warp._src.fem.space.shape.tet_shape_function")
+_register_module_source("warp.fem.space.shape.triangle_shape_function", "warp._src.fem.space.shape.triangle_shape_function")
+_register_module_source("warp.fem.space.tetmesh_function_space", "warp._src.fem.space.tetmesh_function_space")
+_register_module_source("warp.fem.space.topology", "warp._src.fem.space.topology")
+_register_module_source("warp.fem.space.trimesh_function_space", "warp._src.fem.space.trimesh_function_space")
+_register_module_source("warp.fem.types", "warp._src.fem.types")
+_register_module_source("warp.fem.utils", "warp._src.fem.utils")
+# fmt: on
+
 # category: Type Annotations
 
 from warp._src.types import Int as Int

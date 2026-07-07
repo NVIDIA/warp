@@ -10,8 +10,6 @@ import warp as wp
 import warp.sparse as sparse
 from warp._src.types import type_is_matrix, type_is_vector, type_length, type_scalar_type
 
-_wp_module_name_ = "warp.optim.linear"
-
 __all__ = [
     "CG",
     "CR",

@@ -6,8 +6,6 @@ from __future__ import annotations
 import warp as wp
 from warp._src.logger import log_warning
 
-_wp_module_name_ = "warp.render.imgui_manager"
-
 
 class ImGuiManager:
     """Base class for managing an ImGui UI."""

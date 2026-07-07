@@ -31,8 +31,6 @@ from warp._src.types import (
 
 from .xla_ffi import *
 
-_wp_module_name_ = "warp.jax.ffi"
-
 # Holders for the custom callbacks to keep them alive.
 _FFI_KERNEL_REGISTRY: dict[tuple, FfiKernel] = {}
 _FFI_DIFF_KERNEL_REGISTRY: dict[tuple, Callable] = {}

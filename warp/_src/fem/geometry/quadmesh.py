@@ -24,8 +24,6 @@ from .closest_point import project_on_seg_at_origin
 from .element import Element
 from .geometry import Geometry, _initialize_cell_environment_indices
 
-_wp_module_name_ = "warp.fem.geometry.quadmesh"
-
 
 # Topology-only Arg structs (no position data, shared across precisions)
 @wp.struct

@@ -17,8 +17,6 @@ from warp._src.fem.types import (
     make_free_sample,
 )
 
-_wp_module_name_ = "warp.fem.operator"
-
 
 class Integrand:
     """An integrand is a device function containing arbitrary expressions over :class:`Field` and :class:`Domain` variables.

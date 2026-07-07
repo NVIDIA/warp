@@ -22,8 +22,6 @@ from warp.types import is_array, type_is_int
 
 from .quadrature import Quadrature
 
-_wp_module_name_ = "warp.fem.quadrature.pic_quadrature"
-
 
 class PicQuadrature(Quadrature):
     """Particle-based quadrature formula, using a global set of points unevenly spread out over geometry elements.

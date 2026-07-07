@@ -8,8 +8,6 @@ import warp as wp
 from warp._src.fem.polynomial import Polynomial, quadrature_1d
 from warp._src.fem.types import Coords, Coords_f64, make_coords
 
-_wp_module_name_ = "warp.fem.geometry.element"
-
 _vec1 = wp.types.vector(length=1, dtype=float)
 _vec1d = wp.types.vector(length=1, dtype=wp.float64)
 

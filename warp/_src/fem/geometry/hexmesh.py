@@ -23,8 +23,6 @@ from warp._src.utils import array_scan
 from .element import Element
 from .geometry import Geometry, _initialize_cell_environment_indices
 
-_wp_module_name_ = "warp.fem.geometry.hexmesh"
-
 
 # Topology-only Arg structs (no position data, shared across precisions)
 @wp.struct

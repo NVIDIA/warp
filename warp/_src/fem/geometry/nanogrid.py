@@ -16,8 +16,6 @@ from warp._src.logger import log_warning
 from .element import Element
 from .geometry import Geometry, _array_load
 
-_wp_module_name_ = "warp.fem.geometry.nanogrid"
-
 
 class NanogridBase(Geometry):
     """Base class for regular and adaptive Nanogrid."""

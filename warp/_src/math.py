@@ -9,7 +9,6 @@ import warp as wp
 Math helper functions for vector norms, quaternions, and transforms.
 """
 
-_wp_module_name_ = "warp.math"
 
 __all__ = [
     "norm_huber",

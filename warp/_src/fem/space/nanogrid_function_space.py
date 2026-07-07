@@ -11,8 +11,6 @@ from warp._src.fem.types import ElementIndex
 from .shape import CubeBSplineShapeFunctions, CubeShapeFunction
 from .topology import SpaceTopology, forward_base_topology
 
-_wp_module_name_ = "warp.fem.space.nanogrid_function_space"
-
 
 @wp.struct
 class NanogridTopologyArg:

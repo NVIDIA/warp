@@ -24,6 +24,9 @@ See Also:
 
 # isort: skip_file
 
+# The source-to-public Warp module declarations for `warp.fem` live in the
+# top-level `warp/__init__.py`, so they are in effect before these imports run.
+
 from warp._src.fem.geometry.adaptive_nanogrid import AdaptiveNanogrid as AdaptiveNanogrid
 from warp._src.fem.space.basis_space import BasisSpace as BasisSpace
 from warp._src.fem.domain import BoundarySides as BoundarySides

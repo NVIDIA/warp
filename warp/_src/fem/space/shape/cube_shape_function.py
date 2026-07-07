@@ -16,8 +16,6 @@ from warp._src.fem.types import cached_coords_type
 from .shape_function import ShapeFunction
 from .tet_shape_function import TetrahedronPolynomialShapeFunctions
 
-_wp_module_name_ = "warp.fem.space.shape.cube_shape_function"
-
 
 class CubeShapeFunction(ShapeFunction):
     """Base class for shape functions defined on hexahedral (cube) elements."""

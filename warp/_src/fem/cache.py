@@ -17,8 +17,6 @@ from warp._src.fem.types import Domain, Field
 from warp._src.logger import log_warning
 from warp._src.types import get_type_code, type_repr, type_scalar_type, type_size, type_size_in_bytes, type_to_warp
 
-_wp_module_name_ = "warp.fem.cache"
-
 _kernel_cache = {}
 _struct_cache = {}
 _func_cache = {}

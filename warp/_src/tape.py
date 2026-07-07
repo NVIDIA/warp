@@ -8,8 +8,6 @@ from collections import defaultdict, namedtuple
 import warp as wp
 from warp._src.logger import log_warning
 
-_wp_module_name_ = "warp.tape"
-
 
 class Tape:
     """
