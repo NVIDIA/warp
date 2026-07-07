@@ -22,9 +22,10 @@
 - Add support for `wp.Function`-typed parameters in user-defined `@wp.func` functions, allowing user-defined Warp
   functions and simple built-in Warp functions such as `wp.sin()` and `wp.min()` to be used as function targets from
   kernels or other functions, including through defaults ([GH-1424](https://github.com/NVIDIA/warp/issues/1424)).
-- Add mipmap (texture level-of-detail) support to `wp.Texture1D`, `wp.Texture2D`, and `wp.Texture3D` via the new
-  `num_mip_levels` and `mip_filter_mode` constructor parameters, and allow `wp.texture_sample()` to accept an optional
-  trailing `lod` argument for controlling sampled detail level ([GH-1409](https://github.com/NVIDIA/warp/issues/1409)).
+- **Experimental:** Add mipmap (texture level-of-detail) support to `wp.Texture1D`, `wp.Texture2D`, and `wp.Texture3D`
+  via the new `num_mip_levels` and `mip_filter_mode` constructor parameters, and allow `wp.texture_sample()` to accept
+  an optional trailing `lod` argument for controlling sampled detail level
+  ([GH-1409](https://github.com/NVIDIA/warp/issues/1409)).
 - Add `wp.CudaManagedAllocator()` for explicit CUDA managed-memory arrays. CPU kernels can use managed arrays as an
   opt-in path to read and write CUDA managed-memory allocations through Unified Memory on systems where CUDA reports
   compatible managed-memory access, while Warp CUDA arrays backed by non-managed memory still need explicit CPU
