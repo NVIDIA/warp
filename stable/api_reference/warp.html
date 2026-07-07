@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp &#8212; Warp 1.14.0</title>
+    <title>warp &#8212; Warp 1.15.0</title>
   
   
   
@@ -44,7 +44,7 @@
 
 
 
-    <script src="../_static/documentation_options.js?v=42a3b5f3"></script>
+    <script src="../_static/documentation_options.js?v=e6db31ea"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -53,7 +53,7 @@
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.14';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.15';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
@@ -68,7 +68,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.14.0" />
+  <meta name="docsearch:version" content="1.15.0" />
 
 
   </head>
@@ -139,11 +139,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.14.0</p>
+    <p class="title logo__title">Warp 1.15.0</p>
   
 </a></div>
     
@@ -278,11 +278,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.14.0</p>
+    <p class="title logo__title">Warp 1.15.0</p>
   
 </a>
 
@@ -387,7 +387,9 @@
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../user_guide/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../user_guide/debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/deterministic_execution.html">Deterministic Execution</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../user_guide/limitations.html">Limitations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../user_guide/contribution_guide.html">Contribution Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../user_guide/publications.html">Publications using Warp</a></li>
@@ -535,6 +537,9 @@ element methods, and <a class="reference internal" href="warp_sparse.html#module
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.Scalar.html#warp.Scalar" title="warp.Scalar"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Scalar</span></code></a></p></td>
 <td><p>Type variable.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.ref.html#warp.ref" title="warp.ref"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ref</span></code></a></p></td>
+<td><p>Pass-by-reference parameter annotation: <code class="docutils literal notranslate"><span class="pre">warp.ref[T]</span></code>.</p></td>
 </tr>
 </tbody>
 </table>
@@ -1015,7 +1020,7 @@ element methods, and <a class="reference internal" href="warp_sparse.html#module
 <td><p>Check whether CPU execution is available.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.is_cubql_available.html#warp.is_cubql_available" title="warp.is_cubql_available"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_cubql_available</span></code></a></p></td>
-<td><p>Check whether the cuBQL BVH backend is available.</p></td>
+<td><p>Check whether the cuBQL BVH builder is available.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.is_cuda_available.html#warp.is_cuda_available" title="warp.is_cuda_available"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_cuda_available</span></code></a></p></td>
 <td><p>Check whether CUDA execution is available.</p></td>
@@ -1049,34 +1054,37 @@ element methods, and <a class="reference internal" href="warp_sparse.html#module
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.WarpCodegenValueError.html#warp.WarpCodegenValueError" title="warp.WarpCodegenValueError"><code class="xref py py-obj docutils literal notranslate"><span class="pre">WarpCodegenValueError</span></code></a></p></td>
 <td><p>Value error during Warp kernel code generation.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.func.html#warp.func" title="warp.func"><code class="xref py py-obj docutils literal notranslate"><span class="pre">func</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.address_of.html#warp.address_of" title="warp.address_of"><code class="xref py py-obj docutils literal notranslate"><span class="pre">address_of</span></code></a></p></td>
+<td><p>Return the address of an addressable expression as a <code class="docutils literal notranslate"><span class="pre">warp.uint64</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.func.html#warp.func" title="warp.func"><code class="xref py py-obj docutils literal notranslate"><span class="pre">func</span></code></a></p></td>
 <td><p>Decorator to define a Warp function callable from kernels and other Warp functions.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.func_grad.html#warp.func_grad" title="warp.func_grad"><code class="xref py py-obj docutils literal notranslate"><span class="pre">func_grad</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.func_grad.html#warp.func_grad" title="warp.func_grad"><code class="xref py py-obj docutils literal notranslate"><span class="pre">func_grad</span></code></a></p></td>
 <td><p>Decorator to register a custom gradient function for a given forward function.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.func_native.html#warp.func_native" title="warp.func_native"><code class="xref py py-obj docutils literal notranslate"><span class="pre">func_native</span></code></a></p></td>
-<td><p>Decorator to register native code snippet, &#64;func_native</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.func_native.html#warp.func_native" title="warp.func_native"><code class="xref py py-obj docutils literal notranslate"><span class="pre">func_native</span></code></a></p></td>
+<td><p>Register a Warp function implemented by a native C++/CUDA snippet.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.func_replay.html#warp.func_replay" title="warp.func_replay"><code class="xref py py-obj docutils literal notranslate"><span class="pre">func_replay</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.func_replay.html#warp.func_replay" title="warp.func_replay"><code class="xref py py-obj docutils literal notranslate"><span class="pre">func_replay</span></code></a></p></td>
 <td><p>Decorator to register a custom replay function for a given forward function.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.grad.html#warp.grad" title="warp.grad"><code class="xref py py-obj docutils literal notranslate"><span class="pre">grad</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.grad.html#warp.grad" title="warp.grad"><code class="xref py py-obj docutils literal notranslate"><span class="pre">grad</span></code></a></p></td>
 <td><p>Return a callable that computes the gradient of the given function.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.kernel_decorator.html#warp.kernel" title="warp.kernel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">kernel</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.kernel_decorator.html#warp.kernel" title="warp.kernel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">kernel</span></code></a></p></td>
 <td><p>Decorator to register a Warp kernel from a Python function.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.map.html#warp.map" title="warp.map"><code class="xref py py-obj docutils literal notranslate"><span class="pre">map</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.map.html#warp.map" title="warp.map"><code class="xref py py-obj docutils literal notranslate"><span class="pre">map</span></code></a></p></td>
 <td><p>Map a function over the elements of one or more arrays.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.overload.html#warp.overload" title="warp.overload"><code class="xref py py-obj docutils literal notranslate"><span class="pre">overload</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.overload.html#warp.overload" title="warp.overload"><code class="xref py py-obj docutils literal notranslate"><span class="pre">overload</span></code></a></p></td>
 <td><p>Overload a generic kernel with the given argument types.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.static.html#warp.static" title="warp.static"><code class="xref py py-obj docutils literal notranslate"><span class="pre">static</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.static.html#warp.static" title="warp.static"><code class="xref py py-obj docutils literal notranslate"><span class="pre">static</span></code></a></p></td>
 <td><p>Evaluate a static expression and replace the expression with its result.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.struct.html#warp.struct" title="warp.struct"><code class="xref py py-obj docutils literal notranslate"><span class="pre">struct</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.struct.html#warp.struct" title="warp.struct"><code class="xref py py-obj docutils literal notranslate"><span class="pre">struct</span></code></a></p></td>
 <td><p>Decorator to define a Warp struct for use in kernels and functions.</p></td>
 </tr>
 </tbody>
@@ -1270,6 +1278,12 @@ element methods, and <a class="reference internal" href="warp_sparse.html#module
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.Allocator.html#warp.Allocator" title="warp.Allocator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Allocator</span></code></a></p></td>
 <td><p>Protocol for custom memory allocators.</p></td>
 </tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.CudaManagedAllocator.html#warp.CudaManagedAllocator" title="warp.CudaManagedAllocator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">CudaManagedAllocator</span></code></a></p></td>
+<td><p>Allocator that creates CUDA managed-memory arrays.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.MemoryKind.html#warp.MemoryKind" title="warp.MemoryKind"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MemoryKind</span></code></a></p></td>
+<td><p>Observed memory kind backing a Warp array.</p></td>
+</tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.ScopedAllocator.html#warp.ScopedAllocator" title="warp.ScopedAllocator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ScopedAllocator</span></code></a></p></td>
 <td><p>Context manager to temporarily use a custom allocator on a device.</p></td>
 </tr>
@@ -1282,52 +1296,55 @@ element methods, and <a class="reference internal" href="warp_sparse.html#module
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.ScopedPeerAccess.html#warp.ScopedPeerAccess" title="warp.ScopedPeerAccess"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ScopedPeerAccess</span></code></a></p></td>
 <td><p>Context manager to temporarily enable or disable peer access between CUDA devices.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.get_device_allocator.html#warp.get_device_allocator" title="warp.get_device_allocator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_device_allocator</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.get_cuda_max_cluster_dim.html#warp.get_cuda_max_cluster_dim" title="warp.get_cuda_max_cluster_dim"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_cuda_max_cluster_dim</span></code></a></p></td>
+<td><p>Return the maximum <code class="docutils literal notranslate"><span class="pre">cluster_dim</span></code> <em>kernel</em> can launch with on <em>device</em>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.get_device_allocator.html#warp.get_device_allocator" title="warp.get_device_allocator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_device_allocator</span></code></a></p></td>
 <td><p>Get the current effective memory allocator for a device.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.get_mempool_release_threshold.html#warp.get_mempool_release_threshold" title="warp.get_mempool_release_threshold"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_mempool_release_threshold</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.get_mempool_release_threshold.html#warp.get_mempool_release_threshold" title="warp.get_mempool_release_threshold"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_mempool_release_threshold</span></code></a></p></td>
 <td><p>Get the CUDA memory pool release threshold on the device.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.get_mempool_used_mem_current.html#warp.get_mempool_used_mem_current" title="warp.get_mempool_used_mem_current"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_mempool_used_mem_current</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.get_mempool_used_mem_current.html#warp.get_mempool_used_mem_current" title="warp.get_mempool_used_mem_current"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_mempool_used_mem_current</span></code></a></p></td>
 <td><p>Get the amount of memory from the device's memory pool that is currently in use by the application.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.get_mempool_used_mem_high.html#warp.get_mempool_used_mem_high" title="warp.get_mempool_used_mem_high"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_mempool_used_mem_high</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.get_mempool_used_mem_high.html#warp.get_mempool_used_mem_high" title="warp.get_mempool_used_mem_high"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_mempool_used_mem_high</span></code></a></p></td>
 <td><p>Get the application's memory usage high-water mark from the device's CUDA memory pool.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.is_mempool_access_enabled.html#warp.is_mempool_access_enabled" title="warp.is_mempool_access_enabled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_mempool_access_enabled</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.is_mempool_access_enabled.html#warp.is_mempool_access_enabled" title="warp.is_mempool_access_enabled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_mempool_access_enabled</span></code></a></p></td>
 <td><p>Check if <code class="docutils literal notranslate"><span class="pre">peer_device</span></code> can currently access the memory pool of <code class="docutils literal notranslate"><span class="pre">target_device</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.is_mempool_access_supported.html#warp.is_mempool_access_supported" title="warp.is_mempool_access_supported"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_mempool_access_supported</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.is_mempool_access_supported.html#warp.is_mempool_access_supported" title="warp.is_mempool_access_supported"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_mempool_access_supported</span></code></a></p></td>
 <td><p>Check if <code class="docutils literal notranslate"><span class="pre">peer_device</span></code> can directly access the memory pool of <code class="docutils literal notranslate"><span class="pre">target_device</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.is_mempool_enabled.html#warp.is_mempool_enabled" title="warp.is_mempool_enabled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_mempool_enabled</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.is_mempool_enabled.html#warp.is_mempool_enabled" title="warp.is_mempool_enabled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_mempool_enabled</span></code></a></p></td>
 <td><p>Check if CUDA memory pool allocators are enabled on the device.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.is_mempool_supported.html#warp.is_mempool_supported" title="warp.is_mempool_supported"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_mempool_supported</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.is_mempool_supported.html#warp.is_mempool_supported" title="warp.is_mempool_supported"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_mempool_supported</span></code></a></p></td>
 <td><p>Check if CUDA memory pool allocators are available on the device.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.is_peer_access_enabled.html#warp.is_peer_access_enabled" title="warp.is_peer_access_enabled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_peer_access_enabled</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.is_peer_access_enabled.html#warp.is_peer_access_enabled" title="warp.is_peer_access_enabled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_peer_access_enabled</span></code></a></p></td>
 <td><p>Check if <code class="docutils literal notranslate"><span class="pre">peer_device</span></code> can currently access the memory of <code class="docutils literal notranslate"><span class="pre">target_device</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.is_peer_access_supported.html#warp.is_peer_access_supported" title="warp.is_peer_access_supported"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_peer_access_supported</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.is_peer_access_supported.html#warp.is_peer_access_supported" title="warp.is_peer_access_supported"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_peer_access_supported</span></code></a></p></td>
 <td><p>Check if <code class="docutils literal notranslate"><span class="pre">peer_device</span></code> can directly access the memory of <code class="docutils literal notranslate"><span class="pre">target_device</span></code> on this system.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.set_cuda_allocator.html#warp.set_cuda_allocator" title="warp.set_cuda_allocator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_cuda_allocator</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.set_cuda_allocator.html#warp.set_cuda_allocator" title="warp.set_cuda_allocator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_cuda_allocator</span></code></a></p></td>
 <td><p>Set the memory allocator for all CUDA devices.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.set_device_allocator.html#warp.set_device_allocator" title="warp.set_device_allocator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_device_allocator</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.set_device_allocator.html#warp.set_device_allocator" title="warp.set_device_allocator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_device_allocator</span></code></a></p></td>
 <td><p>Set the memory allocator for a specific CUDA device.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.set_mempool_access_enabled.html#warp.set_mempool_access_enabled" title="warp.set_mempool_access_enabled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_mempool_access_enabled</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.set_mempool_access_enabled.html#warp.set_mempool_access_enabled" title="warp.set_mempool_access_enabled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_mempool_access_enabled</span></code></a></p></td>
 <td><p>Enable or disable access from <code class="docutils literal notranslate"><span class="pre">peer_device</span></code> to the memory pool of <code class="docutils literal notranslate"><span class="pre">target_device</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.set_mempool_enabled.html#warp.set_mempool_enabled" title="warp.set_mempool_enabled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_mempool_enabled</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.set_mempool_enabled.html#warp.set_mempool_enabled" title="warp.set_mempool_enabled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_mempool_enabled</span></code></a></p></td>
 <td><p>Enable or disable CUDA memory pool allocators on the device.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.set_mempool_release_threshold.html#warp.set_mempool_release_threshold" title="warp.set_mempool_release_threshold"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_mempool_release_threshold</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.set_mempool_release_threshold.html#warp.set_mempool_release_threshold" title="warp.set_mempool_release_threshold"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_mempool_release_threshold</span></code></a></p></td>
 <td><p>Set the CUDA memory pool release threshold on the device.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.set_peer_access_enabled.html#warp.set_peer_access_enabled" title="warp.set_peer_access_enabled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_peer_access_enabled</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.set_peer_access_enabled.html#warp.set_peer_access_enabled" title="warp.set_peer_access_enabled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_peer_access_enabled</span></code></a></p></td>
 <td><p>Enable or disable direct access from <code class="docutils literal notranslate"><span class="pre">peer_device</span></code> to the memory of <code class="docutils literal notranslate"><span class="pre">target_device</span></code>.</p></td>
 </tr>
 </tbody>
@@ -1712,6 +1729,17 @@ element methods, and <a class="reference internal" href="warp_sparse.html#module
 </table>
 </div>
 </section>
+<section id="configuration-modes">
+<h2>Configuration Modes<a class="headerlink" href="#configuration-modes" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.DeterministicMode.html#warp.DeterministicMode" title="warp.DeterministicMode"><code class="xref py py-obj docutils literal notranslate"><span class="pre">DeterministicMode</span></code></a></p></td>
+<td><p>Deterministic execution modes for supported atomic operations.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
 <section id="misc">
 <h2>Misc<a class="headerlink" href="#misc" title="Link to this heading">#</a></h2>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
@@ -1818,6 +1846,7 @@ element methods, and <a class="reference internal" href="warp_sparse.html#module
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#omniverse-runtime-fabric-interop">Omniverse Runtime Fabric Interop</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#paddle-interop">Paddle Interop</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#constants">Constants</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#configuration-modes">Configuration Modes</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#misc">Misc</a></li>
 </ul>
   </nav></div>
@@ -1826,7 +1855,7 @@ element methods, and <a class="reference internal" href="warp_sparse.html#module
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/release-1.14/docs/api_reference/warp.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/release-1.15/docs/api_reference/warp.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

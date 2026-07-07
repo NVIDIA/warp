@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.Bvh &#8212; Warp 1.14.0</title>
+    <title>warp.Bvh &#8212; Warp 1.15.0</title>
   
   
   
@@ -44,7 +44,7 @@
 
 
 
-    <script src="../../_static/documentation_options.js?v=42a3b5f3"></script>
+    <script src="../../_static/documentation_options.js?v=e6db31ea"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -53,7 +53,7 @@
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.14';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.15';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
@@ -68,7 +68,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.14.0" />
+  <meta name="docsearch:version" content="1.15.0" />
 
 
   </head>
@@ -139,11 +139,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.14.0</p>
+    <p class="title logo__title">Warp 1.15.0</p>
   
 </a></div>
     
@@ -278,11 +278,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.14.0</p>
+    <p class="title logo__title">Warp 1.15.0</p>
   
 </a>
 
@@ -387,7 +387,9 @@
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/deterministic_execution.html">Deterministic Execution</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/limitations.html">Limitations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/contribution_guide.html">Contribution Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/publications.html">Publications using Warp</a></li>
@@ -495,7 +497,7 @@
 <h1>warp.Bvh<a class="headerlink" href="#warp-bvh" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.Bvh">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Bvh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/types.py#L5341-L5589"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Bvh" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Bvh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/types.py#L5545-L5820"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Bvh" title="Link to this definition">#</a></dt>
 <dd><p>Bounding Volume Hierarchy (BVH) for accelerated spatial queries.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Bvh.__init__">
@@ -509,7 +511,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">leaf_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/types.py#L5349-L5505"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Bvh.__init__" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/types.py#L5553-L5718"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Bvh.__init__" title="Link to this definition">#</a></dt>
 <dd><p>Class representing a bounding volume hierarchy.</p>
 <p>Depending on which device the input bounds live, it can be either a CPU tree or a GPU tree.</p>
 <dl class="py attribute">
@@ -531,7 +533,7 @@
 <li><p><strong>uppers</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>) – Array of upper bounds of data type <a class="reference internal" href="warp.vec3.html#warp.vec3" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3</span></code></a>.
 <code class="docutils literal notranslate"><span class="pre">lowers</span></code> and <code class="docutils literal notranslate"><span class="pre">uppers</span></code> must live on the same device.</p></li>
 <li><p><strong>constructor</strong> (<em>BvhConstructor</em><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – The construction algorithm used to build the tree.
-Valid choices are <code class="docutils literal notranslate"><span class="pre">&quot;sah&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;median&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;lbvh&quot;</span></code>, or <code class="docutils literal notranslate"><span class="pre">None</span></code>.
+Valid choices are <code class="docutils literal notranslate"><span class="pre">&quot;sah&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;median&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;lbvh&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;cubql&quot;</span></code>, or <code class="docutils literal notranslate"><span class="pre">None</span></code>.
 When <code class="docutils literal notranslate"><span class="pre">None</span></code>, the default constructor will be used (see the note).</p></li>
 <li><p><strong>groups</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>) – Optional array of group indices of data type <a class="reference internal" href="warp.int32.html#warp.int32" title="warp.int32"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.int32</span></code></a>.</p></li>
 <li><p><strong>leaf_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – The number of primitives (AABBs) stored in each leaf node. The optimal value depends on the primary
@@ -553,15 +555,19 @@ of centroids of primitives in an AABB. This constructor is faster than SAH but o
 inferior query performance.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">&quot;lbvh&quot;</span></code>: A GPU-based bottom-up constructor which maximizes parallelism. Construction is very
 fast, especially for large models. Query performance is slightly slower than <code class="docutils literal notranslate"><span class="pre">&quot;sah&quot;</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;cubql&quot;</span></code>: An experimental cuBQL constructor. It builds a temporary cuBQL BVH and converts
+it into Warp’s native BVH layout for traversal. Grouped BVHs are not supported with this
+constructor.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">None</span></code>: The constructor will be automatically chosen based on the device where the tree
 lives. For a GPU tree, the <code class="docutils literal notranslate"><span class="pre">&quot;lbvh&quot;</span></code> constructor will be selected; for a CPU tree, the <code class="docutils literal notranslate"><span class="pre">&quot;sah&quot;</span></code>
 constructor will be selected.</p></li>
 </ul>
-<p>All three constructors are supported for GPU trees. When a CPU-based constructor is selected
-for a GPU tree, bounds will be copied back to the CPU to run the CPU-based constructor. After
-construction, the CPU tree will be copied to the GPU.</p>
-<p>Only <code class="docutils literal notranslate"><span class="pre">&quot;sah&quot;</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;median&quot;</span></code> are supported for CPU trees. If <code class="docutils literal notranslate"><span class="pre">&quot;lbvh&quot;</span></code> is selected for a CPU tree, a
-warning message will be issued, and the constructor will automatically fall back to <code class="docutils literal notranslate"><span class="pre">&quot;sah&quot;</span></code>.</p>
+<p>All constructors are supported for GPU trees when Warp is compiled with cuBQL support. When a
+CPU-based constructor is selected for a GPU tree, bounds will be copied back to the CPU to run
+the CPU-based constructor. After construction, the CPU tree will be copied to the GPU.</p>
+<p><code class="docutils literal notranslate"><span class="pre">&quot;sah&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;median&quot;</span></code>, and <code class="docutils literal notranslate"><span class="pre">&quot;cubql&quot;</span></code> are supported for CPU trees when Warp is compiled with cuBQL
+support. If <code class="docutils literal notranslate"><span class="pre">&quot;lbvh&quot;</span></code> is selected for a CPU tree, a warning message will be issued, and the constructor
+will automatically fall back to <code class="docutils literal notranslate"><span class="pre">&quot;sah&quot;</span></code>.</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">leaf_size</span></code> parameter controls the number of primitives (AABBs) stored in each leaf node of the BVH.
 This parameter can have a considerable impact on query performance, and the optimal value depends on the
 types of queries that will be performed:</p>
@@ -608,14 +614,14 @@ and near-identical performance for non-grouped use cases.</p>
 </div>
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Bvh.refit">
-<span class="sig-name descname"><span class="pre">refit</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/types.py#L5521-L5532"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Bvh.refit" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">refit</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/types.py#L5734-L5745"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Bvh.refit" title="Link to this definition">#</a></dt>
 <dd><p>Refit the BVH.</p>
 <p>This should be called after users modify the <code class="docutils literal notranslate"><span class="pre">lowers</span></code> or <code class="docutils literal notranslate"><span class="pre">uppers</span></code> arrays.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Bvh.rebuild">
-<span class="sig-name descname"><span class="pre">rebuild</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">constructor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/types.py#L5533-L5589"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Bvh.rebuild" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">rebuild</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">constructor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/types.py#L5746-L5820"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Bvh.rebuild" title="Link to this definition">#</a></dt>
 <dd><p>Rebuild the BVH hierarchy <strong>in place</strong> from the current <code class="docutils literal notranslate"><span class="pre">lowers</span></code>/<code class="docutils literal notranslate"><span class="pre">uppers</span></code> arrays.</p>
 <p>This method does not allocate new memory; it reuses the existing BVH buffers.</p>
 <p>Unlike <a class="reference internal" href="#warp.Bvh.refit" title="warp.Bvh.refit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">refit()</span></code></a>, which only tightens parent AABBs while preserving the existing
@@ -626,17 +632,20 @@ algorithms.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>constructor</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Construction algorithm to use. One of <code class="docutils literal notranslate"><span class="pre">&quot;sah&quot;</span></code>,
-<code class="docutils literal notranslate"><span class="pre">&quot;median&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;lbvh&quot;</span></code>, or <code class="docutils literal notranslate"><span class="pre">None</span></code>. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, the default is chosen
-based on the device (CPU → <code class="docutils literal notranslate"><span class="pre">&quot;sah&quot;</span></code>, CUDA → <code class="docutils literal notranslate"><span class="pre">&quot;lbvh&quot;</span></code>). On CPU,
-<code class="docutils literal notranslate"><span class="pre">&quot;sah&quot;</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;median&quot;</span></code> are supported; requesting <code class="docutils literal notranslate"><span class="pre">&quot;lbvh&quot;</span></code> falls back
-to <code class="docutils literal notranslate"><span class="pre">&quot;sah&quot;</span></code> with a warning. On CUDA, in-place rebuild supports <code class="docutils literal notranslate"><span class="pre">&quot;lbvh&quot;</span></code>
-only; other values fall back to <code class="docutils literal notranslate"><span class="pre">&quot;lbvh&quot;</span></code> with a warning.</p>
+<code class="docutils literal notranslate"><span class="pre">&quot;median&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;lbvh&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;cubql&quot;</span></code>, or <code class="docutils literal notranslate"><span class="pre">None</span></code>. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, the default is
+chosen based on the device (CPU → <code class="docutils literal notranslate"><span class="pre">&quot;sah&quot;</span></code>, CUDA → <code class="docutils literal notranslate"><span class="pre">&quot;lbvh&quot;</span></code>), except for
+cuBQL-constructed BVHs, which rebuild with cuBQL. On CPU, <code class="docutils literal notranslate"><span class="pre">&quot;sah&quot;</span></code> and
+<code class="docutils literal notranslate"><span class="pre">&quot;median&quot;</span></code> are supported; requesting <code class="docutils literal notranslate"><span class="pre">&quot;lbvh&quot;</span></code> falls back to <code class="docutils literal notranslate"><span class="pre">&quot;sah&quot;</span></code> with a
+warning. On CUDA, in-place rebuild supports <code class="docutils literal notranslate"><span class="pre">&quot;lbvh&quot;</span></code> only; other values fall
+back to <code class="docutils literal notranslate"><span class="pre">&quot;lbvh&quot;</span></code> with a warning. In-place rebuild does not support switching to
+or from <code class="docutils literal notranslate"><span class="pre">&quot;cubql&quot;</span></code>; create a new BVH instead.</p>
 </dd>
 </dl>
 <p class="rubric">Notes</p>
 <ul class="simple">
-<li><p>This method is CUDA graph-capture safe: previously captured graphs that include
-queries on this BVH remain valid after <code class="docutils literal notranslate"><span class="pre">rebuild</span></code> because buffers are reused.</p></li>
+<li><p>The native CUDA LBVH rebuild path is CUDA graph-capture safe: previously captured graphs
+that include queries on this BVH remain valid after <code class="docutils literal notranslate"><span class="pre">rebuild</span></code> because buffers are reused.
+This guarantee does not apply to cuBQL rebuilds.</p></li>
 <li><p>If you need a CPU top-down constructor (<code class="docutils literal notranslate"><span class="pre">&quot;sah&quot;</span></code>/<code class="docutils literal notranslate"><span class="pre">&quot;median&quot;</span></code>) for a GPU tree,
 create a new BVH via the class constructor instead.</p></li>
 </ul>
@@ -720,7 +729,7 @@ create a new BVH via the class constructor instead.</p></li>
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/release-1.14/docs/api_reference/_generated/warp.Bvh.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/release-1.15/docs/api_reference/_generated/warp.Bvh.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

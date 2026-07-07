@@ -32,7 +32,6 @@
       ~UsdRenderer.render_ref
       ~UsdRenderer.render_sphere
       ~UsdRenderer.save
-      ~UsdRenderer.update_body_transforms
    
    
 

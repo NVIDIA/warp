@@ -35,11 +35,15 @@
       ~Texture1D.cuda_texture
       ~Texture1D.depth
       ~Texture1D.dtype
+      ~Texture1D.filter_mode
       ~Texture1D.height
       ~Texture1D.id
+      ~Texture1D.is_mipmapped
+      ~Texture1D.mip_filter_mode
       ~Texture1D.ndim
       ~Texture1D.normalized_coords
       ~Texture1D.num_channels
+      ~Texture1D.num_mip_levels
       ~Texture1D.vars
       ~Texture1D.width
    

@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.MarchingCubes &#8212; Warp 1.14.0</title>
+    <title>warp.MarchingCubes &#8212; Warp 1.15.0</title>
   
   
   
@@ -44,7 +44,7 @@
 
 
 
-    <script src="../../_static/documentation_options.js?v=42a3b5f3"></script>
+    <script src="../../_static/documentation_options.js?v=e6db31ea"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -53,7 +53,7 @@
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.14';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.15';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
@@ -63,12 +63,12 @@
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="warp.RegisteredGLBuffer" href="warp.RegisteredGLBuffer.html" />
-    <link rel="prev" title="warp.tau" href="warp.tau_constant.html" />
+    <link rel="prev" title="warp.DeterministicMode" href="warp.DeterministicMode.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.14.0" />
+  <meta name="docsearch:version" content="1.15.0" />
 
 
   </head>
@@ -139,11 +139,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.14.0</p>
+    <p class="title logo__title">Warp 1.15.0</p>
   
 </a></div>
     
@@ -278,11 +278,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.14.0</p>
+    <p class="title logo__title">Warp 1.15.0</p>
   
 </a>
 
@@ -387,7 +387,9 @@
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/deterministic_execution.html">Deterministic Execution</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/limitations.html">Limitations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/contribution_guide.html">Contribution Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/publications.html">Publications using Warp</a></li>
@@ -495,7 +497,20 @@
 <h1>warp.MarchingCubes<a class="headerlink" href="#warp-marchingcubes" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.MarchingCubes">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">MarchingCubes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/marching_cubes.py#L493-L748"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.MarchingCubes" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">MarchingCubes</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">nx</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">ny</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">nz</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_verts</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">_DEFAULT_ZERO</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_tris</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">_DEFAULT_ZERO</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">_DEFAULT_NONE</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">domain_bounds_lower_corner</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">domain_bounds_upper_corner</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/marching_cubes.py#L524-L903"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.MarchingCubes" title="Link to this definition">#</a></dt>
 <dd><p>A reusable context for marching cubes surface extraction.</p>
 <p>This class provides a stateful interface for isosurface extraction. You
 can initialize it with a specific grid configuration and then call the
@@ -503,6 +518,28 @@ can initialize it with a specific grid configuration and then call the
 fields of the same size.</p>
 <p>For a simpler, stateless operation, use the static method
 <a class="reference internal" href="#warp.MarchingCubes.extract_surface_marching_cubes" title="warp.MarchingCubes.extract_surface_marching_cubes"><code class="xref py py-meth docutils literal notranslate"><span class="pre">extract_surface_marching_cubes()</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>nx</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of grid nodes in the x-direction.</p></li>
+<li><p><strong>ny</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of grid nodes in the y-direction.</p></li>
+<li><p><strong>nz</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of grid nodes in the z-direction.</p></li>
+<li><p><strong>max_verts</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Deprecated since Warp 1.9 and scheduled for removal in
+Warp 1.19. Output arrays are sized dynamically; remove this argument
+from calls.</p></li>
+<li><p><strong>max_tris</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Deprecated since Warp 1.9 and scheduled for removal in Warp
+1.19. Output arrays are sized dynamically; remove this argument from
+calls.</p></li>
+<li><p><strong>device</strong> (<em>wp.DeviceLike</em>) – Deprecated since Warp 1.9 and scheduled for removal in Warp
+1.19. The input field determines where extraction runs; remove this
+argument from calls.</p></li>
+<li><p><strong>domain_bounds_lower_corner</strong> – See the documentation in
+<a class="reference internal" href="#warp.MarchingCubes.extract_surface_marching_cubes" title="warp.MarchingCubes.extract_surface_marching_cubes"><code class="xref py py-meth docutils literal notranslate"><span class="pre">extract_surface_marching_cubes()</span></code></a>.</p></li>
+<li><p><strong>domain_bounds_upper_corner</strong> – See the documentation in
+<a class="reference internal" href="#warp.MarchingCubes.extract_surface_marching_cubes" title="warp.MarchingCubes.extract_surface_marching_cubes"><code class="xref py py-meth docutils literal notranslate"><span class="pre">extract_surface_marching_cubes()</span></code></a>.</p></li>
+</ul>
+</dd>
+</dl>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.MarchingCubes.nx">
 <span class="sig-name descname"><span class="pre">nx</span></span><a class="headerlink" href="#warp.MarchingCubes.nx" title="Link to this definition">#</a></dt>
@@ -588,19 +625,6 @@ This is populated by calling the <a class="reference internal" href="#warp.March
 </dl>
 </dd></dl>
 
-<dl class="py attribute">
-<dt class="sig sig-object py" id="warp.MarchingCubes.device">
-<span class="sig-name descname"><span class="pre">device</span></span><a class="headerlink" href="#warp.MarchingCubes.device" title="Link to this definition">#</a></dt>
-<dd><p>The device on which the context was created. This
-attribute is for backward compatibility and is not used by the
-class’s methods.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="warp.Device.html#warp.Device" title="warp.Device">warp.Device</a></p>
-</dd>
-</dl>
-</dd></dl>
-
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.MarchingCubes.__init__">
 <span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span>
@@ -609,30 +633,23 @@ class’s methods.</p>
 <dd><em class="sig-param"><span class="n"><span class="pre">nx</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">ny</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">nz</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">max_verts</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">max_tris</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_verts</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">_DEFAULT_ZERO</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_tris</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">_DEFAULT_ZERO</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">_DEFAULT_NONE</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">domain_bounds_lower_corner</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">domain_bounds_upper_corner</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/marching_cubes.py#L559-L608"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.MarchingCubes.__init__" title="Link to this definition">#</a></dt>
-<dd><p>Initialize the marching cubes context with a grid configuration.</p>
-<dl class="field-list simple">
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/marching_cubes.py#L601-L661"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.MarchingCubes.__init__" title="Link to this definition">#</a></dt>
+<dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>nx</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of grid nodes in the x-direction.</p></li>
-<li><p><strong>ny</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of grid nodes in the y-direction.</p></li>
-<li><p><strong>nz</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of grid nodes in the z-direction.</p></li>
-<li><p><strong>max_verts</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – (Deprecated) This argument is ignored.</p></li>
-<li><p><strong>max_tris</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – (Deprecated) This argument is ignored.</p></li>
-<li><p><strong>device</strong> (<a class="reference internal" href="warp.Device.html#warp.Device" title="warp._src.context.Device"><em>Device</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – (Deprecated) The value is assigned to
-<code class="docutils literal notranslate"><span class="pre">self.device</span></code> for backward compatibility but is not used by the
-class’s methods. It may be removed in a future version.</p></li>
-<li><p><strong>domain_bounds_lower_corner</strong> – See the documentation in
-<a class="reference internal" href="#warp.MarchingCubes.extract_surface_marching_cubes" title="warp.MarchingCubes.extract_surface_marching_cubes"><code class="xref py py-meth docutils literal notranslate"><span class="pre">extract_surface_marching_cubes()</span></code></a>.</p></li>
-<li><p><strong>domain_bounds_upper_corner</strong> – See the documentation in
-<a class="reference internal" href="#warp.MarchingCubes.extract_surface_marching_cubes" title="warp.MarchingCubes.extract_surface_marching_cubes"><code class="xref py py-meth docutils literal notranslate"><span class="pre">extract_surface_marching_cubes()</span></code></a>.</p></li>
+<li><p><strong>nx</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>ny</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>nz</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>max_verts</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>max_tris</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>device</strong> (<a class="reference internal" href="warp.Device.html#warp.Device" title="warp._src.context.Device"><em>Device</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>)</p></li>
 </ul>
 </dd>
 </dl>
@@ -642,7 +659,7 @@ class’s methods. It may be removed in a future version.</p></li>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="#warp.MarchingCubes.__init__" title="warp.MarchingCubes.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(nx, ny, nz[, max_verts, max_tris, ...])</p></td>
-<td><p>Initialize the marching cubes context with a grid configuration.</p></td>
+<td><p></p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#warp.MarchingCubes.extract_surface_marching_cubes" title="warp.MarchingCubes.extract_surface_marching_cubes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">extract_surface_marching_cubes</span></code></a>(field[, ...])</p></td>
 <td><p>Extract a triangular mesh from a 3D scalar field.</p></td>
@@ -670,6 +687,21 @@ class’s methods. It may be removed in a future version.</p></li>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#warp.MarchingCubes.TRI_LOCAL_INDICES" title="warp.MarchingCubes.TRI_LOCAL_INDICES"><code class="xref py py-obj docutils literal notranslate"><span class="pre">TRI_LOCAL_INDICES</span></code></a></p></td>
 <td><p>Edge indices (see <a class="reference internal" href="#warp.MarchingCubes.EDGE_TO_CORNERS" title="warp.MarchingCubes.EDGE_TO_CORNERS"><code class="xref py py-attr docutils literal notranslate"><span class="pre">EDGE_TO_CORNERS</span></code></a>) defining triangle vertices for all marching cubes cases.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.MarchingCubes.device" title="warp.MarchingCubes.device"><code class="xref py py-obj docutils literal notranslate"><span class="pre">device</span></code></a></p></td>
+<td><p>Deprecated device value that is not used for extraction.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.MarchingCubes.id" title="warp.MarchingCubes.id"><code class="xref py py-obj docutils literal notranslate"><span class="pre">id</span></code></a></p></td>
+<td><p>Deprecated compatibility value that does not identify a resource.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.MarchingCubes.max_tris" title="warp.MarchingCubes.max_tris"><code class="xref py py-obj docutils literal notranslate"><span class="pre">max_tris</span></code></a></p></td>
+<td><p>Deprecated compatibility value that is not used.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.MarchingCubes.max_verts" title="warp.MarchingCubes.max_verts"><code class="xref py py-obj docutils literal notranslate"><span class="pre">max_verts</span></code></a></p></td>
+<td><p>Deprecated compatibility value that is not used.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.MarchingCubes.runtime" title="warp.MarchingCubes.runtime"><code class="xref py py-obj docutils literal notranslate"><span class="pre">runtime</span></code></a></p></td>
+<td><p>Deprecated compatibility reference that is not used.</p></td>
 </tr>
 </tbody>
 </table>
@@ -704,9 +736,68 @@ class’s methods. It may be removed in a future version.</p></li>
 values defines a triangle by specifying edge indices (0-11) where the vertices lie.</p>
 </dd></dl>
 
+<dl class="py property">
+<dt class="sig sig-object py" id="warp.MarchingCubes.max_verts">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">max_verts</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/marching_cubes.py#L662-L672"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.MarchingCubes.max_verts" title="Link to this definition">#</a></dt>
+<dd><p>Deprecated compatibility value that is not used.</p>
+<div class="deprecated">
+<p><span class="versionmodified deprecated">Deprecated since version 1.9.0: </span>Output arrays are sized dynamically. This attribute will be removed
+in Warp 1.19.</p>
+</div>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="warp.MarchingCubes.max_tris">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">max_tris</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/marching_cubes.py#L678-L688"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.MarchingCubes.max_tris" title="Link to this definition">#</a></dt>
+<dd><p>Deprecated compatibility value that is not used.</p>
+<div class="deprecated">
+<p><span class="versionmodified deprecated">Deprecated since version 1.9.0: </span>Output arrays are sized dynamically. This attribute will be removed
+in Warp 1.19.</p>
+</div>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="warp.MarchingCubes.device">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">device</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/marching_cubes.py#L694-L704"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.MarchingCubes.device" title="Link to this definition">#</a></dt>
+<dd><p>Deprecated device value that is not used for extraction.</p>
+<div class="deprecated">
+<p><span class="versionmodified deprecated">Deprecated since version 1.9.0: </span>Use the input field’s <a class="reference internal" href="warp.array.html#warp.array.device" title="warp.array.device"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.array.device</span></code></a> instead. This
+attribute will be removed in Warp 1.19.</p>
+</div>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="warp.MarchingCubes.id">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">id</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/marching_cubes.py#L710-L719"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.MarchingCubes.id" title="Link to this definition">#</a></dt>
+<dd><p>Deprecated compatibility value that does not identify a resource.</p>
+<div class="deprecated">
+<p><span class="versionmodified deprecated">Deprecated since version 1.15.0: </span>This attribute has no replacement and will be removed in Warp 1.19.</p>
+</div>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="warp.MarchingCubes.runtime">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">runtime</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/marching_cubes.py#L725-L735"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.MarchingCubes.runtime" title="Link to this definition">#</a></dt>
+<dd><p>Deprecated compatibility reference that is not used.</p>
+<div class="deprecated">
+<p><span class="versionmodified deprecated">Deprecated since version 1.15.0: </span>Use public Warp APIs instead. This attribute will be removed in Warp
+1.19.</p>
+</div>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.MarchingCubes.resize">
-<span class="sig-name descname"><span class="pre">resize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nx</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ny</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nz</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_verts</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_tris</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/marching_cubes.py#L609-L626"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.MarchingCubes.resize" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">resize</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">nx</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">ny</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">nz</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_verts</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">_DEFAULT_ZERO</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_tris</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">_DEFAULT_ZERO</span></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/marching_cubes.py#L741-L784"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.MarchingCubes.resize" title="Link to this definition">#</a></dt>
 <dd><p>Update the grid dimensions for the context.</p>
 <p>This allows the instance to be reused for scalar fields of a different
 resolution. The new dimensions take effect on the next call to
@@ -717,8 +808,12 @@ resolution. The new dimensions take effect on the next call to
 <li><p><strong>nx</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – New number of nodes in the x-direction.</p></li>
 <li><p><strong>ny</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – New number of nodes in the y-direction.</p></li>
 <li><p><strong>nz</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – New number of nodes in the z-direction.</p></li>
-<li><p><strong>max_verts</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – (Deprecated) This argument is ignored.</p></li>
-<li><p><strong>max_tris</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – (Deprecated) This argument is ignored.</p></li>
+<li><p><strong>max_verts</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Deprecated since Warp 1.9 and scheduled for removal in
+Warp 1.19. Output arrays are sized dynamically; remove this
+argument from calls.</p></li>
+<li><p><strong>max_tris</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Deprecated since Warp 1.9 and scheduled for removal in Warp
+1.19. Output arrays are sized dynamically; remove this argument
+from calls.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
@@ -729,7 +824,7 @@ resolution. The new dimensions take effect on the next call to
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.MarchingCubes.surface">
-<span class="sig-name descname"><span class="pre">surface</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/marching_cubes.py#L627-L658"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.MarchingCubes.surface" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">surface</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">field</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/marching_cubes.py#L785-L816"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.MarchingCubes.surface" title="Link to this definition">#</a></dt>
 <dd><p>Compute a 2D surface mesh of a given isosurface from a 3D scalar field.</p>
 <p>This method is a convenience wrapper that calls the core static method
 and stores the resulting mesh data in the <a class="reference internal" href="#warp.MarchingCubes.verts" title="warp.MarchingCubes.verts"><code class="xref py py-attr docutils literal notranslate"><span class="pre">verts</span></code></a> and
@@ -763,7 +858,7 @@ and stores the resulting mesh data in the <a class="reference internal" href="#w
 <dd><em class="sig-param"><span class="n"><span class="pre">domain_bounds_upper_corner</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/marching_cubes.py#L659-L745"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.MarchingCubes.extract_surface_marching_cubes" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/marching_cubes.py#L817-L903"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.MarchingCubes.extract_surface_marching_cubes" title="Link to this definition">#</a></dt>
 <dd><p>Extract a triangular mesh from a 3D scalar field.</p>
 <p>This function generates an isosurface by processing the entire input <code class="docutils literal notranslate"><span class="pre">field</span></code>.
 The resolution of the output mesh is determined by the shape of the <code class="docutils literal notranslate"><span class="pre">field</span></code>
@@ -822,12 +917,12 @@ integers forms a single triangle by referencing vertices in the
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.tau_constant.html"
+       href="warp.DeterministicMode.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.tau</p>
+        <p class="prev-next-title">warp.DeterministicMode</p>
       </div>
     </a>
     <a class="right-next"
@@ -868,12 +963,16 @@ integers forms a single triangle by referencing vertices in the
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.MarchingCubes.domain_bounds_upper_corner"><code class="docutils literal notranslate"><span class="pre">domain_bounds_upper_corner</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.MarchingCubes.verts"><code class="docutils literal notranslate"><span class="pre">verts</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.MarchingCubes.indices"><code class="docutils literal notranslate"><span class="pre">indices</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.MarchingCubes.device"><code class="docutils literal notranslate"><span class="pre">device</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.MarchingCubes.__init__"><code class="docutils literal notranslate"><span class="pre">__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.MarchingCubes.CUBE_CORNER_OFFSETS"><code class="docutils literal notranslate"><span class="pre">CUBE_CORNER_OFFSETS</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.MarchingCubes.EDGE_TO_CORNERS"><code class="docutils literal notranslate"><span class="pre">EDGE_TO_CORNERS</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.MarchingCubes.CASE_TO_TRI_RANGE"><code class="docutils literal notranslate"><span class="pre">CASE_TO_TRI_RANGE</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.MarchingCubes.TRI_LOCAL_INDICES"><code class="docutils literal notranslate"><span class="pre">TRI_LOCAL_INDICES</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.MarchingCubes.max_verts"><code class="docutils literal notranslate"><span class="pre">max_verts</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.MarchingCubes.max_tris"><code class="docutils literal notranslate"><span class="pre">max_tris</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.MarchingCubes.device"><code class="docutils literal notranslate"><span class="pre">device</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.MarchingCubes.id"><code class="docutils literal notranslate"><span class="pre">id</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.MarchingCubes.runtime"><code class="docutils literal notranslate"><span class="pre">runtime</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.MarchingCubes.resize"><code class="docutils literal notranslate"><span class="pre">resize()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.MarchingCubes.surface"><code class="docutils literal notranslate"><span class="pre">surface()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.MarchingCubes.extract_surface_marching_cubes"><code class="docutils literal notranslate"><span class="pre">extract_surface_marching_cubes()</span></code></a></li>
@@ -886,7 +985,7 @@ integers forms a single triangle by referencing vertices in the
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/release-1.14/docs/api_reference/_generated/warp.MarchingCubes.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/release-1.15/docs/api_reference/_generated/warp.MarchingCubes.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

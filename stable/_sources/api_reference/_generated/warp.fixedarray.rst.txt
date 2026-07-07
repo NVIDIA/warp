@@ -40,6 +40,7 @@
    .. autosummary::
    
       ~fixedarray.grad
+      ~fixedarray.memory_kind
       ~fixedarray.requires_grad
       ~fixedarray.retain_grad
       ~fixedarray.vars

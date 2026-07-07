@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Installation &#8212; Warp 1.14.0</title>
+    <title>Installation &#8212; Warp 1.15.0</title>
   
   
   
@@ -44,7 +44,7 @@
 
 
 
-    <script src="../_static/documentation_options.js?v=42a3b5f3"></script>
+    <script src="../_static/documentation_options.js?v=e6db31ea"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -53,7 +53,7 @@
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.14';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.15';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
@@ -68,7 +68,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.14.0" />
+  <meta name="docsearch:version" content="1.15.0" />
 
 
   </head>
@@ -139,11 +139,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.14.0</p>
+    <p class="title logo__title">Warp 1.15.0</p>
   
 </a></div>
     
@@ -278,11 +278,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.14.0</p>
+    <p class="title logo__title">Warp 1.15.0</p>
   
 </a>
 
@@ -387,7 +387,9 @@
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deterministic_execution.html">Deterministic Execution</a></li>
 <li class="toctree-l1"><a class="reference internal" href="limitations.html">Limitations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="contribution_guide.html">Contribution Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="publications.html">Publications using Warp</a></li>
@@ -546,13 +548,13 @@ the <code class="docutils literal notranslate"><span class="pre">pip</span> <spa
 </thead>
 <tbody>
 <tr class="row-even"><td><p>Linux aarch64</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">https://github.com/NVIDIA/warp/releases/download/v1.14.0/warp_lang-1.14.0+cu13-py3-none-manylinux_2_34_aarch64.whl</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">https://github.com/NVIDIA/warp/releases/download/v1.15.0/warp_lang-1.15.0+cu13-py3-none-manylinux_2_34_aarch64.whl</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p>Linux x86-64</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">https://github.com/NVIDIA/warp/releases/download/v1.14.0/warp_lang-1.14.0+cu13-py3-none-manylinux_2_28_x86_64.whl</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">https://github.com/NVIDIA/warp/releases/download/v1.15.0/warp_lang-1.15.0+cu13-py3-none-manylinux_2_28_x86_64.whl</span></code></p></td>
 </tr>
 <tr class="row-even"><td><p>Windows x86-64</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">https://github.com/NVIDIA/warp/releases/download/v1.14.0/warp_lang-1.14.0+cu13-py3-none-win_amd64.whl</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">https://github.com/NVIDIA/warp/releases/download/v1.15.0/warp_lang-1.15.0+cu13-py3-none-win_amd64.whl</span></code></p></td>
 </tr>
 </tbody>
 </table>
@@ -620,7 +622,6 @@ The <code class="docutils literal notranslate"><span class="pre">[examples]</spa
 <ul class="simple">
 <li><p>(Windows) Microsoft Visual Studio, minimum version 2019</p></li>
 <li><p>(Linux) GCC, minimum version 9.4</p></li>
-<li><p>(Linux) Python development headers, e.g. <code class="docutils literal notranslate"><span class="pre">libpython3-dev</span></code> (v3.10+)</p></li>
 <li><p><a class="reference external" href="https://developer.nvidia.com/cuda-toolkit">CUDA Toolkit</a>, minimum version 12.0</p></li>
 <li><p><a class="reference external" href="https://git-lfs.com">Git Large File Storage</a></p></li>
 </ul>
@@ -646,6 +647,74 @@ pass <code class="docutils literal notranslate"><span class="pre">--use-dynamic-
 </div>
 <p>The <code class="docutils literal notranslate"><span class="pre">-e</span></code> option is optional but ensures that subsequent modifications to the
 library will be reflected in the Python package.</p>
+<section id="cmake-build">
+<h3>CMake build<a class="headerlink" href="#cmake-build" title="Link to this heading">#</a></h3>
+<p>Developers who have CMake installed can use the alternate CMake build path.
+This builds the native Warp libraries in place, like <code class="docutils literal notranslate"><span class="pre">build_lib.py</span></code>, while
+letting CMake and the selected generator handle parallel and incremental
+rebuilds.
+The commands shown below require CMake 3.24 or newer and Ninja. CMake also uses
+a Python 3.10+ environment with NumPy installed to regenerate derived native
+headers. By default, CMake may fetch LLVM and <code class="docutils literal notranslate"><span class="pre">libmathdx</span></code> through Packman
+unless explicit paths are provided or the corresponding features are disabled
+(<code class="docutils literal notranslate"><span class="pre">-DWARP_BUILD_CLANG=OFF</span></code> for LLVM, <code class="docutils literal notranslate"><span class="pre">-DWARP_USE_LIBMATHDX=OFF</span></code> for
+<code class="docutils literal notranslate"><span class="pre">libmathdx</span></code>, or <code class="docutils literal notranslate"><span class="pre">-DWARP_ENABLE_CUDA=OFF</span></code> for a CPU-only build).</p>
+<p>From the repository root, the recommended path uses
+<a class="reference external" href="https://docs.astral.sh/uv/">uv</a> to prepare the Python environment before
+configuring and building:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>uv<span class="w"> </span>sync<span class="w"> </span>--no-install-project
+<span class="gp">$ </span>cmake<span class="w"> </span>-S<span class="w"> </span>.<span class="w"> </span>-B<span class="w"> </span>_build/cmake<span class="w"> </span>-G<span class="w"> </span>Ninja
+<span class="gp">$ </span>cmake<span class="w"> </span>--build<span class="w"> </span>_build/cmake<span class="w"> </span>--parallel
+</pre></div>
+</div>
+<p>Without <code class="docutils literal notranslate"><span class="pre">uv</span></code>, use a Python environment you manage and install NumPy before
+running the CMake commands:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>numpy
+<span class="gp">$ </span>cmake<span class="w"> </span>-S<span class="w"> </span>.<span class="w"> </span>-B<span class="w"> </span>_build/cmake<span class="w"> </span>-G<span class="w"> </span>Ninja
+<span class="gp">$ </span>cmake<span class="w"> </span>--build<span class="w"> </span>_build/cmake<span class="w"> </span>--parallel
+</pre></div>
+</div>
+<p>Upon success, the CMake build writes the native libraries to <code class="docutils literal notranslate"><span class="pre">warp/bin/</span></code>.
+The default CMake build enables CUDA on Linux and Windows, disables CUDA on
+macOS, and builds both <code class="docutils literal notranslate"><span class="pre">warp</span></code> and <code class="docutils literal notranslate"><span class="pre">warp-clang</span></code>. Pass
+<code class="docutils literal notranslate"><span class="pre">-DWARP_ENABLE_CUDA=OFF</span></code> for a CPU-only CMake build. CUDA builds default to a
+single PTX target for fast local builds; use <code class="docutils literal notranslate"><span class="pre">CMAKE_CUDA_ARCHITECTURES</span></code> to
+select different GPU architectures. Use <code class="docutils literal notranslate"><span class="pre">build_lib.py</span></code> for release builds
+that need Warp’s full GPU architecture coverage.</p>
+<p>To use a specific CUDA Toolkit:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>cmake<span class="w"> </span>-S<span class="w"> </span>.<span class="w"> </span>-B<span class="w"> </span>_build/cmake<span class="w"> </span>-G<span class="w"> </span>Ninja<span class="w"> </span>-DWARP_CUDA_PATH<span class="o">=</span>/usr/local/cuda
+<span class="gp">$ </span>cmake<span class="w"> </span>--build<span class="w"> </span>_build/cmake<span class="w"> </span>--parallel
+</pre></div>
+</div>
+<p>To link against shared CUDA libraries in the CMake build:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>cmake<span class="w"> </span>-S<span class="w"> </span>.<span class="w"> </span>-B<span class="w"> </span>_build/cmake<span class="w"> </span>-G<span class="w"> </span>Ninja<span class="w"> </span>-DWARP_USE_DYNAMIC_CUDA<span class="o">=</span>ON
+<span class="gp">$ </span>cmake<span class="w"> </span>--build<span class="w"> </span>_build/cmake<span class="w"> </span>--parallel
+</pre></div>
+</div>
+<p>The corresponding shared CUDA libraries, including <code class="docutils literal notranslate"><span class="pre">libnvptxcompiler</span></code>, must
+be available at runtime when using this option.</p>
+<p>To use an existing LLVM installation for <code class="docutils literal notranslate"><span class="pre">warp-clang</span></code>:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>cmake<span class="w"> </span>-S<span class="w"> </span>.<span class="w"> </span>-B<span class="w"> </span>_build/cmake<span class="w"> </span>-G<span class="w"> </span>Ninja<span class="w"> </span>-DWARP_LLVM_PATH<span class="o">=</span>/opt/llvm
+<span class="gp">$ </span>cmake<span class="w"> </span>--build<span class="w"> </span>_build/cmake<span class="w"> </span>--parallel
+</pre></div>
+</div>
+<p>To use an existing <code class="docutils literal notranslate"><span class="pre">libmathdx</span></code> installation:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>cmake<span class="w"> </span>-S<span class="w"> </span>.<span class="w"> </span>-B<span class="w"> </span>_build/cmake<span class="w"> </span>-G<span class="w"> </span>Ninja<span class="w"> </span>-DWARP_LIBMATHDX_PATH<span class="o">=</span>/path/to/libmathdx
+<span class="gp">$ </span>cmake<span class="w"> </span>--build<span class="w"> </span>_build/cmake<span class="w"> </span>--parallel
+</pre></div>
+</div>
+<p>To build for specific CUDA architectures:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>cmake<span class="w"> </span>-S<span class="w"> </span>.<span class="w"> </span>-B<span class="w"> </span>_build/cmake<span class="w"> </span>-G<span class="w"> </span>Ninja<span class="w"> </span>-DCMAKE_CUDA_ARCHITECTURES<span class="o">=</span><span class="s2">&quot;86;89&quot;</span>
+<span class="gp">$ </span>cmake<span class="w"> </span>--build<span class="w"> </span>_build/cmake<span class="w"> </span>--parallel
+</pre></div>
+</div>
+<p>After building, verify that the libraries can be loaded:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import warp; warp.print_diagnostics()&quot;</span>
+</pre></div>
+</div>
+<p>The CMake path is a native library build path only. It does not replace the
+Python package build backend used for wheels.</p>
+</section>
 </section>
 <section id="conda-environments">
 <span id="conda"></span><h2>Conda Environments<a class="headerlink" href="#conda-environments" title="Link to this heading">#</a></h2>
@@ -892,7 +961,10 @@ for more details on how to use Warp in Omniverse.</p>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#dependencies">Dependencies</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#building-from-source">Building from Source</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#building-from-source">Building from Source</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#cmake-build">CMake build</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#conda-environments">Conda Environments</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#using-warp-in-docker">Using Warp in Docker</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#building-warp-from-source-in-docker">Building Warp from source in Docker</a></li>
@@ -906,7 +978,7 @@ for more details on how to use Warp in Omniverse.</p>
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/release-1.14/docs/user_guide/installation.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/release-1.15/docs/user_guide/installation.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

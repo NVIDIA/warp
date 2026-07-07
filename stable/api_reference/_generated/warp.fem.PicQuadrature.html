@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.fem.PicQuadrature &#8212; Warp 1.14.0</title>
+    <title>warp.fem.PicQuadrature &#8212; Warp 1.15.0</title>
   
   
   
@@ -44,7 +44,7 @@
 
 
 
-    <script src="../../_static/documentation_options.js?v=42a3b5f3"></script>
+    <script src="../../_static/documentation_options.js?v=e6db31ea"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -53,7 +53,7 @@
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.14';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.15';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
@@ -68,7 +68,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.14.0" />
+  <meta name="docsearch:version" content="1.15.0" />
 
 
   </head>
@@ -139,11 +139,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.14.0</p>
+    <p class="title logo__title">Warp 1.15.0</p>
   
 </a></div>
     
@@ -278,11 +278,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.14.0</p>
+    <p class="title logo__title">Warp 1.15.0</p>
   
 </a>
 
@@ -387,7 +387,9 @@
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/deterministic_execution.html">Deterministic Execution</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/limitations.html">Limitations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/contribution_guide.html">Contribution Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/publications.html">Publications using Warp</a></li>
@@ -508,7 +510,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">temporary_store</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/fem/quadrature/pic_quadrature.py#L28-L513"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/fem/quadrature/pic_quadrature.py#L28-L513"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature" title="Link to this definition">#</a></dt>
 <dd><p>Particle-based quadrature formula, using a global set of points unevenly spread out over geometry elements.</p>
 <p>Useful for Particle-In-Cell and derived methods (Material Point Method, Generalized Interpolation Material Point Method, etc).</p>
 <dl class="field-list simple">
@@ -549,7 +551,7 @@ but prevents changing the quadrature domain a-posteriori.</p></li>
 <dd><em class="sig-param"><span class="n"><span class="pre">temporary_store</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/fem/quadrature/pic_quadrature.py#L52-L111"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.__init__" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/fem/quadrature/pic_quadrature.py#L52-L111"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.__init__" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -643,62 +645,62 @@ but prevents changing the quadrature domain a-posteriori.</p></li>
 </div>
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.PicQuadrature.name">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">name</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/fem/quadrature/pic_quadrature.py#L112-L117"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.name" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">name</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/fem/quadrature/pic_quadrature.py#L112-L117"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.name" title="Link to this definition">#</a></dt>
 <dd><p>Unique name of the quadrature rule.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.PicQuadrature.domain">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">domain</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/fem/quadrature/quadrature.py#L41-L45"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.domain" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">domain</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/fem/quadrature/quadrature.py#L41-L45"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.domain" title="Link to this definition">#</a></dt>
 <dd><p>Domain over which this quadrature is defined</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.PicQuadrature.fill_arg">
-<span class="sig-name descname"><span class="pre">fill_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/fem/quadrature/pic_quadrature.py#L146-L152"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.fill_arg" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">fill_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/fem/quadrature/pic_quadrature.py#L146-L152"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.fill_arg" title="Link to this definition">#</a></dt>
 <dd><p>Fill the quadrature argument structure for device functions.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.PicQuadrature.total_point_count">
-<span class="sig-name descname"><span class="pre">total_point_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/fem/quadrature/pic_quadrature.py#L153-L156"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.total_point_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">total_point_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/fem/quadrature/pic_quadrature.py#L153-L156"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.total_point_count" title="Link to this definition">#</a></dt>
 <dd><p>Number of unique quadrature points.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.PicQuadrature.evaluation_point_count">
-<span class="sig-name descname"><span class="pre">evaluation_point_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/fem/quadrature/pic_quadrature.py#L157-L162"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.evaluation_point_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">evaluation_point_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/fem/quadrature/pic_quadrature.py#L157-L162"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.evaluation_point_count" title="Link to this definition">#</a></dt>
 <dd><p>Number of locations at which the quadrature rule is evaluated.
 Quadrature points belonging to multiple cells are counted multiple times.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.PicQuadrature.active_cell_count">
-<span class="sig-name descname"><span class="pre">active_cell_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/fem/quadrature/pic_quadrature.py#L163-L166"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.active_cell_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">active_cell_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/fem/quadrature/pic_quadrature.py#L163-L166"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.active_cell_count" title="Link to this definition">#</a></dt>
 <dd><p>Number of cells containing at least one particle</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.PicQuadrature.max_points_per_element">
-<span class="sig-name descname"><span class="pre">max_points_per_element</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/fem/quadrature/pic_quadrature.py#L167-L180"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.max_points_per_element" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">max_points_per_element</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/fem/quadrature/pic_quadrature.py#L167-L180"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.max_points_per_element" title="Link to this definition">#</a></dt>
 <dd><p>Maximum number of quadrature points per element.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.PicQuadrature.cell_particle_offsets">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cell_particle_offsets</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/fem/quadrature/pic_quadrature.py#L181-L185"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.cell_particle_offsets" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cell_particle_offsets</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/fem/quadrature/pic_quadrature.py#L181-L185"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.cell_particle_offsets" title="Link to this definition">#</a></dt>
 <dd><p>Postfix sum of the number of particles in each cell</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.PicQuadrature.cell_particle_indices">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cell_particle_indices</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/fem/quadrature/pic_quadrature.py#L186-L190"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.cell_particle_indices" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cell_particle_indices</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/fem/quadrature/pic_quadrature.py#L186-L190"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.cell_particle_indices" title="Link to this definition">#</a></dt>
 <dd><p>Indices of the particles in each cell</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.PicQuadrature.fill_element_mask">
-<span class="sig-name descname"><span class="pre">fill_element_mask</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mask</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/fem/quadrature/pic_quadrature.py#L258-L271"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.fill_element_mask" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">fill_element_mask</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mask</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/fem/quadrature/pic_quadrature.py#L258-L271"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.PicQuadrature.fill_element_mask" title="Link to this definition">#</a></dt>
 <dd><p>Fills a mask array such that all non-empty elements are set to 1, all empty elements to zero.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -781,7 +783,7 @@ Quadrature points belonging to multiple cells are counted multiple times.</p>
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/release-1.14/docs/api_reference/_generated/warp.fem.PicQuadrature.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/release-1.15/docs/api_reference/_generated/warp.fem.PicQuadrature.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

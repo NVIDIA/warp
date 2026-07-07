@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.Device &#8212; Warp 1.14.0</title>
+    <title>warp.Device &#8212; Warp 1.15.0</title>
   
   
   
@@ -44,7 +44,7 @@
 
 
 
-    <script src="../../_static/documentation_options.js?v=42a3b5f3"></script>
+    <script src="../../_static/documentation_options.js?v=e6db31ea"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -53,7 +53,7 @@
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.14';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.15';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
@@ -68,7 +68,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.14.0" />
+  <meta name="docsearch:version" content="1.15.0" />
 
 
   </head>
@@ -139,11 +139,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.14.0</p>
+    <p class="title logo__title">Warp 1.15.0</p>
   
 </a></div>
     
@@ -278,11 +278,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.14.0</p>
+    <p class="title logo__title">Warp 1.15.0</p>
   
 </a>
 
@@ -387,7 +387,9 @@
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/deterministic_execution.html">Deterministic Execution</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/limitations.html">Limitations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/contribution_guide.html">Contribution Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/publications.html">Publications using Warp</a></li>
@@ -495,7 +497,7 @@
 <h1>warp.Device<a class="headerlink" href="#warp-device" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.Device">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Device</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">runtime</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alias</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ordinal</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_primary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">context</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/context.py#L3812-L4282"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Device" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Device</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">runtime</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alias</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ordinal</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">is_primary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">context</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/context.py#L4621-L5112"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Device" title="Link to this definition">#</a></dt>
 <dd><p>A device to allocate Warp arrays and to launch kernels on.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Device.ordinal">
@@ -597,8 +599,34 @@ managed-memory allocations. <code class="docutils literal notranslate"><span cla
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Device.is_cpu_gpu_atomic_supported">
 <span class="sig-name descname"><span class="pre">is_cpu_gpu_atomic_supported</span></span><a class="headerlink" href="#warp.Device.is_cpu_gpu_atomic_supported" title="Link to this definition">#</a></dt>
-<dd><p>Indicates whether native atomic operations between CPU and GPU memory
-are supported on this device. <code class="docutils literal notranslate"><span class="pre">False</span></code> for CPU devices.</p>
+<dd><p>Indicates whether the CUDA device reports native CPU/GPU atomic
+hardware capability. This is not a guarantee that Warp <code class="docutils literal notranslate"><span class="pre">warp.atomic_*</span></code> operations can be used
+concurrently from CPU and GPU kernels; current CPU-side Warp atomics are not hardware atomics.
+<code class="docutils literal notranslate"><span class="pre">False</span></code> for CPU devices.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool">bool</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.Device.is_managed_memory_supported">
+<span class="sig-name descname"><span class="pre">is_managed_memory_supported</span></span><a class="headerlink" href="#warp.Device.is_managed_memory_supported" title="Link to this definition">#</a></dt>
+<dd><p>Indicates whether the CUDA device supports managed-memory allocations.
+<code class="docutils literal notranslate"><span class="pre">False</span></code> for CPU devices.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool">bool</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.Device.is_concurrent_managed_access_supported">
+<span class="sig-name descname"><span class="pre">is_concurrent_managed_access_supported</span></span><a class="headerlink" href="#warp.Device.is_concurrent_managed_access_supported" title="Link to this definition">#</a></dt>
+<dd><p>Indicates whether the CUDA device supports concurrent managed
+memory access. <code class="docutils literal notranslate"><span class="pre">False</span></code> for CPU devices.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool">bool</a></p>
@@ -693,7 +721,7 @@ generate CUDA binary files (cubin) for this device’s architecture. <code class
 <dd><em class="sig-param"><span class="n"><span class="pre">context</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/context.py#L3852-L3969"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Device.__init__" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/context.py#L4667-L4790"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Device.__init__" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <p class="rubric">Methods</p>
@@ -739,7 +767,7 @@ generate CUDA binary files (cubin) for this device’s architecture. <code class
 <td><p>A boolean indicating whether the device has a stream associated with it.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#warp.Device.is_capturing" title="warp.Device.is_capturing"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_capturing</span></code></a></p></td>
-<td><p>A boolean indicating whether this device's default stream is currently capturing a graph.</p></td>
+<td><p>A boolean indicating whether this device is currently capturing a graph.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#warp.Device.is_cpu" title="warp.Device.is_cpu"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_cpu</span></code></a></p></td>
 <td><p>A boolean indicating whether the device is a CPU device.</p></td>
@@ -758,7 +786,7 @@ generate CUDA binary files (cubin) for this device’s architecture. <code class
 </div>
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Device.get_allocator">
-<span class="sig-name descname"><span class="pre">get_allocator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pinned</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/context.py#L3970-L3991"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Device.get_allocator" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_allocator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pinned</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/context.py#L4791-L4812"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Device.get_allocator" title="Link to this definition">#</a></dt>
 <dd><p>Get the memory allocator for this device.</p>
 <p>For CUDA devices, returns the custom allocator if one has been set via
 <a class="reference internal" href="warp.set_device_allocator.html#warp.set_device_allocator" title="warp.set_device_allocator"><code class="xref py py-func docutils literal notranslate"><span class="pre">set_device_allocator()</span></code></a> or <a class="reference internal" href="warp.set_cuda_allocator.html#warp.set_cuda_allocator" title="warp.set_cuda_allocator"><code class="xref py py-func docutils literal notranslate"><span class="pre">set_cuda_allocator()</span></code></a>, otherwise
@@ -774,37 +802,39 @@ devices.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.Device.is_cpu">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_cpu</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/context.py#L4000-L4004"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Device.is_cpu" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_cpu</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/context.py#L4821-L4825"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Device.is_cpu" title="Link to this definition">#</a></dt>
 <dd><p>A boolean indicating whether the device is a CPU device.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.Device.is_cuda">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_cuda</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/context.py#L4005-L4009"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Device.is_cuda" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_cuda</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/context.py#L4826-L4830"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Device.is_cuda" title="Link to this definition">#</a></dt>
 <dd><p>A boolean indicating whether the device is a CUDA device.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.Device.is_capturing">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_capturing</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/context.py#L4010-L4021"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Device.is_capturing" title="Link to this definition">#</a></dt>
-<dd><p>A boolean indicating whether this device’s default stream is currently capturing a graph.</p>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_capturing</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/context.py#L4831-L4851"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Device.is_capturing" title="Link to this definition">#</a></dt>
+<dd><p>A boolean indicating whether this device is currently capturing a graph.</p>
+<p>For CUDA devices this reflects CUDA stream capture; for the CPU device it reflects
+an active APIC graph capture (which does not use a CUDA stream).</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.Device.context">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">context</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/context.py#L4022-L4039"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Device.context" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">context</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/context.py#L4852-L4869"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Device.context" title="Link to this definition">#</a></dt>
 <dd><p>The context associated with the device.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.Device.has_context">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">has_context</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/context.py#L4040-L4044"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Device.has_context" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">has_context</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/context.py#L4870-L4874"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Device.has_context" title="Link to this definition">#</a></dt>
 <dd><p>A boolean indicating whether the device has a CUDA context associated with it.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.Device.stream">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">stream</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Stream.html#warp.Stream" title="warp._src.context.Stream"><span class="pre">Stream</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/context.py#L4045-L4056"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Device.stream" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">stream</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Stream.html#warp.Stream" title="warp._src.context.Stream"><span class="pre">Stream</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/context.py#L4875-L4886"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Device.stream" title="Link to this definition">#</a></dt>
 <dd><p>The stream associated with a CUDA device.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Raises<span class="colon">:</span></dt>
@@ -815,7 +845,7 @@ devices.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Device.set_stream">
-<span class="sig-name descname"><span class="pre">set_stream</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stream</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sync</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/context.py#L4061-L4085"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Device.set_stream" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">set_stream</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stream</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sync</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/context.py#L4891-L4915"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Device.set_stream" title="Link to this definition">#</a></dt>
 <dd><p>Set the current stream for this CUDA device.</p>
 <p>The current stream will be used by default for all kernel launches and
 memory operations on this device.</p>
@@ -838,13 +868,13 @@ synchronization with the device’s previous current stream.</p></li>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.Device.has_stream">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">has_stream</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/context.py#L4086-L4090"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Device.has_stream" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">has_stream</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/context.py#L4916-L4920"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Device.has_stream" title="Link to this definition">#</a></dt>
 <dd><p>A boolean indicating whether the device has a stream associated with it.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.Device.total_memory">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">total_memory</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/context.py#L4091-L4115"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Device.total_memory" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">total_memory</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/context.py#L4921-L4945"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Device.total_memory" title="Link to this definition">#</a></dt>
 <dd><p>The total amount of device memory available in bytes.</p>
 <p>Querying memory information for the CPU device requires the <cite>psutil</cite> package to be installed
 and will return 0 otherwise.</p>
@@ -852,7 +882,7 @@ and will return 0 otherwise.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.Device.free_memory">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">free_memory</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/context.py#L4116-L4140"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Device.free_memory" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">free_memory</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/context.py#L4946-L4970"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Device.free_memory" title="Link to this definition">#</a></dt>
 <dd><p>The amount of memory on the device that is free according to the OS in bytes.</p>
 <p>Querying memory information for the CPU device requires the <cite>psutil</cite> package to be installed
 and will return 0 otherwise.</p>
@@ -860,21 +890,21 @@ and will return 0 otherwise.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Device.make_current">
-<span class="sig-name descname"><span class="pre">make_current</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/context.py#L4160-L4163"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Device.make_current" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">make_current</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/context.py#L4990-L4993"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Device.make_current" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Device.can_access">
-<span class="sig-name descname"><span class="pre">can_access</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/context.py#L4164-L4195"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Device.can_access" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">can_access</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/context.py#L4994-L5025"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Device.can_access" title="Link to this definition">#</a></dt>
 <dd><p>Return whether this device can access the current built-in allocator for another device.</p>
 <p>This is a coarse device-level query. It does not inspect a specific allocation, so it does not answer
-whether an existing array can be accessed. Use <a class="reference internal" href="warp.can_access.html#warp.can_access" title="warp.can_access"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.can_access()</span></code></a> when allocation-specific Warp array
+whether an existing array can be accessed. Use <a class="reference internal" href="warp.can_access.html#warp.can_access" title="warp.can_access"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.can_access()</span></code></a> when memory-kind-specific Warp array
 logic is needed, such as for pinned CPU arrays or CUDA memory-pool allocations.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Device.get_cuda_output_format">
-<span class="sig-name descname"><span class="pre">get_cuda_output_format</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">preferred_cuda_output</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/context.py#L4196-L4241"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Device.get_cuda_output_format" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_cuda_output_format</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">preferred_cuda_output</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/context.py#L5026-L5071"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Device.get_cuda_output_format" title="Link to this definition">#</a></dt>
 <dd><p>Determine the CUDA output format to use for this device.</p>
 <p>This method is intended for internal use by Warp’s compilation system.
 External users should not need to call this method directly.</p>
@@ -896,7 +926,7 @@ If <code class="docutils literal notranslate"><span class="pre">None</span></cod
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Device.get_cuda_compile_arch">
-<span class="sig-name descname"><span class="pre">get_cuda_compile_arch</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/context.py#L4242-L4273"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Device.get_cuda_compile_arch" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_cuda_compile_arch</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/context.py#L5072-L5103"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Device.get_cuda_compile_arch" title="Link to this definition">#</a></dt>
 <dd><p>Get the CUDA architecture to use when compiling code for this device.</p>
 <p>This method is intended for internal use by Warp’s compilation system.
 External users should not need to call this method directly.</p>
@@ -980,6 +1010,8 @@ or <code class="docutils literal notranslate"><span class="pre">None</span></cod
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Device.is_cpu_memory_access_from_gpu_supported"><code class="docutils literal notranslate"><span class="pre">is_cpu_memory_access_from_gpu_supported</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Device.is_gpu_memory_access_from_cpu_supported"><code class="docutils literal notranslate"><span class="pre">is_gpu_memory_access_from_cpu_supported</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Device.is_cpu_gpu_atomic_supported"><code class="docutils literal notranslate"><span class="pre">is_cpu_gpu_atomic_supported</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Device.is_managed_memory_supported"><code class="docutils literal notranslate"><span class="pre">is_managed_memory_supported</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Device.is_concurrent_managed_access_supported"><code class="docutils literal notranslate"><span class="pre">is_concurrent_managed_access_supported</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Device.is_cubin_supported"><code class="docutils literal notranslate"><span class="pre">is_cubin_supported</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Device.is_mempool_supported"><code class="docutils literal notranslate"><span class="pre">is_mempool_supported</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Device.is_ipc_supported"><code class="docutils literal notranslate"><span class="pre">is_ipc_supported</span></code></a></li>
@@ -1011,7 +1043,7 @@ or <code class="docutils literal notranslate"><span class="pre">None</span></cod
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/release-1.14/docs/api_reference/_generated/warp.Device.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/release-1.15/docs/api_reference/_generated/warp.Device.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

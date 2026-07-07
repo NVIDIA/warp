@@ -9,4 +9,8 @@
       * Kernel
       * Python
 
-   Uniformly sample a unit hemisphere.
+   Uniformly sample a point inside the unit hemisphere (radius <= 1, z >= 0).
+   
+   Returns a ``vec3``. In a kernel, advances ``state`` in
+   place; called from the Python scope, it does not modify ``state``, so repeated
+   calls with the same ``state`` return the same point (see :func:`rand_init`).

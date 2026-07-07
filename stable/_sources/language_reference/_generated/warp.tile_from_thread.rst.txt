@@ -58,6 +58,17 @@
    
        [ 0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15]
    
+   The output above assumes GPU execution. On CPU, ``wp.block_dim()`` returns ``1``,
+   so ``offset`` becomes ``i * 1`` instead of ``i * TILE_SIZE``, and
+   ``thread_idx=wp.block_dim() - 1`` selects thread ``0``. The CPU output is:
+   
+   .. code-block:: text
+   
+       [0 1 2 3 4 5 6 7 1 2 3 4 5 6 7 8]
+   
+   See :ref:`CPU Tile Semantics <cpu_tile_semantics>` for more detail on the CPU/GPU
+   differences that affect portable tile code.
+   
 
 .. function:: warp._src.lang.tile_from_thread(shape: int32, value: Any, thread_idx: int32, storage: str) -> Tile[Any, tuple[int, ...]]
    :noindex:

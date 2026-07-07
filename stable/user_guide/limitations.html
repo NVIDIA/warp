@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Limitations &#8212; Warp 1.14.0</title>
+    <title>Limitations &#8212; Warp 1.15.0</title>
   
   
   
@@ -44,7 +44,7 @@
 
 
 
-    <script src="../_static/documentation_options.js?v=42a3b5f3"></script>
+    <script src="../_static/documentation_options.js?v=e6db31ea"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -54,7 +54,7 @@
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.14';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.15';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
@@ -64,12 +64,12 @@
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Contribution Guide" href="contribution_guide.html" />
-    <link rel="prev" title="Debugging" href="debugging.html" />
+    <link rel="prev" title="Deterministic Execution" href="deterministic_execution.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.14.0" />
+  <meta name="docsearch:version" content="1.15.0" />
 
 
   </head>
@@ -140,11 +140,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.14.0</p>
+    <p class="title logo__title">Warp 1.15.0</p>
   
 </a></div>
     
@@ -279,11 +279,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.14.0</p>
+    <p class="title logo__title">Warp 1.15.0</p>
   
 </a>
 
@@ -388,7 +388,9 @@
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deterministic_execution.html">Deterministic Execution</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Limitations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="contribution_guide.html">Contribution Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="publications.html">Publications using Warp</a></li>
@@ -512,6 +514,8 @@ Problems, questions, and feature requests can be opened on <a class="reference e
 <li><p><a class="reference internal" href="../language_reference/_generated/warp.atomic_add.html#warp._src.lang.atomic_add" title="warp._src.lang.atomic_add"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.atomic_add()</span></code></a> does not support <a class="reference internal" href="../api_reference/_generated/warp.float16.html#warp.float16" title="warp.float16"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.float16</span></code></a> or
 <a class="reference internal" href="../api_reference/_generated/warp.bfloat16.html#warp.bfloat16" title="warp.bfloat16"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.bfloat16</span></code></a> on GPUs with compute capability below 7.0.
 On such devices, the function will return <code class="docutils literal notranslate"><span class="pre">0.0</span></code> without modifying the target memory.</p></li>
+<li><p>Using <code class="docutils literal notranslate"><span class="pre">wp.atomic_add()</span></code> or related functions on the same memory address from
+overlapping CPU and GPU kernels is currently unsupported.</p></li>
 <li><p><a class="reference internal" href="../language_reference/_generated/warp.tid.html#warp._src.lang.tid" title="warp._src.lang.tid"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tid()</span></code></a> cannot be called from user functions.</p></li>
 <li><p>Modifying the value of a <a class="reference internal" href="../api_reference/_generated/warp.constant.html#warp.constant" title="warp.constant"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.constant()</span></code></a> during runtime will not trigger
 recompilation of the affected kernels if the modules have already been loaded
@@ -522,6 +526,13 @@ To preserve full 64-bit precision, wrap the constant in an explicit type constru
 (e.g., <code class="docutils literal notranslate"><span class="pre">wp.float64(wp.PI)</span></code> or <code class="docutils literal notranslate"><span class="pre">wp.int64(large_value)</span></code>).</p></li>
 <li><p>Python <code class="docutils literal notranslate"><span class="pre">IntFlag</span></code> values behave like raw integers in Warp kernels: bitwise negation (<code class="docutils literal notranslate"><span class="pre">~</span></code>)
 produces the integer negation, not a masked combination of flags as in standard Python <code class="docutils literal notranslate"><span class="pre">IntFlag</span></code> behavior.</p></li>
+<li><p><a class="reference internal" href="basics.html#callable-parameters"><span class="std std-ref">Function parameters</span></a> in user functions only support direct inline calls with
+user-defined <a class="reference internal" href="../api_reference/_generated/warp.func.html#warp.func" title="warp.func"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.func</span></code></a> functions and simple built-in Warp functions such as <code class="docutils literal notranslate"><span class="pre">wp.sin</span></code>,
+<code class="docutils literal notranslate"><span class="pre">wp.cos</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.sqrt</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.add</span></code>, and <code class="docutils literal notranslate"><span class="pre">wp.min</span></code>.
+Arbitrary Python callables are not supported. Some built-in Warp functions, such as <code class="docutils literal notranslate"><span class="pre">wp.printf</span></code>, cannot be used
+as <code class="docutils literal notranslate"><span class="pre">wp.Function</span></code> arguments because they need special handling during kernel compilation.
+Rebinding a function-valued local to a different function or to a non-function value is not supported.
+User functions with <code class="docutils literal notranslate"><span class="pre">wp.Function</span></code> parameters also cannot define custom gradient or replay functions.</p></li>
 </ul>
 <p>A limitation of Warp is that each dimension of the grid used to launch a kernel must be representable as a 32-bit
 signed integer. Therefore, no single dimension of a grid should exceed <span class="math notranslate nohighlight">\(2^{31}-1\)</span>.</p>
@@ -545,15 +556,18 @@ able to process one Warp-grid element per CUDA thread.</p>
 <ul class="simple">
 <li><p>Arrays can have a maximum of four dimensions.</p></li>
 <li><p>Each dimension of a Warp array cannot be greater than the maximum value representable by a 32-bit signed integer,
-<span class="math notranslate nohighlight">\(2^{31}-1\)</span>.</p></li>
+<span class="math notranslate nohighlight">\(2^{31}-1\)</span>. As a result, one-dimensional Warp arrays cannot represent larger logical data sets; split them
+across multiple dimensions instead. See <a class="reference internal" href="basics.html#large-launch-indexing"><span class="std std-ref">large-array launch indexing</span></a> for the launch
+and indexing pattern.</p></li>
 <li><p>There are currently no data types that support complex numbers.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">wp.config.launch_array_access_mode</span> <span class="pre">=</span> <span class="pre">wp.config.LaunchArrayAccessMode.CHECKED</span></code>
 only fully verifies cross-device <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.array</span></code></a> arguments when
-Warp can determine the allocation kind. Arrays backed by custom or externally
-wrapped allocators warn and proceed in checked mode; use
+Warp can classify the pointer and prove the relevant access requirements.
+Custom arrays or external wrappers whose pointer kind or specific access state
+cannot be verified warn and proceed in checked mode; use
 <code class="docutils literal notranslate"><span class="pre">wp.config.LaunchArrayAccessMode.STRICT</span></code> to reject cross-device launches before
-checking allocator provenance. Directly passed <code class="docutils literal notranslate"><span class="pre">__array_interface__</span></code> or
-<code class="docutils literal notranslate"><span class="pre">__cuda_array_interface__</span></code> objects are not fully allocation-verified. See
+checking access. Directly passed <code class="docutils literal notranslate"><span class="pre">__array_interface__</span></code> or
+<code class="docutils literal notranslate"><span class="pre">__cuda_array_interface__</span></code> objects are not fully access-verified. See
 <a class="reference internal" href="../deep_dive/memory_access.html#launch-array-access-checks"><span class="std std-ref">Checking array access before launch</span></a> for details.</p></li>
 </ul>
 </section>
@@ -670,7 +684,7 @@ Warp effectively makes <code class="docutils literal notranslate"><span class="p
 However, if <code class="docutils literal notranslate"><span class="pre">cond</span></code> is <code class="docutils literal notranslate"><span class="pre">False</span></code>, <code class="docutils literal notranslate"><span class="pre">out</span></code> will be uninitialized, leading to undefined behavior.</p>
 </section>
 <section id="arrays-in-structs">
-<h2>Arrays in Structs<a class="headerlink" href="#arrays-in-structs" title="Link to this heading">#</a></h2>
+<span id="limitations-arrays-in-structs"></span><h2>Arrays in Structs<a class="headerlink" href="#arrays-in-structs" title="Link to this heading">#</a></h2>
 <p>Modifying flags on arrays stored in structs may not trigger an update to the underlying struct memory, e.g.:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">struct</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">MyStruct</span><span class="p">:</span>
@@ -687,6 +701,58 @@ However, if <code class="docutils literal notranslate"><span class="pre">cond</s
 </div>
 <p>In this case the array stored in the struct will not have the <cite>requires_grad=True</cite> value propagated to it,
 which could lead to gradients not being computed during backward kernel launches.</p>
+<p>Array fields are also treated as descriptors when Warp combines struct values.
+For example, tile reductions and atomics on struct-valued tiles accumulate scalar, vector, matrix,
+and nested-struct fields field-wise, but do not accumulate the contents of array fields.
+In the example below, <a class="reference internal" href="../language_reference/_generated/warp.tile_sum.html#warp._src.lang.tile_sum" title="warp._src.lang.tile_sum"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_sum</span></code></a> reduces a tile of structs: the <code class="docutils literal notranslate"><span class="pre">weight</span></code>
+field is summed across the tile, while the <code class="docutils literal notranslate"><span class="pre">values</span></code> array field is carried through as a descriptor
+(the array pointer is copied, its contents are left untouched):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">TILE_N</span> <span class="o">=</span> <span class="mi">8</span>
+
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">struct</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ParticleBatch</span><span class="p">:</span>
+    <span class="n">weight</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span>
+    <span class="n">values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">]</span>
+
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">combine_batches</span><span class="p">(</span><span class="n">batches</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">ParticleBatch</span><span class="p">],</span> <span class="n">combined</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">ParticleBatch</span><span class="p">]):</span>
+    <span class="c1"># cooperatively reduce a tile of struct elements field-wise</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">batches</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="n">TILE_N</span><span class="p">,</span> <span class="n">storage</span><span class="o">=</span><span class="s2">&quot;shared&quot;</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">combined</span><span class="p">,</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_sum</span><span class="p">(</span><span class="n">t</span><span class="p">))</span>
+
+
+<span class="c1"># each batch references a *different* payload array</span>
+<span class="n">payloads</span> <span class="o">=</span> <span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">TILE_N</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">i</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">TILE_N</span><span class="p">)]</span>
+
+<span class="n">batches</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">TILE_N</span><span class="p">):</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">ParticleBatch</span><span class="p">()</span>
+    <span class="n">b</span><span class="o">.</span><span class="n">weight</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+    <span class="n">b</span><span class="o">.</span><span class="n">values</span> <span class="o">=</span> <span class="n">payloads</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+    <span class="n">batches</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+<span class="n">batches</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">batches</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">ParticleBatch</span><span class="p">)</span>
+
+<span class="n">combined</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">ParticleBatch</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch_tiled</span><span class="p">(</span><span class="n">combine_batches</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">batches</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">combined</span><span class="p">],</span> <span class="n">block_dim</span><span class="o">=</span><span class="n">TILE_N</span><span class="p">)</span>
+
+<span class="c1"># the weight field is summed field-wise across the tile: 0 + 1 + ... + 7</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;weight = </span><span class="si">{</span><span class="n">combined</span><span class="o">.</span><span class="n">numpy</span><span class="p">()[</span><span class="s1">&#39;weight&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>weight = 28.0
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">weight</span></code> field is summed field-wise, but the <code class="docutils literal notranslate"><span class="pre">values</span></code> array field is <em>not</em>. Each tile element
+holds a different array here, and the reduction carries exactly one of those descriptors through
+unchanged rather than reading, merging, or summing the array contents.</p>
+<p><strong>Which descriptor survives is unspecified.</strong> Field-wise combination is built from the generated
+struct <code class="docutils literal notranslate"><span class="pre">add(a,</span> <span class="pre">b)</span></code>, which begins from <code class="docutils literal notranslate"><span class="pre">ret</span> <span class="pre">=</span> <span class="pre">a</span></code> and leaves array fields untouched, so the
+descriptor from the left operand survives each pairwise step. For a full-tile reduction this is
+effectively the first participating element today, but that is an implementation detail callers must
+not rely on. To combine array payloads deterministically, accumulate their contents explicitly in a
+kernel rather than relying on struct-value accumulation.</p>
 </section>
 </section>
 
@@ -701,12 +767,12 @@ which could lead to gradients not being computed during backward kernel launches
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="debugging.html"
+       href="deterministic_execution.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Debugging</p>
+        <p class="prev-next-title">Deterministic Execution</p>
       </div>
     </a>
     <a class="right-next"
@@ -762,7 +828,7 @@ which could lead to gradients not being computed during backward kernel launches
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/release-1.14/docs/user_guide/limitations.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/release-1.15/docs/user_guide/limitations.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

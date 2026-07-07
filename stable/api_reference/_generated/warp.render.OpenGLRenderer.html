@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.render.OpenGLRenderer &#8212; Warp 1.14.0</title>
+    <title>warp.render.OpenGLRenderer &#8212; Warp 1.15.0</title>
   
   
   
@@ -44,7 +44,7 @@
 
 
 
-    <script src="../../_static/documentation_options.js?v=42a3b5f3"></script>
+    <script src="../../_static/documentation_options.js?v=e6db31ea"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -53,7 +53,7 @@
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.14';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.15';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
@@ -68,7 +68,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.14.0" />
+  <meta name="docsearch:version" content="1.15.0" />
 
 
   </head>
@@ -139,11 +139,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.14.0</p>
+    <p class="title logo__title">Warp 1.15.0</p>
   
 </a></div>
     
@@ -278,11 +278,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.14.0</p>
+    <p class="title logo__title">Warp 1.15.0</p>
   
 </a>
 
@@ -387,7 +387,9 @@
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/deterministic_execution.html">Deterministic Execution</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/limitations.html">Limitations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/contribution_guide.html">Contribution Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/publications.html">Publications using Warp</a></li>
@@ -527,7 +529,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">use_legacy_opengl</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L949-L3819"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L949-L3819"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer" title="Link to this definition">#</a></dt>
 <dd><p>Interactive OpenGL-based renderer for real-time 3D visualization.</p>
 <p>This renderer provides hardware-accelerated visualization of Warp simulations
 with support for geometric primitives (spheres, boxes, capsules, cylinders,
@@ -621,7 +623,7 @@ To enable headless rendering, set the Pyglet options before importing
 <dd><em class="sig-param"><span class="n"><span class="pre">use_legacy_opengl</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L994-L1445"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.__init__" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L994-L1445"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.__init__" title="Link to this definition">#</a></dt>
 <dd><p>Initialize the OpenGL renderer.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -856,37 +858,37 @@ To enable headless rendering, set the Pyglet options before importing
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.initialize_gl">
-<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">initialize_gl</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L986-L993"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.initialize_gl" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">initialize_gl</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L986-L993"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.initialize_gl" title="Link to this definition">#</a></dt>
 <dd><p>Import and cache pyglet OpenGL bindings.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.paused">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">paused</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L1446-L1450"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.paused" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">paused</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L1446-L1450"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.paused" title="Link to this definition">#</a></dt>
 <dd><p>Whether rendering is paused.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.has_exit">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">has_exit</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L1460-L1464"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.has_exit" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">has_exit</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L1460-L1464"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.has_exit" title="Link to this definition">#</a></dt>
 <dd><p>Whether the event loop has requested exit.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.clear">
-<span class="sig-name descname"><span class="pre">clear</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L1465-L1509"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.clear" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">clear</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L1465-L1509"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.clear" title="Link to this definition">#</a></dt>
 <dd><p>Release OpenGL resources and reset renderer state.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.close">
-<span class="sig-name descname"><span class="pre">close</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L1510-L1514"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.close" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">close</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L1510-L1514"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.close" title="Link to this definition">#</a></dt>
 <dd><p>Close the window and release renderer resources.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.tiled_rendering">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">tiled_rendering</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L1515-L1519"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.tiled_rendering" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">tiled_rendering</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L1515-L1519"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.tiled_rendering" title="Link to this definition">#</a></dt>
 <dd><p>Whether tiled rendering is enabled.</p>
 </dd></dl>
 
@@ -907,7 +909,7 @@ To enable headless rendering, set the Pyglet options before importing
 <dd><em class="sig-param"><span class="n"><span class="pre">view_matrices</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L1527-L1630"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.setup_tiled_rendering" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L1527-L1630"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.setup_tiled_rendering" title="Link to this definition">#</a></dt>
 <dd><p>Set up tiled rendering where the render buffer is split into multiple tiles that can visualize
 different shape instances of the scene with different view and projection matrices.
 See <a class="reference internal" href="#warp.render.OpenGLRenderer.get_pixels" title="warp.render.OpenGLRenderer.get_pixels"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_pixels()</span></code></a> which allows to retrieve the pixels of for each tile.
@@ -929,11 +931,11 @@ If None, the tiles will be arranged in a square grid, or, if <code class="docuti
 are set, in a grid with the specified number of columns and rows.</p></li>
 <li><p><strong>tile_sizes</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>]</em><em>] </em><em>| </em><em>None</em>) – A list of (width, height) tuples specifying the size of each tile in pixels.
 If None, the tiles will have the same size as specified by <code class="docutils literal notranslate"><span class="pre">tile_width</span></code> and <code class="docutils literal notranslate"><span class="pre">tile_height</span></code>.</p></li>
-<li><p><strong>projection_matrices</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>] </em><em>| </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>]</em><em>] </em><em>| </em><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>ndarray</em></a><em>] </em><em>| </em><em>None</em>) – A list of projection matrices for each tile (each view matrix is
+<li><p><strong>projection_matrices</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>] </em><em>| </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>]</em><em>] </em><em>| </em><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><em>ndarray</em></a><em>] </em><em>| </em><em>None</em>) – A list of projection matrices for each tile (each view matrix is
 either a flattened 16-dimensional array or a 4x4 matrix).
 If the entire array is None, or only a view instances, the projection matrices for all, or these
 instances, respectively, will be derived from the current render settings.</p></li>
-<li><p><strong>view_matrices</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>] </em><em>| </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>]</em><em>] </em><em>| </em><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>ndarray</em></a><em>] </em><em>| </em><em>None</em>) – A list of view matrices for each tile (each view matrix is either a flattened
+<li><p><strong>view_matrices</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>] </em><em>| </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>]</em><em>] </em><em>| </em><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><em>ndarray</em></a><em>] </em><em>| </em><em>None</em>) – A list of view matrices for each tile (each view matrix is either a flattened
 16-dimensional array or a 4x4 matrix).
 If the entire array is None, or only a view instances, the view matrices for all, or these
 instances, respectively, will be derived from the current camera settings and be
@@ -956,7 +958,7 @@ updated when the camera is moved.</p></li>
 <dd><em class="sig-param"><span class="n"><span class="pre">tile_position</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L1631-L1668"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.update_tile" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L1631-L1668"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.update_tile" title="Link to this definition">#</a></dt>
 <dd><p>Update the shape instances, projection matrix, view matrix, tile size, or tile position
 for a given tile given its index.</p>
 <dl class="field-list simple">
@@ -964,8 +966,8 @@ for a given tile given its index.</p>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>tile_id</strong> – The index of the tile to update.</p></li>
 <li><p><strong>instances</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>] </em><em>| </em><em>None</em>) – A list of shape instance ids (optional).</p></li>
-<li><p><strong>projection_matrix</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>] </em><em>| </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>]</em><em>] </em><em>| </em><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>ndarray</em></a><em> | </em><em>None</em>) – A projection matrix (optional).</p></li>
-<li><p><strong>view_matrix</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>] </em><em>| </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>]</em><em>] </em><em>| </em><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>ndarray</em></a><em> | </em><em>None</em>) – A view matrix (optional).</p></li>
+<li><p><strong>projection_matrix</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>] </em><em>| </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>]</em><em>] </em><em>| </em><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><em>ndarray</em></a><em> | </em><em>None</em>) – A projection matrix (optional).</p></li>
+<li><p><strong>view_matrix</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>] </em><em>| </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>]</em><em>] </em><em>| </em><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><em>ndarray</em></a><em> | </em><em>None</em>) – A view matrix (optional).</p></li>
 <li><p><strong>tile_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>] </em><em>| </em><em>None</em>) – A (width, height) tuple specifying the size of the tile in pixels (optional).</p></li>
 <li><p><strong>tile_position</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>] </em><em>| </em><em>None</em>) – A (x, y) tuple specifying the position of the tile in pixels (optional).</p></li>
 </ul>
@@ -984,7 +986,7 @@ for a given tile given its index.</p>
 <dd><em class="sig-param"><span class="n"><span class="pre">far_plane</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L1753-L1776"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.compute_projection_matrix" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L1753-L1776"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.compute_projection_matrix" title="Link to this definition">#</a></dt>
 <dd><p>Compute a projection matrix given the field of view, aspect ratio, near plane, and far plane.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -999,38 +1001,38 @@ for a given tile given its index.</p>
 <dd class="field-even"><p>A projection matrix.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>] | <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>]] | <a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>ndarray</em></a></p>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>] | <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a>]] | <a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><em>ndarray</em></a></p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.update_projection_matrix">
-<span class="sig-name descname"><span class="pre">update_projection_matrix</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L1777-L1785"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.update_projection_matrix" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">update_projection_matrix</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L1777-L1785"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.update_projection_matrix" title="Link to this definition">#</a></dt>
 <dd><p>Update the projection matrix from current camera settings.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.camera_pos">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">camera_pos</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L1786-L1790"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.camera_pos" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">camera_pos</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L1786-L1790"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.camera_pos" title="Link to this definition">#</a></dt>
 <dd><p>Current camera position vector.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.camera_front">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">camera_front</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L1796-L1800"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.camera_front" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">camera_front</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L1796-L1800"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.camera_front" title="Link to this definition">#</a></dt>
 <dd><p>Current camera forward vector.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.camera_up">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">camera_up</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L1806-L1810"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.camera_up" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">camera_up</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L1806-L1810"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.camera_up" title="Link to this definition">#</a></dt>
 <dd><p>Current camera up vector.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.compute_view_matrix">
-<span class="sig-name descname"><span class="pre">compute_view_matrix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cam_pos</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cam_front</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cam_up</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L1816-L1837"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.compute_view_matrix" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">compute_view_matrix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cam_pos</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cam_front</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cam_up</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L1816-L1837"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.compute_view_matrix" title="Link to this definition">#</a></dt>
 <dd><p>Compute the view matrix from camera vectors.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1057,7 +1059,7 @@ for a given tile given its index.</p>
 <dd><em class="sig-param"><span class="n"><span class="pre">stiffness</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L1838-L1857"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.update_view_matrix" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L1838-L1857"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.update_view_matrix" title="Link to this definition">#</a></dt>
 <dd><p>Update camera vectors and recompute the view matrix.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1073,7 +1075,7 @@ for a given tile given its index.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.compute_model_matrix">
-<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">compute_model_matrix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">camera_axis</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scaling</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L1858-L1867"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.compute_model_matrix" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">compute_model_matrix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">camera_axis</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scaling</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L1858-L1867"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.compute_model_matrix" title="Link to this definition">#</a></dt>
 <dd><p>Compute the model matrix for the given up-axis and scaling.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1087,11 +1089,11 @@ for a given tile given its index.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.update_model_matrix">
-<span class="sig-name descname"><span class="pre">update_model_matrix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_matrix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L1868-L1894"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.update_model_matrix" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">update_model_matrix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_matrix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L1868-L1894"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.update_model_matrix" title="Link to this definition">#</a></dt>
 <dd><p>Update the model matrix and upload it to shaders.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>model_matrix</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>] </em><em>| </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>]</em><em>] </em><em>| </em><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.4)"><em>ndarray</em></a><em> | </em><em>None</em>) – Optional 4x4 matrix override. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, uses the
+<dd class="field-odd"><p><strong>model_matrix</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>] </em><em>| </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>]</em><em>] </em><em>| </em><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><em>ndarray</em></a><em> | </em><em>None</em>) – Optional 4x4 matrix override. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, uses the
 current up-axis and scaling.</p>
 </dd>
 </dl>
@@ -1099,43 +1101,43 @@ current up-axis and scaling.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.num_tiles">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">num_tiles</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L1895-L1899"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.num_tiles" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">num_tiles</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L1895-L1899"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.num_tiles" title="Link to this definition">#</a></dt>
 <dd><p>Number of tiles configured for tiled rendering.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.tile_width">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">tile_width</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L1900-L1904"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.tile_width" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">tile_width</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L1900-L1904"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.tile_width" title="Link to this definition">#</a></dt>
 <dd><p>Tile width in pixels, or <code class="docutils literal notranslate"><span class="pre">None</span></code> if unset.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.tile_height">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">tile_height</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L1905-L1909"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.tile_height" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">tile_height</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L1905-L1909"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.tile_height" title="Link to this definition">#</a></dt>
 <dd><p>Tile height in pixels, or <code class="docutils literal notranslate"><span class="pre">None</span></code> if unset.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.num_shapes">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">num_shapes</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L1910-L1914"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.num_shapes" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">num_shapes</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L1910-L1914"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.num_shapes" title="Link to this definition">#</a></dt>
 <dd><p>Number of registered shape geometries.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.num_instances">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">num_instances</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L1915-L1919"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.num_instances" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">num_instances</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L1915-L1919"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.num_instances" title="Link to this definition">#</a></dt>
 <dd><p>Number of active shape instances.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.scaling">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">scaling</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L1920-L1924"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.scaling" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">scaling</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L1920-L1924"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.scaling" title="Link to this definition">#</a></dt>
 <dd><p>Global scene scaling factor.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.begin_frame">
-<span class="sig-name descname"><span class="pre">begin_frame</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L1931-L1940"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.begin_frame" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">begin_frame</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L1931-L1940"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.begin_frame" title="Link to this definition">#</a></dt>
 <dd><p>Mark the start of a frame and set time.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1147,19 +1149,19 @@ current clock time is used.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.end_frame">
-<span class="sig-name descname"><span class="pre">end_frame</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L1941-L1951"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.end_frame" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">end_frame</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L1941-L1951"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.end_frame" title="Link to this definition">#</a></dt>
 <dd><p>Finalize the current frame and render it.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.update">
-<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L1952-L1985"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.update" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L1952-L1985"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.update" title="Link to this definition">#</a></dt>
 <dd><p>Advance the event loop and render a frame if enabled.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.register_input_processor">
-<span class="sig-name descname"><span class="pre">register_input_processor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">callback</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L2326-L2334"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.register_input_processor" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">register_input_processor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">callback</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L2326-L2334"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.register_input_processor" title="Link to this definition">#</a></dt>
 <dd><p>Register a callback to process input each frame.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1171,7 +1173,7 @@ current clock time is used.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.register_key_press_callback">
-<span class="sig-name descname"><span class="pre">register_key_press_callback</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">callback</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L2364-L2371"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.register_key_press_callback" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">register_key_press_callback</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">callback</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L2364-L2371"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.register_key_press_callback" title="Link to this definition">#</a></dt>
 <dd><p>Register a callback for key press events.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1192,7 +1194,7 @@ current clock time is used.</p>
 <dd><em class="sig-param"><span class="n"><span class="pre">color2</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L2378-L2440"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.register_shape" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L2378-L2440"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.register_shape" title="Link to this definition">#</a></dt>
 <dd><p>Register a shape geometry and upload buffers.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1212,7 +1214,7 @@ current clock time is used.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.deregister_shape">
-<span class="sig-name descname"><span class="pre">deregister_shape</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shape</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L2441-L2466"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.deregister_shape" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">deregister_shape</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shape</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L2441-L2466"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.deregister_shape" title="Link to this definition">#</a></dt>
 <dd><p>Remove a registered shape and free its buffers.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1238,7 +1240,7 @@ current clock time is used.</p>
 <dd><em class="sig-param"><span class="n"><span class="pre">visible</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L2467-L2510"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.add_shape_instance" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L2467-L2510"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.add_shape_instance" title="Link to this definition">#</a></dt>
 <dd><p>Add an instance of a registered shape.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1263,7 +1265,7 @@ current clock time is used.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.remove_shape_instance">
-<span class="sig-name descname"><span class="pre">remove_shape_instance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L2511-L2528"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.remove_shape_instance" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">remove_shape_instance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L2511-L2528"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.remove_shape_instance" title="Link to this definition">#</a></dt>
 <dd><p>Remove a shape instance by name.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1274,13 +1276,13 @@ current clock time is used.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.update_instance_colors">
-<span class="sig-name descname"><span class="pre">update_instance_colors</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L2529-L2560"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.update_instance_colors" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">update_instance_colors</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L2529-L2560"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.update_instance_colors" title="Link to this definition">#</a></dt>
 <dd><p>Upload per-instance colors to GPU buffers.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.allocate_shape_instances">
-<span class="sig-name descname"><span class="pre">allocate_shape_instances</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L2561-L2647"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.allocate_shape_instances" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">allocate_shape_instances</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L2561-L2647"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.allocate_shape_instances" title="Link to this definition">#</a></dt>
 <dd><p>Allocate GPU buffers and Warp arrays for instances.</p>
 </dd></dl>
 
@@ -1298,7 +1300,7 @@ current clock time is used.</p>
 <dd><em class="sig-param"><span class="n"><span class="pre">visible</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L2648-L2690"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.update_shape_instance" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L2648-L2690"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.update_shape_instance" title="Link to this definition">#</a></dt>
 <dd><p>Update the instance properties of the shape</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1316,13 +1318,13 @@ current clock time is used.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.update_shape_instances">
-<span class="sig-name descname"><span class="pre">update_shape_instances</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L2691-L2699"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.update_shape_instances" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">update_shape_instances</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L2691-L2699"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.update_shape_instances" title="Link to this definition">#</a></dt>
 <dd><p>Rebuild instance buffers after instance updates.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.update_body_transforms">
-<span class="sig-name descname"><span class="pre">update_body_transforms</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">body_tf</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L2700-L2737"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.update_body_transforms" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">update_body_transforms</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">body_tf</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L2700-L2737"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.update_body_transforms" title="Link to this definition">#</a></dt>
 <dd><p>Update instance transforms from body transforms.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1334,7 +1336,7 @@ instance transforms are applied.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.register_body">
-<span class="sig-name descname"><span class="pre">register_body</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L2738-L2751"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.register_body" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">register_body</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L2738-L2751"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.register_body" title="Link to this definition">#</a></dt>
 <dd><p>Register a body name and return its integer ID.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1348,13 +1350,13 @@ instance transforms are applied.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.is_running">
-<span class="sig-name descname"><span class="pre">is_running</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L2759-L2762"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.is_running" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">is_running</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L2759-L2762"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.is_running" title="Link to this definition">#</a></dt>
 <dd><p>Whether the renderer event loop is still running.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.save">
-<span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L2763-L2771"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.save" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L2763-L2771"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.save" title="Link to this definition">#</a></dt>
 <dd><p>Block until the window is closed, keeping rendering active.</p>
 </dd></dl>
 
@@ -1369,7 +1371,7 @@ instance transforms are applied.</p>
 <dd><em class="sig-param"><span class="n"><span class="pre">use_uint8</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L2772-L2892"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.get_pixels" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L2772-L2892"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.get_pixels" title="Link to this definition">#</a></dt>
 <dd><p>Read the pixels from the frame buffer (RGB or depth are supported) into the given array.</p>
 <p>If <cite>split_up_tiles</cite> is False, array must be of shape (screen_height, screen_width, 3) for RGB mode or
 (screen_height, screen_width, 1) for depth mode.
@@ -1412,7 +1414,7 @@ array must be of shape (num_tiles, tile_height, tile_width, 3) for RGB mode or (
 <dd><em class="sig-param"><span class="n"><span class="pre">visible</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L2931-L2989"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.render_plane" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L2931-L2989"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.render_plane" title="Link to this definition">#</a></dt>
 <dd><p>Add a plane for visualization</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1436,7 +1438,7 @@ array must be of shape (num_tiles, tile_height, tile_width, 3) for RGB mode or (
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.render_ground">
-<span class="sig-name descname"><span class="pre">render_ground</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plane</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L2990-L3031"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.render_ground" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">render_ground</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plane</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L2990-L3031"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.render_ground" title="Link to this definition">#</a></dt>
 <dd><p>Add a ground plane for visualization</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1463,7 +1465,7 @@ array must be of shape (num_tiles, tile_height, tile_width, 3) for RGB mode or (
 <dd><em class="sig-param"><span class="n"><span class="pre">visible</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L3032-L3067"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.render_sphere" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L3032-L3067"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.render_sphere" title="Link to this definition">#</a></dt>
 <dd><p>Add a sphere for visualization</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1498,7 +1500,7 @@ array must be of shape (num_tiles, tile_height, tile_width, 3) for RGB mode or (
 <dd><em class="sig-param"><span class="n"><span class="pre">visible</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L3068-L3107"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.render_capsule" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L3068-L3107"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.render_capsule" title="Link to this definition">#</a></dt>
 <dd><p>Add a capsule for visualization</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1535,7 +1537,7 @@ array must be of shape (num_tiles, tile_height, tile_width, 3) for RGB mode or (
 <dd><em class="sig-param"><span class="n"><span class="pre">visible</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L3108-L3147"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.render_cylinder" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L3108-L3147"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.render_cylinder" title="Link to this definition">#</a></dt>
 <dd><p>Add a cylinder for visualization</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1572,7 +1574,7 @@ array must be of shape (num_tiles, tile_height, tile_width, 3) for RGB mode or (
 <dd><em class="sig-param"><span class="n"><span class="pre">visible</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L3148-L3187"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.render_cone" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L3148-L3187"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.render_cone" title="Link to this definition">#</a></dt>
 <dd><p>Add a cone for visualization</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1607,7 +1609,7 @@ array must be of shape (num_tiles, tile_height, tile_width, 3) for RGB mode or (
 <dd><em class="sig-param"><span class="n"><span class="pre">visible</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L3188-L3223"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.render_box" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L3188-L3223"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.render_box" title="Link to this definition">#</a></dt>
 <dd><p>Add a box for visualization</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1644,7 +1646,7 @@ array must be of shape (num_tiles, tile_height, tile_width, 3) for RGB mode or (
 <dd><em class="sig-param"><span class="n"><span class="pre">visible</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L3224-L3347"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.render_mesh" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L3224-L3347"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.render_mesh" title="Link to this definition">#</a></dt>
 <dd><p>Add a mesh for visualization</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1685,7 +1687,7 @@ array must be of shape (num_tiles, tile_height, tile_width, 3) for RGB mode or (
 <dd><em class="sig-param"><span class="n"><span class="pre">visible</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L3348-L3393"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.render_arrow" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L3348-L3393"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.render_arrow" title="Link to this definition">#</a></dt>
 <dd><p>Add an arrow for visualization</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1709,7 +1711,7 @@ array must be of shape (num_tiles, tile_height, tile_width, 3) for RGB mode or (
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.render_ref">
-<span class="sig-name descname"><span class="pre">render_ref</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pos</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rot</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L3394-L3413"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.render_ref" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">render_ref</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pos</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rot</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scale</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L3394-L3413"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.render_ref" title="Link to this definition">#</a></dt>
 <dd><p>Create a reference (instance) with the given name to the given path.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1738,7 +1740,7 @@ array must be of shape (num_tiles, tile_height, tile_width, 3) for RGB mode or (
 <dd><em class="sig-param"><span class="n"><span class="pre">visible</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L3414-L3466"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.render_points" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L3414-L3466"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.render_points" title="Link to this definition">#</a></dt>
 <dd><p>Add a set of points</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1767,7 +1769,7 @@ array must be of shape (num_tiles, tile_height, tile_width, 3) for RGB mode or (
 <dd><em class="sig-param"><span class="n"><span class="pre">visible</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L3495-L3519"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.render_line_list" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L3495-L3519"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.render_line_list" title="Link to this definition">#</a></dt>
 <dd><p>Add a line list as a set of capsules</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1795,7 +1797,7 @@ array must be of shape (num_tiles, tile_height, tile_width, 3) for RGB mode or (
 <dd><em class="sig-param"><span class="n"><span class="pre">visible</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L3520-L3542"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.render_line_strip" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L3520-L3542"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.render_line_strip" title="Link to this definition">#</a></dt>
 <dd><p>Add a line strip as a set of capsules</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1812,7 +1814,7 @@ array must be of shape (num_tiles, tile_height, tile_width, 3) for RGB mode or (
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.update_shape_vertices">
-<span class="sig-name descname"><span class="pre">update_shape_vertices</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shape</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">points</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/render/render_opengl.py#L3543-L3568"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.update_shape_vertices" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">update_shape_vertices</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shape</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">points</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/render/render_opengl.py#L3543-L3568"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.update_shape_vertices" title="Link to this definition">#</a></dt>
 <dd><p>Update vertex positions for a registered shape.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1945,7 +1947,7 @@ array must be of shape (num_tiles, tile_height, tile_width, 3) for RGB mode or (
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/release-1.14/docs/api_reference/_generated/warp.render.OpenGLRenderer.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/release-1.15/docs/api_reference/_generated/warp.render.OpenGLRenderer.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

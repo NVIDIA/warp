@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Debugging &#8212; Warp 1.14.0</title>
+    <title>Debugging &#8212; Warp 1.15.0</title>
   
   
   
@@ -44,7 +44,7 @@
 
 
 
-    <script src="../_static/documentation_options.js?v=42a3b5f3"></script>
+    <script src="../_static/documentation_options.js?v=e6db31ea"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -53,7 +53,7 @@
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.14';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.15';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
@@ -62,13 +62,13 @@
 
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Limitations" href="limitations.html" />
-    <link rel="prev" title="Configuration" href="configuration.html" />
+    <link rel="next" title="Deterministic Execution" href="deterministic_execution.html" />
+    <link rel="prev" title="C++ and CUDA Workflows" href="cpp_cuda_workflows.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.14.0" />
+  <meta name="docsearch:version" content="1.15.0" />
 
 
   </head>
@@ -139,11 +139,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.14.0</p>
+    <p class="title logo__title">Warp 1.15.0</p>
   
 </a></div>
     
@@ -278,11 +278,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.14.0</p>
+    <p class="title logo__title">Warp 1.15.0</p>
   
 </a>
 
@@ -387,7 +387,9 @@
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deterministic_execution.html">Deterministic Execution</a></li>
 <li class="toctree-l1"><a class="reference internal" href="limitations.html">Limitations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="contribution_guide.html">Contribution Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="publications.html">Publications using Warp</a></li>
@@ -554,7 +556,7 @@ deprecated. Migrate to <code class="docutils literal notranslate"><span class="p
 </ul>
 <p>Reading or setting either deprecated flag emits a one-time
 <code class="docutils literal notranslate"><span class="pre">DeprecationWarning</span></code>. During the deprecation window the flag is still
-honored alongside <code class="docutils literal notranslate"><span class="pre">log_level</span></code>, so existing code keeps working; remove the
+honored alongside <code class="docutils literal notranslate"><span class="pre">log_level</span></code>, so existing code keeps working. Remove the
 flag once your code sets <code class="docutils literal notranslate"><span class="pre">log_level</span></code> directly.</p>
 <p><code class="docutils literal notranslate"><span class="pre">wp.config.verbose_warnings</span></code> is not deprecated. It is an orthogonal
 formatting flag that controls whether warning messages include the source
@@ -689,7 +691,7 @@ the debugger should be attached, and a breakpoint inserted into the generated co
 <p class="admonition-title">Note</p>
 <p>Generated kernel code is not a 1:1 correspondence with the original Python code, but individual operations can still be replayed and variables inspected.</p>
 </div>
-<p>Also see <a class="extlink-github reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/tests/walkthrough_debug.py">warp/tests/walkthrough_debug.py</a> for an example of how to debug Warp kernel code running on the CPU.</p>
+<p>Also see <a class="extlink-github reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/tests/walkthrough_debug.py">warp/tests/walkthrough_debug.py</a> for an example of how to debug Warp kernel code running on the CPU.</p>
 <p>Breakpoints can also be inserted into Warp kernels running on GPU devices on Linux systems by using the
 <a class="reference external" href="https://docs.python.org/3/library/functions.html#breakpoint" title="(in Python v3.14)"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.breakpoint()</span></code></a> function and <a class="reference external" href="https://docs.nvidia.com/cuda/cuda-gdb/index.html">CUDA-GDB</a>
 or the <a class="reference external" href="https://developer.nvidia.com/nsight-visual-studio-code-edition">NVIDIA Nsight Visual Studio Code Edition (VSCE)</a>
@@ -768,6 +770,39 @@ be used to detect subtle memory-access issues in Warp applications, e.g.</p>
 </div>
 <p>The Compute Sanitizer suite is available through the <a class="reference external" href="https://developer.nvidia.com/cuda-toolkit">CUDA Toolkit</a>.</p>
 </section>
+<section id="cpu-memory-error-detection-with-addresssanitizer">
+<h2>CPU Memory Error Detection with AddressSanitizer<a class="headerlink" href="#cpu-memory-error-detection-with-addresssanitizer" title="Link to this heading">#</a></h2>
+<p><a class="reference external" href="https://clang.llvm.org/docs/AddressSanitizer.html">AddressSanitizer</a> (ASan) can detect
+out-of-bounds accesses, use-after-free, and similar memory errors in JIT-compiled CPU kernels.
+Build Warp’s native libraries with the sanitizer enabled:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>build_lib.py<span class="w"> </span>--sanitize<span class="o">=</span>address
+</pre></div>
+</div>
+<p>When <code class="docutils literal notranslate"><span class="pre">warp-clang</span></code> is built this way, Warp automatically instruments CPU kernels with
+<code class="docutils literal notranslate"><span class="pre">-fsanitize=address</span></code> and resolves their sanitizer callbacks against the host’s single
+in-process ASan runtime. An out-of-bounds access into a <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.array</span></code></a> is then
+reported as a <code class="docutils literal notranslate"><span class="pre">heap-buffer-overflow</span></code>, including the allocation site.</p>
+<p>The ASan runtime must be initialized before Warp’s libraries load, so set the environment
+<strong>before</strong> <code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">warp</span></code>:</p>
+<ul>
+<li><p><strong>Linux</strong>: preload the ASan runtime so it initializes first and its symbols are globally
+visible to the JIT:</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span><span class="nv">LD_PRELOAD</span><span class="o">=</span><span class="k">$(</span>gcc<span class="w"> </span>-print-file-name<span class="o">=</span>libasan.so<span class="k">)</span><span class="w"> </span><span class="nv">ASAN_OPTIONS</span><span class="o">=</span><span class="nv">verify_asan_link_order</span><span class="o">=</span><span class="m">0</span><span class="w"> </span>python<span class="w"> </span>sim.py
+</pre></div>
+</div>
+</li>
+<li><p><strong>Windows</strong>: ensure <code class="docutils literal notranslate"><span class="pre">clang_rt.asan_dynamic-x86_64.dll</span></code> (shipped with the Visual Studio
+toolchain) is on <code class="docutils literal notranslate"><span class="pre">PATH</span></code>.</p></li>
+<li><p><strong>macOS</strong>: usually works via <code class="docutils literal notranslate"><span class="pre">&#64;rpath</span></code> to the Clang ASan runtime shipped with Xcode.</p></li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Run kernels in release mode when hunting out-of-bounds array accesses with ASan.
+In <a class="reference internal" href="#debug-mode"><span class="std std-ref">Debug Mode Compilation</span></a>, Warp’s own <code class="docutils literal notranslate"><span class="pre">assert</span></code>-based bounds check aborts first; ASan
+instrumentation is applied regardless of mode. Global-buffer-overflow on a kernel’s own
+static variables is not detected, because the JIT does not run kernel module constructors.</p>
+</div>
+</section>
 </section>
 
 
@@ -781,20 +816,20 @@ be used to detect subtle memory-access issues in Warp applications, e.g.</p>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="configuration.html"
+       href="cpp_cuda_workflows.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Configuration</p>
+        <p class="prev-next-title">C++ and CUDA Workflows</p>
       </div>
     </a>
     <a class="right-next"
-       href="limitations.html"
+       href="deterministic_execution.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Limitations</p>
+        <p class="prev-next-title">Deterministic Execution</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -834,6 +869,7 @@ be used to detect subtle memory-access issues in Warp applications, e.g.</p>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cuda-error-verification">CUDA Error Verification</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#detecting-non-finite-values">Detecting Non-Finite Values</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cuda-toolkit-debugging-tools">CUDA Toolkit Debugging Tools</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cpu-memory-error-detection-with-addresssanitizer">CPU Memory Error Detection with AddressSanitizer</a></li>
 </ul>
   </nav></div>
 
@@ -841,7 +877,7 @@ be used to detect subtle memory-access issues in Warp applications, e.g.</p>
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/release-1.14/docs/user_guide/debugging.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/release-1.15/docs/user_guide/debugging.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

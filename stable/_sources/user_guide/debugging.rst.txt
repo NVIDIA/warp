@@ -78,7 +78,7 @@ non-differentiable.
 
     Reading or setting either deprecated flag emits a one-time
     ``DeprecationWarning``. During the deprecation window the flag is still
-    honored alongside ``log_level``, so existing code keeps working; remove the
+    honored alongside ``log_level``, so existing code keeps working. Remove the
     flag once your code sets ``log_level`` directly.
 
     ``wp.config.verbose_warnings`` is not deprecated. It is an orthogonal
@@ -167,7 +167,7 @@ Debug Mode Compilation
 In debug mode, Warp kernels will perform the following additional checks:
 
 * Raise an assertion if there is an array access outside the defined shape.
-* Warn if :func:`wp.tid() <warp._src.lang.tid>` will return an overflowed value on large grids.
+* Warn if :func:`wp.tid() <warp.tid>` will return an overflowed value on large grids.
 * (GPU-only) Warn if the CUDA grid dimensions have been capped due to an overflowed number of blocks.
 * (GPU-only) Generate line-number information for device code.
 
@@ -321,3 +321,39 @@ be used to detect subtle memory-access issues in Warp applications, e.g.
     compute-sanitizer --tool initcheck python sim.py
 
 The Compute Sanitizer suite is available through the `CUDA Toolkit <https://developer.nvidia.com/cuda-toolkit>`__.
+
+CPU Memory Error Detection with AddressSanitizer
+------------------------------------------------
+
+`AddressSanitizer <https://clang.llvm.org/docs/AddressSanitizer.html>`__ (ASan) can detect
+out-of-bounds accesses, use-after-free, and similar memory errors in JIT-compiled CPU kernels.
+Build Warp's native libraries with the sanitizer enabled:
+
+.. code-block:: sh
+
+    python build_lib.py --sanitize=address
+
+When ``warp-clang`` is built this way, Warp automatically instruments CPU kernels with
+``-fsanitize=address`` and resolves their sanitizer callbacks against the host's single
+in-process ASan runtime. An out-of-bounds access into a :class:`wp.array <warp.array>` is then
+reported as a ``heap-buffer-overflow``, including the allocation site.
+
+The ASan runtime must be initialized before Warp's libraries load, so set the environment
+**before** ``import warp``:
+
+- **Linux**: preload the ASan runtime so it initializes first and its symbols are globally
+  visible to the JIT:
+
+  .. code-block:: sh
+
+      LD_PRELOAD=$(gcc -print-file-name=libasan.so) ASAN_OPTIONS=verify_asan_link_order=0 python sim.py
+
+- **Windows**: ensure ``clang_rt.asan_dynamic-x86_64.dll`` (shipped with the Visual Studio
+  toolchain) is on ``PATH``.
+
+- **macOS**: usually works via ``@rpath`` to the Clang ASan runtime shipped with Xcode.
+
+.. note:: Run kernels in release mode when hunting out-of-bounds array accesses with ASan.
+   In :ref:`debug-mode`, Warp's own ``assert``-based bounds check aborts first; ASan
+   instrumentation is applied regardless of mode. Global-buffer-overflow on a kernel's own
+   static variables is not detected, because the JIT does not run kernel module constructors.

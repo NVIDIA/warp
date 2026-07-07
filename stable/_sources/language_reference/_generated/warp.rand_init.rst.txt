@@ -9,11 +9,32 @@
       * Kernel
       * Python
 
-   Initialize a random number generator.
+   Initialize a random number generator (RNG) state from a seed.
    
-   Initialize from a user-defined seed.
+   Warp's RNG is a stateless PCG hash (Jarzynski & Olano, 2020): ``rand_init``
+   turns a seed into a 32-bit ``state`` that is passed to the ``rand*`` and
+   ``sample_*`` built-ins. In a kernel, these built-ins advance ``state`` in place,
+   so repeated calls on the same local variable return different values. When
+   called directly from the Python scope, they do not modify ``state``: calling
+   ``wp.randf(state)`` twice with the same ``state`` returns the same value both
+   times. Results are deterministic and reproducible for a given seed and call
+   order on every device.
    
-   :returns: A 32-bit integer representing the RNG state.
+   ``state`` is just a local value, not a persistent generator object: it lives
+   only for the duration of the kernel invocation and does not carry over between
+   launches. Re-launching with the same seed and per-thread offsets reproduces the
+   same sequences. To draw different sequences across launches, change the seed or
+   include a launch-specific value in the ``rand_init(seed, offset)`` offset. See
+   :ref:`Avoiding Correlated Sequences <avoiding_correlated_sequences>` for examples.
+   
+   For parallel kernels, prefer the ``rand_init(seed, offset)`` overload with a
+   unique per-thread ``offset`` so each thread draws a distinct sequence. See
+   the :ref:`Random Number Generation <random_number_generation>` user guide
+   section for more details.
+   
+   :param seed: Seed value used to derive the initial state.
+   
+   :returns: A 32-bit unsigned integer holding the initial RNG state.
    
 
 .. function:: warp._src.lang.rand_init(seed: int32, offset: int32) -> uint32
@@ -25,9 +46,26 @@
       * Kernel
       * Python
 
-   Initialize a random number generator.
+   Initialize a random number generator (RNG) state from a seed and an offset.
    
-   Initialize from a user-defined seed and an offset.
+   Both ``seed`` and ``offset`` are hashed into the returned state. This is the
+   recommended constructor for parallel kernels: share ``seed`` across the launch
+   and pass a unique per-thread ``offset`` (typically ``wp.tid()``) so each thread
+   starts from a distinct RNG state and avoids sharing the same sequence:
    
-   This alternative constructor can be useful in parallel programs, where a kernel as a whole should share a seed,
-   but each thread should generate uncorrelated values. In this case usage should be ``r = rand_init(seed, tid)``.
+   .. code-block:: python
+   
+       @wp.kernel
+       def sample_kernel(seed: int, out: wp.array[float]):
+           tid = wp.tid()
+           rng = wp.rand_init(seed, tid)
+           out[tid] = wp.randf(rng)
+   
+   See the :ref:`Random Number Generation <random_number_generation>` user guide
+   section for the RNG model and guidance on avoiding correlated sequences.
+   
+   :param seed: Seed shared across a kernel launch.
+   :param offset: Per-thread offset selecting a distinct sequence.
+   
+   :returns: A 32-bit unsigned integer holding the initial RNG state.
+   

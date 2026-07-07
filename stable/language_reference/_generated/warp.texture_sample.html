@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.texture_sample &#8212; Warp 1.14.0</title>
+    <title>warp.texture_sample &#8212; Warp 1.15.0</title>
   
   
   
@@ -44,7 +44,7 @@
 
 
 
-    <script src="../../_static/documentation_options.js?v=42a3b5f3"></script>
+    <script src="../../_static/documentation_options.js?v=e6db31ea"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -53,7 +53,7 @@
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.14';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.15';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
@@ -68,7 +68,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.14.0" />
+  <meta name="docsearch:version" content="1.15.0" />
 
 
   </head>
@@ -139,11 +139,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.14.0</p>
+    <p class="title logo__title">Warp 1.15.0</p>
   
 </a></div>
     
@@ -278,11 +278,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.14.0</p>
+    <p class="title logo__title">Warp 1.15.0</p>
   
 </a>
 
@@ -387,7 +387,9 @@
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/deterministic_execution.html">Deterministic Execution</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/limitations.html">Limitations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/contribution_guide.html">Contribution Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/publications.html">Publications using Warp</a></li>
@@ -501,6 +503,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">tex</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.Texture1D.html#warp.Texture1D" title="warp.Texture1D"><span class="pre">Texture1D</span></a></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">u</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">lod</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em>,</dd>
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span><a class="headerlink" href="#warp._src.lang.texture_sample" title="Link to this definition">#</a></dt>
@@ -534,6 +537,10 @@
 <li><p><strong>u</strong> – U coordinate. Range is [0, 1] if the texture was created with
 <code class="docutils literal notranslate"><span class="pre">normalized_coords=True</span></code> (default), or [0, width] if <code class="docutils literal notranslate"><span class="pre">normalized_coords=False</span></code>.</p></li>
 <li><p><strong>dtype</strong> – The return type (<code class="docutils literal notranslate"><span class="pre">float</span></code>, <a class="reference internal" href="../../api_reference/_generated/warp.vec2f.html#warp.vec2f" title="warp.vec2f"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec2f</span></code></a>, or <a class="reference internal" href="../../api_reference/_generated/warp.vec4f.html#warp.vec4f" title="warp.vec4f"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec4f</span></code></a>).</p></li>
+<li><p><strong>lod</strong> – Mipmap level-of-detail as a float. When omitted, the base mip level is sampled
+using the non-LOD code path. Fractional values blend between neighbouring mip
+levels when <code class="docutils literal notranslate"><span class="pre">mip_filter_mode</span></code> is <a class="reference internal" href="../../api_reference/_generated/warp.TextureFilterMode.html#warp.TextureFilterMode.LINEAR" title="warp.TextureFilterMode.LINEAR"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.TextureFilterMode.LINEAR</span></code></a>.
+Ignored for textures created with a single mip level.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -551,6 +558,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">tex</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.Texture2D.html#warp.Texture2D" title="warp.Texture2D"><span class="pre">Texture2D</span></a></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">uv</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.vec2f.html#warp.vec2f" title="warp.vec2f"><span class="pre">vec2f</span></a></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">lod</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em>,</dd>
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span></dt>
@@ -584,6 +592,10 @@
 <li><p><strong>uv</strong> – UV coordinates as a <a class="reference internal" href="../../api_reference/_generated/warp.vec2f.html#warp.vec2f" title="warp.vec2f"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec2f</span></code></a>. Range is [0, 1] if the texture was created with
 <code class="docutils literal notranslate"><span class="pre">normalized_coords=True</span></code> (default), or [0, width] x [0, height] if <code class="docutils literal notranslate"><span class="pre">normalized_coords=False</span></code>.</p></li>
 <li><p><strong>dtype</strong> – The return type (<code class="docutils literal notranslate"><span class="pre">float</span></code>, <a class="reference internal" href="../../api_reference/_generated/warp.vec2f.html#warp.vec2f" title="warp.vec2f"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec2f</span></code></a>, or <a class="reference internal" href="../../api_reference/_generated/warp.vec4f.html#warp.vec4f" title="warp.vec4f"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec4f</span></code></a>).</p></li>
+<li><p><strong>lod</strong> – Mipmap level-of-detail as a float. When omitted, the base mip level is sampled
+using the non-LOD code path. Fractional values blend between neighbouring mip
+levels when <code class="docutils literal notranslate"><span class="pre">mip_filter_mode</span></code> is <a class="reference internal" href="../../api_reference/_generated/warp.TextureFilterMode.html#warp.TextureFilterMode.LINEAR" title="warp.TextureFilterMode.LINEAR"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.TextureFilterMode.LINEAR</span></code></a>.
+Ignored for textures created with a single mip level.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -602,6 +614,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">u</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">v</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">lod</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em>,</dd>
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span></dt>
@@ -637,6 +650,10 @@
 <li><p><strong>v</strong> – V coordinate. Range is [0, 1] if the texture was created with
 <code class="docutils literal notranslate"><span class="pre">normalized_coords=True</span></code> (default), or [0, height] if <code class="docutils literal notranslate"><span class="pre">normalized_coords=False</span></code>.</p></li>
 <li><p><strong>dtype</strong> – The return type (<code class="docutils literal notranslate"><span class="pre">float</span></code>, <a class="reference internal" href="../../api_reference/_generated/warp.vec2f.html#warp.vec2f" title="warp.vec2f"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec2f</span></code></a>, or <a class="reference internal" href="../../api_reference/_generated/warp.vec4f.html#warp.vec4f" title="warp.vec4f"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec4f</span></code></a>).</p></li>
+<li><p><strong>lod</strong> – Mipmap level-of-detail as a float. When omitted, the base mip level is sampled
+using the non-LOD code path. Fractional values blend between neighbouring mip
+levels when <code class="docutils literal notranslate"><span class="pre">mip_filter_mode</span></code> is <a class="reference internal" href="../../api_reference/_generated/warp.TextureFilterMode.html#warp.TextureFilterMode.LINEAR" title="warp.TextureFilterMode.LINEAR"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.TextureFilterMode.LINEAR</span></code></a>.
+Ignored for textures created with a single mip level.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -654,6 +671,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">tex</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.Texture3D.html#warp.Texture3D" title="warp.Texture3D"><span class="pre">Texture3D</span></a></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">uvw</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.vec3f.html#warp.vec3f" title="warp.vec3f"><span class="pre">vec3f</span></a></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">lod</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em>,</dd>
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span></dt>
@@ -687,6 +705,10 @@
 <li><p><strong>uvw</strong> – UVW coordinates as a <a class="reference internal" href="../../api_reference/_generated/warp.vec3f.html#warp.vec3f" title="warp.vec3f"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3f</span></code></a>. Range is [0, 1] if the texture was created with
 <code class="docutils literal notranslate"><span class="pre">normalized_coords=True</span></code> (default), or [0, width] x [0, height] x [0, depth] if <code class="docutils literal notranslate"><span class="pre">normalized_coords=False</span></code>.</p></li>
 <li><p><strong>dtype</strong> – The return type (<code class="docutils literal notranslate"><span class="pre">float</span></code>, <a class="reference internal" href="../../api_reference/_generated/warp.vec2f.html#warp.vec2f" title="warp.vec2f"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec2f</span></code></a>, or <a class="reference internal" href="../../api_reference/_generated/warp.vec4f.html#warp.vec4f" title="warp.vec4f"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec4f</span></code></a>).</p></li>
+<li><p><strong>lod</strong> – Mipmap level-of-detail as a float. When omitted, the base mip level is sampled
+using the non-LOD code path. Fractional values blend between neighbouring mip
+levels when <code class="docutils literal notranslate"><span class="pre">mip_filter_mode</span></code> is <a class="reference internal" href="../../api_reference/_generated/warp.TextureFilterMode.html#warp.TextureFilterMode.LINEAR" title="warp.TextureFilterMode.LINEAR"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.TextureFilterMode.LINEAR</span></code></a>.
+Ignored for textures created with a single mip level.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -706,6 +728,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">v</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">w</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">lod</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em>,</dd>
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span></dt>
@@ -743,6 +766,10 @@
 <li><p><strong>w</strong> – W coordinate. Range is [0, 1] if the texture was created with
 <code class="docutils literal notranslate"><span class="pre">normalized_coords=True</span></code> (default), or [0, depth] if <code class="docutils literal notranslate"><span class="pre">normalized_coords=False</span></code>.</p></li>
 <li><p><strong>dtype</strong> – The return type (<code class="docutils literal notranslate"><span class="pre">float</span></code>, <a class="reference internal" href="../../api_reference/_generated/warp.vec2f.html#warp.vec2f" title="warp.vec2f"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec2f</span></code></a>, or <a class="reference internal" href="../../api_reference/_generated/warp.vec4f.html#warp.vec4f" title="warp.vec4f"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec4f</span></code></a>).</p></li>
+<li><p><strong>lod</strong> – Mipmap level-of-detail as a float. When omitted, the base mip level is sampled
+using the non-LOD code path. Fractional values blend between neighbouring mip
+levels when <code class="docutils literal notranslate"><span class="pre">mip_filter_mode</span></code> is <a class="reference internal" href="../../api_reference/_generated/warp.TextureFilterMode.html#warp.TextureFilterMode.LINEAR" title="warp.TextureFilterMode.LINEAR"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.TextureFilterMode.LINEAR</span></code></a>.
+Ignored for textures created with a single mip level.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -811,7 +838,7 @@
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/release-1.14/docs/language_reference/_generated/warp.texture_sample.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/release-1.15/docs/language_reference/_generated/warp.texture_sample.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

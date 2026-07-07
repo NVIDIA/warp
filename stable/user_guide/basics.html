@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Basics &#8212; Warp 1.14.0</title>
+    <title>Basics &#8212; Warp 1.15.0</title>
   
   
   
@@ -44,16 +44,17 @@
 
 
 
-    <script src="../_static/documentation_options.js?v=42a3b5f3"></script>
+    <script src="../_static/documentation_options.js?v=e6db31ea"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../_static/copybutton.js?v=fd10adb8"></script>
+    <script async="async" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'user_guide/basics';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.14';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.15';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
@@ -68,7 +69,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.14.0" />
+  <meta name="docsearch:version" content="1.15.0" />
 
 
   </head>
@@ -139,11 +140,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.14.0</p>
+    <p class="title logo__title">Warp 1.15.0</p>
   
 </a></div>
     
@@ -278,11 +279,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.14.0</p>
+    <p class="title logo__title">Warp 1.15.0</p>
   
 </a>
 
@@ -387,7 +388,9 @@
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deterministic_execution.html">Deterministic Execution</a></li>
 <li class="toctree-l1"><a class="reference internal" href="limitations.html">Limitations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="contribution_guide.html">Contribution Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="publications.html">Publications using Warp</a></li>
@@ -564,6 +567,10 @@ Kernel cache:
     <span class="n">c</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">r</span>
 </pre></div>
 </div>
+<p>Warp kernels do not return values directly. Write results through array arguments
+or other explicit output parameters, and either omit the kernel return annotation
+or use <code class="docutils literal notranslate"><span class="pre">-&gt;</span> <span class="pre">None</span></code>. Non-<code class="docutils literal notranslate"><span class="pre">None</span></code> return annotations and <code class="docutils literal notranslate"><span class="pre">return</span> <span class="pre">&lt;value&gt;</span></code>
+statements are invalid for kernels.</p>
 <p>Conceptually, Warp kernels are similar to CUDA kernels. When a kernel is <em>launched</em> on a GPU,
 the body of the kernel is executed a certain number of times in parallel.</p>
 <p>Because Warp kernels are compiled to native C++/CUDA code, all the function input arguments must be statically typed. This allows
@@ -597,6 +604,42 @@ To launch a 2D grid of threads to process a 1024x1024 image, we could write:</p>
     <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
 </pre></div>
 </div>
+<section id="large-array-indexing">
+<span id="large-launch-indexing"></span><h3>Large array indexing<a class="headerlink" href="#large-array-indexing" title="Link to this heading">#</a></h3>
+<p>For multi-dimensional launches, Warp derives the coordinates from a linear
+thread order in row-major form, with the last dimension varying fastest. This
+matches the default contiguous Warp array layout, so adjacent threads that
+differ only in the last index access adjacent array elements. On CUDA devices,
+this is the preferred pattern for coalesced global memory access.</p>
+<p>This is also useful when a logical data set has more than <span class="math notranslate nohighlight">\(2^{31}-1\)</span>
+elements. Because each array dimension must fit in a signed 32-bit integer,
+store the data across multiple dimensions, launch over the array shape, and
+construct a 64-bit linear index when the algorithm is naturally expressed in
+1D:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">process_large_array</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array2d</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span> <span class="n">logical_size</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">int64</span><span class="p">):</span>
+    <span class="n">i</span><span class="p">,</span> <span class="n">j</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+
+    <span class="n">linear</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">int64</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">*</span> <span class="n">wp</span><span class="o">.</span><span class="n">int64</span><span class="p">(</span><span class="n">values</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">+</span> <span class="n">wp</span><span class="o">.</span><span class="n">int64</span><span class="p">(</span><span class="n">j</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">linear</span> <span class="o">&lt;</span> <span class="n">logical_size</span><span class="p">:</span>
+        <span class="n">values</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">linear</span> <span class="o">%</span> <span class="n">wp</span><span class="o">.</span><span class="n">int64</span><span class="p">(</span><span class="mi">1024</span><span class="p">))</span>
+
+<span class="n">rows</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="mi">20</span>
+<span class="n">cols</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="mi">12</span>
+<span class="n">logical_size</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">&lt;&lt;</span> <span class="mi">32</span><span class="p">)</span> <span class="o">-</span> <span class="mi">123</span>
+<span class="n">values</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="n">rows</span><span class="p">,</span> <span class="n">cols</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span>
+    <span class="n">process_large_array</span><span class="p">,</span>
+    <span class="n">dim</span><span class="o">=</span><span class="n">values</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
+    <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">values</span><span class="p">,</span> <span class="n">wp</span><span class="o">.</span><span class="n">int64</span><span class="p">(</span><span class="n">logical_size</span><span class="p">)],</span>
+    <span class="n">device</span><span class="o">=</span><span class="n">values</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Here, the array shape pads the allocation beyond <code class="docutils literal notranslate"><span class="pre">logical_size</span></code>. The bounds
+check skips those padded elements while preserving coalesced access for the
+contiguous region.</p>
+</section>
 </section>
 <section id="arrays">
 <h2>Arrays<a class="headerlink" href="#arrays" title="Link to this heading">#</a></h2>
@@ -646,6 +689,35 @@ section for more details on sharing memory with external frameworks.</p>
 copy the array back to CPU memory where it is passed to NumPy.
 Calling <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.numpy" title="warp.array.numpy"><code class="xref py py-func docutils literal notranslate"><span class="pre">array.numpy()</span></code></a> on a CPU array will return a zero-copy NumPy view
 onto the Warp data.</p>
+<p>At Python scope, slicing a Warp array returns a zero-copy view into the same
+allocation. Views can be non-contiguous when the slice changes the memory
+stride:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+
+<span class="n">view</span> <span class="o">=</span> <span class="n">a</span><span class="p">[:,</span> <span class="p">::</span><span class="mi">2</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">view</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">view</span><span class="o">.</span><span class="n">is_contiguous</span><span class="p">)</span>
+
+<span class="n">view</span><span class="o">.</span><span class="n">fill_</span><span class="p">(</span><span class="o">-</span><span class="mf">1.0</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[[ 0.  2.]
+ [ 4.  6.]
+ [ 8. 10.]]
+False
+[[-1.  1. -1.  3.]
+ [-1.  5. -1.  7.]
+ [-1.  9. -1. 11.]]
+</pre></div>
+</div>
+<p>Scalar item indexing is intentionally not supported on <code class="docutils literal notranslate"><span class="pre">wp.array</span></code> objects at
+Python scope, so <code class="docutils literal notranslate"><span class="pre">a[0,</span> <span class="pre">0]</span></code> raises an error. Use slicing to create array views,
+or convert to NumPy with <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.numpy" title="warp.array.numpy"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.numpy</span></code></a> when reading
+individual values on the host. Inside kernels, arrays still support element-wise
+indexing.</p>
+<p>This keeps host-side behavior consistent across CPU and GPU arrays and avoids
+encouraging per-element device synchronization or copies.</p>
 <p>Common operators such as <code class="docutils literal notranslate"><span class="pre">+</span></code>, <code class="docutils literal notranslate"><span class="pre">-</span></code>, <code class="docutils literal notranslate"><span class="pre">*</span></code>, and <code class="docutils literal notranslate"><span class="pre">/</span></code> are overloaded for Warp arrays.
 For example, we can add two arrays together using the <code class="docutils literal notranslate"><span class="pre">+</span></code> operator:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">10</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
@@ -687,6 +759,28 @@ of <a class="reference internal" href="../language_reference/_generated/warp.tid
     <span class="k">return</span> <span class="n">foos</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
 </pre></div>
 </div>
+<p>Pass-by-reference parameters can be declared on user functions with
+<a class="reference internal" href="../api_reference/_generated/warp.ref.html#warp.ref" title="warp.ref"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ref[T]</span></code></a>. Assigning to a <code class="docutils literal notranslate"><span class="pre">wp.ref</span></code> parameter mutates the
+caller’s storage instead of rebinding a local variable. Calls must pass an
+addressable expression, such as a local variable, function parameter, array
+element, or struct field:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">increment</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">ref</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">]):</span>
+    <span class="n">x</span> <span class="o">+=</span> <span class="mi">1</span>
+
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">enable_backward</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">increment_kernel</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">]):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">increment</span><span class="p">(</span><span class="n">values</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">wp.ref</span></code> parameters are supported on <a class="reference internal" href="../api_reference/_generated/warp.func.html#warp.func" title="warp.func"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.func</span></code></a> and
+<a class="reference internal" href="../api_reference/_generated/warp.func_native.html#warp.func_native" title="warp.func_native"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.func_native</span></code></a> functions, but not on
+<a class="reference internal" href="../api_reference/_generated/warp.kernel_decorator.html#warp.kernel" title="warp.kernel"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.kernel</span></code></a> signatures. User functions with <code class="docutils literal notranslate"><span class="pre">wp.ref</span></code>
+parameters are not automatically differentiable; use <code class="docutils literal notranslate"><span class="pre">enable_backward=False</span></code>
+on the calling kernel or provide a manually differentiated native function when
+the function participates in a tape-recorded computation.</p>
 <p>Functions may also return multiple values:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">multi_valued_func</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">):</span>
@@ -715,6 +809,58 @@ of <a class="reference internal" href="../language_reference/_generated/warp.tid
     <span class="k">return</span> <span class="n">x</span> <span class="o">+</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
 </pre></div>
 </div>
+<section id="function-parameters">
+<span id="callable-parameters"></span><h3>Function Parameters<a class="headerlink" href="#function-parameters" title="Link to this heading">#</a></h3>
+<p>User functions can accept another user-defined Warp function or simple built-in
+Warp function by annotating the parameter as <a class="reference internal" href="../api_reference/_generated/warp.Function.html#warp.Function" title="warp.Function"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Function</span></code></a>.
+Function targets are chosen when Warp generates code, not while the kernel is
+running. Warp compiles a separate version of the user function for each distinct
+set of target functions used at a call site. This is similar to generic
+specialization: many target combinations mean more specialized versions to
+compile, including for <code class="docutils literal notranslate"><span class="pre">wp.grad()</span></code> calls. The function target is chosen where
+the user function is called and can be invoked directly inside the user function
+body:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">square</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">x</span> <span class="o">*</span> <span class="n">x</span>
+
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">cube</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">x</span> <span class="o">*</span> <span class="n">x</span> <span class="o">*</span> <span class="n">x</span>
+
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="n">f</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">Function</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">f</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">apply_kernel</span><span class="p">(</span>
+    <span class="n">values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
+    <span class="n">square_out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
+    <span class="n">cube_out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
+<span class="p">):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">square_out</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">apply</span><span class="p">(</span><span class="n">square</span><span class="p">,</span> <span class="n">values</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+    <span class="n">cube_out</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">apply</span><span class="p">(</span><span class="n">cube</span><span class="p">,</span> <span class="n">values</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>The <a class="reference internal" href="../api_reference/_generated/warp.Function.html#warp.Function" title="warp.Function"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Function</span></code></a> annotation is type-erased. It does not encode or
+validate the target function signature. The target is checked only through the
+actual calls made in the function body during code generation.</p>
+<p>Function parameters may also use defaults and keyword arguments:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">apply_default</span><span class="p">(</span><span class="n">f</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">Function</span> <span class="o">=</span> <span class="n">square</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">f</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Pass only user-defined <a class="reference internal" href="../api_reference/_generated/warp.func.html#warp.func" title="warp.func"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.func</span></code></a> functions or simple built-in
+functions such as <code class="docutils literal notranslate"><span class="pre">wp.sin</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.cos</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.sqrt</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.add</span></code>, and <code class="docutils literal notranslate"><span class="pre">wp.min</span></code>
+as function targets. See <a class="reference internal" href="limitations.html"><span class="doc">Limitations</span></a> for unsupported function targets and
+other restrictions.</p>
 <p>Tiles may also be passed to user functions. The function signature tile argument should include
 dtype and shape parameters to match the tile type intended to be used in the function. For example:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
@@ -730,8 +876,10 @@ determine the tile argument type:</p>
 </pre></div>
 </div>
 <p>See <a class="reference internal" href="generics.html#generic-functions"><span class="std std-ref">Generic Functions</span></a> for details on using <code class="docutils literal notranslate"><span class="pre">typing.Any</span></code> in user function signatures.</p>
-<p>See <a class="reference internal" href="differentiability.html"><span class="doc">Differentiability</span></a> for details on how to define custom gradient functions,
-custom replay functions, and custom native functions.</p>
+<p>See <a class="reference internal" href="differentiability.html"><span class="doc">Differentiability</span></a> for details on custom gradient and replay
+functions. See <a class="reference internal" href="cpp_cuda_workflows.html"><span class="doc">C++ and CUDA Workflows</span></a> for native C++/CUDA snippets and
+other non-Python integration workflows.</p>
+</section>
 </section>
 <section id="user-structs">
 <h2>User Structs<a class="headerlink" href="#user-structs" title="Link to this heading">#</a></h2>
@@ -915,9 +1063,15 @@ use vector types like <a class="reference internal" href="../api_reference/_gene
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#tutorial-notebooks">Tutorial Notebooks</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#initialization">Initialization</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#kernels">Kernels</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#kernels">Kernels</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#large-array-indexing">Large array indexing</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#arrays">Arrays</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#user-functions">User Functions</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#user-functions">User Functions</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#function-parameters">Function Parameters</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#user-structs">User Structs</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#python-scope-vs-kernel-scope-api">Python Scope vs. Kernel Scope API</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#compilation-model">Compilation Model</a></li>
@@ -934,7 +1088,7 @@ use vector types like <a class="reference internal" href="../api_reference/_gene
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/release-1.14/docs/user_guide/basics.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/release-1.15/docs/user_guide/basics.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

@@ -11,6 +11,22 @@
 
    Generate a random sample from a Poisson distribution.
    
-   :param state: RNG state
-   :param lam: The expected value of the distribution.
+   In a kernel, advances ``state`` in place when ``lam > 0`` (and returns ``0``
+   without consuming RNG state when ``lam == 0``); called from the Python scope, it
+   does not modify ``state``, so repeated calls with the same ``state`` return the
+   same count (see :func:`rand_init`). The returned count has mean and variance
+   both equal to ``lam``.
+   
+   .. code-block:: python
+   
+       @wp.kernel
+       def counts(seed: int, rate: float, out: wp.array[wp.uint32]):
+           i = wp.tid()
+           rng = wp.rand_init(seed, i)
+           out[i] = wp.poisson(rng, rate)
+   
+   :param state: RNG state; advanced in place when called in a kernel (see :func:`rand_init`).
+   :param lam: Expected value (rate) of the distribution; must be non-negative.
+   
+   :returns: A ``uint32`` sample drawn from ``Poisson(lam)``.
    

@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.set_module_options &#8212; Warp 1.14.0</title>
+    <title>warp.set_module_options &#8212; Warp 1.15.0</title>
   
   
   
@@ -44,7 +44,7 @@
 
 
 
-    <script src="../../_static/documentation_options.js?v=42a3b5f3"></script>
+    <script src="../../_static/documentation_options.js?v=e6db31ea"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -53,7 +53,7 @@
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.14';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.15';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
@@ -68,7 +68,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.14.0" />
+  <meta name="docsearch:version" content="1.15.0" />
 
 
   </head>
@@ -139,11 +139,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.14.0</p>
+    <p class="title logo__title">Warp 1.15.0</p>
   
 </a></div>
     
@@ -278,11 +278,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.14.0</p>
+    <p class="title logo__title">Warp 1.15.0</p>
   
 </a>
 
@@ -387,7 +387,9 @@
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/deterministic_execution.html">Deterministic Execution</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/limitations.html">Limitations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/contribution_guide.html">Contribution Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/publications.html">Publications using Warp</a></li>
@@ -495,7 +497,7 @@
 <h1>warp.set_module_options<a class="headerlink" href="#warp-set-module-options" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.set_module_options">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">set_module_options</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">options</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/_src/context.py#L9698-L9732"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.set_module_options" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">set_module_options</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">options</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/context.py#L11243-L11280"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.set_module_options" title="Link to this definition">#</a></dt>
 <dd><p>Set options for the current module.</p>
 <p>Options can be used to control runtime compilation and code-generation
 for the current module individually. Available options are listed below.</p>
@@ -512,9 +514,12 @@ for the current module individually. Available options are listed below.</p>
 <li><p><strong>mode</strong>: The compilation mode to use, can be <code class="docutils literal notranslate"><span class="pre">&quot;debug&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;release&quot;</span></code>, defaults to the value of <code class="docutils literal notranslate"><span class="pre">warp.config.mode</span></code>.</p></li>
 <li><p><strong>optimization_level</strong>: Compiler optimization level (0-3). When <code class="docutils literal notranslate"><span class="pre">None</span></code>, falls back to <code class="docutils literal notranslate"><span class="pre">warp.config.optimization_level</span></code>; if that is also <code class="docutils literal notranslate"><span class="pre">None</span></code>, uses target-specific defaults (<code class="docutils literal notranslate"><span class="pre">-O2</span></code> for CPU, <code class="docutils literal notranslate"><span class="pre">-O3</span></code> for CUDA).</p></li>
 <li><p><strong>cpu_compiler_flags</strong>: CPU compiler flags (see <code class="docutils literal notranslate"><span class="pre">warp.config.cpu_compiler_flags</span></code>), defaults to the global config value when <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
+<li><p><strong>deterministic</strong>: Determinism guarantee for supported atomic operations. Accepted values are <code class="docutils literal notranslate"><span class="pre">warp.DeterministicMode.NOT_GUARANTEED</span></code>, <code class="docutils literal notranslate"><span class="pre">warp.DeterministicMode.RUN_TO_RUN</span></code>, and <code class="docutils literal notranslate"><span class="pre">warp.DeterministicMode.GPU_TO_GPU</span></code>. Defaults to the value of <code class="docutils literal notranslate"><span class="pre">warp.config.deterministic</span></code> when the module is created.</p></li>
+<li><p><strong>deterministic_max_records</strong>: Per-target, per-thread upper bound for deterministic scatter records. Defaults to <code class="docutils literal notranslate"><span class="pre">0</span></code>, which means use the code-generated lower bound only. This is useful when dynamic loops or repeated visits to the same atomic site can emit more records than static analysis can prove.</p></li>
 <li><p><strong>block_dim</strong>: The default number of threads to assign to each block, defaults to <code class="docutils literal notranslate"><span class="pre">256</span></code>.</p></li>
 <li><p><strong>compile_time_trace</strong>: Enable compile-time tracing, defaults to the value of <code class="docutils literal notranslate"><span class="pre">warp.config.compile_time_trace</span></code>.</p></li>
 <li><p><strong>strip_hash</strong>: Omit the content hash from compiled kernel file names, defaults to <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
+<li><p><strong>default_grid_stride</strong>: Whether kernels in this module that do not set <code class="docutils literal notranslate"><span class="pre">grid_stride</span></code> explicitly compile with a grid-stride loop. When <code class="docutils literal notranslate"><span class="pre">None</span></code> (the default), defers to <code class="docutils literal notranslate"><span class="pre">warp.config.default_grid_stride</span></code> (which defaults to grid-stride); set <code class="docutils literal notranslate"><span class="pre">False</span></code> to opt the module’s kernels into the lean launch. A per-kernel <code class="docutils literal notranslate"><span class="pre">&#64;warp.kernel(grid_stride=...)</span></code> always takes precedence.</p></li>
 </ul>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -585,7 +590,7 @@ for the current module individually. Available options are listed below.</p>
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/release-1.14/docs/api_reference/_generated/warp.set_module_options.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/release-1.15/docs/api_reference/_generated/warp.set_module_options.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

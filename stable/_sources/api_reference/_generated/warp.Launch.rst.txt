@@ -35,6 +35,8 @@
       ~Launch.bounds
       ~Launch.max_blocks
       ~Launch.block_dim
+      ~Launch.cluster_dim
       ~Launch.adjoint
+      ~Launch.grid_stride
    
    

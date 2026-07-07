@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Runtime &#8212; Warp 1.14.0</title>
+    <title>Runtime &#8212; Warp 1.15.0</title>
   
   
   
@@ -44,7 +44,7 @@
 
 
 
-    <script src="../_static/documentation_options.js?v=42a3b5f3"></script>
+    <script src="../_static/documentation_options.js?v=e6db31ea"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -53,7 +53,7 @@
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.14';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.15';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
@@ -68,7 +68,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.14.0" />
+  <meta name="docsearch:version" content="1.15.0" />
 
 
   </head>
@@ -139,11 +139,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.14.0</p>
+    <p class="title logo__title">Warp 1.15.0</p>
   
 </a></div>
     
@@ -278,11 +278,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.14.0</p>
+    <p class="title logo__title">Warp 1.15.0</p>
   
 </a>
 
@@ -387,7 +387,9 @@
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deterministic_execution.html">Deterministic Execution</a></li>
 <li class="toctree-l1"><a class="reference internal" href="limitations.html">Limitations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="contribution_guide.html">Contribution Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="publications.html">Publications using Warp</a></li>
@@ -2097,8 +2099,17 @@ dispatch overhead that otherwise dominates CPU launches:</p>
 (<a class="reference internal" href="../api_reference/_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch()</span></code></a>, <a class="reference internal" href="../api_reference/_generated/warp.launch_tiled.html#warp.launch_tiled" title="warp.launch_tiled"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch_tiled()</span></code></a>,
 and the adjoint launches emitted by <a class="reference internal" href="../api_reference/_generated/warp.Tape.html#warp.Tape" title="warp.Tape"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Tape</span></code></a> /
 <a class="reference internal" href="../api_reference/_generated/warp.Tape.html#warp.Tape.backward" title="warp.Tape.backward"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Tape.backward()</span></code></a>).</p></li>
+<li><p>Reusable launches created with <code class="docutils literal notranslate"><span class="pre">wp.launch(...,</span> <span class="pre">record_cmd=True)</span></code> when they
+are replayed with <a class="reference internal" href="../api_reference/_generated/warp.Launch.html#warp.Launch.launch" title="warp.Launch.launch"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Launch.launch()</span></code></a>.</p></li>
 <li><p>Memory copies (<a class="reference internal" href="../api_reference/_generated/warp.copy.html#warp.copy" title="warp.copy"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.copy()</span></code></a>) and zero-initialization
-(<a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.zero_" title="warp.array.zero_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.zero_()</span></code></a>).</p></li>
+(<a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.zero_" title="warp.array.zero_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.zero_()</span></code></a>), plus contiguous
+<a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.fill_" title="warp.array.fill_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.fill_()</span></code></a>.</p></li>
+<li><p>Host library helpers including
+<a class="reference internal" href="../api_reference/_generated/warp.utils.array_scan.html#warp.utils.array_scan" title="warp.utils.array_scan"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_scan()</span></code></a>,
+<a class="reference internal" href="../api_reference/_generated/warp.utils.radix_sort_pairs.html#warp.utils.radix_sort_pairs" title="warp.utils.radix_sort_pairs"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.radix_sort_pairs()</span></code></a>,
+<a class="reference internal" href="../api_reference/_generated/warp.utils.segmented_sort_pairs.html#warp.utils.segmented_sort_pairs" title="warp.utils.segmented_sort_pairs"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.segmented_sort_pairs()</span></code></a>,
+<a class="reference internal" href="../api_reference/_generated/warp.utils.runlength_encode.html#warp.utils.runlength_encode" title="warp.utils.runlength_encode"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.runlength_encode()</span></code></a>, and the
+<code class="docutils literal notranslate"><span class="pre">warp.sparse</span></code> BSR <code class="docutils literal notranslate"><span class="pre">from_triplets</span></code> / <code class="docutils literal notranslate"><span class="pre">transpose</span></code> topology builders.</p></li>
 <li><p>Conditional graph nodes (<a class="reference internal" href="../api_reference/_generated/warp.capture_if.html#warp.capture_if" title="warp.capture_if"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_if()</span></code></a> and
 <a class="reference internal" href="../api_reference/_generated/warp.capture_while.html#warp.capture_while" title="warp.capture_while"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_while()</span></code></a>). The condition is re-evaluated
 on every replay, so a captured <code class="docutils literal notranslate"><span class="pre">while</span></code> loop can iterate a different number
@@ -2109,21 +2120,42 @@ of times each call.</p></li>
 kernels with scalar parameters of any size (serialized into per-launch value
 blobs, with pointer fields patched via relocation metadata at replay), and
 empty / zero-length array arguments.</p>
+<p>Memory allocations made during CPU capture, including temporary arrays borrowed
+by <code class="docutils literal notranslate"><span class="pre">warp.fem</span></code> internals, are retained for the lifetime of the graph and reused
+on replay. <code class="docutils literal notranslate"><span class="pre">Device.is_capturing</span></code> reports active CPU APIC capture, and Warp’s
+internal capture pause/resume flow can temporarily suspend CPU recording for
+setup work that should not enter the replay stream.</p>
 <p>Current limitations of CPU graph capture:</p>
 <ul class="simple">
-<li><p><a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.fill_" title="warp.array.fill_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.fill_()</span></code></a> for non-zero values is not yet
-recorded on CPU and is silently dropped from the captured graph. Use
-<a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.zero_" title="warp.array.zero_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.zero_()</span></code></a> or a kernel launch instead.</p></li>
-<li><p><a class="reference internal" href="../api_reference/_generated/warp.utils.array_scan.html#warp.utils.array_scan" title="warp.utils.array_scan"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_scan()</span></code></a> is not yet recorded
-into the CPU APIC byte stream; calling it inside a CPU <a class="reference internal" href="../api_reference/_generated/warp.ScopedCapture.html#warp.ScopedCapture" title="warp.ScopedCapture"><code class="xref py py-class docutils literal notranslate"><span class="pre">ScopedCapture</span></code></a>
-raises <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a>. Run the scan before or after the captured
-region.</p></li>
-<li><p>Memsets and memcpys whose destination pointer was not previously seen by
-Warp’s tracker (for example, buffers allocated by an external solver such as
-mujoco-warp) print <code class="docutils literal notranslate"><span class="pre">APIC:</span> <span class="pre">Error</span> <span class="pre">-</span> <span class="pre">memset</span> <span class="pre">dst</span> <span class="pre">pointer</span> <span class="pre">not</span> <span class="pre">in</span> <span class="pre">any</span> <span class="pre">registered</span>
-<span class="pre">region</span></code> and are dropped from the captured graph. Routing the allocation
-through <a class="reference internal" href="../api_reference/_generated/warp.empty.html#warp.empty" title="warp.empty"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.empty()</span></code></a> / <a class="reference internal" href="../api_reference/_generated/warp.zeros.html#warp.zeros" title="warp.zeros"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.zeros()</span></code></a>, or
-passing the buffer through a kernel launch, ensures it is tracked.</p></li>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.utils.array_scan.html#warp.utils.array_scan" title="warp.utils.array_scan"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_scan()</span></code></a> records <code class="docutils literal notranslate"><span class="pre">int32</span></code>, <code class="docutils literal notranslate"><span class="pre">float32</span></code>,
+<code class="docutils literal notranslate"><span class="pre">int64</span></code>, and <code class="docutils literal notranslate"><span class="pre">float64</span></code> scalar and vector scans – including positively-strided
+(non-contiguous) 1D arrays – into the CPU APIC byte stream. Negative strides raise
+<a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a> inside a CPU <a class="reference internal" href="../api_reference/_generated/warp.ScopedCapture.html#warp.ScopedCapture" title="warp.ScopedCapture"><code class="xref py py-class docutils literal notranslate"><span class="pre">ScopedCapture</span></code></a>; run them outside the
+captured region.</p></li>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.utils.runlength_encode.html#warp.utils.runlength_encode" title="warp.utils.runlength_encode"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.runlength_encode()</span></code></a> requires an explicit
+<code class="docutils literal notranslate"><span class="pre">run_count</span></code> array during CPU APIC capture; the host-return form (<code class="docutils literal notranslate"><span class="pre">run_count=None</span></code>) raises
+<a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a>, because its capture-time host integer cannot represent the
+replay-time result.</p></li>
+<li><p>Non-contiguous <a class="reference internal" href="../api_reference/_generated/warp.copy.html#warp.copy" title="warp.copy"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.copy()</span></code></a>, non-contiguous
+<a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.fill_" title="warp.array.fill_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.fill_()</span></code></a>, and fills on
+<a class="reference internal" href="../api_reference/_generated/warp.indexedarray.html#warp.indexedarray" title="warp.indexedarray"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.indexedarray</span></code></a> / <code class="docutils literal notranslate"><span class="pre">wp.fabricarray</span></code> raise
+<a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a> inside a CPU <a class="reference internal" href="../api_reference/_generated/warp.ScopedCapture.html#warp.ScopedCapture" title="warp.ScopedCapture"><code class="xref py py-class docutils literal notranslate"><span class="pre">ScopedCapture</span></code></a>.</p></li>
+<li><p>Reusable launches with array parameters must be updated through Warp-level
+setters such as <a class="reference internal" href="../api_reference/_generated/warp.Launch.html#warp.Launch.set_param_at_index" title="warp.Launch.set_param_at_index"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Launch.set_param_at_index()</span></code></a>.
+Raw ctype array parameters passed through
+<a class="reference internal" href="../api_reference/_generated/warp.Launch.html#warp.Launch.set_param_at_index_from_ctype" title="warp.Launch.set_param_at_index_from_ctype"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Launch.set_param_at_index_from_ctype()</span></code></a>
+cannot be recorded because APIC needs the original <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a>
+object to describe replay-time pointer relocation.</p></li>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.nnz_sync" title="warp.sparse.BsrMatrix.nnz_sync"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BsrMatrix.nnz_sync()</span></code></a> cannot read the
+result of a topology update recorded earlier in the same CPU capture. Read the
+count after replay, or avoid the readback inside the captured region.</p></li>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.status_sync" title="warp.sparse.BsrMatrix.status_sync"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BsrMatrix.status_sync()</span></code></a> cannot read
+the sparse status during a live CUDA graph capture (it requires a device-to-host
+readback) or during a CPU APIC capture (a recorded status update is applied only
+on replay). Read the status after replay instead.</p></li>
+<li><p>Recording is scoped to the capture’s device: a host (CPU) helper op invoked while a CUDA
+graph capture is active executes immediately instead of being recorded into the CUDA graph,
+and vice versa.</p></li>
 <li><p>Nested captures are rejected on both CPU and CUDA. Only one capture may be
 active at a time on a given thread.</p></li>
 <li><p>Arrays used during capture must remain alive for the lifetime of the captured
@@ -2155,6 +2187,34 @@ On CUDA this enables API Capture byte-stream recording alongside the native CUDA
 capture; on CPU the byte stream is always recorded (it is the only replay
 mechanism), and <code class="docutils literal notranslate"><span class="pre">apic=True</span></code> simply unlocks
 <a class="reference internal" href="../api_reference/_generated/warp.capture_save.html#warp.capture_save" title="warp.capture_save"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_save()</span></code></a>.</p>
+<p>On CUDA, <code class="docutils literal notranslate"><span class="pre">apic=True</span></code> records the same extended operation set as the CPU path so saved
+graphs replay it from current inputs: kernel launches (forward, adjoint, and reusable
+<code class="docutils literal notranslate"><span class="pre">record_cmd=True</span></code> launches), contiguous same-device memory copies and memsets, contiguous
+<a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.fill_" title="warp.array.fill_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.fill_()</span></code></a>, <a class="reference internal" href="../api_reference/_generated/warp.utils.array_scan.html#warp.utils.array_scan" title="warp.utils.array_scan"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_scan()</span></code></a>,
+<a class="reference internal" href="../api_reference/_generated/warp.utils.radix_sort_pairs.html#warp.utils.radix_sort_pairs" title="warp.utils.radix_sort_pairs"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.radix_sort_pairs()</span></code></a>,
+<a class="reference internal" href="../api_reference/_generated/warp.utils.segmented_sort_pairs.html#warp.utils.segmented_sort_pairs" title="warp.utils.segmented_sort_pairs"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.segmented_sort_pairs()</span></code></a>,
+<a class="reference internal" href="../api_reference/_generated/warp.utils.runlength_encode.html#warp.utils.runlength_encode" title="warp.utils.runlength_encode"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.runlength_encode()</span></code></a> (with an explicit
+<code class="docutils literal notranslate"><span class="pre">run_count</span></code>), <a class="reference internal" href="../api_reference/_generated/warp.sparse.bsr_set_transpose.html#warp.sparse.bsr_set_transpose" title="warp.sparse.bsr_set_transpose"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.sparse.bsr_set_transpose()</span></code></a>, and
+<a class="reference internal" href="../api_reference/_generated/warp.capture_if.html#warp.capture_if" title="warp.capture_if"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_if()</span></code></a> / <a class="reference internal" href="../api_reference/_generated/warp.capture_while.html#warp.capture_while" title="warp.capture_while"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_while()</span></code></a>
+conditionals. Unlike the CPU path (which records only), these still execute during capture so
+the driver also records them into the native CUDA graph.</p>
+<p>A few operations cannot be captured for save/load on CUDA and raise
+<a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a> during an <code class="docutils literal notranslate"><span class="pre">apic=True</span></code> capture; build these outside the captured
+region:</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.sparse.bsr_set_from_triplets.html#warp.sparse.bsr_set_from_triplets" title="warp.sparse.bsr_set_from_triplets"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.sparse.bsr_set_from_triplets()</span></code></a> (and the
+<code class="docutils literal notranslate"><span class="pre">warp.sparse</span></code> matrix products that build topology with it), because it reads the resulting
+<code class="docutils literal notranslate"><span class="pre">nnz</span></code> back to the host after its own kernels, which a captured graph cannot reproduce.</p></li>
+<li><p>Non-contiguous <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.fill_" title="warp.array.fill_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.fill_()</span></code></a>, indexed/Fabric <code class="docutils literal notranslate"><span class="pre">fill_()</span></code>, and
+contiguous fills whose value is larger than 3968 bytes.</p></li>
+<li><p>The host-return form of <a class="reference internal" href="../api_reference/_generated/warp.utils.runlength_encode.html#warp.utils.runlength_encode" title="warp.utils.runlength_encode"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.runlength_encode()</span></code></a>
+(<code class="docutils literal notranslate"><span class="pre">run_count=None</span></code>).</p></li>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.copy.html#warp.copy" title="warp.copy"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.copy()</span></code></a> other than a contiguous same-device copy: cross-device copies
+(host-to-device, device-to-host, and peer-to-peer) and non-contiguous (strided / indexed /
+Fabric) copies. Only contiguous same-device copies are recorded; the rest raise so a saved
+graph cannot silently omit them (device-to-host save/load additionally needs a
+host-destination region model that does not exist yet).</p></li>
+</ul>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
 
 <span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">module</span><span class="o">=</span><span class="s2">&quot;unique&quot;</span><span class="p">)</span>
@@ -2327,13 +2387,18 @@ resolved from the <code class="docutils literal notranslate"><span class="pre">.
 loading the <code class="docutils literal notranslate"><span class="pre">warp-clang</span></code> library at runtime and calling its <code class="docutils literal notranslate"><span class="pre">wp_load_obj</span></code> /
 <code class="docutils literal notranslate"><span class="pre">wp_lookup</span></code> entry points, then registering each pointer with the loaded graph
 via <code class="docutils literal notranslate"><span class="pre">wp_apic_register_loaded_cpu_kernel</span></code>. The example walks every kernel
-returned by <code class="docutils literal notranslate"><span class="pre">wp_apic_get_num_kernels</span></code> and <code class="docutils literal notranslate"><span class="pre">wp_apic_get_kernel_key</span></code> and does
-this resolution once at startup. The C API surface for this lookup is:</p>
+returned by <code class="docutils literal notranslate"><span class="pre">wp_apic_get_num_kernels</span></code> and does this resolution once at
+startup. Kernel metadata includes both the kernel key and module hash so
+same-key kernels from distinct <code class="docutils literal notranslate"><span class="pre">module=&quot;unique&quot;</span></code> modules resolve to the
+correct object file and function pointer. The C API surface for this lookup is:</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">int</span><span class="w">         </span><span class="nf">wp_apic_get_num_kernels</span><span class="p">(</span><span class="n">APICGraph</span><span class="o">*</span><span class="w"> </span><span class="n">graph</span><span class="p">);</span>
 <span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="nf">wp_apic_get_kernel_key</span><span class="p">(</span><span class="n">APICGraph</span><span class="o">*</span><span class="w"> </span><span class="n">graph</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">index</span><span class="p">);</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="nf">wp_apic_get_kernel_forward_name</span><span class="p">(</span><span class="n">APICGraph</span><span class="o">*</span><span class="w"> </span><span class="n">graph</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="n">key</span><span class="p">);</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="nf">wp_apic_get_kernel_backward_name</span><span class="p">(</span><span class="n">APICGraph</span><span class="o">*</span><span class="w"> </span><span class="n">graph</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="n">key</span><span class="p">);</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="nf">wp_apic_get_kernel_module_hash</span><span class="p">(</span><span class="n">APICGraph</span><span class="o">*</span><span class="w"> </span><span class="n">graph</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">index</span><span class="p">);</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="nf">wp_apic_get_kernel_module_binary_filename</span><span class="p">(</span><span class="n">APICGraph</span><span class="o">*</span><span class="w"> </span><span class="n">graph</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">index</span><span class="p">);</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="nf">wp_apic_get_kernel_forward_name</span><span class="p">(</span><span class="n">APICGraph</span><span class="o">*</span><span class="w"> </span><span class="n">graph</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">index</span><span class="p">);</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="nf">wp_apic_get_kernel_backward_name</span><span class="p">(</span><span class="n">APICGraph</span><span class="o">*</span><span class="w"> </span><span class="n">graph</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">index</span><span class="p">);</span>
 <span class="kt">void</span><span class="w">        </span><span class="nf">wp_apic_register_loaded_cpu_kernel</span><span class="p">(</span><span class="n">APICGraph</span><span class="o">*</span><span class="w"> </span><span class="n">graph</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="n">key</span><span class="p">,</span>
+<span class="w">                                               </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="n">module_hash</span><span class="p">,</span>
 <span class="w">                                               </span><span class="kt">void</span><span class="o">*</span><span class="w"> </span><span class="n">forward_fn</span><span class="p">,</span><span class="w"> </span><span class="kt">void</span><span class="o">*</span><span class="w"> </span><span class="n">backward_fn</span><span class="p">);</span>
 </pre></div>
 </div>
@@ -2364,10 +2429,15 @@ cmake<span class="w"> </span>--build<span class="w"> </span>build<span class="w"
 options, controls, and platform-specific notes.</p>
 <p>Current limitations of API Capture:</p>
 <ul class="simple">
-<li><p>The recorded operation set matches the CPU graph set: kernel launches,
-<a class="reference internal" href="../api_reference/_generated/warp.copy.html#warp.copy" title="warp.copy"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.copy()</span></code></a>, and <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.zero_" title="warp.array.zero_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.zero_()</span></code></a>.
-<a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.fill_" title="warp.array.fill_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.fill_()</span></code></a> is recorded on CUDA (it dispatches a
-kernel that the CUDA driver captures) but not on CPU.</p></li>
+<li><p>The recorded operation set covers kernel launches, supported <a class="reference internal" href="../api_reference/_generated/warp.copy.html#warp.copy" title="warp.copy"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.copy()</span></code></a> variants,
+<a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.zero_" title="warp.array.zero_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.zero_()</span></code></a>, contiguous <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.fill_" title="warp.array.fill_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.fill_()</span></code></a>,
+and the host library helpers (<a class="reference internal" href="../api_reference/_generated/warp.utils.array_scan.html#warp.utils.array_scan" title="warp.utils.array_scan"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_scan()</span></code></a>,
+<a class="reference internal" href="../api_reference/_generated/warp.utils.radix_sort_pairs.html#warp.utils.radix_sort_pairs" title="warp.utils.radix_sort_pairs"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.radix_sort_pairs()</span></code></a>,
+<a class="reference internal" href="../api_reference/_generated/warp.utils.segmented_sort_pairs.html#warp.utils.segmented_sort_pairs" title="warp.utils.segmented_sort_pairs"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.segmented_sort_pairs()</span></code></a>,
+<a class="reference internal" href="../api_reference/_generated/warp.utils.runlength_encode.html#warp.utils.runlength_encode" title="warp.utils.runlength_encode"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.runlength_encode()</span></code></a>, and the
+<code class="docutils literal notranslate"><span class="pre">warp.sparse</span></code> BSR <code class="docutils literal notranslate"><span class="pre">from_triplets</span></code>/<code class="docutils literal notranslate"><span class="pre">transpose</span></code> builders, including
+topology-only builds). See the CPU graph capture
+limitations above for the supported dtype and layout ranges.</p></li>
 <li><p>Only <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Mesh</span></code></a> object handles are serialized.
 <a class="reference internal" href="../api_reference/_generated/warp.Volume.html#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Volume</span></code></a> and <a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh" title="warp.Bvh"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Bvh</span></code></a> handles are not
 yet supported.</p></li>
@@ -2379,11 +2449,10 @@ supported.</p></li>
 <code class="docutils literal notranslate"><span class="pre">_modules</span></code> directory with the recorded CPU kernel object files. It does not
 require a CUDA-enabled Warp native library. Loading CUDA <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> graphs still
 requires a CUDA-enabled build.</p></li>
-<li><p>CUDA loaded-graph replay does not yet support APIC conditional and loop ops.
-CPU <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> graph replay supports CPU-captured
+<li><p>Both CPU and CUDA <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> graph replay support APIC-captured
 <a class="reference internal" href="../api_reference/_generated/warp.capture_if.html#warp.capture_if" title="warp.capture_if"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_if()</span></code></a> and
-<a class="reference internal" href="../api_reference/_generated/warp.capture_while.html#warp.capture_while" title="warp.capture_while"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_while()</span></code></a> graphs. Stream events and
-texture array copies are not recorded.</p></li>
+<a class="reference internal" href="../api_reference/_generated/warp.capture_while.html#warp.capture_while" title="warp.capture_while"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_while()</span></code></a> conditionals and loops. Stream
+events and texture array copies are not recorded.</p></li>
 </ul>
 </section>
 </section>
@@ -2830,7 +2899,7 @@ file using the <a class="reference internal" href="../api_reference/_generated/w
 <span class="n">dim</span> <span class="o">=</span> <span class="mi">16</span>
 <span class="n">field</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">dim</span><span class="p">,</span> <span class="n">dim</span><span class="p">,</span> <span class="n">dim</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
 <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">make_sphere_sdf</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">field</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">field</span><span class="p">,</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">8.0</span><span class="p">,</span> <span class="mf">8.0</span><span class="p">,</span> <span class="mf">8.0</span><span class="p">),</span> <span class="mf">4.0</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
-<span class="n">mc</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">MarchingCubes</span><span class="p">(</span><span class="n">nx</span><span class="o">=</span><span class="n">dim</span><span class="p">,</span> <span class="n">ny</span><span class="o">=</span><span class="n">dim</span><span class="p">,</span> <span class="n">nz</span><span class="o">=</span><span class="n">dim</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">mc</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">MarchingCubes</span><span class="p">(</span><span class="n">nx</span><span class="o">=</span><span class="n">dim</span><span class="p">,</span> <span class="n">ny</span><span class="o">=</span><span class="n">dim</span><span class="p">,</span> <span class="n">nz</span><span class="o">=</span><span class="n">dim</span><span class="p">)</span>
 <span class="n">mc</span><span class="o">.</span><span class="n">surface</span><span class="p">(</span><span class="n">field</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">mc</span><span class="o">.</span><span class="n">verts</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="n">mc</span><span class="o">.</span><span class="n">indices</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">%</span> <span class="mi">3</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
@@ -2842,7 +2911,7 @@ True
 </div>
 <p>The resulting mesh is stored in <code class="docutils literal notranslate"><span class="pre">mc.verts</span></code> as a <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.array</span></code></a> of
 <a class="reference internal" href="../api_reference/_generated/warp.vec3.html#warp.vec3" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.vec3</span></code></a> vertices and in <code class="docutils literal notranslate"><span class="pre">mc.indices</span></code> as a flat <a class="reference internal" href="../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.int32</span></code></a> index array.</p>
-<p>See <a class="extlink-github reference external" href="https://github.com/NVIDIA/warp/blob/release-1.14/warp/examples/core/example_marching_cubes.py">warp/examples/core/example_marching_cubes.py</a> for a complete usage example.</p>
+<p>See <a class="extlink-github reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/examples/core/example_marching_cubes.py">warp/examples/core/example_marching_cubes.py</a> for a complete usage example.</p>
 <section id="custom-marching-cubes-implementations">
 <h3>Custom Marching Cubes Implementations<a class="headerlink" href="#custom-marching-cubes-implementations" title="Link to this heading">#</a></h3>
 <p>For advanced use cases requiring custom extraction logic (e.g., working with
@@ -3016,7 +3085,7 @@ and will remain cached even if <a class="reference internal" href="../api_refere
 <a class="reference internal" href="../api_reference/_generated/warp.clear_lto_cache.html#warp.clear_lto_cache" title="warp.clear_lto_cache"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.clear_lto_cache()</span></code></a> can be used to clear the LTO cache.</p>
 </section>
 <section id="random-number-generation">
-<h2>Random Number Generation<a class="headerlink" href="#random-number-generation" title="Link to this heading">#</a></h2>
+<span id="id9"></span><h2>Random Number Generation<a class="headerlink" href="#random-number-generation" title="Link to this heading">#</a></h2>
 <p>To generate random numbers in a Warp kernel, use the <a class="reference internal" href="../language_reference/_generated/warp.rand_init.html#warp._src.lang.rand_init" title="warp._src.lang.rand_init"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.rand_init()</span></code></a> built-in
 inside the kernel to initialize a random number generator, followed by a call to any of Warp’s random number
 built-ins. For example:</p>
@@ -3038,7 +3107,7 @@ built-ins. For example:</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[0.1415146 0.9632247 0.6449367]
 </pre></div>
 </div>
-<p>Warp uses a PCG (Permuted Congruential Generator) for pseudo-random number generation <a class="footnote-reference brackets" href="#id10" id="id9" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a>.
+<p>Warp uses a PCG (Permuted Congruential Generator) for pseudo-random number generation <a class="footnote-reference brackets" href="#id12" id="id10" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a>.
 <a class="reference internal" href="../language_reference/_generated/warp.rand_init.html#warp._src.lang.rand_init" title="warp._src.lang.rand_init"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.rand_init()</span></code></a> hashes the seed and offset with two nested calls
 to a PCG routine to produce a 32-bit unsigned integer representing the RNG state. The offset
 in a kernel is necessary to ensure that each thread generates a unique sequence of numbers. Were it
@@ -3064,7 +3133,7 @@ numbers, e.g.:</p>
 </pre></div>
 </div>
 <section id="avoiding-correlated-sequences">
-<h3>Avoiding Correlated Sequences<a class="headerlink" href="#avoiding-correlated-sequences" title="Link to this heading">#</a></h3>
+<span id="id11"></span><h3>Avoiding Correlated Sequences<a class="headerlink" href="#avoiding-correlated-sequences" title="Link to this heading">#</a></h3>
 <p>Care must be taken when two different kernels generate random numbers. If the same seed is used for both,
 any quantities computed from the generated random numbers will be correlated. Similarly, if the same seed
 is passed to a kernel that is launched multiple times, the same random numbers will be generated for each launch.
@@ -3095,8 +3164,8 @@ To generate different sequences across launches, use a different seed for each l
 </pre></div>
 </div>
 <aside class="footnote-list brackets">
-<aside class="footnote brackets" id="id10" role="doc-footnote">
-<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id9">1</a><span class="fn-bracket">]</span></span>
+<aside class="footnote brackets" id="id12" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id10">1</a><span class="fn-bracket">]</span></span>
 <p>Mark Jarzynski and Marc Olano, <a class="reference external" href="https://jcgt.org/published/0009/03/02/">Hash Functions for GPU Rendering</a>,
 Journal of Computer Graphics Techniques (JCGT), vol. 9, no. 3, 20–38, 2020.</p>
 </aside>
@@ -3255,7 +3324,7 @@ Journal of Computer Graphics Techniques (JCGT), vol. 9, no. 3, 20–38, 2020.</p
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/release-1.14/docs/user_guide/runtime.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/release-1.15/docs/user_guide/runtime.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

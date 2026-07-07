@@ -37,6 +37,7 @@ Type Annotations
    Float
    Int
    Scalar
+   ref
 
 Data Types
 ----------
@@ -274,6 +275,7 @@ Kernel Programming
    WarpCodegenKeyError
    WarpCodegenTypeError
    WarpCodegenValueError
+   address_of
    func
    func_grad
    func_native
@@ -385,10 +387,13 @@ CUDA Memory Management
    :toctree: _generated
 
    Allocator
+   CudaManagedAllocator
+   MemoryKind
    ScopedAllocator
    ScopedMempool
    ScopedMempoolAccess
    ScopedPeerAccess
+   get_cuda_max_cluster_dim
    get_device_allocator
    get_mempool_release_threshold
    get_mempool_used_mem_current
@@ -595,6 +600,15 @@ Constants
    phi
    pi
    tau
+
+Configuration Modes
+-------------------
+
+.. autosummary::
+   :nosignatures:
+   :toctree: _generated
+
+   DeterministicMode
 
 Misc
 ----

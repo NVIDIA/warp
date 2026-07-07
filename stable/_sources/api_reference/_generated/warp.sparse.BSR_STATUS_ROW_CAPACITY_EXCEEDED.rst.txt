@@ -1,0 +1,6 @@
+﻿warp.sparse.BSR\_STATUS\_ROW\_CAPACITY\_EXCEEDED
+================================================
+
+.. currentmodule:: warp.sparse
+
+.. autodata:: BSR_STATUS_ROW_CAPACITY_EXCEEDED

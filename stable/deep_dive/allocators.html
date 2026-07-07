@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Allocators &#8212; Warp 1.14.0</title>
+    <title>Allocators &#8212; Warp 1.15.0</title>
   
   
   
@@ -44,7 +44,7 @@
 
 
 
-    <script src="../_static/documentation_options.js?v=42a3b5f3"></script>
+    <script src="../_static/documentation_options.js?v=e6db31ea"></script>
     <script src="../_static/doctools.js?v=9bcbadda"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -53,7 +53,7 @@
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.14';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.15';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
@@ -68,7 +68,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.14.0" />
+  <meta name="docsearch:version" content="1.15.0" />
 
 
   </head>
@@ -139,11 +139,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.14.0</p>
+    <p class="title logo__title">Warp 1.15.0</p>
   
 </a></div>
     
@@ -278,11 +278,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.14.0</p>
+    <p class="title logo__title">Warp 1.15.0</p>
   
 </a>
 
@@ -387,7 +387,9 @@
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../user_guide/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../user_guide/debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/deterministic_execution.html">Deterministic Execution</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../user_guide/limitations.html">Limitations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../user_guide/contribution_guide.html">Contribution Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../user_guide/publications.html">Publications using Warp</a></li>
@@ -568,7 +570,9 @@ on this device.</p>
 <p>In most cases, it shouldn’t be necessary to fiddle with these enablement functions, but they are there if you need them.
 By default, Warp will enable memory pools on startup if they are supported, which will bring the benefits of improved allocation speed automatically.
 Most Warp code should continue to function with or without mempool allocators, with the exception of memory allocations
-during graph capture, which will raise an exception if memory pools are not enabled.</p>
+during CUDA graph capture, which will raise an exception if memory pools are not enabled. CPU APIC graph capture does
+not use CUDA-style memory pools; host allocations made during CPU capture are retained for the captured graph’s
+lifetime and reused on replay.</p>
 </section>
 <section id="querying-memory-usage">
 <h3>Querying Memory Usage<a class="headerlink" href="#querying-memory-usage" title="Link to this heading">#</a></h3>
@@ -640,7 +644,12 @@ Similarly, the high-water mark of used memory can be queried using
 <span class="nb">print</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Capturing allocations is similar to capturing other operations like kernel launches or memory copies.  During capture, the operations don’t actually execute, but are recorded.  To execute the captured operations, we must launch the graph using <a class="reference internal" href="../api_reference/_generated/warp.capture_launch.html#warp.capture_launch" title="warp.capture_launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_launch()</span></code></a>.  This is important to keep in mind if you want to use an array that was allocated during graph capture.  The array doesn’t actually exist until the captured graph is launched.  In the snippet above, we would get an error if we tried to print the array before calling <a class="reference internal" href="../api_reference/_generated/warp.capture_launch.html#warp.capture_launch" title="warp.capture_launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_launch()</span></code></a>.</p>
+<p>Capturing allocations in CUDA graphs is similar to capturing other operations like kernel launches or memory copies.  During capture, the operations don’t actually execute, but are recorded.  To execute the captured operations, we must launch the graph using <a class="reference internal" href="../api_reference/_generated/warp.capture_launch.html#warp.capture_launch" title="warp.capture_launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_launch()</span></code></a>.  This is important to keep in mind if you want to use an array that was allocated during CUDA graph capture.  The array doesn’t actually exist until the captured graph is launched.  In the snippet above, we would get an error if we tried to print the array before calling <a class="reference internal" href="../api_reference/_generated/warp.capture_launch.html#warp.capture_launch" title="warp.capture_launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_launch()</span></code></a>.</p>
+<p>CPU APIC graph capture handles allocations differently: CPU arrays allocated
+inside the capture are allocated immediately, retained for the lifetime of the
+captured graph, and reused on every replay. This allows temporary CPU buffers,
+including FEM temporary storage, to participate in CPU graph capture without a
+CUDA-style memory pool.</p>
 <p>More generally, the ability to allocate memory during graph capture greatly increases the range of code that can be captured in a graph.  This includes any code that creates temporary allocations.  CUDA graphs can be used to re-run operations with minimal CPU overhead, which can yield dramatic performance improvements.</p>
 </section>
 <section id="memory-pool-access">
@@ -670,7 +679,7 @@ For memory allocated using default CUDA allocators, we can enable CUDA <a class=
 <h3>Limitations<a class="headerlink" href="#limitations" title="Link to this heading">#</a></h3>
 <section id="mempool-to-mempool-copies-between-gpus-during-graph-capture">
 <h4>Mempool-to-Mempool Copies Between GPUs During Graph Capture<a class="headerlink" href="#mempool-to-mempool-copies-between-gpus-during-graph-capture" title="Link to this heading">#</a></h4>
-<p>Copying data between different GPUs will fail during graph capture if the source and destination are allocated using mempool allocators and mempool access is not enabled between devices.  Note that this only applies to capturing mempool-to-mempool copies in a graph; copies done outside of graph capture are not affected.  Copies within the same mempool (i.e., same device) are also not affected.</p>
+<p>Copying data between different GPUs will fail during graph capture if the source and destination are allocated using mempool allocators and mempool access is not enabled between devices.  Note that this only applies to capturing mempool-to-mempool copies in a graph.  Copies done outside of graph capture are not affected.  Copies within the same mempool (i.e., same device) are also not affected.</p>
 <p>There are two workarounds.  If mempool access is supported, you can simply enable mempool access between the devices prior to graph capture, as shown in <a class="reference internal" href="#mempool-access"><span class="std std-ref">Memory Pool Access</span></a>.</p>
 <p>If mempool access is not supported, you will need to pre-allocate the arrays involved in the copy using the default CUDA allocators.  This will need to be done before capture begins:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># pre-allocate the arrays with mempools disabled</span>
@@ -693,10 +702,11 @@ For memory allocated using default CUDA allocators, we can enable CUDA <a class=
 <span id="id1"></span><h2>Custom Allocators<a class="headerlink" href="#custom-allocators" title="Link to this heading">#</a></h2>
 <p>Warp supports pluggable memory allocators for CUDA devices. You can redirect all
 GPU array allocations through a custom allocator by implementing the
-<a class="reference internal" href="../api_reference/_generated/warp.Allocator.html#warp.Allocator" title="warp.Allocator"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Allocator</span></code></a> protocol, i.e., any object with <code class="docutils literal notranslate"><span class="pre">allocate(size_in_bytes)</span></code> and
-<code class="docutils literal notranslate"><span class="pre">deallocate(ptr,</span> <span class="pre">size_in_bytes)</span></code> methods. Custom allocators only affect
-<a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a> allocations on CUDA devices; CPU allocations, pinned memory, and
-internal native allocations (e.g., BVH construction temporaries) are not affected.</p>
+<a class="reference internal" href="../api_reference/_generated/warp.Allocator.html#warp.Allocator" title="warp.Allocator"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Allocator</span></code></a> protocol, i.e., any object with <code class="docutils literal notranslate"><span class="pre">allocate(size_in_bytes)</span></code>
+and <code class="docutils literal notranslate"><span class="pre">deallocate(ptr,</span> <span class="pre">size_in_bytes)</span></code> methods. Custom allocators only affect
+<a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a> allocations on CUDA devices; CPU allocations, pinned memory,
+and internal native allocations (e.g., BVH construction temporaries) are not
+affected.</p>
 <section id="setting-a-custom-allocator">
 <h3>Setting a Custom Allocator<a class="headerlink" href="#setting-a-custom-allocator" title="Link to this heading">#</a></h3>
 <p>Use <a class="reference internal" href="../api_reference/_generated/warp.set_cuda_allocator.html#warp.set_cuda_allocator" title="warp.set_cuda_allocator"><code class="xref py py-func docutils literal notranslate"><span class="pre">set_cuda_allocator()</span></code></a> to set a custom allocator on all CUDA devices, or
@@ -720,6 +730,126 @@ internal native allocations (e.g., BVH construction temporaries) are not affecte
 </pre></div>
 </div>
 </section>
+<section id="managed-memory-allocator">
+<span id="managed-memory-allocation-options"></span><h3>Managed Memory Allocator<a class="headerlink" href="#managed-memory-allocator" title="Link to this heading">#</a></h3>
+<p>Managed memory is CUDA-managed storage that can be addressed from CPU and GPU
+code. CUDA Unified Memory manages page placement and migration, so pages may move
+between CPU and GPU memory as different processors touch them. Unlike pinned CPU
+memory, which remains host memory that a GPU may access through a host mapping,
+managed memory gives Warp arrays a different tradeoff from the other allocation
+options:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<colgroup>
+<col style="width: 18.0%" />
+<col style="width: 29.0%" />
+<col style="width: 27.0%" />
+<col style="width: 26.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Allocation option</p></th>
+<th class="head"><p>Residency and migration</p></th>
+<th class="head"><p>CPU/GPU access</p></th>
+<th class="head"><p>Typical use</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Default CUDA</p></td>
+<td><p>Device memory with no automatic CPU/GPU migration.</p></td>
+<td><p>CUDA kernels access it directly; CPU code uses explicit copies.</p></td>
+<td><p>General GPU arrays when CPU access is staged explicitly.</p></td>
+</tr>
+<tr class="row-odd"><td><p>CUDA mempool</p></td>
+<td><p>Device memory from CUDA’s stream-ordered pool, with no automatic CPU/GPU
+migration.</p></td>
+<td><p>Same CPU/GPU access rules as default CUDA memory, with separate
+memory-pool access controls for peer GPUs.</p></td>
+<td><p>Faster repeated CUDA allocations and graph-captured allocation when
+supported.</p></td>
+</tr>
+<tr class="row-even"><td><p>Pinned CPU</p></td>
+<td><p>Host memory that does not migrate into device memory as an allocation.</p></td>
+<td><p>CPU code accesses it directly; CUDA devices with unified virtual
+addressing can access it through a host mapping.</p></td>
+<td><p>Asynchronous CPU/GPU copies or zero-copy access to small host-resident
+data.</p></td>
+</tr>
+<tr class="row-odd"><td><p>CUDA managed</p></td>
+<td><p>CUDA Unified Memory whose pages may migrate between CPU and GPU memory.</p></td>
+<td><p>CPU and GPU access follow CUDA managed-memory support and synchronization
+rules.</p></td>
+<td><p>Sharing data across CPU/GPU code when migration is preferable to manual
+copies.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><a class="reference internal" href="../api_reference/_generated/warp.CudaManagedAllocator.html#warp.CudaManagedAllocator" title="warp.CudaManagedAllocator"><code class="xref py py-class docutils literal notranslate"><span class="pre">CudaManagedAllocator</span></code></a> creates CUDA managed-memory arrays through Warp’s
+allocator interface. Managed arrays keep their CUDA device metadata, but
+<code class="docutils literal notranslate"><span class="pre">wp.can_access()</span></code> and checked launch validation use CUDA managed-memory access
+rules for them instead of peer-access or memory-pool-access rules.</p>
+<p>One major reason to choose this allocator is CPU/GPU shared work: on systems
+where CUDA reports compatible managed-memory access, CPU kernels can directly
+read and write managed CUDA arrays instead of maintaining a separate CPU copy.
+Standard Warp CUDA arrays remain non-managed and still require explicit copies
+before CPU code accesses them.</p>
+<p>The allocator object is not bound to one CUDA device and can be constructed
+before choosing a CUDA device. Warp invokes it under the target device’s CUDA
+context, which must support CUDA managed memory:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">managed</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">CudaManagedAllocator</span><span class="p">()</span>
+<span class="n">device</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_device</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+
+<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedAllocator</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">managed</span><span class="p">):</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Constructing a <a class="reference internal" href="../api_reference/_generated/warp.CudaManagedAllocator.html#warp.CudaManagedAllocator" title="warp.CudaManagedAllocator"><code class="xref py py-class docutils literal notranslate"><span class="pre">CudaManagedAllocator</span></code></a> does not promise that pages initially
+reside in any device’s physical memory, and it does not bypass the device’s
+managed-memory capability check. The CUDA device used for each allocation
+identifies the array device metadata; CUDA Unified Memory manages physical
+placement and migration.</p>
+<p>Use <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.memory_kind" title="warp.array.memory_kind"><code class="xref py py-attr docutils literal notranslate"><span class="pre">array.memory_kind</span></code></a> to inspect the observed
+memory class backing a concrete <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">memory_kind</span> <span class="ow">is</span> <span class="n">wp</span><span class="o">.</span><span class="n">MemoryKind</span><span class="o">.</span><span class="n">CUDA_MANAGED</span><span class="p">:</span>
+    <span class="o">...</span>
+</pre></div>
+</div>
+<p>The memory kind describes the pointer’s memory class as reported by Warp. It
+does not describe the current physical residency of CUDA managed memory, and
+views report the memory kind of their owner array. Indexed arrays do not expose
+a single memory kind because their data and index arrays may have different
+backing allocations.</p>
+<p>To use managed memory as a persistent allocator for all CUDA devices, install one
+allocator instance with <a class="reference internal" href="../api_reference/_generated/warp.set_cuda_allocator.html#warp.set_cuda_allocator" title="warp.set_cuda_allocator"><code class="xref py py-func docutils literal notranslate"><span class="pre">set_cuda_allocator()</span></code></a>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">managed</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">CudaManagedAllocator</span><span class="p">()</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">set_cuda_allocator</span><span class="p">(</span><span class="n">managed</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If only some CUDA devices should use managed memory, install the same allocator
+with <a class="reference internal" href="../api_reference/_generated/warp.set_device_allocator.html#warp.set_device_allocator" title="warp.set_device_allocator"><code class="xref py py-func docutils literal notranslate"><span class="pre">set_device_allocator()</span></code></a> on those devices. A single allocator instance
+can serve multiple CUDA devices, but allocation fails clearly on any target
+device that does not report CUDA managed-memory support.</p>
+<p>Direct calls to <code class="docutils literal notranslate"><span class="pre">CudaManagedAllocator.allocate()</span></code> require an active CUDA context.
+Array factory functions such as <a class="reference internal" href="../api_reference/_generated/warp.zeros.html#warp.zeros" title="warp.zeros"><code class="xref py py-func docutils literal notranslate"><span class="pre">zeros()</span></code></a> and <a class="reference internal" href="../api_reference/_generated/warp.empty.html#warp.empty" title="warp.empty"><code class="xref py py-func docutils literal notranslate"><span class="pre">empty()</span></code></a> pass the target
+device context automatically and perform the same managed-memory support check.</p>
+<p>CUDA may reject managed allocations during graph capture because
+<a class="reference internal" href="../api_reference/_generated/warp.CudaManagedAllocator.html#warp.CudaManagedAllocator" title="warp.CudaManagedAllocator"><code class="xref py py-class docutils literal notranslate"><span class="pre">CudaManagedAllocator</span></code></a> uses <code class="docutils literal notranslate"><span class="pre">cudaMallocManaged()</span></code>. If you need managed
+arrays with CUDA graphs, allocate them before capture begins and reuse the
+existing arrays inside the captured work. This is not a restriction on using
+pre-existing managed arrays in captured work. Separately,
+<a class="reference internal" href="../api_reference/_generated/warp.CudaManagedAllocator.html#warp.CudaManagedAllocator" title="warp.CudaManagedAllocator"><code class="xref py py-class docutils literal notranslate"><span class="pre">CudaManagedAllocator</span></code></a>-managed arrays cannot be exported with
+<code class="docutils literal notranslate"><span class="pre">array.ipc_handle()</span></code>; IPC export is unsupported for managed arrays. If IPC is
+required, choose a different allocator for shared data or pre-allocate and
+export device arrays before switching allocator state.</p>
+<p>CPU access to managed arrays is hardware-dependent. Use <a class="reference internal" href="../api_reference/_generated/warp.can_access.html#warp.can_access" title="warp.can_access"><code class="xref py py-func docutils literal notranslate"><span class="pre">can_access()</span></code></a> to
+check a specific managed array before CPU code reads or writes it directly:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="n">wp</span><span class="o">.</span><span class="n">can_access</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">,</span> <span class="n">a</span><span class="p">):</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">cpu_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">a_cpu</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">cpu_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a_cpu</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a_cpu</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
 <section id="writing-a-custom-allocator">
 <h3>Writing a Custom Allocator<a class="headerlink" href="#writing-a-custom-allocator" title="Link to this heading">#</a></h3>
 <p>A custom allocator is any object that implements <code class="docutils literal notranslate"><span class="pre">allocate</span></code> and <code class="docutils literal notranslate"><span class="pre">deallocate</span></code>:</p>
@@ -733,12 +863,79 @@ internal native allocations (e.g., BVH construction temporaries) are not affecte
         <span class="o">...</span>
 </pre></div>
 </div>
+<p>Warp enters the array’s CUDA context before calling <code class="docutils literal notranslate"><span class="pre">deallocate()</span></code> by default.
+If an allocator manages the current context itself, set
+<code class="docutils literal notranslate"><span class="pre">deallocate_requires_context_guard</span> <span class="pre">=</span> <span class="pre">False</span></code> on the allocator object.</p>
 <p>Allocators that do not support stream-ordered allocation may not work correctly
 during CUDA graph capture.</p>
 <p>See <code class="docutils literal notranslate"><span class="pre">warp/examples/core/example_custom_allocator.py</span></code> for a complete example.</p>
 </section>
-<section id="rmm-integration">
-<h3>RMM Integration<a class="headerlink" href="#rmm-integration" title="Link to this heading">#</a></h3>
+<section id="pytorch-cuda-caching-allocator">
+<span id="id2"></span><h3>PyTorch CUDA Caching Allocator<a class="headerlink" href="#pytorch-cuda-caching-allocator" title="Link to this heading">#</a></h3>
+<p>PyTorch exposes low-level CUDA caching allocator functions that can be used by
+other frameworks. If an application wants Warp CUDA arrays to be allocated from
+PyTorch’s cache, implement a small custom allocator that calls
+<code class="docutils literal notranslate"><span class="pre">torch.cuda.caching_allocator_alloc()</span></code> and releases pointers with
+<code class="docutils literal notranslate"><span class="pre">torch.cuda.caching_allocator_delete()</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">TorchCachingAllocator</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Route Warp CUDA array allocations through PyTorch.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_active_allocations</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_current_warp_device_and_stream</span><span class="p">():</span>
+        <span class="n">device</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_cuda_device</span><span class="p">()</span>
+        <span class="n">stream</span> <span class="o">=</span> <span class="n">device</span><span class="o">.</span><span class="n">stream</span><span class="o">.</span><span class="n">cuda_stream</span>
+        <span class="k">return</span> <span class="n">device</span><span class="o">.</span><span class="n">ordinal</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">stream</span><span class="p">)</span> <span class="k">if</span> <span class="n">stream</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="mi">0</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">allocate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">size_in_bytes</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">size_in_bytes</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">0</span>
+
+        <span class="n">device</span><span class="p">,</span> <span class="n">stream</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_warp_device_and_stream</span><span class="p">()</span>
+        <span class="n">ptr</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">caching_allocator_alloc</span><span class="p">(</span><span class="n">size_in_bytes</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">stream</span><span class="o">=</span><span class="n">stream</span><span class="p">)</span>
+        <span class="n">ptr</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">ptr</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_active_allocations</span><span class="p">[</span><span class="n">ptr</span><span class="p">]</span> <span class="o">=</span> <span class="n">size_in_bytes</span>
+        <span class="k">return</span> <span class="n">ptr</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">deallocate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ptr</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">size_in_bytes</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">ptr</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="n">allocated_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_active_allocations</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ptr</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">allocated_size</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unrecognized allocation pointer </span><span class="si">{</span><span class="n">ptr</span><span class="si">:</span><span class="s2">#x</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">allocated_size</span> <span class="o">!=</span> <span class="n">size_in_bytes</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Allocation size mismatch for pointer </span><span class="si">{</span><span class="n">ptr</span><span class="si">:</span><span class="s2">#x</span><span class="si">}</span><span class="s2">: &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;allocated </span><span class="si">{</span><span class="n">allocated_size</span><span class="si">}</span><span class="s2">, deallocating </span><span class="si">{</span><span class="n">size_in_bytes</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_active_allocations</span><span class="p">[</span><span class="n">ptr</span><span class="p">]</span>
+        <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">caching_allocator_delete</span><span class="p">(</span><span class="n">ptr</span><span class="p">)</span>
+
+
+<span class="n">allocator</span> <span class="o">=</span> <span class="n">TorchCachingAllocator</span><span class="p">()</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">set_cuda_allocator</span><span class="p">(</span><span class="n">allocator</span><span class="p">)</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1000</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="k">finally</span><span class="p">:</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">set_cuda_allocator</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>PyTorch tracks the device and stream for pointers returned by
+<code class="docutils literal notranslate"><span class="pre">caching_allocator_alloc()</span></code>, so <code class="docutils literal notranslate"><span class="pre">caching_allocator_delete()</span></code> only needs the
+pointer. The <code class="docutils literal notranslate"><span class="pre">_active_allocations</span></code> dictionary above is for validation and
+debugging. Applications can customize this tracking for their own accounting,
+thread-safety, or distributed runtime needs.</p>
+</section>
+<section id="rapids-memory-manager-rmm-integration">
+<h3>RAPIDS Memory Manager (RMM) Integration<a class="headerlink" href="#rapids-memory-manager-rmm-integration" title="Link to this heading">#</a></h3>
 <p><a class="reference external" href="https://github.com/rapidsai/rmm">RAPIDS Memory Manager (RMM)</a> provides high-performance
 pooled allocators for CUDA. Warp includes a built-in adapter, <a class="reference internal" href="../api_reference/_generated/warp.utils.AllocatorRmm.html#warp.utils.AllocatorRmm" title="warp.utils.AllocatorRmm"><code class="xref py py-class docutils literal notranslate"><span class="pre">AllocatorRmm</span></code></a>, that
 routes array allocations through RMM.</p>
@@ -835,8 +1032,10 @@ routes array allocations through RMM.</p>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#custom-allocators">Custom Allocators</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#setting-a-custom-allocator">Setting a Custom Allocator</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#managed-memory-allocator">Managed Memory Allocator</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#writing-a-custom-allocator">Writing a Custom Allocator</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#rmm-integration">RMM Integration</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pytorch-cuda-caching-allocator">PyTorch CUDA Caching Allocator</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#rapids-memory-manager-rmm-integration">RAPIDS Memory Manager (RMM) Integration</a></li>
 </ul>
 </li>
 </ul>
@@ -846,7 +1045,7 @@ routes array allocations through RMM.</p>
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/release-1.14/docs/deep_dive/allocators.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/release-1.15/docs/deep_dive/allocators.rst">
       <i class="fa-solid fa-pencil"></i>
       
       
