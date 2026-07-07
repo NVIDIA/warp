@@ -8,9 +8,40 @@
 
       * Kernel
 
-   Query the index of a point in the :class:`warp.HashGrid`.
+   Return the original point index stored at a given position in the :class:`warp.HashGrid`'s spatially-sorted order.
    
-   This can be used to reorder threads such that grid traversal occurs in a spatially coherent order.
+   The grid sorts its points by cell so that points sharing a cell are adjacent. Given a position
+   ``index`` in that sorted order (typically the thread index), this returns the corresponding
+   index into the original points array. Looking points up in this order makes neighboring threads
+   access nearby points, improving memory locality.
    
-   :returns: -1 if the :class:`warp.HashGrid` has not been reserved.
+   :param id: The :class:`warp.HashGrid` identifier
+   :param index: A position in the grid's sorted order, in ``[0, number_of_points)``
+   
+   :returns: The corresponding index into the original points array, or -1 if the
+             :class:`warp.HashGrid` has not been built/reserved.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def gather(grid_id: wp.uint64, pts: wp.array[wp.vec3], out: wp.array[wp.vec3]):
+           i = wp.tid()
+           # visit points in the grid's cell-sorted order for memory locality;
+           # hash_grid_point_id maps sorted position i -> the original point index
+           out[i] = pts[wp.hash_grid_point_id(grid_id, i)]
+   
+       points = wp.array([[0,0,0],[0.1,0,0],[0.5,0,0],[2.0,0,0]], dtype=wp.vec3)
+       grid = wp.HashGrid(dim_x=8, dim_y=8, dim_z=8)
+       grid.build(points=points, radius=0.3)
+   
+       out = wp.zeros(4, dtype=wp.vec3)
+       wp.launch(gather, dim=4, inputs=[grid.id, points], outputs=[out])
+       # every point is visited exactly once, so the gather is a permutation of the input
+       print(sorted(out.numpy().tolist()) == sorted(points.numpy().tolist()))
+   
+   .. testoutput::
+   
+       True
    

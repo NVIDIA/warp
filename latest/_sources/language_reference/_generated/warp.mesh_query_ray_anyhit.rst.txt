@@ -8,15 +8,43 @@
 
       * Kernel
 
-   Check for any ray hit on the :class:`warp.Mesh` with identifier ``id``.
+   Check whether a ray hits the :class:`warp.Mesh` with identifier ``id``, without computing the closest hit.
+   
+   Returns as soon as any intersecting face within ``max_t`` is found, so it is cheaper than
+   :func:`mesh_query_ray` when only the yes/no answer is needed. ``start`` and ``dir`` are given in
+   the mesh's local space; ``max_t`` is measured in multiples of ``dir``'s length, so normalize
+   ``dir`` for it to be a distance in mesh-space units.
    
    The ``root`` parameter can be obtained using the :func:`mesh_get_group_root` function when creating a grouped mesh.
    When ``root`` is a valid (>=0) value, the traversal will be confined to the subtree starting from the root.
    If ``root`` is -1 (default), traversal starts at the mesh's global root.
    
    :param id: The mesh identifier
-   :param start: The start point of the ray
-   :param dir: The ray direction (should be normalized)
-   :param max_t: The maximum distance along the ray to check for intersections
+   :param start: The ray origin, in the mesh's local space
+   :param dir: The ray direction, in the mesh's local space
+   :param max_t: The maximum distance along the ray to check for intersections (in multiples of ``dir``'s length)
    :param root: The root node index for grouped BVH queries, or -1 for global root (optional, default: -1)
+   
+   :returns: ``True`` if the ray intersects any face within ``max_t``, ``False`` otherwise.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def occluded(mesh_id: wp.uint64, origin: wp.vec3, dir: wp.vec3, out_hit: wp.array[wp.int32]):
+           out_hit[0] = wp.where(wp.mesh_query_ray_anyhit(mesh_id, origin, dir, 1.0e6), 1, 0)
+   
+       points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
+       indices = wp.array([0,3,2, 0,2,1,  4,5,6, 4,6,7,  0,1,5, 0,5,4,
+                           2,3,7, 2,7,6,  0,4,7, 0,7,3,  1,2,6, 1,6,5], dtype=wp.int32)
+       mesh = wp.Mesh(points=points, indices=indices)
+   
+       out_hit = wp.zeros(1, dtype=wp.int32)
+       wp.launch(occluded, dim=1, inputs=[mesh.id, wp.vec3(0.5, 0.5, -2.0), wp.vec3(0.0, 0.0, 1.0)], outputs=[out_hit])
+       print("hit:", bool(out_hit.numpy()[0]))
+   
+   .. testoutput::
+   
+       hit: True
    

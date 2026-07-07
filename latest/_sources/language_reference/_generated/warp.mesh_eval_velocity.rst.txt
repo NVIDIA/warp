@@ -9,4 +9,39 @@
       * Kernel
       * Differentiable
 
-   Evaluate the velocity on the :class:`warp.Mesh` given a face index and barycentric coordinates.
+   Evaluate the interpolated velocity on a face of the :class:`warp.Mesh` from barycentric coordinates.
+   
+   Linearly interpolates the face's three per-vertex velocities the same way
+   :func:`mesh_eval_position` interpolates positions:
+   ``v0 * bary_u + v1 * bary_v + v2 * (1 - bary_u - bary_v)``. Requires the mesh to have been
+   constructed with a ``velocities`` array; returns a zero vector otherwise.
+   
+   :param id: The mesh identifier
+   :param face: The face (triangle) index
+   :param bary_u: Barycentric weight of the face's first vertex
+   :param bary_v: Barycentric weight of the face's second vertex
+   
+   :returns: The interpolated velocity, or a zero vector if the mesh has no velocities.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def vel_at(mesh_id: wp.uint64, out: wp.array[wp.vec3]):
+           out[0] = wp.mesh_eval_velocity(mesh_id, 0, 0.25, 0.25)
+   
+       points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
+       indices = wp.array([0,3,2, 0,2,1,  4,5,6, 4,6,7,  0,1,5, 0,5,4,
+                           2,3,7, 2,7,6,  0,4,7, 0,7,3,  1,2,6, 1,6,5], dtype=wp.int32)
+       velocities = wp.array(np.tile([0.0, 0.0, 1.0], (8, 1)), dtype=wp.vec3)
+       mesh = wp.Mesh(points=points, indices=indices, velocities=velocities)
+   
+       out = wp.zeros(1, dtype=wp.vec3)
+       wp.launch(vel_at, dim=1, inputs=[mesh.id], outputs=[out])
+       print(out.numpy()[0])
+   
+   .. testoutput::
+   
+       [0. 0. 1.]
+   

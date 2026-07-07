@@ -527,13 +527,31 @@
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Test for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Möller’s method.</p>
-<p>This function works with single precision, may return incorrect results in some case.</p>
+<p>Test whether two triangles <code class="docutils literal notranslate"><span class="pre">(v0,</span> <span class="pre">v1,</span> <span class="pre">v2)</span></code> and <code class="docutils literal notranslate"><span class="pre">(u0,</span> <span class="pre">u1,</span> <span class="pre">u2)</span></code> intersect, using Möller’s method.</p>
+<p>All six vertices must be in the same coordinate space. Coplanar triangles are handled (an
+overlap within their common plane counts as an intersection). This single-precision overload
+may return incorrect results in near-degenerate cases; use the double-precision overload
+(<code class="docutils literal notranslate"><span class="pre">vec3d</span></code> inputs) for greater robustness.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>&gt; 0 if triangles intersect.</p>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">1</span></code> if the triangles intersect, <code class="docutils literal notranslate"><span class="pre">0</span></code> otherwise.</p>
 </dd>
 </dl>
+<p class="rubric">Example</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">tri_tri</span><span class="p">(</span><span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">]):</span>
+    <span class="n">a0</span><span class="p">,</span> <span class="n">a1</span><span class="p">,</span> <span class="n">a2</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">b0</span><span class="p">,</span> <span class="n">b1</span><span class="p">,</span> <span class="n">b2</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">),</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">out</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">intersect_tri_tri</span><span class="p">(</span><span class="n">a0</span><span class="p">,</span> <span class="n">a1</span><span class="p">,</span> <span class="n">a2</span><span class="p">,</span> <span class="n">b0</span><span class="p">,</span> <span class="n">b1</span><span class="p">,</span> <span class="n">b2</span><span class="p">)</span>
+
+<span class="n">out</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">tri_tri</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;intersect:&quot;</span><span class="p">,</span> <span class="n">out</span><span class="o">.</span><span class="n">numpy</span><span class="p">()[</span><span class="mi">0</span><span class="p">])</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>intersect: 1
+</pre></div>
+</div>
 </dd></dl>
 
 <dl class="py function">
@@ -568,13 +586,30 @@
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Test for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Möller’s method.</p>
-<p>This function works with double precision, results are more accurate than the single precision version.</p>
+<p>Test whether two triangles <code class="docutils literal notranslate"><span class="pre">(v0,</span> <span class="pre">v1,</span> <span class="pre">v2)</span></code> and <code class="docutils literal notranslate"><span class="pre">(u0,</span> <span class="pre">u1,</span> <span class="pre">u2)</span></code> intersect, using Möller’s method.</p>
+<p>All six vertices must be in the same coordinate space. Coplanar triangles are handled (an
+overlap within their common plane counts as an intersection). This double-precision overload is
+more accurate than the single-precision (<code class="docutils literal notranslate"><span class="pre">vec3</span></code> inputs) overload.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>&gt; 0 if triangles intersect.</p>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">1</span></code> if the triangles intersect, <code class="docutils literal notranslate"><span class="pre">0</span></code> otherwise.</p>
 </dd>
 </dl>
+<p class="rubric">Example</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">tri_tri</span><span class="p">(</span><span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">]):</span>
+    <span class="n">a0</span><span class="p">,</span> <span class="n">a1</span><span class="p">,</span> <span class="n">a2</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3d</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3d</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3d</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">b0</span><span class="p">,</span> <span class="n">b1</span><span class="p">,</span> <span class="n">b2</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3d</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">),</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3d</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">),</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3d</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">out</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">intersect_tri_tri</span><span class="p">(</span><span class="n">a0</span><span class="p">,</span> <span class="n">a1</span><span class="p">,</span> <span class="n">a2</span><span class="p">,</span> <span class="n">b0</span><span class="p">,</span> <span class="n">b1</span><span class="p">,</span> <span class="n">b2</span><span class="p">)</span>
+
+<span class="n">out</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">tri_tri</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;intersect:&quot;</span><span class="p">,</span> <span class="n">out</span><span class="o">.</span><span class="n">numpy</span><span class="p">()[</span><span class="mi">0</span><span class="p">])</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>intersect: 1
+</pre></div>
+</div>
 </dd></dl>
 
 </section>

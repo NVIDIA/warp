@@ -18,3 +18,29 @@
              The root node index for the specified group. If the group does not exist, returns ``-1``
                  (sentinel for the BVH global root). Pass ``-1`` to BVH queries to traverse from the global root.
    
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def query_group(bvh_id: wp.uint64, lowers: wp.array[wp.vec3], uppers: wp.array[wp.vec3],
+                       lo: wp.vec3, hi: wp.vec3, centers: wp.array[wp.vec3]):
+           root = wp.bvh_get_group_root(bvh_id, 1)  # restrict the query to group 1
+           query = wp.bvh_query_aabb(bvh_id, lo, hi, root)
+           item = int(0)
+           while wp.bvh_query_next(query, item):
+               centers[item] = 0.5 * (lowers[item] + uppers[item])
+   
+       lowers = wp.array([[0, 0, 0], [2, 0, 0], [4, 0, 0]], dtype=wp.vec3)
+       uppers = wp.array([[1, 1, 1], [3, 1, 1], [5, 1, 1]], dtype=wp.vec3)
+       groups = wp.array([0, 0, 1], dtype=wp.int32)  # one group index per box (box 2 is alone in group 1)
+       bvh = wp.Bvh(lowers=lowers, uppers=uppers, groups=groups)
+   
+       centers = wp.zeros(3, dtype=wp.vec3)
+       wp.launch(query_group, dim=1, inputs=[bvh.id, lowers, uppers, wp.vec3(-1.0, -1.0, -1.0), wp.vec3(6.0, 6.0, 6.0)], outputs=[centers])
+       print(centers.numpy().tolist())
+   
+   .. testoutput::
+   
+       [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [4.5, 0.5, 0.5]]
+   

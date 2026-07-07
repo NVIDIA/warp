@@ -524,22 +524,52 @@
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Move to the next bound returned by the query.</p>
-<p>The index of the current bound is stored in <code class="docutils literal notranslate"><span class="pre">index</span></code>, returns <code class="docutils literal notranslate"><span class="pre">False</span></code> if there are no more overlapping bounds.
-The maximum distance along a ray query to check for intersections can be set using <code class="docutils literal notranslate"><span class="pre">max_dist</span></code>. It is not effective
-for aabb query.</p>
-<p>Note that increasing <code class="docutils literal notranslate"><span class="pre">max_dist</span></code> may result in missing intersections. Since previously rejected subtrees will never be
-revisited even if it intersects with the new, longer ray. In other words, it’s only safe to monotonically
-reduce <code class="docutils literal notranslate"><span class="pre">max_dist</span></code> during a query.</p>
+<p>Advance a BVH query to the next overlapping item and report whether one was found.</p>
+<p>Writes the index of the current item to <code class="docutils literal notranslate"><span class="pre">index</span></code> and returns <code class="docutils literal notranslate"><span class="pre">True</span></code>; returns <code class="docutils literal notranslate"><span class="pre">False</span></code> once
+the query is exhausted (<code class="docutils literal notranslate"><span class="pre">index</span></code> is then left unchanged). The reported index is the item’s
+index into the <code class="docutils literal notranslate"><span class="pre">lowers</span></code>/<code class="docutils literal notranslate"><span class="pre">uppers</span></code> arrays passed to <a class="reference internal" href="../../api_reference/_generated/warp.Bvh.html#warp.Bvh" title="warp.Bvh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Bvh</span></code></a>. Used in a <code class="docutils literal notranslate"><span class="pre">while</span></code>
+loop together with <a class="reference internal" href="warp.bvh_query_aabb.html#warp._src.lang.bvh_query_aabb" title="warp._src.lang.bvh_query_aabb"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_aabb()</span></code></a> or <a class="reference internal" href="warp.bvh_query_ray.html#warp._src.lang.bvh_query_ray" title="warp._src.lang.bvh_query_ray"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_ray()</span></code></a>.</p>
+<p>For ray queries, <code class="docutils literal notranslate"><span class="pre">max_dist</span></code> bounds how far along the ray to look for intersections, measured
+in multiples of the ray direction’s length (so it is a distance only if <code class="docutils literal notranslate"><span class="pre">dir</span></code> was normalized).
+It has no effect on AABB queries.</p>
+<p>Note that increasing <code class="docutils literal notranslate"><span class="pre">max_dist</span></code> may miss intersections: a subtree already rejected for being
+beyond <code class="docutils literal notranslate"><span class="pre">max_dist</span></code> is never revisited, even if a later, larger <code class="docutils literal notranslate"><span class="pre">max_dist</span></code> would reach it. It
+is therefore only safe to monotonically <em>reduce</em> <code class="docutils literal notranslate"><span class="pre">max_dist</span></code> during a query.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>query</strong> – The query to move to the next bound</p></li>
-<li><p><strong>index</strong> – The index of the current bound</p></li>
-<li><p><strong>max_dist</strong> – The maximum distance along the ray to check for intersections for ray queries. Not effective for aabb query.</p></li>
+<li><p><strong>query</strong> – The query to advance, from <a class="reference internal" href="warp.bvh_query_aabb.html#warp._src.lang.bvh_query_aabb" title="warp._src.lang.bvh_query_aabb"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_aabb()</span></code></a> or <a class="reference internal" href="warp.bvh_query_ray.html#warp._src.lang.bvh_query_ray" title="warp._src.lang.bvh_query_ray"><code class="xref py py-func docutils literal notranslate"><span class="pre">bvh_query_ray()</span></code></a></p></li>
+<li><p><strong>index</strong> – Output; receives the index of the current overlapping item</p></li>
+<li><p><strong>max_dist</strong> – For ray queries, the maximum distance along the ray to check for intersections
+(in multiples of <code class="docutils literal notranslate"><span class="pre">dir</span></code>’s length). Has no effect on AABB queries.</p></li>
 </ul>
 </dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if another overlapping item was found (its index written to <code class="docutils literal notranslate"><span class="pre">index</span></code>), <code class="docutils literal notranslate"><span class="pre">False</span></code>
+if the query is exhausted.</p>
+</dd>
 </dl>
+<p class="rubric">Example</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">query_region</span><span class="p">(</span><span class="n">bvh_id</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">uint64</span><span class="p">,</span> <span class="n">lowers</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span> <span class="n">uppers</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span>
+                 <span class="n">lo</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span> <span class="n">hi</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span> <span class="n">centers</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">]):</span>
+    <span class="n">query</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">bvh_query_aabb</span><span class="p">(</span><span class="n">bvh_id</span><span class="p">,</span> <span class="n">lo</span><span class="p">,</span> <span class="n">hi</span><span class="p">)</span>
+    <span class="n">item</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="k">while</span> <span class="n">wp</span><span class="o">.</span><span class="n">bvh_query_next</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="n">centers</span><span class="p">[</span><span class="n">item</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">lowers</span><span class="p">[</span><span class="n">item</span><span class="p">]</span> <span class="o">+</span> <span class="n">uppers</span><span class="p">[</span><span class="n">item</span><span class="p">])</span>
+
+<span class="n">lowers</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">)</span>
+<span class="n">uppers</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">)</span>
+<span class="n">bvh</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Bvh</span><span class="p">(</span><span class="n">lowers</span><span class="o">=</span><span class="n">lowers</span><span class="p">,</span> <span class="n">uppers</span><span class="o">=</span><span class="n">uppers</span><span class="p">)</span>
+
+<span class="n">centers</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">)</span>  <span class="c1"># center of each object whose box overlaps the region</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">query_region</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">bvh</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">lowers</span><span class="p">,</span> <span class="n">uppers</span><span class="p">,</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">),</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">2.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">centers</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">centers</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[[0.5, 0.5, 0.5], [2.5, 0.5, 0.5], [0.0, 0.0, 0.0]]
+</pre></div>
+</div>
 </dd></dl>
 
 </section>

@@ -525,7 +525,49 @@
 </ul>
 </td></tr></table>
 <p>Construct a point query against a <a class="reference internal" href="../../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.HashGrid</span></code></a>.</p>
-<p>This query can be used to iterate over all neighboring points within a fixed radius from the query point.</p>
+<p>Returns a query that iterates over candidate neighbors of <code class="docutils literal notranslate"><span class="pre">point</span></code>: every point in the grid
+cells overlapped by the box from <code class="docutils literal notranslate"><span class="pre">point</span> <span class="pre">-</span> <span class="pre">max_dist</span></code> to <code class="docutils literal notranslate"><span class="pre">point</span> <span class="pre">+</span> <span class="pre">max_dist</span></code>. These are
+<em>candidates</em> — the grid does not test distance, so some are farther than <code class="docutils literal notranslate"><span class="pre">max_dist</span></code>; filter
+by actual distance yourself. Advance the query and read each candidate’s index with
+<a class="reference internal" href="warp.hash_grid_query_next.html#warp._src.lang.hash_grid_query_next" title="warp._src.lang.hash_grid_query_next"><code class="xref py py-func docutils literal notranslate"><span class="pre">hash_grid_query_next()</span></code></a>. <code class="docutils literal notranslate"><span class="pre">point</span></code> must be in the same coordinate space as the points the
+grid was built from (see <a class="reference internal" href="../../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.HashGrid</span></code></a>).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>id</strong> – The <a class="reference internal" href="../../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.HashGrid</span></code></a> identifier</p></li>
+<li><p><strong>point</strong> – The query point</p></li>
+<li><p><strong>max_dist</strong> – The query radius</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A hash-grid query object to pass to <a class="reference internal" href="warp.hash_grid_query_next.html#warp._src.lang.hash_grid_query_next" title="warp._src.lang.hash_grid_query_next"><code class="xref py py-func docutils literal notranslate"><span class="pre">hash_grid_query_next()</span></code></a>.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">count_neighbors</span><span class="p">(</span><span class="n">grid_id</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">uint64</span><span class="p">,</span> <span class="n">pts</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span> <span class="n">radius</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">out_count</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">]):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">pts</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+    <span class="n">query</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">hash_grid_query</span><span class="p">(</span><span class="n">grid_id</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">radius</span><span class="p">)</span>
+    <span class="n">index</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="k">while</span> <span class="n">wp</span><span class="o">.</span><span class="n">hash_grid_query_next</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">index</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">wp</span><span class="o">.</span><span class="n">length</span><span class="p">(</span><span class="n">p</span> <span class="o">-</span> <span class="n">pts</span><span class="p">[</span><span class="n">index</span><span class="p">])</span> <span class="o">&lt;=</span> <span class="n">radius</span><span class="p">:</span>
+            <span class="n">n</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="n">out_count</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">n</span>
+
+<span class="n">points</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],[</span><span class="mf">0.1</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],[</span><span class="mf">0.5</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">],[</span><span class="mf">2.0</span><span class="p">,</span><span class="mi">0</span><span class="p">,</span><span class="mi">0</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">)</span>
+<span class="n">grid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">HashGrid</span><span class="p">(</span><span class="n">dim_x</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">dim_y</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">dim_z</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+<span class="n">grid</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="n">points</span><span class="o">=</span><span class="n">points</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+
+<span class="n">out_count</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">count_neighbors</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">grid</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out_count</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">out_count</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[2 2 1 1]
+</pre></div>
+</div>
 </dd></dl>
 
 <dl class="py function">
@@ -558,7 +600,20 @@
 </ul>
 </td></tr></table>
 <p>Construct a point query against a <a class="reference internal" href="../../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.HashGrid</span></code></a> (float16 precision).</p>
-<p>This query can be used to iterate over all neighboring points within a fixed radius from the query point.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">float16</span></code> overload of <a class="reference internal" href="#warp._src.lang.hash_grid_query" title="warp._src.lang.hash_grid_query"><code class="xref py py-func docutils literal notranslate"><span class="pre">hash_grid_query()</span></code></a>. Behavior and usage match the default
+<code class="docutils literal notranslate"><span class="pre">float32</span></code> overload; see it for details and a usage example.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>id</strong> – The <a class="reference internal" href="../../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.HashGrid</span></code></a> identifier</p></li>
+<li><p><strong>point</strong> – The query point</p></li>
+<li><p><strong>max_dist</strong> – The query radius</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A hash-grid query object to pass to <a class="reference internal" href="warp.hash_grid_query_next.html#warp._src.lang.hash_grid_query_next" title="warp._src.lang.hash_grid_query_next"><code class="xref py py-func docutils literal notranslate"><span class="pre">hash_grid_query_next()</span></code></a>.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -591,7 +646,20 @@
 </ul>
 </td></tr></table>
 <p>Construct a point query against a <a class="reference internal" href="../../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.HashGrid</span></code></a> (float64 precision).</p>
-<p>This query can be used to iterate over all neighboring points within a fixed radius from the query point.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">float64</span></code> overload of <a class="reference internal" href="#warp._src.lang.hash_grid_query" title="warp._src.lang.hash_grid_query"><code class="xref py py-func docutils literal notranslate"><span class="pre">hash_grid_query()</span></code></a>. Behavior and usage match the default
+<code class="docutils literal notranslate"><span class="pre">float32</span></code> overload; see it for details and a usage example.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>id</strong> – The <a class="reference internal" href="../../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.HashGrid</span></code></a> identifier</p></li>
+<li><p><strong>point</strong> – The query point</p></li>
+<li><p><strong>max_dist</strong> – The query radius</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A hash-grid query object to pass to <a class="reference internal" href="warp.hash_grid_query_next.html#warp._src.lang.hash_grid_query_next" title="warp._src.lang.hash_grid_query_next"><code class="xref py py-func docutils literal notranslate"><span class="pre">hash_grid_query_next()</span></code></a>.</p>
+</dd>
+</dl>
 </dd></dl>
 
 </section>

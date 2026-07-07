@@ -8,6 +8,41 @@
 
       * Kernel
 
-   Move to the next triangle whose bounding box overlaps the query bounding box.
+   Advance a mesh AABB query to the next overlapping triangle and report whether one was found.
    
-   The index of the current face is stored in ``index``, returns ``False`` if there are no more overlapping triangles.
+   Writes the index of the current face to ``index`` and returns ``True``; returns ``False`` once
+   no overlapping triangles remain (``index`` is then left unchanged). The reported index is a
+   face index (0-based, into the mesh's triangles), suitable for :func:`mesh_eval_position`,
+   :func:`mesh_eval_face_normal`, and the other face-indexed functions. Used in a ``while`` loop
+   together with :func:`mesh_query_aabb`.
+   
+   :param query: The query to advance, from :func:`mesh_query_aabb`
+   :param index: Output; receives the index of the current overlapping face
+   
+   :returns: ``True`` if another overlapping triangle was found (its face index written to ``index``),
+             ``False`` if the query is exhausted.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def count_faces(mesh_id: wp.uint64, lo: wp.vec3, hi: wp.vec3, out_count: wp.array[wp.int32]):
+           query = wp.mesh_query_aabb(mesh_id, lo, hi)
+           face = int(0)
+           while wp.mesh_query_aabb_next(query, face):
+               wp.atomic_add(out_count, 0, 1)
+   
+       points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
+       indices = wp.array([0,3,2, 0,2,1,  4,5,6, 4,6,7,  0,1,5, 0,5,4,
+                           2,3,7, 2,7,6,  0,4,7, 0,7,3,  1,2,6, 1,6,5], dtype=wp.int32)
+       mesh = wp.Mesh(points=points, indices=indices)
+   
+       out_count = wp.zeros(1, dtype=wp.int32)
+       wp.launch(count_faces, dim=1, inputs=[mesh.id, wp.vec3(-1.0, -1.0, -1.0), wp.vec3(2.0, 2.0, 2.0)], outputs=[out_count])
+       print("overlapping faces:", out_count.numpy()[0])
+   
+   .. testoutput::
+   
+       overlapping faces: 12
+   

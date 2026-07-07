@@ -22,9 +22,30 @@
    If ``root`` is -1 (default), traversal starts at the mesh's global root.
    
    :param id: The mesh identifier
-   :param start: The start point of the ray
-   :param dir: The ray direction (should be normalized)
+   :param start: The ray origin, in the mesh's local space
+   :param dir: The ray direction, in the mesh's local space (only its direction matters; the count is independent of its length)
    :param root: The root node index for grouped BVH queries, or -1 for global root (optional, default: -1)
    
    :returns: The number of intersections (with ``t >= 0``) between the ray and the mesh.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def crossings(mesh_id: wp.uint64, origin: wp.vec3, dir: wp.vec3, out_n: wp.array[wp.int32]):
+           out_n[0] = wp.mesh_query_ray_count_intersections(mesh_id, origin, dir)
+   
+       points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
+       indices = wp.array([0,3,2, 0,2,1,  4,5,6, 4,6,7,  0,1,5, 0,5,4,
+                           2,3,7, 2,7,6,  0,4,7, 0,7,3,  1,2,6, 1,6,5], dtype=wp.int32)
+       mesh = wp.Mesh(points=points, indices=indices)
+   
+       out_n = wp.zeros(1, dtype=wp.int32)
+       wp.launch(crossings, dim=1, inputs=[mesh.id, wp.vec3(0.3, 0.6, -2.0), wp.vec3(0.0, 0.0, 1.0)], outputs=[out_n])
+       print("crossings:", out_n.numpy()[0])
+   
+   .. testoutput::
+   
+       crossings: 2
    

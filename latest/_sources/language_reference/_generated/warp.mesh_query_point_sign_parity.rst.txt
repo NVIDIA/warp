@@ -11,22 +11,56 @@
 
    Compute the closest point on the :class:`warp.Mesh` with identifier ``id`` to the given ``point`` in space.
    
-   The method will cast multiple rays starting from the query point by applying
-   small random perturbations to a base direction (1, 1, 1). Each perturbation is
-   sampled independently for the x, y, and z dimensions from a uniform distribution
-   in the range [-perturbation_scale, perturbation_scale), and added to the base
-   direction to produce a slightly altered ray direction. This randomization helps
-   avoid degeneracies such as rays intersecting exactly on triangle edges,
-   vertices, or becoming parallel to mesh features.
+   The sign of the distance (inside/outside) is determined by casting ``n_sample`` rays from ``point``
+   and counting how many mesh faces each ray crosses. Sampling is deterministic: every call uses a
+   fixed seed, so the same ``n_sample`` and ``perturbation_scale`` always produce the same ray
+   directions. Each ray perturbs the base direction (1, 1, 1) by an offset drawn per axis from a
+   uniform distribution over [``-perturbation_scale``, ``perturbation_scale``), which avoids
+   degeneracies such as rays grazing shared edges or vertices.
    
-   For each perturbed ray, the method counts how many mesh faces it intersects and
-   uses the parity (odd/even) of this count to determine whether the ray exits the
-   mesh (odd -> inside, even -> outside). A majority vote over all sampled rays is
-   used to classify the point.
+   The point is classified as inside when at least half of the rays cross an odd number of faces. With
+   an even ``n_sample`` an exact tie therefore counts as inside, so prefer a positive, odd ``n_sample``
+   (larger values are more robust on imperfect meshes). A non-positive ``n_sample`` casts no rays and
+   always classifies the point as inside. Sign classification examines the whole mesh and is not
+   bounded by ``max_dist``, which only limits the returned closest point.
+   
+   Triangles that are degenerate or nearly degenerate relative to their edge lengths are excluded from
+   the closest-point search, so such a face can be skipped even when it satisfies the distance
+   constraint. If every face satisfying the distance constraint is excluded, the query returns no result.
    
    :param id: The mesh identifier
-   :param point: The point in space to query
-   :param max_dist: Mesh faces above this distance will not be considered by the query
-   :param n_sample: Number of rays to cast (default: 1). Use a higher value if the sign is inaccurate.
+   :param point: The query point, in the mesh's local space
+   :param max_dist: Maximum allowed distance to the returned closest point. The query returns no result if no face is strictly closer than this distance.
+   :param n_sample: Number of rays used to classify the sign. Prefer a positive, odd value; larger values
+                    are more robust. A non-positive value casts no rays and classifies the point as inside.
    :param perturbation_scale: Scale of the perturbation.
+   
+   :returns: A :class:`warp.MeshQueryPoint`. Check ``result`` first (``True`` if a face within
+             ``max_dist`` was found), then read ``sign`` (< 0 if ``point`` is inside the mesh, >= 0 if
+             outside), ``face`` (index of the closest face), and the barycentric coordinates ``u`` and
+             ``v`` of the closest point on that face. Pass ``face``, ``u`` and ``v`` to
+             :func:`mesh_eval_position` to obtain the closest point's position.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def classify(mesh_id: wp.uint64, p: wp.vec3, out_inside: wp.array[wp.int32]):
+           res = wp.mesh_query_point_sign_parity(mesh_id, p, 1.0e6)
+           if res.result:
+               out_inside[0] = wp.where(res.sign < 0.0, 1, 0)
+   
+       points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
+       indices = wp.array([0,3,2, 0,2,1,  4,5,6, 4,6,7,  0,1,5, 0,5,4,
+                           2,3,7, 2,7,6,  0,4,7, 0,7,3,  1,2,6, 1,6,5], dtype=wp.int32)
+       mesh = wp.Mesh(points=points, indices=indices)
+   
+       out_inside = wp.zeros(1, dtype=wp.int32)
+       wp.launch(classify, dim=1, inputs=[mesh.id, wp.vec3(0.5, 0.5, 0.5)], outputs=[out_inside])
+       print("inside:", bool(out_inside.numpy()[0]))
+   
+   .. testoutput::
+   
+       inside: True
    

@@ -9,4 +9,39 @@
       * Kernel
       * Differentiable
 
-   Evaluate the position on the :class:`warp.Mesh` given a face index and barycentric coordinates.
+   Evaluate the interpolated position on a face of the :class:`warp.Mesh` from barycentric coordinates.
+   
+   Linearly interpolates the face's three vertex positions: with the face's vertices ``v0``,
+   ``v1``, ``v2``, returns ``v0 * bary_u + v1 * bary_v + v2 * (1 - bary_u - bary_v)``, in the
+   mesh's local space. Use this to turn a ``face``/``u``/``v`` result from a mesh point or ray
+   query back into a position.
+   
+   :param id: The mesh identifier
+   :param face: The face (triangle) index
+   :param bary_u: Barycentric weight of the face's first vertex
+   :param bary_v: Barycentric weight of the face's second vertex
+   
+   :returns: The interpolated position, in the mesh's local space.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def centroid(mesh_id: wp.uint64, out: wp.array[wp.vec3]):
+           out[0] = wp.mesh_eval_position(mesh_id, 0, 1.0 / 3.0, 1.0 / 3.0)
+   
+       points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
+       indices = wp.array([0,3,2, 0,2,1,  4,5,6, 4,6,7,  0,1,5, 0,5,4,
+                           2,3,7, 2,7,6,  0,4,7, 0,7,3,  1,2,6, 1,6,5], dtype=wp.int32)
+       mesh = wp.Mesh(points=points, indices=indices)
+   
+       out = wp.zeros(1, dtype=wp.vec3)
+       wp.launch(centroid, dim=1, inputs=[mesh.id], outputs=[out])
+       p = out.numpy()[0]
+       print(f"({p[0]:.3f}, {p[1]:.3f}, {p[2]:.3f})")
+   
+   .. testoutput::
+   
+       (0.333, 0.667, 0.000)
+   

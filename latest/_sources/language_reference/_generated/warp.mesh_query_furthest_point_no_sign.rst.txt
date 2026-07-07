@@ -13,7 +13,40 @@
    
    This method does not compute the sign of the point (inside/outside).
    
+   Triangles that are degenerate or nearly degenerate relative to their edge lengths are excluded from
+   the furthest-point search, so such a face can be skipped even when it satisfies the distance
+   constraint. If every face satisfying the distance constraint is excluded, the query returns no result.
+   
    :param id: The mesh identifier
-   :param point: The point in space to query
-   :param min_dist: Mesh faces below this distance will not be considered by the query.
+   :param point: The query point, in the mesh's local space
+   :param min_dist: Minimum allowed distance to the returned furthest point. The query returns no result if no face is strictly farther than this distance.
+   
+   :returns: A :class:`warp.MeshQueryPoint`. Check ``result`` first (``True`` if a face farther than
+             ``min_dist`` was found), then read ``face`` (index of the furthest face) and the
+             barycentric coordinates ``u`` and ``v`` of the furthest point. This method does not compute
+             ``sign``. Pass ``face``, ``u`` and ``v`` to :func:`mesh_eval_position` to obtain its
+             position.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def farthest(mesh_id: wp.uint64, p: wp.vec3, out_pos: wp.array[wp.vec3]):
+           res = wp.mesh_query_furthest_point_no_sign(mesh_id, p, 0.0)
+           if res.result:
+               out_pos[0] = wp.mesh_eval_position(mesh_id, res.face, res.u, res.v)
+   
+       points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
+       indices = wp.array([0,3,2, 0,2,1,  4,5,6, 4,6,7,  0,1,5, 0,5,4,
+                           2,3,7, 2,7,6,  0,4,7, 0,7,3,  1,2,6, 1,6,5], dtype=wp.int32)
+       mesh = wp.Mesh(points=points, indices=indices)
+   
+       out_pos = wp.zeros(1, dtype=wp.vec3)
+       wp.launch(farthest, dim=1, inputs=[mesh.id, wp.vec3(0.0, 0.0, 0.0)], outputs=[out_pos])
+       print(out_pos.numpy()[0])
+   
+   .. testoutput::
+   
+       [1. 1. 1.]
    

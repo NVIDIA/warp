@@ -1094,73 +1094,73 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <td><p>Get the root of a group in a BVH.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.bvh_query_aabb.html#warp._src.lang.bvh_query_aabb" title="warp._src.lang.bvh_query_aabb"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bvh_query_aabb</span></code></a></p></td>
-<td><p>Construct an axis-aligned bounding box query against a BVH object.</p></td>
+<td><p>Construct an axis-aligned bounding box (AABB) query against a BVH.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.bvh_query_aabb_tiled.html#warp._src.lang.bvh_query_aabb_tiled" title="warp._src.lang.bvh_query_aabb_tiled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bvh_query_aabb_tiled</span></code></a></p></td>
-<td><p>Construct an axis-aligned bounding box query against a BVH object for thread-block parallel traversal.</p></td>
+<td><p>Construct an axis-aligned bounding box (AABB) query against a BVH for thread-block parallel traversal.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.bvh_query_next.html#warp._src.lang.bvh_query_next" title="warp._src.lang.bvh_query_next"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bvh_query_next</span></code></a></p></td>
-<td><p>Move to the next bound returned by the query.</p></td>
+<td><p>Advance a BVH query to the next overlapping item and report whether one was found.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.bvh_query_next_tiled.html#warp._src.lang.bvh_query_next_tiled" title="warp._src.lang.bvh_query_next_tiled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bvh_query_next_tiled</span></code></a></p></td>
 <td><p>Move to the next bound in a thread-block parallel BVH query and return results as a tile.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.bvh_query_ray.html#warp._src.lang.bvh_query_ray" title="warp._src.lang.bvh_query_ray"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bvh_query_ray</span></code></a></p></td>
-<td><p>Construct a ray query against a BVH object.</p></td>
+<td><p>Construct a ray query against a BVH.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.bvh_query_ray_tiled.html#warp._src.lang.bvh_query_ray_tiled" title="warp._src.lang.bvh_query_ray_tiled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bvh_query_ray_tiled</span></code></a></p></td>
-<td><p>Construct a ray query against a BVH object for thread-block parallel traversal.</p></td>
+<td><p>Construct a ray query against a BVH for thread-block parallel traversal.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.closest_point_edge_edge.html#warp._src.lang.closest_point_edge_edge" title="warp._src.lang.closest_point_edge_edge"><code class="xref py py-obj docutils literal notranslate"><span class="pre">closest_point_edge_edge</span></code></a></p></td>
-<td><p>Find the closest points between two edges.</p></td>
+<td><p>Find the closest points between two edges (line segments) <code class="docutils literal notranslate"><span class="pre">[p1,</span> <span class="pre">q1]</span></code> and <code class="docutils literal notranslate"><span class="pre">[p2,</span> <span class="pre">q2]</span></code>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.hash_grid_point_id.html#warp._src.lang.hash_grid_point_id" title="warp._src.lang.hash_grid_point_id"><code class="xref py py-obj docutils literal notranslate"><span class="pre">hash_grid_point_id</span></code></a></p></td>
-<td><p>Query the index of a point in the <a class="reference internal" href="../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.HashGrid</span></code></a>.</p></td>
+<td><p>Return the original point index stored at a given position in the <a class="reference internal" href="../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.HashGrid</span></code></a>'s spatially-sorted order.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.hash_grid_query.html#warp._src.lang.hash_grid_query" title="warp._src.lang.hash_grid_query"><code class="xref py py-obj docutils literal notranslate"><span class="pre">hash_grid_query</span></code></a></p></td>
 <td><p>Construct a point query against a <a class="reference internal" href="../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.HashGrid</span></code></a>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.hash_grid_query_next.html#warp._src.lang.hash_grid_query_next" title="warp._src.lang.hash_grid_query_next"><code class="xref py py-obj docutils literal notranslate"><span class="pre">hash_grid_query_next</span></code></a></p></td>
-<td><p>Move to the next point in the hash grid query.</p></td>
+<td><p>Advance a hash grid query to the next candidate neighbor and report whether one was found.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.intersect_tri_tri.html#warp._src.lang.intersect_tri_tri" title="warp._src.lang.intersect_tri_tri"><code class="xref py py-obj docutils literal notranslate"><span class="pre">intersect_tri_tri</span></code></a></p></td>
-<td><p>Test for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Möller's method.</p></td>
+<td><p>Test whether two triangles <code class="docutils literal notranslate"><span class="pre">(v0,</span> <span class="pre">v1,</span> <span class="pre">v2)</span></code> and <code class="docutils literal notranslate"><span class="pre">(u0,</span> <span class="pre">u1,</span> <span class="pre">u2)</span></code> intersect, using Möller's method.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.mesh_eval_face_normal.html#warp._src.lang.mesh_eval_face_normal" title="warp._src.lang.mesh_eval_face_normal"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_eval_face_normal</span></code></a></p></td>
-<td><p>Evaluate the face normal the mesh given a face index.</p></td>
+<td><p>Evaluate the unit normal of a face of the <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.mesh_eval_position.html#warp._src.lang.mesh_eval_position" title="warp._src.lang.mesh_eval_position"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_eval_position</span></code></a></p></td>
-<td><p>Evaluate the position on the <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a> given a face index and barycentric coordinates.</p></td>
+<td><p>Evaluate the interpolated position on a face of the <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a> from barycentric coordinates.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.mesh_eval_velocity.html#warp._src.lang.mesh_eval_velocity" title="warp._src.lang.mesh_eval_velocity"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_eval_velocity</span></code></a></p></td>
-<td><p>Evaluate the velocity on the <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a> given a face index and barycentric coordinates.</p></td>
+<td><p>Evaluate the interpolated velocity on a face of the <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a> from barycentric coordinates.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.mesh_get.html#warp._src.lang.mesh_get" title="warp._src.lang.mesh_get"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_get</span></code></a></p></td>
-<td><p>Retrieve the mesh given its index.</p></td>
+<td><p>Retrieve the <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a> object identified by <code class="docutils literal notranslate"><span class="pre">id</span></code>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.mesh_get_group_root.html#warp._src.lang.mesh_get_group_root" title="warp._src.lang.mesh_get_group_root"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_get_group_root</span></code></a></p></td>
 <td><p>Get the root of a group in a <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.mesh_get_index.html#warp._src.lang.mesh_get_index" title="warp._src.lang.mesh_get_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_get_index</span></code></a></p></td>
-<td><p>Query the point-index of the mesh given a face-vertex index.</p></td>
+<td><p>Look up the vertex index stored at a face-vertex position in the <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a>'s index buffer.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.mesh_get_point.html#warp._src.lang.mesh_get_point" title="warp._src.lang.mesh_get_point"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_get_point</span></code></a></p></td>
-<td><p>Query the point of the mesh given an index.</p></td>
+<td><p>Look up the position of a face's vertex in the <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.mesh_get_velocity.html#warp._src.lang.mesh_get_velocity" title="warp._src.lang.mesh_get_velocity"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_get_velocity</span></code></a></p></td>
-<td><p>Query the velocity of the mesh given an index.</p></td>
+<td><p>Look up the velocity of a face's vertex in the <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.mesh_query_aabb.html#warp._src.lang.mesh_query_aabb" title="warp._src.lang.mesh_query_aabb"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_query_aabb</span></code></a></p></td>
-<td><p>Construct an axis-aligned bounding box query against a <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a>.</p></td>
+<td><p>Construct an axis-aligned bounding box (AABB) query against a <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.mesh_query_aabb_next.html#warp._src.lang.mesh_query_aabb_next" title="warp._src.lang.mesh_query_aabb_next"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_query_aabb_next</span></code></a></p></td>
-<td><p>Move to the next triangle whose bounding box overlaps the query bounding box.</p></td>
+<td><p>Advance a mesh AABB query to the next overlapping triangle and report whether one was found.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.mesh_query_aabb_next_tiled.html#warp._src.lang.mesh_query_aabb_next_tiled" title="warp._src.lang.mesh_query_aabb_next_tiled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_query_aabb_next_tiled</span></code></a></p></td>
 <td><p>Move to the next triangle in a thread-block parallel mesh AABB query and return results as a tile.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.mesh_query_aabb_tiled.html#warp._src.lang.mesh_query_aabb_tiled" title="warp._src.lang.mesh_query_aabb_tiled"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_query_aabb_tiled</span></code></a></p></td>
-<td><p>Construct an axis-aligned bounding box query against a <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a> for thread-block parallel traversal.</p></td>
+<td><p>Construct an axis-aligned bounding box (AABB) query against a <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a> for thread-block parallel traversal.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.mesh_query_furthest_point_no_sign.html#warp._src.lang.mesh_query_furthest_point_no_sign" title="warp._src.lang.mesh_query_furthest_point_no_sign"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_query_furthest_point_no_sign</span></code></a></p></td>
 <td><p>Compute the furthest point on the <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a> with identifier <code class="docutils literal notranslate"><span class="pre">id</span></code> to the given point in space.</p></td>
@@ -1184,7 +1184,7 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <td><p>Compute the closest ray hit on the <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a> with identifier <code class="docutils literal notranslate"><span class="pre">id</span></code>, returns <code class="docutils literal notranslate"><span class="pre">True</span></code> if a hit &lt; <code class="docutils literal notranslate"><span class="pre">max_t</span></code> is found.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.mesh_query_ray_anyhit.html#warp._src.lang.mesh_query_ray_anyhit" title="warp._src.lang.mesh_query_ray_anyhit"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_query_ray_anyhit</span></code></a></p></td>
-<td><p>Check for any ray hit on the <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a> with identifier <code class="docutils literal notranslate"><span class="pre">id</span></code>.</p></td>
+<td><p>Check whether a ray hits the <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a> with identifier <code class="docutils literal notranslate"><span class="pre">id</span></code>, without computing the closest hit.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.mesh_query_ray_count_intersections.html#warp._src.lang.mesh_query_ray_count_intersections" title="warp._src.lang.mesh_query_ray_count_intersections"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mesh_query_ray_count_intersections</span></code></a></p></td>
 <td><p>Count the number of intersections between a ray and a <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a>.</p></td>

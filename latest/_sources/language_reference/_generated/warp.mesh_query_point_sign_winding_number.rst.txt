@@ -15,11 +15,51 @@
    and provides a smooth approximation to sign even when the mesh is not watertight. This method is the most robust and accurate of the sign determination meshes
    but also the most expensive.
    
-   .. note:: The :class:`warp.Mesh` object must be constructed with ``support_winding_number=True`` for this method to return correct results.
+   .. note:: The :class:`warp.Mesh` must be constructed with ``support_winding_number=True`` to use
+       the winding number for sign determination. If it was not, the sign silently falls back to the
+       method used by :func:`mesh_query_point` (a majority vote over the orientation of the closest hit
+       of three axis-aligned rays), which is robust only for watertight meshes with consistent winding;
+       the closest point, face, and barycentric outputs are unaffected.
+   
+   Sign classification examines the whole mesh and is not bounded by ``max_dist``, which only limits the
+   returned closest point.
+   
+   Triangles that are degenerate or nearly degenerate relative to their edge lengths are excluded from
+   the closest-point search, so such a face can be skipped even when it satisfies the distance
+   constraint. If every face satisfying the distance constraint is excluded, the query returns no result.
    
    :param id: The mesh identifier
-   :param point: The point in space to query
-   :param max_dist: Mesh faces above this distance will not be considered by the query
+   :param point: The query point, in the mesh's local space
+   :param max_dist: Maximum allowed distance to the returned closest point. The query returns no result if no face is strictly closer than this distance.
    :param accuracy: Accuracy for computing the winding number with fast winding number method utilizing second-order dipole approximation, default 2.0
    :param threshold: The threshold of the winding number to be considered inside, default 0.5.
+   
+   :returns: A :class:`warp.MeshQueryPoint`. Check ``result`` first (``True`` if a face within
+             ``max_dist`` was found), then read ``sign`` (< 0 if ``point`` is inside the mesh, >= 0 if
+             outside), ``face`` (index of the closest face), and the barycentric coordinates ``u`` and
+             ``v`` of the closest point on that face. Pass ``face``, ``u`` and ``v`` to
+             :func:`mesh_eval_position` to obtain the closest point's position.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def classify(mesh_id: wp.uint64, p: wp.vec3, out_inside: wp.array[wp.int32]):
+           res = wp.mesh_query_point_sign_winding_number(mesh_id, p, 1.0e6)
+           if res.result:
+               out_inside[0] = wp.where(res.sign < 0.0, 1, 0)
+   
+       points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
+       indices = wp.array([0,3,2, 0,2,1,  4,5,6, 4,6,7,  0,1,5, 0,5,4,
+                           2,3,7, 2,7,6,  0,4,7, 0,7,3,  1,2,6, 1,6,5], dtype=wp.int32)
+       mesh = wp.Mesh(points=points, indices=indices, support_winding_number=True)
+   
+       out_inside = wp.zeros(1, dtype=wp.int32)
+       wp.launch(classify, dim=1, inputs=[mesh.id, wp.vec3(0.5, 0.5, 0.5)], outputs=[out_inside])
+       print("inside:", bool(out_inside.numpy()[0]))
+   
+   .. testoutput::
+   
+       inside: True
    

@@ -8,11 +8,42 @@
 
       * Kernel
 
-   Construct a ray query against a BVH object for thread-block parallel traversal.
+   Construct a ray query against a BVH for thread-block parallel traversal.
    
-   This query can be used in tiled kernels to cooperatively traverse a BVH across a thread block.
+   For use in tiled kernels: all threads in the block cooperatively traverse the BVH. Advance the
+   query with :func:`bvh_query_next_tiled` (one result index per thread per step) in a loop guarded
+   by :func:`tile_query_valid`. ``start`` and ``dir`` must be identical across all threads in the
+   block and are given in BVH space (the space of the arrays passed to :class:`warp.Bvh`).
    
    :param id: The BVH identifier
-   :param start: The ray origin (must be the same for all threads in the block)
-   :param dir: The ray direction (must be the same for all threads in the block)
+   :param start: The ray origin, in BVH space (must be the same for all threads in the block)
+   :param dir: The ray direction, in BVH space (must be the same for all threads in the block)
+   
+   :returns: A :class:`warp.BvhQueryTiled` to advance with :func:`bvh_query_next_tiled`.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def tiled_cast(bvh_id: wp.uint64, lowers: wp.array[wp.vec3], uppers: wp.array[wp.vec3],
+                      origin: wp.vec3, dir: wp.vec3, centers: wp.array[wp.vec3]):
+           query = wp.bvh_query_ray_tiled(bvh_id, origin, dir)
+           while wp.tile_query_valid(query):
+               result = wp.bvh_query_next_tiled(query)
+               item = wp.untile(result)
+               if item >= 0:
+                   centers[item] = 0.5 * (lowers[item] + uppers[item])
+   
+       lowers = wp.array([[0, 0, 0], [2, 0, 0], [4, 0, 0]], dtype=wp.vec3)
+       uppers = wp.array([[1, 1, 1], [3, 1, 1], [5, 1, 1]], dtype=wp.vec3)
+       bvh = wp.Bvh(lowers=lowers, uppers=uppers)
+   
+       centers = wp.zeros(3, dtype=wp.vec3)
+       wp.launch_tiled(tiled_cast, dim=[1], inputs=[bvh.id, lowers, uppers, wp.vec3(-1.0, 0.5, 0.5), wp.vec3(1.0, 0.0, 0.0)], outputs=[centers], block_dim=32)
+       print(centers.numpy().tolist())
+   
+   .. testoutput::
+   
+       [[0.5, 0.5, 0.5], [2.5, 0.5, 0.5], [4.5, 0.5, 0.5]]
    

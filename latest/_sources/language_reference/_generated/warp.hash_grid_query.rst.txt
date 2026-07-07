@@ -10,7 +10,47 @@
 
    Construct a point query against a :class:`warp.HashGrid`.
    
-   This query can be used to iterate over all neighboring points within a fixed radius from the query point.
+   Returns a query that iterates over candidate neighbors of ``point``: every point in the grid
+   cells overlapped by the box from ``point - max_dist`` to ``point + max_dist``. These are
+   *candidates* — the grid does not test distance, so some are farther than ``max_dist``; filter
+   by actual distance yourself. Advance the query and read each candidate's index with
+   :func:`hash_grid_query_next`. ``point`` must be in the same coordinate space as the points the
+   grid was built from (see :class:`warp.HashGrid`).
+   
+   :param id: The :class:`warp.HashGrid` identifier
+   :param point: The query point
+   :param max_dist: The query radius
+   
+   :returns: A hash-grid query object to pass to :func:`hash_grid_query_next`.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def count_neighbors(grid_id: wp.uint64, pts: wp.array[wp.vec3], radius: wp.float32, out_count: wp.array[wp.int32]):
+           i = wp.tid()
+           p = pts[i]
+           query = wp.hash_grid_query(grid_id, p, radius)
+           index = int(0)
+           n = int(0)
+           while wp.hash_grid_query_next(query, index):
+               if wp.length(p - pts[index]) <= radius:
+                   n += 1
+           out_count[i] = n
+   
+       points = wp.array([[0,0,0],[0.1,0,0],[0.5,0,0],[2.0,0,0]], dtype=wp.vec3)
+       grid = wp.HashGrid(dim_x=8, dim_y=8, dim_z=8)
+       grid.build(points=points, radius=0.3)
+   
+       out_count = wp.zeros(4, dtype=wp.int32)
+       wp.launch(count_neighbors, dim=4, inputs=[grid.id, points, 0.3], outputs=[out_count])
+       print(out_count.numpy())
+   
+   .. testoutput::
+   
+       [2 2 1 1]
+   
 
 .. function:: warp._src.lang.hash_grid_query(id: uint64, point: vec3h, max_dist: float16) -> HashGridQuery
    :noindex:
@@ -22,7 +62,15 @@
 
    Construct a point query against a :class:`warp.HashGrid` (float16 precision).
    
-   This query can be used to iterate over all neighboring points within a fixed radius from the query point.
+   The ``float16`` overload of :func:`hash_grid_query`. Behavior and usage match the default
+   ``float32`` overload; see it for details and a usage example.
+   
+   :param id: The :class:`warp.HashGrid` identifier
+   :param point: The query point
+   :param max_dist: The query radius
+   
+   :returns: A hash-grid query object to pass to :func:`hash_grid_query_next`.
+   
 
 .. function:: warp._src.lang.hash_grid_query(id: uint64, point: vec3d, max_dist: float64) -> HashGridQuery
    :noindex:
@@ -34,4 +82,12 @@
 
    Construct a point query against a :class:`warp.HashGrid` (float64 precision).
    
-   This query can be used to iterate over all neighboring points within a fixed radius from the query point.
+   The ``float64`` overload of :func:`hash_grid_query`. Behavior and usage match the default
+   ``float32`` overload; see it for details and a usage example.
+   
+   :param id: The :class:`warp.HashGrid` identifier
+   :param point: The query point
+   :param max_dist: The query radius
+   
+   :returns: A hash-grid query object to pass to :func:`hash_grid_query_next`.
+   

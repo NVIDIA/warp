@@ -8,11 +8,42 @@
 
       * Kernel
 
-   Construct an axis-aligned bounding box query against a :class:`warp.Mesh`.
+   Construct an axis-aligned bounding box (AABB) query against a :class:`warp.Mesh`.
    
-   This query can be used to iterate over all bounding boxes of the triangles inside a volume.
+   Returns a query that iterates over every triangle (face) whose own axis-aligned bounding box
+   overlaps the query box ``[low, high]``, given in the mesh's local space. This is a broad-phase
+   test on bounding boxes: a reported face's triangle may not actually intersect the box, so
+   perform an exact test yourself if required. Advance the query and read each result with
+   :func:`mesh_query_aabb_next`.
    
    :param id: The mesh identifier
-   :param low: The lower bound of the bounding box in mesh space
-   :param high: The upper bound of the bounding box in mesh space.
+   :param low: The lower bound of the query box, in the mesh's local space
+   :param high: The upper bound of the query box, in the mesh's local space
+   
+   :returns: A :class:`warp.MeshQueryAABB`. It is opaque; pass it to :func:`mesh_query_aabb_next`, which
+             writes the index of each overlapping face to its ``index`` argument.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def count_faces(mesh_id: wp.uint64, lo: wp.vec3, hi: wp.vec3, out_count: wp.array[wp.int32]):
+           query = wp.mesh_query_aabb(mesh_id, lo, hi)
+           face = int(0)
+           while wp.mesh_query_aabb_next(query, face):
+               wp.atomic_add(out_count, 0, 1)
+   
+       points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
+       indices = wp.array([0,3,2, 0,2,1,  4,5,6, 4,6,7,  0,1,5, 0,5,4,
+                           2,3,7, 2,7,6,  0,4,7, 0,7,3,  1,2,6, 1,6,5], dtype=wp.int32)
+       mesh = wp.Mesh(points=points, indices=indices)
+   
+       out_count = wp.zeros(1, dtype=wp.int32)
+       wp.launch(count_faces, dim=1, inputs=[mesh.id, wp.vec3(-1.0, -1.0, -1.0), wp.vec3(2.0, 2.0, 2.0)], outputs=[out_count])
+       print("overlapping faces:", out_count.numpy()[0])
+   
+   .. testoutput::
+   
+       overlapping faces: 12
    

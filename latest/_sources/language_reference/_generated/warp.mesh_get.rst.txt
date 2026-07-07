@@ -8,4 +8,28 @@
 
       * Kernel
 
-   Retrieve the mesh given its index.
+   Retrieve the :class:`warp.Mesh` object identified by ``id``.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def first_face_vertex(mesh_id: wp.uint64, out: wp.array[wp.vec3]):
+           m = wp.mesh_get(mesh_id)
+           # the returned struct exposes the mesh arrays (points, indices, velocities)
+           out[0] = m.points[m.indices[0]]  # position of the first face's first vertex
+   
+       points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
+       indices = wp.array([0,3,2, 0,2,1,  4,5,6, 4,6,7,  0,1,5, 0,5,4,
+                           2,3,7, 2,7,6,  0,4,7, 0,7,3,  1,2,6, 1,6,5], dtype=wp.int32)
+       mesh = wp.Mesh(points=points, indices=indices)
+   
+       out = wp.zeros(1, dtype=wp.vec3)
+       wp.launch(first_face_vertex, dim=1, inputs=[mesh.id], outputs=[out])
+       print(out.numpy()[0])
+   
+   .. testoutput::
+   
+       [0. 0. 0.]
+   

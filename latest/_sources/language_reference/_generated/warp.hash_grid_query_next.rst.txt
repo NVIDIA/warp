@@ -8,8 +8,88 @@
 
       * Kernel
 
-   Move to the next point in the hash grid query.
+   Advance a hash grid query to the next candidate neighbor and report whether one was found.
    
-   Supports query objects returned by :func:`wp.hash_grid_query() <warp.hash_grid_query>` for all hash grid
-   coordinate precisions. The index of the current neighbor is stored in ``index``; returns ``False`` if there are no
-   more neighbors.
+   Writes the candidate's index to ``index`` and returns ``True``; returns ``False`` once no
+   candidates remain (``index`` is then left unchanged). The index refers to the points the grid
+   was built from, in their original order. Candidates share a nearby grid cell and may lie farther
+   than the query radius, so test the actual distance yourself (see :func:`hash_grid_query`).
+   Supports query objects returned by :func:`wp.hash_grid_query() <warp.hash_grid_query>` for all
+   coordinate precisions.
+   
+   :param query: The query to advance, from :func:`hash_grid_query`
+   :param index: Output; receives the index of the current candidate neighbor
+   
+   :returns: ``True`` if another candidate was found (its index written to ``index``), ``False`` if the
+             query is exhausted.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def count_neighbors(grid_id: wp.uint64, pts: wp.array[wp.vec3], radius: wp.float32, out_count: wp.array[wp.int32]):
+           i = wp.tid()
+           p = pts[i]
+           query = wp.hash_grid_query(grid_id, p, radius)
+           index = int(0)
+           n = int(0)
+           while wp.hash_grid_query_next(query, index):
+               if wp.length(p - pts[index]) <= radius:
+                   n += 1
+           out_count[i] = n
+   
+       points = wp.array([[0,0,0],[0.1,0,0],[0.5,0,0],[2.0,0,0]], dtype=wp.vec3)
+       grid = wp.HashGrid(dim_x=8, dim_y=8, dim_z=8)
+       grid.build(points=points, radius=0.3)
+   
+       out_count = wp.zeros(4, dtype=wp.int32)
+       wp.launch(count_neighbors, dim=4, inputs=[grid.id, points, 0.3], outputs=[out_count])
+       print(out_count.numpy())
+   
+   .. testoutput::
+   
+       [2 2 1 1]
+   
+
+.. function:: warp._src.lang.hash_grid_query_next(query: HashGridQuery, index: int32) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Advance a hash grid query to the next candidate neighbor and report whether one was found (float16 precision).
+   
+   The ``float16`` overload of :func:`hash_grid_query_next`, taking the query returned by the
+   ``float16`` :func:`hash_grid_query`. Behavior and usage match the default ``float32``
+   overload; see it for details and a usage example.
+   
+   :param query: The query to advance, from :func:`hash_grid_query`
+   :param index: Output; receives the index of the current candidate neighbor
+   
+   :returns: ``True`` if another candidate was found (its index written to ``index``), ``False`` if the
+             query is exhausted.
+   
+
+.. function:: warp._src.lang.hash_grid_query_next(query: HashGridQuery, index: int32) -> bool
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+
+   Advance a hash grid query to the next candidate neighbor and report whether one was found (float64 precision).
+   
+   The ``float64`` overload of :func:`hash_grid_query_next`, taking the query returned by the
+   ``float64`` :func:`hash_grid_query`. Behavior and usage match the default ``float32``
+   overload; see it for details and a usage example.
+   
+   :param query: The query to advance, from :func:`hash_grid_query`
+   :param index: Output; receives the index of the current candidate neighbor
+   
+   :returns: ``True`` if another candidate was found (its index written to ``index``), ``False`` if the
+             query is exhausted.
+   
