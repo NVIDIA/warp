@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.record_event &#8212; Warp 1.16.0.dev0</title>
+    <title>warp.volume_voxel_count &#8212; Warp 1.16.0.dev0</title>
   
   
   
@@ -49,7 +49,7 @@
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.record_event';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'language_reference/_generated/warp.volume_voxel_count';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
@@ -62,8 +62,8 @@
 
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="warp.synchronize_event" href="warp.synchronize_event.html" />
-    <link rel="prev" title="warp.get_event_elapsed_time" href="warp.get_event_elapsed_time.html" />
+    <link rel="next" title="warp.volume_world_to_index" href="warp.volume_world_to_index.html" />
+    <link rel="prev" title="warp.volume_store_v" href="warp.volume_store_v.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -413,19 +413,19 @@
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../warp.html">warp</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../warp_autograd.html">warp.autograd</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../warp_config.html">warp.config</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../warp_fem.html">warp.fem</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../warp_optim.html">warp.optim</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../warp_render.html">warp.render</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../warp_sparse.html">warp.sparse</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../warp_types.html">warp.types</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../warp_utils.html">warp.utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp.html">warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_autograd.html">warp.autograd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_config.html">warp.config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_fem.html">warp.fem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_optim.html">warp.optim</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_render.html">warp.render</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_sparse.html">warp.sparse</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_types.html">warp.types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_utils.html">warp.utils</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Language Reference</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../../language_reference/builtins.html">Built-Ins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../builtins.html">Built-Ins</a></li>
 </ul>
 </div>
 </nav></div>
@@ -461,9 +461,9 @@
       </a>
     </li>
     
-    <li class="breadcrumb-item"><a href="../warp.html" class="nav-link">warp</a></li>
+    <li class="breadcrumb-item"><a href="../builtins.html" class="nav-link">Built-Ins</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.record_event</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.volume_voxel_count</span></li>
   </ul>
 </nav>
 </div>
@@ -476,7 +476,7 @@
         <div class="header-article-item">
 
 <div class="d-flex justify-content-end w-100">
-  <a href="../../_sources/api_reference/_generated/warp.record_event.rst.txt">
+  <a href="../../_sources/language_reference/_generated/warp.volume_voxel_count.rst.txt">
     <i class="fa-solid fa-file-code"></i> View page source
   </a>
 </div>
@@ -493,25 +493,34 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="warp-record-event">
-<h1>warp.record_event<a class="headerlink" href="#warp-record-event" title="Link to this heading">#</a></h1>
+  <section id="warp-volume-voxel-count">
+<h1>warp.volume_voxel_count<a class="headerlink" href="#warp-volume-voxel-count" title="Link to this heading">#</a></h1>
 <dl class="py function">
-<dt class="sig sig-object py" id="warp.record_event">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">record_event</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">external</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L8505-L8519"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.record_event" title="Link to this definition">#</a></dt>
-<dd><p>Convenience function for calling <a class="reference internal" href="warp.Stream.html#warp.Stream.record_event" title="warp.Stream.record_event"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Stream.record_event()</span></code></a> on the current stream.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>event</strong> (<a class="reference internal" href="warp.Event.html#warp.Event" title="warp._src.context.Event"><em>Event</em></a><em> | </em><em>None</em>) – <a class="reference internal" href="warp.Event.html#warp.Event" title="warp.Event"><code class="xref py py-class docutils literal notranslate"><span class="pre">Event</span></code></a> instance to record. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, a new <a class="reference internal" href="warp.Event.html#warp.Event" title="warp.Event"><code class="xref py py-class docutils literal notranslate"><span class="pre">Event</span></code></a>
-instance will be created.</p></li>
-<li><p><strong>external</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether this is an external event during graph capture. This
-argument has no effect outside of graph capture.</p></li>
+<dt class="sig sig-object py" id="warp._src.lang.volume_voxel_count">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">volume_voxel_count</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.uint64.html#warp.uint64" title="warp.uint64"><span class="pre">uint64</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span></span><a class="headerlink" href="#warp._src.lang.volume_voxel_count" title="Link to this definition">#</a></dt>
+<dd><table class="hlist"><tr><td><ul class="simple">
+<li><p>Kernel</p></li>
 </ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The recorded event.</p>
-</dd>
-</dl>
+</td><td><ul class="simple">
+<li><p>Python</p></li>
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td></tr></table>
+<p>Return the number of indexable voxels in the volume given by <code class="docutils literal notranslate"><span class="pre">id</span></code>.</p>
+<p>For active-voxel index grids, this is the active voxel count. For dense tile grids, this is the number of
+allocated leaf nodes multiplied by 512. The result is a 32-bit signed integer and is capped at <code class="docutils literal notranslate"><span class="pre">2**31</span> <span class="pre">-</span> <span class="pre">1</span></code>
+because voxel-index APIs use 32-bit indices.</p>
 </dd></dl>
 
 </section>
@@ -527,20 +536,20 @@ argument has no effect outside of graph capture.</p></li>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.get_event_elapsed_time.html"
+       href="warp.volume_store_v.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.get_event_elapsed_time</p>
+        <p class="prev-next-title">warp.volume_store_v</p>
       </div>
     </a>
     <a class="right-next"
-       href="warp.synchronize_event.html"
+       href="warp.volume_world_to_index.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.synchronize_event</p>
+        <p class="prev-next-title">warp.volume_world_to_index</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -565,7 +574,7 @@ argument has no effect outside of graph capture.</p></li>
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.record_event"><code class="docutils literal notranslate"><span class="pre">record_event()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp._src.lang.volume_voxel_count"><code class="docutils literal notranslate"><span class="pre">volume_voxel_count()</span></code></a></li>
 </ul>
   </nav></div>
 
@@ -573,7 +582,7 @@ argument has no effect outside of graph capture.</p></li>
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/_generated/warp.record_event.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/main/docs/language_reference/_generated/warp.volume_voxel_count.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

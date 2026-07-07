@@ -2635,7 +2635,12 @@ or from a dense 3D NumPy array using <a class="reference internal" href="../api_
 The values for a Volume object can be modified in a Warp kernel using <a class="reference internal" href="../language_reference/_generated/warp.volume_store.html#warp._src.lang.volume_store" title="warp._src.lang.volume_store"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.volume_store()</span></code></a>.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Warp does not currently support modifying the topology of sparse volumes at runtime.</p>
+<p>Volumes created with <code class="docutils literal notranslate"><span class="pre">rebuildable=True</span></code> or explicit capacity arguments reserve persistent storage and can update
+their sparse topology in place with <a class="reference internal" href="../api_reference/_generated/warp.Volume.html#warp.Volume.rebuild" title="warp.Volume.rebuild"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Volume.rebuild()</span></code></a>. Allocation and rebuild of these
+volumes can be captured in CUDA graphs when CUDA memory-pool allocation is supported and enabled. Exact,
+non-rebuildable volume allocation and active-topology queries such as
+<a class="reference internal" href="../api_reference/_generated/warp.Volume.html#warp.Volume.get_active_stats" title="warp.Volume.get_active_stats"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Volume.get_active_stats()</span></code></a> require device synchronization and must occur
+outside CUDA graph capture.</p>
 </div>
 <p>Below we give an example of creating a Volume object from an existing NanoVDB file:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># open NanoVDB file on disk</span>

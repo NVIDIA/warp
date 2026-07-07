@@ -1818,6 +1818,8 @@
 </li>
         <li><a href="language_reference/_generated/warp.volume_store_v.html#warp._src.lang.volume_store_v">warp._src.lang.volume_store_v()</a>
 </li>
+        <li><a href="language_reference/_generated/warp.volume_voxel_count.html#warp._src.lang.volume_voxel_count">warp._src.lang.volume_voxel_count()</a>
+</li>
         <li><a href="language_reference/_generated/warp.volume_world_to_index.html#warp._src.lang.volume_world_to_index">warp._src.lang.volume_world_to_index()</a>
 </li>
         <li><a href="language_reference/_generated/warp.volume_world_to_index_dir.html#warp._src.lang.volume_world_to_index_dir">warp._src.lang.volume_world_to_index_dir()</a>
@@ -3247,6 +3249,8 @@
 </li>
       <li><a href="api_reference/_generated/warp.fem.RegularQuadrature.html#warp.fem.RegularQuadrature.CachedFormula.get">get() (warp.fem.RegularQuadrature.CachedFormula static method)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.get_active_stats">get_active_stats() (warp.Volume method)</a>
+</li>
       <li><a href="api_reference/_generated/warp.Tape.html#warp.Tape.get_adjoint">get_adjoint() (warp.Tape method)</a>
 </li>
       <li><a href="api_reference/_generated/warp.Device.html#warp.Device.get_allocator">get_allocator() (warp.Device method)</a>
@@ -3326,6 +3330,8 @@
       <li><a href="api_reference/_generated/warp.render.OpenGLRenderer.html#warp.render.OpenGLRenderer.get_pixels">get_pixels() (warp.render.OpenGLRenderer method)</a>
 </li>
       <li><a href="api_reference/_generated/warp.get_preferred_device.html#warp.get_preferred_device">get_preferred_device() (in module warp)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.get_rebuild_info">get_rebuild_info() (warp.Volume method)</a>
 </li>
       <li><a href="api_reference/_generated/warp.get_stream.html#warp.get_stream">get_stream() (in module warp)</a>
 </li>
@@ -3639,6 +3645,8 @@
 </li>
       <li><a href="api_reference/_generated/warp.types.is_quaternion.html#warp.types.is_quaternion">is_quaternion() (in module warp.types)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.is_rebuildable">is_rebuildable (warp.Volume property)</a>
+</li>
       <li><a href="api_reference/_generated/warp.render.OpenGLRenderer.html#warp.render.OpenGLRenderer.is_running">is_running() (warp.render.OpenGLRenderer method)</a>
 </li>
       <li><a href="api_reference/_generated/warp.types.is_scalar.html#warp.types.is_scalar">is_scalar() (in module warp.types)</a>
@@ -3695,13 +3703,15 @@
 </li>
       <li><a href="api_reference/_generated/warp.kernel_decorator.html#warp.kernel">kernel() (in module warp)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.config.kernel_cache_dir.html#warp.config.kernel_cache_dir">kernel_cache_dir (in module warp.config)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.fem.Integrand.html#warp.fem.Integrand.kernel_options">kernel_options (warp.fem.Integrand attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.PointBasisSpace.html#warp.fem.PointBasisSpace.kernel_values">kernel_values (warp.fem.PointBasisSpace property)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.RebuildInfo.kind">kind (warp.Volume.RebuildInfo attribute)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -3728,6 +3738,8 @@
       <li><a href="api_reference/_generated/warp.config.LaunchArrayAccessMode.html#warp.config.LaunchArrayAccessMode">LaunchArrayAccessMode (class in warp.config)</a>
 </li>
       <li><a href="api_reference/_generated/warp.tile.html#warp.tile.layout">layout (warp.tile attribute)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.ActiveStats.leaf_node_count">leaf_node_count (warp.Volume.ActiveStats attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.config.legacy_cpu_linker.html#warp.config.legacy_cpu_linker">legacy_cpu_linker (in module warp.config)</a>
 </li>
@@ -3832,6 +3844,8 @@
       <li><a href="api_reference/_generated/warp.fem.Grid2D.html#warp.fem.Grid2D.LONG_AXIS">LONG_AXIS (warp.fem.Grid2D attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.lookup.html#warp.fem.lookup">lookup (in module warp.fem)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.ActiveStats.lower_node_count">lower_node_count (warp.Volume.ActiveStats attribute)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -4219,6 +4233,10 @@
 </li>
       <li><a href="api_reference/_generated/warp.Launch.html#warp.Launch.max_blocks">max_blocks (warp.Launch attribute)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.RebuildInfo.max_leaf_node_count">max_leaf_node_count (warp.Volume.RebuildInfo attribute)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.RebuildInfo.max_lower_node_count">max_lower_node_count (warp.Volume.RebuildInfo attribute)</a>
+</li>
       <li><a href="api_reference/_generated/warp.fem.SpaceTopology.html#warp.fem.SpaceTopology.MAX_NODES_PER_ELEMENT">MAX_NODES_PER_ELEMENT (warp.fem.SpaceTopology attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.ExplicitQuadrature.html#warp.fem.ExplicitQuadrature.max_points_per_element">max_points_per_element() (warp.fem.ExplicitQuadrature method)</a>
@@ -4239,7 +4257,11 @@
 </li>
       <li><a href="api_reference/_generated/warp.config.max_unroll.html#warp.config.max_unroll">max_unroll (in module warp.config)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.RebuildInfo.max_upper_node_count">max_upper_node_count (warp.Volume.RebuildInfo attribute)</a>
+</li>
       <li><a href="api_reference/_generated/warp.MarchingCubes.html#warp.MarchingCubes.max_verts">max_verts (warp.MarchingCubes property)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.RebuildInfo.max_voxel_count">max_voxel_count (warp.Volume.RebuildInfo attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.utils.GraphColoringAlgorithm.html#warp.utils.GraphColoringAlgorithm.MCS">MCS (warp.utils.GraphColoringAlgorithm attribute)</a>
 </li>
@@ -4779,11 +4801,29 @@
       <ul>
         <li><a href="api_reference/_generated/warp.fem.ExplicitGeometryPartition.html#warp.fem.ExplicitGeometryPartition.rebuild">(warp.fem.ExplicitGeometryPartition method)</a>
 </li>
+        <li><a href="api_reference/_generated/warp.fem.Nanogrid.html#warp.fem.Nanogrid.rebuild">(warp.fem.Nanogrid method)</a>
+</li>
         <li><a href="api_reference/_generated/warp.fem.SpacePartition.html#warp.fem.SpacePartition.rebuild">(warp.fem.SpacePartition method)</a>
 </li>
         <li><a href="api_reference/_generated/warp.fem.SpaceRestriction.html#warp.fem.SpaceRestriction.rebuild">(warp.fem.SpaceRestriction method)</a>
 </li>
+        <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.rebuild">(warp.Volume method)</a>
+</li>
       </ul></li>
+      <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.REBUILD_INVALID_INPUT">REBUILD_INVALID_INPUT (warp.Volume attribute)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.REBUILD_LEAF_CAPACITY_EXCEEDED">REBUILD_LEAF_CAPACITY_EXCEEDED (warp.Volume attribute)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.REBUILD_LOWER_CAPACITY_EXCEEDED">REBUILD_LOWER_CAPACITY_EXCEEDED (warp.Volume attribute)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.REBUILD_SUCCESS">REBUILD_SUCCESS (warp.Volume attribute)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.fem.Nanogrid.html#warp.fem.Nanogrid.rebuild_topology_from_cells">rebuild_topology_from_cells() (warp.fem.Nanogrid method)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.REBUILD_UPPER_CAPACITY_EXCEEDED">REBUILD_UPPER_CAPACITY_EXCEEDED (warp.Volume attribute)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.REBUILD_VOXEL_CAPACITY_EXCEEDED">REBUILD_VOXEL_CAPACITY_EXCEEDED (warp.Volume attribute)</a>
+</li>
       <li><a href="api_reference/_generated/warp.record_event.html#warp.record_event">record_event() (in module warp)</a>
 
       <ul>
@@ -4862,6 +4902,8 @@
 </li>
       <li><a href="api_reference/_generated/warp.RegisteredGLBuffer.html#warp.RegisteredGLBuffer">RegisteredGLBuffer (class in warp)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.fem.RegularQuadrature.html#warp.fem.RegularQuadrature">RegularQuadrature (class in warp.fem)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.RegularQuadrature.html#warp.fem.RegularQuadrature.CachedFormula">RegularQuadrature.CachedFormula (class in warp.fem)</a>
@@ -4874,8 +4916,6 @@
       </ul></li>
       <li><a href="api_reference/_generated/warp.render.OpenGLRenderer.html#warp.render.OpenGLRenderer.remove_shape_instance">remove_shape_instance() (warp.render.OpenGLRenderer method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.render.OpenGLRenderer.html#warp.render.OpenGLRenderer.render_arrow">render_arrow() (warp.render.OpenGLRenderer method)</a>
 
       <ul>
@@ -5922,10 +5962,10 @@
       </ul></li>
       <li><a href="api_reference/_generated/warp.unmap_cuda_device.html#warp.unmap_cuda_device">unmap_cuda_device() (in module warp)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.render.OpenGLRenderer.html#warp.render.OpenGLRenderer.update">update() (warp.render.OpenGLRenderer method)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.render.OpenGLRenderer.html#warp.render.OpenGLRenderer.update_body_transforms">update_body_transforms() (warp.render.OpenGLRenderer method)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.Geometry.html#warp.fem.Geometry.update_bvh">update_bvh() (warp.fem.Geometry method)</a>
@@ -5945,6 +5985,8 @@
       <li><a href="api_reference/_generated/warp.render.OpenGLRenderer.html#warp.render.OpenGLRenderer.update_tile">update_tile() (warp.render.OpenGLRenderer method)</a>
 </li>
       <li><a href="api_reference/_generated/warp.render.OpenGLRenderer.html#warp.render.OpenGLRenderer.update_view_matrix">update_view_matrix() (warp.render.OpenGLRenderer method)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.ActiveStats.upper_node_count">upper_node_count (warp.Volume.ActiveStats attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.render.UsdRenderer.html#warp.render.UsdRenderer">UsdRenderer (class in warp.render)</a>
 </li>
@@ -6074,12 +6116,12 @@
 </li>
       <li><a href="api_reference/_generated/warp.vec2us.html#warp.vec2us">vec2us (class in warp)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.vec3.html#warp.vec3">vec3 (in module warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.vec3b.html#warp.vec3b">vec3b (class in warp)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.vec3d.html#warp.vec3d">vec3d (class in warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.vec3f.html#warp.vec3f">vec3f (class in warp)</a>
@@ -6184,9 +6226,15 @@
 </li>
       <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume">Volume (class in warp)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.ActiveStats">Volume.ActiveStats (class in warp)</a>
+</li>
       <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.FeatureArrayInfo">Volume.FeatureArrayInfo (class in warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.GridInfo">Volume.GridInfo (class in warp)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.RebuildInfo">Volume.RebuildInfo (class in warp)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.ActiveStats.voxel_count">voxel_count (warp.Volume.ActiveStats attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.ShapeBasisSpace.html#warp.fem.ShapeBasisSpace.vtk_cells">vtk_cells (warp.fem.ShapeBasisSpace property)</a>
 </li>
@@ -7318,8 +7366,6 @@
         <li><a href="language_reference/_generated/warp.sample_unit_sphere.html#warp._src.lang.sample_unit_sphere">built-in function</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     warp._src.lang.sample_unit_sphere_surface()
 
@@ -7327,6 +7373,8 @@
         <li><a href="language_reference/_generated/warp.sample_unit_sphere_surface.html#warp._src.lang.sample_unit_sphere_surface">built-in function</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     warp._src.lang.sample_unit_square()
 
@@ -8242,6 +8290,13 @@
 
       <ul>
         <li><a href="language_reference/_generated/warp.volume_store_v.html#warp._src.lang.volume_store_v">built-in function</a>
+</li>
+      </ul></li>
+      <li>
+    warp._src.lang.volume_voxel_count()
+
+      <ul>
+        <li><a href="language_reference/_generated/warp.volume_voxel_count.html#warp._src.lang.volume_voxel_count">built-in function</a>
 </li>
       </ul></li>
       <li>

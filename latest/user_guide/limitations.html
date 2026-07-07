@@ -581,7 +581,8 @@ checking access. Directly passed <code class="docutils literal notranslate"><spa
 <section id="volumes">
 <h2>Volumes<a class="headerlink" href="#volumes" title="Link to this heading">#</a></h2>
 <ul class="simple">
-<li><p>The sparse-volume <em>topology</em> cannot be changed after the tiles for the <a class="reference internal" href="../api_reference/_generated/warp.Volume.html#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> have been allocated.</p></li>
+<li><p>The sparse topology of a non-rebuildable <a class="reference internal" href="../api_reference/_generated/warp.Volume.html#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> cannot be changed after allocation. Volumes created with
+<code class="docutils literal notranslate"><span class="pre">rebuildable=True</span></code> or explicit capacity arguments can change topology within their reserved capacity.</p></li>
 </ul>
 </section>
 <section id="multiple-processes">

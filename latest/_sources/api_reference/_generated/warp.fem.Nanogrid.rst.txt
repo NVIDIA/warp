@@ -28,6 +28,8 @@
       ~Nanogrid.fill_side_index_arg
       ~Nanogrid.from_environment_voxels
       ~Nanogrid.make_filtered_cell_lookup
+      ~Nanogrid.rebuild
+      ~Nanogrid.rebuild_topology_from_cells
       ~Nanogrid.reference_cell
       ~Nanogrid.reference_side
       ~Nanogrid.side_arg_value

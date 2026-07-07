@@ -497,11 +497,11 @@
 <h1>warp.Volume<a class="headerlink" href="#warp-volume" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.Volume">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Volume</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6053-L7028"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Volume</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6053-L7475"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume" title="Link to this definition">#</a></dt>
 <dd><p>Sparse volumetric data structure based on NanoVDB for efficient 3D sampling.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Volume.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">copy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6066-L6093"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.__init__" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">copy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6097-L6127"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.__init__" title="Link to this definition">#</a></dt>
 <dd><p>Class representing a sparse grid.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -526,7 +526,7 @@
 <td><p>Allocate a new <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> with active tiles for each point <code class="docutils literal notranslate"><span class="pre">tile_points</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#warp.Volume.allocate_by_voxels" title="warp.Volume.allocate_by_voxels"><code class="xref py py-obj docutils literal notranslate"><span class="pre">allocate_by_voxels</span></code></a>(voxel_points[, ...])</p></td>
-<td><p>Allocate a new <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> with active voxel for each point <code class="docutils literal notranslate"><span class="pre">voxel_points</span></code>.</p></td>
+<td><p>Allocate a new <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> with an active voxel for each point in <code class="docutils literal notranslate"><span class="pre">voxel_points</span></code>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#warp.Volume.array" title="warp.Volume.array"><code class="xref py py-obj docutils literal notranslate"><span class="pre">array</span></code></a>()</p></td>
 <td><p>Return the raw memory buffer of the <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> as an array.</p></td>
@@ -534,14 +534,20 @@
 <tr class="row-even"><td><p><a class="reference internal" href="#warp.Volume.feature_array" title="warp.Volume.feature_array"><code class="xref py py-obj docutils literal notranslate"><span class="pre">feature_array</span></code></a>(feature_index[, dtype])</p></td>
 <td><p>Return one the grid's feature data arrays as a Warp array.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Volume.get_feature_array_count" title="warp.Volume.get_feature_array_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_feature_array_count</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Volume.get_active_stats" title="warp.Volume.get_active_stats"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_active_stats</span></code></a>()</p></td>
+<td><p>Return actual topology statistics from the current grid metadata.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.Volume.get_feature_array_count" title="warp.Volume.get_feature_array_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_feature_array_count</span></code></a>()</p></td>
 <td><p>Return the number of supplemental data arrays stored alongside the grid</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.Volume.get_feature_array_info" title="warp.Volume.get_feature_array_info"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_feature_array_info</span></code></a>(feature_index)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Volume.get_feature_array_info" title="warp.Volume.get_feature_array_info"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_feature_array_info</span></code></a>(feature_index)</p></td>
 <td><p>Return the metadata associated to the feature array at <code class="docutils literal notranslate"><span class="pre">feature_index</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Volume.get_grid_info" title="warp.Volume.get_grid_info"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_grid_info</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.Volume.get_grid_info" title="warp.Volume.get_grid_info"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_grid_info</span></code></a>()</p></td>
 <td><p>Return the metadata associated with this Volume.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Volume.get_rebuild_info" title="warp.Volume.get_rebuild_info"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_rebuild_info</span></code></a>()</p></td>
+<td><p>Return rebuild input kind and reserved capacity metadata.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#warp.Volume.get_tile_count" title="warp.Volume.get_tile_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_tile_count</span></code></a>()</p></td>
 <td><p>Return the number of tiles (NanoVDB leaf nodes) of the volume.</p></td>
@@ -570,7 +576,10 @@
 <tr class="row-even"><td><p><a class="reference internal" href="#warp.Volume.load_next_grid" title="warp.Volume.load_next_grid"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_next_grid</span></code></a>()</p></td>
 <td><p>Create a new <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> for the next grid that is linked to by this <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Volume.save_to_nvdb" title="warp.Volume.save_to_nvdb"><code class="xref py py-obj docutils literal notranslate"><span class="pre">save_to_nvdb</span></code></a>(path[, codec])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Volume.rebuild" title="warp.Volume.rebuild"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rebuild</span></code></a>(points[, status, point_mask])</p></td>
+<td><p>Rebuild this volume's topology in place from <code class="docutils literal notranslate"><span class="pre">points</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.Volume.save_to_nvdb" title="warp.Volume.save_to_nvdb"><code class="xref py py-obj docutils literal notranslate"><span class="pre">save_to_nvdb</span></code></a>(path[, codec])</p></td>
 <td><p>Serialize the <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> into a NanoVDB (<code class="docutils literal notranslate"><span class="pre">.nvdb</span></code>) file.</p></td>
 </tr>
 </tbody>
@@ -585,11 +594,32 @@
 <tr class="row-even"><td><p><a class="reference internal" href="#warp.Volume.LINEAR" title="warp.Volume.LINEAR"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LINEAR</span></code></a></p></td>
 <td><p>Enum value to specify trilinear interpolation during sampling</p></td>
 </tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Volume.REBUILD_INVALID_INPUT" title="warp.Volume.REBUILD_INVALID_INPUT"><code class="xref py py-obj docutils literal notranslate"><span class="pre">REBUILD_INVALID_INPUT</span></code></a></p></td>
+<td><p>Rebuild was called with invalid arguments or on a non-rebuildable volume.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.Volume.REBUILD_LEAF_CAPACITY_EXCEEDED" title="warp.Volume.REBUILD_LEAF_CAPACITY_EXCEEDED"><code class="xref py py-obj docutils literal notranslate"><span class="pre">REBUILD_LEAF_CAPACITY_EXCEEDED</span></code></a></p></td>
+<td><p>Rebuild produced more leaf nodes than the volume capacity.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Volume.REBUILD_LOWER_CAPACITY_EXCEEDED" title="warp.Volume.REBUILD_LOWER_CAPACITY_EXCEEDED"><code class="xref py py-obj docutils literal notranslate"><span class="pre">REBUILD_LOWER_CAPACITY_EXCEEDED</span></code></a></p></td>
+<td><p>Rebuild produced more lower internal nodes than the volume capacity.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.Volume.REBUILD_SUCCESS" title="warp.Volume.REBUILD_SUCCESS"><code class="xref py py-obj docutils literal notranslate"><span class="pre">REBUILD_SUCCESS</span></code></a></p></td>
+<td><p>Rebuild completed without setting a status flag.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Volume.REBUILD_UPPER_CAPACITY_EXCEEDED" title="warp.Volume.REBUILD_UPPER_CAPACITY_EXCEEDED"><code class="xref py py-obj docutils literal notranslate"><span class="pre">REBUILD_UPPER_CAPACITY_EXCEEDED</span></code></a></p></td>
+<td><p>Rebuild produced more upper internal nodes than the volume capacity.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.Volume.REBUILD_VOXEL_CAPACITY_EXCEEDED" title="warp.Volume.REBUILD_VOXEL_CAPACITY_EXCEEDED"><code class="xref py py-obj docutils literal notranslate"><span class="pre">REBUILD_VOXEL_CAPACITY_EXCEEDED</span></code></a></p></td>
+<td><p>Rebuild produced more active voxels than the volume capacity.</p></td>
+</tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#warp.Volume.dtype" title="warp.Volume.dtype"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dtype</span></code></a></p></td>
 <td><p>Type of the Volume's values as a Warp type.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#warp.Volume.is_index" title="warp.Volume.is_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_index</span></code></a></p></td>
 <td><p>Whether this Volume contains an index grid, that is, a type of grid that does not explicitly store values but associates each voxel to linearized index.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Volume.is_rebuildable" title="warp.Volume.is_rebuildable"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_rebuildable</span></code></a></p></td>
+<td><p>Whether this volume was allocated with persistent capacity for <a class="reference internal" href="#warp.Volume.rebuild" title="warp.Volume.rebuild"><code class="xref py py-meth docutils literal notranslate"><span class="pre">rebuild()</span></code></a>.</p></td>
 </tr>
 </tbody>
 </table>
@@ -606,9 +636,117 @@
 <dd><p>Enum value to specify trilinear interpolation during sampling</p>
 </dd></dl>
 
+<dl class="py class">
+<dt class="sig sig-object py" id="warp.Volume.RebuildInfo">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">RebuildInfo</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">kind</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_voxel_count</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_leaf_node_count</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_lower_node_count</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_upper_node_count</span></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6062-L6079"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.RebuildInfo" title="Link to this definition">#</a></dt>
+<dd><p>Capacity metadata for a <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> allocated with rebuild support.</p>
+<p>The counts describe reserved storage, not the currently active topology.
+Use <a class="reference internal" href="#warp.Volume.get_active_stats" title="warp.Volume.get_active_stats"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Volume.get_active_stats()</span></code></a> to query the current grid metadata.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>kind</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>)</p></li>
+<li><p><strong>max_voxel_count</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>max_leaf_node_count</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>max_lower_node_count</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>max_upper_node_count</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.Volume.RebuildInfo.kind">
+<span class="sig-name descname"><span class="pre">kind</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></em><a class="headerlink" href="#warp.Volume.RebuildInfo.kind" title="Link to this definition">#</a></dt>
+<dd><p>Input kind used for rebuilds. One of <code class="docutils literal notranslate"><span class="pre">&quot;tiles&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;voxels&quot;</span></code>, or <code class="docutils literal notranslate"><span class="pre">None</span></code> when the volume is not rebuildable.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.Volume.RebuildInfo.max_voxel_count">
+<span class="sig-name descname"><span class="pre">max_voxel_count</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#warp.Volume.RebuildInfo.max_voxel_count" title="Link to this definition">#</a></dt>
+<dd><p>Maximum active voxel or index count reserved for rebuilds.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.Volume.RebuildInfo.max_leaf_node_count">
+<span class="sig-name descname"><span class="pre">max_leaf_node_count</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#warp.Volume.RebuildInfo.max_leaf_node_count" title="Link to this definition">#</a></dt>
+<dd><p>Maximum NanoVDB leaf node count reserved for rebuilds.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.Volume.RebuildInfo.max_lower_node_count">
+<span class="sig-name descname"><span class="pre">max_lower_node_count</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#warp.Volume.RebuildInfo.max_lower_node_count" title="Link to this definition">#</a></dt>
+<dd><p>Maximum NanoVDB lower internal node count reserved for rebuilds.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.Volume.RebuildInfo.max_upper_node_count">
+<span class="sig-name descname"><span class="pre">max_upper_node_count</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#warp.Volume.RebuildInfo.max_upper_node_count" title="Link to this definition">#</a></dt>
+<dd><p>Maximum NanoVDB upper internal node count reserved for rebuilds.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="warp.Volume.ActiveStats">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ActiveStats</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">voxel_count</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">leaf_node_count</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">lower_node_count</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">upper_node_count</span></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6080-L6091"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.ActiveStats" title="Link to this definition">#</a></dt>
+<dd><p>Active topology statistics from the current <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> grid metadata.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>voxel_count</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>leaf_node_count</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>lower_node_count</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+<li><p><strong>upper_node_count</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.Volume.ActiveStats.voxel_count">
+<span class="sig-name descname"><span class="pre">voxel_count</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#warp.Volume.ActiveStats.voxel_count" title="Link to this definition">#</a></dt>
+<dd><p>Current active voxel or index count.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.Volume.ActiveStats.leaf_node_count">
+<span class="sig-name descname"><span class="pre">leaf_node_count</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#warp.Volume.ActiveStats.leaf_node_count" title="Link to this definition">#</a></dt>
+<dd><p>Current NanoVDB leaf node count.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.Volume.ActiveStats.lower_node_count">
+<span class="sig-name descname"><span class="pre">lower_node_count</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#warp.Volume.ActiveStats.lower_node_count" title="Link to this definition">#</a></dt>
+<dd><p>Current NanoVDB lower internal node count.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.Volume.ActiveStats.upper_node_count">
+<span class="sig-name descname"><span class="pre">upper_node_count</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#warp.Volume.ActiveStats.upper_node_count" title="Link to this definition">#</a></dt>
+<dd><p>Current NanoVDB upper internal node count.</p>
+</dd></dl>
+
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Volume.array">
-<span class="sig-name descname"><span class="pre">array</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6109-L6116"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.array" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">array</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6143-L6150"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.array" title="Link to this definition">#</a></dt>
 <dd><p>Return the raw memory buffer of the <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> as an array.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -619,7 +757,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Volume.get_tile_count">
-<span class="sig-name descname"><span class="pre">get_tile_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6117-L6128"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.get_tile_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_tile_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6151-L6162"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.get_tile_count" title="Link to this definition">#</a></dt>
 <dd><p>Return the number of tiles (NanoVDB leaf nodes) of the volume.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -630,7 +768,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Volume.get_tiles">
-<span class="sig-name descname"><span class="pre">get_tiles</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">out</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6129-L6158"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.get_tiles" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_tiles</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">out</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6163-L6192"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.get_tiles" title="Link to this definition">#</a></dt>
 <dd><p>Return the integer coordinates of all allocated tiles for this volume.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -647,7 +785,7 @@ on the same device as this volume.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Volume.get_voxel_count">
-<span class="sig-name descname"><span class="pre">get_voxel_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6159-L6170"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.get_voxel_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_voxel_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6193-L6204"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.get_voxel_count" title="Link to this definition">#</a></dt>
 <dd><p>Return the total number of allocated voxels for this volume</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -657,8 +795,26 @@ on the same device as this volume.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="warp.Volume.get_active_stats">
+<span class="sig-name descname"><span class="pre">get_active_stats</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6205-L6229"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.get_active_stats" title="Link to this definition">#</a></dt>
+<dd><p>Return actual topology statistics from the current grid metadata.</p>
+<p>For rebuildable volumes, this reports the current active topology rather
+than the reserved capacity returned by <a class="reference internal" href="#warp.Volume.get_rebuild_info" title="warp.Volume.get_rebuild_info"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_rebuild_info()</span></code></a>. For
+non-rebuildable volumes, these counts match the allocated grid topology.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A <a class="reference internal" href="#warp.Volume.ActiveStats" title="warp.Volume.ActiveStats"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume.ActiveStats</span></code></a> tuple containing the active voxel,
+leaf, lower, and upper node counts.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#warp.Volume.ActiveStats" title="warp._src.types.Volume.ActiveStats"><em>ActiveStats</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="warp.Volume.get_voxels">
-<span class="sig-name descname"><span class="pre">get_voxels</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">out</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6171-L6199"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.get_voxels" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_voxels</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">out</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6230-L6258"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.get_voxels" title="Link to this definition">#</a></dt>
 <dd><p>Return the integer coordinates of all allocated voxels for this volume.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -674,7 +830,7 @@ on the same device as this volume.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Volume.get_voxel_size">
-<span class="sig-name descname"><span class="pre">get_voxel_size</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6200-L6209"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.get_voxel_size" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_voxel_size</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6259-L6268"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.get_voxel_size" title="Link to this definition">#</a></dt>
 <dd><p>Return the voxel size, i.e, world coordinates of voxel’s diagonal vector</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -697,7 +853,7 @@ on the same device as this volume.</p>
 <dd><em class="sig-param"><span class="n"><span class="pre">transform_matrix</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6210-L6229"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.GridInfo" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6269-L6288"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.GridInfo" title="Link to this definition">#</a></dt>
 <dd><p>Grid metadata</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -758,7 +914,7 @@ on the same device as this volume.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Volume.get_grid_info">
-<span class="sig-name descname"><span class="pre">get_grid_info</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6230-L6262"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.get_grid_info" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_grid_info</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6289-L6321"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.get_grid_info" title="Link to this definition">#</a></dt>
 <dd><p>Return the metadata associated with this Volume.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -769,7 +925,7 @@ on the same device as this volume.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.Volume.dtype">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dtype</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6281-L6289"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.dtype" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dtype</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6340-L6348"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.dtype" title="Link to this definition">#</a></dt>
 <dd><p>Type of the Volume’s values as a Warp type.</p>
 <p>If the grid does not contain values (e.g. index grids) or if the NanoVDB type is not
 representable as a Warp type, returns <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
@@ -777,14 +933,38 @@ representable as a Warp type, returns <code class="docutils literal notranslate"
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.Volume.is_index">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_index</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp._src.types.bool"><span class="pre">bool</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6292-L6299"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.is_index" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_index</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp._src.types.bool"><span class="pre">bool</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6351-L6358"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.is_index" title="Link to this definition">#</a></dt>
 <dd><p>Whether this Volume contains an index grid, that is, a type of grid that does
 not explicitly store values but associates each voxel to linearized index.</p>
 </dd></dl>
 
+<dl class="py property">
+<dt class="sig sig-object py" id="warp.Volume.is_rebuildable">
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_rebuildable</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp._src.types.bool"><span class="pre">bool</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6359-L6364"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.is_rebuildable" title="Link to this definition">#</a></dt>
+<dd><p>Whether this volume was allocated with persistent capacity for <a class="reference internal" href="#warp.Volume.rebuild" title="warp.Volume.rebuild"><code class="xref py py-meth docutils literal notranslate"><span class="pre">rebuild()</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.Volume.get_rebuild_info">
+<span class="sig-name descname"><span class="pre">get_rebuild_info</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6365-L6377"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.get_rebuild_info" title="Link to this definition">#</a></dt>
+<dd><p>Return rebuild input kind and reserved capacity metadata.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A <a class="reference internal" href="#warp.Volume.RebuildInfo" title="warp.Volume.RebuildInfo"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume.RebuildInfo</span></code></a> tuple. <code class="docutils literal notranslate"><span class="pre">kind</span></code> is <code class="docutils literal notranslate"><span class="pre">&quot;tiles&quot;</span></code> for
+volumes created by <a class="reference internal" href="#warp.Volume.allocate_by_tiles" title="warp.Volume.allocate_by_tiles"><code class="xref py py-meth docutils literal notranslate"><span class="pre">allocate_by_tiles()</span></code></a>, <code class="docutils literal notranslate"><span class="pre">&quot;voxels&quot;</span></code> for
+volumes created by <a class="reference internal" href="#warp.Volume.allocate_by_voxels" title="warp.Volume.allocate_by_voxels"><code class="xref py py-meth docutils literal notranslate"><span class="pre">allocate_by_voxels()</span></code></a>, and <code class="docutils literal notranslate"><span class="pre">None</span></code> for
+volumes that cannot be rebuilt. Capacity fields are zero when
+<code class="docutils literal notranslate"><span class="pre">kind</span></code> is <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#warp.Volume.RebuildInfo" title="warp._src.types.Volume.RebuildInfo"><em>RebuildInfo</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Volume.get_feature_array_count">
-<span class="sig-name descname"><span class="pre">get_feature_array_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6300-L6304"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.get_feature_array_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_feature_array_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6378-L6382"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.get_feature_array_count" title="Link to this definition">#</a></dt>
 <dd><p>Return the number of supplemental data arrays stored alongside the grid</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -795,7 +975,7 @@ not explicitly store values but associates each voxel to linearized index.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.Volume.FeatureArrayInfo">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">FeatureArrayInfo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ptr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value_count</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type_str</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6305-L6319"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.FeatureArrayInfo" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">FeatureArrayInfo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ptr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value_count</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type_str</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6383-L6397"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.FeatureArrayInfo" title="Link to this definition">#</a></dt>
 <dd><p>Metadata for a supplemental data array</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -842,7 +1022,7 @@ not explicitly store values but associates each voxel to linearized index.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Volume.get_feature_array_info">
-<span class="sig-name descname"><span class="pre">get_feature_array_info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">feature_index</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6320-L6347"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.get_feature_array_info" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_feature_array_info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">feature_index</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6398-L6425"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.get_feature_array_info" title="Link to this definition">#</a></dt>
 <dd><p>Return the metadata associated to the feature array at <code class="docutils literal notranslate"><span class="pre">feature_index</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -856,7 +1036,7 @@ not explicitly store values but associates each voxel to linearized index.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Volume.feature_array">
-<span class="sig-name descname"><span class="pre">feature_array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">feature_index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6348-L6382"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.feature_array" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">feature_array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">feature_index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6426-L6460"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.feature_array" title="Link to this definition">#</a></dt>
 <dd><p>Return one the grid’s feature data arrays as a Warp array.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -874,7 +1054,7 @@ If not provided, will be deduced from the array metadata.</p></li>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Volume.load_from_nvdb">
-<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">load_from_nvdb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_or_buffer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6383-L6445"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.load_from_nvdb" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">load_from_nvdb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_or_buffer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6461-L6523"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.load_from_nvdb" title="Link to this definition">#</a></dt>
 <dd><p>Create a <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> object from a serialized NanoVDB file or in-memory buffer.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -888,7 +1068,7 @@ If not provided, will be deduced from the array metadata.</p></li>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Volume.save_to_nvdb">
-<span class="sig-name descname"><span class="pre">save_to_nvdb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">codec</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'none'</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6446-L6580"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.save_to_nvdb" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">save_to_nvdb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">codec</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'none'</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6524-L6658"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.save_to_nvdb" title="Link to this definition">#</a></dt>
 <dd><p>Serialize the <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> into a NanoVDB (<code class="docutils literal notranslate"><span class="pre">.nvdb</span></code>) file.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -909,7 +1089,7 @@ Available options:</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Volume.load_from_address">
-<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">load_from_address</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">grid_ptr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">buffer_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6581-L6622"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.load_from_address" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">load_from_address</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">grid_ptr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">buffer_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6659-L6700"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.load_from_address" title="Link to this definition">#</a></dt>
 <dd><p>Create a new <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> aliasing an in-memory grid buffer.</p>
 <p>In contrast to <a class="reference internal" href="#warp.Volume.load_from_nvdb" title="warp.Volume.load_from_nvdb"><code class="xref py py-meth docutils literal notranslate"><span class="pre">load_from_nvdb()</span></code></a> which should be used to load serialized NanoVDB grids,
 here the buffer must be uncompressed and must not contain file header information.
@@ -941,7 +1121,7 @@ If not provided, the current Warp device is assumed.</p></li>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Volume.load_next_grid">
-<span class="sig-name descname"><span class="pre">load_next_grid</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6623-L6648"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.load_next_grid" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">load_next_grid</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6701-L6726"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.load_next_grid" title="Link to this definition">#</a></dt>
 <dd><p>Create a new <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> for the next grid that is linked to by this <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a>.</p>
 <p>The existence of a next grid is determined by checking if there are more grids in the sequence
 (based on <code class="docutils literal notranslate"><span class="pre">grid_index</span></code> and <code class="docutils literal notranslate"><span class="pre">grid_count</span></code> metadata) and if there is sufficient buffer space
@@ -968,7 +1148,7 @@ remaining in this <a class="reference internal" href="#warp.Volume" title="warp.
 <dd><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6649-L6741"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.load_from_numpy" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6727-L6819"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.load_from_numpy" title="Link to this definition">#</a></dt>
 <dd><p>Create a <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> object from a dense 3D NumPy array.</p>
 <p>This function is only supported for CUDA devices.</p>
 <dl class="field-list simple">
@@ -1006,7 +1186,7 @@ sequence <code class="docutils literal notranslate"><span class="pre">(sx,</span
 <dd><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6742-L6795"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.allocate" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6820-L6873"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.allocate" title="Link to this definition">#</a></dt>
 <dd><p>Allocate a new Volume based on the bounding box defined by min and max.</p>
 <p>This function is only supported for CUDA devices.</p>
 <p>Allocate a volume that is large enough to contain voxels [min[0], min[1], min[2]] - [max[0], max[1], max[2]], inclusive.
@@ -1033,6 +1213,42 @@ a <a class="reference internal" href="warp.vec3.html#warp.vec3" title="warp.vec3
 </dl>
 </dd></dl>
 
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.Volume.REBUILD_SUCCESS">
+<span class="sig-name descname"><span class="pre">REBUILD_SUCCESS</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.14)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></em><a class="headerlink" href="#warp.Volume.REBUILD_SUCCESS" title="Link to this definition">#</a></dt>
+<dd><p>Rebuild completed without setting a status flag.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.Volume.REBUILD_LEAF_CAPACITY_EXCEEDED">
+<span class="sig-name descname"><span class="pre">REBUILD_LEAF_CAPACITY_EXCEEDED</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.14)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#warp.Volume.REBUILD_LEAF_CAPACITY_EXCEEDED" title="Link to this definition">#</a></dt>
+<dd><p>Rebuild produced more leaf nodes than the volume capacity.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.Volume.REBUILD_LOWER_CAPACITY_EXCEEDED">
+<span class="sig-name descname"><span class="pre">REBUILD_LOWER_CAPACITY_EXCEEDED</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.14)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#warp.Volume.REBUILD_LOWER_CAPACITY_EXCEEDED" title="Link to this definition">#</a></dt>
+<dd><p>Rebuild produced more lower internal nodes than the volume capacity.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.Volume.REBUILD_UPPER_CAPACITY_EXCEEDED">
+<span class="sig-name descname"><span class="pre">REBUILD_UPPER_CAPACITY_EXCEEDED</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.14)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">4</span></em><a class="headerlink" href="#warp.Volume.REBUILD_UPPER_CAPACITY_EXCEEDED" title="Link to this definition">#</a></dt>
+<dd><p>Rebuild produced more upper internal nodes than the volume capacity.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.Volume.REBUILD_VOXEL_CAPACITY_EXCEEDED">
+<span class="sig-name descname"><span class="pre">REBUILD_VOXEL_CAPACITY_EXCEEDED</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.14)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">8</span></em><a class="headerlink" href="#warp.Volume.REBUILD_VOXEL_CAPACITY_EXCEEDED" title="Link to this definition">#</a></dt>
+<dd><p>Rebuild produced more active voxels than the volume capacity.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.Volume.REBUILD_INVALID_INPUT">
+<span class="sig-name descname"><span class="pre">REBUILD_INVALID_INPUT</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.14)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">16</span></em><a class="headerlink" href="#warp.Volume.REBUILD_INVALID_INPUT" title="Link to this definition">#</a></dt>
+<dd><p>Rebuild was called with invalid arguments or on a non-rebuildable volume.</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Volume.allocate_by_tiles">
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">allocate_by_tiles</span></span><span class="sig-paren">(</span>
@@ -1044,11 +1260,17 @@ a <a class="reference internal" href="warp.vec3.html#warp.vec3" title="warp.vec3
 <dd><em class="sig-param"><span class="n"><span class="pre">translation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0.0,</span> <span class="pre">0.0,</span> <span class="pre">0.0)</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">transform</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">rebuildable</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_tiles</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_lower_nodes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_upper_nodes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">status</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">point_mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6852-L6962"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.allocate_by_tiles" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6952-L7163"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.allocate_by_tiles" title="Link to this definition">#</a></dt>
 <dd><p>Allocate a new <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> with active tiles for each point <code class="docutils literal notranslate"><span class="pre">tile_points</span></code>.</p>
-<p>This function is only supported for CUDA devices.</p>
+<p>This function is supported on CPU and CUDA devices.</p>
 <p>The smallest unit of allocation is a dense tile of 8x8x8 voxels.
 This is the primary method for allocating sparse volumes.
 It uses an array of points indicating the tiles that must be allocated.</p>
@@ -1059,6 +1281,14 @@ It uses an array of points indicating the tiles that must be allocated.</p>
 </ul>
 </dd>
 </dl>
+<p>If <code class="docutils literal notranslate"><span class="pre">rebuildable</span></code> is <code class="docutils literal notranslate"><span class="pre">True</span></code> or any rebuild capacity argument is supplied, the returned volume reserves
+persistent storage and can be updated in place with <a class="reference internal" href="#warp.Volume.rebuild" title="warp.Volume.rebuild"><code class="xref py py-meth docutils literal notranslate"><span class="pre">rebuild()</span></code></a>. The rebuild input kind is <code class="docutils literal notranslate"><span class="pre">&quot;tiles&quot;</span></code>,
+so later rebuilds must provide tile points rather than voxel points. Use <a class="reference internal" href="#warp.Volume.get_rebuild_info" title="warp.Volume.get_rebuild_info"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_rebuild_info()</span></code></a> to inspect
+reserved capacities and <a class="reference internal" href="#warp.Volume.get_active_stats" title="warp.Volume.get_active_stats"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_active_stats()</span></code></a> to inspect the current active topology.</p>
+<p>Rebuildable CUDA volumes can be allocated during CUDA graph capture when CUDA memory-pool allocation is
+supported and enabled. Exact, non-rebuildable volume allocation is not graph-capture safe because determining
+the exact topology size requires device synchronization. Active-topology queries such as
+<a class="reference internal" href="#warp.Volume.get_active_stats" title="warp.Volume.get_active_stats"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_active_stats()</span></code></a> must also be performed outside graph capture.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -1073,11 +1303,31 @@ Other supported grid types are <code class="docutils literal notranslate"><span 
 <li><p><strong>translation</strong> – Translation between the index and world spaces.</p></li>
 <li><p><strong>transform</strong> – Linear transform between the index and world spaces.
 If <code class="docutils literal notranslate"><span class="pre">None</span></code>, deduced from <code class="docutils literal notranslate"><span class="pre">voxel_size</span></code>.</p></li>
-<li><p><strong>device</strong> (<a class="reference internal" href="warp.Device.html#warp.Device" title="warp._src.context.Device"><em>Device</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – The CUDA device to create the volume on, e.g. <code class="docutils literal notranslate"><span class="pre">&quot;cuda&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;cuda:0&quot;</span></code>.</p></li>
+<li><p><strong>rebuildable</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp._src.types.bool"><em>bool</em></a>) – Whether to allocate persistent capacity for rebuilds.</p></li>
+<li><p><strong>max_tiles</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Maximum number of NanoVDB leaf nodes reserved for rebuilds. Supplying this makes the
+volume rebuildable. Each tile can contain up to 512 voxels.</p></li>
+<li><p><strong>max_lower_nodes</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Maximum number of lower internal nodes reserved for rebuilds. Supplying this makes
+the volume rebuildable.</p></li>
+<li><p><strong>max_upper_nodes</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Maximum number of upper internal nodes reserved for rebuilds. Supplying this makes
+the volume rebuildable.</p></li>
+<li><p><strong>status</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>) – Optional one-element <code class="docutils literal notranslate"><span class="pre">uint32</span></code> array receiving <code class="docutils literal notranslate"><span class="pre">Volume.REBUILD_*</span></code> status flags from the
+initial build. <code class="docutils literal notranslate"><span class="pre">Volume.REBUILD_SUCCESS</span></code> means the requested topology fit in the reserved capacity.</p></li>
+<li><p><strong>point_mask</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>) – Optional <code class="docutils literal notranslate"><span class="pre">int32</span></code> array with one entry per point. Points with a zero mask value are ignored.</p></li>
+<li><p><strong>device</strong> (<a class="reference internal" href="warp.Device.html#warp.Device" title="warp._src.context.Device"><em>Device</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – The device to create the volume on, e.g. <code class="docutils literal notranslate"><span class="pre">&quot;cpu&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;cuda&quot;</span></code>, or <code class="docutils literal notranslate"><span class="pre">&quot;cuda:0&quot;</span></code>.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p><a class="reference internal" href="#warp.Volume" title="warp._src.types.Volume"><em>Volume</em></a></p>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">tile_points</span></code>, <code class="docutils literal notranslate"><span class="pre">point_mask</span></code>, or <code class="docutils literal notranslate"><span class="pre">status</span></code> is not a contiguous array of the
+    required type and shape.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> creation fails.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If neither <code class="docutils literal notranslate"><span class="pre">voxel_size</span></code> nor <code class="docutils literal notranslate"><span class="pre">transform</span></code> is provided.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If both <code class="docutils literal notranslate"><span class="pre">voxel_size</span></code> and <code class="docutils literal notranslate"><span class="pre">transform</span></code> are provided.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If a rebuild capacity is not positive or does not fit in <code class="docutils literal notranslate"><span class="pre">uint32</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#warp.Volume" title="warp._src.types.Volume"><em>Volume</em></a></p>
 </dd>
 </dl>
 </dd></dl>
@@ -1092,39 +1342,106 @@ If <code class="docutils literal notranslate"><span class="pre">None</span></cod
 <dd><em class="sig-param"><span class="n"><span class="pre">translation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0.0,</span> <span class="pre">0.0,</span> <span class="pre">0.0)</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">transform</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">rebuildable</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_active_voxels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_leaf_nodes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_lower_nodes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_upper_nodes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">status</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">point_mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6963-L7028"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.allocate_by_voxels" title="Link to this definition">#</a></dt>
-<dd><p>Allocate a new <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> with active voxel for each point <code class="docutils literal notranslate"><span class="pre">voxel_points</span></code>.</p>
-<p>This function creates an <em>index</em> volume, a special kind of volume that does not any store any
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L7164-L7317"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.allocate_by_voxels" title="Link to this definition">#</a></dt>
+<dd><p>Allocate a new <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> with an active voxel for each point in <code class="docutils literal notranslate"><span class="pre">voxel_points</span></code>.</p>
+<p>This function creates an <em>index</em> volume, a special kind of volume that does not store any
 explicit payload but encodes a linearized index for each active voxel, allowing to lookup and
 sample data from arbitrary external arrays.</p>
-<p>This function is only supported for CUDA devices.</p>
+<p>If <code class="docutils literal notranslate"><span class="pre">rebuildable</span></code> is <code class="docutils literal notranslate"><span class="pre">True</span></code> or any rebuild capacity argument is supplied, the returned volume reserves
+persistent storage and can be updated in place with <a class="reference internal" href="#warp.Volume.rebuild" title="warp.Volume.rebuild"><code class="xref py py-meth docutils literal notranslate"><span class="pre">rebuild()</span></code></a>. The rebuild input kind is <code class="docutils literal notranslate"><span class="pre">&quot;voxels&quot;</span></code>,
+so later rebuilds must provide voxel points rather than tile points. Use <a class="reference internal" href="#warp.Volume.get_rebuild_info" title="warp.Volume.get_rebuild_info"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_rebuild_info()</span></code></a> to inspect
+reserved capacities and <a class="reference internal" href="#warp.Volume.get_active_stats" title="warp.Volume.get_active_stats"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_active_stats()</span></code></a> to inspect the current active topology.</p>
+<p>Rebuildable CUDA volumes can be allocated during CUDA graph capture when CUDA memory-pool allocation is
+supported and enabled. Exact, non-rebuildable volume allocation is not graph-capture safe because determining
+the exact topology size requires device synchronization. Active-topology queries such as
+<a class="reference internal" href="#warp.Volume.get_active_stats" title="warp.Volume.get_active_stats"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_active_stats()</span></code></a> must also be performed outside graph capture.</p>
+<p>Unspecified node capacities use conservative sparse-grid defaults. In particular, <code class="docutils literal notranslate"><span class="pre">max_leaf_nodes</span></code> defaults
+to <code class="docutils literal notranslate"><span class="pre">max_active_voxels</span></code> because arbitrary voxel points can place one active voxel in each leaf node. For dense
+voxel sets, pass tighter node capacities explicitly to reduce memory use. Non-index volumes are allocated and
+rebuilt by tiles with <a class="reference internal" href="#warp.Volume.allocate_by_tiles" title="warp.Volume.allocate_by_tiles"><code class="xref py py-meth docutils literal notranslate"><span class="pre">allocate_by_tiles()</span></code></a>, where <code class="docutils literal notranslate"><span class="pre">max_tiles</span></code> directly controls leaf capacity.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>voxel_points</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a>) – Array of positions that define the voxels to be allocated.
 The array may use an integer scalar type (2D N-by-3 array of <a class="reference internal" href="warp.int32.html#warp.int32" title="warp.int32"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.int32</span></code></a> or 1D array of <a class="reference internal" href="warp.vec3i.html#warp.vec3i" title="warp.vec3i"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3i</span></code></a> values), indicating index space positions,
 or a floating point scalar type (2D N-by-3 array of <a class="reference internal" href="warp.float32.html#warp.float32" title="warp.float32"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.float32</span></code></a> or 1D array of <a class="reference internal" href="warp.vec3f.html#warp.vec3f" title="warp.vec3f"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3f</span></code></a> values), indicating world space positions.
-Repeated points per tile are allowed and will be efficiently deduplicated.</p></li>
+Repeated points per voxel are allowed and will be efficiently deduplicated.</p></li>
 <li><p><strong>voxel_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>] </em><em>| </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>] </em><em>| </em><em>None</em>) – Voxel size(s) of the new volume. Ignored if <code class="docutils literal notranslate"><span class="pre">transform</span></code> is given.</p></li>
 <li><p><strong>translation</strong> – Translation between the index and world spaces.</p></li>
 <li><p><strong>transform</strong> – Linear transform between the index and world spaces.
 If <code class="docutils literal notranslate"><span class="pre">None</span></code>, deduced from <code class="docutils literal notranslate"><span class="pre">voxel_size</span></code>.</p></li>
-<li><p><strong>device</strong> (<a class="reference internal" href="warp.Device.html#warp.Device" title="warp._src.context.Device"><em>Device</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – The CUDA device to create the volume on, e.g. <code class="docutils literal notranslate"><span class="pre">&quot;cuda&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;cuda:0&quot;</span></code>.</p></li>
+<li><p><strong>rebuildable</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp._src.types.bool"><em>bool</em></a>) – Whether to allocate persistent capacity for rebuilds.</p></li>
+<li><p><strong>max_active_voxels</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Maximum number of active voxels reserved for rebuilds. Supplying this makes the
+volume rebuildable.</p></li>
+<li><p><strong>max_leaf_nodes</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Maximum number of NanoVDB leaf nodes reserved for rebuilds. Supplying this makes the
+volume rebuildable.</p></li>
+<li><p><strong>max_lower_nodes</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Maximum number of lower internal nodes reserved for rebuilds. Supplying this makes
+the volume rebuildable.</p></li>
+<li><p><strong>max_upper_nodes</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Maximum number of upper internal nodes reserved for rebuilds. Supplying this makes
+the volume rebuildable.</p></li>
+<li><p><strong>status</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>) – Optional one-element <code class="docutils literal notranslate"><span class="pre">uint32</span></code> array receiving <code class="docutils literal notranslate"><span class="pre">Volume.REBUILD_*</span></code> status flags from the
+initial build. <code class="docutils literal notranslate"><span class="pre">Volume.REBUILD_SUCCESS</span></code> means the requested topology fit in the reserved capacity.</p></li>
+<li><p><strong>point_mask</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>) – Optional <code class="docutils literal notranslate"><span class="pre">int32</span></code> array with one entry per point. Points with a zero mask value are ignored.</p></li>
+<li><p><strong>device</strong> (<a class="reference internal" href="warp.Device.html#warp.Device" title="warp._src.context.Device"><em>Device</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – The device to create the volume on, e.g. <code class="docutils literal notranslate"><span class="pre">&quot;cpu&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;cuda&quot;</span></code>, or <code class="docutils literal notranslate"><span class="pre">&quot;cuda:0&quot;</span></code>.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
 <dd class="field-even"><ul class="simple">
-<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If the <code class="docutils literal notranslate"><span class="pre">device</span></code> is not a CUDA device.</p></li>
-<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">voxel_points</span></code> is not a contiguous array of the correct type and shape.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">voxel_points</span></code>, <code class="docutils literal notranslate"><span class="pre">point_mask</span></code>, or <code class="docutils literal notranslate"><span class="pre">status</span></code> is not a contiguous array of the
+    required type and shape.</p></li>
 <li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> creation fails.</p></li>
 <li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If neither <code class="docutils literal notranslate"><span class="pre">voxel_size</span></code> nor <code class="docutils literal notranslate"><span class="pre">transform</span></code> is provided.</p></li>
 <li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If both <code class="docutils literal notranslate"><span class="pre">voxel_size</span></code> and <code class="docutils literal notranslate"><span class="pre">transform</span></code> are provided.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If a rebuild capacity is not positive or does not fit in <code class="docutils literal notranslate"><span class="pre">uint32</span></code>.</p></li>
 </ul>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference internal" href="#warp.Volume" title="warp._src.types.Volume"><em>Volume</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.Volume.rebuild">
+<span class="sig-name descname"><span class="pre">rebuild</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">status</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">point_mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L7318-L7351"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.rebuild" title="Link to this definition">#</a></dt>
+<dd><p>Rebuild this volume’s topology in place from <code class="docutils literal notranslate"><span class="pre">points</span></code>.</p>
+<p>The volume must have been created with <code class="docutils literal notranslate"><span class="pre">rebuildable=True</span></code> or explicit capacity arguments. The input kind
+must match the allocation method: volumes created by <a class="reference internal" href="#warp.Volume.allocate_by_tiles" title="warp.Volume.allocate_by_tiles"><code class="xref py py-meth docutils literal notranslate"><span class="pre">allocate_by_tiles()</span></code></a> rebuild from tile points, and
+volumes created by <a class="reference internal" href="#warp.Volume.allocate_by_voxels" title="warp.Volume.allocate_by_voxels"><code class="xref py py-meth docutils literal notranslate"><span class="pre">allocate_by_voxels()</span></code></a> rebuild from voxel points.</p>
+<p>Rebuilds preserve the volume’s transform, background value, grid type, and reserved capacity. Capacity does
+not grow automatically; pass <code class="docutils literal notranslate"><span class="pre">status</span></code> to detect whether the requested topology fit in the reserved storage.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>points</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>) – Contiguous array of tile or voxel positions. The array may be a 1D array of <code class="docutils literal notranslate"><span class="pre">vec3i</span></code> or
+<code class="docutils literal notranslate"><span class="pre">vec3f</span></code> values, or a 2D <code class="docutils literal notranslate"><span class="pre">N</span> <span class="pre">x</span> <span class="pre">3</span></code> array of <code class="docutils literal notranslate"><span class="pre">int32</span></code> or <code class="docutils literal notranslate"><span class="pre">float32</span></code> values. Integer points are
+interpreted in index space, and floating-point points are interpreted in world space.</p></li>
+<li><p><strong>status</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>) – Optional one-element <code class="docutils literal notranslate"><span class="pre">uint32</span></code> array receiving <code class="docutils literal notranslate"><span class="pre">Volume.REBUILD_*</span></code> status flags.
+<code class="docutils literal notranslate"><span class="pre">Volume.REBUILD_SUCCESS</span></code> means the requested topology fit in the reserved capacity.</p></li>
+<li><p><strong>point_mask</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>) – Optional <code class="docutils literal notranslate"><span class="pre">int32</span></code> array with one entry per point. Points with a zero mask value are ignored.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The <code class="docutils literal notranslate"><span class="pre">status</span></code> array if one was provided, otherwise <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If the volume is not rebuildable.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">points</span></code>, <code class="docutils literal notranslate"><span class="pre">point_mask</span></code>, or <code class="docutils literal notranslate"><span class="pre">status</span></code> is not a contiguous array of the required
+    type and shape.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a> | None</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1186,10 +1503,26 @@ If <code class="docutils literal notranslate"><span class="pre">None</span></cod
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.__init__"><code class="docutils literal notranslate"><span class="pre">__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.CLOSEST"><code class="docutils literal notranslate"><span class="pre">CLOSEST</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.LINEAR"><code class="docutils literal notranslate"><span class="pre">LINEAR</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.RebuildInfo"><code class="docutils literal notranslate"><span class="pre">RebuildInfo</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.RebuildInfo.kind"><code class="docutils literal notranslate"><span class="pre">kind</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.RebuildInfo.max_voxel_count"><code class="docutils literal notranslate"><span class="pre">max_voxel_count</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.RebuildInfo.max_leaf_node_count"><code class="docutils literal notranslate"><span class="pre">max_leaf_node_count</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.RebuildInfo.max_lower_node_count"><code class="docutils literal notranslate"><span class="pre">max_lower_node_count</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.RebuildInfo.max_upper_node_count"><code class="docutils literal notranslate"><span class="pre">max_upper_node_count</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.ActiveStats"><code class="docutils literal notranslate"><span class="pre">ActiveStats</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.ActiveStats.voxel_count"><code class="docutils literal notranslate"><span class="pre">voxel_count</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.ActiveStats.leaf_node_count"><code class="docutils literal notranslate"><span class="pre">leaf_node_count</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.ActiveStats.lower_node_count"><code class="docutils literal notranslate"><span class="pre">lower_node_count</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.ActiveStats.upper_node_count"><code class="docutils literal notranslate"><span class="pre">upper_node_count</span></code></a></li>
+</ul>
+</li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.array"><code class="docutils literal notranslate"><span class="pre">array()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.get_tile_count"><code class="docutils literal notranslate"><span class="pre">get_tile_count()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.get_tiles"><code class="docutils literal notranslate"><span class="pre">get_tiles()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.get_voxel_count"><code class="docutils literal notranslate"><span class="pre">get_voxel_count()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.get_active_stats"><code class="docutils literal notranslate"><span class="pre">get_active_stats()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.get_voxels"><code class="docutils literal notranslate"><span class="pre">get_voxels()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.get_voxel_size"><code class="docutils literal notranslate"><span class="pre">get_voxel_size()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.GridInfo"><code class="docutils literal notranslate"><span class="pre">GridInfo</span></code></a><ul class="nav section-nav flex-column">
@@ -1205,6 +1538,8 @@ If <code class="docutils literal notranslate"><span class="pre">None</span></cod
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.get_grid_info"><code class="docutils literal notranslate"><span class="pre">get_grid_info()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.dtype"><code class="docutils literal notranslate"><span class="pre">dtype</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.is_index"><code class="docutils literal notranslate"><span class="pre">is_index</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.is_rebuildable"><code class="docutils literal notranslate"><span class="pre">is_rebuildable</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.get_rebuild_info"><code class="docutils literal notranslate"><span class="pre">get_rebuild_info()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.get_feature_array_count"><code class="docutils literal notranslate"><span class="pre">get_feature_array_count()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.FeatureArrayInfo"><code class="docutils literal notranslate"><span class="pre">FeatureArrayInfo</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.FeatureArrayInfo.name"><code class="docutils literal notranslate"><span class="pre">name</span></code></a></li>
@@ -1222,8 +1557,15 @@ If <code class="docutils literal notranslate"><span class="pre">None</span></cod
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.load_next_grid"><code class="docutils literal notranslate"><span class="pre">load_next_grid()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.load_from_numpy"><code class="docutils literal notranslate"><span class="pre">load_from_numpy()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.allocate"><code class="docutils literal notranslate"><span class="pre">allocate()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.REBUILD_SUCCESS"><code class="docutils literal notranslate"><span class="pre">REBUILD_SUCCESS</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.REBUILD_LEAF_CAPACITY_EXCEEDED"><code class="docutils literal notranslate"><span class="pre">REBUILD_LEAF_CAPACITY_EXCEEDED</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.REBUILD_LOWER_CAPACITY_EXCEEDED"><code class="docutils literal notranslate"><span class="pre">REBUILD_LOWER_CAPACITY_EXCEEDED</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.REBUILD_UPPER_CAPACITY_EXCEEDED"><code class="docutils literal notranslate"><span class="pre">REBUILD_UPPER_CAPACITY_EXCEEDED</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.REBUILD_VOXEL_CAPACITY_EXCEEDED"><code class="docutils literal notranslate"><span class="pre">REBUILD_VOXEL_CAPACITY_EXCEEDED</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.REBUILD_INVALID_INPUT"><code class="docutils literal notranslate"><span class="pre">REBUILD_INVALID_INPUT</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.allocate_by_tiles"><code class="docutils literal notranslate"><span class="pre">allocate_by_tiles()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.allocate_by_voxels"><code class="docutils literal notranslate"><span class="pre">allocate_by_voxels()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.rebuild"><code class="docutils literal notranslate"><span class="pre">rebuild()</span></code></a></li>
 </ul>
 </li>
 </ul>

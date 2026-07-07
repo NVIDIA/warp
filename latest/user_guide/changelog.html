@@ -535,6 +535,9 @@ can produce bit-exact repeated results. Configurable at the global and module le
 created after the config is set. Deterministic backward reductions are supported for generated and custom-adjoint
 accumulation patterns; consumed-return counter atomics require explicit replay functions and are rejected in generated
 backward replay to avoid incorrect gradients (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1443">GH-1443</a>).</p></li>
+<li><p>Add rebuildable NanoVDB volumes with capacity/status controls, point masks, CPU parity, CUDA graph-capturable
+allocation and rebuilds, <code class="docutils literal notranslate"><span class="pre">warp.fem.Nanogrid</span></code> topology refresh support for rebuildable volumes, and an
+<code class="docutils literal notranslate"><span class="pre">example_apic_fluid</span></code> path that exercises captured grid rebuilds (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1606">GH-1606</a>).</p></li>
 <li><p>Add row-capacity support to <code class="docutils literal notranslate"><span class="pre">warp.sparse</span></code> BSR matrices, including padded topology policies for topology-changing
 sparse operations, <code class="docutils literal notranslate"><span class="pre">bsr_zeros(row_capacity=...)</span></code> for reserving row capacity, <code class="docutils literal notranslate"><span class="pre">bsr_compress()</span></code> for inplace compaction of sparse matrices, and sparse status constants for overflow checks (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1537">GH-1537</a>).</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">fem.integrate()</span></code> and <code class="docutils literal notranslate"><span class="pre">fem.interpolate()</span></code> can now leverage <code class="docutils literal notranslate"><span class="pre">sparse.bsr_compress()</span></code> to perform inplace matrix assembly, reducing peak memory usage (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1537">GH-1537</a>).</p></li>
@@ -592,6 +595,9 @@ source-built binaries compatible with free-threaded Python builds
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1594">GH-1594</a>). The arguments and attributes now emit <code class="docutils literal notranslate"><span class="pre">DeprecationWarning</span></code>
 and are scheduled for removal in Warp 1.19. Output arrays are sized dynamically, extraction runs on the input field’s
 device, and the <code class="docutils literal notranslate"><span class="pre">id</span></code> and <code class="docutils literal notranslate"><span class="pre">runtime</span></code> attributes have no replacement.</p></li>
+<li><p>Deprecate the per-environment sequence form of <code class="docutils literal notranslate"><span class="pre">warp.fem.Nanogrid.from_environment_voxels()</span></code> and
+<code class="docutils literal notranslate"><span class="pre">warp.fem.AdaptiveNanogrid.from_environment_voxels()</span></code>; pass flat <code class="docutils literal notranslate"><span class="pre">points</span></code>, <code class="docutils literal notranslate"><span class="pre">cell_levels</span></code> where applicable,
+<code class="docutils literal notranslate"><span class="pre">point_envs</span></code>, and <code class="docutils literal notranslate"><span class="pre">env_count</span></code> instead.</p></li>
 </ul>
 </section>
 <section id="changed">

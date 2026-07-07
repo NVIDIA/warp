@@ -505,9 +505,10 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">scalar_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">warp.float32</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">cell_env</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">env_offsets</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">rebuildable</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/nanogrid.py#L545-L922"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/nanogrid.py#L546-L1152"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid" title="Link to this definition">#</a></dt>
 <dd><p>Sparse grid geometry.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -517,6 +518,7 @@
 <li><p><strong>scalar_type</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><em>type</em></a>)</p></li>
 <li><p><strong>cell_env</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>)</p></li>
 <li><p><strong>env_offsets</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>)</p></li>
+<li><p><strong>rebuildable</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>)</p></li>
 </ul>
 </dd>
 </dl>
@@ -530,9 +532,10 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">scalar_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">warp.float32</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">cell_env</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">env_offsets</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">rebuildable</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/nanogrid.py#L613-L661"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.__init__" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/nanogrid.py#L664-L740"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.__init__" title="Link to this definition">#</a></dt>
 <dd><p>Construct a sparse grid geometry from an in-memory NanoVDB volume.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -542,6 +545,8 @@ If <code class="docutils literal notranslate"><span class="pre">grid</span></cod
 be created for all leaf voxels.</p></li>
 <li><p><strong>temporary_store</strong> (<a class="reference internal" href="warp.fem.TemporaryStore.html#warp.fem.TemporaryStore" title="warp._src.fem.cache.TemporaryStore"><em>TemporaryStore</em></a><em> | </em><em>None</em>) – shared pool from which to allocate temporary arrays</p></li>
 <li><p><strong>scalar_type</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><em>type</em></a>) – Scalar type for grid coordinates (<code class="docutils literal notranslate"><span class="pre">warp.float32</span></code> or <code class="docutils literal notranslate"><span class="pre">warp.float64</span></code>)</p></li>
+<li><p><strong>rebuildable</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether to retain capacity-sized topology buffers that can be refreshed with
+<a class="reference internal" href="#warp.fem.Nanogrid.rebuild_topology_from_cells" title="warp.fem.Nanogrid.rebuild_topology_from_cells"><code class="xref py py-meth docutils literal notranslate"><span class="pre">rebuild_topology_from_cells()</span></code></a>.</p></li>
 <li><p><strong>cell_env</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>)</p></li>
 <li><p><strong>env_offsets</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>)</p></li>
 </ul>
@@ -591,11 +596,17 @@ be created for all leaf voxels.</p></li>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_side_index_arg</span></code>(arg, device)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Nanogrid.from_environment_voxels" title="warp.fem.Nanogrid.from_environment_voxels"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_environment_voxels</span></code></a>(cell_ijks[, ...])</p></td>
-<td><p>Construct a sparse grid geometry from per-environment active cell coordinates.</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Nanogrid.from_environment_voxels" title="warp.fem.Nanogrid.from_environment_voxels"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_environment_voxels</span></code></a>([points, ...])</p></td>
+<td><p>Construct a sparse grid geometry from environment-tagged active voxel points.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_filtered_cell_lookup</span></code>([filter_func])</p></td>
 <td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Nanogrid.rebuild" title="warp.fem.Nanogrid.rebuild"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rebuild</span></code></a>(points[, point_envs, status, point_mask])</p></td>
+<td><p>Rebuild the cell grid and refresh Nanogrid topology buffers.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Nanogrid.rebuild_topology_from_cells" title="warp.fem.Nanogrid.rebuild_topology_from_cells"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rebuild_topology_from_cells</span></code></a>()</p></td>
+<td><p>Refresh Nanogrid topology buffers from the current cell grid.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">reference_cell</span></code>()</p></td>
 <td><p></p></td>
@@ -782,9 +793,12 @@ be created for all leaf voxels.</p></li>
 <em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_environment_voxels</span></span><span class="sig-paren">(</span>
 
 <dl>
-<dd><em class="sig-param"><span class="n"><span class="pre">cell_ijks</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">points</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">point_envs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">env_count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">env_offsets</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">point_mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">guard_cells</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">voxel_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">translation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0.0,</span> <span class="pre">0.0,</span> <span class="pre">0.0)</span></span></em>,</dd>
@@ -792,25 +806,38 @@ be created for all leaf voxels.</p></li>
 <dd><em class="sig-param"><span class="n"><span class="pre">temporary_store</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">scalar_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">warp.float32</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">rebuildable</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_active_voxels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_leaf_nodes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_lower_nodes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_upper_nodes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">status</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">cell_ijks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/nanogrid.py#L555-L612"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.from_environment_voxels" title="Link to this definition">#</a></dt>
-<dd><p>Construct a sparse grid geometry from per-environment active cell coordinates.</p>
-<p>The per-environment coordinates are interpreted in local FEM index space.
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/nanogrid.py#L556-L663"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.from_environment_voxels" title="Link to this definition">#</a></dt>
+<dd><p>Construct a sparse grid geometry from environment-tagged active voxel points.</p>
+<p>The active voxel points are interpreted in local FEM space.
 They are packed into a single NanoVDB index grid by adding an environment
 offset, while FEM positions subtract the offset so environments may remain
 colocated in world space.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>cell_ijks</strong> (<a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Sequence" title="(in Python v3.14)"><em>Sequence</em></a><em>[</em><a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em>]</em>) – Sequence of <code class="docutils literal notranslate"><span class="pre">warp.vec3i</span></code> arrays, one array per environment.</p></li>
+<li><p><strong>points</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Sequence" title="(in Python v3.14)"><em>Sequence</em></a><em>[</em><a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em>] </em><em>| </em><em>None</em>) – Flat <code class="docutils literal notranslate"><span class="pre">warp.vec3i</span></code> or <code class="docutils literal notranslate"><span class="pre">warp.vec3f</span></code> array of active voxel points.
+Deprecated: a sequence of per-environment <code class="docutils literal notranslate"><span class="pre">warp.vec3i</span></code> arrays is also accepted for compatibility.</p></li>
+<li><p><strong>point_envs</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Sequence" title="(in Python v3.14)"><em>Sequence</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Sequence" title="(in Python v3.14)"><em>Sequence</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>]</em><em>] </em><em>| </em><em>None</em>) – Flat <code class="docutils literal notranslate"><span class="pre">int32</span></code> array with one environment index per point. Entries for unmasked points must
+satisfy <code class="docutils literal notranslate"><span class="pre">0</span> <span class="pre">&lt;=</span> <span class="pre">env</span> <span class="pre">&lt;</span> <span class="pre">env_count</span></code>.</p></li>
+<li><p><strong>env_count</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Number of environments represented by <code class="docutils literal notranslate"><span class="pre">point_envs</span></code>.</p></li>
 <li><p><strong>env_offsets</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Sequence" title="(in Python v3.14)"><em>Sequence</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Sequence" title="(in Python v3.14)"><em>Sequence</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>]</em><em>] </em><em>| </em><em>None</em>) – Optional packed-grid offsets, one <code class="docutils literal notranslate"><span class="pre">warp.vec3i</span></code> per environment.
 If omitted, offsets are generated along the x axis with at least one
-guard region between consecutive environments. Custom offsets are an
-advanced override for callers that need deterministic packed NanoVDB
-coordinates, for example to match an externally built volume. They
-must still keep active cells from different environments from sharing
-packed-grid faces.</p></li>
+guard region between consecutive environments. Generated offsets are
+recomputed from the active point ranges during multi-environment
+rebuilds. Custom offsets are an advanced override for callers that need
+deterministic packed NanoVDB coordinates, for example to match an
+externally built volume. They must still keep active cells from
+different environments from sharing packed-grid faces.</p></li>
+<li><p><strong>point_mask</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>) – Optional <code class="docutils literal notranslate"><span class="pre">int32</span></code> array with one entry per point. Points with a zero mask value are ignored.</p></li>
 <li><p><strong>guard_cells</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of empty packed cells between generated environment
 tiles. The default isolates padded B-spline node grids up to degree 3.</p></li>
 <li><p><strong>voxel_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Sequence" title="(in Python v3.14)"><em>Sequence</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>] </em><em>| </em><em>None</em>) – Voxel size for the packed NanoVDB volume. Ignored if <code class="docutils literal notranslate"><span class="pre">transform</span></code> is provided.</p></li>
@@ -819,34 +846,86 @@ tiles. The default isolates padded B-spline node grids up to degree 3.</p></li>
 <li><p><strong>temporary_store</strong> (<a class="reference internal" href="warp.fem.TemporaryStore.html#warp.fem.TemporaryStore" title="warp._src.fem.cache.TemporaryStore"><em>TemporaryStore</em></a><em> | </em><em>None</em>) – Shared pool from which to allocate temporary arrays.</p></li>
 <li><p><strong>scalar_type</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><em>type</em></a>) – Scalar type for grid coordinates (<code class="docutils literal notranslate"><span class="pre">warp.float32</span></code> or <code class="docutils literal notranslate"><span class="pre">warp.float64</span></code>).</p></li>
 <li><p><strong>device</strong> – CUDA device on which to build the packed volume.</p></li>
+<li><p><strong>rebuildable</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether to allocate persistent capacity for rebuilds.</p></li>
+<li><p><strong>max_active_voxels</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Maximum number of active voxels for rebuilds. Defaults to the packed cell count.</p></li>
+<li><p><strong>max_leaf_nodes</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Maximum number of NanoVDB leaf nodes for rebuilds. Defaults to <code class="docutils literal notranslate"><span class="pre">max_active_voxels</span></code>.</p></li>
+<li><p><strong>max_lower_nodes</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Maximum number of lower internal nodes for rebuilds. Defaults to <code class="docutils literal notranslate"><span class="pre">max_leaf_nodes</span></code>.</p></li>
+<li><p><strong>max_upper_nodes</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Maximum number of upper internal nodes for rebuilds. Defaults to <code class="docutils literal notranslate"><span class="pre">max_lower_nodes</span></code>.</p></li>
+<li><p><strong>status</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>) – Optional one-element <code class="docutils literal notranslate"><span class="pre">uint32</span></code> array receiving rebuild status flags.</p></li>
+<li><p><strong>cell_ijks</strong> (<a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Sequence" title="(in Python v3.14)"><em>Sequence</em></a><em>[</em><a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em>] </em><em>| </em><em>None</em>) – Deprecated keyword alias for the old per-environment <code class="docutils literal notranslate"><span class="pre">points</span></code> sequence form.</p></li>
 </ul>
 </dd>
 </dl>
 </dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.Nanogrid.rebuild">
+<span class="sig-name descname"><span class="pre">rebuild</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">points</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">point_envs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">status</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">point_mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/nanogrid.py#L741-L815"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.rebuild" title="Link to this definition">#</a></dt>
+<dd><p>Rebuild the cell grid and refresh Nanogrid topology buffers.</p>
+<p>Space topologies built from this Nanogrid are not refreshed automatically. Reusing a topology after
+rebuilding the grid is unsupported unless that topology provides and has had its own rebuild method called.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>points</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>) – Active voxel points. When <code class="docutils literal notranslate"><span class="pre">point_envs</span></code> is provided, points are interpreted in local
+environment space and packed through <code class="docutils literal notranslate"><span class="pre">env_offsets</span></code> before rebuilding the cell grid.</p></li>
+<li><p><strong>point_envs</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>) – Optional <code class="docutils literal notranslate"><span class="pre">int32</span></code> array with one environment index per point. Required for
+multi-environment Nanogrids. Entries for unmasked points must satisfy
+<code class="docutils literal notranslate"><span class="pre">0</span> <span class="pre">&lt;=</span> <span class="pre">env</span> <span class="pre">&lt;</span> <span class="pre">environment_count</span></code>.</p></li>
+<li><p><strong>status</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>) – Optional one-element <code class="docutils literal notranslate"><span class="pre">uint32</span></code> array receiving rebuild status flags.</p></li>
+<li><p><strong>point_mask</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>) – Optional <code class="docutils literal notranslate"><span class="pre">int32</span></code> array with one entry per point. Points with a zero mask value are ignored.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The status array passed to <code class="docutils literal notranslate"><span class="pre">status</span></code>, or <code class="docutils literal notranslate"><span class="pre">None</span></code> if no status array was provided.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a> | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.Nanogrid.rebuild_topology_from_cells">
+<span class="sig-name descname"><span class="pre">rebuild_topology_from_cells</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/nanogrid.py#L816-L827"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.rebuild_topology_from_cells" title="Link to this definition">#</a></dt>
+<dd><p>Refresh Nanogrid topology buffers from the current cell grid.</p>
+<p>Space topologies built from this Nanogrid are not refreshed automatically. Reusing a topology after
+rebuilding the grid is unsupported unless that topology provides and has had its own rebuild method called.</p>
+</dd></dl>
+
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.Nanogrid.edge_grid">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">edge_grid</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Volume.html#warp.Volume" title="warp._src.types.Volume"><span class="pre">Volume</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/nanogrid.py#L662-L666"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.edge_grid" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">edge_grid</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Volume.html#warp.Volume" title="warp._src.types.Volume"><span class="pre">Volume</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/nanogrid.py#L828-L832"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.edge_grid" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Nanogrid.edge_count">
-<span class="sig-name descname"><span class="pre">edge_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/nanogrid.py#L667-L670"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.edge_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">edge_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/nanogrid.py#L833-L836"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.edge_count" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Nanogrid.fill_cell_arg">
-<span class="sig-name descname"><span class="pre">fill_cell_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/nanogrid.py#L671-L678"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.fill_cell_arg" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">fill_cell_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/nanogrid.py#L837-L844"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.fill_cell_arg" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Nanogrid.fill_side_arg">
-<span class="sig-name descname"><span class="pre">fill_side_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/nanogrid.py#L679-L686"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.fill_side_arg" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">fill_side_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/nanogrid.py#L845-L852"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.fill_side_arg" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Nanogrid.supports_cell_lookup">
-<span class="sig-name descname"><span class="pre">supports_cell_lookup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/nanogrid.py#L687-L689"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.supports_cell_lookup" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">supports_cell_lookup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/nanogrid.py#L853-L855"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.supports_cell_lookup" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -1170,6 +1249,8 @@ tiles. The default isolates padded B-spline node grids up to degree 3.</p></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Nanogrid"><code class="docutils literal notranslate"><span class="pre">Nanogrid</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Nanogrid.__init__"><code class="docutils literal notranslate"><span class="pre">__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Nanogrid.from_environment_voxels"><code class="docutils literal notranslate"><span class="pre">from_environment_voxels()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Nanogrid.rebuild"><code class="docutils literal notranslate"><span class="pre">rebuild()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Nanogrid.rebuild_topology_from_cells"><code class="docutils literal notranslate"><span class="pre">rebuild_topology_from_cells()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Nanogrid.edge_grid"><code class="docutils literal notranslate"><span class="pre">edge_grid</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Nanogrid.edge_count"><code class="docutils literal notranslate"><span class="pre">edge_count()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Nanogrid.fill_cell_arg"><code class="docutils literal notranslate"><span class="pre">fill_cell_arg()</span></code></a></li>

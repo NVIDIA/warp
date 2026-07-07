@@ -2245,12 +2245,17 @@ standard ``.nvdb`` file using :func:`load_from_nvdb() <warp.Volume.load_from_nvd
 from an uncompressed in-memory buffer using :func:`load_from_address() <warp.Volume.load_from_address>`,
 or from a dense 3D NumPy array using :func:`load_from_numpy() <warp.Volume.load_from_numpy>`.
 
-Volumes can also be created using :meth:`allocate() <warp.Volume.allocate>`, 
-:meth:`allocate_by_tiles() <warp.Volume.allocate_by_tiles>` or :meth:`allocate_by_voxels() <warp.Volume.allocate_by_voxels>`. 
+Volumes can also be created using :meth:`allocate() <warp.Volume.allocate>`,
+:meth:`allocate_by_tiles() <warp.Volume.allocate_by_tiles>` or :meth:`allocate_by_voxels() <warp.Volume.allocate_by_voxels>`.
 The values for a Volume object can be modified in a Warp kernel using :func:`wp.volume_store() <warp._src.lang.volume_store>`.
 
 .. note::
-    Warp does not currently support modifying the topology of sparse volumes at runtime.
+    Volumes created with ``rebuildable=True`` or explicit capacity arguments reserve persistent storage and can update
+    their sparse topology in place with :meth:`Volume.rebuild() <warp.Volume.rebuild>`. Allocation and rebuild of these
+    volumes can be captured in CUDA graphs when CUDA memory-pool allocation is supported and enabled. Exact,
+    non-rebuildable volume allocation and active-topology queries such as
+    :meth:`Volume.get_active_stats() <warp.Volume.get_active_stats>` require device synchronization and must occur
+    outside CUDA graph capture.
 
 Below we give an example of creating a Volume object from an existing NanoVDB file::
 
