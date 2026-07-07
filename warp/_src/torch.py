@@ -377,7 +377,13 @@ def to_torch(a: warp.array, requires_grad: bool | None = None):
 
 
 def stream_from_torch(stream_or_device=None):
-    """Convert from a Torch CUDA stream to a Warp CUDA stream."""
+    """Convert from a Torch CUDA stream to a Warp CUDA stream.
+
+    Streams created using ``torch.cuda.Stream()`` are non-blocking and the returned
+    ``warp.Stream`` inherits that behavior.
+    When using those streams to run Warp operations, ensure that Warp-owned resources are not garbage-collected while work on the non-blocking stream is still pending.
+    See :ref:`nonblocking_streams` for details and mitigation strategies.
+    """
     import torch  # noqa: PLC0415
 
     if isinstance(stream_or_device, torch.cuda.Stream):
@@ -397,7 +403,13 @@ def stream_from_torch(stream_or_device=None):
 
 
 def stream_to_torch(stream_or_device=None):
-    """Convert from a Warp CUDA stream to a Torch CUDA stream."""
+    """Convert from a Warp CUDA stream to a Torch CUDA stream.
+
+    Streams created using ``warp.Stream()`` are blocking and the returned PyTorch ``ExternalStream`` inherits that behavior.
+    This means PyTorch operations on the returned stream will implicitly synchronize
+    with the CUDA default stream, matching the default Warp behavior.
+    See :ref:`nonblocking_streams` for background on blocking vs. non-blocking streams.
+    """
     import torch  # noqa: PLC0415
 
     if isinstance(stream_or_device, warp.Stream):

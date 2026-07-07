@@ -75,6 +75,7 @@
   host-return form of `wp.utils.runlength_encode()`, and `wp.copy()` other than a contiguous same-device copy
   (cross-device or non-contiguous copies) cannot be captured on CUDA and raise during APIC capture
   ([GH-1431](https://github.com/NVIDIA/warp/issues/1431)).
+- Add `wp.Stream.is_blocking` to check if a CUDA stream is blocking ([GH-1618](https://github.com/NVIDIA/warp/issues/1618)).
 
 ### Removed
 
@@ -228,6 +229,7 @@
 
 - Document the tiled kernel patterns that diverge between CPU and CUDA under the forced CPU `block_dim=1`, along with
   portable workarounds ([GH-1580](https://github.com/NVIDIA/warp/issues/1580)).
+- Document working with non-blocking CUDA streams, including streams borrowed from PyTorch ([GH-1618](https://github.com/NVIDIA/warp/issues/1618)).
 
 ## [1.14.0] - 2026-06-01
 
