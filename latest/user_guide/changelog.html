@@ -569,6 +569,7 @@ reusable (<code class="docutils literal notranslate"><span class="pre">wp.launch
 host-return form of <code class="docutils literal notranslate"><span class="pre">wp.utils.runlength_encode()</span></code>, and <code class="docutils literal notranslate"><span class="pre">wp.copy()</span></code> other than a contiguous same-device copy
 (cross-device or non-contiguous copies) cannot be captured on CUDA and raise during APIC capture
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1431">GH-1431</a>).</p></li>
+<li><p>Add <code class="docutils literal notranslate"><span class="pre">wp.Stream.is_blocking</span></code> to check if a CUDA stream is blocking (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1618">GH-1618</a>).</p></li>
 </ul>
 </section>
 <section id="removed">
@@ -732,6 +733,7 @@ may emit when simplifying power-of-two <code class="docutils literal notranslate
 <ul class="simple">
 <li><p>Document the tiled kernel patterns that diverge between CPU and CUDA under the forced CPU <code class="docutils literal notranslate"><span class="pre">block_dim=1</span></code>, along with
 portable workarounds (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1580">GH-1580</a>).</p></li>
+<li><p>Document working with non-blocking CUDA streams, including streams borrowed from PyTorch (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1618">GH-1618</a>).</p></li>
 </ul>
 </section>
 </section>

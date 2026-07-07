@@ -533,6 +533,8 @@ from PyTorch’s CUDA caching allocator, see
 <li><p><a class="reference internal" href="../api_reference/_generated/warp.stream_from_torch.html#warp.stream_from_torch" title="warp.stream_from_torch"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.stream_from_torch()</span></code></a></p></li>
 <li><p><a class="reference internal" href="../api_reference/_generated/warp.stream_to_torch.html#warp.stream_to_torch" title="warp.stream_to_torch"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.stream_to_torch()</span></code></a></p></li>
 </ul>
+<p>Note that CUDA streams created by PyTorch are non-blocking, whereas streams created by Warp are blocking.
+For a detailed explanation and its implications, see <a class="reference internal" href="../deep_dive/concurrency.html#nonblocking-streams"><span class="std std-ref">Blocking and Non-Blocking Streams</span></a>.</p>
 </section>
 <section id="cuda-graph-capture-with-pytorch-and-warp">
 <span id="pytorch-graph-capture"></span><h2>CUDA Graph Capture with PyTorch and Warp<a class="headerlink" href="#cuda-graph-capture-with-pytorch-and-warp" title="Link to this heading">#</a></h2>

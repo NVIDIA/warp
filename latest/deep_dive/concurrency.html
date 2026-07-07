@@ -1070,6 +1070,134 @@ CUDA default stream is also not allowed.  The only form of synchronization allow
 </pre></div>
 </div>
 </section>
+<section id="blocking-and-non-blocking-streams">
+<span id="nonblocking-streams"></span><h3>Blocking and Non-Blocking Streams<a class="headerlink" href="#blocking-and-non-blocking-streams" title="Link to this heading">#</a></h3>
+<p>The CUDA API allows creating streams that are blocking or non-blocking. They differ in how they interact with operations running on the CUDA default stream (a.k.a null stream). Blocking streams implicitly synchronize with the default stream and non-blocking streams are asynchronous with the default stream. Both blocking and non-blocking streams are always asynchronous with each other - the only difference is whether they synchronize with the CUDA default stream.</p>
+<p>Streams created by Warp are blocking. This has a number of advantages, especially for ease-of-use and interoperability with other frameworks. It avoids a range of synchronization-related issues and allows writing simpler code. The Warp runtime is designed around blocking streams and extra care is required when using external non-blocking streams.</p>
+<p>Let’s use PyTorch as an interoperability example. Both Warp and PyTorch have a similar API for using streams, but Warp-created streams are blocking and PyTorch-created streams are non-blocking.</p>
+<p>By default, PyTorch code executes on the CUDA default stream (null stream) and Warp code executes on a blocking stream automatically created upon device initialization. Since Warp’s blocking stream implicitly synchronizes with the null stream, we can interleave PyTorch and Warp operations without any explicit synchronization:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">inc_kernel</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">a</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">+=</span> <span class="mf">1.0</span>
+
+<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedDevice</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">),</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">):</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">inc_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+    <span class="n">a</span> <span class="o">+=</span> <span class="mf">1.0</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">inc_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+    <span class="n">a</span> <span class="o">+=</span> <span class="mf">1.0</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+<span class="c1"># tensor([4., 4., 4., 4., 4., 4., 4., 4., 4., 4.], device=&#39;cuda:0&#39;)</span>
+</pre></div>
+</div>
+<p>A few side notes:</p>
+<ul class="simple">
+<li><p>We use scoped device managers to ensure that both PyTorch and Warp target the same device.</p></li>
+<li><p>PyTorch CUDA tensors can be passed directly to Warp kernels because they implement the <code class="docutils literal notranslate"><span class="pre">__cuda_array_interface__</span></code>.</p></li>
+<li><p>We don’t explicitly specify any streams, relying on the default behavior of both frameworks.</p></li>
+</ul>
+<p>We can interleave PyTorch and Warp operations on the shared array because of the implicit synchronization between the CUDA default stream used by PyTorch and the blocking stream used by Warp. If Warp used non-blocking streams, explicit synchronization would be required, making the code more complicated and prone to bugs.</p>
+<p>For operations meant to execute sequentially, using the same shared stream is generally the way to go. We can borrow Warp’s stream in PyTorch like this:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">warp_stream</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_stream</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">torch_stream</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">stream_to_torch</span><span class="p">(</span><span class="n">warp_stream</span><span class="p">)</span>
+
+<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedStream</span><span class="p">(</span><span class="n">warp_stream</span><span class="p">),</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="n">torch_stream</span><span class="p">):</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">inc_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+    <span class="n">a</span> <span class="o">+=</span> <span class="mf">1.0</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">inc_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+    <span class="n">a</span> <span class="o">+=</span> <span class="mf">1.0</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This schedules both PyTorch and Warp operations on the same stream, so no synchronization (explicit or implicit) is necessary.</p>
+<p>Borrowing Warp’s stream in PyTorch (and vice versa) does not change the stream’s blocking behavior. A stream created by Warp is a blocking stream, even if it is borrowed in PyTorch using <code class="docutils literal notranslate"><span class="pre">wp.stream_to_torch()</span></code>. Likewise, a stream created by PyTorch remains a non-blocking stream, even if it is borrowed in Warp using <code class="docutils literal notranslate"><span class="pre">wp.stream_from_torch()</span></code>.</p>
+<p>And therein lies the problem. Using non-blocking streams for Warp operations can lead to subtle synchronization-related bugs, particularly when it comes to releasing resources like memory allocated for arrays or other Warp data structures like meshes, hash grids, and volumes. Warp’s resource deallocation relies on the behavior of blocking streams. A resource is released once all blocking streams using it finish their asynchronous work. Non-blocking streams are not covered, so a resource could be released prematurely. This can manifest in a wide range of symptoms, including illegal memory access errors or incorrect computation results. Consider this example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">add_kernel</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">b</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">c</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">c</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">+</span> <span class="n">b</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">foo</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">stream</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">Stream</span><span class="p">):</span>
+    <span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedStream</span><span class="p">(</span><span class="n">stream</span><span class="p">):</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="mf">17.0</span><span class="p">)</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="mf">42.0</span><span class="p">)</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+        <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">add_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">c</span>
+
+<span class="c1"># create a non-blocking stream using PyTorch</span>
+<span class="n">torch_stream</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">Stream</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="c1"># borrow the non-blocking stream in Warp</span>
+<span class="n">nonblocking_stream</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">stream_from_torch</span><span class="p">(</span><span class="n">torch_stream</span><span class="p">)</span>
+
+<span class="n">result</span> <span class="o">=</span> <span class="n">foo</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="n">nonblocking_stream</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This example has a race condition if a non-blocking stream is used. Arrays <code class="docutils literal notranslate"><span class="pre">a</span></code> and <code class="docutils literal notranslate"><span class="pre">b</span></code> are temporary resources allocated in function <code class="docutils literal notranslate"><span class="pre">foo()</span></code>, so they are garbage collected at the end of the function. If their initialization and the subsequent kernel launch run on a non-blocking stream, they may be released prematurely, leading to errors.</p>
+<p>The simplest fix is to synchronize the stream:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">foo</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">stream</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">Stream</span><span class="p">):</span>
+    <span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedStream</span><span class="p">(</span><span class="n">stream</span><span class="p">):</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="mf">17.0</span><span class="p">)</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="mf">42.0</span><span class="p">)</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+        <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">add_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">])</span>
+
+        <span class="c1"># ensure work completes before resources are released</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">stream</span><span class="o">.</span><span class="n">is_blocking</span><span class="p">:</span>
+            <span class="n">wp</span><span class="o">.</span><span class="n">synchronize_stream</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">c</span>
+</pre></div>
+</div>
+<p>This blocks the host thread until all the stream operations have finished. To avoid a host sync, a simple alternative is to use a Warp-created blocking stream to wait for the non-blocking stream:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">keepalive_stream</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Stream</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">foo</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">stream</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">Stream</span><span class="p">):</span>
+    <span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedStream</span><span class="p">(</span><span class="n">stream</span><span class="p">):</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="mf">17.0</span><span class="p">)</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="mf">42.0</span><span class="p">)</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+        <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">add_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">])</span>
+
+        <span class="c1"># ensure work completes before resources are released</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">stream</span><span class="o">.</span><span class="n">is_blocking</span><span class="p">:</span>
+            <span class="n">keepalive_stream</span><span class="o">.</span><span class="n">wait_stream</span><span class="p">(</span><span class="n">stream</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">c</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">keepalive_stream</span></code> can be any blocking stream on the appropriate device. The <code class="docutils literal notranslate"><span class="pre">wait_stream()</span></code> call uses fast device-side synchronization without triggering a host sync, so it should have negligible impact on performance. Note that the wait should happen before any Warp resources used on the non-blocking stream are garbage-collected. This ensures that Warp resource deallocation waits for the <code class="docutils literal notranslate"><span class="pre">keepalive_stream</span></code>, which in turn waits for the operations on non-blocking streams to complete.</p>
+<p>A similar strategy can be used with any external non-blocking stream that uses Warp resources, not just PyTorch streams. This includes streams created from native handles using <code class="docutils literal notranslate"><span class="pre">wp.Stream(...,</span> <span class="pre">cuda_stream=handle)</span></code>. Here is another example of using a non-blocking stream with explicit <code class="docutils literal notranslate"><span class="pre">del</span></code> statements to trigger garbage collection. Note the correct and incorrect ordering of operations.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">handle</span> <span class="o">=</span> <span class="o">...</span>  <span class="c1"># obtain native stream handle for a non-blocking stream</span>
+<span class="n">nonblocking_stream</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Stream</span><span class="p">(</span><span class="n">cuda_stream</span><span class="o">=</span><span class="n">handle</span><span class="p">)</span>
+<span class="n">keepalive_stream</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Stream</span><span class="p">()</span>
+
+<span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">c</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+
+<span class="c1"># launch work on non-blocking stream</span>
+<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedStream</span><span class="p">(</span><span class="n">nonblocking_stream</span><span class="p">):</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">add_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">])</span>
+
+<span class="k">del</span> <span class="n">a</span>  <span class="c1"># INCORRECT: resource may be released prematurely</span>
+
+<span class="n">keepalive_stream</span><span class="o">.</span><span class="n">wait_stream</span><span class="p">(</span><span class="n">nonblocking_stream</span><span class="p">)</span>
+
+<span class="k">del</span> <span class="n">b</span>  <span class="c1"># CORRECT: resource released after non-blocking stream finishes</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
 </section>
 </section>
 
@@ -1145,6 +1273,7 @@ CUDA default stream is also not allowed.  The only form of synchronization allow
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#host-side-synchronization">Host-side Synchronization</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#device-side-synchronization">Device-side Synchronization</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#synchronization-and-graph-capture">Synchronization and Graph Capture</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#blocking-and-non-blocking-streams">Blocking and Non-Blocking Streams</a></li>
 </ul>
 </li>
 </ul>

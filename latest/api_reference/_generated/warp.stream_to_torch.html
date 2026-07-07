@@ -497,8 +497,12 @@
 <h1>warp.stream_to_torch<a class="headerlink" href="#warp-stream-to-torch" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.stream_to_torch">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">stream_to_torch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stream_or_device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/torch.py#L399-L417"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.stream_to_torch" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">stream_to_torch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stream_or_device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/torch.py#L405-L429"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.stream_to_torch" title="Link to this definition">#</a></dt>
 <dd><p>Convert from a Warp CUDA stream to a Torch CUDA stream.</p>
+<p>Streams created using <code class="docutils literal notranslate"><span class="pre">warp.Stream()</span></code> are blocking and the returned PyTorch <code class="docutils literal notranslate"><span class="pre">ExternalStream</span></code> inherits that behavior.
+This means PyTorch operations on the returned stream will implicitly synchronize
+with the CUDA default stream, matching the default Warp behavior.
+See <a class="reference internal" href="../../deep_dive/concurrency.html#nonblocking-streams"><span class="std std-ref">Blocking and Non-Blocking Streams</span></a> for background on blocking vs. non-blocking streams.</p>
 </dd></dl>
 
 </section>

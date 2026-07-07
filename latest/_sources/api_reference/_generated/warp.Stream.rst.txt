@@ -27,6 +27,7 @@
    .. autosummary::
    
       ~Stream.cached_event
+      ~Stream.is_blocking
       ~Stream.is_capturing
       ~Stream.is_complete
       ~Stream.priority
