@@ -4219,92 +4219,284 @@ def tile_map(op: Callable, a: Tile[Any, tuple[int, ...]], *args: Any) -> Tile[An
     ...
 
 def bvh_query_aabb(id: uint64, low: vec3f, high: vec3f, root: int32) -> BvhQuery:
-    """Construct an axis-aligned bounding box query against a BVH object.
+    """Construct an axis-aligned bounding box (AABB) query against a BVH.
 
-    This query can be used to iterate over all bounds inside a BVH.
-    To start a query from a specific node, set ``root`` to the index of the node. The root
-    can be obtained using the :func:`bvh_get_group_root` function when creating a grouped BVH.
-    When ``root`` is a valid (>=0) value, the traversal will be confined to the subtree starting from the root.
-    If ``root`` is -1 (default), traversal starts at the BVH's global root.
-    The query will only traverse down from that node, limiting traversal to that subtree.
+    Returns a query that iterates over every item in the BVH whose stored bounding box overlaps
+    the query box ``[low, high]``. Advance the query and read each result with :func:`bvh_query_next`.
+    ``low`` and ``high`` are given in BVH space, i.e. the same coordinate space
+    as the ``lowers``/``uppers`` arrays passed to :class:`warp.Bvh`.
+
+    To restrict traversal to a subtree, set ``root`` to that node's index (for a grouped BVH the
+    group root is obtained from :func:`bvh_get_group_root`). If ``root`` is -1 (default),
+    traversal starts at the BVH's global root.
 
     Args:
         id: The BVH identifier
-        low: The lower bound of the bounding box in BVH space
-        high: The upper bound of the bounding box in BVH space
-        root: The root to begin the query from (optional, default: -1)"""
+        low: The lower bound of the query box, in BVH space
+        high: The upper bound of the query box, in BVH space
+        root: The node to begin the query from, or -1 (default) for the BVH's global root
+
+    Returns:
+        A :class:`warp.BvhQuery`. It is opaque; pass it to :func:`bvh_query_next`,
+        which writes the index of each overlapping item (an index into the arrays passed to :class:`warp.Bvh`)
+        to its ``index`` argument.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def query_region(bvh_id: wp.uint64, lowers: wp.array[wp.vec3], uppers: wp.array[wp.vec3],
+                             lo: wp.vec3, hi: wp.vec3, centers: wp.array[wp.vec3]):
+                query = wp.bvh_query_aabb(bvh_id, lo, hi)
+                item = int(0)
+                while wp.bvh_query_next(query, item):
+                    centers[item] = 0.5 * (lowers[item] + uppers[item])
+
+            lowers = wp.array([[0, 0, 0], [2, 0, 0], [4, 0, 0]], dtype=wp.vec3)
+            uppers = wp.array([[1, 1, 1], [3, 1, 1], [5, 1, 1]], dtype=wp.vec3)
+            bvh = wp.Bvh(lowers=lowers, uppers=uppers)
+
+            centers = wp.zeros(3, dtype=wp.vec3)  # center of each object whose box overlaps the region
+            wp.launch(query_region, dim=1, inputs=[bvh.id, lowers, uppers, wp.vec3(0.5, 0.5, 0.5), wp.vec3(2.5, 0.5, 0.5)], outputs=[centers])
+            print(centers.numpy().tolist())
+
+        .. testoutput::
+
+            [[0.5, 0.5, 0.5], [2.5, 0.5, 0.5], [0.0, 0.0, 0.0]]"""
     ...
 
 def bvh_query_ray(id: uint64, start: vec3f, dir: vec3f, root: int32) -> BvhQuery:
-    """Construct a ray query against a BVH object.
+    """Construct a ray query against a BVH.
 
-    This query can be used to iterate over all bounds that intersect the ray.
-    To start a query from a specific node, set ``root`` to the index of the node. The root
-    can be obtained using the :func:`bvh_get_group_root` function when creating a grouped BVH.
-    When ``root`` is a valid (>=0) value, the traversal will be confined to the subtree starting from the root.
-    If ``root`` is -1 (default), traversal starts at the BVH's global root.
-    The query will only traverse down from that node, limiting traversal to that subtree.
+    Returns a query that iterates over every item in the BVH whose stored bounding box is
+    intersected by the ray. Advance the query and read each result with :func:`bvh_query_next`.
+    ``start`` and ``dir`` are given in BVH space, i.e. the same coordinate space as
+    the ``lowers``/``uppers`` arrays passed to :class:`warp.Bvh`. ``dir`` need not be normalized,
+    but the ``max_dist`` cutoff of :func:`bvh_query_next` is measured in multiples of its length,
+    so normalize it for ``max_dist`` to be a distance in BVH-space units.
+
+    To restrict traversal to a subtree, set ``root`` to that node's index (for a grouped BVH the
+    group root is obtained from :func:`bvh_get_group_root`). If ``root`` is -1 (default),
+    traversal starts at the BVH's global root.
 
     Args:
         id: The BVH identifier
-        start: The start of the ray in BVH space
-        dir: The direction of the ray in BVH space (should be normalized)
-        root: The root to begin the query from (optional, default: -1)"""
+        start: The ray origin, in BVH space
+        dir: The ray direction, in BVH space (see above on normalization)
+        root: The node to begin the query from, or -1 (default) for the BVH's global root
+
+    Returns:
+        A :class:`warp.BvhQuery`. It is opaque; pass it to :func:`bvh_query_next`, which writes
+        the index of each intersected item (an index into the arrays passed to :class:`warp.Bvh`)
+        to its ``index`` argument.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def cast_ray(bvh_id: wp.uint64, lowers: wp.array[wp.vec3], uppers: wp.array[wp.vec3],
+                         origin: wp.vec3, dir: wp.vec3, centers: wp.array[wp.vec3]):
+                query = wp.bvh_query_ray(bvh_id, origin, dir)
+                item = int(0)
+                while wp.bvh_query_next(query, item):
+                    centers[item] = 0.5 * (lowers[item] + uppers[item])
+
+            lowers = wp.array([[0, 0, 0], [2, 0, 0], [4, 0, 0]], dtype=wp.vec3)
+            uppers = wp.array([[1, 1, 1], [3, 1, 1], [5, 1, 1]], dtype=wp.vec3)
+            bvh = wp.Bvh(lowers=lowers, uppers=uppers)
+
+            centers = wp.zeros(3, dtype=wp.vec3)
+            wp.launch(cast_ray, dim=1, inputs=[bvh.id, lowers, uppers, wp.vec3(-1.0, 0.5, 0.5), wp.vec3(1.0, 0.0, 0.0)], outputs=[centers])
+            print(centers.numpy().tolist())
+
+        .. testoutput::
+
+            [[0.5, 0.5, 0.5], [2.5, 0.5, 0.5], [4.5, 0.5, 0.5]]"""
     ...
 
 def bvh_query_next(query: BvhQuery, index: int32, max_dist: float32) -> bool:
-    """Move to the next bound returned by the query.
+    """Advance a BVH query to the next overlapping item and report whether one was found.
 
-    The index of the current bound is stored in ``index``, returns ``False`` if there are no more overlapping bounds.
-    The maximum distance along a ray query to check for intersections can be set using ``max_dist``. It is not effective
-    for aabb query.
+    Writes the index of the current item to ``index`` and returns ``True``; returns ``False`` once
+    the query is exhausted (``index`` is then left unchanged). The reported index is the item's
+    index into the ``lowers``/``uppers`` arrays passed to :class:`warp.Bvh`. Used in a ``while``
+    loop together with :func:`bvh_query_aabb` or :func:`bvh_query_ray`.
 
-    Note that increasing ``max_dist`` may result in missing intersections. Since previously rejected subtrees will never be
-    revisited even if it intersects with the new, longer ray. In other words, it's only safe to monotonically
-    reduce ``max_dist`` during a query.
+    For ray queries, ``max_dist`` bounds how far along the ray to look for intersections, measured
+    in multiples of the ray direction's length (so it is a distance only if ``dir`` was normalized).
+    It has no effect on AABB queries.
+
+    Note that increasing ``max_dist`` may miss intersections: a subtree already rejected for being
+    beyond ``max_dist`` is never revisited, even if a later, larger ``max_dist`` would reach it. It
+    is therefore only safe to monotonically *reduce* ``max_dist`` during a query.
 
     Args:
-        query: The query to move to the next bound
-        index: The index of the current bound
-        max_dist: The maximum distance along the ray to check for intersections for ray queries. Not effective for aabb query."""
+        query: The query to advance, from :func:`bvh_query_aabb` or :func:`bvh_query_ray`
+        index: Output; receives the index of the current overlapping item
+        max_dist: For ray queries, the maximum distance along the ray to check for intersections
+            (in multiples of ``dir``'s length). Has no effect on AABB queries.
+
+    Returns:
+        ``True`` if another overlapping item was found (its index written to ``index``), ``False``
+        if the query is exhausted.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def query_region(bvh_id: wp.uint64, lowers: wp.array[wp.vec3], uppers: wp.array[wp.vec3],
+                             lo: wp.vec3, hi: wp.vec3, centers: wp.array[wp.vec3]):
+                query = wp.bvh_query_aabb(bvh_id, lo, hi)
+                item = int(0)
+                while wp.bvh_query_next(query, item):
+                    centers[item] = 0.5 * (lowers[item] + uppers[item])
+
+            lowers = wp.array([[0, 0, 0], [2, 0, 0], [4, 0, 0]], dtype=wp.vec3)
+            uppers = wp.array([[1, 1, 1], [3, 1, 1], [5, 1, 1]], dtype=wp.vec3)
+            bvh = wp.Bvh(lowers=lowers, uppers=uppers)
+
+            centers = wp.zeros(3, dtype=wp.vec3)  # center of each object whose box overlaps the region
+            wp.launch(query_region, dim=1, inputs=[bvh.id, lowers, uppers, wp.vec3(0.5, 0.5, 0.5), wp.vec3(2.5, 0.5, 0.5)], outputs=[centers])
+            print(centers.numpy().tolist())
+
+        .. testoutput::
+
+            [[0.5, 0.5, 0.5], [2.5, 0.5, 0.5], [0.0, 0.0, 0.0]]"""
     ...
 
 def bvh_query_aabb_tiled(id: uint64, low: vec3f, high: vec3f) -> BvhQueryTiled:
-    """Construct an axis-aligned bounding box query against a BVH object for thread-block parallel traversal.
+    """Construct an axis-aligned bounding box (AABB) query against a BVH for thread-block parallel traversal.
 
-    This query can be used in tiled kernels to cooperatively traverse a BVH across a thread block.
+    For use in tiled kernels: all threads in the block cooperatively traverse the BVH. Advance the
+    query with :func:`bvh_query_next_tiled` (one result index per thread per step) in a loop guarded
+    by :func:`tile_query_valid`. ``low`` and ``high`` must be identical across all threads in the
+    block and are given in BVH space (the space of the arrays passed to :class:`warp.Bvh`).
 
     Args:
         id: The BVH identifier
-        low: The lower bound of the bounding box in BVH space (must be the same for all threads in the block)
-        high: The upper bound of the bounding box in BVH space (must be the same for all threads in the block)"""
+        low: The lower bound of the query box, in BVH space (must be the same for all threads in the block)
+        high: The upper bound of the query box, in BVH space (must be the same for all threads in the block)
+
+    Returns:
+        A :class:`warp.BvhQueryTiled` to advance with :func:`bvh_query_next_tiled`.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def tiled_query(bvh_id: wp.uint64, lowers: wp.array[wp.vec3], uppers: wp.array[wp.vec3],
+                            lo: wp.vec3, hi: wp.vec3, centers: wp.array[wp.vec3]):
+                query = wp.bvh_query_aabb_tiled(bvh_id, lo, hi)
+                while wp.tile_query_valid(query):
+                    result = wp.bvh_query_next_tiled(query)
+                    item = wp.untile(result)
+                    if item >= 0:
+                        centers[item] = 0.5 * (lowers[item] + uppers[item])
+
+            lowers = wp.array([[0, 0, 0], [2, 0, 0], [4, 0, 0]], dtype=wp.vec3)
+            uppers = wp.array([[1, 1, 1], [3, 1, 1], [5, 1, 1]], dtype=wp.vec3)
+            bvh = wp.Bvh(lowers=lowers, uppers=uppers)
+
+            centers = wp.zeros(3, dtype=wp.vec3)
+            wp.launch_tiled(tiled_query, dim=[1], inputs=[bvh.id, lowers, uppers, wp.vec3(0.5, 0.5, 0.5), wp.vec3(4.5, 0.5, 0.5)], outputs=[centers], block_dim=32)
+            print(centers.numpy().tolist())
+
+        .. testoutput::
+
+            [[0.5, 0.5, 0.5], [2.5, 0.5, 0.5], [4.5, 0.5, 0.5]]"""
     ...
 
 def bvh_query_ray_tiled(id: uint64, start: vec3f, dir: vec3f) -> BvhQueryTiled:
-    """Construct a ray query against a BVH object for thread-block parallel traversal.
+    """Construct a ray query against a BVH for thread-block parallel traversal.
 
-    This query can be used in tiled kernels to cooperatively traverse a BVH across a thread block.
+    For use in tiled kernels: all threads in the block cooperatively traverse the BVH. Advance the
+    query with :func:`bvh_query_next_tiled` (one result index per thread per step) in a loop guarded
+    by :func:`tile_query_valid`. ``start`` and ``dir`` must be identical across all threads in the
+    block and are given in BVH space (the space of the arrays passed to :class:`warp.Bvh`).
 
     Args:
         id: The BVH identifier
-        start: The ray origin (must be the same for all threads in the block)
-        dir: The ray direction (must be the same for all threads in the block)"""
+        start: The ray origin, in BVH space (must be the same for all threads in the block)
+        dir: The ray direction, in BVH space (must be the same for all threads in the block)
+
+    Returns:
+        A :class:`warp.BvhQueryTiled` to advance with :func:`bvh_query_next_tiled`.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def tiled_cast(bvh_id: wp.uint64, lowers: wp.array[wp.vec3], uppers: wp.array[wp.vec3],
+                           origin: wp.vec3, dir: wp.vec3, centers: wp.array[wp.vec3]):
+                query = wp.bvh_query_ray_tiled(bvh_id, origin, dir)
+                while wp.tile_query_valid(query):
+                    result = wp.bvh_query_next_tiled(query)
+                    item = wp.untile(result)
+                    if item >= 0:
+                        centers[item] = 0.5 * (lowers[item] + uppers[item])
+
+            lowers = wp.array([[0, 0, 0], [2, 0, 0], [4, 0, 0]], dtype=wp.vec3)
+            uppers = wp.array([[1, 1, 1], [3, 1, 1], [5, 1, 1]], dtype=wp.vec3)
+            bvh = wp.Bvh(lowers=lowers, uppers=uppers)
+
+            centers = wp.zeros(3, dtype=wp.vec3)
+            wp.launch_tiled(tiled_cast, dim=[1], inputs=[bvh.id, lowers, uppers, wp.vec3(-1.0, 0.5, 0.5), wp.vec3(1.0, 0.0, 0.0)], outputs=[centers], block_dim=32)
+            print(centers.numpy().tolist())
+
+        .. testoutput::
+
+            [[0.5, 0.5, 0.5], [2.5, 0.5, 0.5], [4.5, 0.5, 0.5]]"""
     ...
 
 def bvh_query_next_tiled(query: BvhQueryTiled) -> Tile[int32, tuple[int]]:
     """Move to the next bound in a thread-block parallel BVH query and return results as a tile.
 
     Each thread in the block receives one result index in the returned tile, or -1 if no result for that thread.
-    The function returns a register tile of shape ``(block_dim,)`` containing the result indices.
+    The function returns a register tile of shape ``(block_dim,)`` containing the result indices,
+    where ``block_dim`` is the kernel's block dimension. All threads in the block must call this
+    function cooperatively.
 
-    To check if any results were found, check if any element in the tile is >= 0.
+    Call it in a loop guarded by :func:`tile_query_valid` (which returns ``False`` once the query
+    is exhausted); within an iteration, check whether any tile element is >= 0 to see if this step
+    produced any results.
 
     Args:
-        query: The thread-block BVH query object
+        query: The thread-block BVH query object, from :func:`bvh_query_aabb_tiled` or :func:`bvh_query_ray_tiled`
 
     Returns:
         A register tile of shape ``(block_dim,)`` with dtype int, where each element contains
-            the result index for that thread (-1 if no result)"""
+            the result index for that thread (-1 if no result)
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def tiled_query(bvh_id: wp.uint64, lowers: wp.array[wp.vec3], uppers: wp.array[wp.vec3],
+                            lo: wp.vec3, hi: wp.vec3, centers: wp.array[wp.vec3]):
+                query = wp.bvh_query_aabb_tiled(bvh_id, lo, hi)
+                while wp.tile_query_valid(query):
+                    result = wp.bvh_query_next_tiled(query)
+                    item = wp.untile(result)
+                    if item >= 0:
+                        centers[item] = 0.5 * (lowers[item] + uppers[item])
+
+            lowers = wp.array([[0, 0, 0], [2, 0, 0], [4, 0, 0]], dtype=wp.vec3)
+            uppers = wp.array([[1, 1, 1], [3, 1, 1], [5, 1, 1]], dtype=wp.vec3)
+            bvh = wp.Bvh(lowers=lowers, uppers=uppers)
+
+            centers = wp.zeros(3, dtype=wp.vec3)
+            wp.launch_tiled(tiled_query, dim=[1], inputs=[bvh.id, lowers, uppers, wp.vec3(0.5, 0.5, 0.5), wp.vec3(4.5, 0.5, 0.5)], outputs=[centers], block_dim=32)
+            print(centers.numpy().tolist())
+
+        .. testoutput::
+
+            [[0.5, 0.5, 0.5], [2.5, 0.5, 0.5], [4.5, 0.5, 0.5]]"""
     ...
 
 def tile_bvh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> BvhQueryTiled:
@@ -4619,7 +4811,33 @@ def bvh_get_group_root(id: uint64, group: int32) -> int:
 
     Returns:
         The root node index for the specified group. If the group does not exist, returns ``-1``
-            (sentinel for the BVH global root). Pass ``-1`` to BVH queries to traverse from the global root."""
+            (sentinel for the BVH global root). Pass ``-1`` to BVH queries to traverse from the global root.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def query_group(bvh_id: wp.uint64, lowers: wp.array[wp.vec3], uppers: wp.array[wp.vec3],
+                            lo: wp.vec3, hi: wp.vec3, centers: wp.array[wp.vec3]):
+                root = wp.bvh_get_group_root(bvh_id, 1)  # restrict the query to group 1
+                query = wp.bvh_query_aabb(bvh_id, lo, hi, root)
+                item = int(0)
+                while wp.bvh_query_next(query, item):
+                    centers[item] = 0.5 * (lowers[item] + uppers[item])
+
+            lowers = wp.array([[0, 0, 0], [2, 0, 0], [4, 0, 0]], dtype=wp.vec3)
+            uppers = wp.array([[1, 1, 1], [3, 1, 1], [5, 1, 1]], dtype=wp.vec3)
+            groups = wp.array([0, 0, 1], dtype=wp.int32)  # one group index per box (box 2 is alone in group 1)
+            bvh = wp.Bvh(lowers=lowers, uppers=uppers, groups=groups)
+
+            centers = wp.zeros(3, dtype=wp.vec3)
+            wp.launch(query_group, dim=1, inputs=[bvh.id, lowers, uppers, wp.vec3(-1.0, -1.0, -1.0), wp.vec3(6.0, 6.0, 6.0)], outputs=[centers])
+            print(centers.numpy().tolist())
+
+        .. testoutput::
+
+            [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [4.5, 0.5, 0.5]]"""
     ...
 
 def mesh_get_group_root(id: uint64, group: int32) -> int:
@@ -4631,20 +4849,84 @@ def mesh_get_group_root(id: uint64, group: int32) -> int:
 
     Returns:
         The root node index for the specified group. If the group does not exist, returns ``-1``
-            (sentinel for the mesh's global root). Pass ``-1`` to mesh queries to traverse from the global root."""
+            (sentinel for the mesh's global root). Pass ``-1`` to mesh queries to traverse from the global root.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def group1_only(mesh_id: wp.uint64, origin: wp.vec3, dir: wp.vec3, out_face: wp.array[wp.int32]):
+                root = wp.mesh_get_group_root(mesh_id, 1)
+                hit = wp.mesh_query_ray(mesh_id, origin, dir, 1.0e6, root)
+                if hit.result:
+                    out_face[0] = hit.face
+
+            points = wp.array([[0,0,0],[1,0,0],[0,1,0],  [0,0,5],[1,0,5],[0,1,5]], dtype=wp.vec3)
+            indices = wp.array([0,1,2, 3,4,5], dtype=wp.int32)
+            groups = wp.array([0, 1], dtype=wp.int32)
+            mesh = wp.Mesh(points=points, indices=indices, groups=groups)
+
+            out_face = wp.full(1, -1, dtype=wp.int32)
+            wp.launch(group1_only, dim=1, inputs=[mesh.id, wp.vec3(0.1, 0.1, -1.0), wp.vec3(0.0, 0.0, 1.0)], outputs=[out_face])
+            print("hit face:", out_face.numpy()[0])
+
+        .. testoutput::
+
+            hit face: 1"""
     ...
 
 def mesh_query_point(id: uint64, point: vec3f, max_dist: float32) -> MeshQueryPoint:
     """Compute the closest point on the :class:`warp.Mesh` with identifier ``id`` to the given ``point`` in space.
 
-    Identifies the sign of the distance using additional ray-casts to determine if the point is inside or outside.
-    This method is relatively robust, but does increase computational cost.
-    See below for additional sign determination methods.
+    The sign of the distance (inside/outside) is determined by casting three axis-aligned rays from
+    ``point`` and taking a majority vote over the orientation of the closest hit along each ray; a ray
+    that misses the mesh counts as an outside vote. Classification therefore relies on consistent,
+    outward-facing winding and assumes a watertight mesh, and it is relatively robust but more expensive
+    than :func:`mesh_query_point_sign_normal`. Sign classification examines the whole mesh and is not
+    bounded by ``max_dist``, which only limits the returned closest point. See the other
+    ``mesh_query_point_*`` functions for alternative sign-determination methods.
+
+    Triangles that are degenerate or nearly degenerate relative to their edge lengths are excluded from
+    the closest-point search, so such a face can be skipped even when it satisfies the distance
+    constraint. If every face satisfying the distance constraint is excluded, the query returns no result.
 
     Args:
         id: The mesh identifier
-        point: The point in space to query
-        max_dist: Mesh faces above this distance will not be considered by the query."""
+        point: The query point, in the mesh's local space
+        max_dist: Maximum allowed distance to the returned closest point. The query returns no result if no face is strictly closer than this distance.
+
+    Returns:
+        A :class:`warp.MeshQueryPoint`. Check ``result`` first (``True`` if a face within
+        ``max_dist`` was found), then read ``sign`` (< 0 if ``point`` is inside the mesh, >= 0 if
+        outside), ``face`` (index of the closest face), and the barycentric coordinates ``u`` and
+        ``v`` of the closest point on that face. Pass ``face``, ``u`` and ``v`` to
+        :func:`mesh_eval_position` to obtain the closest point's position.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def nearest(mesh_id: wp.uint64, p: wp.vec3, out_pos: wp.array[wp.vec3], out_inside: wp.array[wp.int32]):
+                res = wp.mesh_query_point(mesh_id, p, 1.0e6)
+                if res.result:
+                    out_pos[0] = wp.mesh_eval_position(mesh_id, res.face, res.u, res.v)
+                    out_inside[0] = wp.where(res.sign < 0.0, 1, 0)
+
+            points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
+            indices = wp.array([0,3,2, 0,2,1,  4,5,6, 4,6,7,  0,1,5, 0,5,4,
+                                2,3,7, 2,7,6,  0,4,7, 0,7,3,  1,2,6, 1,6,5], dtype=wp.int32)
+            mesh = wp.Mesh(points=points, indices=indices)
+
+            out_pos = wp.zeros(1, dtype=wp.vec3)
+            out_inside = wp.zeros(1, dtype=wp.int32)
+            wp.launch(nearest, dim=1, inputs=[mesh.id, wp.vec3(0.5, 0.5, 0.25)], outputs=[out_pos, out_inside])
+            print(out_pos.numpy()[0], "inside:", bool(out_inside.numpy()[0]))
+
+        .. testoutput::
+
+            [0.5 0.5 0. ] inside: True"""
     ...
 
 def mesh_query_point_sign_parity(
@@ -4656,25 +4938,60 @@ def mesh_query_point_sign_parity(
 ) -> MeshQueryPoint:
     """Compute the closest point on the :class:`warp.Mesh` with identifier ``id`` to the given ``point`` in space.
 
-    The method will cast multiple rays starting from the query point by applying
-    small random perturbations to a base direction (1, 1, 1). Each perturbation is
-    sampled independently for the x, y, and z dimensions from a uniform distribution
-    in the range [-perturbation_scale, perturbation_scale), and added to the base
-    direction to produce a slightly altered ray direction. This randomization helps
-    avoid degeneracies such as rays intersecting exactly on triangle edges,
-    vertices, or becoming parallel to mesh features.
+    The sign of the distance (inside/outside) is determined by casting ``n_sample`` rays from ``point``
+    and counting how many mesh faces each ray crosses. Sampling is deterministic: every call uses a
+    fixed seed, so the same ``n_sample`` and ``perturbation_scale`` always produce the same ray
+    directions. Each ray perturbs the base direction (1, 1, 1) by an offset drawn per axis from a
+    uniform distribution over [``-perturbation_scale``, ``perturbation_scale``), which avoids
+    degeneracies such as rays grazing shared edges or vertices.
 
-    For each perturbed ray, the method counts how many mesh faces it intersects and
-    uses the parity (odd/even) of this count to determine whether the ray exits the
-    mesh (odd -> inside, even -> outside). A majority vote over all sampled rays is
-    used to classify the point.
+    The point is classified as inside when at least half of the rays cross an odd number of faces. With
+    an even ``n_sample`` an exact tie therefore counts as inside, so prefer a positive, odd ``n_sample``
+    (larger values are more robust on imperfect meshes). A non-positive ``n_sample`` casts no rays and
+    always classifies the point as inside. Sign classification examines the whole mesh and is not
+    bounded by ``max_dist``, which only limits the returned closest point.
+
+    Triangles that are degenerate or nearly degenerate relative to their edge lengths are excluded from
+    the closest-point search, so such a face can be skipped even when it satisfies the distance
+    constraint. If every face satisfying the distance constraint is excluded, the query returns no result.
 
     Args:
         id: The mesh identifier
-        point: The point in space to query
-        max_dist: Mesh faces above this distance will not be considered by the query
-        n_sample: Number of rays to cast (default: 1). Use a higher value if the sign is inaccurate.
-        perturbation_scale: Scale of the perturbation."""
+        point: The query point, in the mesh's local space
+        max_dist: Maximum allowed distance to the returned closest point. The query returns no result if no face is strictly closer than this distance.
+        n_sample: Number of rays used to classify the sign. Prefer a positive, odd value; larger values
+            are more robust. A non-positive value casts no rays and classifies the point as inside.
+        perturbation_scale: Scale of the perturbation.
+
+    Returns:
+        A :class:`warp.MeshQueryPoint`. Check ``result`` first (``True`` if a face within
+        ``max_dist`` was found), then read ``sign`` (< 0 if ``point`` is inside the mesh, >= 0 if
+        outside), ``face`` (index of the closest face), and the barycentric coordinates ``u`` and
+        ``v`` of the closest point on that face. Pass ``face``, ``u`` and ``v`` to
+        :func:`mesh_eval_position` to obtain the closest point's position.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def classify(mesh_id: wp.uint64, p: wp.vec3, out_inside: wp.array[wp.int32]):
+                res = wp.mesh_query_point_sign_parity(mesh_id, p, 1.0e6)
+                if res.result:
+                    out_inside[0] = wp.where(res.sign < 0.0, 1, 0)
+
+            points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
+            indices = wp.array([0,3,2, 0,2,1,  4,5,6, 4,6,7,  0,1,5, 0,5,4,
+                                2,3,7, 2,7,6,  0,4,7, 0,7,3,  1,2,6, 1,6,5], dtype=wp.int32)
+            mesh = wp.Mesh(points=points, indices=indices)
+
+            out_inside = wp.zeros(1, dtype=wp.int32)
+            wp.launch(classify, dim=1, inputs=[mesh.id, wp.vec3(0.5, 0.5, 0.5)], outputs=[out_inside])
+            print("inside:", bool(out_inside.numpy()[0]))
+
+        .. testoutput::
+
+            inside: True"""
     ...
 
 def mesh_query_point_no_sign(id: uint64, point: vec3f, max_dist: float32) -> MeshQueryPoint:
@@ -4682,10 +4999,43 @@ def mesh_query_point_no_sign(id: uint64, point: vec3f, max_dist: float32) -> Mes
 
     This method does not compute the sign of the point (inside/outside) which makes it faster than other point query methods.
 
+    Triangles that are degenerate or nearly degenerate relative to their edge lengths are excluded from
+    the closest-point search, so such a face can be skipped even when it satisfies the distance
+    constraint. If every face satisfying the distance constraint is excluded, the query returns no result.
+
     Args:
         id: The mesh identifier
-        point: The point in space to query
-        max_dist: Mesh faces above this distance will not be considered by the query."""
+        point: The query point, in the mesh's local space
+        max_dist: Maximum allowed distance to the returned closest point. The query returns no result if no face is strictly closer than this distance.
+
+    Returns:
+        A :class:`warp.MeshQueryPoint`. Check ``result`` first, then read ``face`` (index of the
+        closest face) and the barycentric coordinates ``u`` and ``v`` of the closest point. This
+        method does not compute ``sign``. Pass ``face``, ``u`` and ``v`` to
+        :func:`mesh_eval_position` to obtain the closest point's position.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def nearest(mesh_id: wp.uint64, p: wp.vec3, out_pos: wp.array[wp.vec3]):
+                res = wp.mesh_query_point_no_sign(mesh_id, p, 1.0e6)
+                if res.result:
+                    out_pos[0] = wp.mesh_eval_position(mesh_id, res.face, res.u, res.v)
+
+            points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
+            indices = wp.array([0,3,2, 0,2,1,  4,5,6, 4,6,7,  0,1,5, 0,5,4,
+                                2,3,7, 2,7,6,  0,4,7, 0,7,3,  1,2,6, 1,6,5], dtype=wp.int32)
+            mesh = wp.Mesh(points=points, indices=indices)
+
+            out_pos = wp.zeros(1, dtype=wp.vec3)
+            wp.launch(nearest, dim=1, inputs=[mesh.id, wp.vec3(0.5, 0.5, 0.25)], outputs=[out_pos])
+            print(out_pos.numpy()[0])
+
+        .. testoutput::
+
+            [0.5 0.5 0. ]"""
     ...
 
 def mesh_query_furthest_point_no_sign(id: uint64, point: vec3f, min_dist: float32) -> MeshQueryPoint:
@@ -4693,10 +5043,44 @@ def mesh_query_furthest_point_no_sign(id: uint64, point: vec3f, min_dist: float3
 
     This method does not compute the sign of the point (inside/outside).
 
+    Triangles that are degenerate or nearly degenerate relative to their edge lengths are excluded from
+    the furthest-point search, so such a face can be skipped even when it satisfies the distance
+    constraint. If every face satisfying the distance constraint is excluded, the query returns no result.
+
     Args:
         id: The mesh identifier
-        point: The point in space to query
-        min_dist: Mesh faces below this distance will not be considered by the query."""
+        point: The query point, in the mesh's local space
+        min_dist: Minimum allowed distance to the returned furthest point. The query returns no result if no face is strictly farther than this distance.
+
+    Returns:
+        A :class:`warp.MeshQueryPoint`. Check ``result`` first (``True`` if a face farther than
+        ``min_dist`` was found), then read ``face`` (index of the furthest face) and the
+        barycentric coordinates ``u`` and ``v`` of the furthest point. This method does not compute
+        ``sign``. Pass ``face``, ``u`` and ``v`` to :func:`mesh_eval_position` to obtain its
+        position.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def farthest(mesh_id: wp.uint64, p: wp.vec3, out_pos: wp.array[wp.vec3]):
+                res = wp.mesh_query_furthest_point_no_sign(mesh_id, p, 0.0)
+                if res.result:
+                    out_pos[0] = wp.mesh_eval_position(mesh_id, res.face, res.u, res.v)
+
+            points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
+            indices = wp.array([0,3,2, 0,2,1,  4,5,6, 4,6,7,  0,1,5, 0,5,4,
+                                2,3,7, 2,7,6,  0,4,7, 0,7,3,  1,2,6, 1,6,5], dtype=wp.int32)
+            mesh = wp.Mesh(points=points, indices=indices)
+
+            out_pos = wp.zeros(1, dtype=wp.vec3)
+            wp.launch(farthest, dim=1, inputs=[mesh.id, wp.vec3(0.0, 0.0, 0.0)], outputs=[out_pos])
+            print(out_pos.numpy()[0])
+
+        .. testoutput::
+
+            [1. 1. 1.]"""
     ...
 
 def mesh_query_point_sign_normal(id: uint64, point: vec3f, max_dist: float32, epsilon: float32) -> MeshQueryPoint:
@@ -4706,12 +5090,46 @@ def mesh_query_point_sign_normal(id: uint64, point: vec3f, max_dist: float32, ep
     This approach to sign determination is robust for well conditioned meshes that are watertight and non-self intersecting.
     It is also comparatively fast to compute.
 
+    Triangles that are degenerate or nearly degenerate relative to their edge lengths are excluded from
+    the closest-point search, so such a face can be skipped even when it satisfies the distance
+    constraint. If every face satisfying the distance constraint is excluded, the query returns no result.
+
     Args:
         id: The mesh identifier
-        point: The point in space to query
-        max_dist: Mesh faces above this distance will not be considered by the query
+        point: The query point, in the mesh's local space
+        max_dist: Maximum allowed distance to the returned closest point. The query returns no result if no face is strictly closer than this distance.
         epsilon: Epsilon treating distance values as equal, when locating the minimum distance vertex/face/edge, as a
-            fraction of the average edge length, also for treating closest point as being on edge/vertex default 1e-3."""
+            fraction of the average edge length, also for treating closest point as being on edge/vertex default 1e-3.
+
+    Returns:
+        A :class:`warp.MeshQueryPoint`. Check ``result`` first (``True`` if a face within
+        ``max_dist`` was found), then read ``sign`` (< 0 if ``point`` is inside the mesh, >= 0 if
+        outside), ``face`` (index of the closest face), and the barycentric coordinates ``u`` and
+        ``v`` of the closest point on that face. Pass ``face``, ``u`` and ``v`` to
+        :func:`mesh_eval_position` to obtain the closest point's position.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def classify(mesh_id: wp.uint64, p: wp.vec3, out_inside: wp.array[wp.int32]):
+                res = wp.mesh_query_point_sign_normal(mesh_id, p, 1.0e6)
+                if res.result:
+                    out_inside[0] = wp.where(res.sign < 0.0, 1, 0)
+
+            points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
+            indices = wp.array([0,3,2, 0,2,1,  4,5,6, 4,6,7,  0,1,5, 0,5,4,
+                                2,3,7, 2,7,6,  0,4,7, 0,7,3,  1,2,6, 1,6,5], dtype=wp.int32)
+            mesh = wp.Mesh(points=points, indices=indices)
+
+            out_inside = wp.zeros(1, dtype=wp.int32)
+            wp.launch(classify, dim=1, inputs=[mesh.id, wp.vec3(0.5, 0.5, 0.5)], outputs=[out_inside])
+            print("inside:", bool(out_inside.numpy()[0]))
+
+        .. testoutput::
+
+            inside: True"""
     ...
 
 def mesh_query_point_sign_winding_number(
@@ -4727,33 +5145,115 @@ def mesh_query_point_sign_winding_number(
     and provides a smooth approximation to sign even when the mesh is not watertight. This method is the most robust and accurate of the sign determination meshes
     but also the most expensive.
 
-    .. note:: The :class:`warp.Mesh` object must be constructed with ``support_winding_number=True`` for this method to return correct results.
+    .. note:: The :class:`warp.Mesh` must be constructed with ``support_winding_number=True`` to use
+        the winding number for sign determination. If it was not, the sign silently falls back to the
+        method used by :func:`mesh_query_point` (a majority vote over the orientation of the closest hit
+        of three axis-aligned rays), which is robust only for watertight meshes with consistent winding;
+        the closest point, face, and barycentric outputs are unaffected.
+
+    Sign classification examines the whole mesh and is not bounded by ``max_dist``, which only limits the
+    returned closest point.
+
+    Triangles that are degenerate or nearly degenerate relative to their edge lengths are excluded from
+    the closest-point search, so such a face can be skipped even when it satisfies the distance
+    constraint. If every face satisfying the distance constraint is excluded, the query returns no result.
 
     Args:
         id: The mesh identifier
-        point: The point in space to query
-        max_dist: Mesh faces above this distance will not be considered by the query
+        point: The query point, in the mesh's local space
+        max_dist: Maximum allowed distance to the returned closest point. The query returns no result if no face is strictly closer than this distance.
         accuracy: Accuracy for computing the winding number with fast winding number method utilizing second-order dipole approximation, default 2.0
-        threshold: The threshold of the winding number to be considered inside, default 0.5."""
+        threshold: The threshold of the winding number to be considered inside, default 0.5.
+
+    Returns:
+        A :class:`warp.MeshQueryPoint`. Check ``result`` first (``True`` if a face within
+        ``max_dist`` was found), then read ``sign`` (< 0 if ``point`` is inside the mesh, >= 0 if
+        outside), ``face`` (index of the closest face), and the barycentric coordinates ``u`` and
+        ``v`` of the closest point on that face. Pass ``face``, ``u`` and ``v`` to
+        :func:`mesh_eval_position` to obtain the closest point's position.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def classify(mesh_id: wp.uint64, p: wp.vec3, out_inside: wp.array[wp.int32]):
+                res = wp.mesh_query_point_sign_winding_number(mesh_id, p, 1.0e6)
+                if res.result:
+                    out_inside[0] = wp.where(res.sign < 0.0, 1, 0)
+
+            points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
+            indices = wp.array([0,3,2, 0,2,1,  4,5,6, 4,6,7,  0,1,5, 0,5,4,
+                                2,3,7, 2,7,6,  0,4,7, 0,7,3,  1,2,6, 1,6,5], dtype=wp.int32)
+            mesh = wp.Mesh(points=points, indices=indices, support_winding_number=True)
+
+            out_inside = wp.zeros(1, dtype=wp.int32)
+            wp.launch(classify, dim=1, inputs=[mesh.id, wp.vec3(0.5, 0.5, 0.5)], outputs=[out_inside])
+            print("inside:", bool(out_inside.numpy()[0]))
+
+        .. testoutput::
+
+            inside: True"""
     ...
 
 def mesh_query_ray(id: uint64, start: vec3f, dir: vec3f, max_t: float32, root: int32) -> MeshQueryRay:
     """Compute the closest ray hit on the :class:`warp.Mesh` with identifier ``id``.
 
+    ``start`` and ``dir`` are given in the mesh's local space. ``dir`` need not be normalized, but
+    ``max_t`` and the returned ``t`` are measured in multiples of its length, so normalize it for
+    them to be distances in mesh-space units.
+
     The ``root`` parameter can be obtained using the :func:`mesh_get_group_root` function when creating a grouped mesh.
     When ``root`` is a valid (>=0) value, the traversal will be confined to the subtree starting from the root.
     If ``root`` is -1 (default), traversal starts at the mesh's global root.
 
     Args:
         id: The mesh identifier
-        start: The start point of the ray
-        dir: The ray direction (should be normalized)
-        max_t: The maximum distance along the ray to check for intersections
-        root: The root node index for grouped BVH queries, or -1 for global root (optional, default: -1)"""
+        start: The ray origin, in the mesh's local space
+        dir: The ray direction, in the mesh's local space (see above on normalization)
+        max_t: The maximum distance along the ray to check for intersections (in multiples of ``dir``'s length)
+        root: The root node index for grouped BVH queries, or -1 for global root (optional, default: -1)
+
+    Returns:
+        A :class:`warp.MeshQueryRay`. Check ``result`` first (``True`` if a hit within ``max_t`` was
+        found), then read ``t`` (distance to the hit, in multiples of ``dir``'s length), ``face``
+        (index of the hit face), ``normal`` (the unit face normal, oriented by the face's winding
+        order), ``sign`` (> 0 if the ray hit the front of the face, < 0 the back), and the
+        barycentric coordinates ``u`` and ``v`` of the hit. The hit position is ``start + t * dir``.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def cast(mesh_id: wp.uint64, origin: wp.vec3, dir: wp.vec3, out_t: wp.array[wp.float32], out_n: wp.array[wp.vec3]):
+                hit = wp.mesh_query_ray(mesh_id, origin, dir, 1.0e6)
+                if hit.result:
+                    out_t[0] = hit.t
+                    out_n[0] = hit.normal
+
+            points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
+            indices = wp.array([0,3,2, 0,2,1,  4,5,6, 4,6,7,  0,1,5, 0,5,4,
+                                2,3,7, 2,7,6,  0,4,7, 0,7,3,  1,2,6, 1,6,5], dtype=wp.int32)
+            mesh = wp.Mesh(points=points, indices=indices)
+
+            out_t = wp.zeros(1, dtype=wp.float32)
+            out_n = wp.zeros(1, dtype=wp.vec3)
+            wp.launch(cast, dim=1, inputs=[mesh.id, wp.vec3(0.5, 0.5, -2.0), wp.vec3(0.0, 0.0, 1.0)], outputs=[out_t, out_n])
+            print("t =", out_t.numpy()[0], "normal =", out_n.numpy()[0])
+
+        .. testoutput::
+
+            t = 2.0 normal = [ 0.  0. -1.]"""
     ...
 
 def mesh_query_ray_anyhit(id: uint64, start: vec3f, dir: vec3f, max_t: float32, root: int32) -> bool:
-    """Check for any ray hit on the :class:`warp.Mesh` with identifier ``id``.
+    """Check whether a ray hits the :class:`warp.Mesh` with identifier ``id``, without computing the closest hit.
+
+    Returns as soon as any intersecting face within ``max_t`` is found, so it is cheaper than
+    :func:`mesh_query_ray` when only the yes/no answer is needed. ``start`` and ``dir`` are given in
+    the mesh's local space; ``max_t`` is measured in multiples of ``dir``'s length, so normalize
+    ``dir`` for it to be a distance in mesh-space units.
 
     The ``root`` parameter can be obtained using the :func:`mesh_get_group_root` function when creating a grouped mesh.
     When ``root`` is a valid (>=0) value, the traversal will be confined to the subtree starting from the root.
@@ -4761,10 +5261,34 @@ def mesh_query_ray_anyhit(id: uint64, start: vec3f, dir: vec3f, max_t: float32, 
 
     Args:
         id: The mesh identifier
-        start: The start point of the ray
-        dir: The ray direction (should be normalized)
-        max_t: The maximum distance along the ray to check for intersections
-        root: The root node index for grouped BVH queries, or -1 for global root (optional, default: -1)"""
+        start: The ray origin, in the mesh's local space
+        dir: The ray direction, in the mesh's local space
+        max_t: The maximum distance along the ray to check for intersections (in multiples of ``dir``'s length)
+        root: The root node index for grouped BVH queries, or -1 for global root (optional, default: -1)
+
+    Returns:
+        ``True`` if the ray intersects any face within ``max_t``, ``False`` otherwise.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def occluded(mesh_id: wp.uint64, origin: wp.vec3, dir: wp.vec3, out_hit: wp.array[wp.int32]):
+                out_hit[0] = wp.where(wp.mesh_query_ray_anyhit(mesh_id, origin, dir, 1.0e6), 1, 0)
+
+            points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
+            indices = wp.array([0,3,2, 0,2,1,  4,5,6, 4,6,7,  0,1,5, 0,5,4,
+                                2,3,7, 2,7,6,  0,4,7, 0,7,3,  1,2,6, 1,6,5], dtype=wp.int32)
+            mesh = wp.Mesh(points=points, indices=indices)
+
+            out_hit = wp.zeros(1, dtype=wp.int32)
+            wp.launch(occluded, dim=1, inputs=[mesh.id, wp.vec3(0.5, 0.5, -2.0), wp.vec3(0.0, 0.0, 1.0)], outputs=[out_hit])
+            print("hit:", bool(out_hit.numpy()[0]))
+
+        .. testoutput::
+
+            hit: True"""
     ...
 
 def mesh_query_ray_count_intersections(id: uint64, start: vec3f, dir: vec3f, root: int32) -> int:
@@ -4783,40 +5307,161 @@ def mesh_query_ray_count_intersections(id: uint64, start: vec3f, dir: vec3f, roo
 
     Args:
         id: The mesh identifier
-        start: The start point of the ray
-        dir: The ray direction (should be normalized)
+        start: The ray origin, in the mesh's local space
+        dir: The ray direction, in the mesh's local space (only its direction matters; the count is independent of its length)
         root: The root node index for grouped BVH queries, or -1 for global root (optional, default: -1)
 
     Returns:
-        The number of intersections (with ``t >= 0``) between the ray and the mesh."""
+        The number of intersections (with ``t >= 0``) between the ray and the mesh.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def crossings(mesh_id: wp.uint64, origin: wp.vec3, dir: wp.vec3, out_n: wp.array[wp.int32]):
+                out_n[0] = wp.mesh_query_ray_count_intersections(mesh_id, origin, dir)
+
+            points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
+            indices = wp.array([0,3,2, 0,2,1,  4,5,6, 4,6,7,  0,1,5, 0,5,4,
+                                2,3,7, 2,7,6,  0,4,7, 0,7,3,  1,2,6, 1,6,5], dtype=wp.int32)
+            mesh = wp.Mesh(points=points, indices=indices)
+
+            out_n = wp.zeros(1, dtype=wp.int32)
+            wp.launch(crossings, dim=1, inputs=[mesh.id, wp.vec3(0.3, 0.6, -2.0), wp.vec3(0.0, 0.0, 1.0)], outputs=[out_n])
+            print("crossings:", out_n.numpy()[0])
+
+        .. testoutput::
+
+            crossings: 2"""
     ...
 
 def mesh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> MeshQueryAABB:
-    """Construct an axis-aligned bounding box query against a :class:`warp.Mesh`.
+    """Construct an axis-aligned bounding box (AABB) query against a :class:`warp.Mesh`.
 
-    This query can be used to iterate over all bounding boxes of the triangles inside a volume.
+    Returns a query that iterates over every triangle (face) whose own axis-aligned bounding box
+    overlaps the query box ``[low, high]``, given in the mesh's local space. This is a broad-phase
+    test on bounding boxes: a reported face's triangle may not actually intersect the box, so
+    perform an exact test yourself if required. Advance the query and read each result with
+    :func:`mesh_query_aabb_next`.
 
     Args:
         id: The mesh identifier
-        low: The lower bound of the bounding box in mesh space
-        high: The upper bound of the bounding box in mesh space."""
+        low: The lower bound of the query box, in the mesh's local space
+        high: The upper bound of the query box, in the mesh's local space
+
+    Returns:
+        A :class:`warp.MeshQueryAABB`. It is opaque; pass it to :func:`mesh_query_aabb_next`, which
+        writes the index of each overlapping face to its ``index`` argument.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def count_faces(mesh_id: wp.uint64, lo: wp.vec3, hi: wp.vec3, out_count: wp.array[wp.int32]):
+                query = wp.mesh_query_aabb(mesh_id, lo, hi)
+                face = int(0)
+                while wp.mesh_query_aabb_next(query, face):
+                    wp.atomic_add(out_count, 0, 1)
+
+            points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
+            indices = wp.array([0,3,2, 0,2,1,  4,5,6, 4,6,7,  0,1,5, 0,5,4,
+                                2,3,7, 2,7,6,  0,4,7, 0,7,3,  1,2,6, 1,6,5], dtype=wp.int32)
+            mesh = wp.Mesh(points=points, indices=indices)
+
+            out_count = wp.zeros(1, dtype=wp.int32)
+            wp.launch(count_faces, dim=1, inputs=[mesh.id, wp.vec3(-1.0, -1.0, -1.0), wp.vec3(2.0, 2.0, 2.0)], outputs=[out_count])
+            print("overlapping faces:", out_count.numpy()[0])
+
+        .. testoutput::
+
+            overlapping faces: 12"""
     ...
 
 def mesh_query_aabb_next(query: MeshQueryAABB, index: int32) -> bool:
-    """Move to the next triangle whose bounding box overlaps the query bounding box.
+    """Advance a mesh AABB query to the next overlapping triangle and report whether one was found.
 
-    The index of the current face is stored in ``index``, returns ``False`` if there are no more overlapping triangles."""
+    Writes the index of the current face to ``index`` and returns ``True``; returns ``False`` once
+    no overlapping triangles remain (``index`` is then left unchanged). The reported index is a
+    face index (0-based, into the mesh's triangles), suitable for :func:`mesh_eval_position`,
+    :func:`mesh_eval_face_normal`, and the other face-indexed functions. Used in a ``while`` loop
+    together with :func:`mesh_query_aabb`.
+
+    Args:
+        query: The query to advance, from :func:`mesh_query_aabb`
+        index: Output; receives the index of the current overlapping face
+
+    Returns:
+        ``True`` if another overlapping triangle was found (its face index written to ``index``),
+        ``False`` if the query is exhausted.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def count_faces(mesh_id: wp.uint64, lo: wp.vec3, hi: wp.vec3, out_count: wp.array[wp.int32]):
+                query = wp.mesh_query_aabb(mesh_id, lo, hi)
+                face = int(0)
+                while wp.mesh_query_aabb_next(query, face):
+                    wp.atomic_add(out_count, 0, 1)
+
+            points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
+            indices = wp.array([0,3,2, 0,2,1,  4,5,6, 4,6,7,  0,1,5, 0,5,4,
+                                2,3,7, 2,7,6,  0,4,7, 0,7,3,  1,2,6, 1,6,5], dtype=wp.int32)
+            mesh = wp.Mesh(points=points, indices=indices)
+
+            out_count = wp.zeros(1, dtype=wp.int32)
+            wp.launch(count_faces, dim=1, inputs=[mesh.id, wp.vec3(-1.0, -1.0, -1.0), wp.vec3(2.0, 2.0, 2.0)], outputs=[out_count])
+            print("overlapping faces:", out_count.numpy()[0])
+
+        .. testoutput::
+
+            overlapping faces: 12"""
     ...
 
 def mesh_query_aabb_tiled(id: uint64, low: vec3f, high: vec3f) -> MeshQueryAABBTiled:
-    """Construct an axis-aligned bounding box query against a :class:`warp.Mesh` for thread-block parallel traversal.
+    """Construct an axis-aligned bounding box (AABB) query against a :class:`warp.Mesh` for thread-block parallel traversal.
 
-    This query can be used in tiled kernels to cooperatively traverse a mesh's BVH across a thread block.
+    For use in tiled kernels: all threads in the block cooperatively traverse the mesh's BVH.
+    Advance the query with :func:`mesh_query_aabb_next_tiled` (one face index per thread per step)
+    in a loop guarded by :func:`tile_query_valid`. ``low`` and ``high`` must be identical across all
+    threads in the block and are given in the mesh's local space.
 
     Args:
         id: The mesh identifier
-        low: The lower bound of the bounding box in mesh space (must be the same for all threads in the block)
-        high: The upper bound of the bounding box in mesh space (must be the same for all threads in the block)"""
+        low: The lower bound of the query box, in the mesh's local space (must be the same for all threads in the block)
+        high: The upper bound of the query box, in the mesh's local space (must be the same for all threads in the block)
+
+    Returns:
+        A :class:`warp.MeshQueryAABBTiled` to advance with :func:`mesh_query_aabb_next_tiled`.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def tiled_faces(mesh_id: wp.uint64, lo: wp.vec3, hi: wp.vec3, out_count: wp.array[wp.int32]):
+                query = wp.mesh_query_aabb_tiled(mesh_id, lo, hi)
+                while wp.tile_query_valid(query):
+                    result = wp.mesh_query_aabb_next_tiled(query)
+                    face = wp.untile(result)
+                    if face >= 0:
+                        wp.atomic_add(out_count, 0, 1)
+
+            points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
+            indices = wp.array([0,3,2, 0,2,1,  4,5,6, 4,6,7,  0,1,5, 0,5,4,
+                                2,3,7, 2,7,6,  0,4,7, 0,7,3,  1,2,6, 1,6,5], dtype=wp.int32)
+            mesh = wp.Mesh(points=points, indices=indices)
+
+            out_count = wp.zeros(1, dtype=wp.int32)
+            wp.launch_tiled(tiled_faces, dim=[1], inputs=[mesh.id, wp.vec3(-1.0, -1.0, -1.0), wp.vec3(2.0, 2.0, 2.0)], outputs=[out_count], block_dim=32)
+            print("overlapping faces:", out_count.numpy()[0])
+
+        .. testoutput::
+
+            overlapping faces: 12"""
     ...
 
 def mesh_query_aabb_next_tiled(query: MeshQueryAABBTiled) -> Tile[int32, tuple[int]]:
@@ -4825,14 +5470,42 @@ def mesh_query_aabb_next_tiled(query: MeshQueryAABBTiled) -> Tile[int32, tuple[i
     Each thread in the block receives one result index in the returned tile, or -1 if no result for that thread.
     The function returns a register tile of shape ``(block_dim,)`` containing the result indices.
 
-    To check if any results were found, check if any element in the tile is >= 0.
+    To check if any results were found, check if any element in the tile is >= 0. Call this in a
+    loop guarded by :func:`tile_query_valid`, which returns ``False`` once the query is exhausted.
+    All threads in the block must call it cooperatively.
 
     Args:
-        query: The thread-block mesh query object
+        query: The thread-block mesh query object, from :func:`mesh_query_aabb_tiled`
 
     Returns:
         A register tile of shape ``(block_dim,)`` with dtype int, where each element contains
-            the result index for that thread (-1 if no result)"""
+            the result index for that thread (-1 if no result)
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def tiled_faces(mesh_id: wp.uint64, lo: wp.vec3, hi: wp.vec3, out_count: wp.array[wp.int32]):
+                query = wp.mesh_query_aabb_tiled(mesh_id, lo, hi)
+                while wp.tile_query_valid(query):
+                    result = wp.mesh_query_aabb_next_tiled(query)
+                    face = wp.untile(result)
+                    if face >= 0:
+                        wp.atomic_add(out_count, 0, 1)
+
+            points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
+            indices = wp.array([0,3,2, 0,2,1,  4,5,6, 4,6,7,  0,1,5, 0,5,4,
+                                2,3,7, 2,7,6,  0,4,7, 0,7,3,  1,2,6, 1,6,5], dtype=wp.int32)
+            mesh = wp.Mesh(points=points, indices=indices)
+
+            out_count = wp.zeros(1, dtype=wp.int32)
+            wp.launch_tiled(tiled_faces, dim=[1], inputs=[mesh.id, wp.vec3(-1.0, -1.0, -1.0), wp.vec3(2.0, 2.0, 2.0)], outputs=[out_count], block_dim=32)
+            print("overlapping faces:", out_count.numpy()[0])
+
+        .. testoutput::
+
+            overlapping faces: 12"""
     ...
 
 def tile_mesh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> MeshQueryAABBTiled:
@@ -4869,104 +5542,526 @@ def tile_mesh_query_aabb_next(query: MeshQueryAABBTiled) -> Tile[int32, tuple[in
     ...
 
 def mesh_eval_position(id: uint64, face: int32, bary_u: float32, bary_v: float32) -> vec3f:
-    """Evaluate the position on the :class:`warp.Mesh` given a face index and barycentric coordinates."""
+    """Evaluate the interpolated position on a face of the :class:`warp.Mesh` from barycentric coordinates.
+
+    Linearly interpolates the face's three vertex positions: with the face's vertices ``v0``,
+    ``v1``, ``v2``, returns ``v0 * bary_u + v1 * bary_v + v2 * (1 - bary_u - bary_v)``, in the
+    mesh's local space. Use this to turn a ``face``/``u``/``v`` result from a mesh point or ray
+    query back into a position.
+
+    Args:
+        id: The mesh identifier
+        face: The face (triangle) index
+        bary_u: Barycentric weight of the face's first vertex
+        bary_v: Barycentric weight of the face's second vertex
+
+    Returns:
+        The interpolated position, in the mesh's local space.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def centroid(mesh_id: wp.uint64, out: wp.array[wp.vec3]):
+                out[0] = wp.mesh_eval_position(mesh_id, 0, 1.0 / 3.0, 1.0 / 3.0)
+
+            points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
+            indices = wp.array([0,3,2, 0,2,1,  4,5,6, 4,6,7,  0,1,5, 0,5,4,
+                                2,3,7, 2,7,6,  0,4,7, 0,7,3,  1,2,6, 1,6,5], dtype=wp.int32)
+            mesh = wp.Mesh(points=points, indices=indices)
+
+            out = wp.zeros(1, dtype=wp.vec3)
+            wp.launch(centroid, dim=1, inputs=[mesh.id], outputs=[out])
+            p = out.numpy()[0]
+            print(f"({p[0]:.3f}, {p[1]:.3f}, {p[2]:.3f})")
+
+        .. testoutput::
+
+            (0.333, 0.667, 0.000)"""
     ...
 
 def mesh_eval_velocity(id: uint64, face: int32, bary_u: float32, bary_v: float32) -> vec3f:
-    """Evaluate the velocity on the :class:`warp.Mesh` given a face index and barycentric coordinates."""
+    """Evaluate the interpolated velocity on a face of the :class:`warp.Mesh` from barycentric coordinates.
+
+    Linearly interpolates the face's three per-vertex velocities the same way
+    :func:`mesh_eval_position` interpolates positions:
+    ``v0 * bary_u + v1 * bary_v + v2 * (1 - bary_u - bary_v)``. Requires the mesh to have been
+    constructed with a ``velocities`` array; returns a zero vector otherwise.
+
+    Args:
+        id: The mesh identifier
+        face: The face (triangle) index
+        bary_u: Barycentric weight of the face's first vertex
+        bary_v: Barycentric weight of the face's second vertex
+
+    Returns:
+        The interpolated velocity, or a zero vector if the mesh has no velocities.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def vel_at(mesh_id: wp.uint64, out: wp.array[wp.vec3]):
+                out[0] = wp.mesh_eval_velocity(mesh_id, 0, 0.25, 0.25)
+
+            points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
+            indices = wp.array([0,3,2, 0,2,1,  4,5,6, 4,6,7,  0,1,5, 0,5,4,
+                                2,3,7, 2,7,6,  0,4,7, 0,7,3,  1,2,6, 1,6,5], dtype=wp.int32)
+            velocities = wp.array(np.tile([0.0, 0.0, 1.0], (8, 1)), dtype=wp.vec3)
+            mesh = wp.Mesh(points=points, indices=indices, velocities=velocities)
+
+            out = wp.zeros(1, dtype=wp.vec3)
+            wp.launch(vel_at, dim=1, inputs=[mesh.id], outputs=[out])
+            print(out.numpy()[0])
+
+        .. testoutput::
+
+            [0. 0. 1.]"""
     ...
 
 @over
 def hash_grid_query(id: uint64, point: vec3f, max_dist: float32) -> HashGridQuery:
     """Construct a point query against a :class:`warp.HashGrid`.
 
-    This query can be used to iterate over all neighboring points within a fixed radius from the query point."""
+    Returns a query that iterates over candidate neighbors of ``point``: every point in the grid
+    cells overlapped by the box from ``point - max_dist`` to ``point + max_dist``. These are
+    *candidates* — the grid does not test distance, so some are farther than ``max_dist``; filter
+    by actual distance yourself. Advance the query and read each candidate's index with
+    :func:`hash_grid_query_next`. ``point`` must be in the same coordinate space as the points the
+    grid was built from (see :class:`warp.HashGrid`).
+
+    Args:
+        id: The :class:`warp.HashGrid` identifier
+        point: The query point
+        max_dist: The query radius
+
+    Returns:
+        A hash-grid query object to pass to :func:`hash_grid_query_next`.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def count_neighbors(grid_id: wp.uint64, pts: wp.array[wp.vec3], radius: wp.float32, out_count: wp.array[wp.int32]):
+                i = wp.tid()
+                p = pts[i]
+                query = wp.hash_grid_query(grid_id, p, radius)
+                index = int(0)
+                n = int(0)
+                while wp.hash_grid_query_next(query, index):
+                    if wp.length(p - pts[index]) <= radius:
+                        n += 1
+                out_count[i] = n
+
+            points = wp.array([[0,0,0],[0.1,0,0],[0.5,0,0],[2.0,0,0]], dtype=wp.vec3)
+            grid = wp.HashGrid(dim_x=8, dim_y=8, dim_z=8)
+            grid.build(points=points, radius=0.3)
+
+            out_count = wp.zeros(4, dtype=wp.int32)
+            wp.launch(count_neighbors, dim=4, inputs=[grid.id, points, 0.3], outputs=[out_count])
+            print(out_count.numpy())
+
+        .. testoutput::
+
+            [2 2 1 1]"""
     ...
 
 @over
 def hash_grid_query(id: uint64, point: vec3h, max_dist: float16) -> HashGridQuery:
     """Construct a point query against a :class:`warp.HashGrid` (float16 precision).
 
-    This query can be used to iterate over all neighboring points within a fixed radius from the query point."""
+    The ``float16`` overload of :func:`hash_grid_query`. Behavior and usage match the default
+    ``float32`` overload; see it for details and a usage example.
+
+    Args:
+        id: The :class:`warp.HashGrid` identifier
+        point: The query point
+        max_dist: The query radius
+
+    Returns:
+        A hash-grid query object to pass to :func:`hash_grid_query_next`."""
     ...
 
 @over
 def hash_grid_query(id: uint64, point: vec3d, max_dist: float64) -> HashGridQuery:
     """Construct a point query against a :class:`warp.HashGrid` (float64 precision).
 
-    This query can be used to iterate over all neighboring points within a fixed radius from the query point."""
+    The ``float64`` overload of :func:`hash_grid_query`. Behavior and usage match the default
+    ``float32`` overload; see it for details and a usage example.
+
+    Args:
+        id: The :class:`warp.HashGrid` identifier
+        point: The query point
+        max_dist: The query radius
+
+    Returns:
+        A hash-grid query object to pass to :func:`hash_grid_query_next`."""
     ...
 
 def hash_grid_query_next(query: HashGridQuery, index: int32) -> bool:
-    """Move to the next point in the hash grid query.
+    """Advance a hash grid query to the next candidate neighbor and report whether one was found.
 
-    Supports query objects returned by :func:`wp.hash_grid_query() <warp.hash_grid_query>` for all hash grid
-    coordinate precisions. The index of the current neighbor is stored in ``index``; returns ``False`` if there are no
-    more neighbors."""
+    Writes the candidate's index to ``index`` and returns ``True``; returns ``False`` once no
+    candidates remain (``index`` is then left unchanged). The index refers to the points the grid
+    was built from, in their original order. Candidates share a nearby grid cell and may lie farther
+    than the query radius, so test the actual distance yourself (see :func:`hash_grid_query`).
+    Supports query objects returned by :func:`wp.hash_grid_query() <warp.hash_grid_query>` for all
+    coordinate precisions.
+
+    Args:
+        query: The query to advance, from :func:`hash_grid_query`
+        index: Output; receives the index of the current candidate neighbor
+
+    Returns:
+        ``True`` if another candidate was found (its index written to ``index``), ``False`` if the
+        query is exhausted.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def count_neighbors(grid_id: wp.uint64, pts: wp.array[wp.vec3], radius: wp.float32, out_count: wp.array[wp.int32]):
+                i = wp.tid()
+                p = pts[i]
+                query = wp.hash_grid_query(grid_id, p, radius)
+                index = int(0)
+                n = int(0)
+                while wp.hash_grid_query_next(query, index):
+                    if wp.length(p - pts[index]) <= radius:
+                        n += 1
+                out_count[i] = n
+
+            points = wp.array([[0,0,0],[0.1,0,0],[0.5,0,0],[2.0,0,0]], dtype=wp.vec3)
+            grid = wp.HashGrid(dim_x=8, dim_y=8, dim_z=8)
+            grid.build(points=points, radius=0.3)
+
+            out_count = wp.zeros(4, dtype=wp.int32)
+            wp.launch(count_neighbors, dim=4, inputs=[grid.id, points, 0.3], outputs=[out_count])
+            print(out_count.numpy())
+
+        .. testoutput::
+
+            [2 2 1 1]"""
     ...
 
 def hash_grid_point_id(id: uint64, index: int32) -> int:
-    """Query the index of a point in the :class:`warp.HashGrid`.
+    """Return the original point index stored at a given position in the :class:`warp.HashGrid`'s spatially-sorted order.
 
-    This can be used to reorder threads such that grid traversal occurs in a spatially coherent order.
+    The grid sorts its points by cell so that points sharing a cell are adjacent. Given a position
+    ``index`` in that sorted order (typically the thread index), this returns the corresponding
+    index into the original points array. Looking points up in this order makes neighboring threads
+    access nearby points, improving memory locality.
+
+    Args:
+        id: The :class:`warp.HashGrid` identifier
+        index: A position in the grid's sorted order, in ``[0, number_of_points)``
 
     Returns:
-        -1 if the :class:`warp.HashGrid` has not been reserved."""
+        The corresponding index into the original points array, or -1 if the
+        :class:`warp.HashGrid` has not been built/reserved.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def gather(grid_id: wp.uint64, pts: wp.array[wp.vec3], out: wp.array[wp.vec3]):
+                i = wp.tid()
+                # visit points in the grid's cell-sorted order for memory locality;
+                # hash_grid_point_id maps sorted position i -> the original point index
+                out[i] = pts[wp.hash_grid_point_id(grid_id, i)]
+
+            points = wp.array([[0,0,0],[0.1,0,0],[0.5,0,0],[2.0,0,0]], dtype=wp.vec3)
+            grid = wp.HashGrid(dim_x=8, dim_y=8, dim_z=8)
+            grid.build(points=points, radius=0.3)
+
+            out = wp.zeros(4, dtype=wp.vec3)
+            wp.launch(gather, dim=4, inputs=[grid.id, points], outputs=[out])
+            # every point is visited exactly once, so the gather is a permutation of the input
+            print(sorted(out.numpy().tolist()) == sorted(points.numpy().tolist()))
+
+        .. testoutput::
+
+            True"""
     ...
 
 @over
 def intersect_tri_tri(v0: vec3f, v1: vec3f, v2: vec3f, u0: vec3f, u1: vec3f, u2: vec3f) -> int:
-    """Test for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Möller's method.
+    """Test whether two triangles ``(v0, v1, v2)`` and ``(u0, u1, u2)`` intersect, using Möller's method.
 
-    This function works with single precision, may return incorrect results in some case.
+    All six vertices must be in the same coordinate space. Coplanar triangles are handled (an
+    overlap within their common plane counts as an intersection). This single-precision overload
+    may return incorrect results in near-degenerate cases; use the double-precision overload
+    (``vec3d`` inputs) for greater robustness.
 
     Returns:
-        > 0 if triangles intersect."""
+        ``1`` if the triangles intersect, ``0`` otherwise.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def tri_tri(out: wp.array[wp.int32]):
+                a0, a1, a2 = wp.vec3(0.0, 0.0, 0.0), wp.vec3(2.0, 0.0, 0.0), wp.vec3(0.0, 2.0, 0.0)
+                b0, b1, b2 = wp.vec3(1.0, 1.0, -1.0), wp.vec3(1.0, 1.0, 1.0), wp.vec3(1.0, -1.0, 0.0)
+                out[0] = wp.intersect_tri_tri(a0, a1, a2, b0, b1, b2)
+
+            out = wp.zeros(1, dtype=wp.int32)
+            wp.launch(tri_tri, dim=1, inputs=[out])
+            print("intersect:", out.numpy()[0])
+
+        .. testoutput::
+
+            intersect: 1"""
     ...
 
 @over
 def intersect_tri_tri(v0: vec3d, v1: vec3d, v2: vec3d, u0: vec3d, u1: vec3d, u2: vec3d) -> int:
-    """Test for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Möller's method.
+    """Test whether two triangles ``(v0, v1, v2)`` and ``(u0, u1, u2)`` intersect, using Möller's method.
 
-    This function works with double precision, results are more accurate than the single precision version.
+    All six vertices must be in the same coordinate space. Coplanar triangles are handled (an
+    overlap within their common plane counts as an intersection). This double-precision overload is
+    more accurate than the single-precision (``vec3`` inputs) overload.
 
     Returns:
-        > 0 if triangles intersect."""
+        ``1`` if the triangles intersect, ``0`` otherwise.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def tri_tri(out: wp.array[wp.int32]):
+                a0, a1, a2 = wp.vec3d(0.0, 0.0, 0.0), wp.vec3d(2.0, 0.0, 0.0), wp.vec3d(0.0, 2.0, 0.0)
+                b0, b1, b2 = wp.vec3d(1.0, 1.0, -1.0), wp.vec3d(1.0, 1.0, 1.0), wp.vec3d(1.0, -1.0, 0.0)
+                out[0] = wp.intersect_tri_tri(a0, a1, a2, b0, b1, b2)
+
+            out = wp.zeros(1, dtype=wp.int32)
+            wp.launch(tri_tri, dim=1, inputs=[out])
+            print("intersect:", out.numpy()[0])
+
+        .. testoutput::
+
+            intersect: 1"""
     ...
 
 def mesh_get(id: uint64) -> Mesh:
-    """Retrieve the mesh given its index."""
+    """Retrieve the :class:`warp.Mesh` object identified by ``id``.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def first_face_vertex(mesh_id: wp.uint64, out: wp.array[wp.vec3]):
+                m = wp.mesh_get(mesh_id)
+                # the returned struct exposes the mesh arrays (points, indices, velocities)
+                out[0] = m.points[m.indices[0]]  # position of the first face's first vertex
+
+            points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
+            indices = wp.array([0,3,2, 0,2,1,  4,5,6, 4,6,7,  0,1,5, 0,5,4,
+                                2,3,7, 2,7,6,  0,4,7, 0,7,3,  1,2,6, 1,6,5], dtype=wp.int32)
+            mesh = wp.Mesh(points=points, indices=indices)
+
+            out = wp.zeros(1, dtype=wp.vec3)
+            wp.launch(first_face_vertex, dim=1, inputs=[mesh.id], outputs=[out])
+            print(out.numpy()[0])
+
+        .. testoutput::
+
+            [0. 0. 0.]"""
     ...
 
 def mesh_eval_face_normal(id: uint64, face: int32) -> vec3f:
-    """Evaluate the face normal the mesh given a face index."""
+    """Evaluate the unit normal of a face of the :class:`warp.Mesh`.
+
+    Returns the face's geometric normal, ``normalize(cross(v1 - v0, v2 - v0))`` for the face's
+    vertices ``v0``, ``v1``, ``v2``, in the mesh's local space. Orientation follows the face's
+    winding order.
+
+    Args:
+        id: The mesh identifier
+        face: The face (triangle) index
+
+    Returns:
+        The unit-length face normal, in the mesh's local space.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def face0_normal(mesh_id: wp.uint64, out: wp.array[wp.vec3]):
+                out[0] = wp.mesh_eval_face_normal(mesh_id, 0)
+
+            points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
+            indices = wp.array([0,3,2, 0,2,1,  4,5,6, 4,6,7,  0,1,5, 0,5,4,
+                                2,3,7, 2,7,6,  0,4,7, 0,7,3,  1,2,6, 1,6,5], dtype=wp.int32)
+            mesh = wp.Mesh(points=points, indices=indices)
+
+            out = wp.zeros(1, dtype=wp.vec3)
+            wp.launch(face0_normal, dim=1, inputs=[mesh.id], outputs=[out])
+            print(out.numpy()[0])
+
+        .. testoutput::
+
+            [ 0.  0. -1.]"""
     ...
 
 def mesh_get_point(id: uint64, index: int32) -> vec3f:
-    """Query the point of the mesh given an index."""
+    """Look up the position of a face's vertex in the :class:`warp.Mesh`.
+
+    ``index`` is a *face-vertex index*: a position in the mesh's index buffer, in
+    ``[0, 3 * number_of_faces)``, where positions ``3*f``, ``3*f + 1``, ``3*f + 2`` belong to face
+    ``f``. Returns the position of the vertex referenced there, i.e. ``points[indices[index]]``, in
+    the mesh's local space. Use :func:`mesh_get_index` to obtain that vertex index itself.
+
+    Args:
+        id: The mesh identifier
+        index: A face-vertex index, in ``[0, 3 * number_of_faces)``
+
+    Returns:
+        The referenced vertex's position, in the mesh's local space.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def slot0(mesh_id: wp.uint64, out: wp.array[wp.vec3]):
+                out[0] = wp.mesh_get_point(mesh_id, 0)
+
+            points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
+            indices = wp.array([0,3,2, 0,2,1,  4,5,6, 4,6,7,  0,1,5, 0,5,4,
+                                2,3,7, 2,7,6,  0,4,7, 0,7,3,  1,2,6, 1,6,5], dtype=wp.int32)
+            mesh = wp.Mesh(points=points, indices=indices)
+
+            out = wp.zeros(1, dtype=wp.vec3)
+            wp.launch(slot0, dim=1, inputs=[mesh.id], outputs=[out])
+            print(out.numpy()[0])
+
+        .. testoutput::
+
+            [0. 0. 0.]"""
     ...
 
 def mesh_get_velocity(id: uint64, index: int32) -> vec3f:
-    """Query the velocity of the mesh given an index."""
+    """Look up the velocity of a face's vertex in the :class:`warp.Mesh`.
+
+    Like :func:`mesh_get_point`, ``index`` is a *face-vertex index* in ``[0, 3 * number_of_faces)``;
+    returns the velocity of the vertex referenced there, i.e. ``velocities[indices[index]]``.
+    Requires the mesh to have been constructed with a ``velocities`` array; returns a zero vector
+    otherwise.
+
+    Args:
+        id: The mesh identifier
+        index: A face-vertex index, in ``[0, 3 * number_of_faces)``
+
+    Returns:
+        The referenced vertex's velocity, or a zero vector if the mesh has no velocities.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def slot0(mesh_id: wp.uint64, out: wp.array[wp.vec3]):
+                out[0] = wp.mesh_get_velocity(mesh_id, 0)
+
+            points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
+            indices = wp.array([0,3,2, 0,2,1,  4,5,6, 4,6,7,  0,1,5, 0,5,4,
+                                2,3,7, 2,7,6,  0,4,7, 0,7,3,  1,2,6, 1,6,5], dtype=wp.int32)
+            velocities = wp.array(np.tile([0.0, 0.0, 1.0], (8, 1)), dtype=wp.vec3)
+            mesh = wp.Mesh(points=points, indices=indices, velocities=velocities)
+
+            out = wp.zeros(1, dtype=wp.vec3)
+            wp.launch(slot0, dim=1, inputs=[mesh.id], outputs=[out])
+            print(out.numpy()[0])
+
+        .. testoutput::
+
+            [0. 0. 1.]"""
     ...
 
 def mesh_get_index(id: uint64, index: int32) -> int:
-    """Query the point-index of the mesh given a face-vertex index."""
+    """Look up the vertex index stored at a face-vertex position in the :class:`warp.Mesh`'s index buffer.
+
+    ``index`` is a *face-vertex index* in ``[0, 3 * number_of_faces)``; returns the vertex index it
+    stores (``indices[index]``), which in turn indexes the mesh's points array.
+
+    Args:
+        id: The mesh identifier
+        index: A face-vertex index, in ``[0, 3 * number_of_faces)``
+
+    Returns:
+        The vertex index stored at that position, or -1 if the mesh has no index buffer.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def face0_verts(mesh_id: wp.uint64, out: wp.array[wp.int32]):
+                out[0] = wp.mesh_get_index(mesh_id, 0)
+                out[1] = wp.mesh_get_index(mesh_id, 1)
+                out[2] = wp.mesh_get_index(mesh_id, 2)
+
+            points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
+            indices = wp.array([0,3,2, 0,2,1,  4,5,6, 4,6,7,  0,1,5, 0,5,4,
+                                2,3,7, 2,7,6,  0,4,7, 0,7,3,  1,2,6, 1,6,5], dtype=wp.int32)
+            mesh = wp.Mesh(points=points, indices=indices)
+
+            out = wp.zeros(3, dtype=wp.int32)
+            wp.launch(face0_verts, dim=1, inputs=[mesh.id], outputs=[out])
+            print(out.numpy())
+
+        .. testoutput::
+
+            [0 3 2]"""
     ...
 
 def closest_point_edge_edge(p1: vec3f, q1: vec3f, p2: vec3f, q2: vec3f, epsilon: float32) -> vec3f:
-    """Find the closest points between two edges.
+    """Find the closest points between two edges (line segments) ``[p1, q1]`` and ``[p2, q2]``.
+
+    All four endpoints must be in the same coordinate space.
 
     Args:
-        p1: First point of first edge
-        q1: Second point of first edge
-        p2: First point of second edge
-        q2: Second point of second edge
-        epsilon: Zero tolerance for determining if points in an edge are degenerate.
-        out: vec3 output containing (s,t,d), where ``s`` in [0,1] is the barycentric weight for the first edge, ``t`` is the barycentric weight for the second edge, and ``d`` is the distance between the two edges at these two closest points.
+        p1: Start point of the first edge
+        q1: End point of the first edge
+        p2: Start point of the second edge
+        q2: End point of the second edge
+        epsilon: An edge whose squared length is ``<= epsilon`` is treated as a single point
+            (degenerate); its barycentric weight is then returned as 0.
 
     Returns:
-        Barycentric weights to the points on each edge, as well as the closest distance between the edges."""
+        A ``vec3`` ``(s, t, d)``: ``s`` in [0, 1] is the barycentric weight of the closest point on
+        the first edge (the point is ``p1 + s * (q1 - p1)``), ``t`` in [0, 1] is the barycentric
+        weight on the second edge (``p2 + t * (q2 - p2)``), and ``d`` is the distance between those
+        two closest points.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def edge_edge(out: wp.array[wp.vec3]):
+                p1, q1 = wp.vec3(0.0, 0.0, 0.0), wp.vec3(1.0, 0.0, 0.0)
+                p2, q2 = wp.vec3(0.5, 1.0, 1.0), wp.vec3(0.5, 1.0, -1.0)
+                out[0] = wp.closest_point_edge_edge(p1, q1, p2, q2, 1.0e-6)
+
+            out = wp.zeros(1, dtype=wp.vec3)
+            wp.launch(edge_edge, dim=1, inputs=[out])
+            s, t, d = out.numpy()[0]
+            print(f"s={s:.1f} t={t:.1f} d={d:.1f}")
+
+        .. testoutput::
+
+            s=0.5 t=0.5 d=1.0"""
     ...
 
 def volume_sample(id: uint64, uvw: vec3f, sampling_mode: int32, dtype: Any) -> Any:
