@@ -508,7 +508,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">rebuildable</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/nanogrid.py#L546-L1152"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/nanogrid.py#L544-L1150"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid" title="Link to this definition">#</a></dt>
 <dd><p>Sparse grid geometry.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -535,7 +535,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">rebuildable</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/nanogrid.py#L664-L740"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.__init__" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/nanogrid.py#L662-L738"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.__init__" title="Link to this definition">#</a></dt>
 <dd><p>Construct a sparse grid geometry from an in-memory NanoVDB volume.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -815,7 +815,7 @@ be created for all leaf voxels.</p></li>
 <dd><em class="sig-param"><span class="n"><span class="pre">cell_ijks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/nanogrid.py#L556-L663"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.from_environment_voxels" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/nanogrid.py#L554-L661"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.from_environment_voxels" title="Link to this definition">#</a></dt>
 <dd><p>Construct a sparse grid geometry from environment-tagged active voxel points.</p>
 <p>The active voxel points are interpreted in local FEM space.
 They are packed into a single NanoVDB index grid by adding an environment
@@ -870,7 +870,7 @@ tiles. The default isolates padded B-spline node grids up to degree 3.</p></li>
 <dd><em class="sig-param"><span class="n"><span class="pre">point_mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/nanogrid.py#L741-L815"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.rebuild" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/nanogrid.py#L739-L813"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.rebuild" title="Link to this definition">#</a></dt>
 <dd><p>Rebuild the cell grid and refresh Nanogrid topology buffers.</p>
 <p>Space topologies built from this Nanogrid are not refreshed automatically. Reusing a topology after
 rebuilding the grid is unsupported unless that topology provides and has had its own rebuild method called.</p>
@@ -897,7 +897,7 @@ multi-environment Nanogrids. Entries for unmasked points must satisfy
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Nanogrid.rebuild_topology_from_cells">
-<span class="sig-name descname"><span class="pre">rebuild_topology_from_cells</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/nanogrid.py#L816-L827"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.rebuild_topology_from_cells" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">rebuild_topology_from_cells</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/nanogrid.py#L814-L825"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.rebuild_topology_from_cells" title="Link to this definition">#</a></dt>
 <dd><p>Refresh Nanogrid topology buffers from the current cell grid.</p>
 <p>Space topologies built from this Nanogrid are not refreshed automatically. Reusing a topology after
 rebuilding the grid is unsupported unless that topology provides and has had its own rebuild method called.</p>
@@ -905,27 +905,27 @@ rebuilding the grid is unsupported unless that topology provides and has had its
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.Nanogrid.edge_grid">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">edge_grid</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Volume.html#warp.Volume" title="warp._src.types.Volume"><span class="pre">Volume</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/nanogrid.py#L828-L832"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.edge_grid" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">edge_grid</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Volume.html#warp.Volume" title="warp._src.types.Volume"><span class="pre">Volume</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/nanogrid.py#L826-L830"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.edge_grid" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Nanogrid.edge_count">
-<span class="sig-name descname"><span class="pre">edge_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/nanogrid.py#L833-L836"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.edge_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">edge_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/nanogrid.py#L831-L834"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.edge_count" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Nanogrid.fill_cell_arg">
-<span class="sig-name descname"><span class="pre">fill_cell_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/nanogrid.py#L837-L844"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.fill_cell_arg" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">fill_cell_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/nanogrid.py#L835-L842"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.fill_cell_arg" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Nanogrid.fill_side_arg">
-<span class="sig-name descname"><span class="pre">fill_side_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/nanogrid.py#L845-L852"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.fill_side_arg" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">fill_side_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/nanogrid.py#L843-L850"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.fill_side_arg" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Nanogrid.supports_cell_lookup">
-<span class="sig-name descname"><span class="pre">supports_cell_lookup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/nanogrid.py#L853-L855"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.supports_cell_lookup" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">supports_cell_lookup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/nanogrid.py#L851-L853"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.supports_cell_lookup" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">

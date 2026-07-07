@@ -506,7 +506,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">space_partition</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/quadrature.py#L434-L556"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.NodalQuadrature" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/quadrature.py#L432-L554"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.NodalQuadrature" title="Link to this definition">#</a></dt>
 <dd><p>Quadrature using space node points as quadrature points</p>
 <p>Note that in contrast to the <cite>assembly=”nodal”</cite> flag for <a class="reference internal" href="warp.fem.integrate.html#warp.fem.integrate" title="warp.fem.integrate"><code class="xref py py-func docutils literal notranslate"><span class="pre">integrate()</span></code></a>, using this quadrature does not imply
 any assumption about orthogonality of shape functions, and is thus safe to use for arbitrary integrands.</p>
@@ -531,7 +531,7 @@ any assumption about orthogonality of shape functions, and is thus safe to use f
 <dd><em class="sig-param"><span class="n"><span class="pre">space_partition</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/quadrature.py#L448-L469"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.NodalQuadrature.__init__" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/quadrature.py#L446-L467"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.NodalQuadrature.__init__" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -615,19 +615,19 @@ any assumption about orthogonality of shape functions, and is thus safe to use f
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.NodalQuadrature.total_point_count">
-<span class="sig-name descname"><span class="pre">total_point_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/quadrature.py#L475-L478"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.NodalQuadrature.total_point_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">total_point_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/quadrature.py#L473-L476"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.NodalQuadrature.total_point_count" title="Link to this definition">#</a></dt>
 <dd><p>Total number of quadrature points.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.NodalQuadrature.max_points_per_element">
-<span class="sig-name descname"><span class="pre">max_points_per_element</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/quadrature.py#L479-L482"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.NodalQuadrature.max_points_per_element" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">max_points_per_element</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/quadrature.py#L477-L480"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.NodalQuadrature.max_points_per_element" title="Link to this definition">#</a></dt>
 <dd><p>Maximum number of quadrature points per element.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.NodalQuadrature.fill_arg">
-<span class="sig-name descname"><span class="pre">fill_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/quadrature.py#L492-L497"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.NodalQuadrature.fill_arg" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">fill_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/quadrature.py#L490-L495"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.NodalQuadrature.fill_arg" title="Link to this definition">#</a></dt>
 <dd><p>Fill the quadrature argument structure for device functions.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>

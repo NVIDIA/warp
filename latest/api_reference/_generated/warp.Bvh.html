@@ -497,7 +497,7 @@
 <h1>warp.Bvh<a class="headerlink" href="#warp-bvh" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.Bvh">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Bvh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L5544-L5819"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Bvh" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Bvh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L5542-L5817"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Bvh" title="Link to this definition">#</a></dt>
 <dd><p>Bounding Volume Hierarchy (BVH) for accelerated spatial queries.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Bvh.__init__">
@@ -511,7 +511,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">leaf_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L5552-L5717"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Bvh.__init__" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L5550-L5715"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Bvh.__init__" title="Link to this definition">#</a></dt>
 <dd><p>Class representing a bounding volume hierarchy.</p>
 <p>Depending on which device the input bounds live, it can be either a CPU tree or a GPU tree.</p>
 <dl class="py attribute">
@@ -614,14 +614,14 @@ and near-identical performance for non-grouped use cases.</p>
 </div>
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Bvh.refit">
-<span class="sig-name descname"><span class="pre">refit</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L5733-L5744"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Bvh.refit" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">refit</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L5731-L5742"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Bvh.refit" title="Link to this definition">#</a></dt>
 <dd><p>Refit the BVH.</p>
 <p>This should be called after users modify the <code class="docutils literal notranslate"><span class="pre">lowers</span></code> or <code class="docutils literal notranslate"><span class="pre">uppers</span></code> arrays.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Bvh.rebuild">
-<span class="sig-name descname"><span class="pre">rebuild</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">constructor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L5745-L5819"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Bvh.rebuild" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">rebuild</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">constructor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L5743-L5817"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Bvh.rebuild" title="Link to this definition">#</a></dt>
 <dd><p>Rebuild the BVH hierarchy <strong>in place</strong> from the current <code class="docutils literal notranslate"><span class="pre">lowers</span></code>/<code class="docutils literal notranslate"><span class="pre">uppers</span></code> arrays.</p>
 <p>This method does not allocate new memory; it reuses the existing BVH buffers.</p>
 <p>Unlike <a class="reference internal" href="#warp.Bvh.refit" title="warp.Bvh.refit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">refit()</span></code></a>, which only tightens parent AABBs while preserving the existing

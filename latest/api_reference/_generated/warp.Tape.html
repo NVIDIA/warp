@@ -497,7 +497,7 @@
 <h1>warp.Tape<a class="headerlink" href="#warp-tape" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.Tape">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Tape</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/tape.py#L14-L390"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Tape" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Tape</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/tape.py#L12-L388"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Tape" title="Link to this definition">#</a></dt>
 <dd><p>Record kernel launches within a Tape scope to enable automatic differentiation.
 Gradients can be computed after the operations have been recorded on the tape via
 <a class="reference internal" href="#warp.Tape.backward" title="warp.Tape.backward"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Tape.backward()</span></code></a>.</p>
@@ -520,7 +520,7 @@ Gradients can be computed after the operations have been recorded on the tape vi
 </div>
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Tape.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/tape.py#L44-L50"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Tape.__init__" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/tape.py#L42-L48"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Tape.__init__" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <p class="rubric">Methods</p>
@@ -561,7 +561,7 @@ Gradients can be computed after the operations have been recorded on the tape vi
 </div>
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Tape.backward">
-<span class="sig-name descname"><span class="pre">backward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">loss</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grads</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/tape.py#L72-L157"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Tape.backward" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">backward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">loss</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grads</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/tape.py#L70-L155"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Tape.backward" title="Link to this definition">#</a></dt>
 <dd><p>Evaluate the backward pass of the recorded operations on the tape.</p>
 <p>A single-element array <code class="docutils literal notranslate"><span class="pre">loss</span></code> or a dictionary of arrays <code class="docutils literal notranslate"><span class="pre">grads</span></code>
 can be provided to assign the incoming gradients for the reverse-mode
@@ -591,12 +591,12 @@ automatic differentiation pass.</p>
 <dd><em class="sig-param"><span class="n"><span class="pre">metadata</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/tape.py#L159-L163"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Tape.record_launch" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/tape.py#L157-L161"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Tape.record_launch" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Tape.record_func">
-<span class="sig-name descname"><span class="pre">record_func</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">backward</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arrays</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/tape.py#L164-L181"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Tape.record_func" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">record_func</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">backward</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arrays</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/tape.py#L162-L179"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Tape.record_func" title="Link to this definition">#</a></dt>
 <dd><p>Records a custom function to be executed only in the backward pass.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -610,13 +610,13 @@ automatic differentiation pass.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Tape.record_scope_begin">
-<span class="sig-name descname"><span class="pre">record_scope_begin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scope_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/tape.py#L182-L189"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Tape.record_scope_begin" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">record_scope_begin</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">scope_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metadata</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/tape.py#L180-L187"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Tape.record_scope_begin" title="Link to this definition">#</a></dt>
 <dd><p>Begin a scope on the tape to group operations together. Scopes are only used in the visualization functions.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Tape.record_scope_end">
-<span class="sig-name descname"><span class="pre">record_scope_end</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">remove_scope_if_empty</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/tape.py#L190-L211"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Tape.record_scope_end" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">record_scope_end</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">remove_scope_if_empty</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/tape.py#L188-L209"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Tape.record_scope_end" title="Link to this definition">#</a></dt>
 <dd><p>End a scope on the tape.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -627,7 +627,7 @@ automatic differentiation pass.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Tape.get_adjoint">
-<span class="sig-name descname"><span class="pre">get_adjoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/tape.py#L231-L279"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Tape.get_adjoint" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">get_adjoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/tape.py#L229-L277"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Tape.get_adjoint" title="Link to this definition">#</a></dt>
 <dd><p>Return the adjoint container for a kernel argument.</p>
 <p>For <a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a> inputs with gradients enabled, this returns
 <a class="reference internal" href="warp.array.html#warp.array.grad" title="warp.array.grad"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.array.grad</span></code></a> and tracks it in <code class="docutils literal notranslate"><span class="pre">gradients</span></code> so it can
@@ -647,13 +647,13 @@ a <a class="reference internal" href="warp.struct.html#warp.struct" title="warp.
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Tape.reset">
-<span class="sig-name descname"><span class="pre">reset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/tape.py#L280-L289"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Tape.reset" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">reset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/tape.py#L278-L287"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Tape.reset" title="Link to this definition">#</a></dt>
 <dd><p>Clear all operations recorded on the tape and zero out all gradients.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Tape.zero">
-<span class="sig-name descname"><span class="pre">zero</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/tape.py#L290-L304"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Tape.zero" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">zero</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/tape.py#L288-L302"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Tape.zero" title="Link to this definition">#</a></dt>
 <dd><p>Zero out all gradients recorded on the tape.</p>
 </dd></dl>
 
@@ -675,7 +675,7 @@ a <a class="reference internal" href="warp.struct.html#warp.struct" title="warp.
 <dd><em class="sig-param"><span class="n"><span class="pre">graph_direction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'LR'</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/tape.py#L313-L390"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Tape.visualize" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/tape.py#L311-L388"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Tape.visualize" title="Link to this definition">#</a></dt>
 <dd><p>Visualize the recorded operations on the tape as a <a class="reference external" href="https://graphviz.org/">GraphViz diagram</a>.</p>
 <p class="rubric">Example</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>

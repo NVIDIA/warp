@@ -497,7 +497,7 @@
 <h1>warp.fem.ExplicitQuadrature<a class="headerlink" href="#warp-fem-explicitquadrature" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.fem.ExplicitQuadrature">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">ExplicitQuadrature</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weights</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/quadrature.py#L558-L711"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ExplicitQuadrature" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">ExplicitQuadrature</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weights</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/quadrature.py#L556-L709"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ExplicitQuadrature" title="Link to this definition">#</a></dt>
 <dd><p>Quadrature using explicit per-cell points and weights.</p>
 <p>The number of quadrature points per cell is assumed to be constant and deduced from the shape of the points and weights arrays.
 Quadrature points may be provided for either the whole geometry or just the domain’s elements.</p>
@@ -513,7 +513,7 @@ Quadrature points may be provided for either the whole geometry or just the doma
 <p>See also: <a class="reference internal" href="warp.fem.PicQuadrature.html#warp.fem.PicQuadrature" title="warp.fem.PicQuadrature"><code class="xref py py-class docutils literal notranslate"><span class="pre">PicQuadrature</span></code></a></p>
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.ExplicitQuadrature.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weights</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/quadrature.py#L582-L617"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ExplicitQuadrature.__init__" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weights</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/quadrature.py#L580-L615"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ExplicitQuadrature.__init__" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -596,19 +596,19 @@ Quadrature points may be provided for either the whole geometry or just the doma
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.ExplicitQuadrature.total_point_count">
-<span class="sig-name descname"><span class="pre">total_point_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/quadrature.py#L623-L626"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ExplicitQuadrature.total_point_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">total_point_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/quadrature.py#L621-L624"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ExplicitQuadrature.total_point_count" title="Link to this definition">#</a></dt>
 <dd><p>Total number of quadrature points.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.ExplicitQuadrature.max_points_per_element">
-<span class="sig-name descname"><span class="pre">max_points_per_element</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/quadrature.py#L627-L630"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ExplicitQuadrature.max_points_per_element" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">max_points_per_element</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/quadrature.py#L625-L628"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ExplicitQuadrature.max_points_per_element" title="Link to this definition">#</a></dt>
 <dd><p>Maximum number of quadrature points per element.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.ExplicitQuadrature.fill_arg">
-<span class="sig-name descname"><span class="pre">fill_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/quadrature.py#L631-L635"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ExplicitQuadrature.fill_arg" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">fill_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/quadrature.py#L629-L633"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ExplicitQuadrature.fill_arg" title="Link to this definition">#</a></dt>
 <dd><p>Fill the quadrature argument structure for device functions.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>

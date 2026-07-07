@@ -506,7 +506,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">report_func</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/utils.py#L2094-L2209"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.ScopedMemoryTracker" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/utils.py#L2092-L2207"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.ScopedMemoryTracker" title="Link to this definition">#</a></dt>
 <dd><p>Context manager that tracks memory allocations across all devices.</p>
 <p>Tracking is performed in the C++ native layer by intercepting all
 <code class="docutils literal notranslate"><span class="pre">wp_alloc_*</span></code> / <code class="docutils literal notranslate"><span class="pre">wp_free_*</span></code> calls, so both Python-originated and
@@ -555,7 +555,7 @@ instead of being printed to <code class="docutils literal notranslate"><span cla
 <dd><em class="sig-param"><span class="n"><span class="pre">report_func</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/utils.py#L2132-L2144"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.ScopedMemoryTracker.__init__" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/utils.py#L2130-L2142"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.ScopedMemoryTracker.__init__" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -585,7 +585,7 @@ instead of being printed to <code class="docutils literal notranslate"><span cla
 </div>
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.ScopedMemoryTracker.report">
-<span class="sig-name descname"><span class="pre">report</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sort</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'size'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_items</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/utils.py#L2172-L2199"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.ScopedMemoryTracker.report" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">report</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sort</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'size'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_items</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/utils.py#L2170-L2197"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.ScopedMemoryTracker.report" title="Link to this definition">#</a></dt>
 <dd><p>Print an allocation report.</p>
 <p>Can be called multiple times – each call reflects the current state.
 Concurrent calls produce serialized snapshots of the global tracker
@@ -608,7 +608,7 @@ category (default <code class="docutils literal notranslate"><span class="pre">1
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.ScopedMemoryTracker.clear">
-<span class="sig-name descname"><span class="pre">clear</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/utils.py#L2200-L2209"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.ScopedMemoryTracker.clear" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">clear</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/utils.py#L2198-L2207"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.ScopedMemoryTracker.clear" title="Link to this definition">#</a></dt>
 <dd><p>Reset all tracking data while keeping the tracker active.</p>
 <p>After calling this, subsequent <a class="reference internal" href="#warp.ScopedMemoryTracker.report" title="warp.ScopedMemoryTracker.report"><code class="xref py py-meth docutils literal notranslate"><span class="pre">report()</span></code></a> calls only reflect
 allocations that occurred after the reset.</p>

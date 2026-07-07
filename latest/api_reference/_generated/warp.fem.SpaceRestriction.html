@@ -506,7 +506,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">temporary_store</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/restriction.py#L20-L248"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceRestriction" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/restriction.py#L18-L246"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceRestriction" title="Link to this definition">#</a></dt>
 <dd><p>Restriction of a space partition to a given <a class="reference internal" href="warp.fem.GeometryDomain.html#warp.fem.GeometryDomain" title="warp.fem.GeometryDomain"><code class="xref py py-class docutils literal notranslate"><span class="pre">GeometryDomain</span></code></a>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -528,7 +528,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">temporary_store</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/restriction.py#L30-L63"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceRestriction.__init__" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/restriction.py#L28-L61"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceRestriction.__init__" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -623,7 +623,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.SpaceRestriction.rebuild">
-<span class="sig-name descname"><span class="pre">rebuild</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temporary_store</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/restriction.py#L64-L156"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceRestriction.rebuild" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">rebuild</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temporary_store</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/restriction.py#L62-L154"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceRestriction.rebuild" title="Link to this definition">#</a></dt>
 <dd><p>Rebuild internal indices for the space restriction.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -637,7 +637,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.SpaceRestriction.node_count_sync">
-<span class="sig-name descname"><span class="pre">node_count_sync</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/restriction.py#L157-L163"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceRestriction.node_count_sync" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">node_count_sync</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/restriction.py#L155-L161"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceRestriction.node_count_sync" title="Link to this definition">#</a></dt>
 <dd><p>Ensure that the node count is synchronized with the device and return it.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -648,7 +648,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.SpaceRestriction.node_count">
-<span class="sig-name descname"><span class="pre">node_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/restriction.py#L164-L167"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceRestriction.node_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">node_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/restriction.py#L162-L165"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceRestriction.node_count" title="Link to this definition">#</a></dt>
 <dd><p>Upper bound for the node count, use <code class="docutils literal notranslate"><span class="pre">node_count_sync</span></code> to get the actual value.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -659,19 +659,19 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.SpaceRestriction.partition_element_offsets">
-<span class="sig-name descname"><span class="pre">partition_element_offsets</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/restriction.py#L168-L171"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceRestriction.partition_element_offsets" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">partition_element_offsets</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/restriction.py#L166-L169"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceRestriction.partition_element_offsets" title="Link to this definition">#</a></dt>
 <dd><p>Return offsets into the per-node element index arrays.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.SpaceRestriction.node_partition_indices">
-<span class="sig-name descname"><span class="pre">node_partition_indices</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/restriction.py#L172-L175"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceRestriction.node_partition_indices" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">node_partition_indices</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/restriction.py#L170-L173"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceRestriction.node_partition_indices" title="Link to this definition">#</a></dt>
 <dd><p>Return partition node indices referenced by this restriction.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.SpaceRestriction.total_node_element_count">
-<span class="sig-name descname"><span class="pre">total_node_element_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/restriction.py#L176-L179"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceRestriction.total_node_element_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">total_node_element_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/restriction.py#L174-L177"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceRestriction.total_node_element_count" title="Link to this definition">#</a></dt>
 <dd><p>Return the total number of node-element references.</p>
 </dd></dl>
 
@@ -682,12 +682,12 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.SpaceRestriction.node_arg_value">
-<span class="sig-name descname"><span class="pre">node_arg_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/cache.py#L343-L354"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceRestriction.node_arg_value" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">node_arg_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/cache.py#L341-L352"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceRestriction.node_arg_value" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.SpaceRestriction.fill_node_arg">
-<span class="sig-name descname"><span class="pre">fill_node_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/restriction.py#L196-L202"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceRestriction.fill_node_arg" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">fill_node_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/restriction.py#L194-L200"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceRestriction.fill_node_arg" title="Link to this definition">#</a></dt>
 <dd><p>Fill node arguments for device functions.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>

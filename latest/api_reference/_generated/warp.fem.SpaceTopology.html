@@ -497,7 +497,7 @@
 <h1>warp.fem.SpaceTopology<a class="headerlink" href="#warp-fem-spacetopology" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.fem.SpaceTopology">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">SpaceTopology</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_nodes_per_element</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/topology.py#L15-L241"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceTopology" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">SpaceTopology</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_nodes_per_element</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/topology.py#L13-L239"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceTopology" title="Link to this definition">#</a></dt>
 <dd><p>Interface class for defining the topology of a function space.</p>
 <p>The topology only considers the indices of the nodes in each element, and as such,
 the connectivity pattern of the function space.
@@ -512,7 +512,7 @@ It does not specify the actual location of the nodes within the elements, or the
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.SpaceTopology.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_nodes_per_element</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/topology.py#L45-L52"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceTopology.__init__" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">geometry</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_nodes_per_element</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/topology.py#L43-L50"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceTopology.__init__" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -612,13 +612,13 @@ It does not specify the actual location of the nodes within the elements, or the
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.SpaceTopology.geometry">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">geometry</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.fem.Geometry.html#warp.fem.Geometry" title="warp._src.fem.geometry.geometry.Geometry"><span class="pre">Geometry</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/topology.py#L53-L57"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceTopology.geometry" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">geometry</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.fem.Geometry.html#warp.fem.Geometry" title="warp._src.fem.geometry.geometry.Geometry"><span class="pre">Geometry</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/topology.py#L51-L55"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceTopology.geometry" title="Link to this definition">#</a></dt>
 <dd><p>Underlying geometry</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.SpaceTopology.node_count">
-<span class="sig-name descname"><span class="pre">node_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/topology.py#L58-L61"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceTopology.node_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">node_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/topology.py#L56-L59"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceTopology.node_count" title="Link to this definition">#</a></dt>
 <dd><p>Number of nodes in the interpolation basis</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -629,12 +629,12 @@ It does not specify the actual location of the nodes within the elements, or the
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.SpaceTopology.topo_arg_value">
-<span class="sig-name descname"><span class="pre">topo_arg_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/cache.py#L343-L354"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceTopology.topo_arg_value" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">topo_arg_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/cache.py#L341-L352"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceTopology.topo_arg_value" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.SpaceTopology.fill_topo_arg">
-<span class="sig-name descname"><span class="pre">fill_topo_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/topology.py#L69-L72"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceTopology.fill_topo_arg" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">fill_topo_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/topology.py#L67-L70"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceTopology.fill_topo_arg" title="Link to this definition">#</a></dt>
 <dd><p>Fill topology arguments for device functions.</p>
 </dd></dl>
 
@@ -646,7 +646,7 @@ It does not specify the actual location of the nodes within the elements, or the
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.SpaceTopology.element_node_count">
-<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">element_node_count</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">geo_arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">topo_arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">element_index</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/topology.py#L81-L89"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceTopology.element_node_count" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">element_node_count</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">geo_arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">topo_arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">element_index</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/topology.py#L79-L87"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceTopology.element_node_count" title="Link to this definition">#</a></dt>
 <dd><p>Return the actual number of nodes in a given element.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -673,7 +673,7 @@ It does not specify the actual location of the nodes within the elements, or the
 <dd><em class="sig-param"><span class="n"><span class="pre">node_index_in_elt</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/topology.py#L90-L99"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceTopology.element_node_index" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/topology.py#L88-L97"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceTopology.element_node_index" title="Link to this definition">#</a></dt>
 <dd><p>Global node index for a given node in a given element</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -700,7 +700,7 @@ It does not specify the actual location of the nodes within the elements, or the
 <dd><em class="sig-param"><span class="n"><span class="pre">side_index</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/topology.py#L100-L108"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceTopology.side_neighbor_node_counts" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/topology.py#L98-L106"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceTopology.side_neighbor_node_counts" title="Link to this definition">#</a></dt>
 <dd><p>Return the number of nodes for both the inner and outer cells of a given sides.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -718,7 +718,7 @@ It does not specify the actual location of the nodes within the elements, or the
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.SpaceTopology.element_node_indices">
-<span class="sig-name descname"><span class="pre">element_node_indices</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">out</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/topology.py#L109-L154"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceTopology.element_node_indices" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">element_node_indices</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">out</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/topology.py#L107-L152"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceTopology.element_node_indices" title="Link to this definition">#</a></dt>
 <dd><p>Return a temporary array containing the global index for each node of each element.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -732,7 +732,7 @@ It does not specify the actual location of the nodes within the elements, or the
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.SpaceTopology.trace">
-<span class="sig-name descname"><span class="pre">trace</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/topology.py#L157-L161"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceTopology.trace" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">trace</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/topology.py#L155-L159"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceTopology.trace" title="Link to this definition">#</a></dt>
 <dd><p>Trace of the function space over lower-dimensional elements of the geometry</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -743,13 +743,13 @@ It does not specify the actual location of the nodes within the elements, or the
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.SpaceTopology.is_trace">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_trace</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/topology.py#L162-L166"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceTopology.is_trace" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_trace</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/topology.py#L160-L164"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceTopology.is_trace" title="Link to this definition">#</a></dt>
 <dd><p>Whether this topology is defined on the trace of the geometry</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.SpaceTopology.full_space_topology">
-<span class="sig-name descname"><span class="pre">full_space_topology</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/topology.py#L167-L170"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceTopology.full_space_topology" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">full_space_topology</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/topology.py#L165-L168"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceTopology.full_space_topology" title="Link to this definition">#</a></dt>
 <dd><p>Return the full space topology from which this topology is derived.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
@@ -760,7 +760,7 @@ It does not specify the actual location of the nodes within the elements, or the
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.SpaceTopology.is_derived_from">
-<span class="sig-name descname"><span class="pre">is_derived_from</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/topology.py#L175-L182"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceTopology.is_derived_from" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">is_derived_from</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/topology.py#L173-L180"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceTopology.is_derived_from" title="Link to this definition">#</a></dt>
 <dd><p>Check whether two topologies are equal, or <code class="docutils literal notranslate"><span class="pre">self</span></code> is the trace of <code class="docutils literal notranslate"><span class="pre">other</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -774,7 +774,7 @@ It does not specify the actual location of the nodes within the elements, or the
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.SpaceTopology.make_generic_side_neighbor_node_counts">
-<span class="sig-name descname"><span class="pre">make_generic_side_neighbor_node_counts</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/topology.py#L221-L241"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceTopology.make_generic_side_neighbor_node_counts" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">make_generic_side_neighbor_node_counts</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/topology.py#L219-L239"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.SpaceTopology.make_generic_side_neighbor_node_counts" title="Link to this definition">#</a></dt>
 <dd><p>Variant of side neighbor node counts that can be used for topologies with varying node counts per element.
 Derived classes that override <cite>element_node_count()</cite> can leverage this for convenience.</p>
 </dd></dl>

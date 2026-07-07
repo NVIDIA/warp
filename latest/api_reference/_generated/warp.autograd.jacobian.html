@@ -513,7 +513,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">metadata</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/autograd.py#L661-L793"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.autograd.jacobian" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/autograd.py#L659-L791"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.autograd.jacobian" title="Link to this definition">#</a></dt>
 <dd><p>Compute the Jacobians of a function or Warp kernel for the provided selection of differentiable inputs to differentiable outputs.</p>
 <p>The input function can be either a Warp kernel (e.g. a function decorated by <a class="reference internal" href="warp.kernel_decorator.html#warp.kernel" title="warp.kernel"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;warp.kernel</span></code></a>) or a regular Python function that accepts arguments (of which some must be Warp arrays) and returns a Warp array or a list of Warp arrays.</p>
 <p>In case <code class="docutils literal notranslate"><span class="pre">function</span></code> is a Warp kernel, its adjoint kernel is launched with the given inputs and outputs, as well as the provided <code class="docutils literal notranslate"><span class="pre">dim</span></code>,

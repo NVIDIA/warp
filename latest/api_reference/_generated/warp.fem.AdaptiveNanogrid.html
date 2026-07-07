@@ -509,7 +509,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">env_offsets</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/adaptive_nanogrid.py#L63-L607"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.AdaptiveNanogrid" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/adaptive_nanogrid.py#L61-L605"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.AdaptiveNanogrid" title="Link to this definition">#</a></dt>
 <dd><p>Adaptive sparse grid.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -538,7 +538,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">env_offsets</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/adaptive_nanogrid.py#L172-L234"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.__init__" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/adaptive_nanogrid.py#L170-L232"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.__init__" title="Link to this definition">#</a></dt>
 <dd><p>Construct an adaptive sparse grid geometry from an in-memory NanoVDB volume and a list of levels.</p>
 <p>It is not recommended to use this constructor directly; see the helper functions
 <a class="reference internal" href="warp.fem.adaptive_nanogrid_from_field.html#warp.fem.adaptive_nanogrid_from_field" title="warp.fem.adaptive_nanogrid_from_field"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.fem.adaptive_nanogrid_from_field()</span></code></a> and <a class="reference internal" href="warp.fem.adaptive_nanogrid_from_hierarchy.html#warp.fem.adaptive_nanogrid_from_hierarchy" title="warp.fem.adaptive_nanogrid_from_hierarchy"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.fem.adaptive_nanogrid_from_hierarchy()</span></code></a>.</p>
@@ -833,7 +833,7 @@ a voxel at coordinates <code class="docutils literal notranslate"><span class="p
 <dd><em class="sig-param"><span class="n"><span class="pre">cell_ijks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/adaptive_nanogrid.py#L75-L171"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.from_environment_voxels" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/adaptive_nanogrid.py#L73-L169"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.from_environment_voxels" title="Link to this definition">#</a></dt>
 <dd><p>Construct an adaptive sparse grid from environment-tagged active cells and levels.</p>
 <p>Coordinates and levels are interpreted in environment-local fine-grid index
 space. The helper packs all environments into one NanoVDB index grid and
@@ -873,37 +873,37 @@ packed-grid faces.</p></li>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.AdaptiveNanogrid.stacked_face_grid">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">stacked_face_grid</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Volume.html#warp.Volume" title="warp._src.types.Volume"><span class="pre">Volume</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/adaptive_nanogrid.py#L235-L239"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.stacked_face_grid" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">stacked_face_grid</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Volume.html#warp.Volume" title="warp._src.types.Volume"><span class="pre">Volume</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/adaptive_nanogrid.py#L233-L237"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.stacked_face_grid" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.AdaptiveNanogrid.stacked_face_count">
-<span class="sig-name descname"><span class="pre">stacked_face_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/adaptive_nanogrid.py#L240-L243"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.stacked_face_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">stacked_face_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/adaptive_nanogrid.py#L238-L241"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.stacked_face_count" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.AdaptiveNanogrid.stacked_edge_grid">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">stacked_edge_grid</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Volume.html#warp.Volume" title="warp._src.types.Volume"><span class="pre">Volume</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/adaptive_nanogrid.py#L244-L248"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.stacked_edge_grid" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">stacked_edge_grid</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Volume.html#warp.Volume" title="warp._src.types.Volume"><span class="pre">Volume</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/adaptive_nanogrid.py#L242-L246"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.stacked_edge_grid" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.AdaptiveNanogrid.stacked_edge_count">
-<span class="sig-name descname"><span class="pre">stacked_edge_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/adaptive_nanogrid.py#L249-L252"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.stacked_edge_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">stacked_edge_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/adaptive_nanogrid.py#L247-L250"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.stacked_edge_count" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.AdaptiveNanogrid.fill_cell_arg">
-<span class="sig-name descname"><span class="pre">fill_cell_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/adaptive_nanogrid.py#L253-L262"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.fill_cell_arg" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">fill_cell_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/adaptive_nanogrid.py#L251-L260"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.fill_cell_arg" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.AdaptiveNanogrid.fill_side_arg">
-<span class="sig-name descname"><span class="pre">fill_side_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/adaptive_nanogrid.py#L263-L271"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.fill_side_arg" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">fill_side_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/adaptive_nanogrid.py#L261-L269"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.fill_side_arg" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.AdaptiveNanogrid.supports_cell_lookup">
-<span class="sig-name descname"><span class="pre">supports_cell_lookup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/adaptive_nanogrid.py#L272-L274"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.supports_cell_lookup" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">supports_cell_lookup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/adaptive_nanogrid.py#L270-L272"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.supports_cell_lookup" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
