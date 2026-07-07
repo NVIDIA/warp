@@ -510,7 +510,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">temporary_store</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/partition.py#L705-L759"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.make_space_partition" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/partition.py#L749-L805"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.make_space_partition" title="Link to this definition">#</a></dt>
 <dd><p>Compute the subset of nodes from a function space topology that touch a geometry partition</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -521,7 +521,9 @@
 Halo nodes are not currently supported with <code class="docutils literal notranslate"><span class="pre">environment_first</span></code>.</p></li>
 <li><p><strong>environment_first</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If True, order partition nodes by environment to make sure node indices are
 contiguous within each environment.</p></li>
-<li><p><strong>max_node_count</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – if positive, will be used to limit the number of nodes to avoid device/host synchronization.</p></li>
+<li><p><strong>max_node_count</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – If nonnegative, use this fixed node capacity to avoid device/host synchronization. For an
+environment-first partition, the <code class="docutils literal notranslate"><span class="pre">env_offsets</span></code> property describes the active environment-associated
+prefix and may end before this capacity.</p></li>
 <li><p><strong>device</strong> – Warp device on which to perform and store computations</p></li>
 <li><p><strong>temporary_store</strong> (<a class="reference internal" href="warp.fem.TemporaryStore.html#warp.fem.TemporaryStore" title="warp._src.fem.cache.TemporaryStore"><em>TemporaryStore</em></a>)</p></li>
 </ul>
