@@ -679,6 +679,25 @@ class TestStreams(unittest.TestCase):
         instance.__del__()
 
 
+def test_stream_is_blocking(test, device):
+    # Warp-created streams are always blocking (hardcoded at construction time, no native call)
+    warp_stream = wp.Stream(device)
+    test.assertTrue(warp_stream.is_blocking)
+
+    # The default device stream is also blocking
+    test.assertTrue(device.stream.is_blocking)
+
+    # The null stream is also blocking
+    test.assertTrue(device.null_stream.is_blocking)
+
+    # When wrapping an external handle, is_blocking is lazily evaluated via the CUDA API.
+    # Wrapping a known-blocking handle exercises this path and should still return True.
+    wrapped = wp.Stream(device, cuda_stream=warp_stream.cuda_stream)
+    test.assertIsNone(wrapped._is_blocking)  # not yet evaluated
+    test.assertTrue(wrapped.is_blocking)  # triggers native query
+    test.assertTrue(wrapped._is_blocking)  # now cached
+
+
 add_function_test(TestStreams, "test_stream_set", test_stream_set, devices=devices)
 add_function_test(TestStreams, "test_stream_arg_explicit_sync", test_stream_arg_explicit_sync, devices=devices)
 add_function_test(TestStreams, "test_stream_scope_implicit_sync", test_stream_scope_implicit_sync, devices=devices)
@@ -702,6 +721,7 @@ add_function_test(TestStreams, "test_graph_destroy_during_capture", test_graph_d
 
 add_function_test(TestStreams, "test_stream_synchronize_cpu", test_stream_synchronize_cpu, devices=None)
 add_function_test(TestStreams, "test_synchronize_during_capture", test_synchronize_during_capture, devices=devices)
+add_function_test(TestStreams, "test_stream_is_blocking", test_stream_is_blocking, devices=devices)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

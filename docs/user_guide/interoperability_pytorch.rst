@@ -48,6 +48,9 @@ To convert a PyTorch CUDA stream to a Warp CUDA stream and vice versa, Warp prov
 * :func:`warp.stream_from_torch`
 * :func:`warp.stream_to_torch`
 
+Note that CUDA streams created by PyTorch are non-blocking, whereas streams created by Warp are blocking.
+For a detailed explanation and its implications, see :ref:`nonblocking_streams`.
+
 .. _pytorch-graph-capture:
 
 CUDA Graph Capture with PyTorch and Warp

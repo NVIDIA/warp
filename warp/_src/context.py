@@ -4540,12 +4540,14 @@ class Stream:
         # we pass cuda_stream through kwargs because cuda_stream=None is actually a valid value (CUDA default stream)
         if "cuda_stream" in kwargs:
             self.cuda_stream = kwargs["cuda_stream"]
+            self._is_blocking = None
             device.runtime.core.wp_cuda_stream_register(device.context, self.cuda_stream)
         else:
             if not isinstance(priority, int):
                 raise TypeError("Stream priority must be an integer.")
             clamped_priority = max(-1, min(priority, 0))  # Only support two priority levels
             self.cuda_stream = device.runtime.core.wp_cuda_stream_create(device.context, clamped_priority)
+            self._is_blocking = True
 
             if not self.cuda_stream:
                 raise RuntimeError(f"Failed to create stream on device {device}")
@@ -4650,6 +4652,16 @@ class Stream:
     def is_capturing(self) -> bool:
         """A boolean indicating whether a graph capture is currently ongoing on this stream."""
         return bool(runtime.core.wp_cuda_stream_is_capturing(self.cuda_stream))
+
+    @property
+    def is_blocking(self) -> bool:
+        """A boolean indicating whether the stream is blocking or non-blocking.
+
+        See :ref:`nonblocking_streams` for more information.
+        """
+        if self._is_blocking is None:
+            self._is_blocking = bool(runtime.core.wp_cuda_stream_is_blocking(self.cuda_stream))
+        return self._is_blocking
 
     @property
     def priority(self) -> int:
@@ -6868,6 +6880,8 @@ class Runtime:
             self.core.wp_cuda_stream_wait_stream.restype = None
             self.core.wp_cuda_stream_is_capturing.argtypes = [ctypes.c_void_p]
             self.core.wp_cuda_stream_is_capturing.restype = ctypes.c_int
+            self.core.wp_cuda_stream_is_blocking.argtypes = [ctypes.c_void_p]
+            self.core.wp_cuda_stream_is_blocking.restype = ctypes.c_int
             self.core.wp_cuda_thread_exchange_capture_mode.argtypes = [ctypes.c_int]
             self.core.wp_cuda_thread_exchange_capture_mode.restype = ctypes.c_int
             self.core.wp_cuda_stream_get_capture_id.argtypes = [ctypes.c_void_p]

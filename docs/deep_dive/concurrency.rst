@@ -693,3 +693,153 @@ Here's an example of capturing a multi-GPU graph using a stream on each device:
 
     # launch the multi-GPU graph, which can execute the captured kernels concurrently
     wp.capture_launch(capture.graph)
+
+.. _nonblocking_streams:
+
+Blocking and Non-Blocking Streams
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The CUDA API allows creating streams that are blocking or non-blocking. They differ in how they interact with operations running on the CUDA default stream (a.k.a null stream). Blocking streams implicitly synchronize with the default stream and non-blocking streams are asynchronous with the default stream. Both blocking and non-blocking streams are always asynchronous with each other - the only difference is whether they synchronize with the CUDA default stream.
+
+Streams created by Warp are blocking. This has a number of advantages, especially for ease-of-use and interoperability with other frameworks. It avoids a range of synchronization-related issues and allows writing simpler code. The Warp runtime is designed around blocking streams and extra care is required when using external non-blocking streams.
+
+Let's use PyTorch as an interoperability example. Both Warp and PyTorch have a similar API for using streams, but Warp-created streams are blocking and PyTorch-created streams are non-blocking.
+
+By default, PyTorch code executes on the CUDA default stream (null stream) and Warp code executes on a blocking stream automatically created upon device initialization. Since Warp's blocking stream implicitly synchronizes with the null stream, we can interleave PyTorch and Warp operations without any explicit synchronization:
+
+.. code:: python
+
+    import torch
+    import warp as wp
+
+    @wp.kernel
+    def inc_kernel(a: wp.array[float]):
+        tid = wp.tid()
+        a[tid] += 1.0
+
+    with wp.ScopedDevice("cuda:0"), torch.device("cuda:0"):
+        a = torch.zeros(10)
+        wp.launch(inc_kernel, dim=a.shape, inputs=[a])
+        a += 1.0
+        wp.launch(inc_kernel, dim=a.shape, inputs=[a])
+        a += 1.0
+
+    print(a)
+    # tensor([4., 4., 4., 4., 4., 4., 4., 4., 4., 4.], device='cuda:0')
+
+A few side notes:
+
+* We use scoped device managers to ensure that both PyTorch and Warp target the same device.
+* PyTorch CUDA tensors can be passed directly to Warp kernels because they implement the ``__cuda_array_interface__``.
+* We don't explicitly specify any streams, relying on the default behavior of both frameworks.
+
+We can interleave PyTorch and Warp operations on the shared array because of the implicit synchronization between the CUDA default stream used by PyTorch and the blocking stream used by Warp. If Warp used non-blocking streams, explicit synchronization would be required, making the code more complicated and prone to bugs.
+
+For operations meant to execute sequentially, using the same shared stream is generally the way to go. We can borrow Warp's stream in PyTorch like this:
+
+.. code:: python
+
+    warp_stream = wp.get_stream("cuda:0")
+    torch_stream = wp.stream_to_torch(warp_stream)
+
+    with wp.ScopedStream(warp_stream), torch.cuda.stream(torch_stream):
+        a = torch.zeros(10, device="cuda:0")
+        wp.launch(inc_kernel, dim=a.shape, inputs=[a])
+        a += 1.0
+        wp.launch(inc_kernel, dim=a.shape, inputs=[a])
+        a += 1.0
+
+    print(a)
+
+This schedules both PyTorch and Warp operations on the same stream, so no synchronization (explicit or implicit) is necessary.
+
+Borrowing Warp's stream in PyTorch (and vice versa) does not change the stream's blocking behavior. A stream created by Warp is a blocking stream, even if it is borrowed in PyTorch using ``wp.stream_to_torch()``. Likewise, a stream created by PyTorch remains a non-blocking stream, even if it is borrowed in Warp using ``wp.stream_from_torch()``.
+
+And therein lies the problem. Using non-blocking streams for Warp operations can lead to subtle synchronization-related bugs, particularly when it comes to releasing resources like memory allocated for arrays or other Warp data structures like meshes, hash grids, and volumes. Warp's resource deallocation relies on the behavior of blocking streams. A resource is released once all blocking streams using it finish their asynchronous work. Non-blocking streams are not covered, so a resource could be released prematurely. This can manifest in a wide range of symptoms, including illegal memory access errors or incorrect computation results. Consider this example:
+
+.. code:: python
+
+    @wp.kernel
+    def add_kernel(a: wp.array[float], b: wp.array[float], c: wp.array[float]):
+        tid = wp.tid()
+        c[tid] = a[tid] + b[tid]
+
+    def foo(n: int, stream: wp.Stream):
+        with wp.ScopedStream(stream):
+            a = wp.full(n, 17.0)
+            b = wp.full(n, 42.0)
+            c = wp.empty(n)
+            wp.launch(add_kernel, dim=n, inputs=[a, b, c])
+            return c
+
+    # create a non-blocking stream using PyTorch
+    torch_stream = torch.cuda.Stream("cuda:0")
+    # borrow the non-blocking stream in Warp
+    nonblocking_stream = wp.stream_from_torch(torch_stream)
+
+    result = foo(10, nonblocking_stream)
+    print(result)
+
+This example has a race condition if a non-blocking stream is used. Arrays ``a`` and ``b`` are temporary resources allocated in function ``foo()``, so they are garbage collected at the end of the function. If their initialization and the subsequent kernel launch run on a non-blocking stream, they may be released prematurely, leading to errors.
+
+The simplest fix is to synchronize the stream:
+
+.. code:: python
+
+    def foo(n: int, stream: wp.Stream):
+        with wp.ScopedStream(stream):
+            a = wp.full(n, 17.0)
+            b = wp.full(n, 42.0)
+            c = wp.empty(n)
+            wp.launch(add_kernel, dim=n, inputs=[a, b, c])
+
+            # ensure work completes before resources are released
+            if not stream.is_blocking:
+                wp.synchronize_stream()
+
+            return c
+
+This blocks the host thread until all the stream operations have finished. To avoid a host sync, a simple alternative is to use a Warp-created blocking stream to wait for the non-blocking stream:
+
+.. code:: python
+
+    keepalive_stream = wp.Stream("cuda:0")
+
+    def foo(n: int, stream: wp.Stream):
+        with wp.ScopedStream(stream):
+            a = wp.full(n, 17.0)
+            b = wp.full(n, 42.0)
+            c = wp.empty(n)
+            wp.launch(add_kernel, dim=n, inputs=[a, b, c])
+
+            # ensure work completes before resources are released
+            if not stream.is_blocking:
+                keepalive_stream.wait_stream(stream)
+
+            return c
+
+The ``keepalive_stream`` can be any blocking stream on the appropriate device. The ``wait_stream()`` call uses fast device-side synchronization without triggering a host sync, so it should have negligible impact on performance. Note that the wait should happen before any Warp resources used on the non-blocking stream are garbage-collected. This ensures that Warp resource deallocation waits for the ``keepalive_stream``, which in turn waits for the operations on non-blocking streams to complete.
+
+A similar strategy can be used with any external non-blocking stream that uses Warp resources, not just PyTorch streams. This includes streams created from native handles using ``wp.Stream(..., cuda_stream=handle)``. Here is another example of using a non-blocking stream with explicit ``del`` statements to trigger garbage collection. Note the correct and incorrect ordering of operations.
+
+.. code:: python
+
+    handle = ...  # obtain native stream handle for a non-blocking stream
+    nonblocking_stream = wp.Stream(cuda_stream=handle)
+    keepalive_stream = wp.Stream()
+
+    a = wp.zeros(10)
+    b = wp.ones(10)
+    c = wp.empty(10)
+
+    # launch work on non-blocking stream
+    with wp.ScopedStream(nonblocking_stream):
+        wp.launch(add_kernel, dim=a.shape, inputs=[a, b, c])
+    
+    del a  # INCORRECT: resource may be released prematurely
+
+    keepalive_stream.wait_stream(nonblocking_stream)
+
+    del b  # CORRECT: resource released after non-blocking stream finishes
+
+    print(c)

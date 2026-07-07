@@ -82,6 +82,8 @@ class SGD:
                 param = params[i]
                 if self.b[i] is None or self.b[i].shape != param.shape or self.b[i].dtype != param.dtype:
                     self.b[i] = wp.zeros_like(param)
+                elif self.b[i].device != param.device:
+                    self.b[i] = self.b[i].to(param.device)
                 # Overload the kernel for each parameter so we can precompile the SGD kernel
                 if param is not None:
                     wp.overload(sgd_step_kernel, {"g": param, "b": param, "params": param})

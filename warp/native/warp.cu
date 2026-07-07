@@ -3340,6 +3340,13 @@ int wp_cuda_stream_is_capturing(void* stream)
     return int(status != cudaStreamCaptureStatusNone);
 }
 
+int wp_cuda_stream_is_blocking(void* stream)
+{
+    unsigned int flags = 0;
+    check_cuda(cudaStreamGetFlags(static_cast<cudaStream_t>(stream), &flags));
+    return !(flags & cudaStreamNonBlocking);
+}
+
 int wp_cuda_thread_exchange_capture_mode(int mode)
 {
     // Swap this thread's stream capture mode and return the previous mode.

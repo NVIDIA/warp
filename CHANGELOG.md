@@ -81,6 +81,7 @@
   host-return form of `wp.utils.runlength_encode()`, and `wp.copy()` other than a contiguous same-device copy
   (cross-device or non-contiguous copies) cannot be captured on CUDA and raise during APIC capture
   ([GH-1431](https://github.com/NVIDIA/warp/issues/1431)).
+- Add `wp.Stream.is_blocking` to check if a CUDA stream is blocking ([GH-1618](https://github.com/NVIDIA/warp/issues/1618)).
 
 ### Removed
 
@@ -229,11 +230,15 @@
   ([GH-1562](https://github.com/NVIDIA/warp/issues/1562)).
 - Fix CUDA graph capture when constructing an environment-first `warp.fem` space partition with a fixed
   `max_node_count` capacity ([GH-1607](https://github.com/NVIDIA/warp/issues/1607)).
+- Fix `warp.optim.Adam.set_params()` and `warp.optim.SGD.set_params()` reusing optimizer state on the wrong device
+  when replacement parameters move devices. Compatible buffers now migrate with the parameters while preserving
+  accumulated state ([GH-1615](https://github.com/NVIDIA/warp/issues/1615)).
 
 ### Documentation
 
 - Document the tiled kernel patterns that diverge between CPU and CUDA under the forced CPU `block_dim=1`, along with
   portable workarounds ([GH-1580](https://github.com/NVIDIA/warp/issues/1580)).
+- Document working with non-blocking CUDA streams, including streams borrowed from PyTorch ([GH-1618](https://github.com/NVIDIA/warp/issues/1618)).
 
 ## [1.14.0] - 2026-06-01
 
