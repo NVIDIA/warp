@@ -159,6 +159,46 @@ def test_adam_set_params_preserves_fp16_state(test, device):
                 test.assertTrue((opt.v[0].numpy() == 1.0).all(), f"second moment reset for {param_dtype}")
 
 
+def test_adam_set_params_migrates_state(test, device):
+    """Verify compatible moment buffers follow parameters that move devices."""
+    moved_param = wp.zeros(4, dtype=wp.float32, device="cpu")
+    unmoved_param = wp.zeros(4, dtype=wp.float32, device="cpu")
+    opt = warp.optim.Adam([moved_param, unmoved_param], lr=0.02)
+
+    moved_m, moved_v = opt.m[0], opt.v[0]
+    unmoved_m, unmoved_v = opt.m[1], opt.v[1]
+    moved_m.fill_(1.0)
+    moved_v.fill_(2.0)
+
+    expected_m = moved_m.numpy().copy()
+    expected_v = moved_v.numpy().copy()
+    replacement = wp.zeros(4, dtype=wp.float32, device=device)
+    opt.set_params([replacement, unmoved_param])
+
+    test.assertEqual(opt.m[0].device, device)
+    test.assertEqual(opt.v[0].device, device)
+    np.testing.assert_array_equal(opt.m[0].numpy(), expected_m)
+    np.testing.assert_array_equal(opt.v[0].numpy(), expected_v)
+    test.assertIs(opt.m[1], unmoved_m)
+    test.assertIs(opt.v[1], unmoved_v)
+
+    opt.step([wp.ones_like(replacement), wp.ones_like(unmoved_param)])
+    replacement.numpy()
+    unmoved_param.numpy()
+
+    expected_m = opt.m[0].numpy().copy()
+    expected_v = opt.v[0].numpy().copy()
+    replacement = wp.zeros(4, dtype=wp.float32, device="cpu")
+    opt.set_params([replacement, unmoved_param])
+
+    test.assertEqual(opt.m[0].device, wp.get_device("cpu"))
+    test.assertEqual(opt.v[0].device, wp.get_device("cpu"))
+    np.testing.assert_array_equal(opt.m[0].numpy(), expected_m)
+    np.testing.assert_array_equal(opt.v[0].numpy(), expected_v)
+    test.assertIs(opt.m[1], unmoved_m)
+    test.assertIs(opt.v[1], unmoved_v)
+
+
 devices = get_test_devices()
 
 
@@ -171,6 +211,12 @@ add_function_test(TestAdam, "test_adam_solve_vec3", test_adam_solve_vec3, device
 add_function_test(TestAdam, "test_adam_solve_two_inputs", test_adam_solve_two_inputs, devices=devices)
 add_function_test(
     TestAdam, "test_adam_set_params_preserves_fp16_state", test_adam_set_params_preserves_fp16_state, devices=devices
+)
+add_function_test(
+    TestAdam,
+    "test_adam_set_params_migrates_state",
+    test_adam_set_params_migrates_state,
+    devices=get_cuda_test_devices(),
 )
 
 

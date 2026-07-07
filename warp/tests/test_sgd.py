@@ -3,6 +3,8 @@
 
 import unittest
 
+import numpy as np
+
 import warp as wp
 import warp.optim
 from warp.tests.unittest_utils import *
@@ -205,6 +207,37 @@ def test_sgd_reset_internal_state(test, device):
         test.assertAlmostEqual(result2[0], 0.9, places=5)
 
 
+def test_sgd_set_params_migrates_state(test, device):
+    """Verify compatible momentum buffers follow parameters that move devices."""
+    moved_param = wp.zeros(4, dtype=wp.float32, device="cpu")
+    unmoved_param = wp.zeros(4, dtype=wp.float32, device="cpu")
+    opt = warp.optim.SGD([moved_param, unmoved_param], lr=0.02, momentum=0.9)
+
+    moved_b = opt.b[0]
+    unmoved_b = opt.b[1]
+    moved_b.fill_(1.0)
+
+    expected_b = moved_b.numpy().copy()
+    replacement = wp.zeros(4, dtype=wp.float32, device=device)
+    opt.set_params([replacement, unmoved_param])
+
+    test.assertEqual(opt.b[0].device, device)
+    np.testing.assert_array_equal(opt.b[0].numpy(), expected_b)
+    test.assertIs(opt.b[1], unmoved_b)
+
+    opt.step([wp.ones_like(replacement), wp.ones_like(unmoved_param)])
+    replacement.numpy()
+    unmoved_param.numpy()
+
+    expected_b = opt.b[0].numpy().copy()
+    replacement = wp.zeros(4, dtype=wp.float32, device="cpu")
+    opt.set_params([replacement, unmoved_param])
+
+    test.assertEqual(opt.b[0].device, wp.get_device("cpu"))
+    np.testing.assert_array_equal(opt.b[0].numpy(), expected_b)
+    test.assertIs(opt.b[1], unmoved_b)
+
+
 devices = get_test_devices()
 
 
@@ -219,6 +252,12 @@ add_function_test(TestSGD, "test_sgd_nesterov_momentum", test_sgd_nesterov_momen
 add_function_test(TestSGD, "test_sgd_combined_features", test_sgd_combined_features, devices=devices)
 add_function_test(TestSGD, "test_sgd_no_momentum", test_sgd_no_momentum, devices=devices)
 add_function_test(TestSGD, "test_sgd_reset_internal_state", test_sgd_reset_internal_state, devices=devices)
+add_function_test(
+    TestSGD,
+    "test_sgd_set_params_migrates_state",
+    test_sgd_set_params_migrates_state,
+    devices=get_cuda_test_devices(),
+)
 
 
 if __name__ == "__main__":
