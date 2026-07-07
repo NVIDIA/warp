@@ -315,7 +315,7 @@ def dtype_is_compatible(dl_dtype, wp_dtype):
         raise RuntimeError("Data types with less than 8 bits are not supported")
 
     if dl_dtype.type_code.value == DLDataTypeCode.kDLBool:
-        return dl_dtype.bits == 8 and wp_dtype == warp.bool
+        return dl_dtype.bits == 8 and wp_dtype in (warp.bool, warp.int8, warp.uint8)
     elif dl_dtype.type_code.value == DLDataTypeCode.kDLFloat:
         if dl_dtype.bits == 16:
             return wp_dtype == warp.float16
@@ -340,6 +340,13 @@ def dtype_is_compatible(dl_dtype, wp_dtype):
         raise RuntimeError("Complex data types are not supported")
     else:
         raise RuntimeError(f"Unsupported DLPack dtype {(str(dl_dtype.type_code), dl_dtype.bits)}")
+
+
+def _dtype_name(dl_dtype: DLDataType) -> str:
+    name = f"{dl_dtype.type_code}{dl_dtype.bits}"
+    if dl_dtype.lanes > 1:
+        name += f"x{dl_dtype.lanes}"
+    return name
 
 
 def _unpack_array(dlt: DLTensor, dtype=None):
@@ -368,7 +375,9 @@ def _unpack_array(dlt: DLTensor, dtype=None):
         # handle vector/matrix types
 
         if not dtype_is_compatible(dlt.dtype, dtype._wp_scalar_type_):
-            raise RuntimeError(f"Incompatible data types: {dlt.dtype} and {dtype}")
+            raise RuntimeError(
+                f"Incompatible data types: DLPack {_dtype_name(dlt.dtype)} and Warp {warp._src.types.type_repr(dtype)}"
+            )
 
         dtype_shape = dtype._shape_
         dtype_dims = len(dtype._shape_)
@@ -392,7 +401,9 @@ def _unpack_array(dlt: DLTensor, dtype=None):
 
     elif not dtype_is_compatible(dlt.dtype, dtype):
         # incompatible dtype requested
-        raise RuntimeError(f"Incompatible data types: {dlt.dtype} and {dtype}")
+        raise RuntimeError(
+            f"Incompatible data types: DLPack {_dtype_name(dlt.dtype)} and Warp {warp._src.types.type_repr(dtype)}"
+        )
 
     a = warp._src.types.array(
         ptr=dlt.data, dtype=dtype, shape=shape, strides=strides, copy=False, device=device, pinned=pinned
