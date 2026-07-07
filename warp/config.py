@@ -246,7 +246,7 @@ def _resolve_optimization_level(value, is_cpu, device=None):
     """Resolve the effective optimization level for the target backend/device.
 
     Args:
-        value: The config value (int, None, or dict with ``"cpu"``/``"cuda"`` keys).
+        value: The config value (int, None, or dict with ``"cpu"``/``"cuda"``/``"cuda:N"`` keys).
         is_cpu: Whether the target is CPU.
         device: The target device (for per-device CUDA overrides).
 

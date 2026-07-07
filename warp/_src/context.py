@@ -3780,8 +3780,6 @@ class Module:
 
         mode = options["mode"]
         opt = options["optimization_level"]
-        if isinstance(opt, dict):
-            opt = warp.config._resolve_optimization_level(opt, is_cpu, device)
         if opt is None:
             # Default to O2 for CPU, O3 for CUDA
             opt = 2 if is_cpu else 3
@@ -3981,7 +3979,10 @@ class Module:
                 else:
                     module_load_timer.extra_msg = " (cached)"
             else:
-                output_name = self._get_compile_output_name(device, block_dim=active_block_dim)
+                opt = options["optimization_level"]
+                if isinstance(opt, dict):
+                    opt = warp.config._resolve_optimization_level(opt, device.is_cpu, device)
+                output_name = self._get_compile_output_name(device, block_dim=active_block_dim, optimization_level=opt)
                 output_arch = self._get_compile_arch(device)
 
                 module_dir = os.path.join(warp.config.kernel_cache_dir, module_name_short)
@@ -11312,9 +11313,17 @@ def load_aot_module(
         else:
             candidate_flags = (use_ptx,)
 
+        opt = module_object.options.get("optimization_level", None)
+        if opt is None:
+            opt = warp.config.optimization_level
+        if isinstance(opt, dict):
+            opt = warp.config._resolve_optimization_level(opt, d.is_cpu, d)
         for candidate_use_ptx in candidate_flags:
             candidate_path = os.path.join(
-                module_dir, module_object._get_compile_output_name(d, output_arch, use_ptx=candidate_use_ptx)
+                module_dir,
+                module_object._get_compile_output_name(
+                    d, output_arch, use_ptx=candidate_use_ptx, optimization_level=opt
+                ),
             )
             tried_paths.append(candidate_path)
             if os.path.exists(candidate_path):
