@@ -632,6 +632,29 @@ def _test_pic_partition_multi_env(test, device):
     np.testing.assert_array_equal(capped_pressure_partition.env_offsets.numpy(), np.array([0, 1, 1], dtype=np.int32))
     np.testing.assert_array_equal(capped_pressure_partition.space_node_indices().numpy(), np.array([0], dtype=np.int32))
 
+    capacity = 4
+    underfilled_pressure_partition = fem.make_space_partition(
+        space_topology=pressure_space.topology,
+        geometry_partition=partition,
+        environment_first=True,
+        with_halo=False,
+        max_node_count=capacity,
+        device=device,
+    )
+
+    test.assertEqual(underfilled_pressure_partition.node_count(), capacity)
+    np.testing.assert_array_equal(
+        underfilled_pressure_partition.space_node_indices().numpy()[:2], np.array([0, 4], dtype=np.int32)
+    )
+    np.testing.assert_array_equal(
+        underfilled_pressure_partition.env_offsets.numpy(), np.array([0, 1, 2], dtype=np.int32)
+    )
+    expected_space_to_partition = np.full(pressure_space.node_count(), fem.NULL_NODE_INDEX, dtype=np.int32)
+    expected_space_to_partition[[0, 4]] = [0, 1]
+    np.testing.assert_array_equal(
+        underfilled_pressure_partition._space_to_partition.numpy(), expected_space_to_partition
+    )
+
 
 def _test_pic_env_indices_api(test, device):
     geo = fem.Grid2D(res=wp.vec2i(2), env_count=2)
@@ -1011,10 +1034,78 @@ def test_adaptive_nanogrid_multi_env(test, device):
     test.assertEqual(masked_geo.cell_count(), 2)
 
 
+def test_environment_space_partition_capture(test, device):
+    with wp.ScopedDevice(device):
+        geo = fem.Grid2D(res=wp.vec2i(2, 1), env_count=3)
+        cell_mask = wp.array([1, 0, 0, 1, 0, 0], dtype=int, device=device)
+        geo_partition = fem.ExplicitGeometryPartition(
+            geo,
+            cell_mask,
+            max_cell_count=4,
+            max_side_count=0,
+        )
+        space = fem.make_polynomial_space(geo, degree=0, discontinuous=True)
+
+        def make_partition():
+            return fem.make_space_partition(
+                space_topology=space.topology,
+                geometry_partition=geo_partition,
+                environment_first=True,
+                with_halo=False,
+                max_node_count=5,
+                device=device,
+            )
+
+        make_partition()
+        with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+            captured_partition = make_partition()
+        wp.capture_launch(capture.graph)
+
+        test.assertEqual(captured_partition.node_count(), 5)
+        np.testing.assert_array_equal(
+            captured_partition.space_node_indices().numpy()[:2], np.array([0, 3], dtype=np.int32)
+        )
+        np.testing.assert_array_equal(captured_partition.env_offsets.numpy(), np.array([0, 1, 2, 2], dtype=np.int32))
+        expected_space_to_partition = np.full(space.node_count(), fem.NULL_NODE_INDEX, dtype=np.int32)
+        expected_space_to_partition[[0, 3]] = [0, 1]
+        np.testing.assert_array_equal(captured_partition._space_to_partition.numpy(), expected_space_to_partition)
+
+
+def test_single_environment_space_partition_environmentless_tail(test, device):
+    with wp.ScopedDevice(device):
+        positions = wp.array(
+            [
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [2.0, 2.0, 0.0],
+            ],
+            dtype=wp.vec3,
+            device=device,
+        )
+        geo = fem.Trimesh3D(
+            wp.array([[0, 1, 2]], dtype=int, device=device),
+            positions,
+            build_bvh=True,
+        )
+        space = fem.make_polynomial_space(geo, degree=1)
+        partition = fem.make_space_partition(
+            space_topology=space.topology,
+            environment_first=True,
+            max_node_count=space.node_count(),
+            device=device,
+        )
+
+        test.assertEqual(partition.node_count(), 4)
+        np.testing.assert_array_equal(partition.space_node_indices().numpy(), np.array([0, 1, 2, 3], dtype=np.int32))
+        np.testing.assert_array_equal(partition.env_offsets.numpy(), np.array([0, 3], dtype=np.int32))
+
+
 # -- Device setup and test registration --
 
 devices = get_test_devices()
 cuda_devices = get_selected_cuda_test_devices()
+cuda_devices_with_mempool = get_selected_cuda_test_devices_with_mempool()
 
 
 class TestFemMultiEnv(unittest.TestCase):
@@ -1031,6 +1122,18 @@ add_function_test(
 )
 add_function_test(
     TestFemMultiEnv, "test_adaptive_nanogrid_multi_env", test_adaptive_nanogrid_multi_env, devices=cuda_devices
+)
+add_function_test(
+    TestFemMultiEnv,
+    "test_environment_space_partition_capture",
+    test_environment_space_partition_capture,
+    devices=cuda_devices_with_mempool,
+)
+add_function_test(
+    TestFemMultiEnv,
+    "test_single_environment_space_partition_environmentless_tail",
+    test_single_environment_space_partition_environmentless_tail,
+    devices=devices,
 )
 
 if __name__ == "__main__":

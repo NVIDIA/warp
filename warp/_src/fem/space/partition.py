@@ -3,8 +3,6 @@
 
 from typing import Any, Optional
 
-import numpy as np
-
 import warp as wp
 from warp._src.fem import cache
 from warp._src.fem.geometry import GeometryPartition, WholeGeometryPartition
@@ -176,8 +174,7 @@ class EnvironmentSpacePartition(SpacePartition):
     ):
         """Rebuild partition mappings.
 
-        If the geometry or partition layout changes between rebuilds, for example
-        if the geometry environment count changes, arrays returned by
+        If the partition layout changes between rebuilds, arrays returned by
         :meth:`space_node_indices` or :attr:`env_offsets` should be reacquired.
         """
         geometry = self.space_topology.geometry
@@ -185,8 +182,8 @@ class EnvironmentSpacePartition(SpacePartition):
         space_node_count = self.space_topology.node_count()
         max_node_count = self._max_node_count
 
-        if env_count <= 1 and isinstance(self.geo_partition, WholeGeometryPartition):
-            partition_node_count = min(max_node_count, space_node_count) if max_node_count >= 0 else space_node_count
+        if max_node_count < 0 and env_count <= 1 and isinstance(self.geo_partition, WholeGeometryPartition):
+            partition_node_count = space_node_count
             if self._node_indices is None or self._node_indices.shape[0] != partition_node_count:
                 if self._node_indices is not None:
                     if self._space_to_partition is self._node_indices:
@@ -207,19 +204,14 @@ class EnvironmentSpacePartition(SpacePartition):
             self._node_count = partition_node_count
             self._env_offsets = wp.array([0, partition_node_count], dtype=int, device=device)
 
-            if partition_node_count == space_node_count:
-                if self._space_to_partition is not None and self._space_to_partition is not self._node_indices:
-                    self._space_to_partition.release()
-                self._space_to_partition = self._node_indices
-            else:
-                self._space_to_partition = self._make_space_to_partition(
-                    space_node_count, temporary_store, device, partition_node_count
-                )
+            if self._space_to_partition is not None and self._space_to_partition is not self._node_indices:
+                self._space_to_partition.release()
+            self._space_to_partition = self._node_indices
             return
 
-        include_environmentless = isinstance(self.geo_partition, WholeGeometryPartition)
+        include_unclassified_nodes = isinstance(self.geo_partition, WholeGeometryPartition)
 
-        if include_environmentless:
+        if include_unclassified_nodes:
 
             @cache.dynamic_kernel(
                 suffix=f"{self.space_topology.name}_env_first",
@@ -288,12 +280,13 @@ class EnvironmentSpacePartition(SpacePartition):
         group_offsets, node_indices = compress_node_indices(env_count + 1, node_env, temporary_store=temporary_store)
         device = node_env.device
 
-        group_offsets_np = group_offsets.numpy()
-        env_node_count = int(group_offsets_np[env_count])
-        full_partition_node_count = space_node_count if include_environmentless else env_node_count
-        partition_node_count = (
-            min(max_node_count, full_partition_node_count) if max_node_count >= 0 else full_partition_node_count
-        )
+        if max_node_count >= 0:
+            partition_node_count = max_node_count
+            has_env_offsets = True
+        else:
+            env_node_count = int(group_offsets.numpy()[env_count])
+            partition_node_count = space_node_count if include_unclassified_nodes else env_node_count
+            has_env_offsets = partition_node_count <= env_node_count
 
         if self._node_indices is None or self._node_indices.shape[0] != partition_node_count:
             if self._node_indices is not None:
@@ -303,17 +296,33 @@ class EnvironmentSpacePartition(SpacePartition):
             self._node_indices = cache.borrow_temporary(
                 temporary_store, shape=(partition_node_count,), dtype=int, device=device
             )
-        wp.copy(dest=self._node_indices, src=node_indices, count=partition_node_count)
+        if partition_node_count > 0:
+            wp.copy(dest=self._node_indices, src=node_indices, count=partition_node_count)
 
         self._space_to_partition = self._make_space_to_partition(
-            space_node_count, temporary_store, device, partition_node_count
+            space_node_count,
+            temporary_store,
+            device,
+            partition_node_count,
+            active_node_offsets=None if include_unclassified_nodes or max_node_count < 0 else group_offsets,
+            active_node_offset_index=env_count,
         )
 
         self._node_count = partition_node_count
-        if partition_node_count <= env_node_count:
-            self._env_offsets = wp.array(
-                np.minimum(group_offsets_np[: env_count + 1], partition_node_count),
-                dtype=int,
+        if has_env_offsets:
+            if self._env_offsets is None or self._env_offsets.shape != (env_count + 1,):
+                if self._env_offsets is not None:
+                    self._env_offsets.release()
+                self._env_offsets = cache.borrow_temporary(
+                    temporary_store,
+                    shape=(env_count + 1,),
+                    dtype=int,
+                    device=device,
+                )
+            wp.launch(
+                kernel=EnvironmentSpacePartition._fill_environment_offsets,
+                dim=env_count + 1,
+                inputs=[partition_node_count, group_offsets, self._env_offsets],
                 device=device,
             )
         else:
@@ -339,9 +348,14 @@ class EnvironmentSpacePartition(SpacePartition):
     def env_offsets(self) -> wp.array | None:
         """Partition node offsets for each environment.
 
-        These offsets count partition nodes, not scalar coefficients. For scalar-valued fields,
-        they may be used directly as ``LinearOperator`` batch offsets; for fields with multiple
-        scalar coefficients per node, callers must convert them to coefficient offsets first.
+        These offsets count partition nodes, not scalar coefficients. For fixed-capacity partitions,
+        the final offset may be smaller than :meth:`node_count` when the capacity contains inactive
+        or environmentless nodes. In that case, the offsets describe only the active
+        environment-associated prefix.
+
+        For scalar-valued fields, the offsets may be used directly as ``LinearOperator`` batch offsets;
+        for fields with multiple scalar coefficients per node, callers must convert them to coefficient
+        offsets first.
         """
         return self._env_offsets
 
@@ -351,6 +365,8 @@ class EnvironmentSpacePartition(SpacePartition):
         temporary_store: cache.TemporaryStore | None,
         device,
         partition_node_count: int,
+        active_node_offsets: wp.array | None = None,
+        active_node_offset_index: int = 0,
     ):
         if self._space_to_partition is self._node_indices:
             space_to_partition = None
@@ -365,12 +381,20 @@ class EnvironmentSpacePartition(SpacePartition):
             )
 
         space_to_partition.fill_(NULL_NODE_INDEX)
-        wp.launch(
-            kernel=EnvironmentSpacePartition._scatter_partition_indices,
-            dim=partition_node_count,
-            device=device,
-            inputs=[self._node_indices, space_to_partition],
-        )
+        if active_node_offsets is None:
+            wp.launch(
+                kernel=EnvironmentSpacePartition._scatter_partition_indices,
+                dim=partition_node_count,
+                device=device,
+                inputs=[self._node_indices, space_to_partition],
+            )
+        else:
+            wp.launch(
+                kernel=EnvironmentSpacePartition._scatter_active_partition_indices,
+                dim=partition_node_count,
+                device=device,
+                inputs=[active_node_offset_index, active_node_offsets, self._node_indices, space_to_partition],
+            )
 
         return space_to_partition
 
@@ -392,6 +416,26 @@ class EnvironmentSpacePartition(SpacePartition):
     ):
         partition_idx = wp.tid()
         space_to_partition[partition_to_space[partition_idx]] = partition_idx
+
+    @wp.kernel
+    def _scatter_active_partition_indices(
+        active_node_offset_index: int,
+        active_node_offsets: wp.array(dtype=int),
+        partition_to_space: wp.array(dtype=int),
+        space_to_partition: wp.array(dtype=int),
+    ):
+        partition_idx = wp.tid()
+        if partition_idx < active_node_offsets[active_node_offset_index]:
+            space_to_partition[partition_to_space[partition_idx]] = partition_idx
+
+    @wp.kernel
+    def _fill_environment_offsets(
+        partition_node_count: int,
+        group_offsets: wp.array(dtype=int),
+        env_offsets: wp.array(dtype=int),
+    ):
+        env_index = wp.tid()
+        env_offsets[env_index] = wp.min(group_offsets[env_index], partition_node_count)
 
 
 class NodeCategory:
@@ -721,7 +765,9 @@ def make_space_partition(
           Halo nodes are not currently supported with ``environment_first``.
         environment_first: If True, order partition nodes by environment to make sure node indices are
           contiguous within each environment.
-        max_node_count: if positive, will be used to limit the number of nodes to avoid device/host synchronization.
+        max_node_count: If nonnegative, use this fixed node capacity to avoid device/host synchronization. For an
+          environment-first partition, the ``env_offsets`` property describes the active environment-associated
+          prefix and may end before this capacity.
         device: Warp device on which to perform and store computations
 
     Returns:

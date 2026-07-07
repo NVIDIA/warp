@@ -227,6 +227,8 @@
 - Fix CPU kernel compilation failures by registering the `exp2` and `ldexp` math symbols that LLVM
   may emit when simplifying power-of-two `pow` calls
   ([GH-1562](https://github.com/NVIDIA/warp/issues/1562)).
+- Fix CUDA graph capture when constructing an environment-first `warp.fem` space partition with a fixed
+  `max_node_count` capacity ([GH-1607](https://github.com/NVIDIA/warp/issues/1607)).
 
 ### Documentation
 
