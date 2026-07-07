@@ -125,6 +125,7 @@
 
 ### Fixed
 
+- Fix CUDA `wp.Mesh` construction and refit for empty meshes ([GH-1602](https://github.com/NVIDIA/warp/issues/1602)).
 - Fix eager Python calls to generic `@wp.func` functions to resolve a matching generic template after other concrete
   overloads have already been instantiated ([GH-1603](https://github.com/NVIDIA/warp/issues/1603)).
 - Fix `wp.tile_dot()` compilation failure for scalar `wp.float64` and `wp.float16` tiles, which previously narrowed

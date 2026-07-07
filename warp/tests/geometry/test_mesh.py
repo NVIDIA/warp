@@ -383,6 +383,39 @@ def test_mesh_refit_graph(test, device):
         wp.synchronize_device(device)
 
 
+def test_empty_mesh_create_and_refit(test, device):
+    if device.is_cpu:
+        constructors = ["sah", "median"]
+    else:
+        constructors = ["sah", "median", "lbvh"]
+
+    if wp.is_cubql_available():
+        constructors.append("cubql")
+
+    for constructor in constructors:
+        points = wp.zeros(0, dtype=wp.vec3, device=device)
+        indices = wp.zeros(0, dtype=wp.int32, device=device)
+        mesh = wp.Mesh(points=points, indices=indices, bvh_constructor=constructor)
+
+        test.assertEqual(mesh.points.size, 0)
+        test.assertEqual(mesh.indices.size, 0)
+
+        mesh.refit()
+        if device.is_cuda:
+            wp.synchronize_device(device)
+
+        if constructor != "cubql":
+            mesh = wp.Mesh(
+                points=points,
+                indices=indices,
+                bvh_constructor=constructor,
+                support_winding_number=True,
+            )
+            mesh.refit()
+            if device.is_cuda:
+                wp.synchronize_device(device)
+
+
 def test_mesh_exceptions(test, device):
     # points and indices must be on same device
     with test.assertRaises(RuntimeError):
@@ -491,6 +524,7 @@ add_function_test(TestMesh, "test_mesh_query_ray", test_mesh_query_ray, devices=
 add_function_test(TestMesh, "test_grouped_mesh_query_ray", test_grouped_mesh_query_ray, devices=devices)
 add_function_test(TestMesh, "test_mesh_refit", test_mesh_refit, devices=devices)
 add_function_test(TestMesh, "test_mesh_refit_graph", test_mesh_refit_graph, devices=cuda_devices_with_mempool)
+add_function_test(TestMesh, "test_empty_mesh_create_and_refit", test_empty_mesh_create_and_refit, devices=devices)
 add_function_test(TestMesh, "test_mesh_exceptions", test_mesh_exceptions, devices=get_selected_cuda_test_devices())
 
 

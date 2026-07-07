@@ -664,6 +664,18 @@ void bvh_create_device(
 )
 {
     ContextGuard guard(context);
+
+    if (num_items <= 0) {
+        memset(&bvh_device_on_host, 0, sizeof(BVH));
+        bvh_device_on_host.item_lowers = lowers;
+        bvh_device_on_host.item_uppers = uppers;
+        bvh_device_on_host.item_groups = groups;
+        bvh_device_on_host.leaf_size = leaf_size;
+        bvh_device_on_host.context = context ? context : wp_cuda_context_get_current();
+        bvh_device_on_host.constructor_type = constructor_type;
+        return;
+    }
+
     if (constructor_type == BVH_CONSTRUCTOR_CUBQL) {
         if (groups) {
             wp::set_error_string("Warp error: grouped BVHs are not supported with cuBQL construction");

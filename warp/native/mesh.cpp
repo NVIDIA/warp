@@ -113,7 +113,13 @@ void bvh_refit_with_solid_angle_recursive_host(BVH& bvh, int index, Mesh& mesh)
     }
 }
 
-void bvh_refit_with_solid_angle_host(BVH& bvh, Mesh& mesh) { bvh_refit_with_solid_angle_recursive_host(bvh, 0, mesh); }
+void bvh_refit_with_solid_angle_host(BVH& bvh, Mesh& mesh)
+{
+    if (!bvh.root || bvh.num_items == 0)
+        return;
+
+    bvh_refit_with_solid_angle_recursive_host(bvh, 0, mesh);
+}
 
 uint64_t wp_mesh_create_host(
     array_t<wp::vec3> points,
@@ -152,7 +158,7 @@ uint64_t wp_mesh_create_host(
         // compute edge lengths
         sum += length(p0 - p1) + length(p0 - p2) + length(p2 - p1);
     }
-    m->average_edge_length = sum / (num_tris * 3);
+    m->average_edge_length = (num_tris > 0) ? sum / (3.0f * num_tris) : 0.0f;
 
 #ifndef WP_DISABLE_CUBQL
     if (use_cubql) {
@@ -180,7 +186,7 @@ uint64_t wp_mesh_create_host(
         return 0;
     }
 
-    if (support_winding_number) {
+    if (support_winding_number && num_tris > 0) {
         int num_bvh_nodes = 2 * num_tris - 1;
         m->solid_angle_props
             = static_cast<SolidAngleProps*>(wp_alloc_host(sizeof(SolidAngleProps) * num_bvh_nodes, "(native:mesh)"));
@@ -228,9 +234,9 @@ void wp_mesh_refit_host(uint64_t id)
 
         sum += length(p0 - p1) + length(p0 - p2) + length(p2 - p1);
     }
-    m->average_edge_length = sum / (m->num_tris * 3);
+    m->average_edge_length = (m->num_tris > 0) ? sum / (3.0f * m->num_tris) : 0.0f;
 
-    if (m->solid_angle_props) {
+    if (m->solid_angle_props && m->num_tris > 0) {
         // If solid angle were used, use refit solid angle
         bvh_refit_with_solid_angle_host(m->bvh, *m);
     } else {
