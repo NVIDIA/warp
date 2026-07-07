@@ -215,6 +215,7 @@ set(WARP_CPP_SOURCES
     warp/native/sort.cpp
     warp/native/sparse.cpp
     warp/native/volume.cpp
+    warp/native/volume_builder.cpp
     warp/native/texture.cpp
     warp/native/mathdx.cpp
     warp/native/coloring.cpp

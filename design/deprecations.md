@@ -59,6 +59,7 @@ current version are overdue.
 | `warp.config.quiet` | 1.14.0 | Yes | Yes | Yes | Unplanned | [110917b](https://github.com/NVIDIA/warp/commit/110917bcfef0aead6cecc7af91345366b365c8f1) | Use `warp.config.log_level = warp.LOG_WARNING`. |
 | `wp.HashGridQueryH` / `wp.HashGridQueryD` | 1.14.0 | Yes | Yes | No | Unplanned | [2717b45](https://github.com/NVIDIA/warp/commit/2717b45bad7919186e36b307c3f4ee0eeeb8c0ad) | Use `wp.HashGridQuery`; runtime aliases retained during deprecation. |
 | `masked=True` in `warp.sparse` topology-changing ops | 1.15.0 | Yes | Yes | Yes | Unplanned | [8d8569e](https://github.com/NVIDIA/warp/commit/8d8569ec2860be1bde278eefbe0e4470470f32d6) | Use `topology="masked"` (`bsr_set_from_triplets`, `bsr_assign`, `bsr_set_transpose`, `bsr_axpy`, `bsr_mm`). |
+| Per-environment sequence form of `warp.fem.Nanogrid.from_environment_voxels()` and `warp.fem.AdaptiveNanogrid.from_environment_voxels()` | 1.15.0 | Yes | Yes | Yes | Unplanned | [37f9ce4](https://github.com/NVIDIA/warp/commit/37f9ce4cd9e3e01b05cfbad5d98b72bab712829b) | Pass flat `points`, `cell_levels` where applicable, `point_envs`, and `env_count` instead. |
 | `wp.from_ptr()` requires `length` parameter | 1.1.0 | Yes | No | Yes | Indefinite | [e5ac2d9](https://github.com/NVIDIA/warp/commit/e5ac2d9ad0d4c9d3f695c7206846c9e489c3b83e) | Intentionally retained. The legacy double-pointer form is deprecated: OmniGraph code should use `from_omni_graph_ptr()`; otherwise construct via the `wp.array` `ptr` argument. May be repurposed for regular pointers in the future. |
 
 ## Removed

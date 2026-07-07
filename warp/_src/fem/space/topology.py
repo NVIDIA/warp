@@ -387,6 +387,12 @@ class RegularDiscontinuousSpaceTopologyMixin:
     def node_count(self):
         return self.geometry.cell_count() * self.MAX_NODES_PER_ELEMENT
 
+    def rebuild(self) -> None:
+        """Refresh this topology after rebuilding its geometry.
+
+        Regular discontinuous topologies have no cached connectivity, so no additional work is required.
+        """
+
     @cached_property
     def name(self):
         return f"{self.geometry.name}_D{self.MAX_NODES_PER_ELEMENT}"

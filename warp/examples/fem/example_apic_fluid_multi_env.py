@@ -34,19 +34,6 @@ from warp.sparse import BsrMatrix, bsr_mm, bsr_mv, bsr_transposed
 
 
 @wp.kernel
-def particle_voxels(
-    positions: wp.array(dtype=wp.vec3),
-    particle_offset: int,
-    voxel_size: float,
-    cell_ijks: wp.array(dtype=wp.vec3i),
-):
-    p = wp.tid()
-    pos = positions[particle_offset + p] / voxel_size
-    uvw = pos + wp.vec3(0.5)
-    cell_ijks[p] = wp.vec3i(int(wp.floor(uvw[0])), int(wp.floor(uvw[1])), int(wp.floor(uvw[2])))
-
-
-@wp.kernel
 def apply_visual_offsets(
     positions: wp.array(dtype=wp.vec3),
     env_indices: wp.array(dtype=int),
@@ -371,30 +358,13 @@ class Example:
         fem.set_default_temporary_store(None)
 
     def _build_multi_env_grid(self, particle_q):
-        cell_ijks = []
-        device = particle_q.device
-
-        for env_index in range(self.env_count):
-            particle_count = int(self.particle_counts[env_index])
-            env_cell_ijks = wp.empty(shape=(particle_count,), dtype=wp.vec3i, device=device)
-            wp.launch(
-                kernel=particle_voxels,
-                dim=particle_count,
-                device=device,
-                inputs=[
-                    particle_q,
-                    int(self.particle_offsets[env_index]),
-                    self.voxel_size,
-                    env_cell_ijks,
-                ],
-            )
-            cell_ijks.append(env_cell_ijks)
-
         return fem.Nanogrid.from_environment_voxels(
-            cell_ijks,
+            particle_q,
+            self.particle_env,
+            self.env_count,
             voxel_size=self.voxel_size,
             temporary_store=self.temporary_store,
-            device=device,
+            device=particle_q.device,
         )
 
     @staticmethod

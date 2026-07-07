@@ -308,6 +308,7 @@ Volumes
    volume_store_f
    volume_store_i
    volume_store_v
+   volume_voxel_count
    volume_world_to_index
    volume_world_to_index_dir
 

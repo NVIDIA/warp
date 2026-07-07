@@ -40,6 +40,19 @@ leaf_voxel_index(const pnanovdb_buf_t buf, const uint32_t leaf_id, const pnanovd
     return volume::get_grid_voxel_index(grid_type, buf, value_address, ijk) - 1;
 }
 
+inline CUDA_CALLABLE uint64_t effective_voxel_count(const pnanovdb_buf_t buf)
+{
+    const pnanovdb_tree_handle_t tree = get_tree(buf);
+
+    switch (get_grid_type(buf)) {
+    case PNANOVDB_GRID_TYPE_ONINDEX:
+    case PNANOVDB_GRID_TYPE_ONINDEXMASK:
+        return pnanovdb_tree_get_voxel_count(buf, tree);
+    default:
+        return uint64_t(pnanovdb_tree_get_node_count_leaf(buf, tree)) * PNANOVDB_LEAF_TABLE_COUNT;
+    }
+}
+
 inline CUDA_CALLABLE pnanovdb_coord_t leaf_offset_to_local_coord(uint32_t offset)
 {
     pnanovdb_coord_t coord;
