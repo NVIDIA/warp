@@ -1,22 +1,27 @@
 # Changelog
 
-## [Unreleased] - 2026-??
+## [1.15.0] - 2026-07-07
 
 ### Added
 
-- Add deterministic execution mode for atomic operations via
-  `wp.config.deterministic = wp.DeterministicMode.RUN_TO_RUN`. Supported atomic accumulation and slot-allocation
-  patterns can produce bit-exact repeated results. Configure the mode globally or per module, and use
-  `wp.config.deterministic_max_records` to raise the default per-thread record bound for deterministic atomics in
-  modules created after setting the configuration. Deterministic backward reductions support generated and
-  custom-adjoint accumulation patterns; consumed-return counter atomics require explicit replay functions and are
-  rejected in generated backward replay to avoid incorrect gradients
-  ([GH-1443](https://github.com/NVIDIA/warp/issues/1443)).
+- Add a deterministic execution mode for supported atomic operations, removing the run-to-run variation that
+  floating-point atomics normally introduce. Enable it process-wide with `wp.config.deterministic` or per module
+  via the `"deterministic"` module option, using `wp.DeterministicMode.RUN_TO_RUN` for bit-exact repeatable
+  results on the same GPU, or `wp.DeterministicMode.GPU_TO_GPU` to also target consistency across GPU
+  architectures. It covers the two common atomic patterns: accumulating values into array elements, and using
+  an atomic counter to hand out unique slot indices. It extends to the reductions Warp generates for backward
+  passes and custom adjoints. Counters used for slot allocation cannot be replayed automatically during a
+  backward pass, so Warp raises an error rather than risk misplaced gradients; supply a custom replay function
+  to differentiate through them. Raise `wp.config.deterministic_max_records` if a kernel needs a larger
+  per-thread record limit ([GH-1443](https://github.com/NVIDIA/warp/issues/1443)).
 - Add `wp.ref[T]` parameter annotation for `@wp.func` and `@wp.func_native`, enabling explicit pass-by-reference
   semantics for scalar, vector, matrix, quaternion, and struct types. Mutations to a `wp.ref[T]` parameter are visible
   in the caller's storage without a return value. Add `wp.address_of(expr) -> wp.uint64` for obtaining a raw pointer
   to an addressable expression for use with native snippets, and allow `@wp.func_native` ref-parameter functions to
   provide manual adjoints with `adj_snippet` ([GH-1277](https://github.com/NVIDIA/warp/issues/1277)).
+- Add support for `wp.Function`-typed parameters in user-defined `@wp.func` functions, allowing user-defined Warp
+  functions and simple built-in Warp functions such as `wp.sin()` and `wp.min()` to be used as function targets from
+  kernels or other functions, including through defaults ([GH-1424](https://github.com/NVIDIA/warp/issues/1424)).
 - Add mipmap (texture level-of-detail) support to `wp.Texture1D`, `wp.Texture2D`, and `wp.Texture3D` via the new
   `num_mip_levels` and `mip_filter_mode` constructor parameters, and allow `wp.texture_sample()` to accept an optional
   trailing `lod` argument for controlling sampled detail level ([GH-1409](https://github.com/NVIDIA/warp/issues/1409)).
@@ -41,21 +46,19 @@
   non-tile struct arguments; support field-wise addition, subtraction, reductions, atomic addition, and gradients
   through compatible data-movement and additive operations; and allow `wp.tile_sort()` to reorder structs as value
   payloads in the forward pass ([GH-573](https://github.com/NVIDIA/warp/issues/573)).
+- **Experimental:** Add `constructor="cubql"` support to `wp.Bvh` and allow `wp.Mesh(..., bvh_constructor="cubql")` to
+  use AABB, point, furthest-point, and ray queries when Warp is built with cuBQL. Grouped BVHs/meshes and mesh
+  winding-number queries remain unsupported ([GH-1467](https://github.com/NVIDIA/warp/issues/1467)).
 - Add row-capacity support to `warp.sparse.BsrMatrix`, including padded topology policies for topology-changing
   operations, `warp.sparse.bsr_zeros(row_capacity=...)` for reserving capacity, `warp.sparse.bsr_compress()` for
   in-place compaction, and `warp.sparse.BSR_STATUS_SUCCESS` and `warp.sparse.BSR_STATUS_ROW_CAPACITY_EXCEEDED`
   for status checks ([GH-1537](https://github.com/NVIDIA/warp/issues/1537)).
-- Allow `warp.fem.integrate()` and `warp.fem.interpolate()` to use `warp.sparse.bsr_compress()` for in-place matrix
-  assembly, reducing peak memory usage ([GH-1537](https://github.com/NVIDIA/warp/issues/1537)).
-- Add support for `wp.Function`-typed parameters in user-defined `@wp.func` functions, allowing user-defined Warp
-  functions and simple built-in Warp functions such as `wp.sin()` and `wp.min()` to be used as function targets from
-  kernels or other functions, including through defaults ([GH-1424](https://github.com/NVIDIA/warp/issues/1424)).
+- Allow `warp.fem.integrate()` and `warp.fem.interpolate()` to assemble matrices in place via
+  `warp.sparse.bsr_compress()` by passing `bsr_options={"construction": "row_compress"}`, reducing peak
+  memory usage ([GH-1537](https://github.com/NVIDIA/warp/issues/1537)).
 - Extend `wp.utils.array_scan()` to 64-bit scalar and vector types, and extend `wp.utils.radix_sort_pairs()` to 32- and
   64-bit signed, unsigned, and floating-point keys with 4- or 8-byte values
   ([GH-1538](https://github.com/NVIDIA/warp/issues/1538)).
-- **Experimental:** Add `constructor="cubql"` support to `wp.Bvh` and allow `wp.Mesh(..., bvh_constructor="cubql")` to
-  use AABB, point, furthest-point, and ray queries when Warp is built with cuBQL. Grouped BVHs/meshes and mesh
-  winding-number queries remain unsupported ([GH-1467](https://github.com/NVIDIA/warp/issues/1467)).
 - Add a `cluster_dim` option to `@wp.kernel` and a `wp.get_cuda_max_cluster_dim()` query helper for using CUDA Thread
   Block Clusters from `@wp.func_native` code ([GH-1401](https://github.com/NVIDIA/warp/issues/1401)).
 - Add optional CMake source builds for `warp` and `warp-clang` with Packman-managed dependencies and support for
@@ -139,7 +142,7 @@
   precompiles the correct CUDA kernel variant. On CUDA drivers older than 12.3 this previously raised
   `CUDA_ERROR_STREAM_CAPTURE_UNSUPPORTED`; on newer drivers it silently recompiled inside the capture window
   ([GH-564](https://github.com/NVIDIA/warp/issues/564)).
-- Fix CUDA graph capture for contiguous `wp.bool`, `wp.int8`, and `wp.uint8` `wp.array.fill_()` calls
+- Fix CUDA graph capture for contiguous `wp.array.fill_()` calls on `wp.bool`, `wp.int8`, and `wp.uint8` arrays
   ([GH-1525](https://github.com/NVIDIA/warp/issues/1525)).
 - Fix binding a Warp function to a kernel-local variable, so patterns like `f = my_func`, `f = module.my_func`,
   assigning a `wp.static(...)` function result to `f`, and `wp.grad(f)` where `f` is such a local now compile and call
@@ -2871,7 +2874,7 @@
 
 - Initial publish for alpha testing
 
-[Unreleased]: https://github.com/NVIDIA/warp/compare/v1.14.0...HEAD
+[1.15.0]: https://github.com/NVIDIA/warp/releases/tag/v1.15.0
 [1.14.0]: https://github.com/NVIDIA/warp/releases/tag/v1.14.0
 [1.13.0]: https://github.com/NVIDIA/warp/releases/tag/v1.13.0
 [1.12.1]: https://github.com/NVIDIA/warp/releases/tag/v1.12.1
