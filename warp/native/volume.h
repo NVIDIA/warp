@@ -29,6 +29,7 @@ namespace volume {
 // Need to kept in sync with constants in python-side Volume class
 static constexpr int CLOSEST = 0;
 static constexpr int LINEAR = 1;
+static constexpr uint64_t MAX_INDEXABLE_VOXEL_COUNT = 2147483647ull;
 
 // pnanovdb helper function
 
@@ -796,6 +797,26 @@ CUDA_CALLABLE inline int32_t volume_lookup_index(uint64_t id, int32_t i, int32_t
         return static_cast<int32_t>(voxel_index) - 1;
     }
     return -1;
+}
+
+CUDA_CALLABLE inline int32_t volume_voxel_count(uint64_t id)
+{
+    const pnanovdb_buf_t buf = volume::id_to_buffer(id);
+    const pnanovdb_tree_handle_t tree = volume::get_tree(buf);
+    const pnanovdb_grid_type_t grid_type = volume::get_grid_type(buf);
+
+    uint64_t count;
+    switch (grid_type) {
+    case PNANOVDB_GRID_TYPE_ONINDEX:
+    case PNANOVDB_GRID_TYPE_ONINDEXMASK:
+        count = pnanovdb_tree_get_voxel_count(buf, tree);
+        break;
+    default:
+        count = uint64_t(pnanovdb_tree_get_node_count_leaf(buf, tree)) * PNANOVDB_LEAF_TABLE_COUNT;
+        break;
+    }
+
+    return count > volume::MAX_INDEXABLE_VOXEL_COUNT ? int32_t(volume::MAX_INDEXABLE_VOXEL_COUNT) : int32_t(count);
 }
 
 // volume_store

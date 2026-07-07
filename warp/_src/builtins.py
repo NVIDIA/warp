@@ -8924,6 +8924,20 @@ add_builtin(
 )
 
 add_builtin(
+    "volume_voxel_count",
+    input_types={"id": uint64},
+    value_type=int32,
+    group="Volumes",
+    doc="""Return the number of indexable voxels in the volume given by ``id``.
+
+    For active-voxel index grids, this is the active voxel count. For dense tile grids, this is the number of
+    allocated leaf nodes multiplied by 512. The result is a 32-bit signed integer and is capped at ``2**31 - 1``
+    because voxel-index APIs use 32-bit indices.
+    """,
+    is_differentiable=False,
+)
+
+add_builtin(
     "volume_index_to_world",
     input_types={"id": uint64, "uvw": vec3},
     value_type=vec3,

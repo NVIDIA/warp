@@ -162,8 +162,8 @@ if check_p2p():
 add_fem_example_test(
     TestFemExamples,
     name="fem.example_apic_fluid",
-    devices=cuda_devices,
-    test_options={"num_frames": 5, "voxel_size": 2.0},
+    devices=cuda_devices_with_mempool,
+    test_options={"num_frames": 5, "voxel_size": 2.0, "stage_path": None},
 )
 add_fem_example_test(
     TestFemExamples,

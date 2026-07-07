@@ -92,7 +92,8 @@ Structs
 Volumes
 -------
 
-* The sparse-volume *topology* cannot be changed after the tiles for the :class:`Volume` have been allocated.
+* The sparse topology of a non-rebuildable :class:`Volume` cannot be changed after allocation. Volumes created with
+  ``rebuildable=True`` or explicit capacity arguments can change topology within their reserved capacity.
 
 Multiple Processes
 ------------------

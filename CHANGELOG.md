@@ -41,6 +41,9 @@
   created after the config is set. Deterministic backward reductions are supported for generated and custom-adjoint
   accumulation patterns; consumed-return counter atomics require explicit replay functions and are rejected in generated
   backward replay to avoid incorrect gradients ([GH-1443](https://github.com/NVIDIA/warp/issues/1443)).
+- Add rebuildable NanoVDB volumes with capacity/status controls, point masks, CPU parity, CUDA graph-capturable
+  allocation and rebuilds, `warp.fem.Nanogrid` topology refresh support for rebuildable volumes, and an
+  `example_apic_fluid` path that exercises captured grid rebuilds ([GH-1606](https://github.com/NVIDIA/warp/issues/1606)).
 - Add row-capacity support to `warp.sparse` BSR matrices, including padded topology policies for topology-changing
   sparse operations, `bsr_zeros(row_capacity=...)` for reserving row capacity, `bsr_compress()` for inplace compaction of sparse matrices, and sparse status constants for overflow checks ([GH-1537](https://github.com/NVIDIA/warp/issues/1537)).
 - `fem.integrate()` and `fem.interpolate()` can now leverage `sparse.bsr_compress()` to perform inplace matrix assembly, reducing peak memory usage ([GH-1537](https://github.com/NVIDIA/warp/issues/1537)).
@@ -94,6 +97,9 @@
   ([GH-1594](https://github.com/NVIDIA/warp/issues/1594)). The arguments and attributes now emit `DeprecationWarning`
   and are scheduled for removal in Warp 1.19. Output arrays are sized dynamically, extraction runs on the input field's
   device, and the `id` and `runtime` attributes have no replacement.
+- Deprecate the per-environment sequence form of `warp.fem.Nanogrid.from_environment_voxels()` and
+  `warp.fem.AdaptiveNanogrid.from_environment_voxels()`; pass flat `points`, `cell_levels` where applicable,
+  `point_envs`, and `env_count` instead.
 
 ### Changed
 

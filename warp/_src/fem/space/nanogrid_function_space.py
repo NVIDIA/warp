@@ -43,10 +43,18 @@ class NanogridSpaceTopology(SpaceTopology):
         need_face_indices = shape.FACE_NODE_COUNT > 0
 
         if isinstance(grid, Nanogrid):
-            self._edge_grid = grid.edge_grid.id if need_edge_indices else -1
-            self._face_grid = grid.face_grid.id if need_face_indices else -1
-            self._edge_count = grid.edge_count() if need_edge_indices else 0
-            self._face_count = grid.side_count() if need_face_indices else 0
+            if need_edge_indices:
+                edge_grid, self._edge_count = grid._get_topology_edge_grid()
+                self._edge_grid = edge_grid.id
+            else:
+                self._edge_grid = -1
+                self._edge_count = 0
+            if need_face_indices:
+                face_grid, self._face_count = grid._get_topology_face_grid()
+                self._face_grid = face_grid.id
+            else:
+                self._face_grid = -1
+                self._face_count = 0
         else:
             self._edge_grid = grid.stacked_edge_grid.id if need_edge_indices else -1
             self._face_grid = grid.stacked_face_grid.id if need_face_indices else -1
@@ -54,6 +62,13 @@ class NanogridSpaceTopology(SpaceTopology):
             self._face_count = grid.stacked_face_count() if need_face_indices else 0
 
         self.element_node_index = self._make_element_node_index()
+
+    def rebuild(self) -> None:
+        """Refresh this topology after rebuilding its Nanogrid.
+
+        The topology references grids that are refreshed by :meth:`warp.fem.Nanogrid.rebuild`, so no additional
+        work is required.
+        """
 
     @property
     def name(self):
@@ -182,11 +197,51 @@ class NanogridBSplineSpaceTopology(SpaceTopology):
         if self._shape.PADDING == 0:
             self._padded_node_grid = grid.vertex_grid
             self._padded_node_count = grid.vertex_count()
+            self._padded_node_candidates = None
+            self._padded_node_candidate_mask = None
+        elif grid._rebuildable:
+            (
+                self._padded_node_grid,
+                self._padded_node_count,
+                self._padded_node_candidates,
+                self._padded_node_candidate_mask,
+            ) = self._build_rebuildable_padded_node_grid(grid._cell_ijk, grid.cell_grid, self._shape.PADDING)
         else:
             self._padded_node_grid = self._build_padded_node_grid(grid._cell_ijk, grid.cell_grid, self._shape.PADDING)
             self._padded_node_count = self._padded_node_grid.get_voxel_count()
+            self._padded_node_candidates = None
+            self._padded_node_candidate_mask = None
 
         self.element_node_index = self._make_element_node_index()
+
+    def rebuild(self) -> None:
+        """Refresh this topology after rebuilding its Nanogrid.
+
+        Reusing a B-spline topology after :meth:`warp.fem.Nanogrid.rebuild` is unsupported until this method has
+        been called. The topology must have been constructed from a rebuildable Nanogrid.
+        """
+
+        if not self._grid._rebuildable:
+            raise RuntimeError("B-spline topology was not constructed from a rebuildable Nanogrid")
+
+        if self._padded_node_candidates is None:
+            return
+
+        wp.launch(
+            _rebuildable_padded_node_indices,
+            dim=self._padded_node_candidates.shape,
+            inputs=[
+                self._grid.cell_grid.id,
+                self._grid._cell_ijk,
+                self._shape.PADDING,
+                self._padded_node_candidates,
+                self._padded_node_candidate_mask,
+            ],
+            device=self._grid.cell_grid.device,
+        )
+        self._padded_node_grid.rebuild(
+            self._padded_node_candidates.flatten(), point_mask=self._padded_node_candidate_mask
+        )
 
     @wp.struct
     class TopologyArg:
@@ -240,11 +295,66 @@ class NanogridBSplineSpaceTopology(SpaceTopology):
 
             return _build_node_grid(cell_ijk, grid, temporary_store=None)
 
+    @staticmethod
+    def _build_rebuildable_padded_node_grid(
+        cell_ijk: wp.array(dtype=wp.vec3i),
+        grid: wp.Volume,
+        padding: int,
+    ):
+        nodes_per_dim = 2 * padding + 2
+        candidates_per_cell = nodes_per_dim**3
+        candidate_capacity = cell_ijk.shape[0] * candidates_per_cell
+        candidates = wp.empty(
+            shape=(cell_ijk.shape[0], nodes_per_dim, nodes_per_dim, nodes_per_dim),
+            dtype=wp.vec3i,
+            device=cell_ijk.device,
+        )
+        candidate_mask = wp.empty(candidate_capacity, dtype=wp.int32, device=cell_ijk.device)
+        wp.launch(
+            _rebuildable_padded_node_indices,
+            dim=candidates.shape,
+            inputs=[grid.id, cell_ijk, padding, candidates, candidate_mask],
+            device=cell_ijk.device,
+        )
+
+        rebuild_info = grid.get_rebuild_info()
+        max_leaf_nodes = min(candidate_capacity, rebuild_info.max_leaf_node_count * candidates_per_cell)
+        max_lower_nodes = min(max_leaf_nodes, rebuild_info.max_lower_node_count * candidates_per_cell)
+        max_upper_nodes = min(max_lower_nodes, rebuild_info.max_upper_node_count * candidates_per_cell)
+        node_grid = wp.Volume.allocate_by_voxels(
+            candidates.flatten(),
+            voxel_size=grid.get_voxel_size(),
+            device=cell_ijk.device,
+            rebuildable=True,
+            max_active_voxels=candidate_capacity,
+            max_leaf_nodes=max_leaf_nodes,
+            max_lower_nodes=max_lower_nodes,
+            max_upper_nodes=max_upper_nodes,
+            point_mask=candidate_mask,
+        )
+        return node_grid, candidate_capacity, candidates, candidate_mask
+
 
 @wp.kernel
 def _pad_voxels(voxel_ijk: wp.array(dtype=wp.vec3i), padded_ijk: wp.array4d(dtype=wp.vec3i)):
     pid, i, j, k = wp.tid()
     padded_ijk[pid, i, j, k] = voxel_ijk[pid] + wp.vec3i(i - 1, j - 1, k - 1)
+
+
+@wp.kernel
+def _rebuildable_padded_node_indices(
+    cell_grid: wp.uint64,
+    cell_ijk: wp.array(dtype=wp.vec3i),
+    padding: int,
+    node_ijk: wp.array4d(dtype=wp.vec3i),
+    node_mask: wp.array(dtype=wp.int32),
+):
+    cell, i, j, k = wp.tid()
+    node_ijk[cell, i, j, k] = cell_ijk[cell] + wp.vec3i(i - padding, j - padding, k - padding)
+
+    nodes_per_dim = 2 * padding + 2
+    node = ((cell * nodes_per_dim + i) * nodes_per_dim + j) * nodes_per_dim + k
+    node_mask[node] = wp.where(cell < wp.volume_voxel_count(cell_grid), wp.int32(1), wp.int32(0))
 
 
 def make_nanogrid_space_topology(grid: Nanogrid | AdaptiveNanogrid, shape: CubeShapeFunction):
