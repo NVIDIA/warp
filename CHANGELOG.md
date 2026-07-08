@@ -227,6 +227,8 @@
 - Fix `warp.optim.Adam.set_params()` and `warp.optim.SGD.set_params()` reusing optimizer state on the wrong device
   when replacement parameters move devices. Compatible buffers now migrate with the parameters while preserving
   accumulated state ([GH-1615](https://github.com/NVIDIA/warp/issues/1615)).
+- Fix `wp.from_dlpack()` support for standards-conformant 8-bit Boolean tensors
+  ([GH-1619](https://github.com/NVIDIA/warp/issues/1619)).
 
 ### Documentation
 
