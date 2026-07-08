@@ -142,6 +142,8 @@ line-ending = "auto"
 docstring-code-format = true
 
 [tool.coverage.run]
+# Use sys.monitoring on Python 3.12+ to reduce tracing overhead; Coverage.py falls back on older versions.
+core = "sysmon"
 source = ["warp", "warp.render"]
 disable_warnings = [
     "module-not-measured",
