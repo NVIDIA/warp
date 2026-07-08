@@ -2507,17 +2507,6 @@ class ModuleHasher:
         # rides on kernel.options, an inherited default on the "default_grid_stride" module option.
         kernel.grid_stride = warp._src.codegen.resolve_grid_stride(kernel.options, default_grid_stride)
 
-        # Include per-kernel options (e.g. cluster_dim, launch_bounds) so that
-        # two kernels with identical source but different options get distinct
-        # hashes.  Values are stringified, so option types must have a
-        # deterministic ``str()`` (built-in scalars, tuples of scalars, bools,
-        # etc.).  Don't add options whose ``str()`` includes id-based output
-        # (e.g. ``<object at 0x...>``); the hash would still be stable within
-        # a process but unstable across runs.
-        for opt in sorted(kernel.options.keys()):
-            s = f"{opt}:{kernel.options[opt]}"
-            ch.update(bytes(s, "utf-8"))
-
         h = ch.digest()
 
         self.unique_kernels[h] = kernel
@@ -2527,6 +2516,9 @@ class ModuleHasher:
     def _hash_kernel_identity(self, ch, kernel: Kernel) -> None:
         # Hash a kernel's content identity. Shared by hash_kernel() and the unique-module salt so the
         # two can't drift. Options change generated code, so fold them by value, sorted for determinism.
+        # Values are stringified, so option types need a deterministic str() (scalars, tuples of scalars,
+        # bools, etc.); avoid options whose str() is id-based (e.g. "<object at 0x...>"), stable within a
+        # process but not across runs.
         ch.update(bytes(kernel.key, "utf-8"))
         for opt in sorted(kernel.options):
             ch.update(bytes(f"{opt}:{kernel.options[opt]}", "utf-8"))
