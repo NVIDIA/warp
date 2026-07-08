@@ -628,6 +628,8 @@ behavior for non-contiguous arrays (<a class="reference external" href="https://
 <section id="fixed">
 <h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">#</a></h3>
 <ul class="simple">
+<li><p>Fix batched iterative linear solvers to ignore inactive trailing degrees of freedom beyond the final batch offset
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1608">GH-1608</a>).</p></li>
 <li><p>Fix eager Python calls to generic <code class="docutils literal notranslate"><span class="pre">&#64;wp.func</span></code> functions to resolve a matching generic template after other concrete
 overloads have already been instantiated (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1603">GH-1603</a>).</p></li>
 <li><p>Fix <code class="docutils literal notranslate"><span class="pre">wp.tile_dot()</span></code> compilation failure for scalar <code class="docutils literal notranslate"><span class="pre">wp.float64</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.float16</span></code> tiles, which previously narrowed
