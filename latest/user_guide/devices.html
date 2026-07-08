@@ -537,7 +537,7 @@ the <em>original</em> default device.</p>
 <p class="admonition-title">Note</p>
 <p>For CUDA devices, <a class="reference internal" href="../api_reference/_generated/warp.set_device.html#warp.set_device" title="warp.set_device"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.set_device()</span></code></a> does two things: It sets the Warp default device and it makes the device’s CUDA context current.  This helps to minimize the number of CUDA context switches in blocks of code targeting a single device.</p>
 </div>
-<p>For PyTorch users, this function is similar to <a class="reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.cuda.set_device.html#torch.cuda.set_device" title="(in PyTorch v2.12)"><code class="xref py py-func docutils literal notranslate"><span class="pre">torch.cuda.set_device()</span></code></a>.
+<p>For PyTorch users, this function is similar to <a class="reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.cuda.set_device.html#torch.cuda.set_device" title="(in PyTorch v2.13)"><code class="xref py py-func docutils literal notranslate"><span class="pre">torch.cuda.set_device()</span></code></a>.
 It is still possible to specify a different device in individual API calls, like in this snippet:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># set default device</span>
 <span class="n">wp</span><span class="o">.</span><span class="n">set_device</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
