@@ -385,7 +385,7 @@ def test_tiled_dot_large_single_batch(test, device):
     tiled_dot.compute(a, a)
 
     with wp.ScopedDevice(device):
-        with wp.ScopedCapture() as capture:
+        with wp.ScopedCapture(force_module_load=False) as capture:
             tiled_dot.compute(a, a)
 
         a.fill_(2.0)
