@@ -713,7 +713,7 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
                     )
                 else:
                     linkopts.append(
-                        f'cudart_static.lib nvrtc_static.lib nvrtc-builtins_static.lib nvptxcompiler_static.lib ws2_32.lib user32.lib /LIBPATH:"{cuda_home}/lib/x64"'
+                        f'cudart_static.lib nvrtc_static.lib nvrtc-builtins_static.lib nvptxcompiler_static.lib ws2_32.lib user32.lib ntdll.lib /LIBPATH:"{cuda_home}/lib/x64"'
                     )
 
                 if args.libmathdx_path:
