@@ -40,6 +40,8 @@ class LinearOperator:
         batch_offsets: Optional array of shape ``(B+1,)`` partitioning scalar degrees of freedom into
             ``B`` independent subproblems. ``batch_offsets[i]`` is the first scalar degree of freedom of
             subproblem ``i``. For vector-valued arrays, offsets must be aligned to the vector length.
+            Scalar degrees of freedom at or beyond ``batch_offsets[-1]`` are inactive and ignored by batched
+            iterative solvers.
             When ``None`` (default) the operator represents a single subproblem.
 
     The matrix-vector multiplication routine should have the following signature:
@@ -96,7 +98,11 @@ class LinearOperator:
 
     @property
     def batch_offsets(self) -> wp.array | None:
-        """Array of length ``batch_count + 1`` partitioning scalar degrees of freedom, or ``None``."""
+        """Array partitioning the active scalar degrees of freedom, or ``None``.
+
+        Scalar degrees of freedom at or beyond the final offset are inactive and ignored by batched iterative
+        solvers.
+        """
         return self._batch_offsets
 
     @property
@@ -276,7 +282,16 @@ class TiledDot:
         self.batch_offsets = batch_offsets
         self.batch_count = 1 if batch_offsets is None else batch_offsets.shape[0] - 1
 
-        if self.batch_count == 1:
+        # The direct batched kernel avoids launch overhead for small subproblems, but a
+        # single block scales poorly once every lane must process many entries serially.
+        use_bounded_tree = (
+            batch_offsets is not None
+            and self.batch_count == 1
+            and self.device.is_cuda
+            and max_length > 128 * self.tile_size
+        )
+
+        if batch_offsets is None or use_bounded_tree:
             num_blocks = (max_length + self.tile_size - 1) // self.tile_size
             # Scratch must hold at least batch_count result slots per column (one per subproblem)
             scratch_size = max(num_blocks, self.batch_count)
@@ -288,8 +303,10 @@ class TiledDot:
             self.partial_sums_a = scratch[0]
             self.partial_sums_b = scratch[1]
 
-            # Non-batched: tiled tree reduction
+            # Unbatched or bounded single-batch tiled tree reduction
             self.dot_kernel, self.sum_kernel = _create_tiled_dot_kernels(self.tile_size)
+            if use_bounded_tree:
+                self.dot_kernel = _create_bounded_tiled_dot_kernel(self.tile_size)
 
             rounds = 0
             length = (max_length + self.tile_size - 1) // self.tile_size
@@ -300,12 +317,20 @@ class TiledDot:
             self.rounds = rounds
             self._output = self.partial_sums_a if rounds % 2 == 0 else self.partial_sums_b
 
+            if use_bounded_tree:
+                dot_inputs = (self.partial_sums_a, self.partial_sums_b, self.partial_sums_a, batch_offsets)
+                dot_outputs = ()
+            else:
+                dot_inputs = (self.partial_sums_a, self.partial_sums_b)
+                dot_outputs = (self.partial_sums_a,)
+
             self.dot_launch: wp.Launch = wp.launch(
                 self.dot_kernel,
                 dim=(max_column_count, num_blocks, self.tile_size),
-                inputs=(self.partial_sums_a, self.partial_sums_b),
-                outputs=(self.partial_sums_a,),
+                inputs=dot_inputs,
+                outputs=dot_outputs,
                 block_dim=self.tile_size,
+                device=self.device,
                 record_cmd=True,
             )
             self.sum_launch: wp.Launch = wp.launch(
@@ -314,6 +339,7 @@ class TiledDot:
                 inputs=(self.partial_sums_a,),
                 outputs=(self.partial_sums_b,),
                 block_dim=self.tile_size,
+                device=self.device,
                 record_cmd=True,
             )
             self.batch_dot_launch = None
@@ -436,6 +462,28 @@ def _create_tiled_dot_kernels(tile_size):
         wp.tile_store(partial_sums[column], tile_sum, offset=block_id)
 
     return block_dot_kernel, block_sum_kernel
+
+
+@functools.cache
+def _create_bounded_tiled_dot_kernel(tile_size):
+    @wp.kernel(module="unique")
+    def bounded_block_dot_kernel(
+        a: wp.array2d(dtype=Any),
+        b: wp.array2d(dtype=Any),
+        partial_sums: wp.array2d(dtype=Any),
+        batch_offsets: wp.array1d(dtype=int),
+    ):
+        column, block_id, lane = wp.tid()
+        i = block_id * tile_size + lane
+
+        acc = a.dtype(0.0)
+        if i >= batch_offsets[0] and i < batch_offsets[1]:
+            acc = a[column, i] * b[column, i]
+
+        tile_sum = wp.tile_sum(wp.tile(acc))
+        wp.tile_store(partial_sums[column], tile_sum, offset=block_id)
+
+    return bounded_block_dot_kernel
 
 
 @wp.kernel(module="unique")
@@ -1475,7 +1523,13 @@ class GMRES(LinearSolverState):
                     device=device,
                     inputs=[restart, scalar_dtype(0.0), y, V, w, batch_offsets, dofs_per_entry],
                 )
-                M.matvec(w, x, x, alpha=1, beta=1)
+                M.matvec(w, r, r, alpha=1, beta=0)
+                wp.launch(
+                    _gmres_add_active_entries_kernel,
+                    dim=x.shape,
+                    device=device,
+                    inputs=[r, x, batch_offsets, dofs_per_entry],
+                )
 
             # update r and residual
             wp.copy(src=b, dest=r)
@@ -1923,10 +1977,11 @@ def _cg_kernel_1(
     i = wp.tid()
     bid = _find_entry_batch(i, batch_offsets, dofs_per_entry)
 
-    alpha = wp.where(resid[bid] > tol[bid], rz_old[bid] / p_Ap[bid], rz_old.dtype(0.0))
+    if bid >= 0:
+        alpha = wp.where(resid[bid] > tol[bid], rz_old[bid] / p_Ap[bid], rz_old.dtype(0.0))
 
-    x[i] = x[i] + alpha * p[i]
-    r[i] = r[i] - alpha * Ap[i]
+        x[i] = x[i] + alpha * p[i]
+        r[i] = r[i] - alpha * Ap[i]
 
 
 @wp.kernel
@@ -1944,9 +1999,10 @@ def _cg_kernel_2(
     i = wp.tid()
     bid = _find_entry_batch(i, batch_offsets, dofs_per_entry)
 
-    beta = wp.where(resid_new[bid] > tol[bid], rz_new[bid] / rz_old[bid], rz_old.dtype(0.0))
+    if bid >= 0:
+        beta = wp.where(resid_new[bid] > tol[bid], rz_new[bid] / rz_old[bid], rz_old.dtype(0.0))
 
-    p[i] = z[i] + beta * p[i]
+        p[i] = z[i] + beta * p[i]
 
 
 @wp.kernel
@@ -1967,11 +2023,12 @@ def _cr_kernel_1(
     i = wp.tid()
     bid = _find_entry_batch(i, batch_offsets, dofs_per_entry)
 
-    alpha = wp.where(resid[bid] > tol[bid] and y_Ap[bid] > 0.0, zAz_old[bid] / y_Ap[bid], zAz_old.dtype(0.0))
+    if bid >= 0:
+        alpha = wp.where(resid[bid] > tol[bid] and y_Ap[bid] > 0.0, zAz_old[bid] / y_Ap[bid], zAz_old.dtype(0.0))
 
-    x[i] = x[i] + alpha * p[i]
-    r[i] = r[i] - alpha * Ap[i]
-    z[i] = z[i] - alpha * y[i]
+        x[i] = x[i] + alpha * p[i]
+        r[i] = r[i] - alpha * Ap[i]
+        z[i] = z[i] - alpha * y[i]
 
 
 @wp.kernel
@@ -1991,10 +2048,11 @@ def _cr_kernel_2(
     i = wp.tid()
     bid = _find_entry_batch(i, batch_offsets, dofs_per_entry)
 
-    beta = wp.where(resid[bid] > tol[bid] and zAz_old[bid] > 0.0, zAz_new[bid] / zAz_old[bid], zAz_old.dtype(0.0))
+    if bid >= 0:
+        beta = wp.where(resid[bid] > tol[bid] and zAz_old[bid] > 0.0, zAz_new[bid] / zAz_old[bid], zAz_old.dtype(0.0))
 
-    p[i] = z[i] + beta * p[i]
-    Ap[i] = Az[i] + beta * Ap[i]
+        p[i] = z[i] + beta * p[i]
+        Ap[i] = Az[i] + beta * Ap[i]
 
 
 @wp.kernel
@@ -2013,10 +2071,11 @@ def _bicgstab_kernel_1(
     i = wp.tid()
     bid = _find_entry_batch(i, batch_offsets, dofs_per_entry)
 
-    alpha = wp.where(resid[bid] > tol[bid], rho_old[bid] / r0v[bid], rho_old.dtype(0.0))
+    if bid >= 0:
+        alpha = wp.where(resid[bid] > tol[bid], rho_old[bid] / r0v[bid], rho_old.dtype(0.0))
 
-    x[i] += alpha * y[i]
-    r[i] -= alpha * v[i]
+        x[i] += alpha * y[i]
+        r[i] -= alpha * v[i]
 
 
 @wp.kernel
@@ -2035,10 +2094,11 @@ def _bicgstab_kernel_2(
     i = wp.tid()
     bid = _find_entry_batch(i, batch_offsets, dofs_per_entry)
 
-    omega = wp.where(resid[bid] > tol[bid], st[bid] / tt[bid], st.dtype(0.0))
+    if bid >= 0:
+        omega = wp.where(resid[bid] > tol[bid], st[bid] / tt[bid], st.dtype(0.0))
 
-    x[i] += omega * z[i]
-    r[i] -= omega * t[i]
+        x[i] += omega * z[i]
+        r[i] -= omega * t[i]
 
 
 @wp.kernel
@@ -2058,10 +2118,11 @@ def _bicgstab_kernel_3(
     i = wp.tid()
     bid = _find_entry_batch(i, batch_offsets, dofs_per_entry)
 
-    beta = wp.where(resid[bid] > tol[bid], rho_new[bid] * tt[bid] / (r0v[bid] * st[bid]), st.dtype(0.0))
-    beta_omega = wp.where(resid[bid] > tol[bid], rho_new[bid] / r0v[bid], st.dtype(0.0))
+    if bid >= 0:
+        beta = wp.where(resid[bid] > tol[bid], rho_new[bid] * tt[bid] / (r0v[bid] * st[bid]), st.dtype(0.0))
+        beta_omega = wp.where(resid[bid] > tol[bid], rho_new[bid] / r0v[bid], st.dtype(0.0))
 
-    p[i] = r[i] + beta * p[i] - beta_omega * v[i]
+        p[i] = r[i] + beta * p[i] - beta_omega * v[i]
 
 
 @wp.kernel(enable_backward=False)
@@ -2221,16 +2282,17 @@ def _gmres_arnoldi_axpy_kernel(
     tid, lane = wp.tid()
     bid = _find_entry_batch(tid, batch_offsets, dofs_per_entry)
 
-    s = w.dtype(H.dtype(0))
+    if bid >= 0:
+        s = w.dtype(H.dtype(0))
 
-    tile_size = wp.block_dim()
-    for k in range(lane, j + 1, tile_size):
-        s += H[bid, k, j] * V[k, tid]
+        tile_size = wp.block_dim()
+        for k in range(lane, j + 1, tile_size):
+            s += H[bid, k, j] * V[k, tid]
 
-    wi = wp.tile_load(w, shape=1, offset=tid)
-    wi -= wp.tile_sum(wp.tile(s, preserve_type=True))
+        wi = wp.tile_load(w, shape=1, offset=tid)
+        wi -= wp.tile_sum(wp.tile(s, preserve_type=True))
 
-    wp.tile_store(w, wi, offset=tid)
+        wp.tile_store(w, wi, offset=tid)
 
 
 @wp.kernel(enable_backward=False)
@@ -2245,15 +2307,17 @@ def _gmres_arnoldi_normalize_kernel(
     tid = wp.tid()
     scalar_dof = tid * dofs_per_entry
     bid = _find_batch(scalar_dof, batch_offsets)
-    a = alpha[bid]
-    norm = wp.sqrt(a)
-    y[tid] = wp.where(a == alpha.dtype(0.0), x[tid], x[tid] / norm)
 
-    if not batch_offsets:
-        if tid == 0:
-            alpha_copy[0] = norm
-    elif scalar_dof == batch_offsets[bid]:
-        alpha_copy[bid] = norm
+    if bid >= 0:
+        a = alpha[bid]
+        norm = wp.sqrt(a)
+        y[tid] = wp.where(a == alpha.dtype(0.0), x[tid], x[tid] / norm)
+
+        if not batch_offsets:
+            if tid == 0:
+                alpha_copy[0] = norm
+        elif scalar_dof == batch_offsets[bid]:
+            alpha_copy[bid] = norm
 
 
 @wp.kernel(enable_backward=False)
@@ -2280,11 +2344,26 @@ def _gmres_update_x_kernel(
     tid = wp.tid()
     bid = _find_entry_batch(tid, batch_offsets, dofs_per_entry)
 
-    xi = scale * x[tid]
-    for j in range(k):
-        xi += V[j, tid] * y[bid, j]
+    if bid >= 0:
+        xi = scale * x[tid]
+        for j in range(k):
+            xi += V[j, tid] * y[bid, j]
 
-    x[tid] = xi
+        x[tid] = xi
+
+
+@wp.kernel(enable_backward=False)
+def _gmres_add_active_entries_kernel(
+    update: wp.array(dtype=Any),
+    x: wp.array(dtype=Any),
+    batch_offsets: wp.array(dtype=int),
+    dofs_per_entry: int,
+):
+    tid = wp.tid()
+    bid = _find_entry_batch(tid, batch_offsets, dofs_per_entry)
+
+    if bid >= 0:
+        x[tid] += update[tid]
 
 
 def _register_overloads():
@@ -2313,6 +2392,7 @@ def _register_overloads():
         wp.overload(_gmres_arnoldi_normalize_kernel, {"x": a, "y": a, "alpha": a, "alpha_copy": a})
         wp.overload(_gmres_copy_hessenberg_column, {"src": a2, "H": a3})
         wp.overload(_gmres_update_x_kernel, {"scale": dtype, "y": a2, "V": a2, "x": a})
+        wp.overload(_gmres_add_active_entries_kernel, {"update": a, "x": a})
 
 
 _register_overloads()

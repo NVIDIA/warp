@@ -126,6 +126,8 @@
 
 ### Fixed
 
+- Fix batched iterative linear solvers to ignore inactive trailing degrees of freedom beyond the final batch offset
+  ([GH-1608](https://github.com/NVIDIA/warp/issues/1608)).
 - Fix eager Python calls to generic `@wp.func` functions to resolve a matching generic template after other concrete
   overloads have already been instantiated ([GH-1603](https://github.com/NVIDIA/warp/issues/1603)).
 - Fix `wp.tile_dot()` compilation failure for scalar `wp.float64` and `wp.float16` tiles, which previously narrowed
