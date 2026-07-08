@@ -729,6 +729,8 @@ may emit when simplifying power-of-two <code class="docutils literal notranslate
 <li><p>Fix <code class="docutils literal notranslate"><span class="pre">warp.optim.Adam.set_params()</span></code> and <code class="docutils literal notranslate"><span class="pre">warp.optim.SGD.set_params()</span></code> reusing optimizer state on the wrong device
 when replacement parameters move devices. Compatible buffers now migrate with the parameters while preserving
 accumulated state (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1615">GH-1615</a>).</p></li>
+<li><p>Fix <code class="docutils literal notranslate"><span class="pre">wp.from_dlpack()</span></code> support for standards-conformant 8-bit Boolean tensors
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1619">GH-1619</a>).</p></li>
 </ul>
 </section>
 <section id="documentation">
