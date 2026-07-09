@@ -862,7 +862,7 @@ def test_ffi_jax_kernel_launch_dims_custom(test, device):
     assert_np_equal(result2, expected2)
 
 
-@unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
 def test_ffi_all_devices_preload_skips_unsupported_device(test, device):
     ffi_module = importlib.import_module("warp._src.jax.ffi")
     unsupported_device = object()
