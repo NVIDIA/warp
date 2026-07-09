@@ -66,6 +66,17 @@ def check_jax_version():
         raise RuntimeError(msg)
 
 
+def _preload_module_on_all_devices(module, jax):
+    for d in jax.local_devices():
+        try:
+            dev = wp.device_from_jax(d)
+        except RuntimeError:
+            continue
+
+        if dev.is_cuda:
+            module.load(dev)
+
+
 def collapse_batch_dims(shape, desired_ndim):
     # roll leading batch dims into one
     while len(shape) > desired_ndim:
@@ -332,15 +343,7 @@ class FfiKernel:
             device = wp.device_from_jax(get_jax_device())
             self.kernel.module.load(device)
         elif self.module_preload_mode == JaxModulePreloadMode.ALL_DEVICES:
-            for d in jax.local_devices():
-                try:
-                    dev = wp.device_from_jax(d)
-                except Exception:
-                    # ignore unsupported devices like TPUs
-                    pass
-                # we only support CUDA devices for now
-                if dev.is_cuda:
-                    self.kernel.module.load(dev)
+            _preload_module_on_all_devices(self.kernel.module, jax)
 
         # save launch data to be retrieved by callback
         launch_id = self.launch_id
@@ -715,15 +718,7 @@ class FfiCallable:
             device = wp.device_from_jax(get_jax_device())
             module.load(device)
         elif self.module_preload_mode == JaxModulePreloadMode.ALL_DEVICES:
-            for d in jax.local_devices():
-                try:
-                    dev = wp.device_from_jax(d)
-                except Exception:
-                    # ignore unsupported devices like TPUs
-                    pass
-                # we only support CUDA devices for now
-                if dev.is_cuda:
-                    module.load(dev)
+            _preload_module_on_all_devices(module, jax)
 
         # save call data to be retrieved by callback
         call_id = self.call_id
