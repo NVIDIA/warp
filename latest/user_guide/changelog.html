@@ -635,6 +635,8 @@ overloads have already been instantiated (<a class="reference external" href="ht
 <li><p>Fix <code class="docutils literal notranslate"><span class="pre">wp.tile_dot()</span></code> compilation failure for scalar <code class="docutils literal notranslate"><span class="pre">wp.float64</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.float16</span></code> tiles, which previously narrowed
 the result to <code class="docutils literal notranslate"><span class="pre">float</span></code> and mismatched the inferred result type
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1563">GH-1563</a>).</p></li>
+<li><p>Fix unbounded memory growth when repeatedly launching identical kernels created by a factory or closure
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1589">GH-1589</a>).</p></li>
 <li><p>Fix <code class="docutils literal notranslate"><span class="pre">wp.load_module()</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.ScopedCapture(force_module_load=True)</span></code> after CPU launches so CUDA graph capture
 precompiles the correct CUDA kernel variant. On CUDA drivers older than 12.3 this previously raised
 <code class="docutils literal notranslate"><span class="pre">CUDA_ERROR_STREAM_CAPTURE_UNSUPPORTED</span></code>; on newer drivers it silently recompiled inside the capture window
