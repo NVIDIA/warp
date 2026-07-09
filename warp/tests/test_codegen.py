@@ -645,6 +645,14 @@ def test_error_kernel_return_value(test, device):
 
 
 def test_error_incomplete_argument_annotations(test, device):
+    def annotated_with_return(a: float, b: int) -> float:
+        return a + b
+
+    test.assertEqual(
+        wp._src.context.get_function_args(annotated_with_return),
+        {"a": float, "b": int},
+    )
+
     def missing_annotation(a: float, b) -> None:
         pass
 

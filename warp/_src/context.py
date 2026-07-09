@@ -138,7 +138,7 @@ def get_function_args(func):
     missing = [name for name in argspec.args if name not in argspec.annotations]
     if missing:
         raise RuntimeError(f"Argument '{missing[0]}' in function '{func.__qualname__}' must be type annotated")
-    return argspec.annotations
+    return {name: argspec.annotations[name] for name in argspec.args}
 
 
 complex_type_hints = (Any, Callable, tuple)
