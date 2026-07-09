@@ -135,8 +135,9 @@ def get_function_args(func):
     argspec = warp._src.codegen.get_full_arg_spec(func)
 
     # use source-level argument annotations
-    if len(argspec.annotations) < len(argspec.args):
-        raise RuntimeError(f"Incomplete argument annotations on function {func.__qualname__}")
+    missing = [name for name in argspec.args if name not in argspec.annotations]
+    if missing:
+        raise RuntimeError(f"Argument '{missing[0]}' in function '{func.__qualname__}' must be type annotated")
     return argspec.annotations
 
 
@@ -1908,20 +1909,19 @@ def overload(kernel: Kernel | Callable, arg_types: dict[str, Any] | list[Any] | 
 
         # ensure all arguments are annotated
         argspec = warp._src.codegen.get_full_arg_spec(fn)
-        if len(argspec.annotations) < len(argspec.args):
-            raise RuntimeError(f"Incomplete argument annotations on kernel overload {fn.__name__}")
+        missing = [name for name in argspec.args if name not in argspec.annotations]
+        if missing:
+            raise RuntimeError(f"Argument '{missing[0]}' in kernel overload '{fn.__name__}' must be type annotated")
 
         # get type annotation list
         arg_list = []
-        for arg_name, arg_type in argspec.annotations.items():
-            if arg_name == "return":
-                if arg_type is not None and arg_type is not types.NoneType:
-                    raise TypeError(
-                        "Return annotations are not allowed on @wp.overload stubs; "
-                        "omit the return annotation or use `-> None`."
-                    )
-            else:
-                arg_list.append(arg_type)
+        return_type = argspec.annotations.get("return")
+        if return_type is not None and return_type is not types.NoneType:
+            raise TypeError(
+                "Return annotations are not allowed on @wp.overload stubs; omit the return annotation or use `-> None`."
+            )
+        for arg_name in argspec.args:
+            arg_list.append(argspec.annotations[arg_name])
 
         # add new overload, but we must return the original kernel from @wp.overload decorator!
         kernel.add_overload(arg_list)

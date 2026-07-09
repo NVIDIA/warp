@@ -1639,8 +1639,9 @@ class Adjoint:
         # ensure all arguments are annotated
         if overload_annotations is None:
             # use source-level argument annotations
-            if len(argspec.annotations) < len(argspec.args):
-                raise WarpCodegenError(f"Incomplete argument annotations on function {adj.fun_name}")
+            missing = [name for name in argspec.args if name not in argspec.annotations]
+            if missing:
+                raise WarpCodegenError(f"Argument '{missing[0]}' in function '{adj.fun_name}' must be type annotated")
             adj.arg_types = {k: v for k, v in argspec.annotations.items() if not (k == "return" and v is None)}
         else:
             # use overload argument annotations
@@ -1656,11 +1657,8 @@ class Adjoint:
         # IR while Python-level semantics expose pass-by-reference.
         adj.ref_params: dict[str, Var] = {}
 
-        for name, type in adj.arg_types.items():
-            # skip return hint
-            if name == "return":
-                continue
-
+        for name in argspec.args:
+            type = adj.arg_types[name]
             # add variable for argument
             arg = Var(name, type, requires_grad=False)
             adj.args.append(arg)
