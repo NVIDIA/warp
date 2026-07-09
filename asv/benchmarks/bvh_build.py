@@ -52,6 +52,7 @@ class BvhBuild:
 
     repeat = 100
     number = 5
+    warmup_time = 0.5
 
     assets = ["bunny", "bear", "rocks"]
 
