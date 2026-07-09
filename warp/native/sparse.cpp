@@ -214,7 +214,19 @@ bool apic_capture_bsr_transpose(
     // capture_launch (GH-1587). For a compact destination it is an output the
     // transpose recomputes, so no snapshot is taken.
     const bool padded = transposed_bsr_row_counts != nullptr;
-    uint64_t block_indices_bytes = int_bytes;
+    // The transpose touches transposed_bsr_columns only within the destination's
+    // capacity: offsets[col_count] blocks for a padded destination (which may be
+    // smaller than the source's nnz upper bound — that is the capacity-overflow
+    // case the padded API reports via status), nnz blocks for a compact one (the
+    // caller guarantees fit). Claiming nnz on a smaller padded destination would
+    // grow the region past the real allocation, corrupting pointer resolution
+    // (and the host snapshot) for the rest of the capture.
+    uint64_t transposed_capacity
+        = padded ? static_cast<uint64_t>(std::max(transposed_bsr_offsets[col_count], 0)) : static_cast<uint64_t>(nnz);
+    uint64_t transposed_columns_bytes = transposed_capacity * sizeof(int32_t);
+    // block_indices carries the sorted source blocks (up to nnz entries) and, for
+    // padded destinations, per-slot gap markers up to the destination capacity.
+    uint64_t block_indices_bytes = std::max(int_bytes, transposed_columns_bytes);
 
     APICAddress bo_addr = apic_resolve_host_ptr(state, reinterpret_cast<uint64_t>(bsr_offsets), rowp1_bytes);
     APICAddress brc_addr;
@@ -231,7 +243,7 @@ bool apic_capture_bsr_transpose(
             static_cast<uint64_t>(col_count) * sizeof(int32_t)
         );
     APICAddress tc_addr
-        = apic_resolve_host_ptr(state, reinterpret_cast<uint64_t>(transposed_bsr_columns), block_indices_bytes);
+        = apic_resolve_host_ptr(state, reinterpret_cast<uint64_t>(transposed_bsr_columns), transposed_columns_bytes);
     APICAddress bi_addr
         = apic_resolve_host_ptr(state, reinterpret_cast<uint64_t>(src_block_indices), block_indices_bytes);
     APICAddress status_addr;

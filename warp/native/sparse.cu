@@ -1344,7 +1344,18 @@ static void apic_capture_bsr_transpose_device(
     // padded destinations) that the live CUDA replay re-reads in place, so no
     // host-side capacity snapshot is recorded here (unlike the CPU path, which
     // snapshots it for byte-stream replay -- GH-1587).
-    uint64_t block_indices_bytes = int_bytes;
+    //
+    // transposed_bsr_columns spans the destination's capacity, which is also
+    // device-resident (transposed_bsr_offsets[col_count]) and cannot be read
+    // during capture. Resolve it with a minimal span: Python tracks the array's
+    // real extent before the native call, so the pointer resolves into that
+    // region. Claiming the source's nnz upper bound instead would grow the
+    // region past the real allocation of a smaller padded destination,
+    // corrupting pointer resolution for the rest of the capture.
+    uint64_t transposed_columns_bytes = sizeof(int32_t);
+    // src_block_indices doubles as CUB sort scratch: the DoubleBuffer key
+    // halves span 2*nnz entries.
+    uint64_t block_indices_bytes = 2 * int_bytes;
 
     APICAddress bo_addr = apic_resolve_live_ptr(state, reinterpret_cast<uint64_t>(bsr_offsets), rowp1_bytes);
     APICAddress brc_addr;
@@ -1361,7 +1372,7 @@ static void apic_capture_bsr_transpose_device(
             static_cast<uint64_t>(col_count) * sizeof(int32_t)
         );
     APICAddress tc_addr
-        = apic_resolve_live_ptr(state, reinterpret_cast<uint64_t>(transposed_bsr_columns), block_indices_bytes);
+        = apic_resolve_live_ptr(state, reinterpret_cast<uint64_t>(transposed_bsr_columns), transposed_columns_bytes);
     APICAddress bi_addr
         = apic_resolve_live_ptr(state, reinterpret_cast<uint64_t>(src_block_indices), block_indices_bytes);
     APICAddress status_addr;

@@ -720,18 +720,20 @@ static bool apic_replay_ops_into_cuda_capture(
                       static_cast<size_t>(rec->col_count) * sizeof(int32_t)
                   )
                 : nullptr;
-            // The transposed-columns and block-index regions are allocated at
-            // their full registered (padded) capacity, so resolve them with the
-            // source span -- apic_resolve_region_ptr bounds-checks the access
-            // against the region size. Do NOT read t_offsets[col_count] on the
-            // host to size them: t_offsets is device memory and dereferencing it
-            // here, during the active rebuild capture, is undefined behavior
-            // (GH-1431).
+            // The transposed-columns span is the destination's capacity
+            // (t_offsets[col_count]), which is device memory that must NOT be
+            // dereferenced here during the active rebuild capture (GH-1431), and
+            // which may be smaller than the source's nnz upper bound. Resolve it
+            // with a minimal span; the device transpose bounds its own accesses
+            // by the capacity offsets. The block-index buffer doubles as CUB
+            // sort scratch (DoubleBuffer key halves span 2*nnz entries), so
+            // resolve it with the full scratch span.
             void* t_columns = apic_resolve_region_ptr(
-                graph, rec->transposed_columns_region_id, rec->transposed_columns_offset, int_bytes
+                graph, rec->transposed_columns_region_id, rec->transposed_columns_offset, sizeof(int32_t)
             );
-            void* block_indices
-                = apic_resolve_region_ptr(graph, rec->block_indices_region_id, rec->block_indices_offset, int_bytes);
+            void* block_indices = apic_resolve_region_ptr(
+                graph, rec->block_indices_region_id, rec->block_indices_offset, 2 * int_bytes
+            );
             void* status = rec->status_region_id >= 0
                 ? apic_resolve_region_ptr(graph, rec->status_region_id, rec->status_offset, sizeof(int32_t))
                 : nullptr;

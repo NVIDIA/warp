@@ -51,6 +51,9 @@
   group ([GH-1612](https://github.com/NVIDIA/warp/issues/1612)).
 - Fix `wp.quat_twist_angle()` losing precision for small `wp.float32` rotations
   ([GH-1631](https://github.com/NVIDIA/warp/issues/1631)).
+- Fix heap corruption when capturing `wp.sparse.bsr_set_transpose()` with `topology="padded"`
+  into a destination without enough row capacity
+  ([GH-1630](https://github.com/NVIDIA/warp/issues/1630)).
 
 ### Documentation
 
