@@ -582,45 +582,62 @@ class TestSubscriptTypes(unittest.TestCase):
         self.assertNotEqual(a1, ia)
 
     def test_annotation_repr(self):
-        """repr() produces readable dtype names instead of raw class paths."""
+        """repr() produces subscript forms that match source syntax and round-trip."""
         # Built-in scalar dtypes
-        self.assertEqual(repr(wp.array[wp.float32]), "wp.array(dtype=wp.float32, ndim=1)")
-        self.assertEqual(repr(wp.array[wp.uint32]), "wp.array(dtype=wp.uint32, ndim=1)")
+        self.assertEqual(repr(wp.array[wp.float32]), "wp.array[wp.float32]")
+        self.assertEqual(repr(wp.array[wp.uint32]), "wp.array[wp.uint32]")
 
-        # Higher-dimensional arrays
-        self.assertEqual(repr(wp.array4d[wp.uint32]), "wp.array(dtype=wp.uint32, ndim=4)")
-        self.assertEqual(repr(wp.array3d[wp.vec3f]), "wp.array(dtype=wp.vec3f, ndim=3)")
-        self.assertEqual(repr(wp.array2d[wp.float32]), "wp.array(dtype=wp.float32, ndim=2)")
+        # Higher-dimensional arrays use the arrayNd shorthand
+        self.assertEqual(repr(wp.array4d[wp.uint32]), "wp.array4d[wp.uint32]")
+        self.assertEqual(repr(wp.array3d[wp.vec3f]), "wp.array3d[wp.vec3f]")
+        self.assertEqual(repr(wp.array2d[wp.float32]), "wp.array2d[wp.float32]")
 
         # Vector/matrix/quaternion/transform dtypes with wp.* aliases
-        self.assertEqual(repr(wp.array[wp.vec3f]), "wp.array(dtype=wp.vec3f, ndim=1)")
-        self.assertEqual(repr(wp.array[wp.mat44f]), "wp.array(dtype=wp.mat44f, ndim=1)")
-        self.assertEqual(repr(wp.array[wp.quatf]), "wp.array(dtype=wp.quatf, ndim=1)")
-        self.assertEqual(repr(wp.array[wp.transformf]), "wp.array(dtype=wp.transformf, ndim=1)")
+        self.assertEqual(repr(wp.array[wp.vec3f]), "wp.array[wp.vec3f]")
+        self.assertEqual(repr(wp.array[wp.mat44f]), "wp.array[wp.mat44f]")
+        self.assertEqual(repr(wp.array[wp.quatf]), "wp.array[wp.quatf]")
+        self.assertEqual(repr(wp.array[wp.transformf]), "wp.array[wp.transformf]")
 
-        # indexedarray uses its own class name
-        self.assertEqual(repr(wp.indexedarray[wp.float32]), "wp.indexedarray(dtype=wp.float32, ndim=1)")
+        # indexedarray has no arrayNd aliases, so it uses the explicit Literal form
+        self.assertEqual(repr(wp.indexedarray[wp.float32]), "wp.indexedarray[wp.float32]")
         self.assertEqual(
             repr(wp.indexedarray[wp.float32, Literal[3]]),
-            "wp.indexedarray(dtype=wp.float32, ndim=3)",
+            "wp.indexedarray[wp.float32, Literal[3]]",
         )
 
-        # Any dtype / ndim
-        ann = _ArrayAnnotation(dtype=Any, ndim=4)
-        self.assertEqual(repr(ann), "wp.array(dtype=Any, ndim=4)")
-        ann = _ArrayAnnotation(dtype=wp.float32, ndim=Any)
-        self.assertEqual(repr(ann), "wp.array(dtype=wp.float32, ndim=Any)")
+        # Any dtype / ndim still render as subscript forms
+        self.assertEqual(repr(_ArrayAnnotation(dtype=Any, ndim=4)), "wp.array4d[Any]")
+        self.assertEqual(repr(_ArrayAnnotation(dtype=wp.float32, ndim=Any)), "wp.array[wp.float32, Any]")
+        self.assertEqual(repr(_ArrayAnnotation(dtype=Any, ndim=Any)), "wp.array[Any, Any]")
 
-        # Custom vector/matrix dtypes with no wp.* alias use type_repr
+        # repr() round-trips: eval(repr(x)) == x
+        for annotation in [
+            wp.array[wp.float32],
+            wp.array4d[wp.uint32],
+            wp.array3d[wp.vec3f],
+            wp.array[wp.float32, Any],
+            wp.indexedarray[wp.float32],
+            wp.indexedarray[wp.float32, Literal[3]],
+        ]:
+            self.assertEqual(eval(repr(annotation)), annotation)
+
+        # Custom vector/matrix dtypes with no wp.* alias fall back to the
+        # descriptive type_repr form, never the internal generic class name
         my_vec5 = wp.types.vector(length=5, dtype=wp.float32)
         r = repr(wp.array[my_vec5])
         self.assertIn("vector(length=5", r)
+        self.assertNotIn("vec_t", r)
         self.assertNotIn("<class", r)
 
         my_mat7x7 = wp.types.matrix(shape=(7, 7), dtype=wp.float32)
         r = repr(wp.array[my_mat7x7])
         self.assertIn("matrix(shape=(7, 7)", r)
+        self.assertNotIn("mat_t", r)
         self.assertNotIn("<class", r)
+
+        # Exotic quaternion/transform dtypes must not leak the internal name
+        self.assertNotIn("quat_t", repr(wp.array[wp.types.quaternion(dtype=wp.float16)]))
+        self.assertNotIn("transform_t", repr(wp.array[wp.types.transformation(dtype=wp.float16)]))
 
         # Struct dtype uses struct key, no wp. prefix
         @wp.struct
@@ -634,9 +651,9 @@ class TestSubscriptTypes(unittest.TestCase):
 
         # Dynamic types that resolve to a wp.* alias
         vec3d_dynamic = wp.types.vector(3, dtype=wp.float64)
-        self.assertEqual(repr(wp.array[vec3d_dynamic]), "wp.array(dtype=wp.vec3d, ndim=1)")
+        self.assertEqual(repr(wp.array[vec3d_dynamic]), "wp.array[wp.vec3d]")
         mat44f_dynamic = wp.types.matrix((4, 4), dtype=wp.float32)
-        self.assertEqual(repr(wp.array[mat44f_dynamic]), "wp.array(dtype=wp.mat44f, ndim=1)")
+        self.assertEqual(repr(wp.array[mat44f_dynamic]), "wp.array[wp.mat44f]")
 
         # Custom passthrough dtype whose __name__ collides with a warp symbol
         # should NOT get a wp. prefix (it's not the real wp.float32)

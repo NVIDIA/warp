@@ -5181,25 +5181,49 @@ class _ArrayAnnotationBase:
         self.dtype = dtype if dtype is Any else type_to_warp(dtype)
         self.ndim = ndim
 
+    def _dtype_repr(self):
+        """Render ``self.dtype`` for the annotation subscript, preferring a ``wp.`` alias when one exists."""
+        dtype = self.dtype
+        if dtype is Any:
+            return "Any"
+        if hasattr(dtype, "key"):
+            # Struct instances carry a .key rather than a __name__
+            return dtype.key
+        name = getattr(dtype, "__name__", None)
+        if name and getattr(warp, name, None) is dtype:
+            # Type with a matching public alias (e.g. wp.float32, wp.vec3f)
+            return f"wp.{name}"
+        repr_name = type_repr(dtype)
+        if getattr(warp, repr_name, None) is not None:
+            # Canonical alias for an equivalent dynamic type (e.g. a freshly
+            # built vector(3, float64) whose type_repr is the cached "vec3d")
+            return f"wp.{repr_name}"
+        if type_is_vector(dtype) or type_is_quaternion(dtype) or type_is_matrix(dtype) or type_is_transformation(dtype):
+            # Warp generic vector/matrix/quaternion/transformation without an
+            # alias: type_repr already gives a descriptive, unambiguous form
+            # (e.g. "matrix(shape=(7, 7), dtype=float32)") rather than the
+            # internal generic class name (vec_t, mat_t, quat_t, transform_t).
+            return repr_name
+        # User-defined type with a meaningful name
+        return name or repr_name
+
     def __repr__(self):
-        if self.dtype is Any:
-            dtype_str = "Any"
-        elif hasattr(self.dtype, "key"):
-            # Struct instances use .key instead of __name__
-            dtype_str = self.dtype.key
-        else:
-            name = getattr(self.dtype, "__name__", None)
-            if name and getattr(warp, name, None) is self.dtype:
-                dtype_str = f"wp.{name}"
-            else:
-                # Custom vector/matrix/quaternion/transformation types
-                repr_name = type_repr(self.dtype)
-                if getattr(warp, repr_name, None) is not None:
-                    dtype_str = f"wp.{repr_name}"
-                else:
-                    dtype_str = repr_name
-        ndim_str = "Any" if self.ndim is Any else self.ndim
-        return f"wp.{self._concrete_cls.__name__}(dtype={dtype_str}, ndim={ndim_str})"
+        dtype_str = self._dtype_repr()
+        cls_name = self._concrete_cls.__name__
+        ndim = self.ndim
+        # Every case renders as a subscript annotation so that repr() matches
+        # the source syntax and round-trips through eval().
+        if ndim is Any:
+            # Two-argument form: wp.array[dtype, Any] parses back to ndim=Any.
+            return f"wp.{cls_name}[{dtype_str}, Any]"
+        if cls_name == "array":
+            # array1d..4d are subscriptable aliases mirroring idiomatic source.
+            return f"wp.array{ndim}d[{dtype_str}]" if ndim >= 2 else f"wp.array[{dtype_str}]"
+        if ndim == 1:
+            return f"wp.{cls_name}[{dtype_str}]"
+        # indexedarray/fabricarray have no Nd subscript classes; use the
+        # explicit dimension form instead.
+        return f"wp.{cls_name}[{dtype_str}, Literal[{ndim}]]"
 
     def __eq__(self, other):
         if isinstance(other, _ArrayAnnotationBase):

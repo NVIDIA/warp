@@ -123,6 +123,10 @@
   entire array). It also rejects copies between contiguous arrays whose element sizes differ, matching the existing
   behavior for non-contiguous arrays ([GH-1584](https://github.com/NVIDIA/warp/issues/1584)).
 - Speed up CPU APIC graph replay for launch-dense graphs ([GH-1431](https://github.com/NVIDIA/warp/issues/1431)).
+- Render `repr()` of array type annotations in their subscript form (such as `wp.array4d[wp.uint32]`) so that it matches
+  the written annotation and can be evaluated back to the same annotation, instead of the previous
+  `wp.array(dtype=..., ndim=...)` form. Warp array return types now read more naturally in Sphinx-generated API
+  documentation ([GH-1628](https://github.com/NVIDIA/warp/issues/1628)).
 
 ### Fixed
 
