@@ -525,9 +525,13 @@ linux-x86_64 python free-threaded test:
     - apt-get update && apt-get install build-essential --no-install-recommends -y
     - uv python install 3.14t
     - !reference [.snippets, move-linux-x86_64-binaries]
+    # usd-core wheels use ABI tag "none" but are built against the regular
+    # (GIL) CPython ABI, so importing pxr on a free-threaded interpreter
+    # segfaults. Keep usd-core out of this environment.
+    - uv sync --python 3.14t --extra dev --no-install-package usd-core
     - !reference [.snippets, section-end-install-deps]
   script:
-    - uv run --python 3.14t --extra dev -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
+    - uv run --python 3.14t --no-sync -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
 
 linux-x86_64 test debug mode:
   stage: test

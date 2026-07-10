@@ -605,8 +605,14 @@ jobs:
           name: build-artifact-ubuntu-x86_64-cuda13-python314t
           path: warp/bin/
 
+      # usd-core wheels use ABI tag "none" but are built against the regular
+      # (GIL) CPython ABI, so importing pxr on a free-threaded interpreter
+      # segfaults. Keep usd-core out of this environment.
+      - name: Install Python dependencies
+        run: uv sync --python 3.14t --extra dev --no-install-package usd-core
+
       - name: Run Tests
-        run: uv run --python 3.14t --extra dev -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
+        run: uv run --python 3.14t --no-sync -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
 
       - name: Test Summary
         uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86  # v2.4
