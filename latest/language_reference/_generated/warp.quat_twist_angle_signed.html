@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.quaternion &#8212; Warp 1.16.0.dev0</title>
+    <title>warp.quat_twist_angle_signed &#8212; Warp 1.16.0.dev0</title>
   
   
   
@@ -49,7 +49,7 @@
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'language_reference/_generated/warp.quaternion';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'language_reference/_generated/warp.quat_twist_angle_signed';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
@@ -62,8 +62,8 @@
 
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="warp.transform_compose" href="warp.transform_compose.html" />
-    <link rel="prev" title="warp.quat_twist_angle_signed" href="warp.quat_twist_angle_signed.html" />
+    <link rel="next" title="warp.quaternion" href="warp.quaternion.html" />
+    <link rel="prev" title="warp.quat_twist_angle" href="warp.quat_twist_angle.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -463,7 +463,7 @@
     
     <li class="breadcrumb-item"><a href="../builtins.html" class="nav-link">Built-Ins</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.quaternion</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.quat_twist_angle_signed</span></li>
   </ul>
 </nav>
 </div>
@@ -476,7 +476,7 @@
         <div class="header-article-item">
 
 <div class="d-flex justify-content-end w-100">
-  <a href="../../_sources/language_reference/_generated/warp.quaternion.rst.txt">
+  <a href="../../_sources/language_reference/_generated/warp.quat_twist_angle_signed.rst.txt">
     <i class="fa-solid fa-file-code"></i> View page source
   </a>
 </div>
@@ -493,11 +493,11 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="warp-quaternion">
-<h1>warp.quaternion<a class="headerlink" href="#warp-quaternion" title="Link to this heading">#</a></h1>
+  <section id="warp-quat-twist-angle-signed">
+<h1>warp.quat_twist_angle_signed<a class="headerlink" href="#warp-quat-twist-angle-signed" title="Link to this heading">#</a></h1>
 <dl class="py function">
-<dt class="sig sig-object py" id="warp._src.lang.quaternion">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">quaternion</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Quaternion</span><span class="p"><span class="pre">[</span></span><span class="pre">Float</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#warp._src.lang.quaternion" title="Link to this definition">#</a></dt>
+<dt class="sig sig-object py" id="warp._src.lang.quat_twist_angle_signed">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">quat_twist_angle_signed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">axis</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.vec3f.html#warp.vec3f" title="warp.vec3f"><span class="pre">vec3f</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">q</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.quatf.html#warp.quatf" title="warp.quatf"><span class="pre">quatf</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span></span><a class="headerlink" href="#warp._src.lang.quat_twist_angle_signed" title="Link to this definition">#</a></dt>
 <dd><table class="hlist"><tr><td><ul class="simple">
 <li><p>Kernel</p></li>
 </ul>
@@ -517,112 +517,27 @@
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Construct a quaternion.</p>
-<p>Zero-initialize the quaternion. Quaternions are laid out as
-<code class="docutils literal notranslate"><span class="pre">[ix,</span> <span class="pre">iy,</span> <span class="pre">iz,</span> <span class="pre">r]</span></code>, where <code class="docutils literal notranslate"><span class="pre">ix</span></code>, <code class="docutils literal notranslate"><span class="pre">iy</span></code>, <code class="docutils literal notranslate"><span class="pre">iz</span></code> are the imaginary part, and <code class="docutils literal notranslate"><span class="pre">r</span></code> the real part.</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">quaternion</span></span><span class="sig-paren">(</span>
-
-<dl>
-<dd><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Float</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Float</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">z</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Float</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">w</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Float</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Scalar</span></span></em>,</dd>
+<p>Return the signed twist angle of <code class="docutils literal notranslate"><span class="pre">q</span></code> around <code class="docutils literal notranslate"><span class="pre">axis</span></code>.</p>
+<p>Unlike <a class="reference internal" href="warp.quat_twist_angle.html#warp._src.lang.quat_twist_angle" title="warp._src.lang.quat_twist_angle"><code class="xref py py-func docutils literal notranslate"><span class="pre">quat_twist_angle()</span></code></a>, this preserves the sign of the twist, so
+rotations by <code class="docutils literal notranslate"><span class="pre">+theta</span></code> and <code class="docutils literal notranslate"><span class="pre">-theta</span></code> around <code class="docutils literal notranslate"><span class="pre">axis</span></code> return opposite
+values.</p>
+<p>The result follows the quaternion branch supplied by <code class="docutils literal notranslate"><span class="pre">q</span></code>. Since <code class="docutils literal notranslate"><span class="pre">q</span></code> and
+<code class="docutils literal notranslate"><span class="pre">-q</span></code> represent the same orientation but different quaternion branches,
+they may produce signed angles that differ by <code class="docutils literal notranslate"><span class="pre">2*pi</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>axis</strong> – Twist axis. Expected to be normalized by the caller.</p></li>
+<li><p><strong>q</strong> – Input quaternion in <code class="docutils literal notranslate"><span class="pre">(x,</span> <span class="pre">y,</span> <span class="pre">z,</span> <span class="pre">w)</span></code> layout.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Signed twist angle in radians in <code class="docutils literal notranslate"><span class="pre">[-2*pi,</span> <span class="pre">2*pi]</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
 </dl>
-
-<span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Quaternion</span><span class="p"><span class="pre">[</span></span><span class="pre">Float</span><span class="p"><span class="pre">]</span></span></span></span></dt>
-<dd><table class="hlist"><tr><td><ul class="simple">
-<li><p>Kernel</p></li>
-</ul>
-</td><td><ul class="simple">
-<li><p>Differentiable</p></li>
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td></tr></table>
-<p>Construct a quaternion.</p>
-<p>Use the supplied components (type inferred from component type).</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">quaternion</span></span><span class="sig-paren">(</span>
-
-<dl>
-<dd><em class="sig-param"><span class="n"><span class="pre">ijk</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Vector</span><span class="p"><span class="pre">[</span></span><span class="pre">Float</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="m"><span class="pre">3</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">real</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Float</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Float</span></span></em>,</dd>
-</dl>
-
-<span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Quaternion</span><span class="p"><span class="pre">[</span></span><span class="pre">Float</span><span class="p"><span class="pre">]</span></span></span></span></dt>
-<dd><table class="hlist"><tr><td><ul class="simple">
-<li><p>Kernel</p></li>
-</ul>
-</td><td><ul class="simple">
-<li><p>Differentiable</p></li>
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td></tr></table>
-<p>Construct a quaternion.</p>
-<p>Use the supplied vector/scalar (type inferred from scalar type).</p>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">quaternion</span></span><span class="sig-paren">(</span>
-
-<dl>
-<dd><em class="sig-param"><span class="n"><span class="pre">quat</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Quaternion</span><span class="p"><span class="pre">[</span></span><span class="pre">Float</span><span class="p"><span class="pre">]</span></span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Float</span></span></em>,</dd>
-</dl>
-
-<span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Quaternion</span><span class="p"><span class="pre">[</span></span><span class="pre">Float</span><span class="p"><span class="pre">]</span></span></span></span></dt>
-<dd><table class="hlist"><tr><td><ul class="simple">
-<li><p>Kernel</p></li>
-</ul>
-</td><td><ul class="simple">
-<li><p>Differentiable</p></li>
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td><td><ul class="simple">
-</ul>
-</td></tr></table>
-<p>Construct a quaternion.</p>
-<p>Convert <code class="docutils literal notranslate"><span class="pre">quat</span></code> to the specified <code class="docutils literal notranslate"><span class="pre">dtype</span></code>.</p>
 </dd></dl>
 
 </section>
@@ -638,20 +553,20 @@
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.quat_twist_angle_signed.html"
+       href="warp.quat_twist_angle.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.quat_twist_angle_signed</p>
+        <p class="prev-next-title">warp.quat_twist_angle</p>
       </div>
     </a>
     <a class="right-next"
-       href="warp.transform_compose.html"
+       href="warp.quaternion.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.transform_compose</p>
+        <p class="prev-next-title">warp.quaternion</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -676,7 +591,7 @@
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp._src.lang.quaternion"><code class="docutils literal notranslate"><span class="pre">quaternion()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp._src.lang.quat_twist_angle_signed"><code class="docutils literal notranslate"><span class="pre">quat_twist_angle_signed()</span></code></a></li>
 </ul>
   </nav></div>
 
@@ -684,7 +599,7 @@
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/main/docs/language_reference/_generated/warp.quaternion.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/main/docs/language_reference/_generated/warp.quat_twist_angle_signed.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

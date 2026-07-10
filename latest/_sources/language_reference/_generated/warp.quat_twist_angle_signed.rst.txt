@@ -1,0 +1,27 @@
+﻿warp.quat\_twist\_angle\_signed
+===============================
+
+.. function:: warp._src.lang.quat_twist_angle_signed(axis: vec3f, q: quatf) -> float
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Return the signed twist angle of ``q`` around ``axis``.
+   
+   Unlike :func:`quat_twist_angle`, this preserves the sign of the twist, so
+   rotations by ``+theta`` and ``-theta`` around ``axis`` return opposite
+   values.
+   
+   The result follows the quaternion branch supplied by ``q``. Since ``q`` and
+   ``-q`` represent the same orientation but different quaternion branches,
+   they may produce signed angles that differ by ``2*pi``.
+   
+   :param axis: Twist axis. Expected to be normalized by the caller.
+   :param q: Input quaternion in ``(x, y, z, w)`` layout.
+   
+   :returns: Signed twist angle in radians in ``[-2*pi, 2*pi]``.
+   :rtype: float
+   

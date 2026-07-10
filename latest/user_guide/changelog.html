@@ -570,6 +570,8 @@ host-return form of <code class="docutils literal notranslate"><span class="pre"
 (cross-device or non-contiguous copies) cannot be captured on CUDA and raise during APIC capture
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1431">GH-1431</a>).</p></li>
 <li><p>Add <code class="docutils literal notranslate"><span class="pre">wp.Stream.is_blocking</span></code> to check if a CUDA stream is blocking (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1618">GH-1618</a>).</p></li>
+<li><p>Add <code class="docutils literal notranslate"><span class="pre">wp.quat_twist_angle_signed()</span></code> to recover the signed rotational coordinate represented by a quaternion
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1631">GH-1631</a>).</p></li>
 </ul>
 </section>
 <section id="removed">
@@ -735,6 +737,8 @@ when replacement parameters move devices. Compatible buffers now migrate with th
 accumulated state (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1615">GH-1615</a>).</p></li>
 <li><p>Fix <code class="docutils literal notranslate"><span class="pre">wp.from_dlpack()</span></code> support for standards-conformant 8-bit Boolean tensors
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1619">GH-1619</a>).</p></li>
+<li><p>Fix <code class="docutils literal notranslate"><span class="pre">wp.quat_twist_angle()</span></code> losing precision for small float32 rotations
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1631">GH-1631</a>).</p></li>
 </ul>
 </section>
 <section id="documentation">

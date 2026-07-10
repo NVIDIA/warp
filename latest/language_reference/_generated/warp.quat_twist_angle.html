@@ -62,7 +62,7 @@
 
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="warp.quaternion" href="warp.quaternion.html" />
+    <link rel="next" title="warp.quat_twist_angle_signed" href="warp.quat_twist_angle_signed.html" />
     <link rel="prev" title="warp.quat_twist" href="warp.quat_twist.html" />
 
 
@@ -517,19 +517,23 @@
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Return the twist magnitude of <code class="docutils literal notranslate"><span class="pre">q</span></code> around <code class="docutils literal notranslate"><span class="pre">axis</span></code>.</p>
-<p>This returns an unsigned twist magnitude. For canonicalized quaternions
-(for example from <a class="reference internal" href="warp.quat_from_axis_angle.html#warp._src.lang.quat_from_axis_angle" title="warp._src.lang.quat_from_axis_angle"><code class="xref py py-func docutils literal notranslate"><span class="pre">quat_from_axis_angle()</span></code></a> with angles in <code class="docutils literal notranslate"><span class="pre">(-pi,</span> <span class="pre">pi)</span></code>),
-both <code class="docutils literal notranslate"><span class="pre">+theta</span></code> and <code class="docutils literal notranslate"><span class="pre">-theta</span></code> map to <code class="docutils literal notranslate"><span class="pre">|theta|</span></code>.</p>
+<p>Return the unsigned twist magnitude of <code class="docutils literal notranslate"><span class="pre">q</span></code> around <code class="docutils literal notranslate"><span class="pre">axis</span></code>.</p>
+<p>This discards the sign of the twist, so rotations by <code class="docutils literal notranslate"><span class="pre">+theta</span></code> and
+<code class="docutils literal notranslate"><span class="pre">-theta</span></code> around <code class="docutils literal notranslate"><span class="pre">axis</span></code> return the same value. Use
+<a class="reference internal" href="warp.quat_twist_angle_signed.html#warp._src.lang.quat_twist_angle_signed" title="warp._src.lang.quat_twist_angle_signed"><code class="xref py py-func docutils literal notranslate"><span class="pre">quat_twist_angle_signed()</span></code></a> when the direction of rotation around
+<code class="docutils literal notranslate"><span class="pre">axis</span></code> matters.</p>
+<p>The result follows the quaternion branch supplied by <code class="docutils literal notranslate"><span class="pre">q</span></code>. For
+canonicalized quaternions, the result is in <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">pi]</span></code>. Noncanonicalized
+inputs may return values in <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">2*pi]</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>axis</strong> – Twist axis (expected to be normalized).</p></li>
+<li><p><strong>axis</strong> – Twist axis. Expected to be normalized by the caller.</p></li>
 <li><p><strong>q</strong> – Input quaternion.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Twist angle in radians in <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">pi]</span></code> for canonicalized inputs.</p>
+<dd class="field-even"><p>Unsigned twist angle in radians.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
@@ -559,11 +563,11 @@ both <code class="docutils literal notranslate"><span class="pre">+theta</span><
       </div>
     </a>
     <a class="right-next"
-       href="warp.quaternion.html"
+       href="warp.quat_twist_angle_signed.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.quaternion</p>
+        <p class="prev-next-title">warp.quat_twist_angle_signed</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
