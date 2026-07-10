@@ -569,6 +569,28 @@ windows-x86_64 test:
       $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
       uv run --extra dev --extra torch-cu12 --with usd-core==25.5.1 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
 
+windows-x86_64-blackwell test:
+  stage: test
+  needs: [windows-x86_64 build]
+  variables:
+    IPP_RUNNER_EXECUTION_DURATION: "4500"
+  extends:
+    - .test_common_with_coverage
+  before_script:
+    - !reference [.snippets, define-powershell-GetTime]
+    - !reference [.snippets, powershell-section-start-install-deps]
+    - !reference [.snippets, install-uv-windows]
+    - !reference [.snippets, powershell-section-end-install-deps]
+  script:
+    # Locking usd-core to 25.5.1 to work around a frequent loading crash
+    - |
+      $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
+      uv run --extra dev --extra torch-cu13 --with usd-core==25.5.1 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
+  tags:
+    - win-x86_64-gpu-1x-595.97-blackwell
+    - gpu/blackwell
+    - os/windows
+
 # Optional multi-GPU Windows job (likely longer queue time)
 windows-x86_64 test mgpu:
   stage: test
