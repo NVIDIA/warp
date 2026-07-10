@@ -20,6 +20,7 @@ __all__ = [
     "quat_to_rpy",
     "quat_twist",
     "quat_twist_angle",
+    "quat_twist_angle_signed",
     "smooth_normalize",
     "transform_compose",
     "transform_decompose",
@@ -169,20 +170,51 @@ def quat_twist(axis: wp.vec3, q: wp.quat) -> wp.quat:
 
 @wp.func
 def quat_twist_angle(axis: wp.vec3, q: wp.quat) -> float:
-    """Return the twist magnitude of ``q`` around ``axis``.
+    """Return the unsigned twist magnitude of ``q`` around ``axis``.
 
-    This returns an unsigned twist magnitude. For canonicalized quaternions
-    (for example from :func:`quat_from_axis_angle` with angles in ``(-pi, pi)``),
-    both ``+theta`` and ``-theta`` map to ``|theta|``.
+    This discards the sign of the twist, so rotations by ``+theta`` and
+    ``-theta`` around ``axis`` return the same value. Use
+    :func:`quat_twist_angle_signed` when the direction of rotation around
+    ``axis`` matters.
+
+    The result follows the quaternion branch supplied by ``q``. For
+    canonicalized quaternions, the result is in ``[0, pi]``. Noncanonicalized
+    inputs may return values in ``[0, 2*pi]``.
 
     Args:
-        axis: Twist axis (expected to be normalized).
+        axis: Twist axis. Expected to be normalized by the caller.
         q: Input quaternion.
 
     Returns:
-        float: Twist angle in radians in ``[0, pi]`` for canonicalized inputs.
+        float: Unsigned twist angle in radians.
     """
-    return 2.0 * wp.acos(quat_twist(axis, q)[3])
+    vector = wp.vec3(q[0], q[1], q[2])
+    sin_half = wp.abs(wp.dot(axis, vector))
+    return 2.0 * wp.atan2(sin_half, q[3])
+
+
+@wp.func
+def quat_twist_angle_signed(axis: wp.vec3, q: wp.quat) -> float:
+    """Return the signed twist angle of ``q`` around ``axis``.
+
+    Unlike :func:`quat_twist_angle`, this preserves the sign of the twist, so
+    rotations by ``+theta`` and ``-theta`` around ``axis`` return opposite
+    values.
+
+    The result follows the quaternion branch supplied by ``q``. Since ``q`` and
+    ``-q`` represent the same orientation but different quaternion branches,
+    they may produce signed angles that differ by ``2*pi``.
+
+    Args:
+        axis: Twist axis. Expected to be normalized by the caller.
+        q: Input quaternion in ``(x, y, z, w)`` layout.
+
+    Returns:
+        float: Signed twist angle in radians in ``[-2*pi, 2*pi]``.
+    """
+    vector = wp.vec3(q[0], q[1], q[2])
+    sin_half = wp.dot(axis, vector)
+    return 2.0 * wp.atan2(sin_half, q[3])
 
 
 @wp.func
@@ -750,6 +782,10 @@ wp._src.context.register_api_function(
 )
 wp._src.context.register_api_function(
     quat_twist_angle,
+    group="Quaternion Math",
+)
+wp._src.context.register_api_function(
+    quat_twist_angle_signed,
     group="Quaternion Math",
 )
 wp._src.context.register_api_function(

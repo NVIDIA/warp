@@ -76,6 +76,8 @@
   (cross-device or non-contiguous copies) cannot be captured on CUDA and raise during APIC capture
   ([GH-1431](https://github.com/NVIDIA/warp/issues/1431)).
 - Add `wp.Stream.is_blocking` to check if a CUDA stream is blocking ([GH-1618](https://github.com/NVIDIA/warp/issues/1618)).
+- Add `wp.quat_twist_angle_signed()` to recover the signed rotational coordinate represented by a quaternion
+  ([GH-1631](https://github.com/NVIDIA/warp/issues/1631)).
 
 ### Removed
 
@@ -233,6 +235,8 @@
   accumulated state ([GH-1615](https://github.com/NVIDIA/warp/issues/1615)).
 - Fix `wp.from_dlpack()` support for standards-conformant 8-bit Boolean tensors
   ([GH-1619](https://github.com/NVIDIA/warp/issues/1619)).
+- Fix `wp.quat_twist_angle()` losing precision for small float32 rotations
+  ([GH-1631](https://github.com/NVIDIA/warp/issues/1631)).
 
 ### Documentation
 

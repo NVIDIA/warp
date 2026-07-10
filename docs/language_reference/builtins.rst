@@ -121,6 +121,7 @@ Quaternion Math
    quat_to_rpy
    quat_twist
    quat_twist_angle
+   quat_twist_angle_signed
    quaternion
 
 Transformations
