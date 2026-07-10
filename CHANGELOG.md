@@ -233,6 +233,8 @@
   accumulated state ([GH-1615](https://github.com/NVIDIA/warp/issues/1615)).
 - Fix `wp.from_dlpack()` support for standards-conformant 8-bit Boolean tensors
   ([GH-1619](https://github.com/NVIDIA/warp/issues/1619)).
+- Fix group-root lookups for `wp.Bvh` and `wp.Mesh` with sparse group IDs so queries remain isolated to the requested
+  group ([GH-1612](https://github.com/NVIDIA/warp/issues/1612)).
 
 ### Documentation
 

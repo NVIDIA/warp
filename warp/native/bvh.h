@@ -310,6 +310,23 @@ CUDA_CALLABLE inline int lower_bound_group(const BVH& bvh, int group)
     return lo;
 }
 
+CUDA_CALLABLE inline int upper_bound_group(const BVH& bvh, int group)
+{
+    int lo = 0;
+    int hi = bvh.num_leaf_nodes;
+
+    while (lo < hi) {
+        int mid = (lo + hi) >> 1;
+        if (get_leaf_group(bvh, mid) <= group) {
+            lo = mid + 1;
+        } else {
+            hi = mid;
+        }
+    }
+
+    return lo;
+}
+
 CUDA_CALLABLE inline uint64_t bvh_query_node_pack(const BVHPackedNodeHalf& lower, const BVHPackedNodeHalf& upper)
 {
     return (uint64_t(lower.b) << 62) | (uint64_t(upper.i) << 31) | uint64_t(lower.i);
@@ -361,14 +378,12 @@ CUDA_CALLABLE inline int bvh_get_group_root(uint64_t id, int group_id)
 {
     BVH bvh = bvh_get(id);
     // locate first leaf of the current group
-    int first = lower_bound_group(bvh, group_id);
+    const int first = lower_bound_group(bvh, group_id);
     if (first < 0)
         return -1;
 
-    // find first leaf of next group to find the last leaf of the current group
-    const int next_group = static_cast<int>(group_id) + 1;
-    int next = lower_bound_group(bvh, next_group);
-    int last = (next < 0 ? bvh.num_leaf_nodes : next) - 1;
+    // find the first leaf with a greater group id to locate the last leaf of the current group
+    const int last = upper_bound_group(bvh, group_id) - 1;
 
     return lca(first, last, bvh.node_parents);
 }
