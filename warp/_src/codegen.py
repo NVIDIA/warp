@@ -2729,7 +2729,14 @@ class Adjoint:
         # update our smem roofline requirements based on any
         # shared memory required by the dependent function call
         if not func.is_builtin():
-            adj.alloc_shared_extra(func.adj.get_total_required_shared() + extra_shared_memory)
+            required = func.adj.get_total_required_shared()
+            # a custom grad/replay runs in the backward and may need more shared than the forward
+            for extra_fn in (func.custom_grad_func, func.custom_replay_func):
+                if extra_fn is not None and adj.builder is not None:
+                    adj.builder.build_function(extra_fn)
+                    if extra_fn in adj.builder.functions:  # skip if it re-entered mid-build
+                        required = max(required, extra_fn.adj.get_total_required_shared())
+            adj.alloc_shared_extra(required + extra_shared_memory)
         else:
             adj.alloc_shared_extra(extra_shared_memory)
 

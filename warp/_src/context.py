@@ -2702,6 +2702,7 @@ class ModuleBuilder:
         self.options = options
         self.module = module
         self.deferred_functions = []
+        self.building_functions = set()  # functions currently mid-build, to break build recursion
         self.fatbins = {}  # map from <some identifier> to fatbins, to add at link time
         self.ltoirs = {}  # map from lto symbol to lto binary
         self.ltoirs_decl = {}  # map from lto symbol to lto forward declaration
@@ -2815,13 +2816,17 @@ class ModuleBuilder:
             raise WarpCodegenTypeError(f"'{kernel.key}': {_KERNEL_RETURN_ERROR}")
 
     def build_function(self, func):
-        if func in self.functions:
+        # building_functions breaks recursion when a custom grad calls its own forward (built from add_call)
+        if func in self.functions or func in self.building_functions:
             return
-        else:
+        self.building_functions.add(func)
+        try:
             func.build(self)
+        finally:
+            self.building_functions.discard(func)
 
-            # use dict to preserve import order
-            self.functions[func] = None
+        # use dict to preserve import order
+        self.functions[func] = None
 
     def build_meta(self):
         meta = {}
