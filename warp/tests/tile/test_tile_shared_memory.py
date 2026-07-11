@@ -862,6 +862,42 @@ def test_tile_scatter_masked_grad_cross_thread(test, device):
     np.testing.assert_allclose(inp.grad.numpy(), expected_grad)
 
 
+def test_tile_custom_grad_extra_shared(test, device):
+    """A custom func_grad whose backward needs more shared memory than its elementwise forward."""
+    NUM_TILES = 4
+    M = 4
+    EXTRA = 8  # backward-only shared scratch is EXTRA x EXTRA, dwarfing the M x M forward tile
+
+    @wp.func
+    def scale2x(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float), i: int):
+        # forward: y = 2x elementwise -> tiny shared footprint
+        wp.tile_store(y, wp.tile_load(x, shape=(M, M), offset=(i * M, 0)) * 2.0, offset=(i * M, 0))
+
+    @wp.func_grad(scale2x)
+    def adj_scale2x(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float), i: int):
+        # backward is dL/dx = 2*dL/dy, but routed through a large shared scratch tile (the
+        # trigger); *0.0 keeps the value at 2 while the scratch still feeds the scatter.
+        g = wp.tile_load(wp.adjoint[y], shape=(M, M), offset=(i * M, 0))
+        scratch = wp.tile_ones(shape=(EXTRA, EXTRA), dtype=float, storage="shared")
+        pad = wp.tile_broadcast(wp.tile_sum(scratch), shape=(M, M))
+        wp.tile_atomic_add(wp.adjoint[x], g * 2.0 + pad * 0.0, offset=(i * M, 0))
+
+    @wp.kernel(module="unique")
+    def run(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
+        scale2x(x, y, wp.tid())
+
+    x = wp.array(np.ones((NUM_TILES * M, M), dtype=np.float32), requires_grad=True, device=device)
+    y = wp.zeros_like(x)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(run, dim=(NUM_TILES,), inputs=[x], outputs=[y], block_dim=64, device=device)
+
+    tape.backward(grads={y: wp.ones_like(y)})
+
+    # backward must not have corrupted memory (or crashed with CUDA 700): dL/dx == 2 everywhere
+    assert_np_equal(x.grad.numpy(), np.full((NUM_TILES * M, M), 2.0, dtype=np.float32))
+
+
 devices = get_cuda_test_devices()
 
 
@@ -975,6 +1011,12 @@ add_function_test(
     TestTileSharedMemory,
     "test_tile_scatter_masked_grad_cross_thread",
     test_tile_scatter_masked_grad_cross_thread,
+    devices=devices,
+)
+add_function_test(
+    TestTileSharedMemory,
+    "test_tile_custom_grad_extra_shared",
+    test_tile_custom_grad_extra_shared,
     devices=devices,
 )
 
