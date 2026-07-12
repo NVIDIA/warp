@@ -15,6 +15,9 @@ Usage:
 
 # isort: skip_file
 
+# The source-to-public Warp module declarations for `warp.optim` live in the
+# top-level `warp/__init__.py`, so they are in effect before these imports run.
+
 from warp._src.optim.adam import Adam as Adam
 from warp._src.optim.sgd import SGD as SGD
 

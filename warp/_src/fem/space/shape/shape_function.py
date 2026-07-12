@@ -11,8 +11,6 @@ from warp._src.fem import cache
 from warp._src.fem.geometry import Element
 from warp._src.fem.types import cached_coords_type
 
-_wp_module_name_ = "warp.fem.space.shape.shape_function"
-
 
 class ShapeFunction:
     """Interface class for defining scalar-valued shape functions over a single element."""

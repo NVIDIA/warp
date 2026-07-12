@@ -55,8 +55,6 @@ from warp.sparse import BsrMatrix, bsr_axpy, bsr_compress, bsr_set_from_triplets
 
 __all__ = ["integrate", "interpolate"]
 
-_wp_module_name_ = "warp.fem.integrate"
-
 _BSR_CAPACITY_AUTO = "auto"
 _BSR_CAPACITY_REUSE = "reuse"
 

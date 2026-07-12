@@ -13,8 +13,6 @@ from .closest_point import project_on_box_at_origin_2d
 from .element import Element
 from .geometry import Geometry, _array_load
 
-_wp_module_name_ = "warp.fem.geometry.grid_2d"
-
 
 def _make_grid2d_cell_arg(scalar_type):
     vec2_type = cached_vec_type(2, scalar_type)

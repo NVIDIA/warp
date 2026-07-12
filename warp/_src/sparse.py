@@ -30,8 +30,6 @@ from warp._src.types import (
     types_equal,
 )
 
-_wp_module_name_ = "warp.sparse"
-
 __all__ = [
     "BSR_STATUS_ROW_CAPACITY_EXCEEDED",
     "BSR_STATUS_SUCCESS",

@@ -17,8 +17,6 @@ from warp._src.fem.types import NULL_ELEMENT_INDEX, ElementIndex, QuadraturePoin
 
 from ..polynomial import Polynomial
 
-_wp_module_name_ = "warp.fem.quadrature.quadrature"
-
 
 @wp.struct
 class QuadraturePointElementIndex:

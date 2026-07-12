@@ -81,6 +81,50 @@ def test_dlpack_warp_to_warp(test, device):
     assert_np_equal(a1.numpy(), a2.numpy())
 
 
+def test_dlpack_bool_round_trip(test, device):
+    values = np.array([True, False, True, True, False], dtype=np.bool_)
+    source = wp.array(values, dtype=wp.bool, device=device)
+
+    for explicit_dtype in (False, True):
+        with test.subTest(explicit_dtype=explicit_dtype):
+            capsule = wp.to_dlpack(source)
+            if explicit_dtype:
+                result = wp.from_dlpack(capsule, dtype=wp.bool)
+            else:
+                result = wp.from_dlpack(capsule)
+
+            test.assertEqual(result.ptr, source.ptr)
+            test.assertEqual(result.device, source.device)
+            test.assertEqual(result.dtype, wp.bool)
+            test.assertEqual(result.shape, source.shape)
+            test.assertEqual(result.strides, source.strides)
+            np.testing.assert_array_equal(result.numpy(), values)
+
+
+def test_dlpack_bool_aliases(test, device):
+    values = np.array([True, False, True, True, False], dtype=np.bool_)
+    source = wp.array(values, dtype=wp.bool, device=device)
+
+    for target_dtype in (wp.int8, wp.uint8):
+        with test.subTest(target_dtype=target_dtype):
+            result = wp.from_dlpack(wp.to_dlpack(source), dtype=target_dtype)
+
+            test.assertEqual(result.ptr, source.ptr)
+            test.assertEqual(result.device, source.device)
+            test.assertEqual(result.dtype, target_dtype)
+            test.assertEqual(result.shape, source.shape)
+            test.assertEqual(result.strides, source.strides)
+            np.testing.assert_array_equal(result.numpy(), values.astype(wp.dtype_to_numpy(target_dtype)))
+
+
+def test_dlpack_incompatible_dtype_error(test, device):
+    source = wp.zeros(1, dtype=wp.bool, device=device)
+
+    expected_error = r"Incompatible data types: DLPack bool8 and Warp float32"
+    with test.assertRaisesRegex(RuntimeError, expected_error):
+        wp.from_dlpack(wp.to_dlpack(source), dtype=wp.float32)
+
+
 def test_dlpack_dtypes_and_shapes(test, device):
     # automatically determine scalar dtype
     def wrap_scalar_tensor_implicit(dtype):
@@ -656,6 +700,11 @@ class TestDLPack(unittest.TestCase):
 devices = get_test_devices()
 
 add_function_test(TestDLPack, "test_dlpack_warp_to_warp", test_dlpack_warp_to_warp, devices=devices)
+add_function_test(TestDLPack, "test_dlpack_bool_round_trip", test_dlpack_bool_round_trip, devices=devices)
+add_function_test(TestDLPack, "test_dlpack_bool_aliases", test_dlpack_bool_aliases, devices=devices)
+add_function_test(
+    TestDLPack, "test_dlpack_incompatible_dtype_error", test_dlpack_incompatible_dtype_error, devices=devices
+)
 add_function_test(TestDLPack, "test_dlpack_dtypes_and_shapes", test_dlpack_dtypes_and_shapes, devices=devices)
 add_function_test(TestDLPack, "test_dlpack_stream_arg", test_dlpack_stream_arg, devices=devices)
 

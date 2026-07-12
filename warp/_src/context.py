@@ -63,13 +63,12 @@ import numpy as np
 import warp
 import warp._src.build
 import warp._src.codegen
+import warp._src.module_registry
 import warp.config
 from warp._src.codegen import WarpCodegenTypeError, _codegen_lock, synchronized
 from warp._src.logger import LOG_DEBUG, LOG_WARNING, get_logger, log_debug, log_error, log_info, log_warning
 from warp._src.texture import Texture1D, Texture2D, Texture3D, texture1d_t, texture2d_t, texture3d_t
 from warp._src.types import LAUNCH_MAX_DIMS, Array, LaunchBounds, array_t, launch_bounds_t, type_repr
-
-_wp_module_name_ = "warp.context"
 
 _KERNEL_RETURN_ERROR = (
     "Warp kernels cannot return values. Write results to output arguments, "
@@ -990,7 +989,7 @@ class Kernel:
         self.func = func
 
         if module is None:
-            self.module = get_module(func.__module__)
+            self.module = _get_module(func.__module__, func.__qualname__)
         else:
             self.module = module
 
@@ -1172,7 +1171,7 @@ def func(
             key = name
 
         if module is None:
-            m = get_module(f.__module__)
+            m = _get_module(f.__module__, f.__qualname__)
         elif module == "unique":
             m = Module(f.__name__, None)
         elif isinstance(module, str):
@@ -1306,7 +1305,7 @@ def func_native(snippet: str, adj_snippet: str | None = None, replay_snippet: st
     def snippet_func(f: Callable) -> Callable:
         name = warp._src.codegen.make_full_qualified_name(f)
 
-        m = get_module(f.__module__)
+        m = _get_module(f.__module__, f.__qualname__)
         Function(
             func=f,
             key=name,
@@ -1671,7 +1670,7 @@ def kernel(
         # Resolve the module for this kernel
         if module is None:
             # Default: infer module from the function's Python module
-            m = get_module(f.__module__)
+            m = _get_module(f.__module__, f.__qualname__)
         elif module == "unique":
             # Create a new temporary module that will be renamed based on hash.
             m = Module(f.__name__, None)
@@ -1820,7 +1819,7 @@ def struct(
 
     def wrapper(c, *args, **kwargs):
         if module is None:
-            m = get_module(c.__module__)
+            m = _get_module(c.__module__, c.__qualname__)
         elif module == "unique":
             m = Module(c.__name__, None)
         elif isinstance(module, str):
@@ -2233,19 +2232,36 @@ def get_module(name: str) -> Module:
     See Also:
         :func:`load_module`, :func:`force_load`
     """
+    return _get_module(name)
+
+
+def _get_module(name: str, qualname: str | None = None) -> Module:
+    """Return or create the Warp module a construct should be registered into.
+
+    ``name`` is the construct's source Python module (``__module__``); top-down
+    declarations (see ``warp._src.module_registry``) may redirect it to a different
+    Warp module. ``qualname`` is the construct's ``__qualname__``, used to honor
+    handpicked ``register_module_constructs`` declarations.
+    """
     # some modules might be manually imported using `importlib` without being
     # registered into `sys.modules`
     parent = sys.modules.get(name, None)
     parent_loader = None if parent is None else parent.__loader__
 
-    # If there is a variable `_wp_module_name_` defined, use it as the module name.
-    name = getattr(parent, "_wp_module_name_", name)
+    # Resolve the target Warp module name from top-down declarations (see
+    # `warp._src.module_registry`), defaulting to the source module name.
+    name = warp._src.module_registry.resolve_module_name(name, qualname)
 
     if name in user_modules:
-        # check if the Warp module was created using a different loader object
-        # if so, we assume the file has changed and we recreate the module to
-        # clear out old kernels / functions
-        if user_modules[name].loader is not parent_loader:
+        # Check if the Warp module was created using a different loader object; if so,
+        # we assume the file has changed and we recreate the module to clear out old
+        # kernels / functions. This only applies to construct registration (the
+        # decorator path passes ``qualname``)—a bare ``get_module()`` lookup
+        # (``qualname is None``) must never clear state. In particular, looking up a
+        # source-populated Warp module by its public name (e.g. ``"warp.optim.linear"``)
+        # resolves here carrying the public wrapper's loader, which differs from the
+        # source module's loader; without this guard that lookup would wipe the module.
+        if qualname is not None and user_modules[name].loader is not parent_loader:
             old_module = user_modules[name]
 
             # Unload the old module and recursively unload all of its dependents.
@@ -2491,17 +2507,6 @@ class ModuleHasher:
         # rides on kernel.options, an inherited default on the "default_grid_stride" module option.
         kernel.grid_stride = warp._src.codegen.resolve_grid_stride(kernel.options, default_grid_stride)
 
-        # Include per-kernel options (e.g. cluster_dim, launch_bounds) so that
-        # two kernels with identical source but different options get distinct
-        # hashes.  Values are stringified, so option types must have a
-        # deterministic ``str()`` (built-in scalars, tuples of scalars, bools,
-        # etc.).  Don't add options whose ``str()`` includes id-based output
-        # (e.g. ``<object at 0x...>``); the hash would still be stable within
-        # a process but unstable across runs.
-        for opt in sorted(kernel.options.keys()):
-            s = f"{opt}:{kernel.options[opt]}"
-            ch.update(bytes(s, "utf-8"))
-
         h = ch.digest()
 
         self.unique_kernels[h] = kernel
@@ -2511,6 +2516,9 @@ class ModuleHasher:
     def _hash_kernel_identity(self, ch, kernel: Kernel) -> None:
         # Hash a kernel's content identity. Shared by hash_kernel() and the unique-module salt so the
         # two can't drift. Options change generated code, so fold them by value, sorted for determinism.
+        # Values are stringified, so option types need a deterministic str() (scalars, tuples of scalars,
+        # bools, etc.); avoid options whose str() is id-based (e.g. "<object at 0x...>"), stable within a
+        # process but not across runs.
         ch.update(bytes(kernel.key, "utf-8"))
         for opt in sorted(kernel.options):
             ch.update(bytes(f"{opt}:{kernel.options[opt]}", "utf-8"))
@@ -2979,14 +2987,13 @@ class ModuleExec:
 
     # lookup and cache kernel entry points
     def get_kernel_hooks(self, kernel) -> KernelHooks:
-        # Use kernel.adj as a unique key for cache lookups instead of the kernel itself.
-        # This avoids holding a reference to the kernel and is faster than using
-        # a WeakKeyDictionary with kernels as keys.
-        hooks = self.kernel_hooks.get(kernel.adj)
+        # Key by the mangled name (compiled-symbol identity), not kernel.adj, which pinned one
+        # Adjoint per closure-recreated kernel -- a leak the live-kernel WeakSet can't reclaim.
+        name = kernel.get_mangled_name()
+
+        hooks = self.kernel_hooks.get(name)
         if hooks is not None:
             return hooks
-
-        name = kernel.get_mangled_name()
 
         options = kernel.module.options | kernel.options
 
@@ -3084,7 +3091,7 @@ class ModuleExec:
 
             hooks = KernelHooks(forward, backward)
 
-        self.kernel_hooks[kernel.adj] = hooks
+        self.kernel_hooks[name] = hooks
         return hooks
 
 
@@ -13530,8 +13537,8 @@ def export_stubs(file):  # pragma: no cover
     # Uses vector_types from warp._src.types, excluding spatial types which don't get class stubs.
     class_stub_types = {t.__name__ for t in warp._src.types.vector_types if not t.__name__.startswith("spatial_")}
 
-    # Type aliases already imported in the header (skip to avoid duplicates)
-    header_imported_types = {"Int", "Float", "Scalar"}
+    # Type aliases already imported in the header (skip to avoid duplicates) or undesired
+    skip_imported_types = {"Int", "Float", "Scalar", "_register_module_source"}
 
     init_lines = init_content.split("\n")
     init_import_lines = []
@@ -13550,6 +13557,9 @@ def export_stubs(file):  # pragma: no cover
 
         if line.startswith("def __getattr__("):
             skip_runtime_dunder_getattr = True
+            continue
+
+        if line.startswith("_register_module_source("):
             continue
 
         # Check if this line is a top-level import statement (no leading whitespace).
@@ -13574,8 +13584,8 @@ def export_stubs(file):  # pragma: no cover
                 if alias_name in class_stub_types:
                     # Skip this import - class stubs are generated below
                     continue
-                if alias_name in header_imported_types:
-                    # Skip this import - already imported in header for generic class definitions
+                if alias_name in skip_imported_types:
+                    # Skip this import - already imported in header for generic class definitions or undesired
                     continue
             init_import_lines.append(import_line)
         else:

@@ -12,8 +12,6 @@ from warp._src.fem.types import cached_coords_type
 from .shape_function import ShapeFunction
 from .triangle_shape_function import _triangle_node_index
 
-_wp_module_name_ = "warp.fem.space.shape.tet_shape_function"
-
 
 def _tet_node_index(tx: int, ty: int, tz: int, degree: int):
     VERTEX_NODE_COUNT = 4

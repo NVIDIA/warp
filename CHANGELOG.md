@@ -82,6 +82,8 @@
   (cross-device or non-contiguous copies) cannot be captured on CUDA and raise during APIC capture
   ([GH-1431](https://github.com/NVIDIA/warp/issues/1431)).
 - Add `wp.Stream.is_blocking` to check if a CUDA stream is blocking ([GH-1618](https://github.com/NVIDIA/warp/issues/1618)).
+- Add `wp.quat_twist_angle_signed()` to recover the signed rotational coordinate represented by a quaternion
+  ([GH-1631](https://github.com/NVIDIA/warp/issues/1631)).
 
 ### Removed
 
@@ -132,11 +134,15 @@
 
 ### Fixed
 
+- Fix batched iterative linear solvers to ignore inactive trailing degrees of freedom beyond the final batch offset
+  ([GH-1608](https://github.com/NVIDIA/warp/issues/1608)).
 - Fix eager Python calls to generic `@wp.func` functions to resolve a matching generic template after other concrete
   overloads have already been instantiated ([GH-1603](https://github.com/NVIDIA/warp/issues/1603)).
 - Fix `wp.tile_dot()` compilation failure for scalar `wp.float64` and `wp.float16` tiles, which previously narrowed
   the result to `float` and mismatched the inferred result type
   ([GH-1563](https://github.com/NVIDIA/warp/issues/1563)).
+- Fix unbounded memory growth when repeatedly launching identical kernels created by a factory or closure
+  ([GH-1589](https://github.com/NVIDIA/warp/issues/1589)).
 - Fix `wp.load_module()` and `wp.ScopedCapture(force_module_load=True)` after CPU launches so CUDA graph capture
   precompiles the correct CUDA kernel variant. On CUDA drivers older than 12.3 this previously raised
   `CUDA_ERROR_STREAM_CAPTURE_UNSUPPORTED`; on newer drivers it silently recompiled inside the capture window
@@ -233,6 +239,10 @@
 - Fix `warp.optim.Adam.set_params()` and `warp.optim.SGD.set_params()` reusing optimizer state on the wrong device
   when replacement parameters move devices. Compatible buffers now migrate with the parameters while preserving
   accumulated state ([GH-1615](https://github.com/NVIDIA/warp/issues/1615)).
+- Fix `wp.from_dlpack()` support for standards-conformant 8-bit Boolean tensors
+  ([GH-1619](https://github.com/NVIDIA/warp/issues/1619)).
+- Fix `wp.quat_twist_angle()` losing precision for small float32 rotations
+  ([GH-1631](https://github.com/NVIDIA/warp/issues/1631)).
 
 ### Documentation
 

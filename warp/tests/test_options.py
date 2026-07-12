@@ -406,6 +406,7 @@ class TestOptions(unittest.TestCase):
         fake_frame = types.SimpleNamespace(
             f_globals={"__spec__": None, "__name__": None},
             f_code=fake_code,
+            f_back=None,
         )
 
         with (

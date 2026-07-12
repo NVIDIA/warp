@@ -23,8 +23,6 @@ from .closest_point import project_on_tet_at_origin, project_on_tri_at_origin
 from .element import Element
 from .geometry import Geometry, _initialize_cell_environment_indices
 
-_wp_module_name_ = "warp.fem.geometry.tetmesh"
-
 
 def _make_tetmesh_cell_arg(pos_vec_type):
     @cache.dynamic_struct(suffix=type_scalar_type(pos_vec_type))

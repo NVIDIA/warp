@@ -224,6 +224,8 @@ def quat_helpers_kernel(out: wp.array2d[float]):
     out[tid, 10] = quat_sign_invariant_error(q_dec_compound_zyx, q_compound_zyx)
     out[tid, 11] = wp.max(0.0, 1.0e-2 - wp.length(e_dec_compound_xyz - e_compound))
     out[tid, 12] = quat_sign_invariant_error(q_dec_gimbal, q_gimbal)
+    out[tid, 13] = wp.abs(wp.quat_twist_angle_signed(axis, q_mix) - angle_in)
+    out[tid, 14] = wp.abs(wp.quat_twist_angle_signed(axis, q_tw_neg) + angle_in)
 
 
 @wp.func
@@ -271,11 +273,42 @@ def quat_euler_roundtrip_kernel(out: wp.array2d[float]):
 
 
 def quat_helpers(test, device):
-    out = wp.empty((1, 13), dtype=wp.float32, device=device)
+    out = wp.empty((1, 15), dtype=wp.float32, device=device)
     wp.launch(quat_helpers_kernel, dim=1, outputs=[out], device=device)
 
     out_np = out.numpy()[0]
-    assert_np_equal(out_np, np.zeros(13, dtype=np.float32), tol=1e-5)
+    assert_np_equal(out_np, np.zeros(15, dtype=np.float32), tol=1e-5)
+
+
+@wp.kernel
+def test_quat_twist_angles_kernel(
+    angles: wp.array[float],
+    unsigned_angles: wp.array[float],
+    signed_angles: wp.array[float],
+):
+    tid = wp.tid()
+    axis = wp.vec3(0.0, 0.0, 1.0)
+    q = wp.quat_from_axis_angle(axis, angles[tid])
+    unsigned_angles[tid] = wp.quat_twist_angle(axis, q)
+    signed_angles[tid] = wp.quat_twist_angle_signed(axis, q)
+
+
+def test_quat_twist_angles(test, device):
+    angles_np = np.array([-4.0, -0.0006, -0.0005, -0.0001, 0.0001, 0.0005, 0.0006, 4.0], dtype=np.float32)
+    angles = wp.array(angles_np, dtype=wp.float32, device=device)
+    unsigned_angles = wp.empty_like(angles)
+    signed_angles = wp.empty_like(angles)
+
+    wp.launch(
+        test_quat_twist_angles_kernel,
+        dim=len(angles),
+        inputs=[angles],
+        outputs=[unsigned_angles, signed_angles],
+        device=device,
+    )
+
+    np.testing.assert_allclose(unsigned_angles.numpy(), np.abs(angles_np), rtol=1e-6, atol=1e-7)
+    np.testing.assert_allclose(signed_angles.numpy(), angles_np, rtol=1e-6, atol=1e-7)
 
 
 def quat_euler_roundtrip(test, device):
@@ -418,6 +451,7 @@ add_function_test(TestMath, "test_erf_math", test_erf_math, devices=devices)
 add_function_test(TestMath, "test_vec_norm", test_vec_norm, devices=devices)
 add_function_test(TestMath, "test_smooth_normalize", test_smooth_normalize, devices=devices)
 add_function_test(TestMath, "test_quat_helpers", quat_helpers, devices=devices)
+add_function_test(TestMath, "test_quat_twist_angles", test_quat_twist_angles, devices=devices)
 add_function_test(TestMath, "test_quat_euler_roundtrip", quat_euler_roundtrip, devices=devices)
 add_function_test(TestMath, "test_spatial_helpers", spatial_helpers, devices=devices)
 

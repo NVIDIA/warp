@@ -24,8 +24,6 @@ from warp._src.context import Allocator, CaptureMode, DeviceLike, _validate_allo
 from warp._src.logger import Logger, LoggerBasic, _validate_logger, get_logger, log_debug, set_logger
 from warp._src.types import Array, DType, type_repr, types_equal
 
-_wp_module_name_ = "warp.utils"
-
 # Cache for wp.map(): (func_name, input_descriptors, output_type_descriptor) -> (out_dtypes, kernel)
 map_cache: dict[tuple, tuple] = {}
 

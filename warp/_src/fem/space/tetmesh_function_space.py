@@ -13,8 +13,6 @@ from .shape import (
 )
 from .topology import SpaceTopology, forward_base_topology
 
-_wp_module_name_ = "warp.fem.space.tetmesh_function_space"
-
 
 @wp.struct
 class TetmeshTopologyArg:

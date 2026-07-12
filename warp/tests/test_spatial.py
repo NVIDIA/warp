@@ -22,9 +22,9 @@ def getkernel(func, suffix=""):
 
 def get_select_kernel(dtype):
     def output_select_kernel_fn(
-        input: wp.array(dtype=dtype),
+        input: wp.array[dtype],
         index: int,
-        out: wp.array(dtype=dtype),
+        out: wp.array[dtype],
     ):
         out[0] = input[index]
 
@@ -48,8 +48,8 @@ def test_spatial_vector_constructors(test, device, dtype, register_kernels=False
     spatial_vector = wp.types.vector(length=6, dtype=wptype)
 
     def check_spatial_vector_component_constructor(
-        input: wp.array(dtype=wptype),
-        out: wp.array(dtype=wptype),
+        input: wp.array[wptype],
+        out: wp.array[wptype],
     ):
         result = spatial_vector(input[0], input[1], input[2], input[3], input[4], input[5])
 
@@ -62,8 +62,8 @@ def test_spatial_vector_constructors(test, device, dtype, register_kernels=False
         out[5] = wptype(2) * result[5]
 
     def check_spatial_vector_vector_constructor(
-        input: wp.array(dtype=wptype),
-        out: wp.array(dtype=wptype),
+        input: wp.array[wptype],
+        out: wp.array[wptype],
     ):
         result = spatial_vector(vec3(input[0], input[1], input[2]), vec3(input[3], input[4], input[5]))
 
@@ -132,8 +132,8 @@ def test_spatial_vector_indexing(test, device, dtype, register_kernels=False):
     spatial_vector = wp.types.vector(length=6, dtype=wptype)
 
     def check_spatial_vector_indexing(
-        input: wp.array(dtype=spatial_vector),
-        out: wp.array(dtype=wptype),
+        input: wp.array[spatial_vector],
+        out: wp.array[wptype],
     ):
         elem = input[0]
 
@@ -184,10 +184,10 @@ def test_spatial_vector_scalar_multiplication(test, device, dtype, register_kern
     spatial_vector = wp.types.vector(length=6, dtype=wptype)
 
     def check_spatial_vector_scalar_mul(
-        s: wp.array(dtype=wptype),
-        q: wp.array(dtype=spatial_vector),
-        outcmps_l: wp.array(dtype=wptype),
-        outcmps_r: wp.array(dtype=wptype),
+        s: wp.array[wptype],
+        q: wp.array[spatial_vector],
+        outcmps_l: wp.array[wptype],
+        outcmps_r: wp.array[wptype],
     ):
         lresult = s[0] * q[0]
         rresult = q[0] * s[0]
@@ -254,10 +254,10 @@ def test_spatial_vector_add_sub(test, device, dtype, register_kernels=False):
     spatial_vector = wp.types.vector(length=6, dtype=wptype)
 
     def check_spatial_vector_add_sub(
-        q: wp.array(dtype=spatial_vector),
-        v: wp.array(dtype=spatial_vector),
-        outputs_add: wp.array(dtype=wptype),
-        outputs_sub: wp.array(dtype=wptype),
+        q: wp.array[spatial_vector],
+        v: wp.array[spatial_vector],
+        outputs_add: wp.array[wptype],
+        outputs_sub: wp.array[wptype],
     ):
         addresult = q[0] + v[0]
         subresult = q[0] - v[0]
@@ -330,9 +330,9 @@ def test_spatial_dot(test, device, dtype, register_kernels=False):
     spatial_vector = wp.types.vector(length=6, dtype=wptype)
 
     def check_spatial_dot(
-        s: wp.array(dtype=spatial_vector),
-        v: wp.array(dtype=spatial_vector),
-        dot: wp.array(dtype=wptype),
+        s: wp.array[spatial_vector],
+        v: wp.array[spatial_vector],
+        dot: wp.array[wptype],
     ):
         dot[0] = wptype(2) * wp.spatial_dot(v[0], s[0])
 
@@ -382,14 +382,14 @@ def test_spatial_cross(test, device, dtype, register_kernels=False):
     spatial_vector = wp.types.vector(length=6, dtype=wptype)
 
     def check_spatial_cross(
-        s: wp.array(dtype=spatial_vector),
-        v: wp.array(dtype=spatial_vector),
-        outputs: wp.array(dtype=wptype),
-        outputs_dual: wp.array(dtype=wptype),
-        outputs_wcrossw: wp.array(dtype=wptype),
-        outputs_vcrossw: wp.array(dtype=wptype),
-        outputs_wcrossv: wp.array(dtype=wptype),
-        outputs_vcrossv: wp.array(dtype=wptype),
+        s: wp.array[spatial_vector],
+        v: wp.array[spatial_vector],
+        outputs: wp.array[wptype],
+        outputs_dual: wp.array[wptype],
+        outputs_wcrossw: wp.array[wptype],
+        outputs_vcrossw: wp.array[wptype],
+        outputs_wcrossv: wp.array[wptype],
+        outputs_vcrossv: wp.array[wptype],
     ):
         c = wp.spatial_cross(s[0], v[0])
         d = wp.spatial_cross_dual(s[0], v[0])
@@ -536,8 +536,8 @@ def test_spatial_top_bottom(test, device, dtype, register_kernels=False):
     spatial_vector = wp.types.vector(length=6, dtype=wptype)
 
     def check_spatial_top_bottom(
-        s: wp.array(dtype=spatial_vector),
-        outputs: wp.array(dtype=wptype),
+        s: wp.array[spatial_vector],
+        outputs: wp.array[wptype],
     ):
         top = wp.spatial_top(s[0])
         bottom = wp.spatial_bottom(s[0])
@@ -607,8 +607,8 @@ def test_transform_constructors(test, device, dtype, register_kernels=False):
     quat = wp.types.quaternion(dtype=wptype)
 
     def check_transform_constructor(
-        input: wp.array(dtype=wptype),
-        out: wp.array(dtype=wptype),
+        input: wp.array[wptype],
+        out: wp.array[wptype],
     ):
         a = transform(vec3(input[0], input[1], input[2]), quat(input[3], input[4], input[5], input[6]))
         b = transform(input[0], input[1], input[2], input[3], input[4], input[5], input[6])
@@ -664,8 +664,8 @@ def test_transform_indexing(test, device, dtype, register_kernels=False):
     transform = wp.types.transformation(dtype=wptype)
 
     def check_transform_indexing(
-        input: wp.array(dtype=transform),
-        out: wp.array(dtype=wptype),
+        input: wp.array[transform],
+        out: wp.array[wptype],
     ):
         elem = input[0]
 
@@ -713,10 +713,10 @@ def test_transform_scalar_multiplication(test, device, dtype, register_kernels=F
     transform = wp.types.transformation(dtype=wptype)
 
     def check_transform_scalar_mul(
-        s: wp.array(dtype=wptype),
-        q: wp.array(dtype=transform),
-        outcmps_l: wp.array(dtype=wptype),
-        outcmps_r: wp.array(dtype=wptype),
+        s: wp.array[wptype],
+        q: wp.array[transform],
+        outcmps_l: wp.array[wptype],
+        outcmps_r: wp.array[wptype],
     ):
         lresult = s[0] * q[0]
         rresult = q[0] * s[0]
@@ -781,10 +781,10 @@ def test_transform_add_sub(test, device, dtype, register_kernels=False):
     transform = wp.types.transformation(dtype=wptype)
 
     def check_transform_add_sub(
-        q: wp.array(dtype=transform),
-        v: wp.array(dtype=transform),
-        outputs_add: wp.array(dtype=wptype),
-        outputs_sub: wp.array(dtype=wptype),
+        q: wp.array[transform],
+        v: wp.array[transform],
+        outputs_add: wp.array[wptype],
+        outputs_sub: wp.array[wptype],
     ):
         addresult = q[0] + v[0]
         subresult = q[0] - v[0]
@@ -858,8 +858,8 @@ def test_transform_get_trans_rot(test, device, dtype, register_kernels=False):
     transform = wp.types.transformation(dtype=wptype)
 
     def check_transform_get_trans_rot(
-        s: wp.array(dtype=transform),
-        outputs: wp.array(dtype=wptype),
+        s: wp.array[transform],
+        outputs: wp.array[wptype],
     ):
         trans = wp.transform_get_translation(s[0])
         q = wp.transform_get_rotation(s[0])
@@ -928,11 +928,11 @@ def test_transform_multiply(test, device, dtype, register_kernels=False):
     transform = wp.types.transformation(dtype=wptype)
 
     def check_transform_multiply(
-        a: wp.array(dtype=transform),
-        b: wp.array(dtype=transform),
-        outputs: wp.array(dtype=wptype),
-        outputs_fn: wp.array(dtype=wptype),
-        outputs_manual: wp.array(dtype=wptype),
+        a: wp.array[transform],
+        b: wp.array[transform],
+        outputs: wp.array[wptype],
+        outputs_fn: wp.array[wptype],
+        outputs_manual: wp.array[wptype],
     ):
         result = a[0] * b[0]
         result_fn = wp.transform_multiply(a[0], b[0])
@@ -1037,10 +1037,10 @@ def test_transform_inverse(test, device, dtype, register_kernels=False):
     transform = wp.types.transformation(dtype=wptype)
 
     def check_transform_inverse(
-        a: wp.array(dtype=transform),
-        outputs: wp.array(dtype=wptype),
-        outputs_shouldbeidentity: wp.array(dtype=wptype),
-        outputs_manual: wp.array(dtype=wptype),
+        a: wp.array[transform],
+        outputs: wp.array[wptype],
+        outputs_shouldbeidentity: wp.array[wptype],
+        outputs_manual: wp.array[wptype],
     ):
         result = wp.transform_inverse(a[0])
         idt = result * a[0]
@@ -1131,12 +1131,12 @@ def test_transform_point_vector(test, device, dtype, register_kernels=False):
     vec3 = wp.types.vector(length=3, dtype=wptype)
 
     def check_transform_point_vector(
-        t: wp.array(dtype=transform),
-        v: wp.array(dtype=vec3),
-        outputs_pt: wp.array(dtype=wptype),
-        outputs_pt_manual: wp.array(dtype=wptype),
-        outputs_vec: wp.array(dtype=wptype),
-        outputs_vec_manual: wp.array(dtype=wptype),
+        t: wp.array[transform],
+        v: wp.array[vec3],
+        outputs_pt: wp.array[wptype],
+        outputs_pt_manual: wp.array[wptype],
+        outputs_vec: wp.array[wptype],
+        outputs_vec_manual: wp.array[wptype],
     ):
         result_pt = wp.transform_point(t[0], v[0])
         result_pt_manual = wp.transform_get_translation(t[0]) + wp.quat_rotate(wp.transform_get_rotation(t[0]), v[0])
@@ -1238,8 +1238,8 @@ def test_spatial_matrix_constructors(test, device, dtype, register_kernels=False
     spatial_matrix = wp.types.matrix(shape=(6, 6), dtype=wptype)
 
     def check_spatial_matrix_constructor(
-        input: wp.array(dtype=wptype),
-        out: wp.array(dtype=wptype),
+        input: wp.array[wptype],
+        out: wp.array[wptype],
     ):
         # multiply the output by 2 so we've got something to backpropagate:
         result0 = spatial_matrix(
@@ -1334,8 +1334,8 @@ def test_spatial_matrix_indexing(test, device, dtype, register_kernels=False):
     spatial_matrix = wp.types.matrix(shape=(6, 6), dtype=wptype)
 
     def check_spatial_matrix_indexing(
-        input: wp.array(dtype=spatial_matrix),
-        out: wp.array(dtype=wptype),
+        input: wp.array[spatial_matrix],
+        out: wp.array[wptype],
     ):
         elem = input[0]
 
@@ -1389,10 +1389,10 @@ def test_spatial_matrix_scalar_multiplication(test, device, dtype, register_kern
     spatial_matrix = wp.types.matrix(shape=(6, 6), dtype=wptype)
 
     def check_spatial_matrix_scalar_mul(
-        s: wp.array(dtype=wptype),
-        q: wp.array(dtype=spatial_matrix),
-        outcmps_l: wp.array(dtype=wptype),
-        outcmps_r: wp.array(dtype=wptype),
+        s: wp.array[wptype],
+        q: wp.array[spatial_matrix],
+        outcmps_l: wp.array[wptype],
+        outcmps_r: wp.array[wptype],
     ):
         lresult = s[0] * q[0]
         rresult = q[0] * s[0]
@@ -1465,10 +1465,10 @@ def test_spatial_matrix_add_sub(test, device, dtype, register_kernels=False):
     spatial_matrix = wp.types.matrix(shape=(6, 6), dtype=wptype)
 
     def check_spatial_matrix_add_sub(
-        q: wp.array(dtype=spatial_matrix),
-        v: wp.array(dtype=spatial_matrix),
-        outputs_add: wp.array(dtype=wptype),
-        outputs_sub: wp.array(dtype=wptype),
+        q: wp.array[spatial_matrix],
+        v: wp.array[spatial_matrix],
+        outputs_add: wp.array[wptype],
+        outputs_sub: wp.array[wptype],
     ):
         addresult = q[0] + v[0]
         subresult = q[0] - v[0]
@@ -1556,9 +1556,9 @@ def test_spatial_matvec_multiplication(test, device, dtype, register_kernels=Fal
     output_select_kernel = get_select_kernel(wptype)
 
     def check_spatial_mat_vec_mul(
-        v: wp.array(dtype=spatial_vector),
-        m: wp.array(dtype=spatial_matrix),
-        outcomponents: wp.array(dtype=wptype),
+        v: wp.array[spatial_vector],
+        m: wp.array[spatial_matrix],
+        outcomponents: wp.array[wptype],
     ):
         result = m[0] * v[0]
 
@@ -1616,9 +1616,9 @@ def test_spatial_matmat_multiplication(test, device, dtype, register_kernels=Fal
     output_select_kernel = get_select_kernel(wptype)
 
     def check_mat_mat_mul(
-        v: wp.array(dtype=spatial_matrix),
-        m: wp.array(dtype=spatial_matrix),
-        outcomponents: wp.array(dtype=wptype),
+        v: wp.array[spatial_matrix],
+        m: wp.array[spatial_matrix],
+        outcomponents: wp.array[wptype],
     ):
         result = m[0] * v[0]
 
@@ -1683,8 +1683,8 @@ def test_spatial_mat_transpose(test, device, dtype, register_kernels=False):
     output_select_kernel = get_select_kernel(wptype)
 
     def check_spatial_mat_transpose(
-        m: wp.array(dtype=spatial_matrix),
-        outcomponents: wp.array(dtype=wptype),
+        m: wp.array[spatial_matrix],
+        outcomponents: wp.array[wptype],
     ):
         # multiply outputs by 2 so we've got something to backpropagate:
         mat = wptype(2) * wp.transpose(m[0])
@@ -1740,9 +1740,9 @@ def test_spatial_outer_product(test, device, dtype, register_kernels=False):
     output_select_kernel = get_select_kernel(wptype)
 
     def check_spatial_outer_product(
-        s: wp.array(dtype=spatial_vector),
-        v: wp.array(dtype=spatial_vector),
-        outcomponents: wp.array(dtype=wptype),
+        s: wp.array[spatial_vector],
+        v: wp.array[spatial_vector],
+        outcomponents: wp.array[wptype],
     ):
         mresult = wptype(2) * wp.outer(s[0], v[0])
 
@@ -1820,9 +1820,9 @@ def test_spatial_adjoint(test, device, dtype, register_kernels=False):
     output_select_kernel = get_select_kernel(wptype)
 
     def check_spatial_adjoint(
-        R: wp.array(dtype=mat3),
-        S: wp.array(dtype=mat3),
-        outcomponents: wp.array(dtype=wptype),
+        R: wp.array[mat3],
+        S: wp.array[mat3],
+        outcomponents: wp.array[wptype],
     ):
         mresult = wptype(2) * wp.spatial_adjoint(R[0], S[0])
 
@@ -1891,12 +1891,12 @@ def test_spatial_adjoint(test, device, dtype, register_kernels=False):
 def test_transform_identity(test, device, dtype, register_kernels=False):
     wptype = wp.dtype_from_numpy(np.dtype(dtype))
 
-    def transform_identity_test(output: wp.array(dtype=wptype)):
+    def transform_identity_test(output: wp.array[wptype]):
         t = wp.transform_identity(dtype=wptype)
         for i in range(7):
             output[i] = t[i]
 
-    def transform_identity_test_default(output: wp.array(dtype=wp.float32)):
+    def transform_identity_test_default(output: wp.array[wp.float32]):
         t = wp.transform_identity()
         for i in range(7):
             output[i] = t[i]
@@ -1926,7 +1926,7 @@ def test_transform_anon_type_instance(test, device, dtype, register_kernels=Fals
 
     wptype = wp.dtype_from_numpy(np.dtype(dtype))
 
-    def transform_create_test(input: wp.array(dtype=wptype), output: wp.array(dtype=wptype)):
+    def transform_create_test(input: wp.array[wptype], output: wp.array[wptype]):
         t = wp.transformation(
             wp.types.vector(input[0], input[1], input[2]), wp.types.quaternion(input[3], input[4], input[5], input[6])
         )
@@ -2095,7 +2095,7 @@ def test_transform_getter_setter(test, device):
 
 
 @wp.kernel
-def transform_extract_subscript(x: wp.array(dtype=wp.transform), y: wp.array(dtype=float)):
+def transform_extract_subscript(x: wp.array[wp.transform], y: wp.array[float]):
     tid = wp.tid()
 
     a = x[tid]
@@ -2104,9 +2104,7 @@ def transform_extract_subscript(x: wp.array(dtype=wp.transform), y: wp.array(dty
 
 
 @wp.kernel
-def transform_extract_attribute(
-    x: wp.array(dtype=wp.transform), y: wp.array(dtype=wp.vec3), z: wp.array(dtype=wp.quat)
-):
+def transform_extract_attribute(x: wp.array[wp.transform], y: wp.array[wp.vec3], z: wp.array[wp.quat]):
     tid = wp.tid()
 
     a = x[tid]
@@ -2151,7 +2149,7 @@ def test_transform_extract(test, device):
 
 
 @wp.kernel
-def transform_assign_subscript(x: wp.array(dtype=float), y: wp.array(dtype=wp.transform)):
+def transform_assign_subscript(x: wp.array[float], y: wp.array[wp.transform]):
     i = wp.tid()
 
     a = wp.transform()
@@ -2166,7 +2164,7 @@ def transform_assign_subscript(x: wp.array(dtype=float), y: wp.array(dtype=wp.tr
 
 
 @wp.kernel
-def transform_assign_attribute(x: wp.array(dtype=wp.vec3), y: wp.array(dtype=wp.quat), z: wp.array(dtype=wp.transform)):
+def transform_assign_attribute(x: wp.array[wp.vec3], y: wp.array[wp.quat], z: wp.array[wp.transform]):
     i = wp.tid()
 
     a = wp.transform()
@@ -2206,7 +2204,7 @@ def test_transform_assign(test, device):
 
 
 @wp.kernel
-def transform_array_extract_subscript(x: wp.array2d(dtype=wp.transform), y: wp.array2d(dtype=float)):
+def transform_array_extract_subscript(x: wp.array2d[wp.transform], y: wp.array2d[float]):
     i, j = wp.tid()
     a = x[i, j][0]
     b = x[i, j][1]
@@ -2219,9 +2217,7 @@ def transform_array_extract_subscript(x: wp.array2d(dtype=wp.transform), y: wp.a
 
 
 @wp.kernel
-def transform_array_extract_attribute(
-    x: wp.array2d(dtype=wp.transform), y: wp.array2d(dtype=wp.vec3), z: wp.array2d(dtype=wp.quat)
-):
+def transform_array_extract_attribute(x: wp.array2d[wp.transform], y: wp.array2d[wp.vec3], z: wp.array2d[wp.quat]):
     i, j = wp.tid()
     a = x[i, j].p
     b = x[i, j].q
@@ -2261,7 +2257,7 @@ def test_transform_array_extract(test, device):
 
 
 @wp.kernel
-def transform_array_assign_subscript(x: wp.array2d(dtype=float), y: wp.array2d(dtype=wp.transform)):
+def transform_array_assign_subscript(x: wp.array2d[float], y: wp.array2d[wp.transform]):
     i, j = wp.tid()
 
     y[i, j][0] = 1.0 * x[i, j]
@@ -2274,9 +2270,7 @@ def transform_array_assign_subscript(x: wp.array2d(dtype=float), y: wp.array2d(d
 
 
 @wp.kernel
-def transform_array_assign_attribute(
-    x: wp.array2d(dtype=wp.vec3), y: wp.array2d(dtype=wp.quat), z: wp.array2d(dtype=wp.transform)
-):
+def transform_array_assign_attribute(x: wp.array2d[wp.vec3], y: wp.array2d[wp.quat], z: wp.array2d[wp.transform]):
     i, j = wp.tid()
 
     z[i, j].p = x[i, j]
@@ -2314,7 +2308,7 @@ def test_transform_array_assign(test, device):
 
 
 @wp.kernel
-def transform_add_inplace_subscript(x: wp.array(dtype=wp.transform), y: wp.array(dtype=wp.transform)):
+def transform_add_inplace_subscript(x: wp.array[wp.transform], y: wp.array[wp.transform]):
     i = wp.tid()
 
     a = wp.transform()
@@ -2332,7 +2326,7 @@ def transform_add_inplace_subscript(x: wp.array(dtype=wp.transform), y: wp.array
 
 
 @wp.kernel
-def transform_add_inplace_attribute(x: wp.array(dtype=wp.transform), y: wp.array(dtype=wp.transform)):
+def transform_add_inplace_attribute(x: wp.array[wp.transform], y: wp.array[wp.transform]):
     i = wp.tid()
 
     a = wp.transform()
@@ -2372,7 +2366,7 @@ def test_transform_add_inplace(test, device):
 
 
 @wp.kernel
-def transform_sub_inplace_subscript(x: wp.array(dtype=wp.transform), y: wp.array(dtype=wp.transform)):
+def transform_sub_inplace_subscript(x: wp.array[wp.transform], y: wp.array[wp.transform]):
     i = wp.tid()
 
     a = wp.transform()
@@ -2390,7 +2384,7 @@ def transform_sub_inplace_subscript(x: wp.array(dtype=wp.transform), y: wp.array
 
 
 @wp.kernel
-def transform_sub_inplace_attribute(x: wp.array(dtype=wp.transform), y: wp.array(dtype=wp.transform)):
+def transform_sub_inplace_attribute(x: wp.array[wp.transform], y: wp.array[wp.transform]):
     i = wp.tid()
 
     a = wp.transform()
@@ -2430,7 +2424,7 @@ def test_transform_sub_inplace(test, device):
 
 
 @wp.kernel
-def transform_array_add_inplace(x: wp.array(dtype=wp.transform), y: wp.array(dtype=wp.transform)):
+def transform_array_add_inplace(x: wp.array[wp.transform], y: wp.array[wp.transform]):
     i = wp.tid()
 
     y[i] += x[i]
@@ -2452,7 +2446,7 @@ def test_transform_array_add_inplace(test, device):
 
 
 @wp.kernel
-def transform_array_sub_inplace(x: wp.array(dtype=wp.transform), y: wp.array(dtype=wp.transform)):
+def transform_array_sub_inplace(x: wp.array[wp.transform], y: wp.array[wp.transform]):
     i = wp.tid()
 
     y[i] -= x[i]
@@ -2582,7 +2576,7 @@ def test_transform_slicing_assign(test, device):
 
 def test_transform_slicing_assign_backward(test, device):
     @wp.kernel(module="unique")
-    def kernel(arr_x: wp.array(dtype=wp.vec2), arr_y: wp.array(dtype=wp.transform)):
+    def kernel(arr_x: wp.array[wp.vec2], arr_y: wp.array[wp.transform]):
         i = wp.tid()
 
         y = arr_y[i]

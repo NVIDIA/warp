@@ -1308,6 +1308,46 @@ def test_garbage_collection(test, device):
 
 # =======================================================================
 
+
+def test_create_kernel_loop_hooks_bounded(test, device):
+    """
+    Relaunching an identical recreated kernel must not grow the per-ModuleExec hook cache
+    (regression for an Adjoint leak when hooks were keyed by kernel.adj).
+    """
+
+    def make():
+        @wp.kernel
+        def k(a: wp.array(dtype=int)):
+            a[0] = 17
+
+        return k
+
+    with wp.ScopedDevice(device):
+        a = wp.zeros(1, dtype=int)
+
+        k0 = make()
+        wp.launch(k0, dim=1, inputs=[a])
+        wp.synchronize_device()
+        module = k0.module
+        del k0
+
+        def hook_count():
+            return sum(len(module_exec.kernel_hooks) for module_exec in module.execs.values())
+
+        baseline = hook_count()
+        for _ in range(16):
+            k = make()
+            wp.launch(k, dim=1, inputs=[a])
+            wp.synchronize_device()
+            del k
+
+        # Identical kernel each iteration: no reload, so the hook cache must not grow.
+        test.assertEqual(hook_count(), baseline)
+        test.assertEqual(a.numpy()[0], 17)
+
+
+# =======================================================================
+
 # Module-level constant used as a fallback when the closure cell is empty.
 _CELL_CONTENT = wp.constant(42)
 
@@ -1518,6 +1558,12 @@ add_function_test(
     TestCodeGenInstancing, func=test_module_mark_modified, name="test_module_mark_modified", devices=devices
 )
 add_function_test(TestCodeGenInstancing, func=test_garbage_collection, name="test_garbage_collection", devices=devices)
+add_function_test(
+    TestCodeGenInstancing,
+    func=test_create_kernel_loop_hooks_bounded,
+    name="test_create_kernel_loop_hooks_bounded",
+    devices=None,
+)
 
 # empty closure cell fallback
 add_function_test(TestCodeGenInstancing, func=test_empty_closure_cell, name="test_empty_closure_cell", devices=devices)

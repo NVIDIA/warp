@@ -1023,7 +1023,7 @@ class Plot:
             plot_fn = None
             plot_3d = False
             cmap_name = args.get("cmap", None)
-            plot_opts = {"cmap": cm.colormaps.get_cmap(cmap_name) if cmap_name else cm.viridis}
+            plot_opts = {"cmap": plt.get_cmap(cmap_name) if cmap_name else cm.viridis}
 
             if color_values_list is not None:
                 plot_opts["clim"] = self._get_field_value_range(color_values_list, options.get(color_field_name, {}))

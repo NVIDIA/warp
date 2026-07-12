@@ -20,6 +20,9 @@ Usage:
 
 # isort: skip_file
 
+# The source-to-public Warp module declarations for `warp.render` live in the
+# top-level `warp/__init__.py`, so they are in effect before these imports run.
+
 from warp._src.render.render_opengl import OpenGLRenderer as OpenGLRenderer
 
 from warp._src.render.render_usd import UsdRenderer as UsdRenderer

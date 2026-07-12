@@ -6,8 +6,6 @@ from typing import Any
 import warp as wp
 from warp._src.types import type_scalar_type
 
-_wp_module_name_ = "warp.fem.linalg"
-
 
 @wp.func
 def generalized_outer(x: wp.types.vector(Any, wp.Scalar), y: wp.types.vector(Any, wp.Scalar)):

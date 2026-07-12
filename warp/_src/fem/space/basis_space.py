@@ -22,8 +22,6 @@ from warp._src.types import type_repr, types_equal
 from .shape import ShapeFunction
 from .topology import SpaceTopology
 
-_wp_module_name_ = "warp.fem.space.basis_space"
-
 
 class BasisSpace:
     """Interface class for defining shape functions over a geometry.

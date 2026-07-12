@@ -22,8 +22,6 @@ from warp._src.types import is_array
 
 from .element import Element
 
-_wp_module_name_ = "warp.fem.geometry.geometry"
-
 _mat32 = wp.types.matrix(shape=(3, 2), dtype=float)
 _mat32_f64 = wp.types.matrix(shape=(3, 2), dtype=wp.float64)
 

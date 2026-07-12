@@ -16,8 +16,6 @@ import time
 
 from warp._src.utils import ScopedTimer
 
-_wp_module_name_ = "warp.build_dll"
-
 verbose_cmd = True  # print command lines before executing them
 
 MIN_CTK_VERSION = (12, 0)
@@ -715,7 +713,7 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
                     )
                 else:
                     linkopts.append(
-                        f'cudart_static.lib nvrtc_static.lib nvrtc-builtins_static.lib nvptxcompiler_static.lib ws2_32.lib user32.lib /LIBPATH:"{cuda_home}/lib/x64"'
+                        f'cudart_static.lib nvrtc_static.lib nvrtc-builtins_static.lib nvptxcompiler_static.lib ws2_32.lib user32.lib ntdll.lib /LIBPATH:"{cuda_home}/lib/x64"'
                     )
 
                 if args.libmathdx_path:

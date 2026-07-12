@@ -21,8 +21,6 @@ from enum import IntEnum as _IntEnum
 from warp._src.logger import LOG_INFO as _LOG_INFO
 from warp._src.logger import log_warning as _log_warning
 
-_wp_module_name_ = "warp.config"
-
 _deprecated_verbose_warning_seen = False
 _deprecated_quiet_warning_seen = False
 _suppress_verbose_log_level_mapping = False

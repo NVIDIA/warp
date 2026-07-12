@@ -285,13 +285,15 @@ class TestFactoryStyleArrayAnnotations(unittest.TestCase):
                 self.assertEqual(array_type_id(factory_style), ARRAY_TYPE_REGULAR)
                 self.assertEqual(get_type_code(factory_style), get_type_code(subscript_style))
 
-    def test_factory_style_vector_quaternion_transform_array_metadata(self):
+    def test_factory_style_vector_matrix_quaternion_transform_array_metadata(self):
         custom_vec = wp.types.vector(length=5, dtype=wp.float64)
+        custom_mat = wp.types.matrix(shape=(5, 5), dtype=wp.float64)
         custom_quat = wp.types.quaternion(dtype=wp.float64)
         custom_transform = wp.types.transformation(dtype=wp.float64)
 
         annotations = (
             (wp.array(dtype=custom_vec), wp.array[custom_vec]),
+            (wp.array(dtype=custom_mat), wp.array[custom_mat]),
             (wp.array(dtype=wp.quat), wp.array[wp.quat]),
             (wp.array(dtype=custom_quat), wp.array[custom_quat]),
             (wp.array(dtype=wp.transform), wp.array[wp.transform]),

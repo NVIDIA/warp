@@ -15,8 +15,6 @@ from warp._src.logger import log_error
 
 from .utils import tab10_color_map
 
-_wp_module_name_ = "warp.render.render_opengl"
-
 Mat44 = list[float] | list[list[float]] | np.ndarray
 
 

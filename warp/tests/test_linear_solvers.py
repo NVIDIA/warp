@@ -7,7 +7,7 @@ import unittest
 import numpy as np
 
 import warp as wp
-from warp._src.optim.linear import _run_solver_loop
+from warp._src.optim.linear import TiledDot, _run_solver_loop
 from warp.optim.linear import CG, CR, GMRES, BiCGSTAB, aslinearoperator, bicgstab, cg, cr, gmres, preconditioner
 from warp.tests.unittest_utils import *
 
@@ -297,6 +297,103 @@ def test_batched_vector_offsets(test, device):
         np.testing.assert_allclose(x.numpy(), expected, rtol=1.0e-5, atol=1.0e-5)
 
 
+def test_batched_inactive_tail(test, device):
+    diag = wp.array([2.0, 3.0, 4.0, 5.0, 6.0], dtype=wp.float64, device=device)
+    b = wp.array([2.0, 6.0, 12.0, 100.0, 200.0], dtype=wp.float64, device=device)
+    initial = np.array([0.0, 0.0, 0.0, 7.0, 8.0], dtype=np.float64)
+    expected = np.array([1.0, 2.0, 3.0, 7.0, 8.0], dtype=np.float64)
+
+    # Keep an explicit one-batch layout: the optimized unbatched reduction must not
+    # include the inactive tail when only one subproblem is present.
+    offsets = _batch_offsets([3], device)
+    A = aslinearoperator(diag, batch_offsets=offsets)
+
+    for solver, kwargs in (
+        (cg, {}),
+        (cr, {}),
+        (bicgstab, {}),
+        (gmres, {"restart": 2}),
+    ):
+        x = wp.array(initial, device=device)
+        niter, err, atol = solver(A, b, x, tol=1.0e-8, maxiter=20, check_every=1, **kwargs)
+
+        test.assertGreater(niter, 1)
+        test.assertLessEqual(err, atol)
+        np.testing.assert_allclose(x.numpy(), expected, rtol=1.0e-7, atol=1.0e-7)
+
+
+def test_batched_vector_inactive_tail(test, device):
+    diag = wp.array(((2.0, 3.0), (4.0, 5.0), (6.0, 7.0)), dtype=wp.vec2d, device=device)
+    b = wp.array(((2.0, 6.0), (12.0, 20.0), (100.0, 200.0)), dtype=wp.vec2d, device=device)
+    initial = np.array(((0.0, 0.0), (0.0, 0.0), (7.0, 8.0)), dtype=np.float64)
+    expected = np.array(((1.0, 2.0), (3.0, 4.0), (7.0, 8.0)), dtype=np.float64)
+
+    offsets = _batch_offsets([2, 2], device)
+    A = aslinearoperator(diag, batch_offsets=offsets)
+
+    for solver, kwargs in (
+        (cg, {}),
+        (cr, {}),
+        (bicgstab, {}),
+        (gmres, {"restart": 2}),
+    ):
+        x = wp.array(initial, dtype=wp.vec2d, device=device)
+        _, err, atol = solver(A, b, x, tol=1.0e-8, maxiter=8, check_every=1, use_cuda_graph=False, **kwargs)
+        test.assertLessEqual(err, atol)
+        np.testing.assert_allclose(x.numpy(), expected, rtol=1.0e-7, atol=1.0e-7)
+
+
+def test_batched_gmres_right_preconditioned_inactive_tail(test, device):
+    A = aslinearoperator(
+        wp.array(
+            ((2.0, 0.0, 0.0), (0.0, 3.0, 0.0), (5.0, 0.0, 1.0)),
+            dtype=wp.float64,
+            device=device,
+        ),
+        batch_offsets=_batch_offsets([2], device),
+    )
+    M = aslinearoperator(wp.array((1.0, 1.0, 1.0), dtype=wp.float64, device=device))
+    b = wp.array((2.0, 6.0, 7.0), dtype=wp.float64, device=device)
+    x = wp.array((0.0, 0.0, 7.0), dtype=wp.float64, device=device)
+
+    _, err, atol = gmres(
+        A,
+        b,
+        x,
+        M=M,
+        is_left_preconditioner=False,
+        restart=2,
+        maxiter=2,
+        check_every=1,
+        tol=1.0e-12,
+        use_cuda_graph=True,
+    )
+
+    test.assertLessEqual(err, atol)
+    np.testing.assert_allclose(x.numpy(), (1.0, 2.0, 7.0), rtol=1.0e-12, atol=1.0e-12)
+
+
+def test_tiled_dot_large_single_batch(test, device):
+    length = 100_000
+    active_length = length - 2
+    values = np.ones(length, dtype=np.float32)
+    values[active_length:] = 100.0
+
+    a = wp.array(values, device=device)
+    offsets = _batch_offsets([active_length], device)
+    tiled_dot = TiledDot(length, wp.float32, device=device, batch_offsets=offsets)
+    tiled_dot.compute(a, a)
+
+    with wp.ScopedDevice(device):
+        with wp.ScopedCapture(force_module_load=False) as capture:
+            tiled_dot.compute(a, a)
+
+        a.fill_(2.0)
+        wp.capture_launch(capture.graph)
+
+    test.assertEqual(tiled_dot.col().numpy()[0], 4 * active_length)
+
+
 def _run_batched_gmres(test, device, dtype, batch_sizes, seed_base, tol, restart):
     rows = sum(batch_sizes)
     A_np_full = np.zeros((rows, rows), dtype=np.float64 if dtype == wp.float64 else np.float32)
@@ -458,6 +555,25 @@ add_function_test(TestLinearSolvers, "test_batched_gmres_f64", test_batched_gmre
 add_function_test(TestLinearSolvers, "test_batched_gmres_nonuniform", test_batched_gmres_nonuniform, devices=devices)
 add_function_test(TestLinearSolvers, "test_batched_nonuniform", test_batched_nonuniform, devices=devices)
 add_function_test(TestLinearSolvers, "test_batched_vector_offsets", test_batched_vector_offsets, devices=devices)
+add_function_test(TestLinearSolvers, "test_batched_inactive_tail", test_batched_inactive_tail, devices=devices)
+add_function_test(
+    TestLinearSolvers,
+    "test_batched_vector_inactive_tail",
+    test_batched_vector_inactive_tail,
+    devices=devices,
+)
+add_function_test(
+    TestLinearSolvers,
+    "test_batched_gmres_right_preconditioned_inactive_tail",
+    test_batched_gmres_right_preconditioned_inactive_tail,
+    devices=devices,
+)
+add_function_test(
+    TestLinearSolvers,
+    "test_tiled_dot_large_single_batch",
+    test_tiled_dot_large_single_batch,
+    devices=get_cuda_test_devices(),
+)
 add_function_test(TestLinearSolvers, "test_functor_reuse", test_functor_reuse, devices=devices)
 add_function_test(TestLinearSolvers, "test_functor_preconditioner", test_functor_preconditioner, devices=devices)
 add_function_test(TestLinearSolvers, "test_functor_compat_errors", test_functor_compat_errors, devices=devices)

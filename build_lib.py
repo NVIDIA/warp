@@ -175,8 +175,10 @@ def find_libmathdx(cuda_toolkit_major_version: int, base_path: str) -> str | Non
     ]
 
     # Reuse the current interpreter so packman skips downloading its bundled Python,
-    # whose manylinux_2_35 build can't run on older-glibc CI images.
-    packman_env = {**os.environ, "PM_PYTHON_EXT": sys.executable}
+    # whose manylinux_2_35 build can't run on older-glibc CI images. Use it only as a
+    # default: a pre-set PM_PYTHON_EXT wins, since cross-compilation (e.g. aarch64) needs
+    # the build-platform Python instead of sys.executable's crossenv wrapper.
+    packman_env = {"PM_PYTHON_EXT": sys.executable, **os.environ}
 
     retry_delays = [10, 30, 60]
     max_attempts = 1 + len(retry_delays)

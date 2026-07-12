@@ -14,8 +14,6 @@ import warp._src.context
 if TYPE_CHECKING:
     import torch
 
-_wp_module_name_ = "warp.torch"
-
 
 # return the warp device corresponding to a torch device
 def device_from_torch(torch_device: torch.device | str) -> warp.Device:

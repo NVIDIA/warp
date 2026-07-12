@@ -525,9 +525,13 @@ linux-x86_64 python free-threaded test:
     - apt-get update && apt-get install build-essential --no-install-recommends -y
     - uv python install 3.14t
     - !reference [.snippets, move-linux-x86_64-binaries]
+    # usd-core wheels use ABI tag "none" but are built against the regular
+    # (GIL) CPython ABI, so importing pxr on a free-threaded interpreter
+    # segfaults. Keep usd-core out of this environment.
+    - uv sync --python 3.14t --extra dev --no-install-package usd-core
     - !reference [.snippets, section-end-install-deps]
   script:
-    - uv run --python 3.14t --extra dev -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
+    - uv run --python 3.14t --no-sync -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
 
 linux-x86_64 test debug mode:
   stage: test
@@ -564,6 +568,28 @@ windows-x86_64 test:
     - |
       $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
       uv run --extra dev --extra torch-cu12 --with usd-core==25.5.1 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
+
+windows-x86_64-blackwell test:
+  stage: test
+  needs: [windows-x86_64 build]
+  variables:
+    IPP_RUNNER_EXECUTION_DURATION: "4500"
+  extends:
+    - .test_common_with_coverage
+  before_script:
+    - !reference [.snippets, define-powershell-GetTime]
+    - !reference [.snippets, powershell-section-start-install-deps]
+    - !reference [.snippets, install-uv-windows]
+    - !reference [.snippets, powershell-section-end-install-deps]
+  script:
+    # Locking usd-core to 25.5.1 to work around a frequent loading crash
+    - |
+      $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
+      uv run --extra dev --extra torch-cu13 --with usd-core==25.5.1 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
+  tags:
+    - win-x86_64-gpu-1x-595.97-blackwell
+    - gpu/blackwell
+    - os/windows
 
 # Optional multi-GPU Windows job (likely longer queue time)
 windows-x86_64 test mgpu:

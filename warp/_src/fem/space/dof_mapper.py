@@ -8,8 +8,6 @@ from typing import Any
 import warp as wp
 from warp._src.types import type_scalar_type, type_size, types_equal
 
-_wp_module_name_ = "warp.fem.space.dof_mapper"
-
 vec6 = wp.types.vector(length=6, dtype=wp.float32)
 vec6d = wp.types.vector(length=6, dtype=wp.float64)
 

@@ -33,8 +33,6 @@ import warp
 import warp.config
 from warp._src.logger import log_warning
 
-_wp_module_name_ = "warp.types"
-
 # type hints
 T = TypeVar("T")
 Length = TypeVar("Length", bound=int)

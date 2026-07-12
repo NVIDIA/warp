@@ -8,9 +8,6 @@ from typing import Final
 import warp as wp
 from warp._src.logger import log_warning
 
-_wp_module_name_ = "warp.marching_cubes"
-
-
 # =============================================================================
 # Marching Cubes Lookup Tables (module-level for kernel access via wp.static())
 # =============================================================================

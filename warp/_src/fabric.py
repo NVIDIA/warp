@@ -8,8 +8,6 @@ from typing import Any
 import warp
 from warp._src.types import *
 
-_wp_module_name_ = "warp.fabric"
-
 
 class fabricbucket_t(ctypes.Structure):
     _fields_ = (

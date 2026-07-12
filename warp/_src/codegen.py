@@ -29,8 +29,6 @@ from warp._src.deterministic import DeterministicCodegen
 from warp._src.logger import log_debug, log_warning
 from warp._src.types import *
 
-_wp_module_name_ = "warp.codegen"
-
 # used as a globally accessible copy
 # of current compile options (block_dim) etc
 options = {}

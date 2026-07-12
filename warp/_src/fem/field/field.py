@@ -26,8 +26,6 @@ from warp._src.types import (
     types_equal_generic,
 )
 
-_wp_module_name_ = "warp.fem.field.field"
-
 
 class FieldLike(Field):
     """Base class for integrable fields."""
