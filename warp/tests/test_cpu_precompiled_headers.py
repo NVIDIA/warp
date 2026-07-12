@@ -7,11 +7,13 @@ import glob
 import os
 import tempfile
 import unittest
+from unittest import mock
 
 import numpy as np
 
 import warp as wp
 import warp._src.build
+import warp._src.context as warp_context
 
 _original_use_precompiled_headers = None
 
@@ -86,56 +88,82 @@ class TestCpuPrecompiledHeaders(unittest.TestCase):
         finally:
             wp.config.use_precompiled_headers = old_val
 
+    def test_compiler_flags_cache_key(self):
+        """Verify that compiler flags produce distinct PCH cache keys."""
+        with tempfile.TemporaryDirectory(prefix="wp_pch_flags_test_") as pch_dir:
+            with mock.patch.object(warp_context.Runtime, "get_clang_pch_dir", return_value=pch_dir), _use_temp_cache():
+
+                @wp.kernel(module="unique", module_options={"cpu_compiler_flags": "-march=native"})
+                def double(a: wp.array[float]):
+                    tid = wp.tid()
+                    a[tid] *= 2.0
+
+                @wp.kernel(module="unique", module_options={"cpu_compiler_flags": ""})
+                def triple(a: wp.array[float]):
+                    tid = wp.tid()
+                    a[tid] *= 3.0
+
+                a = wp.array([1.0, 2.0, 3.0], dtype=float, device="cpu")
+                b = wp.array([1.0, 2.0, 3.0], dtype=float, device="cpu")
+                wp.launch(double, dim=3, inputs=[a], device="cpu")
+                wp.launch(triple, dim=3, inputs=[b], device="cpu")
+
+                np.testing.assert_allclose(a.numpy(), [2.0, 4.0, 6.0])
+                np.testing.assert_allclose(b.numpy(), [3.0, 6.0, 9.0])
+
+            pch_files = sorted(glob.glob(os.path.join(pch_dir, "*.pch")))
+            self.assertEqual(len(pch_files), 2)
+            self.assertTrue(all("_cf" in os.path.basename(pch_file) for pch_file in pch_files))
+
+            compiler_flag_keys = {
+                os.path.basename(pch_file).rsplit("_cf", 1)[1].removesuffix(".pch") for pch_file in pch_files
+            }
+            self.assertEqual(len(compiler_flag_keys), 2)
+            self.assertTrue(all(len(key) == 16 for key in compiler_flag_keys))
+            self.assertTrue(all(set(key) <= set("0123456789abcdef") for key in compiler_flag_keys))
+
     def test_fallback(self):
         """Verify graceful fallback when PCH file is corrupted."""
-        pch_dir = wp._src.context.runtime.get_clang_pch_dir()
-        if pch_dir is None:
+        if wp._src.context.runtime.get_clang_pch_dir() is None:
             self.skipTest("CPU PCH dir not available")
 
-        with _use_temp_cache():
-            # Snapshot PCH files before compiling so we can identify which
-            # files this test created (the PCH dir may already contain files
-            # from prior test suites reusing the same worker process).
-            pre_existing = set(glob.glob(os.path.join(pch_dir, "*.pch")))
+        # Isolate the PCH directory so the test only ever sees the PCH it
+        # generates. The real per-thread PCH dir is shared across the whole
+        # suite, and distinct cpu_compiler_flags now map to distinct PCH files;
+        # corrupting every file in a shared dir would sweep up PCHs these
+        # kernels never recompile, leaving them uncleaned by the fallback.
+        with tempfile.TemporaryDirectory(prefix="wp_pch_fallback_") as pch_dir:
+            with mock.patch.object(warp_context.Runtime, "get_clang_pch_dir", return_value=pch_dir), _use_temp_cache():
+                # Ensure a PCH exists by compiling something first
+                @wp.kernel(module="unique")
+                def iota(a: wp.array[float]):
+                    tid = wp.tid()
+                    a[tid] = float(tid)
 
-            # Ensure PCH exists by compiling something first
-            @wp.kernel(module="unique")
-            def iota(a: wp.array[float]):
-                tid = wp.tid()
-                a[tid] = float(tid)
+                a = wp.zeros(3, dtype=float, device="cpu")
+                wp.launch(iota, dim=3, inputs=[a], device="cpu")
 
-            a = wp.zeros(3, dtype=float, device="cpu")
-            wp.launch(iota, dim=3, inputs=[a], device="cpu")
+                pch_files = sorted(glob.glob(os.path.join(pch_dir, "*.pch")))
+                self.assertGreater(len(pch_files), 0, "No PCH files found to corrupt")
 
-            post_compile = set(glob.glob(os.path.join(pch_dir, "*.pch")))
-            new_pch_files = sorted(post_compile - pre_existing)
+                for pch_file in pch_files:
+                    with open(pch_file, "wb") as f:
+                        f.write(b"not a valid AST file")
 
-            # iota may reuse a pre-existing PCH (same flags).  Only target
-            # block_dim=1 files (CPU launches always use block_dim=1) to
-            # avoid corrupting unrelated PCH files left by prior test suites.
-            target_files = new_pch_files or sorted(
-                f for f in post_compile if os.path.basename(f).startswith("builtin_bd1")
-            )
-            self.assertGreater(len(target_files), 0, "No PCH files found to corrupt")
+                # Next compilation should detect the invalid PCH and fall back
+                @wp.kernel(module="unique")
+                def triple(b: wp.array[float]):
+                    tid = wp.tid()
+                    b[tid] = float(tid) * 3.0
 
-            for pch_file in target_files:
-                with open(pch_file, "wb") as f:
-                    f.write(b"not a valid AST file")
+                b = wp.zeros(3, dtype=float, device="cpu")
+                wp.launch(triple, dim=3, inputs=[b], device="cpu")
 
-            # Next compilation should detect the invalid PCH and fall back
-            @wp.kernel(module="unique")
-            def triple(b: wp.array[float]):
-                tid = wp.tid()
-                b[tid] = float(tid) * 3.0
+                np.testing.assert_allclose(b.numpy(), [0, 3, 6])
 
-            b = wp.zeros(3, dtype=float, device="cpu")
-            wp.launch(triple, dim=3, inputs=[b], device="cpu")
-
-            np.testing.assert_allclose(b.numpy(), [0, 3, 6])
-
-            # Verify the corrupt PCH files were cleaned up
-            for pch_file in target_files:
-                self.assertFalse(os.path.exists(pch_file), f"Corrupt PCH not cleaned up: {pch_file}")
+                # Verify the corrupt PCH files were cleaned up
+                for pch_file in pch_files:
+                    self.assertFalse(os.path.exists(pch_file), f"Corrupt PCH not cleaned up: {pch_file}")
 
 
 if __name__ == "__main__":

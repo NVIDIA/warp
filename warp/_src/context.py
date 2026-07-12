@@ -7511,6 +7511,8 @@ class Runtime:
     def get_clang_pch_dir(self) -> str | None:
         """Return a per-thread temporary directory for Clang precompiled header files.
 
+        Warp does not discover or reuse directories created by earlier runtime instances.
+
         Returns ``None`` when ``warp-clang`` is not loaded.
         """
         if self.llvm is None:

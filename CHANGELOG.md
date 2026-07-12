@@ -51,6 +51,8 @@
   group ([GH-1612](https://github.com/NVIDIA/warp/issues/1612)).
 - Fix `wp.quat_twist_angle()` losing precision for small `wp.float32` rotations
   ([GH-1631](https://github.com/NVIDIA/warp/issues/1631)).
+- Fix CPU modules with different `cpu_compiler_flags` reusing incompatible precompiled headers, avoiding Clang
+  target-feature errors and fallback compilation ([GH-1649](https://github.com/NVIDIA/warp/issues/1649)).
 
 ### Documentation
 
