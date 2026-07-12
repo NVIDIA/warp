@@ -11,7 +11,7 @@ from warp.tests.unittest_utils import *
 
 
 @wp.kernel
-def kernel_1d(a: wp.array(dtype=int, ndim=1)):
+def kernel_1d(a: wp.array[int]):
     i = wp.tid()
 
     wp.expect_eq(a[i], wp.tid())
@@ -38,7 +38,7 @@ def test_1d(test, device):
 
 
 @wp.kernel
-def kernel_2d(a: wp.array(dtype=int, ndim=2), m: int, n: int):
+def kernel_2d(a: wp.array2d[int], m: int, n: int):
     i = wp.tid() // n
     j = wp.tid() % n
 
@@ -69,7 +69,7 @@ def test_2d(test, device):
 
 
 @wp.kernel
-def kernel_3d(a: wp.array(dtype=int, ndim=3), m: int, n: int, o: int):
+def kernel_3d(a: wp.array3d[int], m: int, n: int, o: int):
     i = wp.tid() // (n * o)
     j = wp.tid() % (n * o) // o
     k = wp.tid() % o
@@ -103,7 +103,7 @@ def test_3d(test, device):
 
 
 @wp.kernel
-def kernel_4d(a: wp.array(dtype=int, ndim=4), m: int, n: int, o: int, p: int):
+def kernel_4d(a: wp.array4d[int], m: int, n: int, o: int, p: int):
     i = wp.tid() // (n * o * p)
     j = wp.tid() % (n * o * p) // (o * p)
     k = wp.tid() % (o * p) / p
@@ -133,7 +133,7 @@ def test_4d(test, device):
 
 
 @wp.kernel
-def kernel_4d_transposed(a: wp.array(dtype=int, ndim=4), m: int, n: int, o: int, p: int):
+def kernel_4d_transposed(a: wp.array4d[int], m: int, n: int, o: int, p: int):
     i = wp.tid() // (n * o * p)
     j = wp.tid() % (n * o * p) // (o * p)
     k = wp.tid() % (o * p) / p
@@ -177,7 +177,7 @@ def test_4d_transposed(test, device):
 
 
 @wp.kernel
-def lower_bound_kernel(values: wp.array(dtype=float), arr: wp.array(dtype=float), indices: wp.array(dtype=int)):
+def lower_bound_kernel(values: wp.array[float], arr: wp.array[float], indices: wp.array[int]):
     tid = wp.tid()
 
     indices[tid] = wp.lower_bound(arr, values[tid])
@@ -194,12 +194,12 @@ def test_lower_bound(test, device):
 
 
 @wp.kernel
-def f1(arr: wp.array(dtype=float)):
+def f1(arr: wp.array[float]):
     wp.expect_eq(arr.shape[0], 10)
 
 
 @wp.kernel
-def f2(arr: wp.array2d(dtype=float)):
+def f2(arr: wp.array2d[float]):
     wp.expect_eq(arr.shape[0], 10)
     wp.expect_eq(arr.shape[1], 20)
 
@@ -208,7 +208,7 @@ def f2(arr: wp.array2d(dtype=float)):
 
 
 @wp.kernel
-def f3(arr: wp.array3d(dtype=float)):
+def f3(arr: wp.array3d[float]):
     wp.expect_eq(arr.shape[0], 10)
     wp.expect_eq(arr.shape[1], 20)
     wp.expect_eq(arr.shape[2], 30)
@@ -218,7 +218,7 @@ def f3(arr: wp.array3d(dtype=float)):
 
 
 @wp.kernel
-def f4(arr: wp.array4d(dtype=float)):
+def f4(arr: wp.array4d[float]):
     wp.expect_eq(arr.shape[0], 10)
     wp.expect_eq(arr.shape[1], 20)
     wp.expect_eq(arr.shape[2], 30)
@@ -255,7 +255,7 @@ def test_negative_shape(test, device):
 
 
 @wp.kernel
-def sum_array(arr: wp.array(dtype=float), loss: wp.array(dtype=float)):
+def sum_array(arr: wp.array[float], loss: wp.array[float]):
     tid = wp.tid()
     wp.atomic_add(loss, 0, arr[tid])
 
@@ -324,7 +324,7 @@ def test_reshape(test, device):
 
 
 @wp.kernel
-def compare_stepped_window_a(x: wp.array2d(dtype=float)):
+def compare_stepped_window_a(x: wp.array2d[float]):
     wp.expect_eq(x[0, 0], 1.0)
     wp.expect_eq(x[0, 1], 2.0)
     wp.expect_eq(x[1, 0], 9.0)
@@ -332,7 +332,7 @@ def compare_stepped_window_a(x: wp.array2d(dtype=float)):
 
 
 @wp.kernel
-def compare_stepped_window_b(x: wp.array2d(dtype=float)):
+def compare_stepped_window_b(x: wp.array2d[float]):
     wp.expect_eq(x[0, 0], 3.0)
     wp.expect_eq(x[0, 1], 4.0)
     wp.expect_eq(x[1, 0], 7.0)
@@ -518,7 +518,7 @@ def test_assign_adjoint(test, device):
 
 
 @wp.kernel
-def compare_2darrays(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float), z: wp.array2d(dtype=int)):
+def compare_2darrays(x: wp.array2d[float], y: wp.array2d[float], z: wp.array2d[int]):
     i, j = wp.tid()
 
     if x[i, j] == y[i, j]:
@@ -526,7 +526,7 @@ def compare_2darrays(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float), z: 
 
 
 @wp.kernel
-def compare_3darrays(x: wp.array3d(dtype=float), y: wp.array3d(dtype=float), z: wp.array3d(dtype=int)):
+def compare_3darrays(x: wp.array3d[float], y: wp.array3d[float], z: wp.array3d[int]):
     i, j, k = wp.tid()
 
     if x[i, j, k] == y[i, j, k]:
@@ -949,10 +949,10 @@ class FillStruct:
     m4: wp.types.matrix((4, 4), wp.float16)
     m5: wp.types.matrix((5, 5), wp.int8)
     # arrays
-    a1: wp.array(dtype=float)
-    a2: wp.array2d(dtype=float)
-    a3: wp.array3d(dtype=float)
-    a4: wp.array4d(dtype=float)
+    a1: wp.array[float]
+    a2: wp.array2d[float]
+    a3: wp.array3d[float]
+    a4: wp.array4d[float]
 
 
 def test_fill_struct(test, device):
@@ -1976,9 +1976,9 @@ def test_to_list_struct(test, device):
         mf: wp.types.matrix((3, 3), float)
         mh: wp.types.matrix((4, 4), wp.float16)
         inner: Inner
-        a1: wp.array(dtype=int)
-        a2: wp.array2d(dtype=float)
-        a3: wp.array3d(dtype=wp.float16)
+        a1: wp.array[int]
+        a2: wp.array2d[float]
+        a3: wp.array3d[wp.float16]
         bool: wp.bool
 
     dim = 3
@@ -2060,7 +2060,7 @@ def test_to_list_python_types(test, device):
 
 
 @wp.kernel
-def kernel_array_to_bool(array_null: wp.array(dtype=float), array_valid: wp.array(dtype=float)):
+def kernel_array_to_bool(array_null: wp.array[float], array_valid: wp.array[float]):
     if not array_null:
         # always succeed
         wp.expect_eq(0, 0)
@@ -2087,7 +2087,7 @@ class InputStruct:
     param1: int
     param2: float
     param3: wp.vec3
-    param4: wp.array(dtype=float)
+    param4: wp.array[float]
 
 
 @wp.struct
@@ -2098,7 +2098,7 @@ class OutputStruct:
 
 
 @wp.kernel
-def struct_array_kernel(inputs: wp.array(dtype=InputStruct), outputs: wp.array(dtype=OutputStruct)):
+def struct_array_kernel(inputs: wp.array[InputStruct], outputs: wp.array[OutputStruct]):
     tid = wp.tid()
 
     wp.expect_eq(inputs[tid].param1, tid)
@@ -2171,7 +2171,7 @@ class GradStruct:
 
 
 @wp.kernel
-def test_array_of_structs_grad_kernel(inputs: wp.array(dtype=GradStruct), loss: wp.array(dtype=float)):
+def test_array_of_structs_grad_kernel(inputs: wp.array[GradStruct], loss: wp.array[float]):
     tid = wp.tid()
 
     wp.atomic_add(loss, 0, inputs[tid].param2 * 2.0)
@@ -2432,7 +2432,7 @@ def test_array_from_cai(test, device):
     import torch  # noqa: PLC0415
 
     @wp.kernel
-    def first_row_plus_one(x: wp.array2d(dtype=float)):
+    def first_row_plus_one(x: wp.array2d[float]):
         i, j = wp.tid()
         if i == 0:
             x[i, j] += 1.0
@@ -2713,67 +2713,67 @@ def test_array_from_data(test, device):
 
 
 @wp.kernel
-def inplace_add_1d(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+def inplace_add_1d(x: wp.array[float], y: wp.array[float]):
     i = wp.tid()
     x[i] += y[i]
 
 
 @wp.kernel
-def inplace_add_2d(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
+def inplace_add_2d(x: wp.array2d[float], y: wp.array2d[float]):
     i, j = wp.tid()
     x[i, j] += y[i, j]
 
 
 @wp.kernel
-def inplace_add_3d(x: wp.array3d(dtype=float), y: wp.array3d(dtype=float)):
+def inplace_add_3d(x: wp.array3d[float], y: wp.array3d[float]):
     i, j, k = wp.tid()
     x[i, j, k] += y[i, j, k]
 
 
 @wp.kernel
-def inplace_add_4d(x: wp.array4d(dtype=float), y: wp.array4d(dtype=float)):
+def inplace_add_4d(x: wp.array4d[float], y: wp.array4d[float]):
     i, j, k, l = wp.tid()
     x[i, j, k, l] += y[i, j, k, l]
 
 
 @wp.kernel
-def inplace_sub_1d(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+def inplace_sub_1d(x: wp.array[float], y: wp.array[float]):
     i = wp.tid()
     x[i] -= y[i]
 
 
 @wp.kernel
-def inplace_sub_2d(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
+def inplace_sub_2d(x: wp.array2d[float], y: wp.array2d[float]):
     i, j = wp.tid()
     x[i, j] -= y[i, j]
 
 
 @wp.kernel
-def inplace_sub_3d(x: wp.array3d(dtype=float), y: wp.array3d(dtype=float)):
+def inplace_sub_3d(x: wp.array3d[float], y: wp.array3d[float]):
     i, j, k = wp.tid()
     x[i, j, k] -= y[i, j, k]
 
 
 @wp.kernel
-def inplace_sub_4d(x: wp.array4d(dtype=float), y: wp.array4d(dtype=float)):
+def inplace_sub_4d(x: wp.array4d[float], y: wp.array4d[float]):
     i, j, k, l = wp.tid()
     x[i, j, k, l] -= y[i, j, k, l]
 
 
 @wp.kernel
-def inplace_add_vecs(x: wp.array(dtype=wp.vec3), y: wp.array(dtype=wp.vec3)):
+def inplace_add_vecs(x: wp.array[wp.vec3], y: wp.array[wp.vec3]):
     i = wp.tid()
     x[i] += y[i]
 
 
 @wp.kernel
-def inplace_add_mats(x: wp.array(dtype=wp.mat33), y: wp.array(dtype=wp.mat33)):
+def inplace_add_mats(x: wp.array[wp.mat33], y: wp.array[wp.mat33]):
     i = wp.tid()
     x[i] += y[i]
 
 
 @wp.kernel
-def inplace_add_rhs(x: wp.array(dtype=float), y: wp.array(dtype=float), z: wp.array(dtype=float)):
+def inplace_add_rhs(x: wp.array[float], y: wp.array[float], z: wp.array[float]):
     i = wp.tid()
     a = y[i]
     a += x[i]
@@ -2784,7 +2784,7 @@ vec9 = wp.types.vector(length=9, dtype=float)
 
 
 @wp.kernel
-def inplace_add_custom_vec(x: wp.array(dtype=vec9), y: wp.array(dtype=vec9)):
+def inplace_add_custom_vec(x: wp.array[vec9], y: wp.array[vec9]):
     i = wp.tid()
     x[i] += y[i]
     x[i] += y[i]
@@ -2913,34 +2913,34 @@ def test_array_inplace_diff_ops(test, device):
 
 
 @wp.kernel
-def inplace_mul_1d(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+def inplace_mul_1d(x: wp.array[float], y: wp.array[float]):
     i = wp.tid()
     x[i] *= y[i]
 
 
 @wp.kernel
-def inplace_div_1d(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+def inplace_div_1d(x: wp.array[float], y: wp.array[float]):
     i = wp.tid()
     x[i] /= y[i]
 
 
 @wp.kernel
-def inplace_add_non_atomic_types(x: wp.array(dtype=Any), y: wp.array(dtype=Any)):
+def inplace_add_non_atomic_types(x: wp.array[Any], y: wp.array[Any]):
     i = wp.tid()
     x[i] += y[i]
 
 
 uint16vec3 = wp.types.vector(length=3, dtype=wp.uint16)
 
-wp.overload(inplace_add_non_atomic_types, {"x": wp.array(dtype=wp.int8), "y": wp.array(dtype=wp.int8)})
-wp.overload(inplace_add_non_atomic_types, {"x": wp.array(dtype=wp.uint8), "y": wp.array(dtype=wp.uint8)})
-wp.overload(inplace_add_non_atomic_types, {"x": wp.array(dtype=wp.int16), "y": wp.array(dtype=wp.int16)})
-wp.overload(inplace_add_non_atomic_types, {"x": wp.array(dtype=wp.uint16), "y": wp.array(dtype=wp.uint16)})
-wp.overload(inplace_add_non_atomic_types, {"x": wp.array(dtype=wp.vec2b), "y": wp.array(dtype=wp.vec2b)})
-wp.overload(inplace_add_non_atomic_types, {"x": wp.array(dtype=wp.vec2ub), "y": wp.array(dtype=wp.vec2ub)})
-wp.overload(inplace_add_non_atomic_types, {"x": wp.array(dtype=wp.vec2s), "y": wp.array(dtype=wp.vec2s)})
-wp.overload(inplace_add_non_atomic_types, {"x": wp.array(dtype=wp.vec2us), "y": wp.array(dtype=wp.vec2us)})
-wp.overload(inplace_add_non_atomic_types, {"x": wp.array(dtype=uint16vec3), "y": wp.array(dtype=uint16vec3)})
+wp.overload(inplace_add_non_atomic_types, {"x": wp.array[wp.int8], "y": wp.array[wp.int8]})
+wp.overload(inplace_add_non_atomic_types, {"x": wp.array[wp.uint8], "y": wp.array[wp.uint8]})
+wp.overload(inplace_add_non_atomic_types, {"x": wp.array[wp.int16], "y": wp.array[wp.int16]})
+wp.overload(inplace_add_non_atomic_types, {"x": wp.array[wp.uint16], "y": wp.array[wp.uint16]})
+wp.overload(inplace_add_non_atomic_types, {"x": wp.array[wp.vec2b], "y": wp.array[wp.vec2b]})
+wp.overload(inplace_add_non_atomic_types, {"x": wp.array[wp.vec2ub], "y": wp.array[wp.vec2ub]})
+wp.overload(inplace_add_non_atomic_types, {"x": wp.array[wp.vec2s], "y": wp.array[wp.vec2s]})
+wp.overload(inplace_add_non_atomic_types, {"x": wp.array[wp.vec2us], "y": wp.array[wp.vec2us]})
+wp.overload(inplace_add_non_atomic_types, {"x": wp.array[uint16vec3], "y": wp.array[uint16vec3]})
 
 
 def test_array_inplace_non_diff_ops(test, device):
@@ -2965,19 +2965,19 @@ def test_array_inplace_non_diff_ops(test, device):
 
 
 @wp.kernel
-def inc_scalar(a: wp.array(dtype=float)):
+def inc_scalar(a: wp.array[float]):
     tid = wp.tid()
     a[tid] = a[tid] + 1.0
 
 
 @wp.kernel
-def inc_vector(a: wp.array(dtype=wp.vec3f)):
+def inc_vector(a: wp.array[wp.vec3f]):
     tid = wp.tid()
     a[tid] = a[tid] + wp.vec3f(1.0)
 
 
 @wp.kernel
-def inc_matrix(a: wp.array(dtype=wp.mat22f)):
+def inc_matrix(a: wp.array[wp.mat22f]):
     tid = wp.tid()
     a[tid] = a[tid] + wp.mat22f(1.0)
 
@@ -3003,7 +3003,7 @@ def test_direct_from_numpy(test, device):
 
 
 @wp.kernel
-def kernel_array_from_ptr(arr_orig: wp.array2d(dtype=wp.float32)):
+def kernel_array_from_ptr(arr_orig: wp.array2d[wp.float32]):
     arr = wp.array(ptr=arr_orig.ptr, shape=(2, 3), dtype=wp.float32)
     arr[0, 0] = 1.0
     arr[0, 1] = 2.0
@@ -3024,7 +3024,7 @@ class MyStruct:
 
 
 @wp.kernel
-def kernel_array_from_ptr_struct(arr_orig: wp.array(dtype=MyStruct)):
+def kernel_array_from_ptr_struct(arr_orig: wp.array[MyStruct]):
     arr = wp.array(ptr=arr_orig.ptr, shape=(2,), dtype=MyStruct)
     arr[0].a = 1.0
     arr[0].b = 2.0
@@ -3076,7 +3076,7 @@ def test_array_shape_int_promotion(test, device):
 
 
 @wp.kernel
-def multiply_by_two(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+def multiply_by_two(x: wp.array[float], y: wp.array[float]):
     i = wp.tid()
     a = x[i]
     b = 2.0 * a
@@ -3084,7 +3084,7 @@ def multiply_by_two(x: wp.array(dtype=float), y: wp.array(dtype=float)):
 
 
 @wp.kernel
-def multiply_by_three(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+def multiply_by_three(x: wp.array[float], y: wp.array[float]):
     i = wp.tid()
     c = x[i]
     d = 3.0 * c
@@ -3092,7 +3092,7 @@ def multiply_by_three(x: wp.array(dtype=float), y: wp.array(dtype=float)):
 
 
 @wp.kernel
-def add_one(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+def add_one(x: wp.array[float], y: wp.array[float]):
     i = wp.tid()
     y[i] = x[i] + 1.0
 
@@ -3181,26 +3181,26 @@ def test_retain_grad_intermediate(test, device):
 
 
 @wp.kernel
-def scale_2d(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
+def scale_2d(x: wp.array2d[float], y: wp.array2d[float]):
     i, j = wp.tid()
     y[i, j] = 2.0 * x[i, j]
 
 
 @wp.kernel
-def offset_2d(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
+def offset_2d(x: wp.array2d[float], y: wp.array2d[float]):
     i, j = wp.tid()
     y[i, j] = x[i, j] + 1.0
 
 
 @wp.kernel
-def scale_slice_2d(x: wp.array(dtype=float), y: wp.array2d(dtype=float)):
+def scale_slice_2d(x: wp.array[float], y: wp.array2d[float]):
     i = wp.tid()
     y_slice = y[0:1, :]
     y_slice[0, i] = 2.0 * x[i]
 
 
 @wp.kernel
-def offset_row_2d(x: wp.array2d(dtype=float), y: wp.array(dtype=float)):
+def offset_row_2d(x: wp.array2d[float], y: wp.array[float]):
     i = wp.tid()
     y[i] = x[0, i] + 1.0
 
@@ -3281,10 +3281,10 @@ def test_numpy_array_interface(test, device):
 
 @wp.kernel
 def kernel_indexing_types(
-    arr_1d: wp.array(dtype=wp.int32, ndim=1),
-    arr_2d: wp.array(dtype=wp.int32, ndim=2),
-    arr_3d: wp.array(dtype=wp.int32, ndim=3),
-    arr_4d: wp.array(dtype=wp.int32, ndim=4),
+    arr_1d: wp.array[wp.int32],
+    arr_2d: wp.array2d[wp.int32],
+    arr_3d: wp.array3d[wp.int32],
+    arr_4d: wp.array4d[wp.int32],
 ):
     x = arr_1d[wp.uint8(0)]
     y = arr_1d[wp.int16(1)]
@@ -3398,9 +3398,9 @@ def test_casting(test, device):
 
 @wp.kernel
 def array_len_kernel(
-    a1: wp.array(dtype=int),
-    a2: wp.array(dtype=float, ndim=3),
-    out: wp.array(dtype=int),
+    a1: wp.array[int],
+    a2: wp.array3d[float],
+    out: wp.array[int],
 ):
     length = len(a1)
     wp.expect_eq(len(a1), 123)
@@ -3456,7 +3456,7 @@ def test_cuda_interface_conversion(test, device):
 
 
 @wp.kernel
-def test_array1d_slicing_kernel(arr: wp.array1d(dtype=int)):
+def test_array1d_slicing_kernel(arr: wp.array1d[int]):
     sub = arr[:3]
     wp.expect_eq(sub.ndim, 1)
     wp.expect_eq(sub.shape[0], 3)
@@ -3493,7 +3493,7 @@ def test_array1d_slicing(test, device):
 
 
 @wp.kernel
-def test_array2d_slicing_kernel(arr: wp.array2d(dtype=int)):
+def test_array2d_slicing_kernel(arr: wp.array2d[int]):
     sub = arr[:2]
     wp.expect_eq(sub.ndim, 2)
     wp.expect_eq(sub.shape[0], 2)
@@ -3540,7 +3540,7 @@ def test_array2d_slicing(test, device):
 
 
 @wp.kernel
-def test_array3d_slicing_kernel(arr: wp.array3d(dtype=int)):
+def test_array3d_slicing_kernel(arr: wp.array3d[int]):
     sub = arr[-1:]
     wp.expect_eq(sub.ndim, 3)
     wp.expect_eq(sub.shape[0], 1)
@@ -3645,7 +3645,7 @@ def test_array3d_slicing(test, device):
 
 
 @wp.kernel
-def test_array4d_slicing_kernel(arr: wp.array4d(dtype=int)):
+def test_array4d_slicing_kernel(arr: wp.array4d[int]):
     sub = arr[:1]
     wp.expect_eq(sub.ndim, 4)
     wp.expect_eq(sub.shape[0], 1)

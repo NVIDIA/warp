@@ -92,6 +92,10 @@ def factory_style_indexedarray_kernel(values: wp.indexedarray(dtype=float), out:
 
 wp.overload(factory_style_generic_scale_kernel, [wp.array(dtype=wp.float32), wp.float32])
 wp.overload(factory_style_generic_scale_kernel, [wp.array(dtype=wp.int32), wp.int32])
+wp.overload(
+    factory_style_generic_scale_kernel,
+    {"values": wp.array(dtype=wp.float64), "scale": wp.float64},
+)
 wp.overload(factory_style_vec3_component_sum_kernel, [wp.array(dtype=wp.vec3h), wp.array(dtype=wp.float16)])
 wp.overload(factory_style_vec3_component_sum_kernel, [wp.array(dtype=wp.vec3f), wp.array(dtype=wp.float32)])
 wp.overload(factory_style_vec3_component_sum_kernel, [wp.array(dtype=wp.vec3d), wp.array(dtype=wp.float64)])
@@ -141,12 +145,15 @@ def test_factory_style_matrix_array2d_annotations(test, device):
 
 def test_factory_style_generic_overload_annotations(test, device):
     float_values = wp.array([1.0, 2.0, 3.0], dtype=wp.float32, device=device)
+    double_values = wp.array([1.0, 2.0, 3.0], dtype=wp.float64, device=device)
     int_values = wp.array([1, 2, 3], dtype=wp.int32, device=device)
 
     wp.launch(factory_style_generic_scale_kernel, dim=3, inputs=[float_values, wp.float32(2.0)], device=device)
+    wp.launch(factory_style_generic_scale_kernel, dim=3, inputs=[double_values, wp.float64(4.0)], device=device)
     wp.launch(factory_style_generic_scale_kernel, dim=3, inputs=[int_values, wp.int32(3)], device=device)
 
     np.testing.assert_allclose(float_values.numpy(), [2.0, 4.0, 6.0])
+    np.testing.assert_allclose(double_values.numpy(), [4.0, 8.0, 12.0])
     np.testing.assert_array_equal(int_values.numpy(), [3, 6, 9])
 
 
