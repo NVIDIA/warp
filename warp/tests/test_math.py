@@ -293,6 +293,14 @@ def test_quat_twist_angles_kernel(
     signed_angles[tid] = wp.quat_twist_angle_signed(axis, q)
 
 
+@wp.kernel
+def test_quat_twist_angle_signed_branches_kernel(out: wp.array[float]):
+    axis = wp.vec3(0.0, 0.0, 1.0)
+    q = wp.quat_from_axis_angle(axis, 4.0)
+    out[0] = wp.quat_twist_angle_signed(axis, q)
+    out[1] = wp.quat_twist_angle_signed(axis, -q)
+
+
 def test_quat_twist_angles(test, device):
     angles_np = np.array([-4.0, -0.0006, -0.0005, -0.0001, 0.0001, 0.0005, 0.0006, 4.0], dtype=np.float32)
     angles = wp.array(angles_np, dtype=wp.float32, device=device)
@@ -309,6 +317,14 @@ def test_quat_twist_angles(test, device):
 
     np.testing.assert_allclose(unsigned_angles.numpy(), np.abs(angles_np), rtol=1e-6, atol=1e-7)
     np.testing.assert_allclose(signed_angles.numpy(), angles_np, rtol=1e-6, atol=1e-7)
+
+
+def test_quat_twist_angle_signed_branches(test, device):
+    out = wp.empty(2, dtype=wp.float32, device=device)
+    wp.launch(test_quat_twist_angle_signed_branches_kernel, dim=1, outputs=[out], device=device)
+
+    expected = np.array([4.0, 4.0 - 2.0 * np.pi], dtype=np.float32)
+    np.testing.assert_allclose(out.numpy(), expected, rtol=1e-6, atol=1e-7)
 
 
 def quat_euler_roundtrip(test, device):
@@ -452,6 +468,12 @@ add_function_test(TestMath, "test_vec_norm", test_vec_norm, devices=devices)
 add_function_test(TestMath, "test_smooth_normalize", test_smooth_normalize, devices=devices)
 add_function_test(TestMath, "test_quat_helpers", quat_helpers, devices=devices)
 add_function_test(TestMath, "test_quat_twist_angles", test_quat_twist_angles, devices=devices)
+add_function_test(
+    TestMath,
+    "test_quat_twist_angle_signed_branches",
+    test_quat_twist_angle_signed_branches,
+    devices=devices,
+)
 add_function_test(TestMath, "test_quat_euler_roundtrip", quat_euler_roundtrip, devices=devices)
 add_function_test(TestMath, "test_spatial_helpers", spatial_helpers, devices=devices)
 
