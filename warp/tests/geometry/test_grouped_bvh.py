@@ -63,6 +63,20 @@ def bvh_query_ray_group(
 
 
 @wp.kernel
+def mesh_query_ray_group(
+    mesh_id: wp.uint64,
+    start: wp.vec3,
+    direction: wp.vec3,
+    group_id: int,
+    face: wp.array[int],
+):
+    root = wp.mesh_get_group_root(mesh_id, group_id)
+    hit = wp.mesh_query_ray(mesh_id, start, direction, 1.0e6, root)
+    if hit.result:
+        face[0] = hit.face
+
+
+@wp.kernel
 def get_group_root(bvh_id: wp.uint64, roots: wp.array[int]):
     tid = wp.tid()
     roots[tid] = wp.bvh_get_group_root(bvh_id, tid)
@@ -261,7 +275,7 @@ def test_bvh_query_ray(test, device):
     test_bvh(test, "ray", device)
 
 
-def test_heterogenous_with_sparse_groups(test, device):
+def test_heterogeneous_group_sizes(test, device):
     rng = np.random.default_rng(123)
 
     if device.is_cpu:
@@ -291,6 +305,102 @@ def test_heterogenous_with_sparse_groups(test, device):
         wp.launch(kernel=get_group_root, dim=num_groups + 1, inputs=[bvh.id, roots], device=device)
         roots_host = roots.numpy()
         test.assertTrue(np.all(roots_host >= 0))
+
+
+def test_sparse_group_root_isolation(test, device):
+    if device.is_cpu:
+        constructors = ["sah", "median"]
+    else:
+        constructors = ["sah", "median", "lbvh"]
+
+    leaf_sizes = [1, 4]
+
+    lowers = wp.array(
+        [
+            [0.0, 0.0, 0.0],
+            [2.0, 0.0, 0.0],
+            [100.0, 0.0, 0.0],
+            [102.0, 0.0, 0.0],
+        ],
+        dtype=wp.vec3,
+        device=device,
+    )
+    uppers = wp.array(
+        [
+            [1.0, 1.0, 1.0],
+            [3.0, 1.0, 1.0],
+            [101.0, 1.0, 1.0],
+            [103.0, 1.0, 1.0],
+        ],
+        dtype=wp.vec3,
+        device=device,
+    )
+    points = wp.array(
+        [
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [2.0, 0.0, 0.0],
+            [3.0, 0.0, 0.0],
+            [2.0, 1.0, 0.0],
+            [100.0, 0.0, 0.0],
+            [101.0, 0.0, 0.0],
+            [100.0, 1.0, 0.0],
+            [102.0, 0.0, 0.0],
+            [103.0, 0.0, 0.0],
+            [102.0, 1.0, 0.0],
+        ],
+        dtype=wp.vec3,
+        device=device,
+    )
+    indices = wp.array(np.arange(12, dtype=np.int32), dtype=int, device=device)
+
+    for sparse_group_id in (2, np.iinfo(np.int32).max):
+        groups = wp.array([0, 0, sparse_group_id, sparse_group_id], dtype=int, device=device)
+
+        for leaf_size, constructor in itertools.product(leaf_sizes, constructors):
+            bvh = wp.Bvh(lowers, uppers, groups=groups, constructor=constructor, leaf_size=leaf_size)
+            mesh = wp.Mesh(
+                points,
+                indices,
+                groups=groups,
+                bvh_constructor=constructor,
+                bvh_leaf_size=leaf_size,
+            )
+
+            for group_id, expected_hits, expected_face in (
+                (0, [1, 1, 0, 0], -1),
+                (sparse_group_id, [0, 0, 1, 1], 2),
+            ):
+                hits = wp.zeros(4, dtype=int, device=device)
+                wp.launch(
+                    bvh_query_aabb_group,
+                    dim=1,
+                    inputs=[
+                        bvh.id,
+                        wp.vec3(-10.0, -10.0, -10.0),
+                        wp.vec3(200.0, 10.0, 10.0),
+                        wp.array([group_id], dtype=int, device=device),
+                    ],
+                    outputs=[hits],
+                    device=device,
+                )
+                np.testing.assert_array_equal(hits.numpy(), expected_hits)
+
+                face = wp.full(1, -1, dtype=int, device=device)
+                wp.launch(
+                    mesh_query_ray_group,
+                    dim=1,
+                    inputs=[
+                        mesh.id,
+                        wp.vec3(100.2, 0.2, -1.0),
+                        wp.vec3(0.0, 0.0, 1.0),
+                        group_id,
+                    ],
+                    outputs=[face],
+                    device=device,
+                )
+                test.assertEqual(int(face.numpy()[0]), expected_face)
 
 
 def test_gh_288(test, device):
@@ -551,9 +661,8 @@ class TestGroupedBvh(unittest.TestCase):
 add_function_test(TestGroupedBvh, "test_grouped_bvh_aabb", test_bvh_query_aabb, devices=devices)
 add_function_test(TestGroupedBvh, "test_grouped_bvh_ray", test_bvh_query_ray, devices=devices)
 add_function_test(TestGroupedBvh, "test_grouped_gh_288", test_gh_288, devices=devices)
-add_function_test(
-    TestGroupedBvh, "test_heterogenous_with_sparse_groups", test_heterogenous_with_sparse_groups, devices=devices
-)
+add_function_test(TestGroupedBvh, "test_heterogeneous_group_sizes", test_heterogeneous_group_sizes, devices=devices)
+add_function_test(TestGroupedBvh, "test_sparse_group_root_isolation", test_sparse_group_root_isolation, devices=devices)
 
 add_function_test(
     TestGroupedBvh,

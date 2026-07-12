@@ -237,6 +237,8 @@
   ([GH-1619](https://github.com/NVIDIA/warp/issues/1619)).
 - Fix `wp.quat_twist_angle()` losing precision for small float32 rotations
   ([GH-1631](https://github.com/NVIDIA/warp/issues/1631)).
+- Fix group-root lookups for `wp.Bvh` and `wp.Mesh` with sparse group IDs so queries remain isolated to the requested
+  group ([GH-1612](https://github.com/NVIDIA/warp/issues/1612)).
 
 ### Documentation
 
