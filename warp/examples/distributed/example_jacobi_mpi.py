@@ -467,7 +467,7 @@ if __name__ == "__main__":
     parser.add_argument("--nccheck", type=int, default=1, help="Check convergence every nccheck iterations.")
     parser.add_argument("--nx", type=int, default=16384, help="Total resolution in x.")
     parser.add_argument("--ny", type=int, default=16384, help="Total resolution in y.")
-    parser.add_argument("-csv", action="store_true", help="Print results as CSV values.")
+    parser.add_argument("--csv", action="store_true", help="Print results as CSV values.")
     parser.add_argument(
         "--visualize",
         action="store_true",
