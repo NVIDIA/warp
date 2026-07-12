@@ -192,6 +192,96 @@ def test_options_opt_level_hash(test, device):
         module.hashers.clear()
 
 
+def test_options_opt_level_dict(test, device):
+    """Dict-valued optimization_level must compile and execute correctly."""
+    old = wp.config.optimization_level
+    module = wp.get_module(__name__)
+    old_mod = module.options["optimization_level"]
+    module.options["optimization_level"] = None
+    module.hashers.clear()
+    try:
+        opt = {"cpu": 2, "cuda": 3} if device.is_cuda else {"cpu": 2}
+        wp.config.optimization_level = opt
+
+        x = wp.array([4.0], dtype=float, device=device)
+        y = wp.zeros_like(x)
+        wp.launch(scale, dim=1, inputs=[x, y], device=device)
+        test.assertEqual(y.numpy()[0], 16.0)
+    finally:
+        wp.config.optimization_level = old
+        module.options["optimization_level"] = old_mod
+        module.hashers.clear()
+
+
+def test_options_opt_level_dict_hash(test, device):
+    """Dict optimization_level must produce distinct hashes from int/None."""
+    module = wp.get_module(__name__)
+    old_opt = module.options["optimization_level"]
+    module.options["optimization_level"] = None
+    module.hashers.clear()
+    old_config = wp.config.optimization_level
+    try:
+        # Dict vs int for same effective backend level should differ
+        wp.config.optimization_level = {"cpu": 3, "cuda": 3}
+        module.hashers.clear()
+        hash_dict = module.get_module_hash()
+
+        wp.config.optimization_level = 3
+        module.hashers.clear()
+        hash_int = module.get_module_hash()
+
+        wp.config.optimization_level = None
+        module.hashers.clear()
+        hash_none = module.get_module_hash()
+
+        # Dict {"cpu": 3, "cuda": 3} must differ from int 3
+        test.assertNotEqual(hash_dict, hash_int, "Hash must differ between dict and int for same effective level")
+        # Dict must also differ from None
+        test.assertNotEqual(hash_dict, hash_none, "Hash must differ between dict and None")
+    finally:
+        wp.config.optimization_level = old_config
+        module.options["optimization_level"] = old_opt
+        module.hashers.clear()
+
+
+def test_options_opt_level_dict_per_device(test, device):
+    """Per-device cuda:N override must be used over generic cuda key."""
+    if not device.is_cuda:
+        return
+    old = wp.config.optimization_level
+    module = wp.get_module(__name__)
+    old_mod = module.options["optimization_level"]
+    module.options["optimization_level"] = None
+    module.hashers.clear()
+    try:
+        # cuda:N = 2 but cuda = 3, the per-device key must win for cuda:N
+        cuda_key = f"cuda:{device.ordinal}"
+        opt = {"cpu": 2, "cuda": 3, cuda_key: 2}
+        wp.config.optimization_level = opt
+
+        x = wp.array([4.0], dtype=float, device=device)
+        y = wp.zeros_like(x)
+        wp.launch(scale, dim=1, inputs=[x, y], device=device)
+        test.assertEqual(y.numpy()[0], 16.0)
+
+        # Also verify hash is distinct from plain {"cpu": 2, "cuda": 3}
+        wp.config.optimization_level = {"cpu": 2, "cuda": 3}
+        module.hashers.clear()
+        hash_no_per_device = module.get_module_hash()
+
+        wp.config.optimization_level = opt
+        module.hashers.clear()
+        hash_with_per_device = module.get_module_hash()
+
+        test.assertNotEqual(
+            hash_no_per_device, hash_with_per_device, "Hash must differ between generic dict and per-device dict"
+        )
+    finally:
+        wp.config.optimization_level = old
+        module.options["optimization_level"] = old_mod
+        module.hashers.clear()
+
+
 devices = get_test_devices()
 
 
@@ -340,6 +430,13 @@ add_function_test(
     TestOptions, "test_options_cpu_compiler_flags_native", test_options_cpu_compiler_flags_native, devices=devices
 )
 add_function_test(TestOptions, "test_options_opt_level_hash", test_options_opt_level_hash, devices=devices)
+add_function_test(
+    TestOptions, "test_options_opt_level_dict", test_options_opt_level_dict, devices=devices, check_output=False
+)
+add_function_test(TestOptions, "test_options_opt_level_dict_hash", test_options_opt_level_dict_hash, devices=devices)
+add_function_test(
+    TestOptions, "test_options_opt_level_dict_per_device", test_options_opt_level_dict_per_device, devices=devices
+)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

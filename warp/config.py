@@ -79,6 +79,8 @@ class _ConfigModule(_types.ModuleType):
             )
         if name == "deterministic" and not isinstance(value, DeterministicMode):
             raise ValueError(f"warp.config.deterministic must be a warp.DeterministicMode value, got {value!r}")
+        if name == "optimization_level":
+            _validate_optimization_level(value)
         super().__setattr__(name, value)
 
 
@@ -174,17 +176,91 @@ Note: Debug mode may impact performance.
 This setting can be overridden at the module level by setting the ``"mode"`` module option.
 """
 
-optimization_level: int | None = None
+optimization_level: int | None | dict[str, int | None] = None
 """Optimization level for Warp kernels.
 
 Args:
-    optimization_level: An integer representing the optimization level (0-3), or ``None`` for
-        target-specific defaults (``-O2`` for CPU, ``-O3`` for CUDA).
+    optimization_level: An integer (0-3) for both backends, a dict with
+        ``"cpu"``, ``"cuda"``, and/or ``"cuda:N"`` keys mapping to an ``int`` (0-3) or ``None``
+        (target-specific default; missing keys also fall back to target-specific defaults),
+        or ``None`` for target-specific defaults (``-O2`` for CPU, ``-O3`` for CUDA).
+        Per-device CUDA overrides are supported via ``"cuda:N"`` keys
+        (e.g. ``{"cpu": 2, "cuda": 3, "cuda:0": 1}``).
 
 Note: Higher optimization levels increase compilation time but may improve run-time performance.
 
 This setting can be overridden at the module level by setting the ``"optimization_level"`` module option.
 """
+
+
+def _validate_optimization_level(value):
+    """Validate optimization_level value."""
+    if value is None:
+        return
+    if isinstance(value, bool):
+        raise ValueError("optimization_level must be int, None, or dict, got bool")
+    if isinstance(value, int):
+        if not (0 <= value <= 3):
+            raise ValueError(f"optimization_level must be in range 0-3, got {value!r}")
+        return
+    if isinstance(value, dict):
+        for key in value:
+            if not isinstance(key, str):
+                raise ValueError(
+                    f"Invalid key type {type(key).__name__!r} in optimization_level dict. "
+                    "Keys must be strings: 'cpu', 'cuda', or 'cuda:N' (e.g. 'cuda:0')"
+                )
+            if key not in ("cpu", "cuda"):
+                if not key.startswith("cuda:"):
+                    raise ValueError(
+                        f"Invalid key {key!r} in optimization_level dict. "
+                        "Must be 'cpu', 'cuda', or 'cuda:N' (e.g. 'cuda:0')"
+                    )
+                ordinal = key[5:]
+                if not ordinal.isdigit() or (ordinal != "0" and ordinal.startswith("0")):
+                    raise ValueError(
+                        f"Invalid key {key!r} in optimization_level dict. "
+                        "Must be 'cpu', 'cuda', or 'cuda:N' with no leading zeros (e.g. 'cuda:0', 'cuda:1')"
+                    )
+            v = value[key]
+            if isinstance(v, bool):
+                raise ValueError(
+                    f"Invalid value {v!r} for key {key!r} in optimization_level dict. Expected int or None, got bool"
+                )
+            if v is not None and not isinstance(v, int):
+                raise ValueError(
+                    f"Invalid value for key {key!r} in optimization_level dict. "
+                    f"Expected int or None, got {type(v).__name__}"
+                )
+            if isinstance(v, int) and not (0 <= v <= 3):
+                raise ValueError(
+                    f"Invalid value {v!r} for key {key!r} in optimization_level dict. Expected int in range 0-3"
+                )
+        return
+    raise ValueError(f"optimization_level must be int, None, or dict, got {type(value).__name__}")
+
+
+def _resolve_optimization_level(value, is_cpu, device=None):
+    """Resolve the effective optimization level for the target backend/device.
+
+    Args:
+        value: The config value (int, None, or dict with ``"cpu"``/``"cuda"``/``"cuda:N"`` keys).
+        is_cpu: Whether the target is CPU.
+        device: The target device (for per-device CUDA overrides).
+
+    Returns:
+        The effective optimization level (``int | None``).
+    """
+    if isinstance(value, dict):
+        if not is_cpu:
+            if device is not None:
+                device_key = f"cuda:{device.ordinal}"
+                if device_key in value:
+                    return value[device_key]
+            return value.get("cuda")
+        return value.get("cpu")
+    return value
+
 
 verbose: bool = False
 """Enable detailed logging during code generation and compilation.

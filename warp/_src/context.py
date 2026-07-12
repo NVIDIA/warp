@@ -3215,11 +3215,22 @@ class Module:
             options["mode"] = config.mode
         if options["optimization_level"] is None:
             options["optimization_level"] = config.optimization_level
+
+        # Validate and normalize optimization_level.
+        # This catches invalid values from any path (config, set_module_options,
+        # module_options= on wp.kernel) since resolve_options() is the common
+        # sink. Must run unconditionally so int/bool values from module_options
+        # are also caught.
+        warp.config._validate_optimization_level(options["optimization_level"])
+        if isinstance(options["optimization_level"], dict):
+            # Normalize to sorted keys for deterministic hashing
+            options["optimization_level"] = dict(sorted(options["optimization_level"].items()))
         if "cluster_dim" in options:
             options["cluster_dim"] = _normalize_cluster_dim(options["cluster_dim"])
         # None means "use target-specific default": O2 for CPU, O3 for CUDA.
-        # Resolved at compile time in _compile() so the hash distinguishes
-        # explicit levels from the default.
+        # A dict means per-backend config (e.g. {"cpu": 2, "cuda": 3}).
+        # Both are resolved at compile time in _compile() so the hash
+        # distinguishes explicit levels from resolved defaults.
         options["cpu_compiler_flags"] = _resolve_cpu_compiler_flags(
             options["cpu_compiler_flags"], config.cpu_compiler_flags
         )
@@ -3531,20 +3542,32 @@ class Module:
         arch_suffix: str = "",
         use_ptx: bool | None = None,
         block_dim: int | None = None,
+        optimization_level: int | None = None,
     ) -> str:
         """Get the filename to use for the compiled module binary.
 
-        This is only the filename, e.g. ``wp___main___0340cd1.sm86.ptx`` or
-        ``wp___main___0340cd1.sm90a.cubin`` when an arch suffix is active.
+        This is only the filename, e.g. ``wp___main___0340cd1_o3.sm86.ptx`` or
+        ``wp___main___0340cd1_o3.sm90a.cubin`` when an arch suffix is active.
         It should be used to form a path.
 
         For CPU targets compiled with ``-march=native``, a short hash of
         the host CPU's ISA features is included in the filename (e.g.
-        ``wp___main___0340cd1.cpu1a2b3c4d.o``), ensuring different CPUs
+        ``wp___main___0340cd1_o2.cpu1a2b3c4d.o``), ensuring different CPUs
         produce distinct ``.o`` filenames without affecting the shared
         module directory (and thus CUDA caches).
+
+        The resolved optimization level is embedded in the filename so that
+        two same-arch devices with different per-device overrides (e.g.
+        ``{"cuda:0": 1, "cuda:1": 3}``) never collide in the kernel cache.
         """
         module_name_short = self.get_module_identifier(block_dim=block_dim)
+
+        # Include the resolved optimization level so per-device overrides
+        # produce distinct filenames even when the module hash is identical.
+        if optimization_level is not None:
+            name_base = f"{module_name_short}_o{optimization_level}"
+        else:
+            name_base = module_name_short
 
         if device and device.is_cpu:
             resolved_flags = _resolve_cpu_compiler_flags(
@@ -3553,8 +3576,8 @@ class Module:
             if _uses_march_native(resolved_flags):
                 cpu_isa_hash = _get_cpu_isa_hash()
                 if cpu_isa_hash:
-                    return f"{module_name_short}.cpu{cpu_isa_hash}.o"
-            return f"{module_name_short}.o"
+                    return f"{name_base}.cpu{cpu_isa_hash}.o"
+            return f"{name_base}.o"
 
         # For CUDA compilation, we must have an architecture.
         final_arch = output_arch
@@ -3583,9 +3606,9 @@ class Module:
                 arch_suffix = ""
 
         if use_ptx:
-            output_name = f"{module_name_short}.sm{final_arch}{arch_suffix}.ptx"
+            output_name = f"{name_base}.sm{final_arch}{arch_suffix}.ptx"
         else:
-            output_name = f"{module_name_short}.sm{final_arch}{arch_suffix}.cubin"
+            output_name = f"{name_base}.sm{final_arch}{arch_suffix}.cubin"
 
         return output_name
 
@@ -3705,9 +3728,22 @@ class Module:
         else:
             arch_suffix = ""
 
+        # Resolve per-device optimization level early so the cache key
+        # (output filename) differs when two same-arch devices have
+        # different per-device overrides.
+        opt = options["optimization_level"]
+        if isinstance(opt, dict):
+            opt = warp.config._resolve_optimization_level(opt, is_cpu, device)
+            options["optimization_level"] = opt  # replace dict with resolved int
+
         if output_name is None:
             output_name = self._get_compile_output_name(
-                device, output_arch, arch_suffix, use_ptx, block_dim=active_block_dim
+                device,
+                output_arch,
+                arch_suffix,
+                use_ptx,
+                block_dim=active_block_dim,
+                optimization_level=options["optimization_level"],
             )
 
         # Resolve output directory early so we can check for cached binaries
@@ -3950,7 +3986,10 @@ class Module:
                 else:
                     module_load_timer.extra_msg = " (cached)"
             else:
-                output_name = self._get_compile_output_name(device, block_dim=active_block_dim)
+                opt = options["optimization_level"]
+                if isinstance(opt, dict):
+                    opt = warp.config._resolve_optimization_level(opt, device.is_cpu, device)
+                output_name = self._get_compile_output_name(device, block_dim=active_block_dim, optimization_level=opt)
                 output_arch = self._get_compile_arch(device)
 
                 module_dir = os.path.join(warp.config.kernel_cache_dir, module_name_short)
@@ -11440,9 +11479,17 @@ def load_aot_module(
         else:
             candidate_flags = (use_ptx,)
 
+        opt = module_object.options.get("optimization_level", None)
+        if opt is None:
+            opt = warp.config.optimization_level
+        if isinstance(opt, dict):
+            opt = warp.config._resolve_optimization_level(opt, d.is_cpu, d)
         for candidate_use_ptx in candidate_flags:
             candidate_path = os.path.join(
-                module_dir, module_object._get_compile_output_name(d, output_arch, use_ptx=candidate_use_ptx)
+                module_dir,
+                module_object._get_compile_output_name(
+                    d, output_arch, use_ptx=candidate_use_ptx, optimization_level=opt
+                ),
             )
             tried_paths.append(candidate_path)
             if os.path.exists(candidate_path):
@@ -11481,7 +11528,7 @@ def set_module_options(options: dict[str, Any], module: Any = None):
     * **lineinfo**: Emit line-number debug info for CUDA kernels, defaults to the value of ``warp.config.lineinfo``.
     * **cuda_output**: CUDA compilation output format: ``"ptx"``, ``"cubin"``, or ``None`` (automatic), defaults to ``None``.
     * **mode**: The compilation mode to use, can be ``"debug"`` or ``"release"``, defaults to the value of ``warp.config.mode``.
-    * **optimization_level**: Compiler optimization level (0-3). When ``None``, falls back to ``warp.config.optimization_level``; if that is also ``None``, uses target-specific defaults (``-O2`` for CPU, ``-O3`` for CUDA).
+    * **optimization_level**: Compiler optimization level. Accepts an ``int`` (0-3) for both backends, or a ``dict`` with ``"cpu"``/``"cuda"``/``"cuda:N"`` keys mapping to an ``int`` (0-3) or ``None`` (target-specific default); missing keys fall back to target-specific defaults. When ``None``, falls back to ``warp.config.optimization_level``; if that is also ``None``, uses target-specific defaults (``-O2`` for CPU, ``-O3`` for CUDA).
     * **cpu_compiler_flags**: CPU compiler flags (see ``warp.config.cpu_compiler_flags``), defaults to the global config value when ``None``.
     * **deterministic**: Determinism guarantee for supported atomic operations. Accepted values are ``warp.DeterministicMode.NOT_GUARANTEED``, ``warp.DeterministicMode.RUN_TO_RUN``, and ``warp.DeterministicMode.GPU_TO_GPU``. Defaults to the value of ``warp.config.deterministic`` when the module is created.
     * **deterministic_max_records**: Per-target, per-thread upper bound for deterministic scatter records. Defaults to ``0``, which means use the code-generated lower bound only. This is useful when dynamic loops or repeated visits to the same atomic site can emit more records than static analysis can prove.
