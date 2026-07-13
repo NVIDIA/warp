@@ -497,12 +497,23 @@
 <h1>warp.HashGrid<a class="headerlink" href="#warp-hashgrid" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.HashGrid">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">HashGrid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L7589-L7700"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.HashGrid" title="Link to this definition">#</a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">HashGrid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L7590-L7780"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.HashGrid" title="Link to this definition">#</a></dt>
 <dd><p>Hash-based spatial grid for accelerated neighbor queries on point data.</p>
 <p>Supports float16, float32, and float64 precision via the <code class="docutils literal notranslate"><span class="pre">dtype</span></code> parameter.</p>
+<p><strong>Concept of Grouped HashGrid:</strong></p>
+<p>A grouped hash grid partitions point buckets by a user-provided integer group id. This is useful for storing
+particles from many independent environments in a single grid while keeping neighbor queries local to one
+environment.</p>
+<p>In a standard hash grid, all points sharing a spatial cell are stored together, so kernels that need environment
+isolation must query all candidates and filter out points from other environments. Grouped hash grids keep each
+cell’s points sorted by group id, and <a class="reference internal" href="../../language_reference/_generated/warp.hash_grid_query.html#warp._src.lang.hash_grid_query" title="warp._src.lang.hash_grid_query"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.hash_grid_query()</span></code></a> accepts an optional group id that restricts
+traversal to that group’s points only. This avoids cross-group candidate iteration while preserving the ungrouped
+query path when no group is passed.</p>
+<p>Unlike grouped BVH queries, grouped hash-grid queries do not require a separate root lookup. Pass the same group id
+used at build time directly to <a class="reference internal" href="../../language_reference/_generated/warp.hash_grid_query.html#warp._src.lang.hash_grid_query" title="warp._src.lang.hash_grid_query"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.hash_grid_query()</span></code></a>.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.HashGrid.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim_x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L7616-L7656"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.HashGrid.__init__" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim_x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim_z</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L7647-L7700"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.HashGrid.__init__" title="Link to this definition">#</a></dt>
 <dd><p>Class representing a hash grid object for accelerated point queries.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.HashGrid.id">
@@ -546,18 +557,18 @@ Large coordinates or small cell widths may cause incorrect cell assignments.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#warp.HashGrid.__init__" title="warp.HashGrid.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(dim_x, dim_y, dim_z[, device, dtype])</p></td>
 <td><p>Class representing a hash grid object for accelerated point queries.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.HashGrid.build" title="warp.HashGrid.build"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build</span></code></a>(points, radius)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.HashGrid.build" title="warp.HashGrid.build"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build</span></code></a>(points, radius[, groups])</p></td>
 <td><p>Update the hash grid data structure.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.HashGrid.reserve" title="warp.HashGrid.reserve"><code class="xref py py-obj docutils literal notranslate"><span class="pre">reserve</span></code></a>(num_points)</p></td>
-<td><p></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.HashGrid.reserve" title="warp.HashGrid.reserve"><code class="xref py py-obj docutils literal notranslate"><span class="pre">reserve</span></code></a>(num_points[, with_groups])</p></td>
+<td><p>Reserve enough memory to build the grid for the given number of points.</p></td>
 </tr>
 </tbody>
 </table>
 </div>
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.HashGrid.build">
-<span class="sig-name descname"><span class="pre">build</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L7657-L7681"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.HashGrid.build" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">build</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">groups</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L7701-L7751"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.HashGrid.build" title="Link to this definition">#</a></dt>
 <dd><p>Update the hash grid data structure.</p>
 <p>This method rebuilds the underlying datastructure and should be called any time the set
 of points changes.</p>
@@ -569,6 +580,13 @@ of points changes.</p>
 <li><p><strong>radius</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – The cell size to use for bucketing points, cells are cubes with edges of this width.
 For best performance the radius used to construct the grid should match closely to
 the radius used when performing queries.</p></li>
+<li><p><strong>groups</strong> – Optional array of point group indices of data type <a class="reference internal" href="warp.int32.html#warp.int32" title="warp.int32"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.int32</span></code></a>.
+When provided, the grid is partitioned by group so grouped queries only visit points with the
+requested group id. This is intended for independent environments or worlds whose particles should not
+interact, even when their coordinates overlap. Omitting the group argument in
+<a class="reference internal" href="../../language_reference/_generated/warp.hash_grid_query.html#warp._src.lang.hash_grid_query" title="warp._src.lang.hash_grid_query"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.hash_grid_query()</span></code></a> preserves the all-points traversal behavior.
+Group ids may be arbitrary <code class="docutils literal notranslate"><span class="pre">int32</span></code> values and are consumed on-device, so group assignments may
+change between rebuilds, including during CUDA graph replay.</p></li>
 </ul>
 </dd>
 </dl>
@@ -576,8 +594,20 @@ the radius used when performing queries.</p></li>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.HashGrid.reserve">
-<span class="sig-name descname"><span class="pre">reserve</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_points</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L7682-L7685"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.HashGrid.reserve" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
+<span class="sig-name descname"><span class="pre">reserve</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_points</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">with_groups</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L7752-L7765"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.HashGrid.reserve" title="Link to this definition">#</a></dt>
+<dd><p>Reserve enough memory to build the grid for the given number of points.</p>
+<p>Reserving ahead of CUDA graph capture makes subsequent <a class="reference internal" href="#warp.HashGrid.build" title="warp.HashGrid.build"><code class="xref py py-meth docutils literal notranslate"><span class="pre">build()</span></code></a> calls of up to
+<code class="docutils literal notranslate"><span class="pre">num_points</span></code> points allocation-free, without requiring a warm-up build before capture.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>num_points</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of points the grid should accommodate.</p></li>
+<li><p><strong>with_groups</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Also reserve the buffers used by grouped builds, so that a
+grouped <a class="reference internal" href="#warp.HashGrid.build" title="warp.HashGrid.build"><code class="xref py py-meth docutils literal notranslate"><span class="pre">build()</span></code></a> (with <code class="docutils literal notranslate"><span class="pre">groups</span></code>) is allocation-free as well.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
 
 </dd></dl>
 

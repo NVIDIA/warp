@@ -576,6 +576,62 @@ grid was built from (see <a class="reference internal" href="../../api_reference
 
 <dl>
 <dd><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.uint64.html#warp.uint64" title="warp.uint64"><span class="pre">uint64</span></a></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">point</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.vec3f.html#warp.vec3f" title="warp.vec3f"><span class="pre">vec3f</span></a></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_dist</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><span class="pre">float32</span></a></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">group</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../../api_reference/_generated/warp.HashGridQuery.html#warp.HashGridQuery" title="warp.HashGridQuery"><span class="pre">HashGridQuery</span></a></span></span></dt>
+<dd><table class="hlist"><tr><td><ul class="simple">
+<li><p>Kernel</p></li>
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td></tr></table>
+<p>Construct a point query against a <a class="reference internal" href="../../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.HashGrid</span></code></a>, restricted to one point group.</p>
+<p>Returns a query that iterates over candidate neighbors of <code class="docutils literal notranslate"><span class="pre">point</span></code>: every point in the grid
+cells overlapped by the box from <code class="docutils literal notranslate"><span class="pre">point</span> <span class="pre">-</span> <span class="pre">max_dist</span></code> to <code class="docutils literal notranslate"><span class="pre">point</span> <span class="pre">+</span> <span class="pre">max_dist</span></code>. These are
+<em>candidates</em> — the grid does not test distance, so some are farther than <code class="docutils literal notranslate"><span class="pre">max_dist</span></code>; filter
+by actual distance yourself. Advance the query and read each candidate’s index with
+<a class="reference internal" href="warp.hash_grid_query_next.html#warp._src.lang.hash_grid_query_next" title="warp._src.lang.hash_grid_query_next"><code class="xref py py-func docutils literal notranslate"><span class="pre">hash_grid_query_next()</span></code></a>. <code class="docutils literal notranslate"><span class="pre">point</span></code> must be in the same coordinate space as the points the
+grid was built from (see <a class="reference internal" href="../../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.HashGrid</span></code></a>).</p>
+<p>If the grid was built with groups, only points whose group id equals <code class="docutils literal notranslate"><span class="pre">group</span></code> are returned as
+candidates; any <code class="docutils literal notranslate"><span class="pre">int32</span></code> value is a valid group id. Omit the <code class="docutils literal notranslate"><span class="pre">group</span></code> argument to visit all
+groups, matching ungrouped behavior. Unlike grouped BVH queries, grouped hash-grid queries do
+not require a root lookup; pass the group id directly.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>id</strong> – The <a class="reference internal" href="../../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.HashGrid</span></code></a> identifier</p></li>
+<li><p><strong>point</strong> – The query point</p></li>
+<li><p><strong>max_dist</strong> – The query radius</p></li>
+<li><p><strong>group</strong> – Restrict candidates to points built with this group id</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A hash-grid query object to pass to <a class="reference internal" href="warp.hash_grid_query_next.html#warp._src.lang.hash_grid_query_next" title="warp._src.lang.hash_grid_query_next"><code class="xref py py-func docutils literal notranslate"><span class="pre">hash_grid_query_next()</span></code></a>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">hash_grid_query</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.uint64.html#warp.uint64" title="warp.uint64"><span class="pre">uint64</span></a></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">point</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.vec3h.html#warp.vec3h" title="warp.vec3h"><span class="pre">vec3h</span></a></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">max_dist</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.float16.html#warp.float16" title="warp.float16"><span class="pre">float16</span></a></span></em>,</dd>
 </dl>
@@ -622,6 +678,58 @@ grid was built from (see <a class="reference internal" href="../../api_reference
 
 <dl>
 <dd><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.uint64.html#warp.uint64" title="warp.uint64"><span class="pre">uint64</span></a></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">point</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.vec3h.html#warp.vec3h" title="warp.vec3h"><span class="pre">vec3h</span></a></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_dist</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.float16.html#warp.float16" title="warp.float16"><span class="pre">float16</span></a></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">group</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../../api_reference/_generated/warp.HashGridQuery.html#warp.HashGridQuery" title="warp.HashGridQuery"><span class="pre">HashGridQuery</span></a></span></span></dt>
+<dd><table class="hlist"><tr><td><ul class="simple">
+<li><p>Kernel</p></li>
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td></tr></table>
+<p>Construct a point query against a <a class="reference internal" href="../../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.HashGrid</span></code></a>, restricted to one point group (float16 precision).</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">float16</span></code> overload of <a class="reference internal" href="#warp._src.lang.hash_grid_query" title="warp._src.lang.hash_grid_query"><code class="xref py py-func docutils literal notranslate"><span class="pre">hash_grid_query()</span></code></a>. Behavior and usage match the default
+<code class="docutils literal notranslate"><span class="pre">float32</span></code> overload; see it for details and a usage example.</p>
+<p>If the grid was built with groups, only points whose group id equals <code class="docutils literal notranslate"><span class="pre">group</span></code> are returned as
+candidates; any <code class="docutils literal notranslate"><span class="pre">int32</span></code> value is a valid group id. Omit the <code class="docutils literal notranslate"><span class="pre">group</span></code> argument to visit all
+groups, matching ungrouped behavior. Unlike grouped BVH queries, grouped hash-grid queries do
+not require a root lookup; pass the group id directly.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>id</strong> – The <a class="reference internal" href="../../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.HashGrid</span></code></a> identifier</p></li>
+<li><p><strong>point</strong> – The query point</p></li>
+<li><p><strong>max_dist</strong> – The query radius</p></li>
+<li><p><strong>group</strong> – Restrict candidates to points built with this group id</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A hash-grid query object to pass to <a class="reference internal" href="warp.hash_grid_query_next.html#warp._src.lang.hash_grid_query_next" title="warp._src.lang.hash_grid_query_next"><code class="xref py py-func docutils literal notranslate"><span class="pre">hash_grid_query_next()</span></code></a>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">hash_grid_query</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.uint64.html#warp.uint64" title="warp.uint64"><span class="pre">uint64</span></a></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">point</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.vec3d.html#warp.vec3d" title="warp.vec3d"><span class="pre">vec3d</span></a></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">max_dist</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.float64.html#warp.float64" title="warp.float64"><span class="pre">float64</span></a></span></em>,</dd>
 </dl>
@@ -654,6 +762,58 @@ grid was built from (see <a class="reference internal" href="../../api_reference
 <li><p><strong>id</strong> – The <a class="reference internal" href="../../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.HashGrid</span></code></a> identifier</p></li>
 <li><p><strong>point</strong> – The query point</p></li>
 <li><p><strong>max_dist</strong> – The query radius</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A hash-grid query object to pass to <a class="reference internal" href="warp.hash_grid_query_next.html#warp._src.lang.hash_grid_query_next" title="warp._src.lang.hash_grid_query_next"><code class="xref py py-func docutils literal notranslate"><span class="pre">hash_grid_query_next()</span></code></a>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">hash_grid_query</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.uint64.html#warp.uint64" title="warp.uint64"><span class="pre">uint64</span></a></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">point</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.vec3d.html#warp.vec3d" title="warp.vec3d"><span class="pre">vec3d</span></a></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_dist</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.float64.html#warp.float64" title="warp.float64"><span class="pre">float64</span></a></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">group</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><span class="pre">int32</span></a></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../../api_reference/_generated/warp.HashGridQuery.html#warp.HashGridQuery" title="warp.HashGridQuery"><span class="pre">HashGridQuery</span></a></span></span></dt>
+<dd><table class="hlist"><tr><td><ul class="simple">
+<li><p>Kernel</p></li>
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td></tr></table>
+<p>Construct a point query against a <a class="reference internal" href="../../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.HashGrid</span></code></a>, restricted to one point group (float64 precision).</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">float64</span></code> overload of <a class="reference internal" href="#warp._src.lang.hash_grid_query" title="warp._src.lang.hash_grid_query"><code class="xref py py-func docutils literal notranslate"><span class="pre">hash_grid_query()</span></code></a>. Behavior and usage match the default
+<code class="docutils literal notranslate"><span class="pre">float32</span></code> overload; see it for details and a usage example.</p>
+<p>If the grid was built with groups, only points whose group id equals <code class="docutils literal notranslate"><span class="pre">group</span></code> are returned as
+candidates; any <code class="docutils literal notranslate"><span class="pre">int32</span></code> value is a valid group id. Omit the <code class="docutils literal notranslate"><span class="pre">group</span></code> argument to visit all
+groups, matching ungrouped behavior. Unlike grouped BVH queries, grouped hash-grid queries do
+not require a root lookup; pass the group id directly.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>id</strong> – The <a class="reference internal" href="../../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.HashGrid</span></code></a> identifier</p></li>
+<li><p><strong>point</strong> – The query point</p></li>
+<li><p><strong>max_dist</strong> – The query radius</p></li>
+<li><p><strong>group</strong> – Restrict candidates to points built with this group id</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>

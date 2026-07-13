@@ -2619,6 +2619,60 @@ check the distance themselves inside their kernels. The reason the query doesn�
 returned point is because it’s common for kernels to compute the distance themselves, so it would redundant to
 check/compute the distance twice.</p>
 </div>
+<section id="grouped-hash-grids">
+<h4>Grouped Hash Grids<a class="headerlink" href="#grouped-hash-grids" title="Link to this heading">#</a></h4>
+<p>Hash grids can also be built with point groups. Grouping is useful when a single grid stores particles from multiple
+independent environments, worlds, or batches. Points from different groups may occupy identical coordinates, but grouped
+queries only traverse the buckets for the requested group, avoiding cross-group candidate iteration and user-side
+filtering.</p>
+<p>Pass a contiguous <code class="docutils literal notranslate"><span class="pre">wp.int32</span></code> array with one group id per point to <a class="reference internal" href="../api_reference/_generated/warp.HashGrid.html#warp.HashGrid.build" title="warp.HashGrid.build"><code class="xref py py-meth docutils literal notranslate"><span class="pre">HashGrid.build()</span></code></a>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">points</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+    <span class="p">[</span>
+        <span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+        <span class="p">(</span><span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+        <span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+        <span class="p">(</span><span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+    <span class="p">],</span>
+    <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">groups</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+
+<span class="n">grid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">HashGrid</span><span class="p">(</span><span class="n">dim_x</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">dim_y</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">dim_z</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">grid</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="n">points</span><span class="o">=</span><span class="n">points</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">groups</span><span class="o">=</span><span class="n">groups</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Inside kernels, pass the desired group id directly to <a class="reference internal" href="../language_reference/_generated/warp.hash_grid_query.html#warp._src.lang.hash_grid_query" title="warp._src.lang.hash_grid_query"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.hash_grid_query()</span></code></a>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">count_group_neighbors</span><span class="p">(</span>
+    <span class="n">grid</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">uint64</span><span class="p">,</span>
+    <span class="n">points</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span>
+    <span class="n">groups</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">],</span>
+    <span class="n">radius</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">neighbor_count</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+<span class="p">):</span>
+    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">point</span> <span class="o">=</span> <span class="n">points</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span>
+    <span class="n">group</span> <span class="o">=</span> <span class="n">groups</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span>
+    <span class="n">count</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="n">wp</span><span class="o">.</span><span class="n">hash_grid_query</span><span class="p">(</span><span class="n">grid</span><span class="p">,</span> <span class="n">point</span><span class="p">,</span> <span class="n">radius</span><span class="p">,</span> <span class="n">group</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">index</span> <span class="o">!=</span> <span class="n">tid</span> <span class="ow">and</span> <span class="n">wp</span><span class="o">.</span><span class="n">length</span><span class="p">(</span><span class="n">points</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">-</span> <span class="n">point</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">radius</span><span class="p">:</span>
+            <span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="n">neighbor_count</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">count</span>
+</pre></div>
+</div>
+<p>If the group argument is omitted, the query visits all groups. Unlike grouped BVH queries, grouped hash-grid queries do
+not use a group-root helper such as <a class="reference internal" href="../language_reference/_generated/warp.bvh_get_group_root.html#warp._src.lang.bvh_get_group_root" title="warp._src.lang.bvh_get_group_root"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.bvh_get_group_root()</span></code></a>; the group id is
+the query selector.</p>
+<p>Group ids may be arbitrary <code class="docutils literal notranslate"><span class="pre">int32</span></code> values. Rebuilds read the <code class="docutils literal notranslate"><span class="pre">groups</span></code> array directly on the device and never copy
+group data back to the host, so grouped rebuilds are asynchronous like ungrouped ones, and group assignments may
+change between rebuilds, including inside replayed CUDA graphs. The grid does not keep any host-side record of the
+group ids in use, so no warm-up rebuild is needed after changing them.</p>
+<p>To record a grouped rebuild inside a CUDA graph without a prior warm-up build, reserve the grouped buffers up front
+with <a class="reference internal" href="../api_reference/_generated/warp.HashGrid.html#warp.HashGrid.reserve" title="warp.HashGrid.reserve"><code class="xref py py-meth docutils literal notranslate"><span class="pre">grid.reserve(num_points,</span> <span class="pre">with_groups=True)</span></code></a>.</p>
+</section>
 </section>
 <section id="volumes">
 <h3>Volumes<a class="headerlink" href="#volumes" title="Link to this heading">#</a></h3>
@@ -3299,7 +3353,10 @@ Journal of Computer Graphics Techniques (JCGT), vol. 9, no. 3, 20–38, 2020.</p
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#spatial-computing-primitives">Spatial Computing Primitives</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#meshes">Meshes</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#hash-grids">Hash Grids</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#hash-grids">Hash Grids</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#grouped-hash-grids">Grouped Hash Grids</a></li>
+</ul>
+</li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#volumes">Volumes</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#textures">Textures</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#bounding-volume-hierarchies-bvh">Bounding Volume Hierarchies (BVH)</a><ul class="nav section-nav flex-column">
