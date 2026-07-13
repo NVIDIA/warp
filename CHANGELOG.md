@@ -237,6 +237,9 @@
   ([GH-1619](https://github.com/NVIDIA/warp/issues/1619)).
 - Fix `wp.quat_twist_angle()` losing precision for small float32 rotations
   ([GH-1631](https://github.com/NVIDIA/warp/issues/1631)).
+- Fix under-sized backward-kernel shared memory when a `@wp.func` custom gradient (`@wp.func_grad`) or custom replay
+  needs more shared memory than the forward, which could cause an illegal memory access on GPU
+  ([GH-1646](https://github.com/NVIDIA/warp/issues/1646)).
 
 ### Documentation
 
