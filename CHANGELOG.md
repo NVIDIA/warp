@@ -56,6 +56,9 @@
   group ([GH-1612](https://github.com/NVIDIA/warp/issues/1612)).
 - Fix `wp.quat_twist_angle()` losing precision for small `wp.float32` rotations
   ([GH-1631](https://github.com/NVIDIA/warp/issues/1631)).
+- Fix under-sized backward-kernel shared memory when a `@wp.func` custom gradient (`@wp.func_grad`) or custom replay
+  needs more shared memory than the forward, which could cause an illegal memory access on GPU
+  ([GH-1646](https://github.com/NVIDIA/warp/issues/1646)).
 
 ### Documentation
 
@@ -222,9 +225,6 @@
   `IndentationError` ([GH-1557](https://github.com/NVIDIA/warp/issues/1557)).
 - Fix `wp.array[...]`-style subscript annotations to allow for PEP 604 unions (for example, `wp.array[float] | float`)
   on Python methods ([GH-1548](https://github.com/NVIDIA/warp/issues/1548)).
-- Fix under-sized backward-kernel shared memory when a `@wp.func` custom gradient (`@wp.func_grad`) or custom replay
-  needs more shared memory than the forward, which could cause an illegal memory access on GPU
-  ([GH-1646](https://github.com/NVIDIA/warp/issues/1646)).
 - Fix Clang CUDA compilation failures so they report immediately instead of surfacing later as downstream CUDA module
   load errors ([GH-1325](https://github.com/NVIDIA/warp/issues/1325)).
 - Fix `wp.Tape.record_scope_end()` to raise a clear error for unmatched scope ends and preserve nested non-empty tape
