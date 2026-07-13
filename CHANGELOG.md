@@ -61,6 +61,8 @@
 
 - Document working with non-blocking CUDA streams, including streams borrowed from PyTorch
   ([GH-1618](https://github.com/NVIDIA/warp/issues/1618)).
+- Add an example of a distributed Jacobi solver that uses NCCL (via `nccl4py`) for nearest-neighbor halo exchange in
+  `warp/examples/distributed/example_jacobi_nccl.py` ([GH-1576](https://github.com/NVIDIA/warp/issues/1576)).
 
 ## [1.15.0] - 2026-07-07
 
