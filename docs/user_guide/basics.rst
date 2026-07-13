@@ -6,7 +6,7 @@ Basics
 Tutorial Notebooks
 ------------------
 
-The `NVIDIA Accelerated Computing Hub <https://github.com/NVIDIA/accelerated-computing-hub>`_ contains the current,
+The `NVIDIA Accelerated Computing Hub <https://github.com/NVIDIA/accelerated-computing-hub/blob/main/tutorials/warp/README.md>`_ contains the current,
 actively maintained set of Warp tutorials:
 
 .. list-table::
@@ -14,13 +14,21 @@ actively maintained set of Warp tutorials:
 
    * - Notebook
      - Colab Link
-   * - `Introduction to NVIDIA Warp <https://github.com/NVIDIA/accelerated-computing-hub/blob/32fe3d5a448446fd52c14a6726e1b867cbfed2d9/Accelerated_Python_User_Guide/notebooks/Chapter_12_Intro_to_NVIDIA_Warp.ipynb>`_
+   * - `01. Introduction to NVIDIA Warp <https://github.com/NVIDIA/accelerated-computing-hub/blob/main/tutorials/warp/notebooks/01__intro_to_warp.ipynb>`_
      - .. image:: https://colab.research.google.com/assets/colab-badge.svg
-          :target: https://colab.research.google.com/github/NVIDIA/accelerated-computing-hub/blob/32fe3d5a448446fd52c14a6726e1b867cbfed2d9/Accelerated_Python_User_Guide/notebooks/Chapter_12_Intro_to_NVIDIA_Warp.ipynb
+          :target: https://colab.research.google.com/github/NVIDIA/accelerated-computing-hub/blob/main/tutorials/warp/notebooks/01__intro_to_warp.ipynb
           :alt: Open In Colab
-   * - `GPU-Accelerated Ising Model Simulation in NVIDIA Warp <https://github.com/NVIDIA/accelerated-computing-hub/blob/32fe3d5a448446fd52c14a6726e1b867cbfed2d9/Accelerated_Python_User_Guide/notebooks/Chapter_12.1_IsingModel_In_Warp.ipynb>`_
+   * - `02. Ising Model <https://github.com/NVIDIA/accelerated-computing-hub/blob/main/tutorials/warp/notebooks/02__ising_model.ipynb>`_
      - .. image:: https://colab.research.google.com/assets/colab-badge.svg
-          :target: https://colab.research.google.com/github/NVIDIA/accelerated-computing-hub/blob/32fe3d5a448446fd52c14a6726e1b867cbfed2d9/Accelerated_Python_User_Guide/notebooks/Chapter_12.1_IsingModel_In_Warp.ipynb
+          :target: https://colab.research.google.com/github/NVIDIA/accelerated-computing-hub/blob/main/tutorials/warp/notebooks/02__ising_model.ipynb
+          :alt: Open In Colab
+   * - `03. 2D Navier-Stokes Solver <https://github.com/NVIDIA/accelerated-computing-hub/blob/main/tutorials/warp/notebooks/03__navier_stokes_solver.ipynb>`_
+     - .. image:: https://colab.research.google.com/assets/colab-badge.svg
+          :target: https://colab.research.google.com/github/NVIDIA/accelerated-computing-hub/blob/main/tutorials/warp/notebooks/03__navier_stokes_solver.ipynb
+          :alt: Open In Colab
+   * - `04. Differentiable Simulations in Warp <https://github.com/NVIDIA/accelerated-computing-hub/blob/main/tutorials/warp/notebooks/04__differentiable_navier_stokes_solver.ipynb>`_
+     - .. image:: https://colab.research.google.com/assets/colab-badge.svg
+          :target: https://colab.research.google.com/github/NVIDIA/accelerated-computing-hub/blob/main/tutorials/warp/notebooks/04__differentiable_navier_stokes_solver.ipynb
           :alt: Open In Colab
 
 .. _warp-initialization:
