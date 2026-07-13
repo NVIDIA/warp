@@ -871,7 +871,7 @@ def test_tile_custom_grad_extra_shared(test, device):
     @wp.func
     def scale2x(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float), i: int):
         # forward: y = 2x elementwise -> tiny shared footprint
-        wp.tile_store(y, wp.tile_load(x, shape=(M, M), offset=(i * M, 0)) * 2.0, offset=(i * M, 0))
+        wp.tile_store(y, wp.tile_load(x, shape=(M, M), offset=(i * M, 0)) * float(2.0), offset=(i * M, 0))
 
     @wp.func_grad(scale2x)
     def adj_scale2x(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float), i: int):
@@ -880,7 +880,7 @@ def test_tile_custom_grad_extra_shared(test, device):
         g = wp.tile_load(wp.adjoint[y], shape=(M, M), offset=(i * M, 0))
         scratch = wp.tile_ones(shape=(EXTRA, EXTRA), dtype=float, storage="shared")
         pad = wp.tile_broadcast(wp.tile_sum(scratch), shape=(M, M))
-        wp.tile_atomic_add(wp.adjoint[x], g * 2.0 + pad * 0.0, offset=(i * M, 0))
+        wp.tile_atomic_add(wp.adjoint[x], g * float(2.0) + pad * float(0.0), offset=(i * M, 0))
 
     @wp.kernel(module="unique")
     def run(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
