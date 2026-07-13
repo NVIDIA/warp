@@ -556,6 +556,8 @@ accumulated state (<a class="reference external" href="https://github.com/NVIDIA
 group (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1612">GH-1612</a>).</p></li>
 <li><p>Fix <code class="docutils literal notranslate"><span class="pre">wp.quat_twist_angle()</span></code> losing precision for small <code class="docutils literal notranslate"><span class="pre">wp.float32</span></code> rotations
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1631">GH-1631</a>).</p></li>
+<li><p>Fix tuple-unpack assignment to <code class="docutils literal notranslate"><span class="pre">wp.ref[T]</span></code> parameters (e.g. <code class="docutils literal notranslate"><span class="pre">x,</span> <span class="pre">y</span> <span class="pre">=</span> <span class="pre">a,</span> <span class="pre">b</span></code>) so it mutates the caller’s storage like
+sequential assignment instead of raising a type error (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1581">GH-1581</a>).</p></li>
 </ul>
 </section>
 <section id="documentation">
