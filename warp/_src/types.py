@@ -9,6 +9,7 @@ import enum
 import functools
 import inspect
 import math
+import operator
 import struct
 import sys
 import types
@@ -7590,12 +7591,28 @@ class HashGrid:
     """Hash-based spatial grid for accelerated neighbor queries on point data.
 
     Supports float16, float32, and float64 precision via the ``dtype`` parameter.
+
+    **Concept of Grouped HashGrid:**
+
+    A grouped hash grid partitions point buckets by a user-provided integer group id. This is useful for storing
+    particles from many independent environments in a single grid while keeping neighbor queries local to one
+    environment.
+
+    In a standard hash grid, all points sharing a spatial cell are stored together, so kernels that need environment
+    isolation must query all candidates and filter out points from other environments. Grouped hash grids keep each
+    cell's points sorted by group id, and :func:`warp.hash_grid_query` accepts an optional group id that restricts
+    traversal to that group's points only. This avoids cross-group candidate iteration while preserving the ungrouped
+    query path when no group is passed.
+
+    Unlike grouped BVH queries, grouped hash-grid queries do not require a separate root lookup. Pass the same group id
+    used at build time directly to :func:`warp.hash_grid_query`.
     """
 
     # Native type IDs (must match HashGridTypeId enum in hashgrid.cpp)
     _TYPE_FLOAT16 = 0
     _TYPE_FLOAT32 = 1
     _TYPE_FLOAT64 = 2
+    _MAX_CELL_COUNT = (1 << 31) - 1
 
     _dtype_map: ClassVar = {
         float16: (vec3h, _TYPE_FLOAT16),
@@ -7607,6 +7624,20 @@ class HashGrid:
         """Get the appropriate native function for the given action."""
         location = "host" if self.device.is_cpu else "device"
         return getattr(self.runtime.core, f"wp_hash_grid_{action}_{location}")
+
+    @classmethod
+    def _validate_cell_count(cls, dim_x, dim_y, dim_z):
+        cell_count = dim_x * dim_y * dim_z
+
+        if dim_x <= 0 or dim_y <= 0 or dim_z <= 0:
+            raise RuntimeError("Hash grid dimensions must be positive")
+        if cell_count > cls._MAX_CELL_COUNT:
+            raise RuntimeError(
+                "Hash grid cell count exceeds supported limit: "
+                f"{dim_x} * {dim_y} * {dim_z} = {cell_count} > {cls._MAX_CELL_COUNT}"
+            )
+
+        return cell_count
 
     def __new__(cls, *args, **kwargs):
         instance = super().__new__(cls)
@@ -7645,16 +7676,29 @@ class HashGrid:
 
         self.runtime = warp._src.context.runtime
         self.device = self.runtime.get_device(device)
+        try:
+            self._dim_x = operator.index(dim_x)
+            self._dim_y = operator.index(dim_y)
+            self._dim_z = operator.index(dim_z)
+        except TypeError as e:
+            raise TypeError("HashGrid dimensions must be integers") from e
+
+        self._validate_cell_count(self._dim_x, self._dim_y, self._dim_z)
 
         if self.device.is_cpu:
-            self.id = self._native_func("create")(self._type_id, dim_x, dim_y, dim_z)
+            self.id = self._native_func("create")(self._type_id, self._dim_x, self._dim_y, self._dim_z)
         else:
-            self.id = self._native_func("create")(self.device.context, self._type_id, dim_x, dim_y, dim_z)
+            self.id = self._native_func("create")(
+                self.device.context, self._type_id, self._dim_x, self._dim_y, self._dim_z
+            )
+        if not self.id:
+            raise RuntimeError("Failed to create HashGrid")
 
         # indicates whether the grid data has been reserved for use by a kernel
         self.reserved = False
+        self.groups = None
 
-    def build(self, points, radius):
+    def build(self, points, radius, groups=None):
         """Update the hash grid data structure.
 
         This method rebuilds the underlying datastructure and should be called any time the set
@@ -7666,6 +7710,13 @@ class HashGrid:
             radius (float): The cell size to use for bucketing points, cells are cubes with edges of this width.
                             For best performance the radius used to construct the grid should match closely to
                             the radius used when performing queries.
+            groups: Optional array of point group indices of data type :class:`warp.int32`.
+                When provided, the grid is partitioned by group so grouped queries only visit points with the
+                requested group id. This is intended for independent environments or worlds whose particles should not
+                interact, even when their coordinates overlap. Omitting the group argument in
+                :func:`warp.hash_grid_query` preserves the all-points traversal behavior.
+                Group ids may be arbitrary ``int32`` values and are consumed on-device, so group assignments may
+                change between rebuilds, including during CUDA graph replay.
         """
         if not types_equal(points.dtype, self._vec_type):
             raise TypeError(f"Hash grid points should have type {self._vec_type.__name__}, got {points.dtype}")
@@ -7675,12 +7726,41 @@ class HashGrid:
 
         if points.ndim > 1:
             points = points.contiguous().flatten()
+        if points.device != self.device:
+            raise RuntimeError("points must live on the same device as this HashGrid")
 
-        self._native_func("update")(self.id, self._type_id, radius, ctypes.byref(points.__ctype__()))
+        groups_arg = None
+        if groups is not None:
+            if groups.dtype != int32:
+                raise RuntimeError("groups should be an array of type wp.int32")
+            if groups.device != self.device:
+                raise RuntimeError("groups must live on the same device as this HashGrid")
+            if groups.ndim > 1:
+                groups = groups.contiguous().flatten()
+            elif not groups.is_contiguous:
+                groups = groups.contiguous()
+            if len(groups) != len(points):
+                raise RuntimeError("groups must have the same length as points")
+
+            groups_arg = ctypes.byref(groups.__ctype__())
+
+        self.groups = groups
+
+        self._native_func("update")(self.id, self._type_id, radius, ctypes.byref(points.__ctype__()), groups_arg)
         self.reserved = True
 
-    def reserve(self, num_points):
-        self._native_func("reserve")(self.id, self._type_id, num_points)
+    def reserve(self, num_points, with_groups=False):
+        """Reserve enough memory to build the grid for the given number of points.
+
+        Reserving ahead of CUDA graph capture makes subsequent :meth:`build` calls of up to
+        ``num_points`` points allocation-free, without requiring a warm-up build before capture.
+
+        Args:
+            num_points (int): Number of points the grid should accommodate.
+            with_groups (bool): Also reserve the buffers used by grouped builds, so that a
+                grouped :meth:`build` (with ``groups``) is allocation-free as well.
+        """
+        self._native_func("reserve")(self.id, self._type_id, num_points, with_groups)
         self.reserved = True
 
     def __del__(self):

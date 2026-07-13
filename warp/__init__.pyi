@@ -5670,6 +5670,32 @@ def hash_grid_query(id: uint64, point: vec3f, max_dist: float32) -> HashGridQuer
     ...
 
 @over
+def hash_grid_query(id: uint64, point: vec3f, max_dist: float32, group: int32) -> HashGridQuery:
+    """Construct a point query against a :class:`warp.HashGrid`, restricted to one point group.
+
+    Returns a query that iterates over candidate neighbors of ``point``: every point in the grid
+    cells overlapped by the box from ``point - max_dist`` to ``point + max_dist``. These are
+    *candidates* — the grid does not test distance, so some are farther than ``max_dist``; filter
+    by actual distance yourself. Advance the query and read each candidate's index with
+    :func:`hash_grid_query_next`. ``point`` must be in the same coordinate space as the points the
+    grid was built from (see :class:`warp.HashGrid`).
+
+    If the grid was built with groups, only points whose group id equals ``group`` are returned as
+    candidates; any ``int32`` value is a valid group id. Omit the ``group`` argument to visit all
+    groups, matching ungrouped behavior. Unlike grouped BVH queries, grouped hash-grid queries do
+    not require a root lookup; pass the group id directly.
+
+    Args:
+        id: The :class:`warp.HashGrid` identifier
+        point: The query point
+        max_dist: The query radius
+        group: Restrict candidates to points built with this group id
+
+    Returns:
+        A hash-grid query object to pass to :func:`hash_grid_query_next`."""
+    ...
+
+@over
 def hash_grid_query(id: uint64, point: vec3h, max_dist: float16) -> HashGridQuery:
     """Construct a point query against a :class:`warp.HashGrid` (float16 precision).
 
@@ -5686,6 +5712,28 @@ def hash_grid_query(id: uint64, point: vec3h, max_dist: float16) -> HashGridQuer
     ...
 
 @over
+def hash_grid_query(id: uint64, point: vec3h, max_dist: float16, group: int32) -> HashGridQuery:
+    """Construct a point query against a :class:`warp.HashGrid`, restricted to one point group (float16 precision).
+
+    The ``float16`` overload of :func:`hash_grid_query`. Behavior and usage match the default
+    ``float32`` overload; see it for details and a usage example.
+
+    If the grid was built with groups, only points whose group id equals ``group`` are returned as
+    candidates; any ``int32`` value is a valid group id. Omit the ``group`` argument to visit all
+    groups, matching ungrouped behavior. Unlike grouped BVH queries, grouped hash-grid queries do
+    not require a root lookup; pass the group id directly.
+
+    Args:
+        id: The :class:`warp.HashGrid` identifier
+        point: The query point
+        max_dist: The query radius
+        group: Restrict candidates to points built with this group id
+
+    Returns:
+        A hash-grid query object to pass to :func:`hash_grid_query_next`."""
+    ...
+
+@over
 def hash_grid_query(id: uint64, point: vec3d, max_dist: float64) -> HashGridQuery:
     """Construct a point query against a :class:`warp.HashGrid` (float64 precision).
 
@@ -5696,6 +5744,28 @@ def hash_grid_query(id: uint64, point: vec3d, max_dist: float64) -> HashGridQuer
         id: The :class:`warp.HashGrid` identifier
         point: The query point
         max_dist: The query radius
+
+    Returns:
+        A hash-grid query object to pass to :func:`hash_grid_query_next`."""
+    ...
+
+@over
+def hash_grid_query(id: uint64, point: vec3d, max_dist: float64, group: int32) -> HashGridQuery:
+    """Construct a point query against a :class:`warp.HashGrid`, restricted to one point group (float64 precision).
+
+    The ``float64`` overload of :func:`hash_grid_query`. Behavior and usage match the default
+    ``float32`` overload; see it for details and a usage example.
+
+    If the grid was built with groups, only points whose group id equals ``group`` are returned as
+    candidates; any ``int32`` value is a valid group id. Omit the ``group`` argument to visit all
+    groups, matching ungrouped behavior. Unlike grouped BVH queries, grouped hash-grid queries do
+    not require a root lookup; pass the group id directly.
+
+    Args:
+        id: The :class:`warp.HashGrid` identifier
+        point: The query point
+        max_dist: The query radius
+        group: Restrict candidates to points built with this group id
 
     Returns:
         A hash-grid query object to pass to :func:`hash_grid_query_next`."""

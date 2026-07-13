@@ -330,6 +330,8 @@ void segmented_sort_pairs_host(
 
 void radix_sort_reserve(void* context, int n, void** mem_out, size_t* size_out, int begin_bit, int end_bit) { }
 
+void radix_sort_reserve_u64(void* context, int n, void** mem_out, size_t* size_out, int begin_bit, int end_bit) { }
+
 void wp_radix_sort_pairs_int_device(uint64_t keys, uint64_t values, int n, int begin_bit, int end_bit, int value_size)
 {
 }

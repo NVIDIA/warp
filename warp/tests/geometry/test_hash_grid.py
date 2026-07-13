@@ -51,6 +51,47 @@ count_neighbors_f32 = wp.overload(count_neighbors, [wp.uint64, wp.float32, wp.ar
 count_neighbors_f64 = wp.overload(count_neighbors, [wp.uint64, wp.float64, wp.array[wp.vec3d], wp.array[int]])
 
 
+@wp.kernel
+def count_neighbors_grouped(
+    grid: wp.uint64,
+    radius: float,
+    points: wp.array[wp.vec3],
+    groups: wp.array[int],
+    counts: wp.array[int],
+):
+    tid = wp.tid()
+    p = points[tid]
+    group = groups[tid]
+    count = int(0)
+
+    for index in wp.hash_grid_query(grid, p, radius, group):
+        d = wp.length(p - points[index])
+        if d <= radius:
+            count += 1
+
+    counts[tid] = count
+
+
+@wp.kernel
+def count_neighbors_fixed_group(
+    grid: wp.uint64,
+    radius: float,
+    group: int,
+    points: wp.array[wp.vec3],
+    counts: wp.array[int],
+):
+    tid = wp.tid()
+    p = points[tid]
+    count = int(0)
+
+    for index in wp.hash_grid_query(grid, p, radius, group):
+        d = wp.length(p - points[index])
+        if d <= radius:
+            count += 1
+
+    counts[tid] = count
+
+
 _saved_warnings_seen = _logger_module._warnings_seen.copy()
 try:
     with warnings.catch_warnings(), contextlib.redirect_stderr(io.StringIO()):
@@ -425,6 +466,276 @@ def test_hashgrid_multiprecision(test, device):
             assert_np_equal(counts_arr.numpy(), expected_counts)
 
 
+def test_hashgrid_grouped_query(test, device):
+    points = np.array(
+        [
+            [0.0, 0.0, 0.0],
+            [0.05, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            [0.05, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+        ],
+        dtype=np.float32,
+    )
+    groups = np.array([0, 0, 1, 1, 2], dtype=np.int32)
+    radius = 0.2
+
+    points_arr = wp.array(points, dtype=wp.vec3, device=device)
+    groups_arr = wp.array(groups, dtype=int, device=device)
+    counts_grouped = wp.zeros(len(points), dtype=int, device=device)
+    counts_all = wp.zeros(len(points), dtype=int, device=device)
+    counts_missing = wp.zeros(len(points), dtype=int, device=device)
+
+    grid = wp.HashGrid(16, 16, 16, device)
+    grid.build(points_arr, radius, groups=groups_arr)
+
+    wp.launch(
+        kernel=count_neighbors_grouped,
+        dim=len(points),
+        inputs=[wp.uint64(grid.id), radius, points_arr, groups_arr, counts_grouped],
+        device=device,
+    )
+    wp.launch(
+        kernel=count_neighbors,
+        dim=len(points),
+        inputs=[wp.uint64(grid.id), radius, points_arr, counts_all],
+        device=device,
+    )
+    wp.launch(
+        kernel=count_neighbors_fixed_group,
+        dim=len(points),
+        inputs=[wp.uint64(grid.id), radius, 99, points_arr, counts_missing],
+        device=device,
+    )
+
+    assert_np_equal(counts_grouped.numpy(), np.array([2, 2, 2, 2, 1], dtype=np.int32))
+    assert_np_equal(counts_all.numpy(), np.array([4, 4, 4, 4, 1], dtype=np.int32))
+    assert_np_equal(counts_missing.numpy(), np.zeros(len(points), dtype=np.int32))
+
+
+def test_hashgrid_grouped_query_rebuild_after_in_place_groups(test, device):
+    points = np.array(
+        [
+            [0.0, 0.0, 0.0],
+            [0.05, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            [0.05, 0.0, 0.0],
+        ],
+        dtype=np.float32,
+    )
+    radius = 0.2
+
+    points_arr = wp.array(points, dtype=wp.vec3, device=device)
+    groups_arr = wp.array([0, 0, 1, 1], dtype=int, device=device)
+    counts = wp.zeros(len(points), dtype=int, device=device)
+
+    grid = wp.HashGrid(16, 16, 16, device)
+    grid.build(points_arr, radius, groups=groups_arr)
+
+    groups_arr.assign([0, 0, 5, 5])
+    grid.build(points_arr, radius, groups=groups_arr)
+
+    wp.launch(
+        kernel=count_neighbors_fixed_group,
+        dim=len(points),
+        inputs=[wp.uint64(grid.id), radius, 5, points_arr, counts],
+        device=device,
+    )
+
+    assert_np_equal(counts.numpy(), np.array([2, 2, 2, 2], dtype=np.int32))
+
+
+def test_hashgrid_grouped_query_extreme_group_ids(test, device):
+    """Every int32 value is a valid group id; no value is reserved as an all-groups sentinel."""
+    int32_min = np.iinfo(np.int32).min
+
+    # three groups with overlapping coordinates, exercising both extremes of the int32 domain
+    points = np.array(
+        [
+            [0.0, 0.0, 0.0],
+            [0.05, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            [0.05, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            [0.05, 0.0, 0.0],
+        ],
+        dtype=np.float32,
+    )
+    groups = np.array([int32_min, int32_min, -1, -1, 7, 7], dtype=np.int32)
+    radius = 0.2
+
+    points_arr = wp.array(points, dtype=wp.vec3, device=device)
+    groups_arr = wp.array(groups, dtype=int, device=device)
+    counts = wp.zeros(len(points), dtype=int, device=device)
+
+    grid = wp.HashGrid(16, 16, 16, device)
+    grid.build(points_arr, radius, groups=groups_arr)
+
+    # an explicit query for each group id returns only that group's points
+    for group_id in (int32_min, -1, 7):
+        counts.zero_()
+        wp.launch(
+            kernel=count_neighbors_fixed_group,
+            dim=len(points),
+            inputs=[wp.uint64(grid.id), radius, group_id, points_arr, counts],
+            device=device,
+        )
+        assert_np_equal(counts.numpy(), np.full(len(points), 2, dtype=np.int32))
+
+    # omitting the group argument returns points from all groups
+    counts.zero_()
+    wp.launch(
+        kernel=count_neighbors,
+        dim=len(points),
+        inputs=[wp.uint64(grid.id), radius, points_arr, counts],
+        device=device,
+    )
+    assert_np_equal(counts.numpy(), np.full(len(points), 6, dtype=np.int32))
+
+
+def test_hashgrid_grouped_many_groups(test, device):
+    """Cell storage no longer scales with the number of distinct groups."""
+    num_points = 1025
+    radius = 1.0
+
+    # all points share one spatial cell, each in its own group, stressing the in-cell group search
+    points_arr = wp.zeros(num_points, dtype=wp.vec3, device=device)
+    groups_arr = wp.array(np.arange(num_points, dtype=np.int32), dtype=int, device=device)
+    counts = wp.zeros(num_points, dtype=int, device=device)
+
+    grid = wp.HashGrid(dim_x, dim_y, dim_z, device)
+    grid.build(points_arr, radius, groups=groups_arr)
+
+    wp.launch(
+        kernel=count_neighbors_grouped,
+        dim=num_points,
+        inputs=[wp.uint64(grid.id), radius, points_arr, groups_arr, counts],
+        device=device,
+    )
+
+    assert_np_equal(counts.numpy(), np.ones(num_points, dtype=np.int32))
+
+
+def test_hashgrid_grouped_graph_capture_changing_group_ids(test, device):
+    """Group values written by captured work are honored on replay, including unseen group ids."""
+    points = np.array(
+        [
+            [0.0, 0.0, 0.0],
+            [0.05, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            [0.05, 0.0, 0.0],
+        ],
+        dtype=np.float32,
+    )
+    radius = 0.2
+
+    points_arr = wp.array(points, dtype=wp.vec3, device=device)
+    groups_arr = wp.array([0, 0, 1, 1], dtype=int, device=device)
+    groups_src = wp.array([2, 2, 2, 2], dtype=int, device=device)
+    counts_grouped = wp.zeros(len(points), dtype=int, device=device)
+    counts_all = wp.zeros(len(points), dtype=int, device=device)
+
+    grid = wp.HashGrid(16, 16, 16, device)
+
+    # warm-up build sizes the grid buffers and sort scratch before capture
+    grid.build(points_arr, radius, groups=groups_arr)
+
+    wp.load_module(device=device)
+
+    with wp.ScopedCapture(device) as capture:
+        # captured work changes the active group id set before the rebuild
+        wp.copy(groups_arr, groups_src)
+        grid.build(points_arr, radius, groups=groups_arr)
+        wp.launch(
+            kernel=count_neighbors_grouped,
+            dim=len(points),
+            inputs=[wp.uint64(grid.id), radius, points_arr, groups_arr, counts_grouped],
+            device=device,
+        )
+        wp.launch(
+            kernel=count_neighbors,
+            dim=len(points),
+            inputs=[wp.uint64(grid.id), radius, points_arr, counts_all],
+            device=device,
+        )
+
+    # replay with group ids {2}: all four points share one group
+    wp.capture_launch(capture.graph)
+    assert_np_equal(counts_grouped.numpy(), np.full(len(points), 4, dtype=np.int32))
+    assert_np_equal(counts_all.numpy(), np.full(len(points), 4, dtype=np.int32))
+
+    # replay with group ids {5, 6}, which were never seen during capture
+    groups_src.assign([5, 5, 6, 6])
+    wp.capture_launch(capture.graph)
+    assert_np_equal(counts_grouped.numpy(), np.array([2, 2, 2, 2], dtype=np.int32))
+    assert_np_equal(counts_all.numpy(), np.full(len(points), 4, dtype=np.int32))
+
+
+def test_hashgrid_grouped_graph_capture_after_reserve(test, device):
+    """reserve(with_groups=True) makes a captured grouped build work without a prior warm-up build."""
+    points = np.array(
+        [
+            [0.0, 0.0, 0.0],
+            [0.05, 0.0, 0.0],
+            [0.0, 0.0, 0.0],
+            [0.05, 0.0, 0.0],
+        ],
+        dtype=np.float32,
+    )
+    radius = 0.2
+
+    points_arr = wp.array(points, dtype=wp.vec3, device=device)
+    groups_arr = wp.array([0, 0, 1, 1], dtype=int, device=device)
+    counts = wp.zeros(len(points), dtype=int, device=device)
+
+    grid = wp.HashGrid(16, 16, 16, device)
+    grid.reserve(len(points), with_groups=True)
+
+    wp.load_module(device=device)
+
+    with wp.ScopedCapture(device) as capture:
+        grid.build(points_arr, radius, groups=groups_arr)
+        wp.launch(
+            kernel=count_neighbors_grouped,
+            dim=len(points),
+            inputs=[wp.uint64(grid.id), radius, points_arr, groups_arr, counts],
+            device=device,
+        )
+
+    wp.capture_launch(capture.graph)
+    assert_np_equal(counts.numpy(), np.array([2, 2, 2, 2], dtype=np.int32))
+
+    # group values may still change in place between replays
+    groups_arr.assign([3, 3, 3, 3])
+    wp.capture_launch(capture.graph)
+    assert_np_equal(counts.numpy(), np.full(len(points), 4, dtype=np.int32))
+
+
+def test_hashgrid_device_validation(test, device):
+    points = wp.zeros(1, dtype=wp.vec3, device=device)
+    groups = wp.zeros(1, dtype=int, device=device)
+    grid = wp.HashGrid(16, 16, 16, device)
+    grid.build(points, 1.0, groups=groups)
+
+    other_device = None
+    if wp.get_device(device).is_cuda:
+        other_device = "cpu"
+    elif cuda_devices:
+        other_device = cuda_devices[0]
+
+    if other_device is None:
+        test.skipTest("requires both CPU and CUDA devices")
+
+    other_points = wp.zeros(1, dtype=wp.vec3, device=other_device)
+    other_groups = wp.zeros(1, dtype=int, device=other_device)
+
+    with test.assertRaisesRegex(RuntimeError, "points must live on the same device"):
+        grid.build(other_points, 1.0)
+
+    with test.assertRaisesRegex(RuntimeError, "groups must live on the same device"):
+        grid.build(points, 1.0, groups=other_groups)
+
+
 def test_hashgrid_query_func_annotations(test, device):
     """Pass live hash grid queries to helper functions that choose the nearest point within a query radius."""
     points = np.array(
@@ -504,6 +815,11 @@ def test_hashgrid_build_invalid_radius(test, device):
         grid.build(points, 0.0)
     with test.assertRaises(ValueError):
         grid.build(points, -1.0)
+
+
+def test_hashgrid_cell_count_overflow(test, device):
+    with test.assertRaisesRegex(RuntimeError, "cell count exceeds supported limit"):
+        wp.HashGrid(1291, 1291, 1291, device)
 
 
 def test_hashgrid_dtype_validation(test, device):
@@ -709,6 +1025,33 @@ add_function_test(TestHashGrid, "test_hashgrid_query", test_hashgrid_query, devi
 add_function_test(TestHashGrid, "test_hashgrid_inputs", test_hashgrid_inputs, devices=devices)
 add_function_test(TestHashGrid, "test_hashgrid_multiple_streams", test_hashgrid_multiple_streams, devices=cuda_devices)
 add_function_test(TestHashGrid, "test_hashgrid_multiprecision", test_hashgrid_multiprecision, devices=devices)
+add_function_test(TestHashGrid, "test_hashgrid_grouped_query", test_hashgrid_grouped_query, devices=devices)
+add_function_test(
+    TestHashGrid,
+    "test_hashgrid_grouped_query_rebuild_after_in_place_groups",
+    test_hashgrid_grouped_query_rebuild_after_in_place_groups,
+    devices=devices,
+)
+add_function_test(
+    TestHashGrid,
+    "test_hashgrid_grouped_query_extreme_group_ids",
+    test_hashgrid_grouped_query_extreme_group_ids,
+    devices=devices,
+)
+add_function_test(TestHashGrid, "test_hashgrid_grouped_many_groups", test_hashgrid_grouped_many_groups, devices=devices)
+add_function_test(
+    TestHashGrid,
+    "test_hashgrid_grouped_graph_capture_changing_group_ids",
+    test_hashgrid_grouped_graph_capture_changing_group_ids,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestHashGrid,
+    "test_hashgrid_grouped_graph_capture_after_reserve",
+    test_hashgrid_grouped_graph_capture_after_reserve,
+    devices=cuda_devices,
+)
+add_function_test(TestHashGrid, "test_hashgrid_device_validation", test_hashgrid_device_validation, devices=devices)
 add_function_test(
     TestHashGrid, "test_hashgrid_query_func_annotations", test_hashgrid_query_func_annotations, devices=devices
 )
@@ -716,6 +1059,7 @@ add_function_test(TestHashGrid, "test_hashgrid_invalid_dtype", test_hashgrid_inv
 add_function_test(
     TestHashGrid, "test_hashgrid_build_invalid_radius", test_hashgrid_build_invalid_radius, devices=devices
 )
+add_function_test(TestHashGrid, "test_hashgrid_cell_count_overflow", test_hashgrid_cell_count_overflow, devices=devices)
 add_function_test(TestHashGrid, "test_hashgrid_dtype_validation", test_hashgrid_dtype_validation, devices=devices)
 add_function_test(TestHashGrid, "test_hashgrid_edge_cases", test_hashgrid_edge_cases, devices=devices)
 add_function_test(TestHashGrid, "test_hashgrid_negative_wrapping", test_hashgrid_negative_wrapping, devices=devices)

@@ -9195,12 +9195,40 @@ def _add_hash_grid_query_builtins(vec_type, scalar_type, query_type, precision_d
     Returns:
         A hash-grid query object to pass to :func:`hash_grid_query_next`.{example}"""
 
+    grouped_doc = f"""Construct a point query against a :class:`warp.HashGrid`, restricted to one point group{doc_suffix}.
+
+    {body}
+
+    If the grid was built with groups, only points whose group id equals ``group`` are returned as
+    candidates; any ``int32`` value is a valid group id. Omit the ``group`` argument to visit all
+    groups, matching ungrouped behavior. Unlike grouped BVH queries, grouped hash-grid queries do
+    not require a root lookup; pass the group id directly.
+
+    Args:
+        id: The :class:`warp.HashGrid` identifier
+        point: The query point
+        max_dist: The query radius
+        group: Restrict candidates to points built with this group id
+
+    Returns:
+        A hash-grid query object to pass to :func:`hash_grid_query_next`."""
+
     add_builtin(
         "hash_grid_query",
         input_types={"id": uint64, "point": vec_type, "max_dist": scalar_type},
         value_type=query_type,
         group="Geometry",
         doc=doc,
+        export=False,
+        is_differentiable=False,
+    )
+
+    add_builtin(
+        "hash_grid_query",
+        input_types={"id": uint64, "point": vec_type, "max_dist": scalar_type, "group": int},
+        value_type=query_type,
+        group="Geometry",
+        doc=grouped_doc,
         export=False,
         is_differentiable=False,
     )
