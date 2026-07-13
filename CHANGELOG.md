@@ -11,6 +11,11 @@
   ([GH-1606](https://github.com/NVIDIA/warp/issues/1606)).
 - Add `wp.quat_twist_angle_signed()` to recover the signed rotational coordinate represented by a quaternion
   ([GH-1631](https://github.com/NVIDIA/warp/issues/1631)).
+- Add grouped construction and queries to `wp.HashGrid` for multi-environment workloads via the optional
+  `groups` argument to `wp.HashGrid.build()` and an optional trailing `group` argument to `wp.hash_grid_query()`
+  that restricts traversal to points sharing the requested group id. Use
+  `wp.HashGrid.reserve(num_points, with_groups=True)` to record grouped rebuilds inside a CUDA graph without a
+  warm-up build ([GH-1579](https://github.com/NVIDIA/warp/issues/1579)).
 - Add `wp.cuda_profiler_start()`, `wp.cuda_profiler_stop()`, and the `wp.ScopedCudaProfiler` context manager to
   control CUDA profiler data collection from Python (equivalent to `cuProfilerStart`/`cuProfilerStop`) for an
   external profiler's capture range. They accept an optional `device` argument and act on that device's current CUDA

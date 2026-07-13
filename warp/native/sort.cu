@@ -63,6 +63,12 @@ void radix_sort_reserve(void* context, int n, void** mem_out, size_t* size_out, 
     radix_sort_reserve_internal<int, int>(context, n, mem_out, size_out, begin_bit, end_bit);
 }
 
+void radix_sort_reserve_u64(void* context, int n, void** mem_out, size_t* size_out, int begin_bit, int end_bit)
+{
+    // matches the key/value types used by radix_sort_pairs_device(uint64_t*, int*, ...)
+    radix_sort_reserve_internal<uint64_t, SortPayload<4>>(context, n, mem_out, size_out, begin_bit, end_bit);
+}
+
 void radix_sort_release(void* context, void* stream)
 {
     // release temporary buffer for the given stream, if it exists

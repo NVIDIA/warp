@@ -6281,8 +6281,14 @@ class Runtime:
                 ctypes.c_int,
                 ctypes.c_double,
                 ctypes.c_void_p,
+                ctypes.c_void_p,
             ]
-            self.core.wp_hash_grid_reserve_host.argtypes = [ctypes.c_uint64, ctypes.c_int, ctypes.c_int]
+            self.core.wp_hash_grid_reserve_host.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_bool,
+            ]
 
             self.core.wp_hash_grid_create_device.argtypes = [
                 ctypes.c_void_p,
@@ -6298,8 +6304,14 @@ class Runtime:
                 ctypes.c_int,
                 ctypes.c_double,
                 ctypes.c_void_p,
+                ctypes.c_void_p,
             ]
-            self.core.wp_hash_grid_reserve_device.argtypes = [ctypes.c_uint64, ctypes.c_int, ctypes.c_int]
+            self.core.wp_hash_grid_reserve_device.argtypes = [
+                ctypes.c_uint64,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_bool,
+            ]
 
             self.core.wp_volume_create_host.argtypes = [ctypes.c_void_p, ctypes.c_uint64, ctypes.c_bool, ctypes.c_bool]
             self.core.wp_volume_create_host.restype = ctypes.c_uint64

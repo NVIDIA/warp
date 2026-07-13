@@ -141,13 +141,14 @@ WP_API void wp_mesh_set_velocities_device(uint64_t id, wp::array_t<wp::vec3> vel
 // Hash grid (type: 0=float16, 1=float32, 2=float64)
 WP_API uint64_t wp_hash_grid_create_host(int type, int dim_x, int dim_y, int dim_z);
 WP_API void wp_hash_grid_destroy_host(uint64_t id, int type);
-WP_API void wp_hash_grid_update_host(uint64_t id, int type, double cell_width, const void* points);
-WP_API void wp_hash_grid_reserve_host(uint64_t id, int type, int num_points);
+WP_API void wp_hash_grid_update_host(uint64_t id, int type, double cell_width, const void* points, const void* groups);
+WP_API void wp_hash_grid_reserve_host(uint64_t id, int type, int num_points, bool with_groups);
 
 WP_API uint64_t wp_hash_grid_create_device(void* context, int type, int dim_x, int dim_y, int dim_z);
 WP_API void wp_hash_grid_destroy_device(uint64_t id, int type);
-WP_API void wp_hash_grid_update_device(uint64_t id, int type, double cell_width, const void* points);
-WP_API void wp_hash_grid_reserve_device(uint64_t id, int type, int num_points);
+WP_API void
+wp_hash_grid_update_device(uint64_t id, int type, double cell_width, const void* points, const void* groups);
+WP_API void wp_hash_grid_reserve_device(uint64_t id, int type, int num_points, bool with_groups);
 
 WP_API uint64_t wp_volume_create_host(void* buf, uint64_t size, bool copy, bool owner);
 WP_API void wp_volume_get_tiles_host(uint64_t id, void* buf);

@@ -10,6 +10,9 @@
 void radix_sort_reserve(
     void* context, int n, void** mem_out = NULL, size_t* size_out = NULL, int begin_bit = 0, int end_bit = 32
 );
+void radix_sort_reserve_u64(
+    void* context, int n, void** mem_out = NULL, size_t* size_out = NULL, int begin_bit = 0, int end_bit = 64
+);
 void radix_sort_release(void* context, void* stream);
 
 void radix_sort_pairs_host(int* keys, int* values, int n, int begin_bit = 0, int end_bit = 32);
