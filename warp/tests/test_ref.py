@@ -374,6 +374,122 @@ def test_ref_forwarding(test, device):
     np.testing.assert_array_equal(result.numpy(), [1])
 
 
+@wp.func
+def store_pair_ref(x: wp.ref[wp.float32], y: wp.ref[wp.float32], a: wp.float32, b: wp.float32):
+    x, y = a, b  # tuple-unpack assignment to ref params must mutate caller storage (GH-1581)
+
+
+@wp.func
+def swap_pair_ref(x: wp.ref[wp.float32], y: wp.ref[wp.float32]):
+    x, y = y, x  # RHS values must be loaded before either ref target is stored
+
+
+@wp.func
+def ref_tuple_local_first(x: wp.ref[wp.float32]) -> wp.float32:
+    old, x = x, wp.float32(2.0)
+    return old
+
+
+@wp.func
+def ref_tuple_ref_first(x: wp.ref[wp.float32]) -> wp.float32:
+    x, old = wp.float32(1.0), x
+    return old
+
+
+@wp.func
+def ref_tuple_existing_local(x: wp.ref[wp.float32]) -> wp.float32:
+    old = wp.float32(0.0)
+    old, x = x, wp.float32(2.0)
+    return old
+
+
+@wp.kernel(enable_backward=False)
+def kernel_ref_tuple_unpack(out: wp.array[wp.float32]):
+    x = wp.float32(0.0)
+    y = wp.float32(0.0)
+    store_pair_ref(x, y, wp.float32(3.0), wp.float32(4.0))
+    out[0] = x
+    out[1] = y
+
+
+@wp.kernel(enable_backward=False)
+def kernel_ref_tuple_unpack_swap(out: wp.array[wp.float32]):
+    x = wp.float32(3.0)
+    y = wp.float32(4.0)
+    swap_pair_ref(x, y)
+    out[0] = x
+    out[1] = y
+
+
+@wp.kernel(enable_backward=False)
+def kernel_ref_tuple_unpack_mixed_targets(out: wp.array[wp.float32]):
+    x = wp.float32(9.0)
+    out[0] = ref_tuple_local_first(x)
+    out[1] = x
+
+    y = wp.float32(7.0)
+    out[2] = ref_tuple_ref_first(y)
+    out[3] = y
+
+    z = wp.float32(9.0)
+    out[4] = ref_tuple_existing_local(z)
+    out[5] = z
+
+
+def test_ref_tuple_unpack_assignment(test, device):
+    """Tuple-unpack assignment to wp.ref[T] parameters mutates caller storage (GH-1581)."""
+    out = wp.zeros(2, dtype=wp.float32, device=device)
+    wp.launch(kernel_ref_tuple_unpack, dim=1, outputs=[out], device=device)
+    np.testing.assert_allclose(out.numpy(), [3.0, 4.0])
+
+
+def test_ref_tuple_unpack_assignment_swaps(test, device):
+    """Tuple-unpack assignment to wp.ref[T] parameters preserves RHS value order."""
+    out = wp.zeros(2, dtype=wp.float32, device=device)
+    wp.launch(kernel_ref_tuple_unpack_swap, dim=1, outputs=[out], device=device)
+    np.testing.assert_allclose(out.numpy(), [4.0, 3.0])
+
+
+def test_ref_tuple_unpack_assignment_mixed_targets(test, device):
+    """Tuple-unpack assignment snapshots ref RHS values before binding any target."""
+    out = wp.zeros(6, dtype=wp.float32, device=device)
+    wp.launch(kernel_ref_tuple_unpack_mixed_targets, dim=1, outputs=[out], device=device)
+    np.testing.assert_allclose(out.numpy(), [9.0, 2.0, 7.0, 1.0, 9.0, 2.0])
+
+
+@wp.kernel
+def kernel_array_tuple_unpack_adjoint(
+    a: wp.array[wp.float32],
+    b: wp.array[wp.float32],
+    out: wp.array[wp.float32],
+):
+    tid = wp.tid()
+    ai, bi = a[tid], b[tid]  # ordinary array-element unpack / must keep ref semantics for adjoint
+    out[tid] = ai * bi
+
+
+def test_array_tuple_unpack_preserves_adjoint(test, device):
+    """Ordinary array-element tuple unpack must preserve reference semantics for autodiff.
+
+    The tuple-unpack snapshot must NOT load array-element RHS values into
+    plain copies when no target is a wp.ref[T] parameter, or the adjoint
+    graph is severed and gradients are silently wrong.
+    """
+    a = wp.array([2.0, 3.0], dtype=wp.float32, device=device, requires_grad=True)
+    b = wp.array([4.0, 5.0], dtype=wp.float32, device=device, requires_grad=True)
+    out = wp.zeros(2, dtype=wp.float32, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(kernel_array_tuple_unpack_adjoint, dim=2, inputs=[a, b], outputs=[out], device=device)
+
+    out_grad = wp.ones(2, dtype=wp.float32, device=device)
+    tape.backward(grads={out: out_grad})
+    # d(a[i]*b[i])/da[i] = b[i], d/db[i] = a[i]
+    np.testing.assert_allclose(a.grad.numpy(), b.numpy())
+    np.testing.assert_allclose(b.grad.numpy(), a.numpy())
+
+
 @wp.func_native(
     "x = x + 5;",
 )
@@ -1000,6 +1116,24 @@ add_function_test(
     TestRef, func=test_ref_simple_assignment_mutates, name="test_ref_simple_assignment_mutates", devices=devices
 )
 add_function_test(TestRef, func=test_ref_forwarding, name="test_ref_forwarding", devices=devices)
+add_function_test(
+    TestRef, func=test_ref_tuple_unpack_assignment, name="test_ref_tuple_unpack_assignment", devices=devices
+)
+add_function_test(
+    TestRef, func=test_ref_tuple_unpack_assignment_swaps, name="test_ref_tuple_unpack_assignment_swaps", devices=devices
+)
+add_function_test(
+    TestRef,
+    func=test_ref_tuple_unpack_assignment_mixed_targets,
+    name="test_ref_tuple_unpack_assignment_mixed_targets",
+    devices=devices,
+)
+add_function_test(
+    TestRef,
+    func=test_array_tuple_unpack_preserves_adjoint,
+    name="test_array_tuple_unpack_preserves_adjoint",
+    devices=devices,
+)
 add_function_test(TestRef, func=test_native_ref_param_alias, name="test_native_ref_param_alias", devices=["cpu"])
 add_function_test(
     TestRef, func=test_native_ref_param_adjoint_local, name="test_native_ref_param_adjoint_local", devices=devices

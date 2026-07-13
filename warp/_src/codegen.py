@@ -4256,6 +4256,23 @@ class Adjoint:
         step = 1 if node.step is None else adj.eval(node.step)
         return adj.add_builtin_call("slice", (start, stop, step))
 
+    def store_ref_param_value(adj, name, value, *, augmented=False):
+        ref_var = adj.ref_params[name]
+        value = adj.load(value)
+        value_type = value.type if isinstance(value, Var) else None
+        if value_type is not None and not types_equal(value_type, ref_var.type.value_type):
+            if augmented:
+                raise WarpCodegenTypeError(
+                    f"Error, augmented assignment to ref parameter `{name}` ({ref_var.type.value_type}) "
+                    f"produces different type ({value_type})"
+                )
+            raise WarpCodegenTypeError(
+                f"Error, assigning to ref parameter '{name}' ({ref_var.type.value_type}) "
+                f"with value of different type ({value_type})"
+            )
+
+        adj.add_forward(f"*{ref_var.emit()} = {value.emit()};")
+
     def emit_Assign(adj, node):
         if len(node.targets) != 1:
             raise WarpCodegenError("Assigning the same value to multiple variables is not supported")
@@ -4309,8 +4326,25 @@ class Adjoint:
                     f"Multiple return functions need to receive all their output values, incorrect number of values to unpack (expected {len(rhs)}, got {len(names)})"
                 )
 
-            out = rhs
+            if any(name in adj.ref_params for name in names):
+                # Snapshot reference-valued RHS entries before binding or
+                # storing any ref target so tuple assignment keeps its
+                # simultaneous semantics, e.g. `old, x = x, 2.0`.
+                out = tuple(
+                    adj.load(value) if isinstance(value, Var) and is_reference(value.type) else value for value in rhs
+                )
+            else:
+                out = rhs
+
             for name, rhs in zip(names, out, strict=True):
+                # A tuple-unpack target that is a wp.ref[T] parameter mutates
+                # the referenced storage in place, like a scalar `name = rhs`
+                # assignment, rather than rebinding the symbol to a value of a
+                # different type (the parameter's type is Reference(T), not T).
+                if name in adj.ref_params:
+                    adj.store_ref_param_value(name, rhs)
+                    continue
+
                 if name in adj.symbols:
                     if isinstance(adj.symbols[name], warp._src.context.GradWrapper):
                         raise WarpCodegenError(
@@ -4354,16 +4388,7 @@ class Adjoint:
             # If this name is a wp.ref[T] parameter, emit a direct mutation
             # of the referenced storage rather than creating a new SSA variable.
             if name in adj.ref_params:
-                ref_var = adj.ref_params[name]
-                rhs = adj.load(rhs)
-                # Type-check: rhs must be T (the referent type).
-                rhs_type = rhs.type if isinstance(rhs, Var) else None
-                if rhs_type is not None and not types_equal(rhs_type, ref_var.type.value_type):
-                    raise WarpCodegenTypeError(
-                        f"Error, assigning to ref parameter '{name}' ({ref_var.type.value_type}) "
-                        f"with value of different type ({rhs_type})"
-                    )
-                adj.add_forward(f"*{ref_var.emit()} = {rhs.emit()};")
+                adj.store_ref_param_value(name, rhs)
                 return
 
             # handle GradWrapper specially - just store it in symbols for later use
@@ -4930,15 +4955,6 @@ class Adjoint:
             # Check for user-defined operator overloads first (same as emit_BinOp).
             op_name = builtin_operators[type(node.op)]
 
-            def store_ref_param_result(result):
-                ref_var = adj.ref_params[lhs.id]
-                if not types_equal(result.type, ref_var.type.value_type):
-                    raise WarpCodegenTypeError(
-                        f"Error, augmented assignment to ref parameter `{lhs.id}` ({ref_var.type.value_type}) "
-                        f"produces different type ({result.type})"
-                    )
-                adj.add_forward(f"*{ref_var.emit()} = {result.emit()};")
-
             try:
                 user_func = adj.resolve_external_reference(op_name)
                 if isinstance(user_func, warp._src.context.Function):
@@ -4948,7 +4964,7 @@ class Adjoint:
             else:
                 if isinstance(user_func, warp._src.context.Function):
                     if lhs.id in adj.ref_params:
-                        store_ref_param_result(result)
+                        adj.store_ref_param_value(lhs.id, result, augmented=True)
                     else:
                         adj.symbols[lhs.id] = result
                     return
@@ -4957,7 +4973,7 @@ class Adjoint:
 
             if lhs.id in adj.ref_params:
                 # Write the computed result back into the referenced storage.
-                store_ref_param_result(result)
+                adj.store_ref_param_value(lhs.id, result, augmented=True)
             else:
                 # Validate type consistency (same as emit_Assign for Name targets).
                 if lhs.id in adj.symbols:
