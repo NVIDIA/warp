@@ -4,16 +4,12 @@
 .. currentmodule:: warp.fem
 
 .. autoclass:: CellBasedGeometryPartition
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~CellBasedGeometryPartition.__init__
       ~CellBasedGeometryPartition.boundary_side_count
       ~CellBasedGeometryPartition.cell_arg_value
       ~CellBasedGeometryPartition.cell_count
@@ -27,7 +23,6 @@
       ~CellBasedGeometryPartition.side_count
    
    
-
    
    
    .. rubric:: Attributes

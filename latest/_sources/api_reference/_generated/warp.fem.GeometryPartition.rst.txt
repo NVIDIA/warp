@@ -4,16 +4,12 @@
 .. currentmodule:: warp.fem
 
 .. autoclass:: GeometryPartition
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~GeometryPartition.__init__
       ~GeometryPartition.boundary_side_count
       ~GeometryPartition.boundary_side_index
       ~GeometryPartition.cell_arg_value
@@ -29,7 +25,6 @@
       ~GeometryPartition.side_index
    
    
-
    
    
    .. rubric:: Attributes

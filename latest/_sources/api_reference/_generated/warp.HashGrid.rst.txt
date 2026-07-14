@@ -4,21 +4,16 @@
 .. currentmodule:: warp
 
 .. autoclass:: HashGrid
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~HashGrid.__init__
       ~HashGrid.build
       ~HashGrid.reserve
    
    
-
    
    
    

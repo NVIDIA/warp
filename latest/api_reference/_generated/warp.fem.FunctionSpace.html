@@ -28,8 +28,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
-<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+  <link href="../../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
@@ -37,26 +37,27 @@
     <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=3d681599" />
   
   <!-- So that users can add custom icons -->
-  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <script defer src="../../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
-<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
 
 
 
     <script src="../../_static/documentation_options.js?v=4ae37cce"></script>
-    <script src="../../_static/doctools.js?v=9bcbadda"></script>
-    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.fem.FunctionSpace';</script>
     <script>
-        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
         DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'latest';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
 
     <link rel="icon" href="../../_static/favicon.png"/>
 
@@ -69,25 +70,31 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="1.16.0.dev0" />
+  
+    
+    <script src="../../_static/searchtools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script src="../../searchindex.js"></script>
+  
 
 
   </head>
 
-  
-  
-  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+  <body data-default-mode="">
+
 
   
   
   <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
-
 
   
   <div id="pst-scroll-pixel-helper"></div>
   
   <button type="button" class="btn rounded-pill" id="pst-back-to-top">
     <i class="fa-solid fa-arrow-up"></i>Back to top</button>
-
+  
+  
+  
   
   <dialog id="pst-search-dialog">
     
@@ -113,7 +120,7 @@
 </div>
 
   
-    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
 <div class="bd-header__inner bd-page-width">
   <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
     <span class="fa-solid fa-bars"></span>
@@ -193,11 +200,18 @@
       
         <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
       
         <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -210,8 +224,7 @@
           
           
           
-          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -222,8 +235,7 @@
           
           
           
-          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
       
@@ -326,11 +338,18 @@
         
           <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
         
           <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -343,8 +362,7 @@
           
           
           
-          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -355,8 +373,7 @@
           
           
           
-          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
         
@@ -497,7 +514,7 @@
 <h1>warp.fem.FunctionSpace<a class="headerlink" href="#warp-fem-functionspace" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.fem.FunctionSpace">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">FunctionSpace</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">basis</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L16-L221"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">FunctionSpace</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">basis</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L16-L221"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace" title="Link to this definition">#</a></dt>
 <dd><p>Interface class for function spaces, i.e. geometry + interpolation basis.</p>
 <dl class="simple">
 <dt>The value of a function <code class="docutils literal notranslate"><span class="pre">f</span></code> at a position <code class="docutils literal notranslate"><span class="pre">x</span></code> is generally computed as</dt><dd><p><code class="docutils literal notranslate"><span class="pre">f(x)</span> <span class="pre">=</span> <span class="pre">L(x)[sum_i</span> <span class="pre">f_i</span> <span class="pre">N_i(x)]</span></code></p>
@@ -509,64 +526,46 @@
 </ul>
 </dd>
 </dl>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>basis</strong> (<a class="reference internal" href="warp.fem.BasisSpace.html#warp.fem.BasisSpace" title="warp.fem.BasisSpace"><em>BasisSpace</em></a>)</p>
-</dd>
-</dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="warp.fem.FunctionSpace.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">basis</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L48-L59"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace.__init__" title="Link to this definition">#</a></dt>
-<dd><dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>basis</strong> (<a class="reference internal" href="warp.fem.BasisSpace.html#warp.fem.BasisSpace" title="warp._src.fem.space.basis_space.BasisSpace"><em>BasisSpace</em></a>)</p>
-</dd>
-</dl>
-</dd></dl>
-
 <p class="rubric">Methods</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.FunctionSpace.__init__" title="warp.fem.FunctionSpace.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(basis)</p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.FunctionSpace.divergence_valid" title="warp.fem.FunctionSpace.divergence_valid"><code class="xref py py-obj docutils literal notranslate"><span class="pre">divergence_valid</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.FunctionSpace.divergence_valid" title="warp.fem.FunctionSpace.divergence_valid"><code class="xref py py-obj docutils literal notranslate"><span class="pre">divergence_valid</span></code></a>()</p></td>
 <td><p>Whether divergence of this field can be computed.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.FunctionSpace.dof_value" title="warp.fem.FunctionSpace.dof_value"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dof_value</span></code></a>(space_value, node_weight, ...)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.FunctionSpace.dof_value" title="warp.fem.FunctionSpace.dof_value"><code class="xref py py-obj docutils literal notranslate"><span class="pre">dof_value</span></code></a>(space_value, node_weight, ...)</p></td>
 <td><p>Compute the projection of a world-space value onto the basis of a single degree of freedom.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.FunctionSpace.gradient_valid" title="warp.fem.FunctionSpace.gradient_valid"><code class="xref py py-obj docutils literal notranslate"><span class="pre">gradient_valid</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.FunctionSpace.gradient_valid" title="warp.fem.FunctionSpace.gradient_valid"><code class="xref py py-obj docutils literal notranslate"><span class="pre">gradient_valid</span></code></a>()</p></td>
 <td><p>Whether gradient operator can be computed.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.FunctionSpace.local_value_map_inner" title="warp.fem.FunctionSpace.local_value_map_inner"><code class="xref py py-obj docutils literal notranslate"><span class="pre">local_value_map_inner</span></code></a>(elt_arg, ...)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.FunctionSpace.local_value_map_inner" title="warp.fem.FunctionSpace.local_value_map_inner"><code class="xref py py-obj docutils literal notranslate"><span class="pre">local_value_map_inner</span></code></a>(elt_arg, ...)</p></td>
 <td><p>Build the local value map transforming from node to world space.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.FunctionSpace.local_value_map_outer" title="warp.fem.FunctionSpace.local_value_map_outer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">local_value_map_outer</span></code></a>(elt_arg, ...)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.FunctionSpace.local_value_map_outer" title="warp.fem.FunctionSpace.local_value_map_outer"><code class="xref py py-obj docutils literal notranslate"><span class="pre">local_value_map_outer</span></code></a>(elt_arg, ...)</p></td>
 <td><p>Build the local value map transforming vector-valued from node to world space.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.FunctionSpace.make_field" title="warp.fem.FunctionSpace.make_field"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_field</span></code></a>([space_partition])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.FunctionSpace.make_field" title="warp.fem.FunctionSpace.make_field"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_field</span></code></a>([space_partition])</p></td>
 <td><p>Create a zero-initialized discrete field over the function space holding values for all degrees of freedom of nodes in a space partition.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.FunctionSpace.node_basis_element" title="warp.fem.FunctionSpace.node_basis_element"><code class="xref py py-obj docutils literal notranslate"><span class="pre">node_basis_element</span></code></a>(dof_coord)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.FunctionSpace.node_basis_element" title="warp.fem.FunctionSpace.node_basis_element"><code class="xref py py-obj docutils literal notranslate"><span class="pre">node_basis_element</span></code></a>(dof_coord)</p></td>
 <td><p>Basis element for node degrees of freedom.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.FunctionSpace.node_count" title="warp.fem.FunctionSpace.node_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">node_count</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.FunctionSpace.node_count" title="warp.fem.FunctionSpace.node_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">node_count</span></code></a>()</p></td>
 <td><p>Number of nodes in the interpolation basis.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.FunctionSpace.space_divergence" title="warp.fem.FunctionSpace.space_divergence"><code class="xref py py-obj docutils literal notranslate"><span class="pre">space_divergence</span></code></a>(dof_value, ...)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.FunctionSpace.space_divergence" title="warp.fem.FunctionSpace.space_divergence"><code class="xref py py-obj docutils literal notranslate"><span class="pre">space_divergence</span></code></a>(dof_value, ...)</p></td>
 <td><p>Assemble the world-space divergence of the function space.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.FunctionSpace.space_gradient" title="warp.fem.FunctionSpace.space_gradient"><code class="xref py py-obj docutils literal notranslate"><span class="pre">space_gradient</span></code></a>(dof_value, ...)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.FunctionSpace.space_gradient" title="warp.fem.FunctionSpace.space_gradient"><code class="xref py py-obj docutils literal notranslate"><span class="pre">space_gradient</span></code></a>(dof_value, ...)</p></td>
 <td><p>Assemble the world-space gradient of the function space.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.FunctionSpace.space_value" title="warp.fem.FunctionSpace.space_value"><code class="xref py py-obj docutils literal notranslate"><span class="pre">space_value</span></code></a>(dof_value, node_weight, ...)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.FunctionSpace.space_value" title="warp.fem.FunctionSpace.space_value"><code class="xref py py-obj docutils literal notranslate"><span class="pre">space_value</span></code></a>(dof_value, node_weight, ...)</p></td>
 <td><p>Assemble the world-space value of the function space.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.FunctionSpace.trace" title="warp.fem.FunctionSpace.trace"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trace</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.FunctionSpace.trace" title="warp.fem.FunctionSpace.trace"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trace</span></code></a>()</p></td>
 <td><p>Trace of the function space over lower-dimensional elements of the geometry.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.FunctionSpace.value_basis_element" title="warp.fem.FunctionSpace.value_basis_element"><code class="xref py py-obj docutils literal notranslate"><span class="pre">value_basis_element</span></code></a>(dof_coord)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.FunctionSpace.value_basis_element" title="warp.fem.FunctionSpace.value_basis_element"><code class="xref py py-obj docutils literal notranslate"><span class="pre">value_basis_element</span></code></a>(dof_coord)</p></td>
 <td><p>Basis element for the function space values.</p></td>
 </tr>
 </tbody>
@@ -620,45 +619,50 @@
 </tbody>
 </table>
 </div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>basis</strong> (<a class="reference internal" href="warp.fem.BasisSpace.html#warp.fem.BasisSpace" title="warp.fem.BasisSpace"><em>BasisSpace</em></a>)</p>
+</dd>
+</dl>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.FunctionSpace.dtype">
-<span class="sig-name descname"><span class="pre">dtype</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a></em><a class="headerlink" href="#warp.fem.FunctionSpace.dtype" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">dtype</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a></span><a class="headerlink" href="#warp.fem.FunctionSpace.dtype" title="Link to this definition">#</a></dt>
 <dd><p>Value type of the interpolation functions.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.FunctionSpace.dof_dtype">
-<span class="sig-name descname"><span class="pre">dof_dtype</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a></em><a class="headerlink" href="#warp.fem.FunctionSpace.dof_dtype" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">dof_dtype</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a></span><a class="headerlink" href="#warp.fem.FunctionSpace.dof_dtype" title="Link to this definition">#</a></dt>
 <dd><p>Data type of the degrees of freedom of each node.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.FunctionSpace.weight_dtype">
-<span class="sig-name descname"><span class="pre">weight_dtype</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a></em><a class="headerlink" href="#warp.fem.FunctionSpace.weight_dtype" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">weight_dtype</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a></span><a class="headerlink" href="#warp.fem.FunctionSpace.weight_dtype" title="Link to this definition">#</a></dt>
 <dd><p>Data type of the shape functions associated to each node.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.FunctionSpace.LocalValueMap">
-<span class="sig-name descname"><span class="pre">LocalValueMap</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a></em><a class="headerlink" href="#warp.fem.FunctionSpace.LocalValueMap" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">LocalValueMap</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a></span><a class="headerlink" href="#warp.fem.FunctionSpace.LocalValueMap" title="Link to this definition">#</a></dt>
 <dd><p>Type of the local map for transforming vector-valued functions from reference to world space.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.FunctionSpace.VALUE_DOF_COUNT">
-<span class="sig-name descname"><span class="pre">VALUE_DOF_COUNT</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#warp.fem.FunctionSpace.VALUE_DOF_COUNT" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">VALUE_DOF_COUNT</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><a class="headerlink" href="#warp.fem.FunctionSpace.VALUE_DOF_COUNT" title="Link to this definition">#</a></dt>
 <dd><p>Number of degrees of freedom per value, as a Warp constant.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.FunctionSpace.NODE_DOF_COUNT">
-<span class="sig-name descname"><span class="pre">NODE_DOF_COUNT</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#warp.fem.FunctionSpace.NODE_DOF_COUNT" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">NODE_DOF_COUNT</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><a class="headerlink" href="#warp.fem.FunctionSpace.NODE_DOF_COUNT" title="Link to this definition">#</a></dt>
 <dd><p>Number of degrees of freedom per node, as a Warp constant.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.FunctionSpace.ORDER">
-<span class="sig-name descname"><span class="pre">ORDER</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#warp.fem.FunctionSpace.ORDER" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">ORDER</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><a class="headerlink" href="#warp.fem.FunctionSpace.ORDER" title="Link to this definition">#</a></dt>
 <dd><p>Polynomial degree of the function space, used to determine integration order.</p>
 </dd></dl>
 
@@ -675,43 +679,43 @@
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.FunctionSpace.topology">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">topology</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.fem.SpaceTopology.html#warp.fem.SpaceTopology" title="warp._src.fem.space.topology.SpaceTopology"><span class="pre">SpaceTopology</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L64-L68"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace.topology" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">topology</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.fem.SpaceTopology.html#warp.fem.SpaceTopology" title="warp._src.fem.space.topology.SpaceTopology"><span class="pre">SpaceTopology</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L64-L68"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace.topology" title="Link to this definition">#</a></dt>
 <dd><p>Underlying geometry.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.FunctionSpace.basis">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">basis</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.fem.BasisSpace.html#warp.fem.BasisSpace" title="warp._src.fem.space.basis_space.BasisSpace"><span class="pre">BasisSpace</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L69-L73"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace.basis" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">basis</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.fem.BasisSpace.html#warp.fem.BasisSpace" title="warp._src.fem.space.basis_space.BasisSpace"><span class="pre">BasisSpace</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L69-L73"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace.basis" title="Link to this definition">#</a></dt>
 <dd><p>Underlying basis space.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.FunctionSpace.geometry">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">geometry</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.fem.Geometry.html#warp.fem.Geometry" title="warp._src.fem.geometry.geometry.Geometry"><span class="pre">Geometry</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L74-L78"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace.geometry" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">geometry</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.fem.Geometry.html#warp.fem.Geometry" title="warp._src.fem.geometry.geometry.Geometry"><span class="pre">Geometry</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L74-L78"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace.geometry" title="Link to this definition">#</a></dt>
 <dd><p>Underlying geometry.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.FunctionSpace.element_kind">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">element_kind</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.fem.ElementKind.html#warp.fem.ElementKind" title="warp._src.fem.types.ElementKind"><span class="pre">ElementKind</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L79-L83"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace.element_kind" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">element_kind</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.fem.ElementKind.html#warp.fem.ElementKind" title="warp._src.fem.types.ElementKind"><span class="pre">ElementKind</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L79-L83"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace.element_kind" title="Link to this definition">#</a></dt>
 <dd><p>Kind of element the function space is expressed over.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.FunctionSpace.dimension">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dimension</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L84-L88"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace.dimension" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">dimension</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L84-L88"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace.dimension" title="Link to this definition">#</a></dt>
 <dd><p>Function space embedding dimension.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.FunctionSpace.degree">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">degree</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L89-L93"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace.degree" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">degree</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L89-L93"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace.degree" title="Link to this definition">#</a></dt>
 <dd><p>Maximum polynomial degree of the underlying basis.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.FunctionSpace.name">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">name</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L94-L97"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace.name" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">name</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L94-L97"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace.name" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -761,7 +765,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.FunctionSpace.node_basis_element">
-<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">node_basis_element</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dof_coord</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L128-L135"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace.node_basis_element" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">node_basis_element</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dof_coord</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L128-L135"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace.node_basis_element" title="Link to this definition">#</a></dt>
 <dd><p>Basis element for node degrees of freedom.</p>
 <p>Assumes 0 &lt;= dof_coord &lt; NODE_DOF_COUNT</p>
 <dl class="field-list simple">
@@ -773,7 +777,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.FunctionSpace.value_basis_element">
-<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">value_basis_element</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dof_coord</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L136-L143"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace.value_basis_element" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">value_basis_element</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dof_coord</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L136-L143"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace.value_basis_element" title="Link to this definition">#</a></dt>
 <dd><p>Basis element for the function space values.</p>
 <p>Assumes 0 &lt;= dof_coord &lt; VALUE_DOF_COUNT.</p>
 <dl class="field-list simple">
@@ -785,14 +789,14 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.FunctionSpace.local_value_map_inner">
-<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">local_value_map_inner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">elt_arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">element_index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coords</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L144-L152"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace.local_value_map_inner" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">local_value_map_inner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">elt_arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">element_index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coords</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L144-L152"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace.local_value_map_inner" title="Link to this definition">#</a></dt>
 <dd><p>Build the local value map transforming from node to world space.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>elt_arg</strong> (<em>SpaceTopology.ElementArg</em>)</p></li>
-<li><p><strong>element_index</strong> (<em>ElementIndex</em>)</p></li>
-<li><p><strong>coords</strong> (<em>Coords</em>)</p></li>
+<li><p><strong>elt_arg</strong> (<a class="reference internal" href="warp.fem.SpaceTopology.html#warp.fem.SpaceTopology.ElementArg" title="warp.fem.SpaceTopology.ElementArg"><em>SpaceTopology.ElementArg</em></a>)</p></li>
+<li><p><strong>element_index</strong> (<a class="reference internal" href="warp.fem.ElementIndex.html#warp.fem.ElementIndex" title="warp.fem.ElementIndex"><em>ElementIndex</em></a>)</p></li>
+<li><p><strong>coords</strong> (<a class="reference internal" href="warp.fem.Coords.html#warp.fem.Coords" title="warp.fem.Coords"><em>Coords</em></a>)</p></li>
 </ul>
 </dd>
 </dl>
@@ -800,14 +804,14 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.FunctionSpace.local_value_map_outer">
-<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">local_value_map_outer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">elt_arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">element_index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coords</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L153-L161"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace.local_value_map_outer" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">local_value_map_outer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">elt_arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">element_index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">coords</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L153-L161"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace.local_value_map_outer" title="Link to this definition">#</a></dt>
 <dd><p>Build the local value map transforming vector-valued from node to world space.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>elt_arg</strong> (<em>SpaceTopology.ElementArg</em>)</p></li>
-<li><p><strong>element_index</strong> (<em>ElementIndex</em>)</p></li>
-<li><p><strong>coords</strong> (<em>Coords</em>)</p></li>
+<li><p><strong>elt_arg</strong> (<a class="reference internal" href="warp.fem.SpaceTopology.html#warp.fem.SpaceTopology.ElementArg" title="warp.fem.SpaceTopology.ElementArg"><em>SpaceTopology.ElementArg</em></a>)</p></li>
+<li><p><strong>element_index</strong> (<a class="reference internal" href="warp.fem.ElementIndex.html#warp.fem.ElementIndex" title="warp.fem.ElementIndex"><em>ElementIndex</em></a>)</p></li>
+<li><p><strong>coords</strong> (<a class="reference internal" href="warp.fem.Coords.html#warp.fem.Coords" title="warp.fem.Coords"><em>Coords</em></a>)</p></li>
 </ul>
 </dd>
 </dl>
@@ -815,14 +819,14 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.FunctionSpace.space_value">
-<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">space_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dof_value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">node_weight</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">local_value_map</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L162-L176"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace.space_value" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">space_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dof_value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">node_weight</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">local_value_map</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L162-L176"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace.space_value" title="Link to this definition">#</a></dt>
 <dd><p>Assemble the world-space value of the function space.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>dof_value</strong> (<em>FunctionSpace.dof_dtype</em>) – Node value in the degrees-of-freedom basis.</p></li>
-<li><p><strong>node_weight</strong> (<em>FunctionSpace.weight_dtype</em>) – Weight associated to the node, as given per the basis space.</p></li>
-<li><p><strong>local_value_map</strong> (<em>FunctionSpace.LocalValueMap</em>) – Data encoding local transformation from node space to world space, as given per <code class="docutils literal notranslate"><span class="pre">local_map_value_(inn|out)er</span></code>.</p></li>
+<li><p><strong>dof_value</strong> (<a class="reference internal" href="#warp.fem.FunctionSpace.dof_dtype" title="warp.fem.FunctionSpace.dof_dtype"><em>FunctionSpace.dof_dtype</em></a>) – Node value in the degrees-of-freedom basis.</p></li>
+<li><p><strong>node_weight</strong> (<a class="reference internal" href="#warp.fem.FunctionSpace.weight_dtype" title="warp.fem.FunctionSpace.weight_dtype"><em>FunctionSpace.weight_dtype</em></a>) – Weight associated to the node, as given per the basis space.</p></li>
+<li><p><strong>local_value_map</strong> (<a class="reference internal" href="#warp.fem.FunctionSpace.LocalValueMap" title="warp.fem.FunctionSpace.LocalValueMap"><em>FunctionSpace.LocalValueMap</em></a>) – Data encoding local transformation from node space to world space, as given per <code class="docutils literal notranslate"><span class="pre">local_map_value_(inn|out)er</span></code>.</p></li>
 </ul>
 </dd>
 </dl>
@@ -830,7 +834,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.FunctionSpace.space_gradient">
-<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">space_gradient</span></span><span class="sig-paren">(</span>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">space_gradient</span></span><span class="sig-paren">(</span>
 
 <dl>
 <dd><em class="sig-param"><span class="n"><span class="pre">dof_value</span></span></em>,</dd>
@@ -843,9 +847,9 @@
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>dof_value</strong> (<em>FunctionSpace.dof_dtype</em>) – Node value in the degrees-of-freedom basis.</p></li>
+<li><p><strong>dof_value</strong> (<a class="reference internal" href="#warp.fem.FunctionSpace.dof_dtype" title="warp.fem.FunctionSpace.dof_dtype"><em>FunctionSpace.dof_dtype</em></a>) – Node value in the degrees-of-freedom basis.</p></li>
 <li><p><strong>node_weight_gradient</strong> (<em>Any</em>) – Gradient of the weight associated to the node, either w.r.t element or world space.</p></li>
-<li><p><strong>local_value_map</strong> (<em>FunctionSpace.LocalValueMap</em>) – Data encoding local transformation from node space to world space, as given per <code class="docutils literal notranslate"><span class="pre">local_map_value_(inn|out)er</span></code>.</p></li>
+<li><p><strong>local_value_map</strong> (<a class="reference internal" href="#warp.fem.FunctionSpace.LocalValueMap" title="warp.fem.FunctionSpace.LocalValueMap"><em>FunctionSpace.LocalValueMap</em></a>) – Data encoding local transformation from node space to world space, as given per <code class="docutils literal notranslate"><span class="pre">local_map_value_(inn|out)er</span></code>.</p></li>
 </ul>
 </dd>
 </dl>
@@ -853,7 +857,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.FunctionSpace.space_divergence">
-<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">space_divergence</span></span><span class="sig-paren">(</span>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">space_divergence</span></span><span class="sig-paren">(</span>
 
 <dl>
 <dd><em class="sig-param"><span class="n"><span class="pre">dof_value</span></span></em>,</dd>
@@ -866,9 +870,9 @@
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>dof_value</strong> (<em>FunctionSpace.dof_dtype</em>) – Node value in the degrees-of-freedom basis.</p></li>
+<li><p><strong>dof_value</strong> (<a class="reference internal" href="#warp.fem.FunctionSpace.dof_dtype" title="warp.fem.FunctionSpace.dof_dtype"><em>FunctionSpace.dof_dtype</em></a>) – Node value in the degrees-of-freedom basis.</p></li>
 <li><p><strong>node_weight_gradient</strong> (<em>Any</em>) – Gradient of the weight associated to the node, either w.r.t element or world space.</p></li>
-<li><p><strong>local_value_map</strong> (<em>FunctionSpace.LocalValueMap</em>) – Data encoding local transformation from node space to world space, as given per <code class="docutils literal notranslate"><span class="pre">local_map_value_(inn|out)er</span></code>.</p></li>
+<li><p><strong>local_value_map</strong> (<a class="reference internal" href="#warp.fem.FunctionSpace.LocalValueMap" title="warp.fem.FunctionSpace.LocalValueMap"><em>FunctionSpace.LocalValueMap</em></a>) – Data encoding local transformation from node space to world space, as given per <code class="docutils literal notranslate"><span class="pre">local_map_value_(inn|out)er</span></code>.</p></li>
 </ul>
 </dd>
 </dl>
@@ -876,14 +880,14 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.FunctionSpace.dof_value">
-<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dof_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">space_value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">node_weight</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">local_value_map</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L207-L221"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace.dof_value" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">dof_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">space_value</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">node_weight</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">local_value_map</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/function_space.py#L207-L221"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.FunctionSpace.dof_value" title="Link to this definition">#</a></dt>
 <dd><p>Compute the projection of a world-space value onto the basis of a single degree of freedom.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>space_value</strong> (<em>FunctionSpace.dtype</em>) – World-space value.</p></li>
-<li><p><strong>node_weight</strong> (<em>FunctionSpace.weight_dtype</em>) – Weight associated to the node, as given per the basis space.</p></li>
-<li><p><strong>local_value_map</strong> (<em>FunctionSpace.LocalValueMap</em>) – Data encoding local transformation from node space to world space, as given per <code class="docutils literal notranslate"><span class="pre">local_map_value_(inn|out)er</span></code>.</p></li>
+<li><p><strong>space_value</strong> (<a class="reference internal" href="#warp.fem.FunctionSpace.dtype" title="warp.fem.FunctionSpace.dtype"><em>FunctionSpace.dtype</em></a>) – World-space value.</p></li>
+<li><p><strong>node_weight</strong> (<a class="reference internal" href="#warp.fem.FunctionSpace.weight_dtype" title="warp.fem.FunctionSpace.weight_dtype"><em>FunctionSpace.weight_dtype</em></a>) – Weight associated to the node, as given per the basis space.</p></li>
+<li><p><strong>local_value_map</strong> (<a class="reference internal" href="#warp.fem.FunctionSpace.LocalValueMap" title="warp.fem.FunctionSpace.LocalValueMap"><em>FunctionSpace.LocalValueMap</em></a>) – Data encoding local transformation from node space to world space, as given per <code class="docutils literal notranslate"><span class="pre">local_map_value_(inn|out)er</span></code>.</p></li>
 </ul>
 </dd>
 </dl>
@@ -940,10 +944,9 @@
     class="page-toc tocsection onthispage">
     <i class="fa-solid fa-list"></i> On this page
   </div>
-  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
-    <ul class="visible nav section-nav flex-column">
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.FunctionSpace"><code class="docutils literal notranslate"><span class="pre">FunctionSpace</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.FunctionSpace.__init__"><code class="docutils literal notranslate"><span class="pre">__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.FunctionSpace.dtype"><code class="docutils literal notranslate"><span class="pre">dtype</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.FunctionSpace.dof_dtype"><code class="docutils literal notranslate"><span class="pre">dof_dtype</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.FunctionSpace.weight_dtype"><code class="docutils literal notranslate"><span class="pre">weight_dtype</span></code></a></li>
@@ -1007,8 +1010,8 @@
   
 
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
-<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+  <script defer src="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
 
 
   <footer class="bd-footer">

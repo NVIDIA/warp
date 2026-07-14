@@ -28,8 +28,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
-<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+  <link href="../../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
@@ -37,26 +37,27 @@
     <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=3d681599" />
   
   <!-- So that users can add custom icons -->
-  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <script defer src="../../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
-<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
 
 
 
     <script src="../../_static/documentation_options.js?v=4ae37cce"></script>
-    <script src="../../_static/doctools.js?v=9bcbadda"></script>
-    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.array';</script>
     <script>
-        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
         DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'latest';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
 
     <link rel="icon" href="../../_static/favicon.png"/>
 
@@ -69,25 +70,31 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="1.16.0.dev0" />
+  
+    
+    <script src="../../_static/searchtools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script src="../../searchindex.js"></script>
+  
 
 
   </head>
 
-  
-  
-  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+  <body data-default-mode="">
+
 
   
   
   <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
-
 
   
   <div id="pst-scroll-pixel-helper"></div>
   
   <button type="button" class="btn rounded-pill" id="pst-back-to-top">
     <i class="fa-solid fa-arrow-up"></i>Back to top</button>
-
+  
+  
+  
   
   <dialog id="pst-search-dialog">
     
@@ -113,7 +120,7 @@
 </div>
 
   
-    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
 <div class="bd-header__inner bd-page-width">
   <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
     <span class="fa-solid fa-bars"></span>
@@ -193,11 +200,18 @@
       
         <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
       
         <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -210,8 +224,7 @@
           
           
           
-          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -222,8 +235,7 @@
           
           
           
-          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
       
@@ -326,11 +338,18 @@
         
           <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
         
           <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -343,8 +362,7 @@
           
           
           
-          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -355,8 +373,7 @@
           
           
           
-          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
         
@@ -497,7 +514,7 @@
 <h1>warp.array<a class="headerlink" href="#warp-array" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.array">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L3145-L4731"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L3145-L4731"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array" title="Link to this definition">#</a></dt>
 <dd><p>A fixed-size multi-dimensional array containing values of the same type.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.array.dtype">
@@ -629,29 +646,7 @@ create views, or call <a class="reference internal" href="#warp.array.numpy" tit
 the host. Inside kernels, arrays support element-wise indexing.
 This keeps host-side behavior consistent across CPU and GPU arrays and
 avoids encouraging per-element device synchronization or copies.</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="warp.array.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span>
-
-<dl>
-<dd><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">Any</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">shape</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">strides</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">ptr</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">capacity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">pinned</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">copy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">deleter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">ndim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">requires_grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">retain_grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
-</dl>
-
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L3183-L3306"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.__init__" title="Link to this definition">#</a></dt>
-<dd><p>Construct a new Warp array object.</p>
+<p>Construct a new Warp array object.</p>
 <p>When the <code class="docutils literal notranslate"><span class="pre">data</span></code> argument is a valid list, tuple, or ndarray the array will be constructed from this object’s data.
 For objects that are not stored sequentially in memory (e.g.: a list), then the data will first
 be flattened before being transferred to the memory space given by device.</p>
@@ -668,81 +663,75 @@ are taken into account and no memory is allocated for the array.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>data</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em> | </em><a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><em>ndarray</em></a><em> | </em><em>None</em>) – An object to construct the array from, can be a Tuple, List, or generally any type convertible to an np.array</p></li>
-<li><p><strong>dtype</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>) – One of the available <a class="reference external" href="#data-types">data types</a>, such as <a class="reference internal" href="warp.float32.html#warp.float32" title="warp.float32"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.float32</span></code></a>, <a class="reference internal" href="warp.mat33.html#warp.mat33" title="warp.mat33"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.mat33</span></code></a>, or a custom <a class="reference external" href="#structs">struct</a>. If dtype is <code class="docutils literal notranslate"><span class="pre">Any</span></code> and data is an ndarray, then it will be inferred from the array data type</p></li>
-<li><p><strong>shape</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>...</em><em>] </em><em>| </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>] </em><em>| </em><em>None</em>) – Dimensions of the array</p></li>
-<li><p><strong>strides</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><em>...</em><em>] </em><em>| </em><em>None</em>) – Number of bytes in each dimension between successive elements of the array</p></li>
-<li><p><strong>ptr</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Address of an external memory address to alias (<code class="docutils literal notranslate"><span class="pre">data</span></code> should be <code class="docutils literal notranslate"><span class="pre">None</span></code>)</p></li>
-<li><p><strong>capacity</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Maximum size in bytes of the <code class="docutils literal notranslate"><span class="pre">ptr</span></code> allocation (<code class="docutils literal notranslate"><span class="pre">data</span></code> should be <code class="docutils literal notranslate"><span class="pre">None</span></code>)</p></li>
-<li><p><strong>device</strong> (<a class="reference internal" href="warp.Device.html#warp.Device" title="warp._src.context.Device"><em>Device</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Device the array lives on</p></li>
-<li><p><strong>copy</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether the incoming <code class="docutils literal notranslate"><span class="pre">data</span></code> will be copied or aliased. Aliasing requires that
+<li><p><strong>data</strong> – An object to construct the array from, can be a Tuple, List, or generally any type convertible to an np.array</p></li>
+<li><p><strong>dtype</strong> – One of the available <a class="reference external" href="#data-types">data types</a>, such as <a class="reference internal" href="warp.float32.html#warp.float32" title="warp.float32"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.float32</span></code></a>, <a class="reference internal" href="warp.mat33.html#warp.mat33" title="warp.mat33"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.mat33</span></code></a>, or a custom <a class="reference external" href="#structs">struct</a>. If dtype is <code class="docutils literal notranslate"><span class="pre">Any</span></code> and data is an ndarray, then it will be inferred from the array data type</p></li>
+<li><p><strong>shape</strong> – Dimensions of the array</p></li>
+<li><p><strong>strides</strong> – Number of bytes in each dimension between successive elements of the array</p></li>
+<li><p><strong>ptr</strong> – Address of an external memory address to alias (<code class="docutils literal notranslate"><span class="pre">data</span></code> should be <code class="docutils literal notranslate"><span class="pre">None</span></code>)</p></li>
+<li><p><strong>capacity</strong> – Maximum size in bytes of the <code class="docutils literal notranslate"><span class="pre">ptr</span></code> allocation (<code class="docutils literal notranslate"><span class="pre">data</span></code> should be <code class="docutils literal notranslate"><span class="pre">None</span></code>)</p></li>
+<li><p><strong>device</strong> – Device the array lives on</p></li>
+<li><p><strong>copy</strong> – Whether the incoming <code class="docutils literal notranslate"><span class="pre">data</span></code> will be copied or aliased. Aliasing requires that
 the incoming <code class="docutils literal notranslate"><span class="pre">data</span></code> already lives on the <code class="docutils literal notranslate"><span class="pre">device</span></code> specified and the data types match.</p></li>
-<li><p><strong>deleter</strong> (<a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Callable" title="(in Python v3.14)"><em>Callable</em></a><em>[</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>]</em><em>, </em><em>None</em><em>] </em><em>| </em><em>None</em>) – Function to be called when the array is deleted, taking two arguments: pointer and size</p></li>
-<li><p><strong>requires_grad</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether or not gradients will be tracked for this array, see <a class="reference internal" href="warp.Tape.html#warp.Tape" title="warp.Tape"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Tape</span></code></a> for details</p></li>
-<li><p><strong>retain_grad</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether to preserve the array’s gradient during the backward pass instead of
+<li><p><strong>deleter</strong> – Function to be called when the array is deleted, taking two arguments: pointer and size</p></li>
+<li><p><strong>requires_grad</strong> – Whether or not gradients will be tracked for this array, see <a class="reference internal" href="warp.Tape.html#warp.Tape" title="warp.Tape"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Tape</span></code></a> for details</p></li>
+<li><p><strong>retain_grad</strong> – Whether to preserve the array’s gradient during the backward pass instead of
 zeroing it after it has been read. Requires <code class="docutils literal notranslate"><span class="pre">requires_grad=True</span></code>.</p></li>
-<li><p><strong>grad</strong> (<a class="reference internal" href="#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>) – The array in which to accumulate gradients in the backward pass. If <code class="docutils literal notranslate"><span class="pre">None</span></code> and <code class="docutils literal notranslate"><span class="pre">requires_grad</span></code> is <code class="docutils literal notranslate"><span class="pre">True</span></code>,
+<li><p><strong>grad</strong> – The array in which to accumulate gradients in the backward pass. If <code class="docutils literal notranslate"><span class="pre">None</span></code> and <code class="docutils literal notranslate"><span class="pre">requires_grad</span></code> is <code class="docutils literal notranslate"><span class="pre">True</span></code>,
 then a gradient array will be allocated automatically.</p></li>
-<li><p><strong>pinned</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether to allocate pinned host memory, which allows asynchronous host–device transfers
+<li><p><strong>pinned</strong> – Whether to allocate pinned host memory, which allows asynchronous host–device transfers
 (only applicable with <code class="docutils literal notranslate"><span class="pre">device=&quot;cpu&quot;</span></code>)</p></li>
-<li><p><strong>ndim</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>)</p></li>
 </ul>
 </dd>
 </dl>
-</dd></dl>
-
 <p class="rubric">Methods</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.array.__init__" title="warp.array.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>([data, dtype, shape, strides, ptr, ...])</p></td>
-<td><p>Construct a new Warp array object.</p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.array.assign" title="warp.array.assign"><code class="xref py py-obj docutils literal notranslate"><span class="pre">assign</span></code></a>(src)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.array.assign" title="warp.array.assign"><code class="xref py py-obj docutils literal notranslate"><span class="pre">assign</span></code></a>(src)</p></td>
 <td><p>Wrap <code class="docutils literal notranslate"><span class="pre">src</span></code> in an <a class="reference internal" href="#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a> if it is not already one and copy the contents to <code class="docutils literal notranslate"><span class="pre">self</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.array.contiguous" title="warp.array.contiguous"><code class="xref py py-obj docutils literal notranslate"><span class="pre">contiguous</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.array.contiguous" title="warp.array.contiguous"><code class="xref py py-obj docutils literal notranslate"><span class="pre">contiguous</span></code></a>()</p></td>
 <td><p>Return a contiguous array with this array's data.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.array.cptr" title="warp.array.cptr"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cptr</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.array.cptr" title="warp.array.cptr"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cptr</span></code></a>()</p></td>
 <td><p>Return a ctypes cast of the array address.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.array.fill_" title="warp.array.fill_"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_</span></code></a>(value)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.array.fill_" title="warp.array.fill_"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_</span></code></a>(value)</p></td>
 <td><p>Set all array entries to <cite>value</cite></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.array.flatten" title="warp.array.flatten"><code class="xref py py-obj docutils literal notranslate"><span class="pre">flatten</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.array.flatten" title="warp.array.flatten"><code class="xref py py-obj docutils literal notranslate"><span class="pre">flatten</span></code></a>()</p></td>
 <td><p>Return a zero-copy view of the array collapsed to 1-D.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.array.ipc_handle" title="warp.array.ipc_handle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ipc_handle</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.array.ipc_handle" title="warp.array.ipc_handle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ipc_handle</span></code></a>()</p></td>
 <td><p>Return an IPC handle of the array as a 64-byte <code class="docutils literal notranslate"><span class="pre">bytes</span></code> object</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.array.list" title="warp.array.list"><code class="xref py py-obj docutils literal notranslate"><span class="pre">list</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.array.list" title="warp.array.list"><code class="xref py py-obj docutils literal notranslate"><span class="pre">list</span></code></a>()</p></td>
 <td><p>Return a flattened list of items in the array as a Python list.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.array.mark_init" title="warp.array.mark_init"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mark_init</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.array.mark_init" title="warp.array.mark_init"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mark_init</span></code></a>()</p></td>
 <td><p>Reset this array's read flag.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.array.mark_read" title="warp.array.mark_read"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mark_read</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.array.mark_read" title="warp.array.mark_read"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mark_read</span></code></a>()</p></td>
 <td><p>Mark this array as having been read from in a kernel or recorded function on the tape.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.array.mark_write" title="warp.array.mark_write"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mark_write</span></code></a>(**kwargs)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.array.mark_write" title="warp.array.mark_write"><code class="xref py py-obj docutils literal notranslate"><span class="pre">mark_write</span></code></a>(**kwargs)</p></td>
 <td><p>Detect if we are writing to an array that has already been read from.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.array.numpy" title="warp.array.numpy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span></code></a>(*[, _suppress_bfloat16_warning])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.array.numpy" title="warp.array.numpy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span></code></a>(*[, _suppress_bfloat16_warning])</p></td>
 <td><p>Convert the array to a <a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></a> (aliasing memory through the array interface protocol) If the array is on the GPU, a synchronous device-to-host copy (on the CUDA default stream) will be automatically performed to ensure that any outstanding work is completed.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.array.reshape" title="warp.array.reshape"><code class="xref py py-obj docutils literal notranslate"><span class="pre">reshape</span></code></a>(shape)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.array.reshape" title="warp.array.reshape"><code class="xref py py-obj docutils literal notranslate"><span class="pre">reshape</span></code></a>(shape)</p></td>
 <td><p>Return a reshaped array.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.array.to" title="warp.array.to"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to</span></code></a>(device[, requires_grad])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.array.to" title="warp.array.to"><code class="xref py py-obj docutils literal notranslate"><span class="pre">to</span></code></a>(device[, requires_grad])</p></td>
 <td><p>Return a Warp array with this array's data moved to the specified device, no-op if already on device.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.array.transpose" title="warp.array.transpose"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transpose</span></code></a>([axes])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.array.transpose" title="warp.array.transpose"><code class="xref py py-obj docutils literal notranslate"><span class="pre">transpose</span></code></a>([axes])</p></td>
 <td><p>Return a zero-copy view of the array with axes transposed.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.array.view" title="warp.array.view"><code class="xref py py-obj docutils literal notranslate"><span class="pre">view</span></code></a>(dtype)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.array.view" title="warp.array.view"><code class="xref py py-obj docutils literal notranslate"><span class="pre">view</span></code></a>(dtype)</p></td>
 <td><p>Return a zero-copy view of this array's memory with a different data type.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.array.zero_" title="warp.array.zero_"><code class="xref py py-obj docutils literal notranslate"><span class="pre">zero_</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.array.zero_" title="warp.array.zero_"><code class="xref py py-obj docutils literal notranslate"><span class="pre">zero_</span></code></a>()</p></td>
 <td><p>Zero out the array entries.</p></td>
 </tr>
 </tbody>
@@ -771,28 +760,28 @@ then a gradient array will be allocated automatically.</p></li>
 </div>
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.array.memory_kind">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">memory_kind</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L3920-L3924"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.memory_kind" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">memory_kind</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L3920-L3924"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.memory_kind" title="Link to this definition">#</a></dt>
 <dd><p>Observed memory kind backing this array.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.array.grad">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">grad</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4068-L4071"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.grad" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">grad</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4068-L4071"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.grad" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.array.requires_grad">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">requires_grad</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4101-L4104"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.requires_grad" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">requires_grad</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4101-L4104"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.requires_grad" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.array.retain_grad">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">retain_grad</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4118-L4121"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.retain_grad" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">retain_grad</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4118-L4121"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.retain_grad" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.array.vars">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">vars</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4138-L4145"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.vars" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">vars</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4138-L4145"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array.vars" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -1059,8 +1048,8 @@ and get its IPC handle:</p>
     class="page-toc tocsection onthispage">
     <i class="fa-solid fa-list"></i> On this page
   </div>
-  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
-    <ul class="visible nav section-nav flex-column">
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.array"><code class="docutils literal notranslate"><span class="pre">array</span></code></a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.array.dtype"><code class="docutils literal notranslate"><span class="pre">dtype</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.array.ndim"><code class="docutils literal notranslate"><span class="pre">ndim</span></code></a></li>
@@ -1073,7 +1062,6 @@ and get its IPC handle:</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.array.pinned"><code class="docutils literal notranslate"><span class="pre">pinned</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.array.is_contiguous"><code class="docutils literal notranslate"><span class="pre">is_contiguous</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.array.deleter"><code class="docutils literal notranslate"><span class="pre">deleter</span></code></a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.array.__init__"><code class="docutils literal notranslate"><span class="pre">__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.array.memory_kind"><code class="docutils literal notranslate"><span class="pre">memory_kind</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.array.grad"><code class="docutils literal notranslate"><span class="pre">grad</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.array.requires_grad"><code class="docutils literal notranslate"><span class="pre">requires_grad</span></code></a></li>
@@ -1131,8 +1119,8 @@ and get its IPC handle:</p>
   
 
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
-<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+  <script defer src="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
 
 
   <footer class="bd-footer">

@@ -4,19 +4,9 @@
 .. currentmodule:: warp
 
 .. autoclass:: HashGridQuery
-
-   
-   .. automethod:: __init__
-
-   
-   .. rubric:: Methods
-
-   .. autosummary::
-   
-      ~HashGridQuery.__init__
    
    
-
+   
    
    
    

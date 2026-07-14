@@ -4,22 +4,17 @@
 .. currentmodule:: warp.fem
 
 .. autoclass:: Coords_f64
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~Coords_f64.__init__
       ~Coords_f64.from_ptr
       ~Coords_f64.scalar_export
       ~Coords_f64.scalar_import
    
    
-
    
    
    

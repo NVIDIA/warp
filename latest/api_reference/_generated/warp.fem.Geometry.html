@@ -28,8 +28,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
-<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+  <link href="../../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
@@ -37,26 +37,27 @@
     <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=3d681599" />
   
   <!-- So that users can add custom icons -->
-  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <script defer src="../../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
-<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
 
 
 
     <script src="../../_static/documentation_options.js?v=4ae37cce"></script>
-    <script src="../../_static/doctools.js?v=9bcbadda"></script>
-    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.fem.Geometry';</script>
     <script>
-        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
         DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'latest';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
 
     <link rel="icon" href="../../_static/favicon.png"/>
 
@@ -69,25 +70,31 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="1.16.0.dev0" />
+  
+    
+    <script src="../../_static/searchtools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script src="../../searchindex.js"></script>
+  
 
 
   </head>
 
-  
-  
-  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+  <body data-default-mode="">
+
 
   
   
   <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
-
 
   
   <div id="pst-scroll-pixel-helper"></div>
   
   <button type="button" class="btn rounded-pill" id="pst-back-to-top">
     <i class="fa-solid fa-arrow-up"></i>Back to top</button>
-
+  
+  
+  
   
   <dialog id="pst-search-dialog">
     
@@ -113,7 +120,7 @@
 </div>
 
   
-    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
 <div class="bd-header__inner bd-page-width">
   <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
     <span class="fa-solid fa-bars"></span>
@@ -193,11 +200,18 @@
       
         <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
       
         <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -210,8 +224,7 @@
           
           
           
-          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -222,8 +235,7 @@
           
           
           
-          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
       
@@ -326,11 +338,18 @@
         
           <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
         
           <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -343,8 +362,7 @@
           
           
           
-          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -355,8 +373,7 @@
           
           
           
-          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
         
@@ -497,132 +514,124 @@
 <h1>warp.fem.Geometry<a class="headerlink" href="#warp-fem-geometry" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.fem.Geometry">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">Geometry</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L38-L964"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">Geometry</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L38-L964"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry" title="Link to this definition">#</a></dt>
 <dd><p>Interface class for discrete geometries</p>
 <p>A geometry is composed of cells and sides. Sides may be boundary or interior (between cells).</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="warp.fem.Geometry.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#warp.fem.Geometry.__init__" title="Link to this definition">#</a></dt>
-<dd></dd></dl>
-
 <p class="rubric">Methods</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Geometry.__init__" title="warp.fem.Geometry.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>()</p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Geometry.boundary_side_count" title="warp.fem.Geometry.boundary_side_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">boundary_side_count</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Geometry.boundary_side_count" title="warp.fem.Geometry.boundary_side_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">boundary_side_count</span></code></a>()</p></td>
 <td><p>Number of boundary sides (sides with a single neighbour cell) in the geometry</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Geometry.boundary_side_index" title="warp.fem.Geometry.boundary_side_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">boundary_side_index</span></code></a>(args, boundary_side_index)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Geometry.boundary_side_index" title="warp.fem.Geometry.boundary_side_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">boundary_side_index</span></code></a>(args, boundary_side_index)</p></td>
 <td><p>Device function returning the side index corresponding to a boundary side</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Geometry.build_bvh" title="warp.fem.Geometry.build_bvh"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_bvh</span></code></a>([device])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Geometry.build_bvh" title="warp.fem.Geometry.build_bvh"><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_bvh</span></code></a>([device])</p></td>
 <td><p>Rebuild the geometry's Bounding Volume Hierarchy (BVH) for <code class="docutils literal notranslate"><span class="pre">device</span></code> from scratch.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Geometry.bvh_id" title="warp.fem.Geometry.bvh_id"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bvh_id</span></code></a>(device)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Geometry.bvh_id" title="warp.fem.Geometry.bvh_id"><code class="xref py py-obj docutils literal notranslate"><span class="pre">bvh_id</span></code></a>(device)</p></td>
 <td><p>Return the BVH identifier for the given device, or <code class="docutils literal notranslate"><span class="pre">0</span></code> if unavailable.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Geometry.cell_arg_value" title="warp.fem.Geometry.cell_arg_value"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_arg_value</span></code></a>(device)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Geometry.cell_arg_value" title="warp.fem.Geometry.cell_arg_value"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_arg_value</span></code></a>(device)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Geometry.cell_bvh_groups" title="warp.fem.Geometry.cell_bvh_groups"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_bvh_groups</span></code></a>(device)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Geometry.cell_bvh_groups" title="warp.fem.Geometry.cell_bvh_groups"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_bvh_groups</span></code></a>(device)</p></td>
 <td><p>Return optional per-cell BVH group indices on <code class="docutils literal notranslate"><span class="pre">device</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Geometry.cell_count" title="warp.fem.Geometry.cell_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_count</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Geometry.cell_count" title="warp.fem.Geometry.cell_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_count</span></code></a>()</p></td>
 <td><p>Number of cells in the geometry</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Geometry.cell_deformation_gradient" title="warp.fem.Geometry.cell_deformation_gradient"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_deformation_gradient</span></code></a>(args, s)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Geometry.cell_deformation_gradient" title="warp.fem.Geometry.cell_deformation_gradient"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_deformation_gradient</span></code></a>(args, s)</p></td>
 <td><p>Device function returning the transpose of the gradient of world position with respect to reference cell</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Geometry.cell_env_arg_value" title="warp.fem.Geometry.cell_env_arg_value"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_env_arg_value</span></code></a>(device)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Geometry.cell_env_arg_value" title="warp.fem.Geometry.cell_env_arg_value"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_env_arg_value</span></code></a>(device)</p></td>
 <td><p>Return per-cell environment indices for geometry argument structs.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Geometry.cell_inverse_deformation_gradient" title="warp.fem.Geometry.cell_inverse_deformation_gradient"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_inverse_deformation_gradient</span></code></a>(args, s)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Geometry.cell_inverse_deformation_gradient" title="warp.fem.Geometry.cell_inverse_deformation_gradient"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_inverse_deformation_gradient</span></code></a>(args, s)</p></td>
 <td><p>Device function returning the matrix right-transforming a gradient w.r.t.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Geometry.cell_measure" title="warp.fem.Geometry.cell_measure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_measure</span></code></a>(args, s)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Geometry.cell_measure" title="warp.fem.Geometry.cell_measure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_measure</span></code></a>(args, s)</p></td>
 <td><p>Device function returning the measure determinant (e.g. volume, area) at a given point.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Geometry.cell_normal" title="warp.fem.Geometry.cell_normal"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_normal</span></code></a>(args, s)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Geometry.cell_normal" title="warp.fem.Geometry.cell_normal"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_normal</span></code></a>(args, s)</p></td>
 <td><p>Device function returning the element normal at a sample point.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Geometry.cell_position" title="warp.fem.Geometry.cell_position"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_position</span></code></a>(args, s)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Geometry.cell_position" title="warp.fem.Geometry.cell_position"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_position</span></code></a>(args, s)</p></td>
 <td><p>Device function returning the world position of a cell sample point</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Geometry.environment_count" title="warp.fem.Geometry.environment_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">environment_count</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Geometry.environment_count" title="warp.fem.Geometry.environment_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">environment_count</span></code></a>()</p></td>
 <td><p>Number of topologically independent environments represented by this geometry.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Geometry.fill_cell_arg" title="warp.fem.Geometry.fill_cell_arg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_cell_arg</span></code></a>(args, device)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Geometry.fill_cell_arg" title="warp.fem.Geometry.fill_cell_arg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_cell_arg</span></code></a>(args, device)</p></td>
 <td><p>Fill the arguments to be passed to cell-related device functions</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Geometry.fill_side_arg" title="warp.fem.Geometry.fill_side_arg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_side_arg</span></code></a>(args, device)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Geometry.fill_side_arg" title="warp.fem.Geometry.fill_side_arg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_side_arg</span></code></a>(args, device)</p></td>
 <td><p>Fill the arguments to be passed to side-related device functions</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Geometry.fill_side_index_arg" title="warp.fem.Geometry.fill_side_index_arg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_side_index_arg</span></code></a>(args, device)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Geometry.fill_side_index_arg" title="warp.fem.Geometry.fill_side_index_arg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_side_index_arg</span></code></a>(args, device)</p></td>
 <td><p>Fill the arguments to be passed to side-related device functions</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Geometry.make_filtered_cell_lookup" title="warp.fem.Geometry.make_filtered_cell_lookup"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_filtered_cell_lookup</span></code></a>([filter_func])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Geometry.make_filtered_cell_lookup" title="warp.fem.Geometry.make_filtered_cell_lookup"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_filtered_cell_lookup</span></code></a>([filter_func])</p></td>
 <td><p>Create a filtered cell lookup function.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Geometry.reference_cell" title="warp.fem.Geometry.reference_cell"><code class="xref py py-obj docutils literal notranslate"><span class="pre">reference_cell</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Geometry.reference_cell" title="warp.fem.Geometry.reference_cell"><code class="xref py py-obj docutils literal notranslate"><span class="pre">reference_cell</span></code></a>()</p></td>
 <td><p>Prototypical element for a cell</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Geometry.reference_side" title="warp.fem.Geometry.reference_side"><code class="xref py py-obj docutils literal notranslate"><span class="pre">reference_side</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Geometry.reference_side" title="warp.fem.Geometry.reference_side"><code class="xref py py-obj docutils literal notranslate"><span class="pre">reference_side</span></code></a>()</p></td>
 <td><p>Prototypical element for a side</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Geometry.side_arg_value" title="warp.fem.Geometry.side_arg_value"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_arg_value</span></code></a>(device)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Geometry.side_arg_value" title="warp.fem.Geometry.side_arg_value"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_arg_value</span></code></a>(device)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Geometry.side_count" title="warp.fem.Geometry.side_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_count</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Geometry.side_count" title="warp.fem.Geometry.side_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_count</span></code></a>()</p></td>
 <td><p>Number of sides in the geometry</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Geometry.side_deformation_gradient" title="warp.fem.Geometry.side_deformation_gradient"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_deformation_gradient</span></code></a>(args, s)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Geometry.side_deformation_gradient" title="warp.fem.Geometry.side_deformation_gradient"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_deformation_gradient</span></code></a>(args, s)</p></td>
 <td><p>Device function returning the gradient of world position with respect to reference side</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Geometry.side_from_cell_coords" title="warp.fem.Geometry.side_from_cell_coords"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_from_cell_coords</span></code></a>(args, side_index, ...)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Geometry.side_from_cell_coords" title="warp.fem.Geometry.side_from_cell_coords"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_from_cell_coords</span></code></a>(args, side_index, ...)</p></td>
 <td><p>Device function converting coordinates on a cell to coordinates on a side, or <a class="reference internal" href="warp.fem.OUTSIDE.html#warp.fem.OUTSIDE" title="warp.fem.OUTSIDE"><code class="xref py py-data docutils literal notranslate"><span class="pre">warp.fem.OUTSIDE</span></code></a></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Geometry.side_index_arg_value" title="warp.fem.Geometry.side_index_arg_value"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_index_arg_value</span></code></a>(device)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Geometry.side_index_arg_value" title="warp.fem.Geometry.side_index_arg_value"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_index_arg_value</span></code></a>(device)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Geometry.side_inner_cell_coords" title="warp.fem.Geometry.side_inner_cell_coords"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_inner_cell_coords</span></code></a>(args, side_index, ...)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Geometry.side_inner_cell_coords" title="warp.fem.Geometry.side_inner_cell_coords"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_inner_cell_coords</span></code></a>(args, side_index, ...)</p></td>
 <td><p>Device function returning the coordinates of a point on a side in the inner cell</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Geometry.side_inner_cell_index" title="warp.fem.Geometry.side_inner_cell_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_inner_cell_index</span></code></a>(args, side_index)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Geometry.side_inner_cell_index" title="warp.fem.Geometry.side_inner_cell_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_inner_cell_index</span></code></a>(args, side_index)</p></td>
 <td><p>Device function returning the inner cell index for a given side</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Geometry.side_inner_inverse_deformation_gradient" title="warp.fem.Geometry.side_inner_inverse_deformation_gradient"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_inner_inverse_deformation_gradient</span></code></a>(...)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Geometry.side_inner_inverse_deformation_gradient" title="warp.fem.Geometry.side_inner_inverse_deformation_gradient"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_inner_inverse_deformation_gradient</span></code></a>(...)</p></td>
 <td><p>Device function returning the matrix right-transforming a gradient w.r.t.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Geometry.side_measure" title="warp.fem.Geometry.side_measure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_measure</span></code></a>(args, s)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Geometry.side_measure" title="warp.fem.Geometry.side_measure"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_measure</span></code></a>(args, s)</p></td>
 <td><p>Device function returning the measure determinant (e.g. volume, area) at a given point.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Geometry.side_measure_ratio" title="warp.fem.Geometry.side_measure_ratio"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_measure_ratio</span></code></a>(args, s)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Geometry.side_measure_ratio" title="warp.fem.Geometry.side_measure_ratio"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_measure_ratio</span></code></a>(args, s)</p></td>
 <td><p>Device function returning the ratio of the measure of a side to that of its neighbour cells</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Geometry.side_normal" title="warp.fem.Geometry.side_normal"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_normal</span></code></a>(args, s)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Geometry.side_normal" title="warp.fem.Geometry.side_normal"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_normal</span></code></a>(args, s)</p></td>
 <td><p>Device function returning the element normal at a sample point</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Geometry.side_outer_cell_coords" title="warp.fem.Geometry.side_outer_cell_coords"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_outer_cell_coords</span></code></a>(args, side_index, ...)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Geometry.side_outer_cell_coords" title="warp.fem.Geometry.side_outer_cell_coords"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_outer_cell_coords</span></code></a>(args, side_index, ...)</p></td>
 <td><p>Device function returning the coordinates of a point on a side in the outer cell</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Geometry.side_outer_cell_index" title="warp.fem.Geometry.side_outer_cell_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_outer_cell_index</span></code></a>(args, side_index)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Geometry.side_outer_cell_index" title="warp.fem.Geometry.side_outer_cell_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_outer_cell_index</span></code></a>(args, side_index)</p></td>
 <td><p>Device function returning the outer cell index for a given side</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Geometry.side_outer_inverse_deformation_gradient" title="warp.fem.Geometry.side_outer_inverse_deformation_gradient"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_outer_inverse_deformation_gradient</span></code></a>(...)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Geometry.side_outer_inverse_deformation_gradient" title="warp.fem.Geometry.side_outer_inverse_deformation_gradient"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_outer_inverse_deformation_gradient</span></code></a>(...)</p></td>
 <td><p>Device function returning the matrix right-transforming a gradient w.r.t.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Geometry.side_position" title="warp.fem.Geometry.side_position"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_position</span></code></a>(args, s)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Geometry.side_position" title="warp.fem.Geometry.side_position"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_position</span></code></a>(args, s)</p></td>
 <td><p>Device function returning the side position at a sample point</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Geometry.side_to_cell_arg" title="warp.fem.Geometry.side_to_cell_arg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_to_cell_arg</span></code></a>(side_arg)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Geometry.side_to_cell_arg" title="warp.fem.Geometry.side_to_cell_arg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_to_cell_arg</span></code></a>(side_arg)</p></td>
 <td><p>Device function converting a side-related argument value to a cell-related argument value, for promoting trace samples to the full space</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Geometry.supports_cell_lookup" title="warp.fem.Geometry.supports_cell_lookup"><code class="xref py py-obj docutils literal notranslate"><span class="pre">supports_cell_lookup</span></code></a>(device)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Geometry.supports_cell_lookup" title="warp.fem.Geometry.supports_cell_lookup"><code class="xref py py-obj docutils literal notranslate"><span class="pre">supports_cell_lookup</span></code></a>(device)</p></td>
 <td><p>Return whether cell lookups are supported on the given device.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Geometry.update_bvh" title="warp.fem.Geometry.update_bvh"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_bvh</span></code></a>([device])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Geometry.update_bvh" title="warp.fem.Geometry.update_bvh"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_bvh</span></code></a>([device])</p></td>
 <td><p>Refit the geometry's BVH if it exists on <code class="docutils literal notranslate"><span class="pre">device</span></code>, or build it from scratch otherwise.</p></td>
 </tr>
 </tbody>
@@ -684,25 +693,25 @@
 </div>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.Geometry.dimension">
-<span class="sig-name descname"><span class="pre">dimension</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></em><a class="headerlink" href="#warp.fem.Geometry.dimension" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">dimension</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></span><a class="headerlink" href="#warp.fem.Geometry.dimension" title="Link to this definition">#</a></dt>
 <dd><p>Dimension of the embedding space.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.Geometry.scalar_type">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">scalar_type</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L50-L54"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.scalar_type" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">scalar_type</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L50-L54"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.scalar_type" title="Link to this definition">#</a></dt>
 <dd><p>Scalar type (<code class="docutils literal notranslate"><span class="pre">warp.float32</span></code> or <code class="docutils literal notranslate"><span class="pre">warp.float64</span></code>) for this geometry’s coordinate and weight computations.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.Geometry.coords_type">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">coords_type</span></span><a class="headerlink" href="#warp.fem.Geometry.coords_type" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">coords_type</span></span><a class="headerlink" href="#warp.fem.Geometry.coords_type" title="Link to this definition">#</a></dt>
 <dd><p>Warp vector type for element coordinates matching this geometry’s scalar precision.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.Geometry.sample_type">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">sample_type</span></span><a class="headerlink" href="#warp.fem.Geometry.sample_type" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">sample_type</span></span><a class="headerlink" href="#warp.fem.Geometry.sample_type" title="Link to this definition">#</a></dt>
 <dd><p>Warp struct type for samples matching this geometry’s scalar precision.</p>
 </dd></dl>
 
@@ -732,7 +741,7 @@
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.Geometry.cell_env">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cell_env</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L81-L85"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.cell_env" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cell_env</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L81-L85"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.cell_env" title="Link to this definition">#</a></dt>
 <dd><p>Optional per-cell environment indices.</p>
 </dd></dl>
 
@@ -760,37 +769,37 @@
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.Geometry.cell_dimension">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cell_dimension</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L94-L98"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.cell_dimension" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cell_dimension</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L94-L98"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.cell_dimension" title="Link to this definition">#</a></dt>
 <dd><p>Manifold dimension of the geometry cells</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.Geometry.base">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">base</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#warp.fem.Geometry" title="warp._src.fem.geometry.geometry.Geometry"><span class="pre">Geometry</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L99-L103"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.base" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">base</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#warp.fem.Geometry" title="warp._src.fem.geometry.geometry.Geometry"><span class="pre">Geometry</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L99-L103"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.base" title="Link to this definition">#</a></dt>
 <dd><p>Return the base geometry from which this geometry derives its topology. Usually <cite>self</cite>.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.Geometry.name">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L104-L113"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.name" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">name</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L104-L113"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.name" title="Link to this definition">#</a></dt>
 <dd><p>Name of the geometry, including environment and scalar type suffixes.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.Geometry.CellArg">
-<span class="sig-name descname"><span class="pre">CellArg</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Struct</span></em><a class="headerlink" href="#warp.fem.Geometry.CellArg" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">CellArg</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Struct</span></span><a class="headerlink" href="#warp.fem.Geometry.CellArg" title="Link to this definition">#</a></dt>
 <dd><p>Structure containing arguments to be passed to device functions evaluating cell-related quantities.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.Geometry.SideArg">
-<span class="sig-name descname"><span class="pre">SideArg</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Struct</span></em><a class="headerlink" href="#warp.fem.Geometry.SideArg" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">SideArg</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Struct</span></span><a class="headerlink" href="#warp.fem.Geometry.SideArg" title="Link to this definition">#</a></dt>
 <dd><p>Structure containing arguments to be passed to device functions evaluating side-related quantities.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.Geometry.SideIndexArg">
-<span class="sig-name descname"><span class="pre">SideIndexArg</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Struct</span></em><a class="headerlink" href="#warp.fem.Geometry.SideIndexArg" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">SideIndexArg</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Struct</span></span><a class="headerlink" href="#warp.fem.Geometry.SideIndexArg" title="Link to this definition">#</a></dt>
 <dd><p>Structure containing arguments to be passed to device functions for indexing sides.</p>
 </dd></dl>
 
@@ -805,20 +814,20 @@
 <dd><p>Fill the arguments to be passed to cell-related device functions</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>args</strong> (<em>Geometry.CellArg</em>)</p>
+<dd class="field-odd"><p><strong>args</strong> (<a class="reference internal" href="#warp.fem.Geometry.CellArg" title="warp.fem.Geometry.CellArg"><em>Geometry.CellArg</em></a>)</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.cell_position">
-<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cell_position</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L139-L143"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.cell_position" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cell_position</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L139-L143"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.cell_position" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning the world position of a cell sample point</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>args</strong> (<em>Geometry.CellArg</em>)</p></li>
-<li><p><strong>s</strong> (<em>Sample</em>)</p></li>
+<li><p><strong>args</strong> (<a class="reference internal" href="#warp.fem.Geometry.CellArg" title="warp.fem.Geometry.CellArg"><em>Geometry.CellArg</em></a>)</p></li>
+<li><p><strong>s</strong> (<a class="reference internal" href="warp.fem.Sample.html#warp.fem.Sample" title="warp.fem.Sample"><em>Sample</em></a>)</p></li>
 </ul>
 </dd>
 </dl>
@@ -826,13 +835,13 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.cell_deformation_gradient">
-<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cell_deformation_gradient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L144-L148"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.cell_deformation_gradient" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cell_deformation_gradient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L144-L148"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.cell_deformation_gradient" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning the transpose of the gradient of world position with respect to reference cell</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>args</strong> (<em>Geometry.CellArg</em>)</p></li>
-<li><p><strong>s</strong> (<em>Sample</em>)</p></li>
+<li><p><strong>args</strong> (<a class="reference internal" href="#warp.fem.Geometry.CellArg" title="warp.fem.Geometry.CellArg"><em>Geometry.CellArg</em></a>)</p></li>
+<li><p><strong>s</strong> (<a class="reference internal" href="warp.fem.Sample.html#warp.fem.Sample" title="warp.fem.Sample"><em>Sample</em></a>)</p></li>
 </ul>
 </dd>
 </dl>
@@ -840,14 +849,14 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.cell_inverse_deformation_gradient">
-<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cell_inverse_deformation_gradient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L149-L155"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.cell_inverse_deformation_gradient" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cell_inverse_deformation_gradient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L149-L155"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.cell_inverse_deformation_gradient" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning the matrix right-transforming a gradient w.r.t. cell space to a gradient w.r.t. world space
 (i.e. the inverse deformation gradient)</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>args</strong> (<em>Geometry.CellArg</em>)</p></li>
-<li><p><strong>s</strong> (<em>Sample</em>)</p></li>
+<li><p><strong>args</strong> (<a class="reference internal" href="#warp.fem.Geometry.CellArg" title="warp.fem.Geometry.CellArg"><em>Geometry.CellArg</em></a>)</p></li>
+<li><p><strong>s</strong> (<a class="reference internal" href="warp.fem.Sample.html#warp.fem.Sample" title="warp.fem.Sample"><em>Sample</em></a>)</p></li>
 </ul>
 </dd>
 </dl>
@@ -855,13 +864,13 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.cell_measure">
-<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cell_measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L156-L160"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.cell_measure" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cell_measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L156-L160"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.cell_measure" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning the measure determinant (e.g. volume, area) at a given point</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>args</strong> (<em>Geometry.CellArg</em>)</p></li>
-<li><p><strong>s</strong> (<em>Sample</em>)</p></li>
+<li><p><strong>args</strong> (<a class="reference internal" href="#warp.fem.Geometry.CellArg" title="warp.fem.Geometry.CellArg"><em>Geometry.CellArg</em></a>)</p></li>
+<li><p><strong>s</strong> (<a class="reference internal" href="warp.fem.Sample.html#warp.fem.Sample" title="warp.fem.Sample"><em>Sample</em></a>)</p></li>
 </ul>
 </dd>
 </dl>
@@ -869,7 +878,7 @@
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.Geometry.cell_measure_ratio">
-<span class="sig-name descname"><span class="pre">cell_measure_ratio</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Geometry__cell_measure_ratio(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">warp._src.fem.types.Sample)&gt;</span></em><a class="headerlink" href="#warp.fem.Geometry.cell_measure_ratio" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">cell_measure_ratio</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Geometry__cell_measure_ratio(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">warp._src.fem.types.Sample)&gt;</span></span><a class="headerlink" href="#warp.fem.Geometry.cell_measure_ratio" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -882,14 +891,14 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.cell_normal">
-<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cell_normal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L170-L176"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.cell_normal" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cell_normal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L170-L176"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.cell_normal" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning the element normal at a sample point.</p>
 <p>For elements with the same dimension as the embedding space, this will be zero.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>args</strong> (<em>Geometry.CellArg</em>)</p></li>
-<li><p><strong>s</strong> (<em>Sample</em>)</p></li>
+<li><p><strong>args</strong> (<a class="reference internal" href="#warp.fem.Geometry.CellArg" title="warp.fem.Geometry.CellArg"><em>Geometry.CellArg</em></a>)</p></li>
+<li><p><strong>s</strong> (<a class="reference internal" href="warp.fem.Sample.html#warp.fem.Sample" title="warp.fem.Sample"><em>Sample</em></a>)</p></li>
 </ul>
 </dd>
 </dl>
@@ -897,7 +906,7 @@
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.Geometry.cell_environment_index">
-<span class="sig-name descname"><span class="pre">cell_environment_index</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Geometry__cell_environment_index(args:</span> <span class="pre">Any,</span> <span class="pre">cell_index:</span> <span class="pre">int)&gt;</span></em><a class="headerlink" href="#warp.fem.Geometry.cell_environment_index" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">cell_environment_index</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Geometry__cell_environment_index(args:</span> <span class="pre">Any,</span> <span class="pre">cell_index:</span> <span class="pre">int)&gt;</span></span><a class="headerlink" href="#warp.fem.Geometry.cell_environment_index" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -919,7 +928,7 @@
 <dd><p>Fill the arguments to be passed to side-related device functions</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>args</strong> (<em>Geometry.SideArg</em>)</p>
+<dd class="field-odd"><p><strong>args</strong> (<a class="reference internal" href="#warp.fem.Geometry.SideArg" title="warp.fem.Geometry.SideArg"><em>Geometry.SideArg</em></a>)</p>
 </dd>
 </dl>
 </dd></dl>
@@ -935,19 +944,19 @@
 <dd><p>Fill the arguments to be passed to side-related device functions</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>args</strong> (<em>Geometry.SideIndexArg</em>)</p>
+<dd class="field-odd"><p><strong>args</strong> (<a class="reference internal" href="#warp.fem.Geometry.SideIndexArg" title="warp.fem.Geometry.SideIndexArg"><em>Geometry.SideIndexArg</em></a>)</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.boundary_side_index">
-<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">boundary_side_index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary_side_index</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L213-L217"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.boundary_side_index" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">boundary_side_index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary_side_index</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L213-L217"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.boundary_side_index" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning the side index corresponding to a boundary side</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>args</strong> (<em>Geometry.SideIndexArg</em>)</p></li>
+<li><p><strong>args</strong> (<a class="reference internal" href="#warp.fem.Geometry.SideIndexArg" title="warp.fem.Geometry.SideIndexArg"><em>Geometry.SideIndexArg</em></a>)</p></li>
 <li><p><strong>boundary_side_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
 </ul>
 </dd>
@@ -956,13 +965,13 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.side_position">
-<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">side_position</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L218-L222"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_position" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">side_position</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L218-L222"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_position" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning the side position at a sample point</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>args</strong> (<em>Geometry.SideArg</em>)</p></li>
-<li><p><strong>s</strong> (<em>Sample</em>)</p></li>
+<li><p><strong>args</strong> (<a class="reference internal" href="#warp.fem.Geometry.SideArg" title="warp.fem.Geometry.SideArg"><em>Geometry.SideArg</em></a>)</p></li>
+<li><p><strong>s</strong> (<a class="reference internal" href="warp.fem.Sample.html#warp.fem.Sample" title="warp.fem.Sample"><em>Sample</em></a>)</p></li>
 </ul>
 </dd>
 </dl>
@@ -970,13 +979,13 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.side_deformation_gradient">
-<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">side_deformation_gradient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L223-L227"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_deformation_gradient" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">side_deformation_gradient</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L223-L227"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_deformation_gradient" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning the gradient of world position with respect to reference side</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>args</strong> (<em>Geometry.SideArg</em>)</p></li>
-<li><p><strong>s</strong> (<em>Sample</em>)</p></li>
+<li><p><strong>args</strong> (<a class="reference internal" href="#warp.fem.Geometry.SideArg" title="warp.fem.Geometry.SideArg"><em>Geometry.SideArg</em></a>)</p></li>
+<li><p><strong>s</strong> (<a class="reference internal" href="warp.fem.Sample.html#warp.fem.Sample" title="warp.fem.Sample"><em>Sample</em></a>)</p></li>
 </ul>
 </dd>
 </dl>
@@ -984,7 +993,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.side_inner_inverse_deformation_gradient">
-<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">side_inner_inverse_deformation_gradient</span></span><span class="sig-paren">(</span>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">side_inner_inverse_deformation_gradient</span></span><span class="sig-paren">(</span>
 
 <dl>
 <dd><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>,</dd>
@@ -998,7 +1007,7 @@
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>args</strong> (<em>Geometry.SideArg</em>)</p></li>
+<li><p><strong>args</strong> (<a class="reference internal" href="#warp.fem.Geometry.SideArg" title="warp.fem.Geometry.SideArg"><em>Geometry.SideArg</em></a>)</p></li>
 <li><p><strong>side_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
 <li><p><strong>coords</strong> (<a class="reference internal" href="warp.vec3f.html#warp.vec3f" title="warp._src.types.vec3f"><em>vec3f</em></a>)</p></li>
 </ul>
@@ -1008,7 +1017,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.side_outer_inverse_deformation_gradient">
-<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">side_outer_inverse_deformation_gradient</span></span><span class="sig-paren">(</span>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">side_outer_inverse_deformation_gradient</span></span><span class="sig-paren">(</span>
 
 <dl>
 <dd><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>,</dd>
@@ -1022,7 +1031,7 @@
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>args</strong> (<em>Geometry.CellArg</em>)</p></li>
+<li><p><strong>args</strong> (<a class="reference internal" href="#warp.fem.Geometry.CellArg" title="warp.fem.Geometry.CellArg"><em>Geometry.CellArg</em></a>)</p></li>
 <li><p><strong>side_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
 <li><p><strong>coords</strong> (<a class="reference internal" href="warp.vec3f.html#warp.vec3f" title="warp._src.types.vec3f"><em>vec3f</em></a>)</p></li>
 </ul>
@@ -1032,13 +1041,13 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.side_measure">
-<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">side_measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L242-L246"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_measure" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">side_measure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L242-L246"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_measure" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning the measure determinant (e.g. volume, area) at a given point</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>args</strong> (<em>Geometry.SideArg</em>)</p></li>
-<li><p><strong>s</strong> (<em>Sample</em>)</p></li>
+<li><p><strong>args</strong> (<a class="reference internal" href="#warp.fem.Geometry.SideArg" title="warp.fem.Geometry.SideArg"><em>Geometry.SideArg</em></a>)</p></li>
+<li><p><strong>s</strong> (<a class="reference internal" href="warp.fem.Sample.html#warp.fem.Sample" title="warp.fem.Sample"><em>Sample</em></a>)</p></li>
 </ul>
 </dd>
 </dl>
@@ -1046,13 +1055,13 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.side_measure_ratio">
-<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">side_measure_ratio</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L247-L251"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_measure_ratio" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">side_measure_ratio</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L247-L251"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_measure_ratio" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning the ratio of the measure of a side to that of its neighbour cells</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>args</strong> (<em>Geometry.SideArg</em>)</p></li>
-<li><p><strong>s</strong> (<em>Sample</em>)</p></li>
+<li><p><strong>args</strong> (<a class="reference internal" href="#warp.fem.Geometry.SideArg" title="warp.fem.Geometry.SideArg"><em>Geometry.SideArg</em></a>)</p></li>
+<li><p><strong>s</strong> (<a class="reference internal" href="warp.fem.Sample.html#warp.fem.Sample" title="warp.fem.Sample"><em>Sample</em></a>)</p></li>
 </ul>
 </dd>
 </dl>
@@ -1060,13 +1069,13 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.side_normal">
-<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">side_normal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L252-L256"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_normal" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">side_normal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L252-L256"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_normal" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning the element normal at a sample point</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>args</strong> (<em>Geometry.SideArg</em>)</p></li>
-<li><p><strong>s</strong> (<em>Sample</em>)</p></li>
+<li><p><strong>args</strong> (<a class="reference internal" href="#warp.fem.Geometry.SideArg" title="warp.fem.Geometry.SideArg"><em>Geometry.SideArg</em></a>)</p></li>
+<li><p><strong>s</strong> (<a class="reference internal" href="warp.fem.Sample.html#warp.fem.Sample" title="warp.fem.Sample"><em>Sample</em></a>)</p></li>
 </ul>
 </dd>
 </dl>
@@ -1074,7 +1083,7 @@
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.Geometry.side_environment_index">
-<span class="sig-name descname"><span class="pre">side_environment_index</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Geometry__side_environment_index(args:</span> <span class="pre">Any,</span> <span class="pre">side_index:</span> <span class="pre">int)&gt;</span></em><a class="headerlink" href="#warp.fem.Geometry.side_environment_index" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">side_environment_index</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Geometry__side_environment_index(args:</span> <span class="pre">Any,</span> <span class="pre">side_index:</span> <span class="pre">int)&gt;</span></span><a class="headerlink" href="#warp.fem.Geometry.side_environment_index" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -1087,12 +1096,12 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.side_inner_cell_index">
-<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">side_inner_cell_index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">side_index</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L267-L271"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_inner_cell_index" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">side_inner_cell_index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">side_index</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L267-L271"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_inner_cell_index" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning the inner cell index for a given side</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>args</strong> (<em>Geometry.SideArg</em>)</p></li>
+<li><p><strong>args</strong> (<a class="reference internal" href="#warp.fem.Geometry.SideArg" title="warp.fem.Geometry.SideArg"><em>Geometry.SideArg</em></a>)</p></li>
 <li><p><strong>side_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
 </ul>
 </dd>
@@ -1101,12 +1110,12 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.side_outer_cell_index">
-<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">side_outer_cell_index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">side_index</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L272-L276"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_outer_cell_index" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">side_outer_cell_index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">side_index</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L272-L276"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_outer_cell_index" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning the outer cell index for a given side</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>args</strong> (<em>Geometry.SideArg</em>)</p></li>
+<li><p><strong>args</strong> (<a class="reference internal" href="#warp.fem.Geometry.SideArg" title="warp.fem.Geometry.SideArg"><em>Geometry.SideArg</em></a>)</p></li>
 <li><p><strong>side_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
 </ul>
 </dd>
@@ -1115,12 +1124,12 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.side_inner_cell_coords">
-<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">side_inner_cell_coords</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">side_index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">side_coords</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L277-L281"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_inner_cell_coords" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">side_inner_cell_coords</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">side_index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">side_coords</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L277-L281"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_inner_cell_coords" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning the coordinates of a point on a side in the inner cell</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>args</strong> (<em>Geometry.SideArg</em>)</p></li>
+<li><p><strong>args</strong> (<a class="reference internal" href="#warp.fem.Geometry.SideArg" title="warp.fem.Geometry.SideArg"><em>Geometry.SideArg</em></a>)</p></li>
 <li><p><strong>side_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
 <li><p><strong>side_coords</strong> (<a class="reference internal" href="warp.vec3f.html#warp.vec3f" title="warp._src.types.vec3f"><em>vec3f</em></a>)</p></li>
 </ul>
@@ -1130,12 +1139,12 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.side_outer_cell_coords">
-<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">side_outer_cell_coords</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">side_index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">side_coords</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L282-L286"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_outer_cell_coords" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">side_outer_cell_coords</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">side_index</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">side_coords</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L282-L286"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_outer_cell_coords" title="Link to this definition">#</a></dt>
 <dd><p>Device function returning the coordinates of a point on a side in the outer cell</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>args</strong> (<em>Geometry.SideArg</em>)</p></li>
+<li><p><strong>args</strong> (<a class="reference internal" href="#warp.fem.Geometry.SideArg" title="warp.fem.Geometry.SideArg"><em>Geometry.SideArg</em></a>)</p></li>
 <li><p><strong>side_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
 <li><p><strong>side_coords</strong> (<a class="reference internal" href="warp.vec3f.html#warp.vec3f" title="warp._src.types.vec3f"><em>vec3f</em></a>)</p></li>
 </ul>
@@ -1145,7 +1154,7 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.side_from_cell_coords">
-<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">side_from_cell_coords</span></span><span class="sig-paren">(</span>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">side_from_cell_coords</span></span><span class="sig-paren">(</span>
 
 <dl>
 <dd><em class="sig-param"><span class="n"><span class="pre">args</span></span></em>,</dd>
@@ -1159,7 +1168,7 @@
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>args</strong> (<em>Geometry.SideArg</em>)</p></li>
+<li><p><strong>args</strong> (<a class="reference internal" href="#warp.fem.Geometry.SideArg" title="warp.fem.Geometry.SideArg"><em>Geometry.SideArg</em></a>)</p></li>
 <li><p><strong>side_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
 <li><p><strong>element_index</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
 <li><p><strong>element_coords</strong> (<a class="reference internal" href="warp.vec3f.html#warp.vec3f" title="warp._src.types.vec3f"><em>vec3f</em></a>)</p></li>
@@ -1170,11 +1179,11 @@
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Geometry.side_to_cell_arg">
-<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">side_to_cell_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">side_arg</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L297-L301"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_to_cell_arg" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">side_to_cell_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">side_arg</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/geometry.py#L297-L301"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Geometry.side_to_cell_arg" title="Link to this definition">#</a></dt>
 <dd><p>Device function converting a side-related argument value to a cell-related argument value, for promoting trace samples to the full space</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>side_arg</strong> (<em>Geometry.SideArg</em>)</p>
+<dd class="field-odd"><p><strong>side_arg</strong> (<a class="reference internal" href="#warp.fem.Geometry.SideArg" title="warp.fem.Geometry.SideArg"><em>Geometry.SideArg</em></a>)</p>
 </dd>
 </dl>
 </dd></dl>
@@ -1192,7 +1201,7 @@
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.Geometry.cell_lookup">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cell_lookup</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Function.html#warp.Function" title="warp._src.context.Function"><span class="pre">Function</span></a></em><a class="headerlink" href="#warp.fem.Geometry.cell_lookup" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cell_lookup</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Function.html#warp.Function" title="warp._src.context.Function"><span class="pre">Function</span></a></span><a class="headerlink" href="#warp.fem.Geometry.cell_lookup" title="Link to this definition">#</a></dt>
 <dd><p>Device function for looking up the closest cell to a position.</p>
 </dd></dl>
 
@@ -1240,7 +1249,7 @@ separated by less than ~1e-7 in world space.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.Geometry.compute_cell_bvh_groups">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">compute_cell_bvh_groups</span></span><a class="headerlink" href="#warp.fem.Geometry.compute_cell_bvh_groups" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">compute_cell_bvh_groups</span></span><a class="headerlink" href="#warp.fem.Geometry.compute_cell_bvh_groups" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -1306,10 +1315,9 @@ separated by less than ~1e-7 in world space.</p>
     class="page-toc tocsection onthispage">
     <i class="fa-solid fa-list"></i> On this page
   </div>
-  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
-    <ul class="visible nav section-nav flex-column">
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Geometry"><code class="docutils literal notranslate"><span class="pre">Geometry</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Geometry.__init__"><code class="docutils literal notranslate"><span class="pre">__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Geometry.dimension"><code class="docutils literal notranslate"><span class="pre">dimension</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Geometry.scalar_type"><code class="docutils literal notranslate"><span class="pre">scalar_type</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Geometry.coords_type"><code class="docutils literal notranslate"><span class="pre">coords_type</span></code></a></li>
@@ -1400,8 +1408,8 @@ separated by less than ~1e-7 in world space.</p>
   
 
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
-<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+  <script defer src="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
 
 
   <footer class="bd-footer">

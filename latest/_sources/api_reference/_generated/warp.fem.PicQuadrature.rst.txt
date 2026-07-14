@@ -4,16 +4,12 @@
 .. currentmodule:: warp.fem
 
 .. autoclass:: PicQuadrature
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~PicQuadrature.__init__
       ~PicQuadrature.active_cell_count
       ~PicQuadrature.arg_value
       ~PicQuadrature.element_index_arg_value
@@ -29,7 +25,6 @@
       ~PicQuadrature.total_point_count
    
    
-
    
    
    .. rubric:: Attributes

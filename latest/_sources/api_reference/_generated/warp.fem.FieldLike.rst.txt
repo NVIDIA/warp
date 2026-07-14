@@ -4,16 +4,12 @@
 .. currentmodule:: warp.fem
 
 .. autoclass:: FieldLike
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~FieldLike.__init__
       ~FieldLike.divergence_valid
       ~FieldLike.eval_arg_value
       ~FieldLike.eval_degree
@@ -28,7 +24,6 @@
       ~FieldLike.notify_operator_usage
    
    
-
    
    
    .. rubric:: Attributes

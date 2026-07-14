@@ -4,16 +4,12 @@
 .. currentmodule:: warp.fem
 
 .. autoclass:: ExplicitQuadrature
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~ExplicitQuadrature.__init__
       ~ExplicitQuadrature.arg_value
       ~ExplicitQuadrature.element_index_arg_value
       ~ExplicitQuadrature.evaluation_point_count
@@ -26,7 +22,6 @@
       ~ExplicitQuadrature.total_point_count
    
    
-
    
    
    .. rubric:: Attributes

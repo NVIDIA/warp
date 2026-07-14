@@ -4,19 +4,9 @@
 .. currentmodule:: warp.fem
 
 .. autoclass:: Field
-
-   
-   .. automethod:: __init__
-
-   
-   .. rubric:: Methods
-
-   .. autosummary::
-   
-      ~Field.__init__
    
    
-
+   
    
    
    .. rubric:: Attributes

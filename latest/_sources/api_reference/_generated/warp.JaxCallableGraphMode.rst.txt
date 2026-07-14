@@ -4,10 +4,7 @@
 .. currentmodule:: warp
 
 .. autoclass:: JaxCallableGraphMode
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
@@ -20,10 +17,8 @@
       ~JaxCallableGraphMode.from_bytes
       ~JaxCallableGraphMode.as_integer_ratio
       ~JaxCallableGraphMode.is_integer
-      ~JaxCallableGraphMode.__init__
    
    
-
    
    
    .. rubric:: Attributes

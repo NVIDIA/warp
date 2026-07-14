@@ -4,10 +4,7 @@
 .. currentmodule:: warp.config
 
 .. autoclass:: LaunchArrayAccessMode
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
@@ -20,10 +17,8 @@
       ~LaunchArrayAccessMode.from_bytes
       ~LaunchArrayAccessMode.as_integer_ratio
       ~LaunchArrayAccessMode.is_integer
-      ~LaunchArrayAccessMode.__init__
    
    
-
    
    
    .. rubric:: Attributes

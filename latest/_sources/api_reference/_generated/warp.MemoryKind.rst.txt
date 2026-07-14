@@ -4,10 +4,7 @@
 .. currentmodule:: warp
 
 .. autoclass:: MemoryKind
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
@@ -20,10 +17,8 @@
       ~MemoryKind.from_bytes
       ~MemoryKind.as_integer_ratio
       ~MemoryKind.is_integer
-      ~MemoryKind.__init__
    
    
-
    
    
    .. rubric:: Attributes

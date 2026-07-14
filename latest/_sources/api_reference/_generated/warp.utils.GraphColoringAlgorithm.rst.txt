@@ -4,10 +4,7 @@
 .. currentmodule:: warp.utils
 
 .. autoclass:: GraphColoringAlgorithm
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
@@ -20,10 +17,8 @@
       ~GraphColoringAlgorithm.from_bytes
       ~GraphColoringAlgorithm.as_integer_ratio
       ~GraphColoringAlgorithm.is_integer
-      ~GraphColoringAlgorithm.__init__
    
    
-
    
    
    .. rubric:: Attributes

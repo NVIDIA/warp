@@ -4,10 +4,7 @@
 .. currentmodule:: warp
 
 .. autoclass:: JaxModulePreloadMode
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
@@ -20,10 +17,8 @@
       ~JaxModulePreloadMode.from_bytes
       ~JaxModulePreloadMode.as_integer_ratio
       ~JaxModulePreloadMode.is_integer
-      ~JaxModulePreloadMode.__init__
    
    
-
    
    
    .. rubric:: Attributes

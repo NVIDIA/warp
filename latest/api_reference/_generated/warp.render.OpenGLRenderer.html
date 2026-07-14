@@ -28,8 +28,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
-<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+  <link href="../../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
@@ -37,26 +37,27 @@
     <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=3d681599" />
   
   <!-- So that users can add custom icons -->
-  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <script defer src="../../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
-<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
 
 
 
     <script src="../../_static/documentation_options.js?v=4ae37cce"></script>
-    <script src="../../_static/doctools.js?v=9bcbadda"></script>
-    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.render.OpenGLRenderer';</script>
     <script>
-        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
         DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'latest';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
 
     <link rel="icon" href="../../_static/favicon.png"/>
 
@@ -69,25 +70,31 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="1.16.0.dev0" />
+  
+    
+    <script src="../../_static/searchtools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script src="../../searchindex.js"></script>
+  
 
 
   </head>
 
-  
-  
-  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+  <body data-default-mode="">
+
 
   
   
   <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
-
 
   
   <div id="pst-scroll-pixel-helper"></div>
   
   <button type="button" class="btn rounded-pill" id="pst-back-to-top">
     <i class="fa-solid fa-arrow-up"></i>Back to top</button>
-
+  
+  
+  
   
   <dialog id="pst-search-dialog">
     
@@ -113,7 +120,7 @@
 </div>
 
   
-    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
 <div class="bd-header__inner bd-page-width">
   <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
     <span class="fa-solid fa-bars"></span>
@@ -193,11 +200,18 @@
       
         <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
       
         <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -210,8 +224,7 @@
           
           
           
-          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -222,8 +235,7 @@
           
           
           
-          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
       
@@ -326,11 +338,18 @@
         
           <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
         
           <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -343,8 +362,7 @@
           
           
           
-          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -355,8 +373,7 @@
           
           
           
-          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
         
@@ -497,7 +514,7 @@
 <h1>warp.render.OpenGLRenderer<a class="headerlink" href="#warp-render-openglrenderer" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.render.</span></span><span class="sig-name descname"><span class="pre">OpenGLRenderer</span></span><span class="sig-paren">(</span>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.render.</span></span><span class="sig-name descname"><span class="pre">OpenGLRenderer</span></span><span class="sig-paren">(</span>
 
 <dl>
 <dd><em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Warp'</span></span></em>,</dd>
@@ -556,75 +573,7 @@ To enable headless rendering, set the Pyglet options before importing
 <span class="n">renderer</span> <span class="o">=</span> <span class="n">warp</span><span class="o">.</span><span class="n">render</span><span class="o">.</span><span class="n">OpenGLRenderer</span><span class="p">()</span>
 </pre></div>
 </div>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>title</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>)</p></li>
-<li><p><strong>scaling</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
-<li><p><strong>fps</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
-<li><p><strong>up_axis</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>)</p></li>
-<li><p><strong>screen_width</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
-<li><p><strong>screen_height</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
-<li><p><strong>near_plane</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
-<li><p><strong>far_plane</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
-<li><p><strong>camera_fov</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
-<li><p><strong>camera_pos</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>]</em>)</p></li>
-<li><p><strong>camera_front</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>]</em>)</p></li>
-<li><p><strong>camera_up</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>]</em>)</p></li>
-<li><p><strong>background_color</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><em>tuple</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>]</em>)</p></li>
-<li><p><strong>draw_grid</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>)</p></li>
-<li><p><strong>draw_sky</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>)</p></li>
-<li><p><strong>draw_axis</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>)</p></li>
-<li><p><strong>show_info</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>)</p></li>
-<li><p><strong>render_wireframe</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>)</p></li>
-<li><p><strong>render_depth</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>)</p></li>
-<li><p><strong>axis_scale</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
-<li><p><strong>vsync</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>)</p></li>
-<li><p><strong>headless</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a><em> | </em><em>None</em>)</p></li>
-<li><p><strong>enable_backface_culling</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>)</p></li>
-<li><p><strong>enable_mouse_interaction</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>)</p></li>
-<li><p><strong>enable_keyboard_interaction</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>)</p></li>
-<li><p><strong>device</strong> (<em>wp.DeviceLike</em>)</p></li>
-<li><p><strong>use_legacy_opengl</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a><em> | </em><em>None</em>)</p></li>
-</ul>
-</dd>
-</dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="warp.render.OpenGLRenderer.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span>
-
-<dl>
-<dd><em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Warp'</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">scaling</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">fps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">60</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">up_axis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Y'</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">screen_width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1024</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">screen_height</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">768</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">near_plane</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">far_plane</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100.0</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">camera_fov</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">45.0</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">camera_pos</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0.0,</span> <span class="pre">2.0,</span> <span class="pre">10.0)</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">camera_front</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0.0,</span> <span class="pre">0.0,</span> <span class="pre">-1.0)</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">camera_up</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0.0,</span> <span class="pre">1.0,</span> <span class="pre">0.0)</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">background_color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0.53,</span> <span class="pre">0.8,</span> <span class="pre">0.92)</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">draw_grid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">draw_sky</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">draw_axis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">show_info</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">render_wireframe</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">render_depth</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">axis_scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">vsync</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">headless</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">enable_backface_culling</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">enable_mouse_interaction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">enable_keyboard_interaction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">use_legacy_opengl</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
-</dl>
-
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/render/render_opengl.py#L992-L1443"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.__init__" title="Link to this definition">#</a></dt>
-<dd><p>Initialize the OpenGL renderer.</p>
+<p>Initialize the OpenGL renderer.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -653,146 +602,141 @@ To enable headless rendering, set the Pyglet options before importing
 <li><p><strong>enable_backface_culling</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether to enable backface culling.</p></li>
 <li><p><strong>enable_mouse_interaction</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether to enable mouse interaction.</p></li>
 <li><p><strong>enable_keyboard_interaction</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether to enable keyboard interaction.</p></li>
-<li><p><strong>device</strong> (<a class="reference internal" href="warp.Device.html#warp.Device" title="warp._src.context.Device"><em>Device</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – Warp device where internal data is stored.</p></li>
+<li><p><strong>device</strong> (<a class="reference internal" href="warp.DeviceLike.html#warp.DeviceLike" title="warp.DeviceLike"><em>warp.DeviceLike</em></a>) – Warp device where internal data is stored.</p></li>
 <li><p><strong>use_legacy_opengl</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a><em> | </em><em>None</em>) – Whether to use legacy OpenGL (more compatible with macOS). If <code class="docutils literal notranslate"><span class="pre">None</span></code>, auto-detected.</p></li>
 </ul>
 </dd>
 </dl>
-</dd></dl>
-
 <p class="rubric">Methods</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.__init__" title="warp.render.OpenGLRenderer.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>([title, scaling, fps, up_axis, ...])</p></td>
-<td><p>Initialize the OpenGL renderer.</p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.add_shape_instance" title="warp.render.OpenGLRenderer.add_shape_instance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_shape_instance</span></code></a>(name, shape, body, pos, rot)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.add_shape_instance" title="warp.render.OpenGLRenderer.add_shape_instance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_shape_instance</span></code></a>(name, shape, body, pos, rot)</p></td>
 <td><p>Add an instance of a registered shape.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.allocate_shape_instances" title="warp.render.OpenGLRenderer.allocate_shape_instances"><code class="xref py py-obj docutils literal notranslate"><span class="pre">allocate_shape_instances</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.allocate_shape_instances" title="warp.render.OpenGLRenderer.allocate_shape_instances"><code class="xref py py-obj docutils literal notranslate"><span class="pre">allocate_shape_instances</span></code></a>()</p></td>
 <td><p>Allocate GPU buffers and Warp arrays for instances.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.begin_frame" title="warp.render.OpenGLRenderer.begin_frame"><code class="xref py py-obj docutils literal notranslate"><span class="pre">begin_frame</span></code></a>([t])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.begin_frame" title="warp.render.OpenGLRenderer.begin_frame"><code class="xref py py-obj docutils literal notranslate"><span class="pre">begin_frame</span></code></a>([t])</p></td>
 <td><p>Mark the start of a frame and set time.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.clear" title="warp.render.OpenGLRenderer.clear"><code class="xref py py-obj docutils literal notranslate"><span class="pre">clear</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.clear" title="warp.render.OpenGLRenderer.clear"><code class="xref py py-obj docutils literal notranslate"><span class="pre">clear</span></code></a>()</p></td>
 <td><p>Release OpenGL resources and reset renderer state.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.close" title="warp.render.OpenGLRenderer.close"><code class="xref py py-obj docutils literal notranslate"><span class="pre">close</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.close" title="warp.render.OpenGLRenderer.close"><code class="xref py py-obj docutils literal notranslate"><span class="pre">close</span></code></a>()</p></td>
 <td><p>Close the window and release renderer resources.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.compute_model_matrix" title="warp.render.OpenGLRenderer.compute_model_matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">compute_model_matrix</span></code></a>(camera_axis, scaling)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.compute_model_matrix" title="warp.render.OpenGLRenderer.compute_model_matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">compute_model_matrix</span></code></a>(camera_axis, scaling)</p></td>
 <td><p>Compute the model matrix for the given up-axis and scaling.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.compute_projection_matrix" title="warp.render.OpenGLRenderer.compute_projection_matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">compute_projection_matrix</span></code></a>(fov, aspect_ratio, ...)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.compute_projection_matrix" title="warp.render.OpenGLRenderer.compute_projection_matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">compute_projection_matrix</span></code></a>(fov, aspect_ratio, ...)</p></td>
 <td><p>Compute a projection matrix given the field of view, aspect ratio, near plane, and far plane.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.compute_view_matrix" title="warp.render.OpenGLRenderer.compute_view_matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">compute_view_matrix</span></code></a>(cam_pos, cam_front, cam_up)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.compute_view_matrix" title="warp.render.OpenGLRenderer.compute_view_matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">compute_view_matrix</span></code></a>(cam_pos, cam_front, cam_up)</p></td>
 <td><p>Compute the view matrix from camera vectors.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.deregister_shape" title="warp.render.OpenGLRenderer.deregister_shape"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deregister_shape</span></code></a>(shape)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.deregister_shape" title="warp.render.OpenGLRenderer.deregister_shape"><code class="xref py py-obj docutils literal notranslate"><span class="pre">deregister_shape</span></code></a>(shape)</p></td>
 <td><p>Remove a registered shape and free its buffers.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.end_frame" title="warp.render.OpenGLRenderer.end_frame"><code class="xref py py-obj docutils literal notranslate"><span class="pre">end_frame</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.end_frame" title="warp.render.OpenGLRenderer.end_frame"><code class="xref py py-obj docutils literal notranslate"><span class="pre">end_frame</span></code></a>()</p></td>
 <td><p>Finalize the current frame and render it.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.get_pixels" title="warp.render.OpenGLRenderer.get_pixels"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_pixels</span></code></a>(target_image[, split_up_tiles, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.get_pixels" title="warp.render.OpenGLRenderer.get_pixels"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_pixels</span></code></a>(target_image[, split_up_tiles, ...])</p></td>
 <td><p>Read the pixels from the frame buffer (RGB or depth are supported) into the given array.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.initialize_gl" title="warp.render.OpenGLRenderer.initialize_gl"><code class="xref py py-obj docutils literal notranslate"><span class="pre">initialize_gl</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.initialize_gl" title="warp.render.OpenGLRenderer.initialize_gl"><code class="xref py py-obj docutils literal notranslate"><span class="pre">initialize_gl</span></code></a>()</p></td>
 <td><p>Import and cache pyglet OpenGL bindings.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.is_running" title="warp.render.OpenGLRenderer.is_running"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_running</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.is_running" title="warp.render.OpenGLRenderer.is_running"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_running</span></code></a>()</p></td>
 <td><p>Whether the renderer event loop is still running.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.register_body" title="warp.render.OpenGLRenderer.register_body"><code class="xref py py-obj docutils literal notranslate"><span class="pre">register_body</span></code></a>(name)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.register_body" title="warp.render.OpenGLRenderer.register_body"><code class="xref py py-obj docutils literal notranslate"><span class="pre">register_body</span></code></a>(name)</p></td>
 <td><p>Register a body name and return its integer ID.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.register_input_processor" title="warp.render.OpenGLRenderer.register_input_processor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">register_input_processor</span></code></a>(callback)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.register_input_processor" title="warp.render.OpenGLRenderer.register_input_processor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">register_input_processor</span></code></a>(callback)</p></td>
 <td><p>Register a callback to process input each frame.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.register_key_press_callback" title="warp.render.OpenGLRenderer.register_key_press_callback"><code class="xref py py-obj docutils literal notranslate"><span class="pre">register_key_press_callback</span></code></a>(callback)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.register_key_press_callback" title="warp.render.OpenGLRenderer.register_key_press_callback"><code class="xref py py-obj docutils literal notranslate"><span class="pre">register_key_press_callback</span></code></a>(callback)</p></td>
 <td><p>Register a callback for key press events.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.register_shape" title="warp.render.OpenGLRenderer.register_shape"><code class="xref py py-obj docutils literal notranslate"><span class="pre">register_shape</span></code></a>(geo_hash, vertices, indices)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.register_shape" title="warp.render.OpenGLRenderer.register_shape"><code class="xref py py-obj docutils literal notranslate"><span class="pre">register_shape</span></code></a>(geo_hash, vertices, indices)</p></td>
 <td><p>Register a shape geometry and upload buffers.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.remove_shape_instance" title="warp.render.OpenGLRenderer.remove_shape_instance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">remove_shape_instance</span></code></a>(name)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.remove_shape_instance" title="warp.render.OpenGLRenderer.remove_shape_instance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">remove_shape_instance</span></code></a>(name)</p></td>
 <td><p>Remove a shape instance by name.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.render_arrow" title="warp.render.OpenGLRenderer.render_arrow"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_arrow</span></code></a>(name, pos, rot, base_radius, ...)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.render_arrow" title="warp.render.OpenGLRenderer.render_arrow"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_arrow</span></code></a>(name, pos, rot, base_radius, ...)</p></td>
 <td><p>Add an arrow for visualization</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.render_box" title="warp.render.OpenGLRenderer.render_box"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_box</span></code></a>(name, pos, rot, extents[, ...])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.render_box" title="warp.render.OpenGLRenderer.render_box"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_box</span></code></a>(name, pos, rot, extents[, ...])</p></td>
 <td><p>Add a box for visualization</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.render_capsule" title="warp.render.OpenGLRenderer.render_capsule"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_capsule</span></code></a>(name, pos, rot, radius, ...)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.render_capsule" title="warp.render.OpenGLRenderer.render_capsule"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_capsule</span></code></a>(name, pos, rot, radius, ...)</p></td>
 <td><p>Add a capsule for visualization</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.render_cone" title="warp.render.OpenGLRenderer.render_cone"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_cone</span></code></a>(name, pos, rot, radius, half_height)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.render_cone" title="warp.render.OpenGLRenderer.render_cone"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_cone</span></code></a>(name, pos, rot, radius, half_height)</p></td>
 <td><p>Add a cone for visualization</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.render_cylinder" title="warp.render.OpenGLRenderer.render_cylinder"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_cylinder</span></code></a>(name, pos, rot, radius, ...)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.render_cylinder" title="warp.render.OpenGLRenderer.render_cylinder"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_cylinder</span></code></a>(name, pos, rot, radius, ...)</p></td>
 <td><p>Add a cylinder for visualization</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.render_ground" title="warp.render.OpenGLRenderer.render_ground"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_ground</span></code></a>([size, plane])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.render_ground" title="warp.render.OpenGLRenderer.render_ground"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_ground</span></code></a>([size, plane])</p></td>
 <td><p>Add a ground plane for visualization</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.render_line_list" title="warp.render.OpenGLRenderer.render_line_list"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_line_list</span></code></a>(name, vertices, indices[, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.render_line_list" title="warp.render.OpenGLRenderer.render_line_list"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_line_list</span></code></a>(name, vertices, indices[, ...])</p></td>
 <td><p>Add a line list as a set of capsules</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.render_line_strip" title="warp.render.OpenGLRenderer.render_line_strip"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_line_strip</span></code></a>(name, vertices[, color, ...])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.render_line_strip" title="warp.render.OpenGLRenderer.render_line_strip"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_line_strip</span></code></a>(name, vertices[, color, ...])</p></td>
 <td><p>Add a line strip as a set of capsules</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.render_mesh" title="warp.render.OpenGLRenderer.render_mesh"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_mesh</span></code></a>(name, points, indices[, colors, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.render_mesh" title="warp.render.OpenGLRenderer.render_mesh"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_mesh</span></code></a>(name, points, indices[, colors, ...])</p></td>
 <td><p>Add a mesh for visualization</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.render_plane" title="warp.render.OpenGLRenderer.render_plane"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_plane</span></code></a>(name, pos, rot, width, length)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.render_plane" title="warp.render.OpenGLRenderer.render_plane"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_plane</span></code></a>(name, pos, rot, width, length)</p></td>
 <td><p>Add a plane for visualization</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.render_points" title="warp.render.OpenGLRenderer.render_points"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_points</span></code></a>(name, points, radius[, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.render_points" title="warp.render.OpenGLRenderer.render_points"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_points</span></code></a>(name, points, radius[, ...])</p></td>
 <td><p>Add a set of points</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.render_ref" title="warp.render.OpenGLRenderer.render_ref"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_ref</span></code></a>(name, path, pos, rot, scale[, color])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.render_ref" title="warp.render.OpenGLRenderer.render_ref"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_ref</span></code></a>(name, path, pos, rot, scale[, color])</p></td>
 <td><p>Create a reference (instance) with the given name to the given path.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.render_sphere" title="warp.render.OpenGLRenderer.render_sphere"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_sphere</span></code></a>(name, pos, rot, radius[, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.render_sphere" title="warp.render.OpenGLRenderer.render_sphere"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_sphere</span></code></a>(name, pos, rot, radius[, ...])</p></td>
 <td><p>Add a sphere for visualization</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.save" title="warp.render.OpenGLRenderer.save"><code class="xref py py-obj docutils literal notranslate"><span class="pre">save</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.save" title="warp.render.OpenGLRenderer.save"><code class="xref py py-obj docutils literal notranslate"><span class="pre">save</span></code></a>()</p></td>
 <td><p>Block until the window is closed, keeping rendering active.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.setup_tiled_rendering" title="warp.render.OpenGLRenderer.setup_tiled_rendering"><code class="xref py py-obj docutils literal notranslate"><span class="pre">setup_tiled_rendering</span></code></a>(instances[, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.setup_tiled_rendering" title="warp.render.OpenGLRenderer.setup_tiled_rendering"><code class="xref py py-obj docutils literal notranslate"><span class="pre">setup_tiled_rendering</span></code></a>(instances[, ...])</p></td>
 <td><p>Set up tiled rendering where the render buffer is split into multiple tiles that can visualize different shape instances of the scene with different view and projection matrices.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.update" title="warp.render.OpenGLRenderer.update"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.update" title="warp.render.OpenGLRenderer.update"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update</span></code></a>()</p></td>
 <td><p>Advance the event loop and render a frame if enabled.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.update_body_transforms" title="warp.render.OpenGLRenderer.update_body_transforms"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_body_transforms</span></code></a>(body_tf)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.update_body_transforms" title="warp.render.OpenGLRenderer.update_body_transforms"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_body_transforms</span></code></a>(body_tf)</p></td>
 <td><p>Update instance transforms from body transforms.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.update_instance_colors" title="warp.render.OpenGLRenderer.update_instance_colors"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_instance_colors</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.update_instance_colors" title="warp.render.OpenGLRenderer.update_instance_colors"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_instance_colors</span></code></a>()</p></td>
 <td><p>Upload per-instance colors to GPU buffers.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.update_model_matrix" title="warp.render.OpenGLRenderer.update_model_matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_model_matrix</span></code></a>([model_matrix])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.update_model_matrix" title="warp.render.OpenGLRenderer.update_model_matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_model_matrix</span></code></a>([model_matrix])</p></td>
 <td><p>Update the model matrix and upload it to shaders.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.update_projection_matrix" title="warp.render.OpenGLRenderer.update_projection_matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_projection_matrix</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.update_projection_matrix" title="warp.render.OpenGLRenderer.update_projection_matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_projection_matrix</span></code></a>()</p></td>
 <td><p>Update the projection matrix from current camera settings.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.update_shape_instance" title="warp.render.OpenGLRenderer.update_shape_instance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_shape_instance</span></code></a>(name[, pos, rot, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.update_shape_instance" title="warp.render.OpenGLRenderer.update_shape_instance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_shape_instance</span></code></a>(name[, pos, rot, ...])</p></td>
 <td><p>Update the instance properties of the shape</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.update_shape_instances" title="warp.render.OpenGLRenderer.update_shape_instances"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_shape_instances</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.update_shape_instances" title="warp.render.OpenGLRenderer.update_shape_instances"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_shape_instances</span></code></a>()</p></td>
 <td><p>Rebuild instance buffers after instance updates.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.update_shape_vertices" title="warp.render.OpenGLRenderer.update_shape_vertices"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_shape_vertices</span></code></a>(shape, points)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.update_shape_vertices" title="warp.render.OpenGLRenderer.update_shape_vertices"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_shape_vertices</span></code></a>(shape, points)</p></td>
 <td><p>Update vertex positions for a registered shape.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.update_tile" title="warp.render.OpenGLRenderer.update_tile"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_tile</span></code></a>(tile_id[, instances, ...])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.update_tile" title="warp.render.OpenGLRenderer.update_tile"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_tile</span></code></a>(tile_id[, instances, ...])</p></td>
 <td><p>Update the shape instances, projection matrix, view matrix, tile size, or tile position for a given tile given its index.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.update_view_matrix" title="warp.render.OpenGLRenderer.update_view_matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_view_matrix</span></code></a>([cam_pos, cam_front, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.OpenGLRenderer.update_view_matrix" title="warp.render.OpenGLRenderer.update_view_matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_view_matrix</span></code></a>([cam_pos, cam_front, ...])</p></td>
 <td><p>Update camera vectors and recompute the view matrix.</p></td>
 </tr>
 </tbody>
@@ -848,29 +792,29 @@ To enable headless rendering, set the Pyglet options before importing
 </div>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.default_num_segments">
-<span class="sig-name descname"><span class="pre">default_num_segments</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">32</span></em><a class="headerlink" href="#warp.render.OpenGLRenderer.default_num_segments" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">default_num_segments</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">32</span></span><a class="headerlink" href="#warp.render.OpenGLRenderer.default_num_segments" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.gl">
-<span class="sig-name descname"><span class="pre">gl</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#warp.render.OpenGLRenderer.gl" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">gl</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#warp.render.OpenGLRenderer.gl" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.initialize_gl">
-<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">initialize_gl</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/render/render_opengl.py#L984-L991"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.initialize_gl" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">initialize_gl</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/render/render_opengl.py#L984-L991"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.initialize_gl" title="Link to this definition">#</a></dt>
 <dd><p>Import and cache pyglet OpenGL bindings.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.paused">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">paused</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/render/render_opengl.py#L1444-L1448"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.paused" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">paused</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/render/render_opengl.py#L1444-L1448"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.paused" title="Link to this definition">#</a></dt>
 <dd><p>Whether rendering is paused.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.has_exit">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">has_exit</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/render/render_opengl.py#L1458-L1462"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.has_exit" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">has_exit</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/render/render_opengl.py#L1458-L1462"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.has_exit" title="Link to this definition">#</a></dt>
 <dd><p>Whether the event loop has requested exit.</p>
 </dd></dl>
 
@@ -888,7 +832,7 @@ To enable headless rendering, set the Pyglet options before importing
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.tiled_rendering">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">tiled_rendering</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/render/render_opengl.py#L1513-L1517"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.tiled_rendering" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">tiled_rendering</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/render/render_opengl.py#L1513-L1517"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.tiled_rendering" title="Link to this definition">#</a></dt>
 <dd><p>Whether tiled rendering is enabled.</p>
 </dd></dl>
 
@@ -977,7 +921,7 @@ for a given tile given its index.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.compute_projection_matrix">
-<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">compute_projection_matrix</span></span><span class="sig-paren">(</span>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">compute_projection_matrix</span></span><span class="sig-paren">(</span>
 
 <dl>
 <dd><em class="sig-param"><span class="n"><span class="pre">fov</span></span></em>,</dd>
@@ -1014,19 +958,19 @@ for a given tile given its index.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.camera_pos">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">camera_pos</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/render/render_opengl.py#L1784-L1788"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.camera_pos" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">camera_pos</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/render/render_opengl.py#L1784-L1788"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.camera_pos" title="Link to this definition">#</a></dt>
 <dd><p>Current camera position vector.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.camera_front">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">camera_front</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/render/render_opengl.py#L1794-L1798"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.camera_front" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">camera_front</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/render/render_opengl.py#L1794-L1798"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.camera_front" title="Link to this definition">#</a></dt>
 <dd><p>Current camera forward vector.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.camera_up">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">camera_up</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/render/render_opengl.py#L1804-L1808"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.camera_up" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">camera_up</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/render/render_opengl.py#L1804-L1808"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.camera_up" title="Link to this definition">#</a></dt>
 <dd><p>Current camera up vector.</p>
 </dd></dl>
 
@@ -1075,7 +1019,7 @@ for a given tile given its index.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.compute_model_matrix">
-<em class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">compute_model_matrix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">camera_axis</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scaling</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/render/render_opengl.py#L1856-L1865"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.compute_model_matrix" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">compute_model_matrix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">camera_axis</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scaling</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/render/render_opengl.py#L1856-L1865"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.compute_model_matrix" title="Link to this definition">#</a></dt>
 <dd><p>Compute the model matrix for the given up-axis and scaling.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1101,37 +1045,37 @@ current up-axis and scaling.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.num_tiles">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">num_tiles</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/render/render_opengl.py#L1893-L1897"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.num_tiles" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">num_tiles</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/render/render_opengl.py#L1893-L1897"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.num_tiles" title="Link to this definition">#</a></dt>
 <dd><p>Number of tiles configured for tiled rendering.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.tile_width">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">tile_width</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/render/render_opengl.py#L1898-L1902"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.tile_width" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">tile_width</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/render/render_opengl.py#L1898-L1902"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.tile_width" title="Link to this definition">#</a></dt>
 <dd><p>Tile width in pixels, or <code class="docutils literal notranslate"><span class="pre">None</span></code> if unset.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.tile_height">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">tile_height</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/render/render_opengl.py#L1903-L1907"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.tile_height" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">tile_height</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/render/render_opengl.py#L1903-L1907"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.tile_height" title="Link to this definition">#</a></dt>
 <dd><p>Tile height in pixels, or <code class="docutils literal notranslate"><span class="pre">None</span></code> if unset.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.num_shapes">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">num_shapes</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/render/render_opengl.py#L1908-L1912"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.num_shapes" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">num_shapes</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/render/render_opengl.py#L1908-L1912"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.num_shapes" title="Link to this definition">#</a></dt>
 <dd><p>Number of registered shape geometries.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.num_instances">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">num_instances</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/render/render_opengl.py#L1913-L1917"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.num_instances" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">num_instances</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/render/render_opengl.py#L1913-L1917"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.num_instances" title="Link to this definition">#</a></dt>
 <dd><p>Number of active shape instances.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.render.OpenGLRenderer.scaling">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">scaling</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/render/render_opengl.py#L1918-L1922"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.scaling" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">scaling</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/render/render_opengl.py#L1918-L1922"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.OpenGLRenderer.scaling" title="Link to this definition">#</a></dt>
 <dd><p>Global scene scaling factor.</p>
 </dd></dl>
 
@@ -1877,10 +1821,9 @@ array must be of shape (num_tiles, tile_height, tile_width, 3) for RGB mode or (
     class="page-toc tocsection onthispage">
     <i class="fa-solid fa-list"></i> On this page
   </div>
-  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
-    <ul class="visible nav section-nav flex-column">
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.render.OpenGLRenderer"><code class="docutils literal notranslate"><span class="pre">OpenGLRenderer</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.render.OpenGLRenderer.__init__"><code class="docutils literal notranslate"><span class="pre">__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.render.OpenGLRenderer.default_num_segments"><code class="docutils literal notranslate"><span class="pre">default_num_segments</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.render.OpenGLRenderer.gl"><code class="docutils literal notranslate"><span class="pre">gl</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.render.OpenGLRenderer.initialize_gl"><code class="docutils literal notranslate"><span class="pre">initialize_gl()</span></code></a></li>
@@ -1974,8 +1917,8 @@ array must be of shape (num_tiles, tile_height, tile_width, 3) for RGB mode or (
   
 
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
-<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+  <script defer src="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
 
 
   <footer class="bd-footer">

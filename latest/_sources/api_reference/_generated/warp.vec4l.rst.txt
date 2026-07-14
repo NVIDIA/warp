@@ -4,22 +4,17 @@
 .. currentmodule:: warp
 
 .. autoclass:: vec4l
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~vec4l.__init__
       ~vec4l.from_ptr
       ~vec4l.scalar_export
       ~vec4l.scalar_import
    
    
-
    
    
    

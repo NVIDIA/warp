@@ -4,16 +4,12 @@
 .. currentmodule:: warp
 
 .. autoclass:: Tape
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~Tape.__init__
       ~Tape.backward
       ~Tape.get_adjoint
       ~Tape.record_func
@@ -25,7 +21,6 @@
       ~Tape.zero
    
    
-
    
    
    

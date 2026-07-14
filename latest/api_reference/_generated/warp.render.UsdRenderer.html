@@ -28,8 +28,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
-<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+  <link href="../../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
@@ -37,26 +37,27 @@
     <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=3d681599" />
   
   <!-- So that users can add custom icons -->
-  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <script defer src="../../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
-<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
 
 
 
     <script src="../../_static/documentation_options.js?v=4ae37cce"></script>
-    <script src="../../_static/doctools.js?v=9bcbadda"></script>
-    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.render.UsdRenderer';</script>
     <script>
-        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
         DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'latest';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
 
     <link rel="icon" href="../../_static/favicon.png"/>
 
@@ -69,25 +70,31 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="1.16.0.dev0" />
+  
+    
+    <script src="../../_static/searchtools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script src="../../searchindex.js"></script>
+  
 
 
   </head>
 
-  
-  
-  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+  <body data-default-mode="">
+
 
   
   
   <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
-
 
   
   <div id="pst-scroll-pixel-helper"></div>
   
   <button type="button" class="btn rounded-pill" id="pst-back-to-top">
     <i class="fa-solid fa-arrow-up"></i>Back to top</button>
-
+  
+  
+  
   
   <dialog id="pst-search-dialog">
     
@@ -113,7 +120,7 @@
 </div>
 
   
-    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
 <div class="bd-header__inner bd-page-width">
   <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
     <span class="fa-solid fa-bars"></span>
@@ -193,11 +200,18 @@
       
         <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
       
         <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -210,8 +224,7 @@
           
           
           
-          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -222,8 +235,7 @@
           
           
           
-          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
       
@@ -326,11 +338,18 @@
         
           <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
         
           <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -343,8 +362,7 @@
           
           
           
-          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -355,8 +373,7 @@
           
           
           
-          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
         
@@ -497,7 +514,7 @@
 <h1>warp.render.UsdRenderer<a class="headerlink" href="#warp-render-usdrenderer" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.render.UsdRenderer">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.render.</span></span><span class="sig-name descname"><span class="pre">UsdRenderer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stage</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">up_axis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Y'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">60</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scaling</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/render/render_usd.py#L74-L1041"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.render.</span></span><span class="sig-name descname"><span class="pre">UsdRenderer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stage</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">up_axis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Y'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">60</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scaling</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/render/render_usd.py#L74-L1041"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer" title="Link to this definition">#</a></dt>
 <dd><p>USD-based renderer for creating 3D visualizations and animations.</p>
 <p>This renderer writes geometric primitives, meshes, and point clouds to
 Universal Scene Description (USD) files, which can be viewed in USD-compatible
@@ -524,79 +541,61 @@ If a string path is provided, a new USD stage will be created at that location.<
 </ul>
 </dd>
 </dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="warp.render.UsdRenderer.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">stage</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">up_axis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Y'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">60</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scaling</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/render/render_usd.py#L100-L161"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.render.UsdRenderer.__init__" title="Link to this definition">#</a></dt>
-<dd><dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>stage</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>Usd.Stage</em>)</p></li>
-<li><p><strong>up_axis</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>)</p></li>
-<li><p><strong>fps</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
-<li><p><strong>scaling</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
-
 <p class="rubric">Methods</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.UsdRenderer.__init__" title="warp.render.UsdRenderer.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(stage[, up_axis, fps, scaling])</p></td>
-<td><p></p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.UsdRenderer.add_shape_instance" title="warp.render.UsdRenderer.add_shape_instance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_shape_instance</span></code></a>(name, shape, body, pos, rot)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.UsdRenderer.add_shape_instance" title="warp.render.UsdRenderer.add_shape_instance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_shape_instance</span></code></a>(name, shape, body, pos, rot)</p></td>
 <td><p>Instance a previously defined shape.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.UsdRenderer.begin_frame" title="warp.render.UsdRenderer.begin_frame"><code class="xref py py-obj docutils literal notranslate"><span class="pre">begin_frame</span></code></a>(time)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.UsdRenderer.begin_frame" title="warp.render.UsdRenderer.begin_frame"><code class="xref py py-obj docutils literal notranslate"><span class="pre">begin_frame</span></code></a>(time)</p></td>
 <td><p>Set the current time code for subsequent writes.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.UsdRenderer.end_frame" title="warp.render.UsdRenderer.end_frame"><code class="xref py py-obj docutils literal notranslate"><span class="pre">end_frame</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.UsdRenderer.end_frame" title="warp.render.UsdRenderer.end_frame"><code class="xref py py-obj docutils literal notranslate"><span class="pre">end_frame</span></code></a>()</p></td>
 <td><p>End the current frame (no-op for USD).</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.UsdRenderer.register_body" title="warp.render.UsdRenderer.register_body"><code class="xref py py-obj docutils literal notranslate"><span class="pre">register_body</span></code></a>(body_name)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.UsdRenderer.register_body" title="warp.render.UsdRenderer.register_body"><code class="xref py py-obj docutils literal notranslate"><span class="pre">register_body</span></code></a>(body_name)</p></td>
 <td><p>Create a transform prim for a body.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.UsdRenderer.render_arrow" title="warp.render.UsdRenderer.render_arrow"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_arrow</span></code></a>(name, pos, rot, base_radius, ...)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.UsdRenderer.render_arrow" title="warp.render.UsdRenderer.render_arrow"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_arrow</span></code></a>(name, pos, rot, base_radius, ...)</p></td>
 <td><p>Render an arrow composed of a cylinder and a cone.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.UsdRenderer.render_box" title="warp.render.UsdRenderer.render_box"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_box</span></code></a>(name, pos, rot, extents[, ...])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.UsdRenderer.render_box" title="warp.render.UsdRenderer.render_box"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_box</span></code></a>(name, pos, rot, extents[, ...])</p></td>
 <td><p>Debug helper to add a box for visualization</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.UsdRenderer.render_capsule" title="warp.render.UsdRenderer.render_capsule"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_capsule</span></code></a>(name, pos, rot, radius, ...)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.UsdRenderer.render_capsule" title="warp.render.UsdRenderer.render_capsule"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_capsule</span></code></a>(name, pos, rot, radius, ...)</p></td>
 <td><p>Debug helper to add a capsule for visualization</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.UsdRenderer.render_cone" title="warp.render.UsdRenderer.render_cone"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_cone</span></code></a>(name, pos, rot, radius, half_height)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.UsdRenderer.render_cone" title="warp.render.UsdRenderer.render_cone"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_cone</span></code></a>(name, pos, rot, radius, half_height)</p></td>
 <td><p>Debug helper to add a cone for visualization</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.UsdRenderer.render_cylinder" title="warp.render.UsdRenderer.render_cylinder"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_cylinder</span></code></a>(name, pos, rot, radius, ...)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.UsdRenderer.render_cylinder" title="warp.render.UsdRenderer.render_cylinder"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_cylinder</span></code></a>(name, pos, rot, radius, ...)</p></td>
 <td><p>Debug helper to add a cylinder for visualization</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.UsdRenderer.render_ground" title="warp.render.UsdRenderer.render_ground"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_ground</span></code></a>([size, plane])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.UsdRenderer.render_ground" title="warp.render.UsdRenderer.render_ground"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_ground</span></code></a>([size, plane])</p></td>
 <td><p>Render a ground plane.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.UsdRenderer.render_line_list" title="warp.render.UsdRenderer.render_line_list"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_line_list</span></code></a>(name, vertices, indices[, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.UsdRenderer.render_line_list" title="warp.render.UsdRenderer.render_line_list"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_line_list</span></code></a>(name, vertices, indices[, ...])</p></td>
 <td><p>Debug helper to add a line list as a set of capsules</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.UsdRenderer.render_line_strip" title="warp.render.UsdRenderer.render_line_strip"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_line_strip</span></code></a>(name, vertices[, color, ...])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.UsdRenderer.render_line_strip" title="warp.render.UsdRenderer.render_line_strip"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_line_strip</span></code></a>(name, vertices[, color, ...])</p></td>
 <td><p>Render a line strip as capsules.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.UsdRenderer.render_mesh" title="warp.render.UsdRenderer.render_mesh"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_mesh</span></code></a>(name, points, indices[, colors, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.UsdRenderer.render_mesh" title="warp.render.UsdRenderer.render_mesh"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_mesh</span></code></a>(name, points, indices[, colors, ...])</p></td>
 <td><p>Create or update a mesh prim.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.UsdRenderer.render_plane" title="warp.render.UsdRenderer.render_plane"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_plane</span></code></a>(name, pos, rot, width, length)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.UsdRenderer.render_plane" title="warp.render.UsdRenderer.render_plane"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_plane</span></code></a>(name, pos, rot, width, length)</p></td>
 <td><p>Render a plane with the given dimensions.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.UsdRenderer.render_points" title="warp.render.UsdRenderer.render_points"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_points</span></code></a>(name, points, radius[, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.UsdRenderer.render_points" title="warp.render.UsdRenderer.render_points"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_points</span></code></a>(name, points, radius[, ...])</p></td>
 <td><p>Render points as spheres or USD points.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.UsdRenderer.render_ref" title="warp.render.UsdRenderer.render_ref"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_ref</span></code></a>(name, path, pos, rot, scale[, color])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.UsdRenderer.render_ref" title="warp.render.UsdRenderer.render_ref"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_ref</span></code></a>(name, path, pos, rot, scale[, color])</p></td>
 <td><p>Reference an external USD asset.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.UsdRenderer.render_sphere" title="warp.render.UsdRenderer.render_sphere"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_sphere</span></code></a>(name, pos, rot, radius[, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.UsdRenderer.render_sphere" title="warp.render.UsdRenderer.render_sphere"><code class="xref py py-obj docutils literal notranslate"><span class="pre">render_sphere</span></code></a>(name, pos, rot, radius[, ...])</p></td>
 <td><p>Debug helper to add a sphere for visualization</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.render.UsdRenderer.save" title="warp.render.UsdRenderer.save"><code class="xref py py-obj docutils literal notranslate"><span class="pre">save</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.render.UsdRenderer.save" title="warp.render.UsdRenderer.save"><code class="xref py py-obj docutils literal notranslate"><span class="pre">save</span></code></a>()</p></td>
 <td><p>Save the USD stage to disk.</p></td>
 </tr>
 </tbody>
@@ -1155,10 +1154,9 @@ offset the plane.</p></li>
     class="page-toc tocsection onthispage">
     <i class="fa-solid fa-list"></i> On this page
   </div>
-  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
-    <ul class="visible nav section-nav flex-column">
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.render.UsdRenderer"><code class="docutils literal notranslate"><span class="pre">UsdRenderer</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.render.UsdRenderer.__init__"><code class="docutils literal notranslate"><span class="pre">__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.render.UsdRenderer.begin_frame"><code class="docutils literal notranslate"><span class="pre">begin_frame()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.render.UsdRenderer.end_frame"><code class="docutils literal notranslate"><span class="pre">end_frame()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.render.UsdRenderer.register_body"><code class="docutils literal notranslate"><span class="pre">register_body()</span></code></a></li>
@@ -1213,8 +1211,8 @@ offset the plane.</p></li>
   
 
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
-<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+  <script defer src="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
 
 
   <footer class="bd-footer">

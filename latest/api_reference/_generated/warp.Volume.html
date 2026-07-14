@@ -28,8 +28,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
-<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+  <link href="../../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
@@ -37,26 +37,27 @@
     <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=3d681599" />
   
   <!-- So that users can add custom icons -->
-  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <script defer src="../../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
-<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
 
 
 
     <script src="../../_static/documentation_options.js?v=4ae37cce"></script>
-    <script src="../../_static/doctools.js?v=9bcbadda"></script>
-    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.Volume';</script>
     <script>
-        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
         DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'latest';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
 
     <link rel="icon" href="../../_static/favicon.png"/>
 
@@ -69,25 +70,31 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="1.16.0.dev0" />
+  
+    
+    <script src="../../_static/searchtools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script src="../../searchindex.js"></script>
+  
 
 
   </head>
 
-  
-  
-  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+  <body data-default-mode="">
+
 
   
   
   <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
-
 
   
   <div id="pst-scroll-pixel-helper"></div>
   
   <button type="button" class="btn rounded-pill" id="pst-back-to-top">
     <i class="fa-solid fa-arrow-up"></i>Back to top</button>
-
+  
+  
+  
   
   <dialog id="pst-search-dialog">
     
@@ -113,7 +120,7 @@
 </div>
 
   
-    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
 <div class="bd-header__inner bd-page-width">
   <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
     <span class="fa-solid fa-bars"></span>
@@ -193,11 +200,18 @@
       
         <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
       
         <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -210,8 +224,7 @@
           
           
           
-          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -222,8 +235,7 @@
           
           
           
-          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
       
@@ -326,11 +338,18 @@
         
           <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
         
           <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -343,8 +362,7 @@
           
           
           
-          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -355,8 +373,7 @@
           
           
           
-          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
         
@@ -497,89 +514,81 @@
 <h1>warp.Volume<a class="headerlink" href="#warp-volume" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.Volume">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Volume</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6095-L7517"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Volume</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6095-L7517"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume" title="Link to this definition">#</a></dt>
 <dd><p>Sparse volumetric data structure based on NanoVDB for efficient 3D sampling.</p>
-<dl class="py method">
-<dt class="sig sig-object py" id="warp.Volume.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">copy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6139-L6169"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.__init__" title="Link to this definition">#</a></dt>
-<dd><p>Class representing a sparse grid.</p>
+<p>Class representing a sparse grid.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>data</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>) – Array of bytes representing the volume in NanoVDB format.</p></li>
-<li><p><strong>copy</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether the incoming data will be copied or aliased.</p></li>
+<li><p><strong>data</strong> – Array of bytes representing the volume in NanoVDB format.</p></li>
+<li><p><strong>copy</strong> – Whether the incoming data will be copied or aliased.</p></li>
 </ul>
 </dd>
 </dl>
-</dd></dl>
-
 <p class="rubric">Methods</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Volume.__init__" title="warp.Volume.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(data[, copy])</p></td>
-<td><p>Class representing a sparse grid.</p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.Volume.allocate" title="warp.Volume.allocate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">allocate</span></code></a>(min, max, voxel_size[, bg_value, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Volume.allocate" title="warp.Volume.allocate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">allocate</span></code></a>(min, max, voxel_size[, bg_value, ...])</p></td>
 <td><p>Allocate a new Volume based on the bounding box defined by min and max.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Volume.allocate_by_tiles" title="warp.Volume.allocate_by_tiles"><code class="xref py py-obj docutils literal notranslate"><span class="pre">allocate_by_tiles</span></code></a>(tile_points[, voxel_size, ...])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.Volume.allocate_by_tiles" title="warp.Volume.allocate_by_tiles"><code class="xref py py-obj docutils literal notranslate"><span class="pre">allocate_by_tiles</span></code></a>(tile_points[, voxel_size, ...])</p></td>
 <td><p>Allocate a new <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> with active tiles for each point <code class="docutils literal notranslate"><span class="pre">tile_points</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.Volume.allocate_by_voxels" title="warp.Volume.allocate_by_voxels"><code class="xref py py-obj docutils literal notranslate"><span class="pre">allocate_by_voxels</span></code></a>(voxel_points[, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Volume.allocate_by_voxels" title="warp.Volume.allocate_by_voxels"><code class="xref py py-obj docutils literal notranslate"><span class="pre">allocate_by_voxels</span></code></a>(voxel_points[, ...])</p></td>
 <td><p>Allocate a new <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> with an active voxel for each point in <code class="docutils literal notranslate"><span class="pre">voxel_points</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Volume.array" title="warp.Volume.array"><code class="xref py py-obj docutils literal notranslate"><span class="pre">array</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.Volume.array" title="warp.Volume.array"><code class="xref py py-obj docutils literal notranslate"><span class="pre">array</span></code></a>()</p></td>
 <td><p>Return the raw memory buffer of the <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> as an array.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.Volume.feature_array" title="warp.Volume.feature_array"><code class="xref py py-obj docutils literal notranslate"><span class="pre">feature_array</span></code></a>(feature_index[, dtype])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Volume.feature_array" title="warp.Volume.feature_array"><code class="xref py py-obj docutils literal notranslate"><span class="pre">feature_array</span></code></a>(feature_index[, dtype])</p></td>
 <td><p>Return one the grid's feature data arrays as a Warp array.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Volume.get_active_stats" title="warp.Volume.get_active_stats"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_active_stats</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.Volume.get_active_stats" title="warp.Volume.get_active_stats"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_active_stats</span></code></a>()</p></td>
 <td><p>Return actual topology statistics from the current grid metadata.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.Volume.get_feature_array_count" title="warp.Volume.get_feature_array_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_feature_array_count</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Volume.get_feature_array_count" title="warp.Volume.get_feature_array_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_feature_array_count</span></code></a>()</p></td>
 <td><p>Return the number of supplemental data arrays stored alongside the grid</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Volume.get_feature_array_info" title="warp.Volume.get_feature_array_info"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_feature_array_info</span></code></a>(feature_index)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.Volume.get_feature_array_info" title="warp.Volume.get_feature_array_info"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_feature_array_info</span></code></a>(feature_index)</p></td>
 <td><p>Return the metadata associated to the feature array at <code class="docutils literal notranslate"><span class="pre">feature_index</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.Volume.get_grid_info" title="warp.Volume.get_grid_info"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_grid_info</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Volume.get_grid_info" title="warp.Volume.get_grid_info"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_grid_info</span></code></a>()</p></td>
 <td><p>Return the metadata associated with this Volume.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Volume.get_rebuild_info" title="warp.Volume.get_rebuild_info"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_rebuild_info</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.Volume.get_rebuild_info" title="warp.Volume.get_rebuild_info"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_rebuild_info</span></code></a>()</p></td>
 <td><p>Return rebuild input kind and reserved capacity metadata.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.Volume.get_tile_count" title="warp.Volume.get_tile_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_tile_count</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Volume.get_tile_count" title="warp.Volume.get_tile_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_tile_count</span></code></a>()</p></td>
 <td><p>Return the number of tiles (NanoVDB leaf nodes) of the volume.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Volume.get_tiles" title="warp.Volume.get_tiles"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_tiles</span></code></a>([out])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.Volume.get_tiles" title="warp.Volume.get_tiles"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_tiles</span></code></a>([out])</p></td>
 <td><p>Return the integer coordinates of all allocated tiles for this volume.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.Volume.get_voxel_count" title="warp.Volume.get_voxel_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_voxel_count</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Volume.get_voxel_count" title="warp.Volume.get_voxel_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_voxel_count</span></code></a>()</p></td>
 <td><p>Return the total number of allocated voxels for this volume</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Volume.get_voxel_size" title="warp.Volume.get_voxel_size"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_voxel_size</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.Volume.get_voxel_size" title="warp.Volume.get_voxel_size"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_voxel_size</span></code></a>()</p></td>
 <td><p>Return the voxel size, i.e, world coordinates of voxel's diagonal vector</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.Volume.get_voxels" title="warp.Volume.get_voxels"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_voxels</span></code></a>([out])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Volume.get_voxels" title="warp.Volume.get_voxels"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_voxels</span></code></a>([out])</p></td>
 <td><p>Return the integer coordinates of all allocated voxels for this volume.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Volume.load_from_address" title="warp.Volume.load_from_address"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_from_address</span></code></a>(grid_ptr[, buffer_size, ...])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.Volume.load_from_address" title="warp.Volume.load_from_address"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_from_address</span></code></a>(grid_ptr[, buffer_size, ...])</p></td>
 <td><p>Create a new <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> aliasing an in-memory grid buffer.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.Volume.load_from_numpy" title="warp.Volume.load_from_numpy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_from_numpy</span></code></a>(ndarray[, min_world, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Volume.load_from_numpy" title="warp.Volume.load_from_numpy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_from_numpy</span></code></a>(ndarray[, min_world, ...])</p></td>
 <td><p>Create a <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> object from a dense 3D NumPy array.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Volume.load_from_nvdb" title="warp.Volume.load_from_nvdb"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_from_nvdb</span></code></a>(file_or_buffer[, device])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.Volume.load_from_nvdb" title="warp.Volume.load_from_nvdb"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_from_nvdb</span></code></a>(file_or_buffer[, device])</p></td>
 <td><p>Create a <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> object from a serialized NanoVDB file or in-memory buffer.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.Volume.load_next_grid" title="warp.Volume.load_next_grid"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_next_grid</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Volume.load_next_grid" title="warp.Volume.load_next_grid"><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_next_grid</span></code></a>()</p></td>
 <td><p>Create a new <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> for the next grid that is linked to by this <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Volume.rebuild" title="warp.Volume.rebuild"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rebuild</span></code></a>(points[, status, point_mask])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.Volume.rebuild" title="warp.Volume.rebuild"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rebuild</span></code></a>(points[, status, point_mask])</p></td>
 <td><p>Rebuild this volume's topology in place from <code class="docutils literal notranslate"><span class="pre">points</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.Volume.save_to_nvdb" title="warp.Volume.save_to_nvdb"><code class="xref py py-obj docutils literal notranslate"><span class="pre">save_to_nvdb</span></code></a>(path[, codec])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.Volume.save_to_nvdb" title="warp.Volume.save_to_nvdb"><code class="xref py py-obj docutils literal notranslate"><span class="pre">save_to_nvdb</span></code></a>(path[, codec])</p></td>
 <td><p>Serialize the <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> into a NanoVDB (<code class="docutils literal notranslate"><span class="pre">.nvdb</span></code>) file.</p></td>
 </tr>
 </tbody>
@@ -626,19 +635,19 @@
 </div>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Volume.CLOSEST">
-<span class="sig-name descname"><span class="pre">CLOSEST</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></em><a class="headerlink" href="#warp.Volume.CLOSEST" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">CLOSEST</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></span><a class="headerlink" href="#warp.Volume.CLOSEST" title="Link to this definition">#</a></dt>
 <dd><p>Enum value to specify nearest-neighbor interpolation during sampling</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Volume.LINEAR">
-<span class="sig-name descname"><span class="pre">LINEAR</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#warp.Volume.LINEAR" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">LINEAR</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></span><a class="headerlink" href="#warp.Volume.LINEAR" title="Link to this definition">#</a></dt>
 <dd><p>Enum value to specify trilinear interpolation during sampling</p>
 </dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.Volume.RebuildInfo">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">RebuildInfo</span></span><span class="sig-paren">(</span>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">RebuildInfo</span></span><span class="sig-paren">(</span>
 
 <dl>
 <dd><em class="sig-param"><span class="n"><span class="pre">kind</span></span></em>,</dd>
@@ -652,6 +661,7 @@
 <dd><p>Capacity metadata for a <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> allocated with rebuild support.</p>
 <p>The counts describe reserved storage, not the currently active topology.
 Use <a class="reference internal" href="#warp.Volume.get_active_stats" title="warp.Volume.get_active_stats"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Volume.get_active_stats()</span></code></a> to query the current grid metadata.</p>
+<p>Create new instance of RebuildInfo(kind, max_voxel_count, max_leaf_node_count, max_lower_node_count, max_upper_node_count)</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -665,31 +675,31 @@ Use <a class="reference internal" href="#warp.Volume.get_active_stats" title="wa
 </dl>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Volume.RebuildInfo.kind">
-<span class="sig-name descname"><span class="pre">kind</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></em><a class="headerlink" href="#warp.Volume.RebuildInfo.kind" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">kind</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><a class="headerlink" href="#warp.Volume.RebuildInfo.kind" title="Link to this definition">#</a></dt>
 <dd><p>Input kind used for rebuilds. One of <code class="docutils literal notranslate"><span class="pre">&quot;tiles&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;voxels&quot;</span></code>, or <code class="docutils literal notranslate"><span class="pre">None</span></code> when the volume is not rebuildable.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Volume.RebuildInfo.max_voxel_count">
-<span class="sig-name descname"><span class="pre">max_voxel_count</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#warp.Volume.RebuildInfo.max_voxel_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">max_voxel_count</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><a class="headerlink" href="#warp.Volume.RebuildInfo.max_voxel_count" title="Link to this definition">#</a></dt>
 <dd><p>Maximum active voxel or index count reserved for rebuilds.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Volume.RebuildInfo.max_leaf_node_count">
-<span class="sig-name descname"><span class="pre">max_leaf_node_count</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#warp.Volume.RebuildInfo.max_leaf_node_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">max_leaf_node_count</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><a class="headerlink" href="#warp.Volume.RebuildInfo.max_leaf_node_count" title="Link to this definition">#</a></dt>
 <dd><p>Maximum NanoVDB leaf node count reserved for rebuilds.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Volume.RebuildInfo.max_lower_node_count">
-<span class="sig-name descname"><span class="pre">max_lower_node_count</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#warp.Volume.RebuildInfo.max_lower_node_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">max_lower_node_count</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><a class="headerlink" href="#warp.Volume.RebuildInfo.max_lower_node_count" title="Link to this definition">#</a></dt>
 <dd><p>Maximum NanoVDB lower internal node count reserved for rebuilds.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Volume.RebuildInfo.max_upper_node_count">
-<span class="sig-name descname"><span class="pre">max_upper_node_count</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#warp.Volume.RebuildInfo.max_upper_node_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">max_upper_node_count</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><a class="headerlink" href="#warp.Volume.RebuildInfo.max_upper_node_count" title="Link to this definition">#</a></dt>
 <dd><p>Maximum NanoVDB upper internal node count reserved for rebuilds.</p>
 </dd></dl>
 
@@ -697,7 +707,7 @@ Use <a class="reference internal" href="#warp.Volume.get_active_stats" title="wa
 
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.Volume.ActiveStats">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ActiveStats</span></span><span class="sig-paren">(</span>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">ActiveStats</span></span><span class="sig-paren">(</span>
 
 <dl>
 <dd><em class="sig-param"><span class="n"><span class="pre">voxel_count</span></span></em>,</dd>
@@ -708,6 +718,7 @@ Use <a class="reference internal" href="#warp.Volume.get_active_stats" title="wa
 
 <span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6122-L6133"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.ActiveStats" title="Link to this definition">#</a></dt>
 <dd><p>Active topology statistics from the current <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> grid metadata.</p>
+<p>Create new instance of ActiveStats(voxel_count, leaf_node_count, lower_node_count, upper_node_count)</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -720,25 +731,25 @@ Use <a class="reference internal" href="#warp.Volume.get_active_stats" title="wa
 </dl>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Volume.ActiveStats.voxel_count">
-<span class="sig-name descname"><span class="pre">voxel_count</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#warp.Volume.ActiveStats.voxel_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">voxel_count</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><a class="headerlink" href="#warp.Volume.ActiveStats.voxel_count" title="Link to this definition">#</a></dt>
 <dd><p>Current active voxel or index count.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Volume.ActiveStats.leaf_node_count">
-<span class="sig-name descname"><span class="pre">leaf_node_count</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#warp.Volume.ActiveStats.leaf_node_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">leaf_node_count</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><a class="headerlink" href="#warp.Volume.ActiveStats.leaf_node_count" title="Link to this definition">#</a></dt>
 <dd><p>Current NanoVDB leaf node count.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Volume.ActiveStats.lower_node_count">
-<span class="sig-name descname"><span class="pre">lower_node_count</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#warp.Volume.ActiveStats.lower_node_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">lower_node_count</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><a class="headerlink" href="#warp.Volume.ActiveStats.lower_node_count" title="Link to this definition">#</a></dt>
 <dd><p>Current NanoVDB lower internal node count.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Volume.ActiveStats.upper_node_count">
-<span class="sig-name descname"><span class="pre">upper_node_count</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#warp.Volume.ActiveStats.upper_node_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">upper_node_count</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><a class="headerlink" href="#warp.Volume.ActiveStats.upper_node_count" title="Link to this definition">#</a></dt>
 <dd><p>Current NanoVDB upper internal node count.</p>
 </dd></dl>
 
@@ -841,7 +852,7 @@ on the same device as this volume.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.Volume.GridInfo">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">GridInfo</span></span><span class="sig-paren">(</span>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">GridInfo</span></span><span class="sig-paren">(</span>
 
 <dl>
 <dd><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>,</dd>
@@ -855,6 +866,7 @@ on the same device as this volume.</p>
 
 <span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6311-L6330"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.GridInfo" title="Link to this definition">#</a></dt>
 <dd><p>Grid metadata</p>
+<p>Create new instance of GridInfo(name, size_in_bytes, grid_index, grid_count, type_str, translation, transform_matrix)</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -870,43 +882,43 @@ on the same device as this volume.</p>
 </dl>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Volume.GridInfo.name">
-<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#warp.Volume.GridInfo.name" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">name</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><a class="headerlink" href="#warp.Volume.GridInfo.name" title="Link to this definition">#</a></dt>
 <dd><p>Grid name</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Volume.GridInfo.size_in_bytes">
-<span class="sig-name descname"><span class="pre">size_in_bytes</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#warp.Volume.GridInfo.size_in_bytes" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">size_in_bytes</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><a class="headerlink" href="#warp.Volume.GridInfo.size_in_bytes" title="Link to this definition">#</a></dt>
 <dd><p>Size of this grid’s data, in bytes</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Volume.GridInfo.grid_index">
-<span class="sig-name descname"><span class="pre">grid_index</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#warp.Volume.GridInfo.grid_index" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">grid_index</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><a class="headerlink" href="#warp.Volume.GridInfo.grid_index" title="Link to this definition">#</a></dt>
 <dd><p>Index of this grid in the data buffer</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Volume.GridInfo.grid_count">
-<span class="sig-name descname"><span class="pre">grid_count</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#warp.Volume.GridInfo.grid_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">grid_count</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><a class="headerlink" href="#warp.Volume.GridInfo.grid_count" title="Link to this definition">#</a></dt>
 <dd><p>Total number of grids in the data buffer</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Volume.GridInfo.type_str">
-<span class="sig-name descname"><span class="pre">type_str</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#warp.Volume.GridInfo.type_str" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">type_str</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><a class="headerlink" href="#warp.Volume.GridInfo.type_str" title="Link to this definition">#</a></dt>
 <dd><p>String describing the type of the grid values</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Volume.GridInfo.translation">
-<span class="sig-name descname"><span class="pre">translation</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.vec3f.html#warp.vec3f" title="warp._src.types.vec3f"><span class="pre">vec3f</span></a></em><a class="headerlink" href="#warp.Volume.GridInfo.translation" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">translation</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.vec3f.html#warp.vec3f" title="warp._src.types.vec3f"><span class="pre">vec3f</span></a></span><a class="headerlink" href="#warp.Volume.GridInfo.translation" title="Link to this definition">#</a></dt>
 <dd><p>Index-to-world translation</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Volume.GridInfo.transform_matrix">
-<span class="sig-name descname"><span class="pre">transform_matrix</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.mat33f.html#warp.mat33f" title="warp._src.types.mat33f"><span class="pre">mat33f</span></a></em><a class="headerlink" href="#warp.Volume.GridInfo.transform_matrix" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">transform_matrix</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.mat33f.html#warp.mat33f" title="warp._src.types.mat33f"><span class="pre">mat33f</span></a></span><a class="headerlink" href="#warp.Volume.GridInfo.transform_matrix" title="Link to this definition">#</a></dt>
 <dd><p>Linear part of the index-to-world transform</p>
 </dd></dl>
 
@@ -925,7 +937,7 @@ on the same device as this volume.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.Volume.dtype">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dtype</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6382-L6390"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.dtype" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">dtype</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6382-L6390"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.dtype" title="Link to this definition">#</a></dt>
 <dd><p>Type of the Volume’s values as a Warp type.</p>
 <p>If the grid does not contain values (e.g. index grids) or if the NanoVDB type is not
 representable as a Warp type, returns <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
@@ -933,14 +945,14 @@ representable as a Warp type, returns <code class="docutils literal notranslate"
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.Volume.is_index">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_index</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp._src.types.bool"><span class="pre">bool</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6393-L6400"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.is_index" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">is_index</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp._src.types.bool"><span class="pre">bool</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6393-L6400"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.is_index" title="Link to this definition">#</a></dt>
 <dd><p>Whether this Volume contains an index grid, that is, a type of grid that does
 not explicitly store values but associates each voxel to linearized index.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.Volume.is_rebuildable">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_rebuildable</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp._src.types.bool"><span class="pre">bool</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6401-L6406"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.is_rebuildable" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">is_rebuildable</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp._src.types.bool"><span class="pre">bool</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6401-L6406"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.is_rebuildable" title="Link to this definition">#</a></dt>
 <dd><p>Whether this volume was allocated with persistent capacity for <a class="reference internal" href="#warp.Volume.rebuild" title="warp.Volume.rebuild"><code class="xref py py-meth docutils literal notranslate"><span class="pre">rebuild()</span></code></a>.</p>
 </dd></dl>
 
@@ -975,8 +987,9 @@ volumes that cannot be rebuilt. Capacity fields are zero when
 
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.Volume.FeatureArrayInfo">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">FeatureArrayInfo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ptr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value_count</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type_str</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6425-L6439"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.FeatureArrayInfo" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">FeatureArrayInfo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ptr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value_count</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">type_str</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6425-L6439"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.FeatureArrayInfo" title="Link to this definition">#</a></dt>
 <dd><p>Metadata for a supplemental data array</p>
+<p>Create new instance of FeatureArrayInfo(name, ptr, value_size, value_count, type_str)</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -990,31 +1003,31 @@ volumes that cannot be rebuilt. Capacity fields are zero when
 </dl>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Volume.FeatureArrayInfo.name">
-<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#warp.Volume.FeatureArrayInfo.name" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">name</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><a class="headerlink" href="#warp.Volume.FeatureArrayInfo.name" title="Link to this definition">#</a></dt>
 <dd><p>Name of the data array</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Volume.FeatureArrayInfo.ptr">
-<span class="sig-name descname"><span class="pre">ptr</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#warp.Volume.FeatureArrayInfo.ptr" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">ptr</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><a class="headerlink" href="#warp.Volume.FeatureArrayInfo.ptr" title="Link to this definition">#</a></dt>
 <dd><p>Memory address of the start of the array</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Volume.FeatureArrayInfo.value_size">
-<span class="sig-name descname"><span class="pre">value_size</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#warp.Volume.FeatureArrayInfo.value_size" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">value_size</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><a class="headerlink" href="#warp.Volume.FeatureArrayInfo.value_size" title="Link to this definition">#</a></dt>
 <dd><p>Size in bytes of the array values</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Volume.FeatureArrayInfo.value_count">
-<span class="sig-name descname"><span class="pre">value_count</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><a class="headerlink" href="#warp.Volume.FeatureArrayInfo.value_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">value_count</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><a class="headerlink" href="#warp.Volume.FeatureArrayInfo.value_count" title="Link to this definition">#</a></dt>
 <dd><p>Number of values in the array</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Volume.FeatureArrayInfo.type_str">
-<span class="sig-name descname"><span class="pre">type_str</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></em><a class="headerlink" href="#warp.Volume.FeatureArrayInfo.type_str" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">type_str</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span><a class="headerlink" href="#warp.Volume.FeatureArrayInfo.type_str" title="Link to this definition">#</a></dt>
 <dd><p>String describing the type of the array values</p>
 </dd></dl>
 
@@ -1054,7 +1067,7 @@ If not provided, will be deduced from the array metadata.</p></li>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Volume.load_from_nvdb">
-<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">load_from_nvdb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_or_buffer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6503-L6565"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.load_from_nvdb" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">load_from_nvdb</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_or_buffer</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6503-L6565"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.load_from_nvdb" title="Link to this definition">#</a></dt>
 <dd><p>Create a <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> object from a serialized NanoVDB file or in-memory buffer.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -1089,7 +1102,7 @@ Available options:</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Volume.load_from_address">
-<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">load_from_address</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">grid_ptr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">buffer_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6701-L6742"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.load_from_address" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">load_from_address</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">grid_ptr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">buffer_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6701-L6742"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume.load_from_address" title="Link to this definition">#</a></dt>
 <dd><p>Create a new <a class="reference internal" href="#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a> aliasing an in-memory grid buffer.</p>
 <p>In contrast to <a class="reference internal" href="#warp.Volume.load_from_nvdb" title="warp.Volume.load_from_nvdb"><code class="xref py py-meth docutils literal notranslate"><span class="pre">load_from_nvdb()</span></code></a> which should be used to load serialized NanoVDB grids,
 here the buffer must be uncompressed and must not contain file header information.
@@ -1138,7 +1151,7 @@ remaining in this <a class="reference internal" href="#warp.Volume" title="warp.
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Volume.load_from_numpy">
-<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">load_from_numpy</span></span><span class="sig-paren">(</span>
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">load_from_numpy</span></span><span class="sig-paren">(</span>
 
 <dl>
 <dd><em class="sig-param"><span class="n"><span class="pre">ndarray</span></span></em>,</dd>
@@ -1174,7 +1187,7 @@ sequence <code class="docutils literal notranslate"><span class="pre">(sx,</span
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Volume.allocate">
-<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">allocate</span></span><span class="sig-paren">(</span>
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">allocate</span></span><span class="sig-paren">(</span>
 
 <dl>
 <dd><em class="sig-param"><span class="n"><span class="pre">min</span></span></em>,</dd>
@@ -1215,43 +1228,43 @@ a <a class="reference internal" href="warp.vec3.html#warp.vec3" title="warp.vec3
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Volume.REBUILD_SUCCESS">
-<span class="sig-name descname"><span class="pre">REBUILD_SUCCESS</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.14)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></em><a class="headerlink" href="#warp.Volume.REBUILD_SUCCESS" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">REBUILD_SUCCESS</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.14)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></span><a class="headerlink" href="#warp.Volume.REBUILD_SUCCESS" title="Link to this definition">#</a></dt>
 <dd><p>Rebuild completed without setting a status flag.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Volume.REBUILD_LEAF_CAPACITY_EXCEEDED">
-<span class="sig-name descname"><span class="pre">REBUILD_LEAF_CAPACITY_EXCEEDED</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.14)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#warp.Volume.REBUILD_LEAF_CAPACITY_EXCEEDED" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">REBUILD_LEAF_CAPACITY_EXCEEDED</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.14)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></span><a class="headerlink" href="#warp.Volume.REBUILD_LEAF_CAPACITY_EXCEEDED" title="Link to this definition">#</a></dt>
 <dd><p>Rebuild produced more leaf nodes than the volume capacity.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Volume.REBUILD_LOWER_CAPACITY_EXCEEDED">
-<span class="sig-name descname"><span class="pre">REBUILD_LOWER_CAPACITY_EXCEEDED</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.14)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#warp.Volume.REBUILD_LOWER_CAPACITY_EXCEEDED" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">REBUILD_LOWER_CAPACITY_EXCEEDED</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.14)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></span><a class="headerlink" href="#warp.Volume.REBUILD_LOWER_CAPACITY_EXCEEDED" title="Link to this definition">#</a></dt>
 <dd><p>Rebuild produced more lower internal nodes than the volume capacity.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Volume.REBUILD_UPPER_CAPACITY_EXCEEDED">
-<span class="sig-name descname"><span class="pre">REBUILD_UPPER_CAPACITY_EXCEEDED</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.14)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">4</span></em><a class="headerlink" href="#warp.Volume.REBUILD_UPPER_CAPACITY_EXCEEDED" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">REBUILD_UPPER_CAPACITY_EXCEEDED</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.14)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">4</span></span><a class="headerlink" href="#warp.Volume.REBUILD_UPPER_CAPACITY_EXCEEDED" title="Link to this definition">#</a></dt>
 <dd><p>Rebuild produced more upper internal nodes than the volume capacity.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Volume.REBUILD_VOXEL_CAPACITY_EXCEEDED">
-<span class="sig-name descname"><span class="pre">REBUILD_VOXEL_CAPACITY_EXCEEDED</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.14)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">8</span></em><a class="headerlink" href="#warp.Volume.REBUILD_VOXEL_CAPACITY_EXCEEDED" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">REBUILD_VOXEL_CAPACITY_EXCEEDED</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.14)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">8</span></span><a class="headerlink" href="#warp.Volume.REBUILD_VOXEL_CAPACITY_EXCEEDED" title="Link to this definition">#</a></dt>
 <dd><p>Rebuild produced more active voxels than the volume capacity.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.Volume.REBUILD_INVALID_INPUT">
-<span class="sig-name descname"><span class="pre">REBUILD_INVALID_INPUT</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.14)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">16</span></em><a class="headerlink" href="#warp.Volume.REBUILD_INVALID_INPUT" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">REBUILD_INVALID_INPUT</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.ClassVar" title="(in Python v3.14)"><span class="pre">ClassVar</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">16</span></span><a class="headerlink" href="#warp.Volume.REBUILD_INVALID_INPUT" title="Link to this definition">#</a></dt>
 <dd><p>Rebuild was called with invalid arguments or on a non-rebuildable volume.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Volume.allocate_by_tiles">
-<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">allocate_by_tiles</span></span><span class="sig-paren">(</span>
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">allocate_by_tiles</span></span><span class="sig-paren">(</span>
 
 <dl>
 <dd><em class="sig-param"><span class="n"><span class="pre">tile_points</span></span></em>,</dd>
@@ -1334,7 +1347,7 @@ initial build. <code class="docutils literal notranslate"><span class="pre">Volu
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Volume.allocate_by_voxels">
-<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">allocate_by_voxels</span></span><span class="sig-paren">(</span>
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">allocate_by_voxels</span></span><span class="sig-paren">(</span>
 
 <dl>
 <dd><em class="sig-param"><span class="n"><span class="pre">voxel_points</span></span></em>,</dd>
@@ -1497,10 +1510,9 @@ interpreted in index space, and floating-point points are interpreted in world s
     class="page-toc tocsection onthispage">
     <i class="fa-solid fa-list"></i> On this page
   </div>
-  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
-    <ul class="visible nav section-nav flex-column">
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume"><code class="docutils literal notranslate"><span class="pre">Volume</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.__init__"><code class="docutils literal notranslate"><span class="pre">__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.CLOSEST"><code class="docutils literal notranslate"><span class="pre">CLOSEST</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.LINEAR"><code class="docutils literal notranslate"><span class="pre">LINEAR</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.Volume.RebuildInfo"><code class="docutils literal notranslate"><span class="pre">RebuildInfo</span></code></a><ul class="nav section-nav flex-column">
@@ -1602,8 +1614,8 @@ interpreted in index space, and floating-point points are interpreted in world s
   
 
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
-<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+  <script defer src="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
 
 
   <footer class="bd-footer">

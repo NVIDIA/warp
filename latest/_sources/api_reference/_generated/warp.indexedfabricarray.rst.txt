@@ -4,16 +4,12 @@
 .. currentmodule:: warp
 
 .. autoclass:: indexedfabricarray
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~indexedfabricarray.__init__
       ~indexedfabricarray.assign
       ~indexedfabricarray.contiguous
       ~indexedfabricarray.fill_
@@ -23,7 +19,6 @@
       ~indexedfabricarray.zero_
    
    
-
    
    
    .. rubric:: Attributes

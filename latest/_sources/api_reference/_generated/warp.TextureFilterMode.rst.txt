@@ -4,10 +4,7 @@
 .. currentmodule:: warp
 
 .. autoclass:: TextureFilterMode
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
@@ -20,10 +17,8 @@
       ~TextureFilterMode.from_bytes
       ~TextureFilterMode.as_integer_ratio
       ~TextureFilterMode.is_integer
-      ~TextureFilterMode.__init__
    
    
-
    
    
    .. rubric:: Attributes

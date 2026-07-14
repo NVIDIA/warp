@@ -4,16 +4,12 @@
 .. currentmodule:: warp
 
 .. autoclass:: Device
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~Device.__init__
       ~Device.can_access
       ~Device.get_allocator
       ~Device.get_cuda_compile_arch
@@ -22,7 +18,6 @@
       ~Device.set_stream
    
    
-
    
    
    .. rubric:: Attributes

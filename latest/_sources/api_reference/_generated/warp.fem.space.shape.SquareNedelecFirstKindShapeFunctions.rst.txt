@@ -4,16 +4,12 @@
 .. currentmodule:: warp.fem.space.shape
 
 .. autoclass:: SquareNedelecFirstKindShapeFunctions
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~SquareNedelecFirstKindShapeFunctions.__init__
       ~SquareNedelecFirstKindShapeFunctions.make_element_inner_weight
       ~SquareNedelecFirstKindShapeFunctions.make_element_inner_weight_gradient
       ~SquareNedelecFirstKindShapeFunctions.make_node_coords_in_element
@@ -21,7 +17,6 @@
       ~SquareNedelecFirstKindShapeFunctions.make_trace_node_quadrature_weight
    
    
-
    
    
    .. rubric:: Attributes

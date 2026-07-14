@@ -4,19 +4,9 @@
 .. currentmodule:: warp
 
 .. autoclass:: ScopedTimer
-
-   
-   .. automethod:: __init__
-
-   
-   .. rubric:: Methods
-
-   .. autosummary::
-   
-      ~ScopedTimer.__init__
    
    
-
+   
    
    
    .. rubric:: Attributes

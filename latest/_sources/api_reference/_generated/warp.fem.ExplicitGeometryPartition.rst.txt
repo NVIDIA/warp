@@ -4,16 +4,12 @@
 .. currentmodule:: warp.fem
 
 .. autoclass:: ExplicitGeometryPartition
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~ExplicitGeometryPartition.__init__
       ~ExplicitGeometryPartition.boundary_side_count
       ~ExplicitGeometryPartition.cell_arg_value
       ~ExplicitGeometryPartition.cell_count
@@ -26,7 +22,6 @@
       ~ExplicitGeometryPartition.side_count
    
    
-
    
    
    .. rubric:: Attributes

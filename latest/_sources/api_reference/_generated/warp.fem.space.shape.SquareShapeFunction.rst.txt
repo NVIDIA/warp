@@ -4,16 +4,12 @@
 .. currentmodule:: warp.fem.space.shape
 
 .. autoclass:: SquareShapeFunction
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~SquareShapeFunction.__init__
       ~SquareShapeFunction.make_element_inner_weight
       ~SquareShapeFunction.make_element_inner_weight_gradient
       ~SquareShapeFunction.make_node_coords_in_element
@@ -21,7 +17,6 @@
       ~SquareShapeFunction.make_trace_node_quadrature_weight
    
    
-
    
    
    .. rubric:: Attributes

@@ -4,21 +4,16 @@
 .. currentmodule:: warp
 
 .. autoclass:: RegisteredGLBuffer
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~RegisteredGLBuffer.__init__
       ~RegisteredGLBuffer.map
       ~RegisteredGLBuffer.unmap
    
    
-
    
    
    .. rubric:: Attributes

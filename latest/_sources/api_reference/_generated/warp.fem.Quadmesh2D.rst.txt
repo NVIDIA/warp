@@ -4,16 +4,12 @@
 .. currentmodule:: warp.fem
 
 .. autoclass:: Quadmesh2D
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~Quadmesh2D.__init__
       ~Quadmesh2D.boundary_side_count
       ~Quadmesh2D.build_bvh
       ~Quadmesh2D.bvh_id
@@ -47,7 +43,6 @@
       ~Quadmesh2D.vertex_count
    
    
-
    
    
    .. rubric:: Attributes

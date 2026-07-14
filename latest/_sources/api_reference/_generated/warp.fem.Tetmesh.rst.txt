@@ -4,16 +4,12 @@
 .. currentmodule:: warp.fem
 
 .. autoclass:: Tetmesh
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~Tetmesh.__init__
       ~Tetmesh.boundary_side_count
       ~Tetmesh.build_bvh
       ~Tetmesh.bvh_id
@@ -44,7 +40,6 @@
       ~Tetmesh.vertex_count
    
    
-
    
    
    .. rubric:: Attributes

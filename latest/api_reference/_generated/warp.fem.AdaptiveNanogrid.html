@@ -28,8 +28,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
-<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+  <link href="../../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
@@ -37,26 +37,27 @@
     <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=3d681599" />
   
   <!-- So that users can add custom icons -->
-  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <script defer src="../../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
-<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
 
 
 
     <script src="../../_static/documentation_options.js?v=4ae37cce"></script>
-    <script src="../../_static/doctools.js?v=9bcbadda"></script>
-    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.fem.AdaptiveNanogrid';</script>
     <script>
-        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
         DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'latest';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
 
     <link rel="icon" href="../../_static/favicon.png"/>
 
@@ -69,25 +70,31 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="1.16.0.dev0" />
+  
+    
+    <script src="../../_static/searchtools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script src="../../searchindex.js"></script>
+  
 
 
   </head>
 
-  
-  
-  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+  <body data-default-mode="">
+
 
   
   
   <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
-
 
   
   <div id="pst-scroll-pixel-helper"></div>
   
   <button type="button" class="btn rounded-pill" id="pst-back-to-top">
     <i class="fa-solid fa-arrow-up"></i>Back to top</button>
-
+  
+  
+  
   
   <dialog id="pst-search-dialog">
     
@@ -113,7 +120,7 @@
 </div>
 
   
-    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
 <div class="bd-header__inner bd-page-width">
   <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
     <span class="fa-solid fa-bars"></span>
@@ -193,11 +200,18 @@
       
         <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
       
         <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -210,8 +224,7 @@
           
           
           
-          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -222,8 +235,7 @@
           
           
           
-          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
       
@@ -326,11 +338,18 @@
         
           <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
         
           <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -343,8 +362,7 @@
           
           
           
-          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -355,8 +373,7 @@
           
           
           
-          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
         
@@ -497,7 +514,7 @@
 <h1>warp.fem.AdaptiveNanogrid<a class="headerlink" href="#warp-fem-adaptivenanogrid" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.fem.AdaptiveNanogrid">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">AdaptiveNanogrid</span></span><span class="sig-paren">(</span>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">AdaptiveNanogrid</span></span><span class="sig-paren">(</span>
 
 <dl>
 <dd><em class="sig-param"><span class="n"><span class="pre">cell_grid</span></span></em>,</dd>
@@ -511,35 +528,7 @@
 
 <span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/adaptive_nanogrid.py#L61-L605"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.AdaptiveNanogrid" title="Link to this definition">#</a></dt>
 <dd><p>Adaptive sparse grid.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>cell_grid</strong> (<a class="reference internal" href="warp.Volume.html#warp.Volume" title="warp._src.types.Volume"><em>Volume</em></a>)</p></li>
-<li><p><strong>cell_level</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>)</p></li>
-<li><p><strong>level_count</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p></li>
-<li><p><strong>temporary_store</strong> (<a class="reference internal" href="warp.fem.TemporaryStore.html#warp.fem.TemporaryStore" title="warp._src.fem.cache.TemporaryStore"><em>TemporaryStore</em></a>)</p></li>
-<li><p><strong>scalar_type</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><em>type</em></a>)</p></li>
-<li><p><strong>cell_env</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>)</p></li>
-<li><p><strong>env_offsets</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>)</p></li>
-</ul>
-</dd>
-</dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="warp.fem.AdaptiveNanogrid.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span>
-
-<dl>
-<dd><em class="sig-param"><span class="n"><span class="pre">cell_grid</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">cell_level</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">level_count</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">temporary_store</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">scalar_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">warp.float32</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">cell_env</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">env_offsets</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
-</dl>
-
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/adaptive_nanogrid.py#L170-L232"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.__init__" title="Link to this definition">#</a></dt>
-<dd><p>Construct an adaptive sparse grid geometry from an in-memory NanoVDB volume and a list of levels.</p>
+<p>Construct an adaptive sparse grid geometry from an in-memory NanoVDB volume and a list of levels.</p>
 <p>It is not recommended to use this constructor directly; see the helper functions
 <a class="reference internal" href="warp.fem.adaptive_nanogrid_from_field.html#warp.fem.adaptive_nanogrid_from_field" title="warp.fem.adaptive_nanogrid_from_field"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.fem.adaptive_nanogrid_from_field()</span></code></a> and <a class="reference internal" href="warp.fem.adaptive_nanogrid_from_hierarchy.html#warp.fem.adaptive_nanogrid_from_hierarchy" title="warp.fem.adaptive_nanogrid_from_hierarchy"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.fem.adaptive_nanogrid_from_hierarchy()</span></code></a>.</p>
 <dl class="field-list simple">
@@ -557,87 +546,82 @@ a voxel at coordinates <code class="docutils literal notranslate"><span class="p
 </ul>
 </dd>
 </dl>
-</dd></dl>
-
 <p class="rubric">Methods</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.AdaptiveNanogrid.__init__" title="warp.fem.AdaptiveNanogrid.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(cell_grid, cell_level, level_count, ...)</p></td>
-<td><p>Construct an adaptive sparse grid geometry from an in-memory NanoVDB volume and a list of levels.</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">boundary_side_count</span></code>()</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">boundary_side_count</span></code>()</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_bvh</span></code>([device])</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_bvh</span></code>([device])</p></td>
 <td><p>Rebuild the geometry's Bounding Volume Hierarchy (BVH) for <code class="docutils literal notranslate"><span class="pre">device</span></code> from scratch.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">bvh_id</span></code>(device)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">bvh_id</span></code>(device)</p></td>
 <td><p>Return the BVH identifier for the given device, or <code class="docutils literal notranslate"><span class="pre">0</span></code> if unavailable.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_arg_value</span></code>(device)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_arg_value</span></code>(device)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_bvh_groups</span></code>(device)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_bvh_groups</span></code>(device)</p></td>
 <td><p>Return optional per-cell BVH group indices on <code class="docutils literal notranslate"><span class="pre">device</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_count</span></code>()</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_count</span></code>()</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_env_arg_value</span></code>(device)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_env_arg_value</span></code>(device)</p></td>
 <td><p>Return per-cell environment indices for geometry argument structs.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">environment_count</span></code>()</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">environment_count</span></code>()</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.AdaptiveNanogrid.fill_cell_arg" title="warp.fem.AdaptiveNanogrid.fill_cell_arg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_cell_arg</span></code></a>(arg, device)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.AdaptiveNanogrid.fill_cell_arg" title="warp.fem.AdaptiveNanogrid.fill_cell_arg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_cell_arg</span></code></a>(arg, device)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.AdaptiveNanogrid.fill_side_arg" title="warp.fem.AdaptiveNanogrid.fill_side_arg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_side_arg</span></code></a>(arg, device)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.AdaptiveNanogrid.fill_side_arg" title="warp.fem.AdaptiveNanogrid.fill_side_arg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_side_arg</span></code></a>(arg, device)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_side_index_arg</span></code>(arg, device)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_side_index_arg</span></code>(arg, device)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.AdaptiveNanogrid.from_environment_voxels" title="warp.fem.AdaptiveNanogrid.from_environment_voxels"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_environment_voxels</span></code></a>([points, ...])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.AdaptiveNanogrid.from_environment_voxels" title="warp.fem.AdaptiveNanogrid.from_environment_voxels"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_environment_voxels</span></code></a>([points, ...])</p></td>
 <td><p>Construct an adaptive sparse grid from environment-tagged active cells and levels.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_filtered_cell_lookup</span></code>([filter_func])</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_filtered_cell_lookup</span></code>([filter_func])</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">reference_cell</span></code>()</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">reference_cell</span></code>()</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">reference_side</span></code>()</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">reference_side</span></code>()</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_arg_value</span></code>(device)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_arg_value</span></code>(device)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_count</span></code>()</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_count</span></code>()</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_deformation_gradient</span></code>(args, s)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_deformation_gradient</span></code>(args, s)</p></td>
 <td><p>Device function returning the gradient of world position with respect to reference side</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_index_arg_value</span></code>(device)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_index_arg_value</span></code>(device)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_normal</span></code>(args, s)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_normal</span></code>(args, s)</p></td>
 <td><p>Device function returning the element normal at a sample point</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.AdaptiveNanogrid.stacked_edge_count" title="warp.fem.AdaptiveNanogrid.stacked_edge_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stacked_edge_count</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.AdaptiveNanogrid.stacked_edge_count" title="warp.fem.AdaptiveNanogrid.stacked_edge_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stacked_edge_count</span></code></a>()</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.AdaptiveNanogrid.stacked_face_count" title="warp.fem.AdaptiveNanogrid.stacked_face_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stacked_face_count</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.AdaptiveNanogrid.stacked_face_count" title="warp.fem.AdaptiveNanogrid.stacked_face_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">stacked_face_count</span></code></a>()</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.AdaptiveNanogrid.supports_cell_lookup" title="warp.fem.AdaptiveNanogrid.supports_cell_lookup"><code class="xref py py-obj docutils literal notranslate"><span class="pre">supports_cell_lookup</span></code></a>(device)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.AdaptiveNanogrid.supports_cell_lookup" title="warp.fem.AdaptiveNanogrid.supports_cell_lookup"><code class="xref py py-obj docutils literal notranslate"><span class="pre">supports_cell_lookup</span></code></a>(device)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_bvh</span></code>([device])</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_bvh</span></code>([device])</p></td>
 <td><p>Refit the geometry's BVH if it exists on <code class="docutils literal notranslate"><span class="pre">device</span></code>, or build it from scratch otherwise.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">vertex_count</span></code>()</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">vertex_count</span></code>()</p></td>
 <td><p></p></td>
 </tr>
 </tbody>
@@ -807,13 +791,13 @@ a voxel at coordinates <code class="docutils literal notranslate"><span class="p
 </div>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.AdaptiveNanogrid.dimension">
-<span class="sig-name descname"><span class="pre">dimension</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">3</span></em><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.dimension" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">dimension</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">3</span></span><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.dimension" title="Link to this definition">#</a></dt>
 <dd><p>Dimension of the embedding space.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.AdaptiveNanogrid.from_environment_voxels">
-<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_environment_voxels</span></span><span class="sig-paren">(</span>
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">from_environment_voxels</span></span><span class="sig-paren">(</span>
 
 <dl>
 <dd><em class="sig-param"><span class="n"><span class="pre">points</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
@@ -873,7 +857,7 @@ packed-grid faces.</p></li>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.AdaptiveNanogrid.stacked_face_grid">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">stacked_face_grid</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Volume.html#warp.Volume" title="warp._src.types.Volume"><span class="pre">Volume</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/adaptive_nanogrid.py#L233-L237"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.stacked_face_grid" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">stacked_face_grid</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Volume.html#warp.Volume" title="warp._src.types.Volume"><span class="pre">Volume</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/adaptive_nanogrid.py#L233-L237"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.stacked_face_grid" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -883,7 +867,7 @@ packed-grid faces.</p></li>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.AdaptiveNanogrid.stacked_edge_grid">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">stacked_edge_grid</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Volume.html#warp.Volume" title="warp._src.types.Volume"><span class="pre">Volume</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/adaptive_nanogrid.py#L242-L246"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.stacked_edge_grid" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">stacked_edge_grid</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Volume.html#warp.Volume" title="warp._src.types.Volume"><span class="pre">Volume</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/geometry/adaptive_nanogrid.py#L242-L246"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.stacked_edge_grid" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -908,7 +892,7 @@ packed-grid faces.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.AdaptiveNanogrid.cell_position">
-<span class="sig-name descname"><span class="pre">cell_position</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__cell_position(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">Any)&gt;</span></em><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.cell_position" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">cell_position</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__cell_position(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">Any)&gt;</span></span><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.cell_position" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -921,7 +905,7 @@ packed-grid faces.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.AdaptiveNanogrid.cell_deformation_gradient">
-<span class="sig-name descname"><span class="pre">cell_deformation_gradient</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__cell_deformation_gradient(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">Any)&gt;</span></em><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.cell_deformation_gradient" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">cell_deformation_gradient</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__cell_deformation_gradient(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">Any)&gt;</span></span><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.cell_deformation_gradient" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -934,7 +918,7 @@ packed-grid faces.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.AdaptiveNanogrid.cell_inverse_deformation_gradient">
-<span class="sig-name descname"><span class="pre">cell_inverse_deformation_gradient</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__cell_inverse_deformation_gradient(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">Any)&gt;</span></em><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.cell_inverse_deformation_gradient" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">cell_inverse_deformation_gradient</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__cell_inverse_deformation_gradient(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">Any)&gt;</span></span><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.cell_inverse_deformation_gradient" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -947,7 +931,7 @@ packed-grid faces.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.AdaptiveNanogrid.cell_measure">
-<span class="sig-name descname"><span class="pre">cell_measure</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__cell_measure(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">Any)&gt;</span></em><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.cell_measure" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">cell_measure</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__cell_measure(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">Any)&gt;</span></span><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.cell_measure" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -960,7 +944,7 @@ packed-grid faces.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.AdaptiveNanogrid.cell_normal">
-<span class="sig-name descname"><span class="pre">cell_normal</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__cell_normal(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">Any)&gt;</span></em><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.cell_normal" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">cell_normal</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__cell_normal(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">Any)&gt;</span></span><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.cell_normal" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -973,7 +957,7 @@ packed-grid faces.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.AdaptiveNanogrid.cell_coordinates">
-<span class="sig-name descname"><span class="pre">cell_coordinates</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__cell_coordinates(args:</span> <span class="pre">Any,</span> <span class="pre">cell_index:</span> <span class="pre">int,</span> <span class="pre">pos:</span> <span class="pre">Any)&gt;</span></em><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.cell_coordinates" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">cell_coordinates</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__cell_coordinates(args:</span> <span class="pre">Any,</span> <span class="pre">cell_index:</span> <span class="pre">int,</span> <span class="pre">pos:</span> <span class="pre">Any)&gt;</span></span><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.cell_coordinates" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -987,7 +971,7 @@ packed-grid faces.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.AdaptiveNanogrid.cell_closest_point">
-<span class="sig-name descname"><span class="pre">cell_closest_point</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__cell_closest_point(args:</span> <span class="pre">Any,</span> <span class="pre">cell_index:</span> <span class="pre">int,</span> <span class="pre">pos:</span> <span class="pre">Any)&gt;</span></em><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.cell_closest_point" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">cell_closest_point</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__cell_closest_point(args:</span> <span class="pre">Any,</span> <span class="pre">cell_index:</span> <span class="pre">int,</span> <span class="pre">pos:</span> <span class="pre">Any)&gt;</span></span><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.cell_closest_point" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -1001,7 +985,7 @@ packed-grid faces.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.AdaptiveNanogrid.side_position">
-<span class="sig-name descname"><span class="pre">side_position</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__side_position(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">Any)&gt;</span></em><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.side_position" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">side_position</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__side_position(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">Any)&gt;</span></span><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.side_position" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -1014,7 +998,7 @@ packed-grid faces.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.AdaptiveNanogrid.side_inner_inverse_deformation_gradient">
-<span class="sig-name descname"><span class="pre">side_inner_inverse_deformation_gradient</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__side_inner_inverse_deformation_gradient(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">Any)&gt;</span></em><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.side_inner_inverse_deformation_gradient" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">side_inner_inverse_deformation_gradient</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__side_inner_inverse_deformation_gradient(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">Any)&gt;</span></span><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.side_inner_inverse_deformation_gradient" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -1027,7 +1011,7 @@ packed-grid faces.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.AdaptiveNanogrid.side_outer_inverse_deformation_gradient">
-<span class="sig-name descname"><span class="pre">side_outer_inverse_deformation_gradient</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__side_outer_inverse_deformation_gradient(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">Any)&gt;</span></em><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.side_outer_inverse_deformation_gradient" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">side_outer_inverse_deformation_gradient</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__side_outer_inverse_deformation_gradient(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">Any)&gt;</span></span><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.side_outer_inverse_deformation_gradient" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -1040,7 +1024,7 @@ packed-grid faces.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.AdaptiveNanogrid.side_measure">
-<span class="sig-name descname"><span class="pre">side_measure</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__side_measure(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">Any)&gt;</span></em><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.side_measure" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">side_measure</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__side_measure(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">Any)&gt;</span></span><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.side_measure" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -1053,7 +1037,7 @@ packed-grid faces.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.AdaptiveNanogrid.side_measure_ratio">
-<span class="sig-name descname"><span class="pre">side_measure_ratio</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__side_measure_ratio(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">Any)&gt;</span></em><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.side_measure_ratio" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">side_measure_ratio</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__side_measure_ratio(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">Any)&gt;</span></span><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.side_measure_ratio" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -1066,7 +1050,7 @@ packed-grid faces.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.AdaptiveNanogrid.side_inner_cell_index">
-<span class="sig-name descname"><span class="pre">side_inner_cell_index</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__side_inner_cell_index(args:</span> <span class="pre">Any,</span> <span class="pre">side_index:</span> <span class="pre">int)&gt;</span></em><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.side_inner_cell_index" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">side_inner_cell_index</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__side_inner_cell_index(args:</span> <span class="pre">Any,</span> <span class="pre">side_index:</span> <span class="pre">int)&gt;</span></span><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.side_inner_cell_index" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -1079,7 +1063,7 @@ packed-grid faces.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.AdaptiveNanogrid.side_outer_cell_index">
-<span class="sig-name descname"><span class="pre">side_outer_cell_index</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__side_outer_cell_index(args:</span> <span class="pre">Any,</span> <span class="pre">side_index:</span> <span class="pre">int)&gt;</span></em><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.side_outer_cell_index" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">side_outer_cell_index</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__side_outer_cell_index(args:</span> <span class="pre">Any,</span> <span class="pre">side_index:</span> <span class="pre">int)&gt;</span></span><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.side_outer_cell_index" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -1092,7 +1076,7 @@ packed-grid faces.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.AdaptiveNanogrid.side_inner_cell_coords">
-<span class="sig-name descname"><span class="pre">side_inner_cell_coords</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__side_inner_cell_coords(args:</span> <span class="pre">Any,</span> <span class="pre">side_index:</span> <span class="pre">int,</span> <span class="pre">side_coords:</span> <span class="pre">Any)&gt;</span></em><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.side_inner_cell_coords" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">side_inner_cell_coords</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__side_inner_cell_coords(args:</span> <span class="pre">Any,</span> <span class="pre">side_index:</span> <span class="pre">int,</span> <span class="pre">side_coords:</span> <span class="pre">Any)&gt;</span></span><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.side_inner_cell_coords" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -1106,7 +1090,7 @@ packed-grid faces.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.AdaptiveNanogrid.side_outer_cell_coords">
-<span class="sig-name descname"><span class="pre">side_outer_cell_coords</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__side_outer_cell_coords(args:</span> <span class="pre">Any,</span> <span class="pre">side_index:</span> <span class="pre">int,</span> <span class="pre">side_coords:</span> <span class="pre">Any)&gt;</span></em><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.side_outer_cell_coords" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">side_outer_cell_coords</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__side_outer_cell_coords(args:</span> <span class="pre">Any,</span> <span class="pre">side_index:</span> <span class="pre">int,</span> <span class="pre">side_coords:</span> <span class="pre">Any)&gt;</span></span><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.side_outer_cell_coords" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -1120,7 +1104,7 @@ packed-grid faces.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.AdaptiveNanogrid.side_from_cell_coords">
-<span class="sig-name descname"><span class="pre">side_from_cell_coords</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__side_from_cell_coords(args:</span> <span class="pre">Any,</span> <span class="pre">side_index:</span> <span class="pre">int,</span> <span class="pre">element_index:</span> <span class="pre">int,</span> <span class="pre">element_coords:</span> <span class="pre">Any)&gt;</span></em><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.side_from_cell_coords" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">side_from_cell_coords</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__side_from_cell_coords(args:</span> <span class="pre">Any,</span> <span class="pre">side_index:</span> <span class="pre">int,</span> <span class="pre">element_index:</span> <span class="pre">int,</span> <span class="pre">element_coords:</span> <span class="pre">Any)&gt;</span></span><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.side_from_cell_coords" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -1135,7 +1119,7 @@ packed-grid faces.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.AdaptiveNanogrid.side_to_cell_arg">
-<span class="sig-name descname"><span class="pre">side_to_cell_arg</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__side_to_cell_arg(side_arg:</span> <span class="pre">Any)&gt;</span></em><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.side_to_cell_arg" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">side_to_cell_arg</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__side_to_cell_arg(side_arg:</span> <span class="pre">Any)&gt;</span></span><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.side_to_cell_arg" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>side_arg</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>)</p>
@@ -1145,7 +1129,7 @@ packed-grid faces.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.AdaptiveNanogrid.side_coordinates">
-<span class="sig-name descname"><span class="pre">side_coordinates</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__side_coordinates(args:</span> <span class="pre">Any,</span> <span class="pre">side_index:</span> <span class="pre">int,</span> <span class="pre">pos:</span> <span class="pre">Any)&gt;</span></em><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.side_coordinates" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">side_coordinates</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__side_coordinates(args:</span> <span class="pre">Any,</span> <span class="pre">side_index:</span> <span class="pre">int,</span> <span class="pre">pos:</span> <span class="pre">Any)&gt;</span></span><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.side_coordinates" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -1159,7 +1143,7 @@ packed-grid faces.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.AdaptiveNanogrid.side_closest_point">
-<span class="sig-name descname"><span class="pre">side_closest_point</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__side_closest_point(args:</span> <span class="pre">Any,</span> <span class="pre">side_index:</span> <span class="pre">int,</span> <span class="pre">pos:</span> <span class="pre">Any)&gt;</span></em><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.side_closest_point" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">side_closest_point</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__side_closest_point(args:</span> <span class="pre">Any,</span> <span class="pre">side_index:</span> <span class="pre">int,</span> <span class="pre">pos:</span> <span class="pre">Any)&gt;</span></span><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.side_closest_point" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -1173,7 +1157,7 @@ packed-grid faces.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.AdaptiveNanogrid.coarse_ijk">
-<span class="sig-name descname"><span class="pre">coarse_ijk</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__coarse_ijk(ijk:</span> <span class="pre">vec3i,</span> <span class="pre">level:</span> <span class="pre">int)&gt;</span></em><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.coarse_ijk" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">coarse_ijk</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__coarse_ijk(ijk:</span> <span class="pre">vec3i,</span> <span class="pre">level:</span> <span class="pre">int)&gt;</span></span><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.coarse_ijk" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -1186,7 +1170,7 @@ packed-grid faces.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.AdaptiveNanogrid.fine_ijk">
-<span class="sig-name descname"><span class="pre">fine_ijk</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__fine_ijk(ijk:</span> <span class="pre">vec3i,</span> <span class="pre">level:</span> <span class="pre">int)&gt;</span></em><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.fine_ijk" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">fine_ijk</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__fine_ijk(ijk:</span> <span class="pre">vec3i,</span> <span class="pre">level:</span> <span class="pre">int)&gt;</span></span><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.fine_ijk" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -1199,7 +1183,7 @@ packed-grid faces.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.AdaptiveNanogrid.encode_axis_and_level">
-<span class="sig-name descname"><span class="pre">encode_axis_and_level</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__encode_axis_and_level(ijk:</span> <span class="pre">vec3i,</span> <span class="pre">axis:</span> <span class="pre">int,</span> <span class="pre">level:</span> <span class="pre">int)&gt;</span></em><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.encode_axis_and_level" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">encode_axis_and_level</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__encode_axis_and_level(ijk:</span> <span class="pre">vec3i,</span> <span class="pre">axis:</span> <span class="pre">int,</span> <span class="pre">level:</span> <span class="pre">int)&gt;</span></span><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.encode_axis_and_level" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -1213,7 +1197,7 @@ packed-grid faces.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.AdaptiveNanogrid.find_cell">
-<span class="sig-name descname"><span class="pre">find_cell</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__find_cell(cell_grid:</span> <span class="pre">uint64,</span> <span class="pre">ijk:</span> <span class="pre">vec3i,</span> <span class="pre">level_count:</span> <span class="pre">int,</span> <span class="pre">cell_level:</span> <span class="pre">array(ndim=1,</span> <span class="pre">dtype=uint8))&gt;</span></em><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.find_cell" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">find_cell</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">AdaptiveNanogrid__find_cell(cell_grid:</span> <span class="pre">uint64,</span> <span class="pre">ijk:</span> <span class="pre">vec3i,</span> <span class="pre">level_count:</span> <span class="pre">int,</span> <span class="pre">cell_level:</span> <span class="pre">array(ndim=1,</span> <span class="pre">dtype=uint8))&gt;</span></span><a class="headerlink" href="#warp.fem.AdaptiveNanogrid.find_cell" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -1277,10 +1261,9 @@ packed-grid faces.</p></li>
     class="page-toc tocsection onthispage">
     <i class="fa-solid fa-list"></i> On this page
   </div>
-  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
-    <ul class="visible nav section-nav flex-column">
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.AdaptiveNanogrid"><code class="docutils literal notranslate"><span class="pre">AdaptiveNanogrid</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.AdaptiveNanogrid.__init__"><code class="docutils literal notranslate"><span class="pre">__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.AdaptiveNanogrid.dimension"><code class="docutils literal notranslate"><span class="pre">dimension</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.AdaptiveNanogrid.from_environment_voxels"><code class="docutils literal notranslate"><span class="pre">from_environment_voxels()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.AdaptiveNanogrid.stacked_face_grid"><code class="docutils literal notranslate"><span class="pre">stacked_face_grid</span></code></a></li>
@@ -1350,8 +1333,8 @@ packed-grid faces.</p></li>
   
 
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
-<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+  <script defer src="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
 
 
   <footer class="bd-footer">

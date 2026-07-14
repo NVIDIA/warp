@@ -4,16 +4,12 @@
 .. currentmodule:: warp.fem.field
 
 .. autoclass:: TrialField
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~TrialField.__init__
       ~TrialField.divergence_valid
       ~TrialField.eval_arg_value
       ~TrialField.eval_degree
@@ -34,7 +30,6 @@
       ~TrialField.trace
    
    
-
    
    
    .. rubric:: Attributes

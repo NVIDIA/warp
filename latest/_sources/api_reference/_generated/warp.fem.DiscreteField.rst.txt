@@ -4,16 +4,12 @@
 .. currentmodule:: warp.fem
 
 .. autoclass:: DiscreteField
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~DiscreteField.__init__
       ~DiscreteField.divergence_valid
       ~DiscreteField.eval_arg_value
       ~DiscreteField.eval_degree
@@ -33,7 +29,6 @@
       ~DiscreteField.trace
    
    
-
    
    
    .. rubric:: Attributes

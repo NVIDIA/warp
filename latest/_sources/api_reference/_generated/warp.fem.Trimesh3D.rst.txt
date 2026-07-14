@@ -4,16 +4,12 @@
 .. currentmodule:: warp.fem
 
 .. autoclass:: Trimesh3D
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~Trimesh3D.__init__
       ~Trimesh3D.boundary_side_count
       ~Trimesh3D.build_bvh
       ~Trimesh3D.bvh_id
@@ -45,7 +41,6 @@
       ~Trimesh3D.vertex_count
    
    
-
    
    
    .. rubric:: Attributes

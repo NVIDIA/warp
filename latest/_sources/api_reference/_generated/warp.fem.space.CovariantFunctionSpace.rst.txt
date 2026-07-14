@@ -4,16 +4,12 @@
 .. currentmodule:: warp.fem.space
 
 .. autoclass:: CovariantFunctionSpace
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~CovariantFunctionSpace.__init__
       ~CovariantFunctionSpace.divergence_valid
       ~CovariantFunctionSpace.dof_value
       ~CovariantFunctionSpace.gradient_valid
@@ -30,7 +26,6 @@
       ~CovariantFunctionSpace.value_basis_element
    
    
-
    
    
    .. rubric:: Attributes

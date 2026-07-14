@@ -4,16 +4,12 @@
 .. currentmodule:: warp.fem
 
 .. autoclass:: Quadrature
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~Quadrature.__init__
       ~Quadrature.arg_value
       ~Quadrature.element_index_arg_value
       ~Quadrature.evaluation_point_count
@@ -27,7 +23,6 @@
       ~Quadrature.total_point_count
    
    
-
    
    
    .. rubric:: Attributes

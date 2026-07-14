@@ -27,8 +27,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
-<link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+  <link href="_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
@@ -36,26 +36,27 @@
     <link rel="stylesheet" type="text/css" href="_static/custom.css?v=3d681599" />
   
   <!-- So that users can add custom icons -->
-  <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <script defer src="_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
-<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
 
 
 
     <script src="_static/documentation_options.js?v=4ae37cce"></script>
-    <script src="_static/doctools.js?v=9bcbadda"></script>
-    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="_static/copybutton.js?v=fd10adb8"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'genindex';</script>
     <script>
-        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
         DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'latest';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
 
     <link rel="icon" href="_static/favicon.png"/>
 
@@ -66,25 +67,31 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="1.16.0.dev0" />
+  
+    
+    <script src="_static/searchtools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <script src="searchindex.js"></script>
+  
 
 
   </head>
 
-  
-  
-  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+  <body data-default-mode="">
+
 
   
   
   <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
-
 
   
   <div id="pst-scroll-pixel-helper"></div>
   
   <button type="button" class="btn rounded-pill" id="pst-back-to-top">
     <i class="fa-solid fa-arrow-up"></i>Back to top</button>
-
+  
+  
+  
   
   <dialog id="pst-search-dialog">
     
@@ -110,7 +117,7 @@
 </div>
 
   
-    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
 <div class="bd-header__inner bd-page-width">
   <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
     <span class="fa-solid fa-bars"></span>
@@ -190,11 +197,18 @@
       
         <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
       
         <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -207,8 +221,7 @@
           
           
           
-          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -219,8 +232,7 @@
           
           
           
-          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
       
@@ -319,11 +331,18 @@
         
           <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
         
           <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -336,8 +355,7 @@
           
           
           
-          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -348,8 +366,7 @@
           
           
           
-          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
         
@@ -450,8 +467,7 @@
 <h1 id="index">Index</h1>
 
 <div class="genindex-jumpbox">
- <a href="#_"><strong>_</strong></a>
- | <a href="#A"><strong>A</strong></a>
+ <a href="#A"><strong>A</strong></a>
  | <a href="#B"><strong>B</strong></a>
  | <a href="#C"><strong>C</strong></a>
  | <a href="#D"><strong>D</strong></a>
@@ -477,478 +493,6 @@
  | <a href="#Z"><strong>Z</strong></a>
  
 </div>
-<h2 id="_">_</h2>
-<table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api_reference/_generated/warp.Allocator.html#warp.Allocator.__init__">__init__() (warp.Allocator method)</a>
-
-      <ul>
-        <li><a href="api_reference/_generated/warp.array.html#warp.array.__init__">(warp.array method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.array1d.html#warp.array1d.__init__">(warp.array1d method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.array2d.html#warp.array2d.__init__">(warp.array2d method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.array3d.html#warp.array3d.__init__">(warp.array3d method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.array4d.html#warp.array4d.__init__">(warp.array4d method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.bfloat16.html#warp.bfloat16.__init__">(warp.bfloat16 method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.bool.html#warp.bool.__init__">(warp.bool method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.Bvh.html#warp.Bvh.__init__">(warp.Bvh method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.BvhQuery.html#warp.BvhQuery.__init__">(warp.BvhQuery method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.BvhQueryTiled.html#warp.BvhQueryTiled.__init__">(warp.BvhQueryTiled method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.CaptureMode.html#warp.CaptureMode.__init__">(warp.CaptureMode method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.config.LaunchArrayAccessMode.html#warp.config.LaunchArrayAccessMode.__init__">(warp.config.LaunchArrayAccessMode method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.CudaManagedAllocator.html#warp.CudaManagedAllocator.__init__">(warp.CudaManagedAllocator method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.DeterministicMode.html#warp.DeterministicMode.__init__">(warp.DeterministicMode method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.Device.html#warp.Device.__init__">(warp.Device method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.Event.html#warp.Event.__init__">(warp.Event method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fabricarray.html#warp.fabricarray.__init__">(warp.fabricarray method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.AdaptiveNanogrid.html#warp.fem.AdaptiveNanogrid.__init__">(warp.fem.AdaptiveNanogrid method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.BasisSpace.html#warp.fem.BasisSpace.__init__">(warp.fem.BasisSpace method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.BoundarySides.html#warp.fem.BoundarySides.__init__">(warp.fem.BoundarySides method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.CellBasedGeometryPartition.html#warp.fem.CellBasedGeometryPartition.__init__">(warp.fem.CellBasedGeometryPartition method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.Cells.html#warp.fem.Cells.__init__">(warp.fem.Cells method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.DiscreteField.html#warp.fem.DiscreteField.__init__">(warp.fem.DiscreteField method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.DofMapper.html#warp.fem.DofMapper.__init__">(warp.fem.DofMapper method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.Domain.html#warp.fem.Domain.__init__">(warp.fem.Domain method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.Element.html#warp.fem.Element.__init__">(warp.fem.Element method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.ElementBasis.html#warp.fem.ElementBasis.__init__">(warp.fem.ElementBasis method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.ElementKind.html#warp.fem.ElementKind.__init__">(warp.fem.ElementKind method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.ExplicitGeometryPartition.html#warp.fem.ExplicitGeometryPartition.__init__">(warp.fem.ExplicitGeometryPartition method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.ExplicitQuadrature.html#warp.fem.ExplicitQuadrature.__init__">(warp.fem.ExplicitQuadrature method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.Field.html#warp.fem.Field.__init__">(warp.fem.Field method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.field.FieldRestriction.html#warp.fem.field.FieldRestriction.__init__">(warp.fem.field.FieldRestriction method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.field.LocalTestField.html#warp.fem.field.LocalTestField.__init__">(warp.fem.field.LocalTestField method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.field.TestField.html#warp.fem.field.TestField.__init__">(warp.fem.field.TestField method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.field.TrialField.html#warp.fem.field.TrialField.__init__">(warp.fem.field.TrialField method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.FieldLike.html#warp.fem.FieldLike.__init__">(warp.fem.FieldLike method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.FrontierSides.html#warp.fem.FrontierSides.__init__">(warp.fem.FrontierSides method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.FunctionSpace.html#warp.fem.FunctionSpace.__init__">(warp.fem.FunctionSpace method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.Geometry.html#warp.fem.Geometry.__init__">(warp.fem.Geometry method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.geometry.DeformedGeometry.html#warp.fem.geometry.DeformedGeometry.__init__">(warp.fem.geometry.DeformedGeometry method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.GeometryDomain.html#warp.fem.GeometryDomain.__init__">(warp.fem.GeometryDomain method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.GeometryField.html#warp.fem.GeometryField.__init__">(warp.fem.GeometryField method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.GeometryPartition.html#warp.fem.GeometryPartition.__init__">(warp.fem.GeometryPartition method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.Grid2D.html#warp.fem.Grid2D.__init__">(warp.fem.Grid2D method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.Grid3D.html#warp.fem.Grid3D.__init__">(warp.fem.Grid3D method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.Hexmesh.html#warp.fem.Hexmesh.__init__">(warp.fem.Hexmesh method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.ImplicitField.html#warp.fem.ImplicitField.__init__">(warp.fem.ImplicitField method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.Integrand.html#warp.fem.Integrand.__init__">(warp.fem.Integrand method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.LinearGeometryPartition.html#warp.fem.LinearGeometryPartition.__init__">(warp.fem.LinearGeometryPartition method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.Nanogrid.html#warp.fem.Nanogrid.__init__">(warp.fem.Nanogrid method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.NodalQuadrature.html#warp.fem.NodalQuadrature.__init__">(warp.fem.NodalQuadrature method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.NonconformingField.html#warp.fem.NonconformingField.__init__">(warp.fem.NonconformingField method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.Operator.html#warp.fem.Operator.__init__">(warp.fem.Operator method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.PicQuadrature.html#warp.fem.PicQuadrature.__init__">(warp.fem.PicQuadrature method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.PointBasisSpace.html#warp.fem.PointBasisSpace.__init__">(warp.fem.PointBasisSpace method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.Polynomial.html#warp.fem.Polynomial.__init__">(warp.fem.Polynomial method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.Quadmesh2D.html#warp.fem.Quadmesh2D.__init__">(warp.fem.Quadmesh2D method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.Quadmesh3D.html#warp.fem.Quadmesh3D.__init__">(warp.fem.Quadmesh3D method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.Quadrature.html#warp.fem.Quadrature.__init__">(warp.fem.Quadrature method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.RegularQuadrature.html#warp.fem.RegularQuadrature.__init__">(warp.fem.RegularQuadrature method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.ShapeBasisSpace.html#warp.fem.ShapeBasisSpace.__init__">(warp.fem.ShapeBasisSpace method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.ShapeFunction.html#warp.fem.ShapeFunction.__init__">(warp.fem.ShapeFunction method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.Sides.html#warp.fem.Sides.__init__">(warp.fem.Sides method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.SkewSymmetricTensorMapper.html#warp.fem.SkewSymmetricTensorMapper.__init__">(warp.fem.SkewSymmetricTensorMapper method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.space.CollocatedFunctionSpace.html#warp.fem.space.CollocatedFunctionSpace.__init__">(warp.fem.space.CollocatedFunctionSpace method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.space.ContravariantFunctionSpace.html#warp.fem.space.ContravariantFunctionSpace.__init__">(warp.fem.space.ContravariantFunctionSpace method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.space.CovariantFunctionSpace.html#warp.fem.space.CovariantFunctionSpace.__init__">(warp.fem.space.CovariantFunctionSpace method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.space.shape.ConstantShapeFunction.html#warp.fem.space.shape.ConstantShapeFunction.__init__">(warp.fem.space.shape.ConstantShapeFunction method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.space.shape.CubeBSplineShapeFunctions.html#warp.fem.space.shape.CubeBSplineShapeFunctions.__init__">(warp.fem.space.shape.CubeBSplineShapeFunctions method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.space.shape.CubeNedelecFirstKindShapeFunctions.html#warp.fem.space.shape.CubeNedelecFirstKindShapeFunctions.__init__">(warp.fem.space.shape.CubeNedelecFirstKindShapeFunctions method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions.html#warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions.__init__">(warp.fem.space.shape.CubeNonConformingPolynomialShapeFunctions method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.space.shape.CubeRaviartThomasShapeFunctions.html#warp.fem.space.shape.CubeRaviartThomasShapeFunctions.__init__">(warp.fem.space.shape.CubeRaviartThomasShapeFunctions method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.space.shape.CubeSerendipityShapeFunctions.html#warp.fem.space.shape.CubeSerendipityShapeFunctions.__init__">(warp.fem.space.shape.CubeSerendipityShapeFunctions method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.space.shape.CubeShapeFunction.html#warp.fem.space.shape.CubeShapeFunction.__init__">(warp.fem.space.shape.CubeShapeFunction method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.space.shape.CubeTripolynomialShapeFunctions.html#warp.fem.space.shape.CubeTripolynomialShapeFunctions.__init__">(warp.fem.space.shape.CubeTripolynomialShapeFunctions method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.space.shape.SquareBipolynomialShapeFunctions.html#warp.fem.space.shape.SquareBipolynomialShapeFunctions.__init__">(warp.fem.space.shape.SquareBipolynomialShapeFunctions method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.space.shape.SquareBSplineShapeFunctions.html#warp.fem.space.shape.SquareBSplineShapeFunctions.__init__">(warp.fem.space.shape.SquareBSplineShapeFunctions method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.space.shape.SquareNedelecFirstKindShapeFunctions.html#warp.fem.space.shape.SquareNedelecFirstKindShapeFunctions.__init__">(warp.fem.space.shape.SquareNedelecFirstKindShapeFunctions method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.space.shape.SquareNonConformingPolynomialShapeFunctions.html#warp.fem.space.shape.SquareNonConformingPolynomialShapeFunctions.__init__">(warp.fem.space.shape.SquareNonConformingPolynomialShapeFunctions method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.space.shape.SquareRaviartThomasShapeFunctions.html#warp.fem.space.shape.SquareRaviartThomasShapeFunctions.__init__">(warp.fem.space.shape.SquareRaviartThomasShapeFunctions method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.space.shape.SquareSerendipityShapeFunctions.html#warp.fem.space.shape.SquareSerendipityShapeFunctions.__init__">(warp.fem.space.shape.SquareSerendipityShapeFunctions method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.space.shape.SquareShapeFunction.html#warp.fem.space.shape.SquareShapeFunction.__init__">(warp.fem.space.shape.SquareShapeFunction method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.space.shape.TetrahedronNedelecFirstKindShapeFunctions.html#warp.fem.space.shape.TetrahedronNedelecFirstKindShapeFunctions.__init__">(warp.fem.space.shape.TetrahedronNedelecFirstKindShapeFunctions method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.space.shape.TetrahedronNonConformingPolynomialShapeFunctions.html#warp.fem.space.shape.TetrahedronNonConformingPolynomialShapeFunctions.__init__">(warp.fem.space.shape.TetrahedronNonConformingPolynomialShapeFunctions method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.space.shape.TetrahedronPolynomialShapeFunctions.html#warp.fem.space.shape.TetrahedronPolynomialShapeFunctions.__init__">(warp.fem.space.shape.TetrahedronPolynomialShapeFunctions method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.space.shape.TetrahedronRaviartThomasShapeFunctions.html#warp.fem.space.shape.TetrahedronRaviartThomasShapeFunctions.__init__">(warp.fem.space.shape.TetrahedronRaviartThomasShapeFunctions method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.space.shape.TetrahedronShapeFunction.html#warp.fem.space.shape.TetrahedronShapeFunction.__init__">(warp.fem.space.shape.TetrahedronShapeFunction method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions.html#warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions.__init__">(warp.fem.space.shape.TriangleNedelecFirstKindShapeFunctions method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.space.shape.TriangleNonConformingPolynomialShapeFunctions.html#warp.fem.space.shape.TriangleNonConformingPolynomialShapeFunctions.__init__">(warp.fem.space.shape.TriangleNonConformingPolynomialShapeFunctions method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.space.shape.TrianglePolynomialShapeFunctions.html#warp.fem.space.shape.TrianglePolynomialShapeFunctions.__init__">(warp.fem.space.shape.TrianglePolynomialShapeFunctions method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.space.shape.TriangleRaviartThomasShapeFunctions.html#warp.fem.space.shape.TriangleRaviartThomasShapeFunctions.__init__">(warp.fem.space.shape.TriangleRaviartThomasShapeFunctions method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.space.shape.TriangleShapeFunction.html#warp.fem.space.shape.TriangleShapeFunction.__init__">(warp.fem.space.shape.TriangleShapeFunction method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.SpacePartition.html#warp.fem.SpacePartition.__init__">(warp.fem.SpacePartition method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.SpaceRestriction.html#warp.fem.SpaceRestriction.__init__">(warp.fem.SpaceRestriction method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.SpaceTopology.html#warp.fem.SpaceTopology.__init__">(warp.fem.SpaceTopology method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.Subdomain.html#warp.fem.Subdomain.__init__">(warp.fem.Subdomain method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.SymmetricTensorMapper.html#warp.fem.SymmetricTensorMapper.__init__">(warp.fem.SymmetricTensorMapper method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.TemporaryStore.html#warp.fem.TemporaryStore.__init__">(warp.fem.TemporaryStore method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.Tetmesh.html#warp.fem.Tetmesh.__init__">(warp.fem.Tetmesh method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.Trimesh2D.html#warp.fem.Trimesh2D.__init__">(warp.fem.Trimesh2D method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.Trimesh3D.html#warp.fem.Trimesh3D.__init__">(warp.fem.Trimesh3D method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fem.UniformField.html#warp.fem.UniformField.__init__">(warp.fem.UniformField method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.fixedarray.html#warp.fixedarray.__init__">(warp.fixedarray method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.float16.html#warp.float16.__init__">(warp.float16 method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.float32.html#warp.float32.__init__">(warp.float32 method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.float64.html#warp.float64.__init__">(warp.float64 method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.Function.html#warp.Function.__init__">(warp.Function method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.GLTextureResource.html#warp.GLTextureResource.__init__">(warp.GLTextureResource method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.Graph.html#warp.Graph.__init__">(warp.Graph method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.handle.html#warp.handle.__init__">(warp.handle method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.HashGrid.html#warp.HashGrid.__init__">(warp.HashGrid method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.HashGridQuery.html#warp.HashGridQuery.__init__">(warp.HashGridQuery method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.indexedarray.html#warp.indexedarray.__init__">(warp.indexedarray method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.indexedfabricarray.html#warp.indexedfabricarray.__init__">(warp.indexedfabricarray method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.int16.html#warp.int16.__init__">(warp.int16 method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.int32.html#warp.int32.__init__">(warp.int32 method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.int64.html#warp.int64.__init__">(warp.int64 method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.int8.html#warp.int8.__init__">(warp.int8 method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.JaxCallableGraphMode.html#warp.JaxCallableGraphMode.__init__">(warp.JaxCallableGraphMode method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.JaxModulePreloadMode.html#warp.JaxModulePreloadMode.__init__">(warp.JaxModulePreloadMode method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.Kernel.html#warp.Kernel.__init__">(warp.Kernel method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.Launch.html#warp.Launch.__init__">(warp.Launch method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.Logger.html#warp.Logger.__init__">(warp.Logger method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.MarchingCubes.html#warp.MarchingCubes.__init__">(warp.MarchingCubes method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.mat22d.html#warp.mat22d.__init__">(warp.mat22d method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.mat22f.html#warp.mat22f.__init__">(warp.mat22f method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.mat22h.html#warp.mat22h.__init__">(warp.mat22h method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.mat33d.html#warp.mat33d.__init__">(warp.mat33d method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.mat33f.html#warp.mat33f.__init__">(warp.mat33f method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.mat33h.html#warp.mat33h.__init__">(warp.mat33h method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.mat44d.html#warp.mat44d.__init__">(warp.mat44d method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.mat44f.html#warp.mat44f.__init__">(warp.mat44f method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.mat44h.html#warp.mat44h.__init__">(warp.mat44h method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.MemoryKind.html#warp.MemoryKind.__init__">(warp.MemoryKind method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.Mesh.html#warp.Mesh.__init__">(warp.Mesh method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.MeshQueryAABB.html#warp.MeshQueryAABB.__init__">(warp.MeshQueryAABB method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.MeshQueryAABBTiled.html#warp.MeshQueryAABBTiled.__init__">(warp.MeshQueryAABBTiled method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.MeshQueryPoint.html#warp.MeshQueryPoint.__init__">(warp.MeshQueryPoint method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.MeshQueryRay.html#warp.MeshQueryRay.__init__">(warp.MeshQueryRay method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.Module.html#warp.Module.__init__">(warp.Module method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.optim.Adam.html#warp.optim.Adam.__init__">(warp.optim.Adam method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.optim.linear.BiCGSTAB.html#warp.optim.linear.BiCGSTAB.__init__">(warp.optim.linear.BiCGSTAB method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.optim.linear.CG.html#warp.optim.linear.CG.__init__">(warp.optim.linear.CG method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.optim.linear.CR.html#warp.optim.linear.CR.__init__">(warp.optim.linear.CR method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.optim.linear.GMRES.html#warp.optim.linear.GMRES.__init__">(warp.optim.linear.GMRES method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.optim.linear.LinearOperator.html#warp.optim.linear.LinearOperator.__init__">(warp.optim.linear.LinearOperator method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.optim.linear.LinearSolverState.html#warp.optim.linear.LinearSolverState.__init__">(warp.optim.linear.LinearSolverState method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.optim.SGD.html#warp.optim.SGD.__init__">(warp.optim.SGD method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.quatd.html#warp.quatd.__init__">(warp.quatd method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.quatf.html#warp.quatf.__init__">(warp.quatf method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.quath.html#warp.quath.__init__">(warp.quath method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.ref.html#warp.ref.__init__">(warp.ref method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.RegisteredGLBuffer.html#warp.RegisteredGLBuffer.__init__">(warp.RegisteredGLBuffer method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.render.OpenGLRenderer.html#warp.render.OpenGLRenderer.__init__">(warp.render.OpenGLRenderer method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.render.UsdRenderer.html#warp.render.UsdRenderer.__init__">(warp.render.UsdRenderer method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.ScopedAllocator.html#warp.ScopedAllocator.__init__">(warp.ScopedAllocator method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.ScopedCapture.html#warp.ScopedCapture.__init__">(warp.ScopedCapture method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.ScopedCudaProfiler.html#warp.ScopedCudaProfiler.__init__">(warp.ScopedCudaProfiler method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.ScopedDevice.html#warp.ScopedDevice.__init__">(warp.ScopedDevice method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.ScopedLogger.html#warp.ScopedLogger.__init__">(warp.ScopedLogger method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.ScopedLogLevel.html#warp.ScopedLogLevel.__init__">(warp.ScopedLogLevel method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.ScopedMemoryTracker.html#warp.ScopedMemoryTracker.__init__">(warp.ScopedMemoryTracker method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.ScopedMempool.html#warp.ScopedMempool.__init__">(warp.ScopedMempool method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.ScopedMempoolAccess.html#warp.ScopedMempoolAccess.__init__">(warp.ScopedMempoolAccess method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.ScopedPeerAccess.html#warp.ScopedPeerAccess.__init__">(warp.ScopedPeerAccess method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.ScopedStream.html#warp.ScopedStream.__init__">(warp.ScopedStream method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.ScopedTimer.html#warp.ScopedTimer.__init__">(warp.ScopedTimer method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.sparse.bsr_axpy_work_arrays.html#warp.sparse.bsr_axpy_work_arrays.__init__">(warp.sparse.bsr_axpy_work_arrays method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.sparse.bsr_mm_work_arrays.html#warp.sparse.bsr_mm_work_arrays.__init__">(warp.sparse.bsr_mm_work_arrays method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.__init__">(warp.sparse.BsrMatrix method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.spatial_matrixd.html#warp.spatial_matrixd.__init__">(warp.spatial_matrixd method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.spatial_matrixf.html#warp.spatial_matrixf.__init__">(warp.spatial_matrixf method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.spatial_matrixh.html#warp.spatial_matrixh.__init__">(warp.spatial_matrixh method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.spatial_vectord.html#warp.spatial_vectord.__init__">(warp.spatial_vectord method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.spatial_vectorf.html#warp.spatial_vectorf.__init__">(warp.spatial_vectorf method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.spatial_vectorh.html#warp.spatial_vectorh.__init__">(warp.spatial_vectorh method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.Stream.html#warp.Stream.__init__">(warp.Stream method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.Tape.html#warp.Tape.__init__">(warp.Tape method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.Texture.html#warp.Texture.__init__">(warp.Texture method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.Texture1D.html#warp.Texture1D.__init__">(warp.Texture1D method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.Texture2D.html#warp.Texture2D.__init__">(warp.Texture2D method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.Texture3D.html#warp.Texture3D.__init__">(warp.Texture3D method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.TextureAddressMode.html#warp.TextureAddressMode.__init__">(warp.TextureAddressMode method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.TextureFilterMode.html#warp.TextureFilterMode.__init__">(warp.TextureFilterMode method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.TextureResourceFlags.html#warp.TextureResourceFlags.__init__">(warp.TextureResourceFlags method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.tile.html#warp.tile.__init__">(warp.tile method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.tile_stack.html#warp.tile_stack.__init__">(warp.tile_stack method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.TimingResult.html#warp.TimingResult.__init__">(warp.TimingResult method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.transformd.html#warp.transformd.__init__">(warp.transformd method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.transformf.html#warp.transformf.__init__">(warp.transformf method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.transformh.html#warp.transformh.__init__">(warp.transformh method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.uint16.html#warp.uint16.__init__">(warp.uint16 method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.uint32.html#warp.uint32.__init__">(warp.uint32 method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.uint64.html#warp.uint64.__init__">(warp.uint64 method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.uint8.html#warp.uint8.__init__">(warp.uint8 method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.utils.AllocatorRmm.html#warp.utils.AllocatorRmm.__init__">(warp.utils.AllocatorRmm method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.utils.GraphColoringAlgorithm.html#warp.utils.GraphColoringAlgorithm.__init__">(warp.utils.GraphColoringAlgorithm method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.vec2b.html#warp.vec2b.__init__">(warp.vec2b method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.vec2d.html#warp.vec2d.__init__">(warp.vec2d method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.vec2f.html#warp.vec2f.__init__">(warp.vec2f method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.vec2h.html#warp.vec2h.__init__">(warp.vec2h method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.vec2i.html#warp.vec2i.__init__">(warp.vec2i method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.vec2l.html#warp.vec2l.__init__">(warp.vec2l method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.vec2s.html#warp.vec2s.__init__">(warp.vec2s method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.vec2ub.html#warp.vec2ub.__init__">(warp.vec2ub method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.vec2ui.html#warp.vec2ui.__init__">(warp.vec2ui method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.vec2ul.html#warp.vec2ul.__init__">(warp.vec2ul method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.vec2us.html#warp.vec2us.__init__">(warp.vec2us method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.vec3b.html#warp.vec3b.__init__">(warp.vec3b method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.vec3d.html#warp.vec3d.__init__">(warp.vec3d method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.vec3f.html#warp.vec3f.__init__">(warp.vec3f method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.vec3h.html#warp.vec3h.__init__">(warp.vec3h method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.vec3i.html#warp.vec3i.__init__">(warp.vec3i method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.vec3l.html#warp.vec3l.__init__">(warp.vec3l method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.vec3s.html#warp.vec3s.__init__">(warp.vec3s method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.vec3ub.html#warp.vec3ub.__init__">(warp.vec3ub method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.vec3ui.html#warp.vec3ui.__init__">(warp.vec3ui method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.vec3ul.html#warp.vec3ul.__init__">(warp.vec3ul method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.vec3us.html#warp.vec3us.__init__">(warp.vec3us method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.vec4b.html#warp.vec4b.__init__">(warp.vec4b method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.vec4d.html#warp.vec4d.__init__">(warp.vec4d method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.vec4f.html#warp.vec4f.__init__">(warp.vec4f method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.vec4h.html#warp.vec4h.__init__">(warp.vec4h method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.vec4i.html#warp.vec4i.__init__">(warp.vec4i method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.vec4l.html#warp.vec4l.__init__">(warp.vec4l method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.vec4s.html#warp.vec4s.__init__">(warp.vec4s method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.vec4ub.html#warp.vec4ub.__init__">(warp.vec4ub method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.vec4ui.html#warp.vec4ui.__init__">(warp.vec4ui method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.vec4ul.html#warp.vec4ul.__init__">(warp.vec4ul method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.vec4us.html#warp.vec4us.__init__">(warp.vec4us method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.__init__">(warp.Volume method)</a>
-</li>
-      </ul></li>
-  </ul></td>
-</tr></table>
-
 <h2 id="A">A</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
@@ -1008,15 +552,19 @@
 </li>
       <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.allocate_by_voxels">allocate_by_voxels() (warp.Volume class method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.render.OpenGLRenderer.html#warp.render.OpenGLRenderer.allocate_shape_instances">allocate_shape_instances() (warp.render.OpenGLRenderer method)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.Allocator.html#warp.Allocator">Allocator (class in warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.utils.AllocatorRmm.html#warp.utils.AllocatorRmm">AllocatorRmm (class in warp.utils)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.Grid2D.html#warp.fem.Grid2D.ALT_AXIS">ALT_AXIS (warp.fem.Grid2D attribute)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.Graph.html#warp.Graph.apic">apic (warp.Graph attribute)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.Graph.html#warp.Graph.apic_state">apic_state (warp.Graph attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.Device.html#warp.Device.arch">arch (warp.Device attribute)</a>
 </li>
@@ -2285,6 +1833,8 @@
 </li>
       <li><a href="api_reference/_generated/warp.JaxModulePreloadMode.html#warp.JaxModulePreloadMode.CURRENT_DEVICE">CURRENT_DEVICE (warp.JaxModulePreloadMode attribute)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.Function.html#warp.Function.custom_grad_func">custom_grad_func (warp.Function attribute)</a>
+</li>
   </ul></td>
 </tr></table>
 
@@ -2826,6 +2376,8 @@
 </li>
         <li><a href="api_reference/_generated/warp.fem.Sides.html#warp.fem.Sides.ElementArg">(warp.fem.Sides property)</a>
 </li>
+        <li><a href="api_reference/_generated/warp.fem.SpaceTopology.html#warp.fem.SpaceTopology.ElementArg">(warp.fem.SpaceTopology attribute)</a>
+</li>
       </ul></li>
       <li><a href="api_reference/_generated/warp.fem.ElementBasis.html#warp.fem.ElementBasis">ElementBasis (class in warp.fem)</a>
 </li>
@@ -3309,10 +2861,10 @@
 </li>
       <li><a href="api_reference/_generated/warp.get_mempool_used_mem_high.html#warp.get_mempool_used_mem_high">get_mempool_used_mem_high() (in module warp)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.get_module.html#warp.get_module">get_module() (in module warp)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.Module.html#warp.Module.get_module_hash">get_module_hash() (warp.Module method)</a>
 </li>
       <li><a href="api_reference/_generated/warp.Module.html#warp.Module.get_module_identifier">get_module_identifier() (warp.Module method)</a>
@@ -3395,13 +2947,19 @@
       </ul></li>
       <li><a href="api_reference/_generated/warp.Graph.html#warp.Graph">Graph (class in warp)</a>
 </li>
-      <li><a href="api_reference/_generated/warp.ScopedCapture.html#warp.ScopedCapture.graph">graph (warp.ScopedCapture attribute)</a>
+      <li><a href="api_reference/_generated/warp.Graph.html#warp.Graph.graph">graph (warp.Graph attribute)</a>
+
+      <ul>
+        <li><a href="api_reference/_generated/warp.ScopedCapture.html#warp.ScopedCapture.graph">(warp.ScopedCapture attribute)</a>
 </li>
+      </ul></li>
       <li><a href="api_reference/_generated/warp.utils.graph_coloring_assign.html#warp.utils.graph_coloring_assign">graph_coloring_assign() (in module warp.utils)</a>
 </li>
       <li><a href="api_reference/_generated/warp.utils.graph_coloring_balance.html#warp.utils.graph_coloring_balance">graph_coloring_balance() (in module warp.utils)</a>
 </li>
       <li><a href="api_reference/_generated/warp.utils.graph_coloring_get_groups.html#warp.utils.graph_coloring_get_groups">graph_coloring_get_groups() (in module warp.utils)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.Graph.html#warp.Graph.graph_exec">graph_exec (warp.Graph attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.utils.GraphColoringAlgorithm.html#warp.utils.GraphColoringAlgorithm">GraphColoringAlgorithm (class in warp.utils)</a>
 </li>
@@ -3415,8 +2973,12 @@
 </li>
       <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.GridInfo.grid_index">grid_index (warp.Volume.GridInfo attribute)</a>
 </li>
-      <li><a href="api_reference/_generated/warp.Launch.html#warp.Launch.grid_stride">grid_stride (warp.Launch attribute)</a>
+      <li><a href="api_reference/_generated/warp.Kernel.html#warp.Kernel.grid_stride">grid_stride (warp.Kernel attribute)</a>
+
+      <ul>
+        <li><a href="api_reference/_generated/warp.Launch.html#warp.Launch.grid_stride">(warp.Launch attribute)</a>
 </li>
+      </ul></li>
       <li><a href="api_reference/_generated/warp.fem.utils.grid_to_hexes.html#warp.fem.utils.grid_to_hexes">grid_to_hexes() (in module warp.fem.utils)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.utils.grid_to_quads.html#warp.fem.utils.grid_to_quads">grid_to_quads() (in module warp.fem.utils)</a>
@@ -4181,6 +3743,8 @@
 </li>
       <li><a href="api_reference/_generated/warp.Function.html#warp.Function.mangle">mangle() (warp.Function method)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.Function.html#warp.Function.mangled_name">mangled_name (warp.Function attribute)</a>
+</li>
       <li><a href="api_reference/_generated/warp.map.html#warp.map">map() (in module warp)</a>
 
       <ul>
@@ -4341,6 +3905,8 @@
       <li><a href="api_reference/_generated/warp.Module.html#warp.Module">Module (class in warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.Integrand.html#warp.fem.Integrand.module">module (warp.fem.Integrand attribute)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.Graph.html#warp.Graph.module_execs">module_execs (warp.Graph attribute)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -4649,6 +4215,8 @@
       <li><a href="api_reference/_generated/warp.fem.OUTSIDE.html#warp.fem.OUTSIDE">OUTSIDE (in module warp.fem)</a>
 </li>
       <li><a href="api_reference/_generated/warp.overload.html#warp.overload">overload() (in module warp)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.Function.html#warp.Function.overloads">overloads (warp.Function attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.SpacePartition.html#warp.fem.SpacePartition.owned_node_count">owned_node_count() (warp.fem.SpacePartition method)</a>
 </li>
@@ -5968,10 +5536,10 @@
 </li>
       <li><a href="api_reference/_generated/warp.render.OpenGLRenderer.html#warp.render.OpenGLRenderer.update">update() (warp.render.OpenGLRenderer method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.render.OpenGLRenderer.html#warp.render.OpenGLRenderer.update_body_transforms">update_body_transforms() (warp.render.OpenGLRenderer method)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.fem.Geometry.html#warp.fem.Geometry.update_bvh">update_bvh() (warp.fem.Geometry method)</a>
 </li>
       <li><a href="api_reference/_generated/warp.render.OpenGLRenderer.html#warp.render.OpenGLRenderer.update_instance_colors">update_instance_colors() (warp.render.OpenGLRenderer method)</a>
@@ -5995,6 +5563,10 @@
       <li><a href="api_reference/_generated/warp.render.UsdRenderer.html#warp.render.UsdRenderer">UsdRenderer (class in warp.render)</a>
 </li>
       <li><a href="api_reference/_generated/warp.config.use_precompiled_headers.html#warp.config.use_precompiled_headers">use_precompiled_headers (in module warp.config)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.Function.html#warp.Function.user_overloads">user_overloads (warp.Function attribute)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.Function.html#warp.Function.user_templates">user_templates (warp.Function attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.Device.html#warp.Device.uuid">uuid (warp.Device attribute)</a>
 </li>
@@ -8545,8 +8117,8 @@
   
 
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
-<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+  <script defer src="_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
 
 
   <footer class="bd-footer">

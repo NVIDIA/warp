@@ -4,10 +4,7 @@
 .. currentmodule:: warp
 
 .. autoclass:: DeterministicMode
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
@@ -20,10 +17,8 @@
       ~DeterministicMode.from_bytes
       ~DeterministicMode.as_integer_ratio
       ~DeterministicMode.is_integer
-      ~DeterministicMode.__init__
    
    
-
    
    
    .. rubric:: Attributes

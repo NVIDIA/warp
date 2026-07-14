@@ -4,16 +4,12 @@
 .. currentmodule:: warp.fem
 
 .. autoclass:: Geometry
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~Geometry.__init__
       ~Geometry.boundary_side_count
       ~Geometry.boundary_side_index
       ~Geometry.build_bvh
@@ -54,7 +50,6 @@
       ~Geometry.update_bvh
    
    
-
    
    
    .. rubric:: Attributes

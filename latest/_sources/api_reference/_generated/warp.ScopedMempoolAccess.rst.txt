@@ -4,19 +4,9 @@
 .. currentmodule:: warp
 
 .. autoclass:: ScopedMempoolAccess
-
-   
-   .. automethod:: __init__
-
-   
-   .. rubric:: Methods
-
-   .. autosummary::
-   
-      ~ScopedMempoolAccess.__init__
    
    
-
+   
    
    
    

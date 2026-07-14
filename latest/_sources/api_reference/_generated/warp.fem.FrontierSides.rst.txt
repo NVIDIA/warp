@@ -4,16 +4,12 @@
 .. currentmodule:: warp.fem
 
 .. autoclass:: FrontierSides
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~FrontierSides.__init__
       ~FrontierSides.cell_domain
       ~FrontierSides.element_arg_value
       ~FrontierSides.element_count
@@ -26,7 +22,6 @@
       ~FrontierSides.supports_lookup
    
    
-
    
    
    .. rubric:: Attributes

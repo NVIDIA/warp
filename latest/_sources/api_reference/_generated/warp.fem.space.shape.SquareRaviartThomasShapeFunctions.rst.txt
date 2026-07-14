@@ -4,16 +4,12 @@
 .. currentmodule:: warp.fem.space.shape
 
 .. autoclass:: SquareRaviartThomasShapeFunctions
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~SquareRaviartThomasShapeFunctions.__init__
       ~SquareRaviartThomasShapeFunctions.make_element_inner_weight
       ~SquareRaviartThomasShapeFunctions.make_element_inner_weight_gradient
       ~SquareRaviartThomasShapeFunctions.make_node_coords_in_element
@@ -21,7 +17,6 @@
       ~SquareRaviartThomasShapeFunctions.make_trace_node_quadrature_weight
    
    
-
    
    
    .. rubric:: Attributes

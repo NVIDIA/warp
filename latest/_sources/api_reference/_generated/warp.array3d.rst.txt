@@ -4,19 +4,9 @@
 .. currentmodule:: warp
 
 .. autoclass:: array3d
-
-   
-   .. automethod:: __init__
-
-   
-   .. rubric:: Methods
-
-   .. autosummary::
-   
-      ~array3d.__init__
    
    
-
+   
    
    
    

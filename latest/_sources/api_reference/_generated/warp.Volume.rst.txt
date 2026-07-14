@@ -4,16 +4,12 @@
 .. currentmodule:: warp
 
 .. autoclass:: Volume
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~Volume.__init__
       ~Volume.allocate
       ~Volume.allocate_by_tiles
       ~Volume.allocate_by_voxels
@@ -37,7 +33,6 @@
       ~Volume.save_to_nvdb
    
    
-
    
    
    .. rubric:: Attributes
