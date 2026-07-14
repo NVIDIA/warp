@@ -58,6 +58,8 @@
   ([GH-1631](https://github.com/NVIDIA/warp/issues/1631)).
 - Fix tuple-unpack assignment to `wp.ref[T]` parameters (e.g. `x, y = a, b`) so it mutates the caller's storage like
   sequential assignment instead of raising a type error ([GH-1581](https://github.com/NVIDIA/warp/issues/1581)).
+- Fix CPU modules with different `cpu_compiler_flags` reusing incompatible precompiled headers, avoiding Clang
+  target-feature errors and fallback compilation ([GH-1649](https://github.com/NVIDIA/warp/issues/1649)).
 
 ### Documentation
 
