@@ -3133,10 +3133,10 @@ class Adjoint:
                     adj.eval(stmt)
             return None
 
-        # save symbol map
+        # save the symbol map from before the conditional
         symbols_prev = adj.symbols.copy()
 
-        # eval body
+        # eval the 'if' body as `if (cond)`
         adj.begin_if(cond)
 
         for stmt in node.body:
@@ -3144,19 +3144,19 @@ class Adjoint:
 
         adj.end_if(cond)
 
-        # detect existing symbols with conflicting definitions (variables assigned inside the branch)
-        # and resolve with a phi (select) function
-        for items in symbols_prev.items():
-            sym = items[0]
-            var1 = items[1]
-            var2 = adj.symbols[sym]
-
-            if var1 != var2:
-                # insert a phi function that selects var1, var2 based on cond
-                out = adj.add_builtin_call("where", [cond, var2, var1])
-                adj.symbols[sym] = out
-
-        symbols_prev = adj.symbols.copy()
+        # capture the symbol versions produced by the 'if' branch, then restore the
+        # pre-conditional symbol map so the 'else' branch is lowered independently.
+        #
+        # This matters for variables that are first assigned inside the 'if' branch
+        # (i.e. they have no version prior to the conditional): lowering the 'else'
+        # branch on top of the 'if' branch's symbol map would let those branch-local
+        # versions be referenced from inside the 'else' branch (e.g. as the "previous"
+        # operand of a nested phi/select), even though they are never assigned on the
+        # 'else' path. That produces selects over locals that are only defined on the
+        # opposite path, which miscompiles on CUDA under register pressure and
+        # corrupts the merged value.
+        symbols_if = adj.symbols
+        adj.symbols = symbols_prev.copy()
 
         # evaluate 'else' statement as if (!cond)
         if len(node.orelse) > 0:
@@ -3167,18 +3167,31 @@ class Adjoint:
 
             adj.end_else(cond)
 
-        # detect existing symbols with conflicting definitions (variables assigned inside the else)
-        # and resolve with a phi (select) function
-        for items in symbols_prev.items():
-            sym = items[0]
-            var1 = items[1]
-            var2 = adj.symbols[sym]
+        symbols_else = adj.symbols
 
-            if var1 != var2:
-                # insert a phi function that selects var1, var2 based on cond
-                # note the reversed order of vars since we want to use !cond as our select
-                out = adj.add_builtin_call("where", [cond, var1, var2])
-                adj.symbols[sym] = out
+        # detect symbols with conflicting definitions across the two branches and
+        # resolve them with a phi (select) function based on `cond`
+        merged = symbols_prev.copy()
+        for sym in dict.fromkeys((*symbols_if.keys(), *symbols_else.keys())):
+            prev_var = symbols_prev.get(sym)
+            if_var = symbols_if.get(sym, prev_var)
+            else_var = symbols_else.get(sym, prev_var)
+
+            if if_var is else_var:
+                # not modified relative to the shared pre-conditional version
+                if if_var is not None:
+                    merged[sym] = if_var
+            elif if_var is None:
+                # only assigned on the 'else' path
+                merged[sym] = else_var
+            elif else_var is None:
+                # only assigned on the 'if' path
+                merged[sym] = if_var
+            else:
+                # insert a phi function that selects the 'if'/'else' version based on cond
+                merged[sym] = adj.add_builtin_call("where", [cond, if_var, else_var])
+
+        adj.symbols = merged
 
     def emit_IfExp(adj, node):
         cond = adj.eval(node.test)

@@ -2,12 +2,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import importlib
+import re
 import sys
 import unittest
 
 import numpy as np
 
 import warp as wp
+from warp._src.codegen import codegen_func_forward
 from warp.tests.unittest_utils import *
 
 
@@ -419,6 +421,102 @@ def test_short_circuit_or_grad(test: unittest.TestCase, device):
     np.testing.assert_allclose(tape.gradients[x].numpy(), [1.0, 3.0, 1.0, 1.0])
 
 
+@wp.kernel
+def branch_local_merge_codegen_kernel(x: wp.array(dtype=float), out: wp.array(dtype=float)):
+    # ``r`` is first assigned inside nested ``if``/``else`` branches, so it has no version
+    # before the conditional. The ``else`` branch must be lowered against the pre-conditional
+    # symbol map; otherwise the ``if`` branch's SSA version of ``r`` leaks into the ``else``
+    # branch's generated code (GH-1574) and miscompiles on CUDA under register pressure.
+    i = wp.tid()
+    v = x[i]
+    if v > 0.0:
+        if v > 10.0:
+            r = 100.0
+        else:
+            r = 1.0
+    else:
+        if v < -10.0:
+            r = -100.0
+        else:
+            r = -1.0
+    out[i] = r
+
+
+def test_branch_local_merge_codegen(test: unittest.TestCase, device):
+    # GH-1574: a variable reassigned inside nested ``if``/``else`` branches must never be
+    # referenced across sibling branches in the generated code. The fault is a register-
+    # pressure-dependent CUDA miscompile that produces no incorrect value (CPU and CUDA-debug
+    # compute the right answer), so the reliable, deterministic signal is the SSA invariant on
+    # the generated source itself. Because each assignment lowers to a fresh ``var_N``, no
+    # ``var_N`` first assigned inside the ``if`` block may appear inside the sibling ``else``
+    # block (and vice versa). Codegen is device-independent, so this does not depend on ``device``.
+    branch_local_merge_codegen_kernel.adj.build(builder=None)
+    source = codegen_func_forward(branch_local_merge_codegen_kernel.adj, func_type="kernel", device="cpu")
+
+    def match(code, start, opener, closer):
+        depth = 0
+        for j in range(start, len(code)):
+            depth += (code[j] == opener) - (code[j] == closer)
+            if depth == 0:
+                return j
+        raise ValueError("unbalanced delimiters")
+
+    def top_level_if_blocks(code):
+        # Return (condition, body) for each brace-depth-0 ``if (condition) { body }``.
+        blocks = []
+        i = depth = 0
+        while i < len(code):
+            ch = code[i]
+            if ch == "{" or ch == "}":
+                depth += 1 if ch == "{" else -1
+                i += 1
+            elif (
+                depth == 0
+                and code.startswith("if", i)
+                and (i + 2 >= len(code) or not (code[i + 2].isalnum() or code[i + 2] == "_"))
+            ):
+                lp = code.index("(", i)
+                rp = match(code, lp, "(", ")")
+                ob = code.index("{", rp)
+                cb = match(code, ob, "{", "}")
+                blocks.append((code[lp + 1 : rp].strip(), code[ob + 1 : cb]))
+                i = cb + 1
+            else:
+                i += 1
+        return blocks
+
+    forward = source.split("// forward", 1)[1]
+    code = "\n".join(line.split("//", 1)[0] for line in forward.splitlines())  # drop comments
+    blocks = top_level_if_blocks(code)
+    if_body = next(body for cond, body in blocks if not cond.startswith("!"))
+    else_body = next(body for cond, body in blocks if cond.startswith("!"))
+
+    def assigned(s):
+        return set(re.findall(r"(var_\d+)\s*=(?!=)", s))
+
+    def referenced(s):
+        return set(re.findall(r"var_\d+", s))
+
+    test.assertEqual(
+        assigned(if_body) & referenced(else_body), set(), "if-branch SSA versions leak into the else branch (GH-1574)"
+    )
+    test.assertEqual(
+        assigned(else_body) & referenced(if_body), set(), "else-branch SSA versions leak into the if branch"
+    )
+
+
+def test_branch_local_merge_runtime(test: unittest.TestCase, device):
+    # End-to-end check that the branch-local merge executes correctly on each device. This is
+    # not a standalone regression guard for GH-1574 (the buggy lowering computes the same
+    # values and only crashes on CUDA under register pressure), but it confirms the generated
+    # code runs and that the merge selects the right branch on every path.
+    x = wp.array([20.0, 5.0, -5.0, -20.0], dtype=float, device=device)
+    out = wp.zeros(4, dtype=float, device=device)
+    wp.launch(branch_local_merge_codegen_kernel, dim=4, inputs=[x], outputs=[out], device=device)
+    wp.synchronize_device(device)
+    np.testing.assert_array_equal(out.numpy(), [100.0, 1.0, -1.0, -100.0])
+
+
 devices = get_test_devices()
 
 
@@ -451,6 +549,8 @@ add_function_test(TestConditional, "test_short_circuit_and", test_short_circuit_
 add_function_test(TestConditional, "test_short_circuit_or", test_short_circuit_or, devices=devices)
 add_function_test(TestConditional, "test_short_circuit_and_grad", test_short_circuit_and_grad, devices=devices)
 add_function_test(TestConditional, "test_short_circuit_or_grad", test_short_circuit_or_grad, devices=devices)
+add_function_test(TestConditional, "test_branch_local_merge_codegen", test_branch_local_merge_codegen, devices=devices)
+add_function_test(TestConditional, "test_branch_local_merge_runtime", test_branch_local_merge_runtime, devices=devices)
 
 
 if __name__ == "__main__":

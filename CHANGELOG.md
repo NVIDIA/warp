@@ -65,6 +65,8 @@
 - Fix heap corruption when capturing `wp.sparse.bsr_set_transpose()` with `topology="padded"`
   into a destination without enough row capacity
   ([GH-1630](https://github.com/NVIDIA/warp/issues/1630)).
+- Fix an illegal memory access on CUDA when a variable is reassigned inside nested ``if``/``else`` branches
+  ([GH-1574](https://github.com/NVIDIA/warp/issues/1574)).
 
 ### Documentation
 
