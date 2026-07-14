@@ -518,11 +518,11 @@ The <cite>keys</cite> and <cite>values</cite> arrays must be large enough to acc
 <li><p><strong>keys</strong> – Array of keys to sort. Must be of type int32 or float32.</p></li>
 <li><p><strong>values</strong> – Array of values to sort along with keys. Must be of type int32.</p></li>
 <li><p><strong>count</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of elements to sort.</p></li>
-<li><p><strong>segment_start_indices</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>warp.array</em></a><em>(</em><em>dtype=wp.int32</em><em>, </em><em>ndim=1</em><em>)</em>) – Array containing start index of each segment. Must be of type int32.
+<li><p><strong>segment_start_indices</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>warp.array</em></a><em>[</em><a class="reference internal" href="warp.int32.html#warp.int32" title="warp.int32"><em>warp.int32</em></a><em>]</em>) – Array containing start index of each segment. Must be of type int32.
 If segment_end_indices is None, this array must have length at least num_segments + 1,
 and segment_end_indices will be inferred as segment_start_indices[1:].
 If segment_end_indices is provided, this array must have length at least num_segments.</p></li>
-<li><p><strong>segment_end_indices</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>warp.array</em></a><em>(</em><em>dtype=wp.int32</em><em>, </em><em>ndim=1</em><em>)</em>) – Optional array containing end index of each segment. Must be of type int32 if provided.
+<li><p><strong>segment_end_indices</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><em>warp.array</em></a><em>[</em><a class="reference internal" href="warp.int32.html#warp.int32" title="warp.int32"><em>warp.int32</em></a><em>]</em>) – Optional array containing end index of each segment. Must be of type int32 if provided.
 If None, segment_end_indices will be inferred from segment_start_indices[1:].
 If provided, must have length at least num_segments.</p></li>
 </ul>

@@ -537,6 +537,10 @@ context (<a class="reference external" href="https://github.com/NVIDIA/warp/issu
 <li><p>Improve diagnostics for array copy, texture copy, array reshape/view, and unsupported DLPack source-device errors by
 reporting the relevant shapes, data types, channels, or device identifiers
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1644">GH-1644</a>).</p></li>
+<li><p>Render <code class="docutils literal notranslate"><span class="pre">repr()</span></code> of array type annotations in their subscript form (such as <code class="docutils literal notranslate"><span class="pre">wp.array4d[wp.uint32]</span></code>) so that it matches
+the written annotation and can be evaluated back to the same annotation, instead of the previous
+<code class="docutils literal notranslate"><span class="pre">wp.array(dtype=...,</span> <span class="pre">ndim=...)</span></code> form. Warp array return types now read more naturally in Sphinx-generated API
+documentation (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1628">GH-1628</a>).</p></li>
 </ul>
 </section>
 <section id="fixed">
