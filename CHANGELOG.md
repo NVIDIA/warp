@@ -60,6 +60,9 @@
   sequential assignment instead of raising a type error ([GH-1581](https://github.com/NVIDIA/warp/issues/1581)).
 - Fix CPU modules with different `cpu_compiler_flags` reusing incompatible precompiled headers, avoiding Clang
   target-feature errors and fallback compilation ([GH-1649](https://github.com/NVIDIA/warp/issues/1649)).
+- Fix heap corruption when capturing `wp.sparse.bsr_set_transpose()` with `topology="padded"`
+  into a destination without enough row capacity
+  ([GH-1630](https://github.com/NVIDIA/warp/issues/1630)).
 
 ### Documentation
 

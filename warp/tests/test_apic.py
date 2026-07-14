@@ -14,6 +14,12 @@ import numpy as np
 import warp as wp
 import warp._src.context as wp_context
 from warp._src.apic.capture import APICapture
+from warp.sparse import (
+    BSR_STATUS_ROW_CAPACITY_EXCEEDED,
+    bsr_set_from_triplets,
+    bsr_set_transpose,
+    bsr_zeros,
+)
 from warp.tests.unittest_utils import (
     add_function_test,
     get_cuda_test_devices,
@@ -2279,6 +2285,74 @@ def test_save_load_padded_bsr_transpose_cuda_rebuild(test, device):
         assert_loaded_matches(loaded, "stale-offsets save/load")
 
 
+def test_save_load_padded_bsr_transpose_too_small(test, device):
+    """Save/load a padded transpose into a destination that is too small for the source.
+
+    The destination's total block capacity (3) is smaller than the source's nnz
+    upper bound (6), which is the capacity-overflow case the padded API reports
+    through ``status``. The capture hooks used to claim the source bound for
+    the destination-columns span, so the tracked region grew past the
+    destination's real allocation: the CPU host snapshot read past the buffer
+    and pointer resolution was corrupted for the rest of the capture (seen in
+    CI as ``free(): invalid next size`` aborts). Record and replay now size
+    that span from the destination capacity. The test asserts the exact-span
+    record and resolve survive a save/load round-trip and that the overflow
+    status is still reported.
+    """
+    rows = wp.array(np.array([0, 0, 1, 1], dtype=np.int32), dtype=wp.int32, device=device)
+    columns = wp.array(np.array([0, 2, 1, 2], dtype=np.int32), dtype=wp.int32, device=device)
+    values = wp.array(np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float32), dtype=wp.float32, device=device)
+    A = bsr_zeros(2, 3, block_type=wp.float32, device=device, row_capacity=3)
+    bsr_set_from_triplets(A, rows, columns, values, topology="padded")
+
+    # 3 destination rows at row_capacity 1: total capacity 3 < source nnz upper
+    # bound 6, and destination row 2 receives 2 blocks so it overflows.
+    At = bsr_zeros(3, 2, block_type=wp.float32, device=device, row_capacity=1)
+    status = At._ensure_status()
+
+    wp.load_module(device=device)
+    if device.is_cuda:
+        # Specialize and load the internal values kernel before CUDA graph capture.
+        bsr_set_transpose(At, A, topology="padded")
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        bsr_set_transpose(At, A, topology="padded")
+
+    # Reset every destination buffer so the loaded graph must rebuild them.
+    At.row_counts.zero_()
+    At.columns.fill_(-1)
+    At.values.zero_()
+    status.zero_()
+
+    outputs = {"row_counts": At.row_counts, "columns": At.columns, "values": At.values, "status": status}
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "padded_transpose_too_small")
+        wp.capture_save(capture.graph, path, outputs=outputs)
+        loaded = wp.capture_load(path, device=device)
+        for i in range(2):
+            wp.capture_launch(loaded)
+
+            rc = wp.zeros_like(At.row_counts)
+            cols = wp.zeros_like(At.columns)
+            vals = wp.zeros_like(At.values)
+            st = wp.zeros_like(status)
+            loaded.get_param("row_counts", rc)
+            loaded.get_param("columns", cols)
+            loaded.get_param("values", vals)
+            loaded.get_param("status", st)
+
+            label = f"launch {i + 1}"
+            np.testing.assert_array_equal(
+                rc.numpy(), np.array([1, 1, 0], dtype=np.int32), err_msg=f"{label}: row_counts"
+            )
+            np.testing.assert_array_equal(
+                cols.numpy().reshape(-1)[:2], np.array([0, 1], dtype=np.int32), err_msg=f"{label}: columns"
+            )
+            np.testing.assert_allclose(
+                vals.numpy().reshape(-1)[:2], np.array([1.0, 3.0], dtype=np.float32), err_msg=f"{label}: values"
+            )
+            test.assertEqual(st.numpy()[0], BSR_STATUS_ROW_CAPACITY_EXCEEDED, msg=f"{label}: status")
+
+
 def test_apic_cpu_op_not_rejected_under_cuda_capture(test, device):
     """Device-scoping: the CPU-only ``NotImplementedError`` guards for
     non-contiguous ``fill_()`` / ``wp.copy()`` are scoped to a CPU APIC capture
@@ -2869,6 +2943,12 @@ add_function_test(
     "test_save_load_padded_bsr_transpose_cuda_rebuild",
     test_save_load_padded_bsr_transpose_cuda_rebuild,
     devices=[d for d in devices if d.is_cuda],
+)
+add_function_test(
+    TestApic,
+    "test_save_load_padded_bsr_transpose_too_small",
+    test_save_load_padded_bsr_transpose_too_small,
+    devices=devices,
 )
 add_function_test(
     TestApic,
