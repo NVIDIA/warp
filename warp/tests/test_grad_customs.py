@@ -15,7 +15,7 @@ from warp.tests.unittest_utils import *
 # phase of the backward pass
 @wp.func
 def reversible_increment(
-    counter: wp.array(dtype=int), counter_index: int, value: int, thread_values: wp.array(dtype=int), tid: int
+    counter: wp.array[int], counter_index: int, value: int, thread_values: wp.array[int], tid: int
 ):
     """This is a docstring"""
     next_index = wp.atomic_add(counter, counter_index, value)
@@ -25,7 +25,7 @@ def reversible_increment(
 
 @wp.func_replay(reversible_increment)
 def replay_reversible_increment(
-    counter: wp.array(dtype=int), counter_index: int, value: int, thread_values: wp.array(dtype=int), tid: int
+    counter: wp.array[int], counter_index: int, value: int, thread_values: wp.array[int], tid: int
 ):
     """This is a docstring"""
     return thread_values[tid]
@@ -33,10 +33,10 @@ def replay_reversible_increment(
 
 @wp.kernel
 def run_atomic_add(
-    input: wp.array(dtype=float),
-    counter: wp.array(dtype=int),
-    thread_values: wp.array(dtype=int),
-    output: wp.array(dtype=float),
+    input: wp.array[float],
+    counter: wp.array[int],
+    thread_values: wp.array[int],
+    output: wp.array[float],
 ):
     tid = wp.tid()
     idx = reversible_increment(counter, 0, 1, thread_values, tid)
@@ -97,9 +97,7 @@ def overload_fn_grad(x: MyStruct, adj_ret0: float, adj_ret1: float, adj_ret2: fl
 
 
 @wp.kernel
-def run_overload_float_fn(
-    xs: wp.array(dtype=float), ys: wp.array(dtype=float), output0: wp.array(dtype=float), output1: wp.array(dtype=float)
-):
+def run_overload_float_fn(xs: wp.array[float], ys: wp.array[float], output0: wp.array[float], output1: wp.array[float]):
     """This is a docstring"""
     i = wp.tid()
     out0, out1 = overload_fn(xs[i], ys[i])
@@ -108,7 +106,7 @@ def run_overload_float_fn(
 
 
 @wp.kernel
-def run_overload_struct_fn(xs: wp.array(dtype=MyStruct), output: wp.array(dtype=float)):
+def run_overload_struct_fn(xs: wp.array[MyStruct], output: wp.array[float]):
     i = wp.tid()
     out0, out1, out2 = overload_fn(xs[i])
     output[i] = out0 + out1 + out2
@@ -168,9 +166,7 @@ def test_custom_overload_grad(test, device):
 
 
 @wp.kernel
-def run_defined_float_fn(
-    xs: wp.array(dtype=float), ys: wp.array(dtype=float), output0: wp.array(dtype=float), output1: wp.array(dtype=float)
-):
+def run_defined_float_fn(xs: wp.array[float], ys: wp.array[float], output0: wp.array[float], output1: wp.array[float]):
     i = wp.tid()
     out0, out1 = aux_custom_fn(xs[i], ys[i])
     output0[i] = out0
@@ -211,18 +207,18 @@ def adj_sigmoid(x: float, adj: float):
 
 
 @wp.func
-def sigmoid_no_return(i: int, xs: wp.array(dtype=float), ys: wp.array(dtype=float)):
+def sigmoid_no_return(i: int, xs: wp.array[float], ys: wp.array[float]):
     # test function that does not return anything
     ys[i] = sigmoid(xs[i])
 
 
 @wp.func_grad(sigmoid_no_return)
-def adj_sigmoid_no_return(i: int, xs: wp.array(dtype=float), ys: wp.array(dtype=float)):
+def adj_sigmoid_no_return(i: int, xs: wp.array[float], ys: wp.array[float]):
     wp.adjoint[xs][i] += ys[i] * (1.0 - ys[i])
 
 
 @wp.kernel
-def eval_sigmoid(xs: wp.array(dtype=float), ys: wp.array(dtype=float)):
+def eval_sigmoid(xs: wp.array[float], ys: wp.array[float]):
     i = wp.tid()
     sigmoid_no_return(i, xs, ys)
 
@@ -250,10 +246,10 @@ def dense_gemm(
     transpose_A: bool,
     transpose_B: bool,
     add_to_C: bool,
-    A: wp.array(dtype=float),
-    B: wp.array(dtype=float),
+    A: wp.array[float],
+    B: wp.array[float],
     # outputs
-    C: wp.array(dtype=float),
+    C: wp.array[float],
 ):
     # this function doesn't get called but it is an important test for code generation
     # multiply a `m x p` matrix A by a `p x n` matrix B to produce a `m x n` matrix C
@@ -285,10 +281,10 @@ def adj_dense_gemm(
     transpose_A: bool,
     transpose_B: bool,
     add_to_C: bool,
-    A: wp.array(dtype=float),
-    B: wp.array(dtype=float),
+    A: wp.array[float],
+    B: wp.array[float],
     # outputs
-    C: wp.array(dtype=float),
+    C: wp.array[float],
 ):
     # code generation would break here if we didn't defer building the custom grad
     # function until after the forward functions + kernels of the module have been built
@@ -325,7 +321,7 @@ def nested_norm(v: wp.vec3):
 
 
 @wp.kernel
-def test_nested_custom_grad_kernel(vectors: wp.array(dtype=wp.vec3), norms: wp.array(dtype=float)):
+def test_nested_custom_grad_kernel(vectors: wp.array[wp.vec3], norms: wp.array[float]):
     i = wp.tid()
     norms[i] = nested_norm(vectors[i])
 
@@ -402,7 +398,7 @@ def outer_transform(x: float):
 
 
 @wp.kernel
-def test_custom_grad_with_helper_kernel(inputs: wp.array(dtype=float), outputs: wp.array(dtype=float)):
+def test_custom_grad_with_helper_kernel(inputs: wp.array[float], outputs: wp.array[float]):
     i = wp.tid()
     outputs[i] = outer_transform(inputs[i])
 
@@ -480,7 +476,7 @@ def adj_func_with_native_and_custom_grad(x: float, adj_ret: float):
 
 
 @wp.kernel
-def test_native_snippet_in_forward_kernel(inputs: wp.array(dtype=float), outputs: wp.array(dtype=float)):
+def test_native_snippet_in_forward_kernel(inputs: wp.array[float], outputs: wp.array[float]):
     i = wp.tid()
     outputs[i] = func_with_native_and_custom_grad(inputs[i])
 
@@ -551,7 +547,7 @@ def adj_func_with_custom_grad_calling_native(x: float, adj_ret: float):
 
 
 @wp.kernel
-def test_native_snippet_in_custom_grad_kernel(inputs: wp.array(dtype=float), outputs: wp.array(dtype=float)):
+def test_native_snippet_in_custom_grad_kernel(inputs: wp.array[float], outputs: wp.array[float]):
     i = wp.tid()
     outputs[i] = func_with_custom_grad_calling_native(inputs[i])
 

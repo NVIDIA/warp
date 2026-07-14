@@ -10,7 +10,7 @@ from warp.tests.unittest_utils import *
 
 
 @wp.kernel
-def mul_constant(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+def mul_constant(x: wp.array[float], y: wp.array[float]):
     tid = wp.tid()
 
     y[tid] = x[tid] * 2.0
@@ -18,19 +18,19 @@ def mul_constant(x: wp.array(dtype=float), y: wp.array(dtype=float)):
 
 @wp.struct
 class Multiplicands:
-    x: wp.array(dtype=float)
-    y: wp.array(dtype=float)
+    x: wp.array[float]
+    y: wp.array[float]
 
 
 @wp.kernel
-def mul_variable(mutiplicands: Multiplicands, z: wp.array(dtype=float)):
+def mul_variable(mutiplicands: Multiplicands, z: wp.array[float]):
     tid = wp.tid()
 
     z[tid] = mutiplicands.x[tid] * mutiplicands.y[tid]
 
 
 @wp.kernel
-def dot_product(x: wp.array(dtype=float), y: wp.array(dtype=float), z: wp.array(dtype=float)):
+def dot_product(x: wp.array[float], y: wp.array[float], z: wp.array[float]):
     tid = wp.tid()
 
     wp.atomic_add(z, 0, x[tid] * y[tid])
@@ -119,7 +119,7 @@ def test_tape_dot_product(test, device):
 
 
 @wp.kernel
-def assign_chain_kernel(x: wp.array(dtype=float), y: wp.array(dtype=float), z: wp.array(dtype=float)):
+def assign_chain_kernel(x: wp.array[float], y: wp.array[float], z: wp.array[float]):
     tid = wp.tid()
     y[tid] = x[tid]
     z[tid] = y[tid]
@@ -144,7 +144,7 @@ def test_tape_zero_multiple_outputs(test, device):
 
 @wp.struct
 class NestedStruct:
-    arr: wp.array(dtype=float)
+    arr: wp.array[float]
 
 
 @wp.struct
@@ -153,7 +153,7 @@ class WrapperStruct:
 
 
 @wp.kernel
-def nested_loss_kernel(wrapper: WrapperStruct, loss: wp.array(dtype=float)):
+def nested_loss_kernel(wrapper: WrapperStruct, loss: wp.array[float]):
     i = wp.tid()
     wp.atomic_add(loss, 0, wrapper.nested.arr[i])
 
