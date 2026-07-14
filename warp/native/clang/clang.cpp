@@ -322,6 +322,7 @@ static bool generate_pch(
     bool verify_fp,
     bool tiles_in_stack_memory,
     const char** extra_flags,
+    int optimization_level,
     bool verbose,
     int block_dim
 )
@@ -332,8 +333,15 @@ static bool generate_pch(
 
     std::string input_file = "pch_gen.cpp";
 
-    auto compiler
-        = create_compiler(input_file, include_dir, false, debug, verify_fp, tiles_in_stack_memory, extra_flags);
+    // Build the PCH at the same optimization level as the modules that will
+    // consume it. Clang records the -O level in the PCH and rejects it with
+    // "OptimizationLevel differs in precompiled file" if a module is compiled
+    // at a different level. Without this the PCH defaulted to -O3 while CPU
+    // modules build at -O2 (see build_cpu in build.py), so every module failed
+    // the PCH check and paid a full no-PCH recompile.
+    auto compiler = create_compiler(
+        input_file, include_dir, false, debug, verify_fp, tiles_in_stack_memory, extra_flags, optimization_level
+    );
 
     // Create a source buffer that includes the main header.
     // WP_NO_CRT skips system headers (assert.h, math.h, etc.) which aren't
@@ -476,7 +484,8 @@ WP_API int wp_compile_cpp(
         // directly or by a separately named digest.
         const std::string compiler_flags_hash = hash_compiler_flags(extra_flags);
         pch_path_str = std::string(pch_dir) + "/builtin_bd" + std::to_string(block_dim) + (verify_fp ? "_vfp" : "")
-            + (debug ? "_dbg" : "") + (tiles_in_stack_memory ? "_tis" : "") + "_cf" + compiler_flags_hash + ".pch";
+            + (debug ? "_dbg" : "") + (tiles_in_stack_memory ? "_tis" : "") + "_ol" + std::to_string(optimization_level)
+            + "_cf" + compiler_flags_hash + ".pch";
 
         // Check if the PCH file already exists
         FILE* f = fopen(pch_path_str.c_str(), "rb");
@@ -488,7 +497,8 @@ WP_API int wp_compile_cpp(
         } else {
             // Generate the PCH file
             if (!generate_pch(
-                    include_dir, pch_path_str, debug, verify_fp, tiles_in_stack_memory, extra_flags, verbose, block_dim
+                    include_dir, pch_path_str, debug, verify_fp, tiles_in_stack_memory, extra_flags, optimization_level,
+                    verbose, block_dim
                 )) {
                 std::cerr << "Warp: PCH generation failed, compiling without precompiled headers" << std::endl;
                 remove(pch_path_str.c_str());
