@@ -170,8 +170,8 @@ inline CUDA_CALLABLE void scalar_cholesky_solve(TileA& A, TileX& X, TileY& Y)
 }  // namespace partitioned_gemm
 
 
-template <typename Fwd, typename TileL, typename TileY, typename TileZ>
-TileZ& tile_lower_solve(Fwd fun_forward, TileL& L, TileY& y, TileZ& z)
+template <typename Fwd, typename Bkwd, typename TileL, typename TileY, typename TileZ>
+TileZ& tile_lower_solve(Fwd fun_forward, Bkwd fun_bkwd, TileL& L, TileY& y, TileZ& z)
 {
     // Copy y to z
     z = y;
@@ -207,30 +207,105 @@ void tile_lower_solve_inplace(Fwd fun_forward, TileL& L, TileY& y)
 #endif
 }
 
+// Adjoint of the out-of-place lower solve L z = y.
+//
+// Two leading func params (Fwd, Bkwd) mirror the two-func-var dispatch tuple in
+// builtins.py (var_fwd, var_bkwd); Bkwd is the backward TRSM that solves the
+// transposed system L^T w = adj_ret.
 template <
     typename Fwd,
+    typename Bkwd,
     typename TileL,
     typename TileY,
     typename TileZ,
     typename AdjFwd,
+    typename AdjBkwd,
     typename AdjTileL,
     typename AdjTileY,
     typename AdjTileZ,
     typename AdjRet>
-void adj_tile_lower_solve(
+CUDA_CALLABLE void adj_tile_lower_solve(
     Fwd fun_forward,
+    Bkwd fun_bkwd,
     TileL& L,
     TileY& y,
     TileZ& z,
     AdjFwd adj_fun_forward,
+    AdjBkwd adj_fun_bkwd,
     AdjTileL& adj_L,
     AdjTileY& adj_y,
     AdjTileZ& adj_z,
     AdjRet& adj_ret
 )
 {
-    // MISSINGADJOINT: adjoint is the transposed (upper) solve L^T x = adj_ret; then adj_y
-    // += x and adj_L -= outer(x, z)
+    using T = typename AdjRet::Type;
+
+    // n = matrix dimension, nrhs = number of right-hand sides (1 for a vector RHS).
+    constexpr int n = TileL::Layout::Shape::dim(1);
+    constexpr int nrhs = (TileZ::Layout::Shape::N == 1) ? 1 : TileZ::Layout::Shape::dim(1);
+
+    // Raw scratch for the transposed solve L^T W = adj_ret.
+#if defined(__CUDA_ARCH__)
+    __shared__ T W[n * nrhs];
+#else
+    T W[n * nrhs];
+#endif
+
+    // Give the scalar fallback tile indexing without allocating tile storage.
+    using WLayout = tile_layout_strided_t<typename TileZ::Layout::Shape>;
+    tile_shared_t<T, WLayout, false> W_tile(W);
+
+    // Preload the incoming gradient adj_ret into W (row-major, contiguous).
+    for (int idx = WP_TILE_THREAD_IDX; idx < n * nrhs; idx += WP_TILE_BLOCK_DIM) {
+        if constexpr (TileZ::Layout::Shape::N == 1) {
+            W[idx] = adj_ret.grad(tile_coord(idx));
+        } else {
+            W[idx] = adj_ret.grad(tile_coord(idx / nrhs, idx % nrhs));
+        }
+    }
+    WP_TILE_SYNC();
+
+#if !defined(__CUDA_ARCH__) || WP_ENABLE_MATHDX == 0
+    // scalar path
+    partitioned_gemm::scalar_cholesky_back_substitution<false>(L, W_tile);
+#else
+    if constexpr (wp_is_null_func<Bkwd>::value) {
+        partitioned_gemm::scalar_cholesky_back_substitution<false>(L, W_tile);
+    } else {
+        // MathDx path: in-place TRSM into the raw scratch.
+        fun_bkwd(L.data.ptr, W);
+        WP_TILE_SYNC();
+    }
+#endif
+
+    // Accumulate the rhs gradient: adj_y += W (element-wise, any rank).
+    for (int idx = WP_TILE_THREAD_IDX; idx < n * nrhs; idx += WP_TILE_BLOCK_DIM) {
+        if constexpr (TileZ::Layout::Shape::N == 1) {
+            adj_y.grad(tile_coord(idx)) += W[idx];
+        } else {
+            adj_y.grad(tile_coord(idx / nrhs, idx % nrhs)) += W[idx];
+        }
+    }
+    WP_TILE_SYNC();
+
+    // Accumulate the factor gradient: adj_L -= tril(W Z^T), lower triangle only.
+    // Vector RHS (nrhs == 1) recovers adj_L[i, j] -= W[i] * z[j].
+    for (int idx = WP_TILE_THREAD_IDX; idx < n * n; idx += WP_TILE_BLOCK_DIM) {
+        int row = idx / n;
+        int col = idx % n;
+        if (row >= col) {
+            T s = T(0);
+            for (int k = 0; k < nrhs; ++k) {
+                if constexpr (TileZ::Layout::Shape::N == 1) {
+                    s += W[row] * z.data(tile_coord(col));
+                } else {
+                    s += W[row * nrhs + k] * z.data(tile_coord(col, k));
+                }
+            }
+            adj_L.grad(tile_coord(row, col)) -= s;
+        }
+    }
+    WP_TILE_SYNC();
 }
 
 template <typename Fwd, typename TileL, typename TileY, typename AdjFwd, typename AdjTileL, typename AdjTileY>

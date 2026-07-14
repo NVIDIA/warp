@@ -8006,7 +8006,9 @@ def tile_lower_solve(L: Tile[Float, tuple[int, int]], y: Tile[Float, tuple[int]]
 
     This performs general forward substitution for a lower triangular system.
 
-    Note that computing the adjoint is not yet supported.
+    Backward propagation computes gradients with respect to ``y`` and the
+    lower-triangular parameterization of ``L``. The strictly upper triangle of
+    ``L`` does not affect the solve and receives zero gradient.
 
     Supported datatypes are:
         * float32

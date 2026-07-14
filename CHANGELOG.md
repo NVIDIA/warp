@@ -22,6 +22,8 @@
   context ([GH-1596](https://github.com/NVIDIA/warp/issues/1596)).
 - Add `wp.Stream.is_blocking` to report whether a CUDA stream is blocking
   ([GH-1618](https://github.com/NVIDIA/warp/issues/1618)).
+- Add adjoint for the out-of-place `wp.tile_lower_solve()` for vector and matrix right-hand sides
+  ([GH-1378](https://github.com/NVIDIA/warp/issues/1378))
 
 ### Removed
 

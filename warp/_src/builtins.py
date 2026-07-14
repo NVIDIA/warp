@@ -15629,9 +15629,7 @@ def _tile_lower_solve_generic_lto_dispatch_func(
         or not warp._src.context.runtime.core.wp_is_mathdx_enabled()
         or not options.get("enable_mathdx_solver", True)
     ):
-        # CPU/no-MathDx/disabled dispatch -- falls into the cooperative scalar
-        # branch via wp_is_null_func<Fwd>.
-        return ((0, L, y) if inplace else (0, L, y, z), [], [], 0)
+        return ((0, L, y) if inplace else (0, 0, L, y, z), [], [], 0)
     else:
         NRHS = y.type.shape[1] if len(y.type.shape) > 1 else 1
         solver = "trsm"
@@ -15645,8 +15643,13 @@ def _tile_lower_solve_generic_lto_dispatch_func(
         req_smem_bytes = (y.type.size + L.type.size) * type_size_in_bytes(L.type.dtype)
         if not inplace:
             req_smem_bytes += z.type.size * type_size_in_bytes(L.type.dtype)
+            if options["enable_backward"]:
+                # backward buffer: one row-major M x NRHS raw buffer,
+                # preloaded with adj_ret and overwritten by the transposed solve
+                # to hold w in L^T w = adj_ret
+                req_smem_bytes += M * NRHS * type_size_in_bytes(L.type.dtype)
 
-        # generate the LTO
+        # generate the forward LTO
         assert M == N
         lto_symbol, lto_code_data = warp._src.build.build_lto_solver(
             M,
@@ -15667,8 +15670,50 @@ def _tile_lower_solve_generic_lto_dispatch_func(
             smem_estimate_bytes=req_smem_bytes,
         )
 
-        var = Var(lto_symbol, str, False, True, False)
-        return ((var, L, y) if inplace else (var, L, y, z), [], [lto_code_data], 0)
+        if inplace:
+            var = Var(lto_symbol, str, False, True, False)
+            return ((var, L, y), [], [lto_code_data], 0)
+
+        # for out-of-place solves, build the backward TRSM for the adjoint.
+        # The adjoint of L Z = Y is the transposed solve L^T W = adj_ret, followed
+        # by adj_Y += W and adj_L -= tril(W @ Z^T). For a vector right-hand side,
+        # W @ Z^T reduces to outer(w, z).
+        lto_list = [lto_code_data]
+        if options["enable_backward"]:
+
+            def tile_flip_layout(layout):
+                if layout == "rowmajor":
+                    return "colmajor"
+                elif layout == "colmajor":
+                    return "rowmajor"
+                else:
+                    raise ValueError(f"unexpected layout {layout!r}")
+
+            fun_bkwd_trsm, lto_bkwd_trsm = warp._src.build.build_lto_solver(
+                M,
+                NRHS,
+                1,
+                solver,
+                solver_enum,
+                side_enum,
+                diag_enum,
+                tile_flip_layout(L.type.layout),
+                "rowmajor",
+                cusolver_fill_mode_map["upper"],
+                arch,
+                precision_enum,
+                num_threads,
+                parameter_list,
+                builder,
+                smem_estimate_bytes=req_smem_bytes,
+            )
+            lto_list.append(lto_bkwd_trsm)
+        else:
+            fun_bkwd_trsm = 0
+
+        var_fwd = Var(lto_symbol, str, False, True, False)
+        var_bkwd = Var(fun_bkwd_trsm, str, False, True, False) if options["enable_backward"] else 0
+        return ((var_fwd, var_bkwd, L, y, z), [], lto_list, 0)
 
 
 def tile_lower_solve_generic_lto_dispatch_func(*args, **kwargs):
@@ -15689,7 +15734,9 @@ add_builtin(
 
     This performs general forward substitution for a lower triangular system.
 
-    Note that computing the adjoint is not yet supported.
+    Backward propagation computes gradients with respect to ``y`` and the
+    lower-triangular parameterization of ``L``. The strictly upper triangle of
+    ``L`` does not affect the solve and receives zero gradient.
 
     Supported datatypes are:
         * float32
@@ -15704,7 +15751,7 @@ add_builtin(
     group="Tile Primitives",
     export=False,
     namespace="",
-    is_differentiable=False,
+    is_differentiable=True,
 )
 
 
