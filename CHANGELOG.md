@@ -62,6 +62,9 @@
   group ([GH-1612](https://github.com/NVIDIA/warp/issues/1612)).
 - Fix `wp.quat_twist_angle()` losing precision for small `wp.float32` rotations
   ([GH-1631](https://github.com/NVIDIA/warp/issues/1631)).
+- Fix `wp.tile_load_indexed()` reading out of bounds for a negative gather index. Negative indices now predicate the
+  loaded element to zero, matching indices past the end of the axis, so `-1` can serve as a padding sentinel for
+  masked gathers ([GH-1653](https://github.com/NVIDIA/warp/issues/1653)).
 - Fix tuple-unpack assignment to `wp.ref[T]` parameters (e.g. `x, y = a, b`) so it mutates the caller's storage like
   sequential assignment instead of raising a type error ([GH-1581](https://github.com/NVIDIA/warp/issues/1581)).
 - Fix CPU modules with different `cpu_compiler_flags` reusing incompatible precompiled headers, avoiding Clang

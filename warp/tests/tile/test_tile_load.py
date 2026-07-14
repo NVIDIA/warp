@@ -284,6 +284,54 @@ def test_tile_load_indexed_non_owning(test, device):
     assert_np_equal(b.numpy(), a_np[::2])
 
 
+OOB_ROWS = wp.constant(4)
+OOB_COLS = wp.constant(2)
+
+
+@wp.kernel
+def tile_load_indexed_oob_kernel(src: wp.array2d[float], idx: wp.array1d[int], out: wp.array2d[float]):
+    indices = wp.tile_load(idx, shape=(OOB_ROWS,), storage="shared")
+    t = wp.tile_load_indexed(src, indices=indices, shape=(OOB_ROWS, OOB_COLS), axis=0, storage="register")
+    wp.tile_store(out, t)
+
+
+def test_tile_load_indexed_oob(test, device):
+    """A gather index outside the axis (negative or >= its length) predicates the element to zero
+    on both the forward and backward passes, instead of reading/writing out of bounds."""
+    # src is a view onto rows 1: of buf, so src's row -1 aliases buf[0]. Seeding buf[0] with a
+    # sentinel makes an out-of-bounds negative-index read observable (999, not 0) rather than
+    # reading undefined memory before the array.
+    buf = np.zeros((OOB_ROWS + 1, OOB_COLS), dtype=np.float32)
+    buf[0] = 999.0
+    buf[1:] = np.arange(1, OOB_ROWS * OOB_COLS + 1, dtype=np.float32).reshape(OOB_ROWS, OOB_COLS)
+
+    src = wp.array(buf, dtype=float, requires_grad=True, device=device)
+    src_view = src[1:]  # src_view[k] == buf[k + 1]
+    idx = wp.array([0, -1, 2, OOB_ROWS], dtype=int, device=device)  # -1 and OOB_ROWS are out of bounds
+    out = wp.zeros((OOB_ROWS, OOB_COLS), dtype=float, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            tile_load_indexed_oob_kernel, dim=1, inputs=[src_view, idx], outputs=[out], block_dim=32, device=device
+        )
+
+    expected = np.zeros((OOB_ROWS, OOB_COLS), dtype=np.float32)
+    expected[0] = buf[1]  # idx 0 -> src_view[0]
+    expected[2] = buf[3]  # idx 2 -> src_view[2]
+    # idx -1 (below row 0) and idx OOB_ROWS (past the last row) both predicate to zero
+    assert_np_equal(out.numpy(), expected)
+
+    out.grad = wp.ones_like(out)
+    tape.backward()
+
+    # Backward shares the same bounds check: only in-bounds rows accumulate gradient, and the
+    # sentinel row before src_view[0] is never written.
+    expected_grad = np.zeros((OOB_ROWS + 1, OOB_COLS), dtype=np.float32)
+    expected_grad[1] = 1.0  # src_view[0] gathered by idx 0
+    expected_grad[3] = 1.0  # src_view[2] gathered by idx 2
+    assert_np_equal(src.grad.numpy(), expected_grad)
+
+
 @wp.func
 def add_one(x: int):
     return x + 1
@@ -1057,6 +1105,7 @@ add_function_test(TestTileLoad, "test_tile_load_3d", test_tile_load(tile_load_3d
 add_function_test(TestTileLoad, "test_tile_load_4d", test_tile_load(tile_load_4d_kernel, 4), devices=devices)
 add_function_test(TestTileLoad, "test_tile_load_indexed", test_tile_load_indexed, devices=devices)
 add_function_test(TestTileLoad, "test_tile_load_indexed_non_owning", test_tile_load_indexed_non_owning, devices=devices)
+add_function_test(TestTileLoad, "test_tile_load_indexed_oob", test_tile_load_indexed_oob, devices=devices)
 add_function_test(TestTileLoad, "test_tile_store_indexed", test_tile_store_indexed, devices=devices)
 add_function_test(TestTileLoad, "test_tile_atomic_add_indexed", test_tile_atomic_add_indexed, devices=devices)
 add_function_test(TestTileLoad, "test_tile_load_unaligned", test_tile_load_unaligned, devices=devices)
