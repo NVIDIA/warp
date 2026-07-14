@@ -28,6 +28,12 @@ class SpaceTopology:
     .. note:: This will change to be defined per-element in future versions
     """
 
+    ElementArg: type
+    """Structure type holding the geometry element arguments passed to device functions.
+
+    Assigned per instance from the underlying geometry.
+    """
+
     _dynamic_attribute_constructors: ClassVar = {
         "element_node_count": lambda obj: obj._make_constant_element_node_count(),
         "element_node_sign": lambda obj: obj._make_constant_element_node_sign(),
@@ -78,7 +84,7 @@ class SpaceTopology:
 
     @staticmethod
     def element_node_count(
-        geo_arg: "ElementArg",  # noqa: F821
+        geo_arg: "SpaceTopology.ElementArg",
         topo_arg: "TopologyArg",
         element_index: ElementIndex,
     ) -> int:
@@ -87,7 +93,7 @@ class SpaceTopology:
 
     @staticmethod
     def element_node_index(
-        geo_arg: "ElementArg",  # noqa: F821
+        geo_arg: "SpaceTopology.ElementArg",
         topo_arg: "TopologyArg",
         element_index: ElementIndex,
         node_index_in_elt: int,
@@ -97,7 +103,7 @@ class SpaceTopology:
 
     @staticmethod
     def side_neighbor_node_counts(
-        side_arg: "ElementArg",  # noqa: F821
+        side_arg: "SpaceTopology.ElementArg",
         topo_arg: "TopologyArg",
         side_index: ElementIndex,
     ) -> tuple[int, int]:
