@@ -1913,6 +1913,10 @@ class Adjoint:
         # tracks how much additional shared memory is required by any dependent function calls
         adj.max_required_extra_shared_memory = 0
 
+        # user functions called from this one, recorded so used_by_backward_kernel can propagate
+        # across the whole call graph after every function is built (see _propagate_used_by_backward_kernel)
+        adj.called_functions = set()
+
         # Function-specialized functions replace selected argument Vars with
         # Function objects so calls like `op(x)` resolve statically.
         for a in adj.args:
@@ -2504,6 +2508,8 @@ class Adjoint:
 
         # if it is a user-function then build it recursively
         if not func.is_builtin():
+            # record the call-graph edge for the post-build used_by_backward_kernel fixpoint
+            adj.called_functions.add(func)
             # If the function called is a user function,
             # we need to ensure its adjoint is also being generated.
             if adj.used_by_backward_kernel:
@@ -2635,6 +2641,8 @@ class Adjoint:
 
             # if the argument is a function (and not a builtin), then build it recursively
             if isinstance(func_arg_var, warp._src.context.Function) and not func_arg_var.is_builtin():
+                # record the call-graph edge for the post-build used_by_backward_kernel fixpoint
+                adj.called_functions.add(func_arg_var)
                 if adj.used_by_backward_kernel:
                     func_arg_var.adj.used_by_backward_kernel = True
                 if adj.force_adjoint_codegen:

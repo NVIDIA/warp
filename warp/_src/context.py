@@ -2720,6 +2720,9 @@ class ModuleBuilder:
         for func in self.deferred_functions:
             self.build_function(func)
 
+        # propagate used_by_backward_kernel now that the full call graph is known
+        self._propagate_used_by_backward_kernel()
+
     def build_struct_recursive(self, struct: warp._src.codegen.Struct):
         structs = []
 
@@ -2827,6 +2830,17 @@ class ModuleBuilder:
 
         # use dict to preserve import order
         self.functions[func] = None
+
+    def _propagate_used_by_backward_kernel(self):
+        # build_function() memoizes, so a helper built from a forward-only path before a backward
+        # kernel reaches it keeps its callees stubbed; re-propagate across the graph to a fixpoint.
+        worklist = [obj.adj for obj in (*self.kernels, *self.functions) if obj.adj.used_by_backward_kernel]
+        while worklist:
+            adj = worklist.pop()
+            for callee in adj.called_functions:
+                if not callee.adj.used_by_backward_kernel:
+                    callee.adj.used_by_backward_kernel = True
+                    worklist.append(callee.adj)
 
     def build_meta(self):
         meta = {}
