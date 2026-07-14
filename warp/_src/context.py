@@ -12898,7 +12898,11 @@ def copy(
 
     if src.is_contiguous and dest.is_contiguous:
         if warp._src.types.type_size_in_bytes(src.dtype) != warp._src.types.type_size_in_bytes(dest.dtype):
-            raise RuntimeError("Incompatible array data types")
+            raise RuntimeError(
+                "Incompatible array data types: "
+                f"destination dtype={warp._src.types.type_repr(dest.dtype)}, "
+                f"source dtype={warp._src.types.type_repr(src.dtype)}"
+            )
 
         bytes_to_copy = count * warp._src.types.type_size_in_bytes(src.dtype)
 
@@ -12998,13 +13002,19 @@ def copy(
             dest_nc = dest[dest_offset : dest_offset + count]
 
         if src_nc.shape != dest_nc.shape:
-            raise RuntimeError("Incompatible array shapes")
+            raise RuntimeError(
+                f"Incompatible array shapes: destination shape={dest_nc.shape}, source shape={src_nc.shape}"
+            )
 
         src_elem_size = warp._src.types.type_size_in_bytes(src_nc.dtype)
         dst_elem_size = warp._src.types.type_size_in_bytes(dest_nc.dtype)
 
         if src_elem_size != dst_elem_size:
-            raise RuntimeError("Incompatible array data types")
+            raise RuntimeError(
+                "Incompatible array data types: "
+                f"destination dtype={warp._src.types.type_repr(dest_nc.dtype)}, "
+                f"source dtype={warp._src.types.type_repr(src_nc.dtype)}"
+            )
 
         # can't copy to/from fabric arrays of arrays, because they are jagged arrays of arbitrary lengths
         # TODO?

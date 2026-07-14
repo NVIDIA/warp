@@ -35,6 +35,10 @@
 
 ### Changed
 
+- Improve diagnostics for array copy, texture copy, array reshape/view, and unsupported DLPack source-device errors by
+  reporting the relevant shapes, data types, channels, or device identifiers
+  ([GH-1644](https://github.com/NVIDIA/warp/issues/1644)).
+
 ### Fixed
 
 - Fix CPU kernel compilation failures for power-of-two exponentiation on some Windows on Arm systems

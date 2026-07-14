@@ -988,6 +988,43 @@ def test_texture3d_cuda_array_copy_api(test, device):
     np.testing.assert_allclose(dst.numpy(), data, rtol=1e-6, atol=1e-6)
 
 
+def test_texture_copy_validation_messages(test, device):
+    tex = wp.Texture2D(np.zeros((2, 3), dtype=np.float32), device=device)
+
+    with test.assertRaisesRegex(
+        ValueError,
+        r"Incompatible array shape for copy: texture shape=\(2, 3\), source shape=\(2, 4\)",
+    ):
+        tex.copy_from(np.zeros((2, 4), dtype=np.float32))
+
+    with test.assertRaisesRegex(
+        ValueError,
+        "Incompatible array data type for copy: texture dtype=float32, source dtype=int32",
+    ):
+        tex.copy_from(np.zeros((2, 3), dtype=np.int32))
+
+    dst = np.zeros((2, 4), dtype=np.float32)
+    with test.assertRaisesRegex(
+        ValueError,
+        r"Incompatible array shape for copy: texture shape=\(2, 3\), destination shape=\(2, 4\)",
+    ):
+        tex.copy_to(dst)
+
+    dst = np.zeros((2, 3), dtype=np.int32)
+    with test.assertRaisesRegex(
+        ValueError,
+        "Incompatible array data type for copy: texture dtype=float32, destination dtype=int32",
+    ):
+        tex.copy_to(dst)
+
+    other = wp.Texture2D(np.zeros((2, 4), dtype=np.float32), device=device)
+    with test.assertRaisesRegex(
+        ValueError,
+        r"Incompatible texture shapes for copy: destination shape=\(2, 3\), source shape=\(2, 4\)",
+    ):
+        tex.copy_from(other)
+
+
 def test_texture2d_cuda_array_copy_api_rejects_indexedarray(test, device):
     """Texture2D CUDA copy helpers should reject non-``wp.array`` inputs."""
     h, w = 8, 16
@@ -2877,6 +2914,9 @@ add_function_test(
 )
 add_function_test(
     TestTexture, "test_texture3d_cuda_array_copy_api", test_texture3d_cuda_array_copy_api, devices=cuda_devices
+)
+add_function_test(
+    TestTexture, "test_texture_copy_validation_messages", test_texture_copy_validation_messages, devices=all_devices
 )
 add_function_test(
     TestTexture,

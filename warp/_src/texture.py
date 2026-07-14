@@ -27,6 +27,7 @@ from warp._src.types import (
     is_array,
     type_is_vector,
     type_length,
+    type_repr,
     type_scalar_type,
     type_size_in_bytes,
     uint8,
@@ -574,9 +575,16 @@ class Texture:
             )
         if isinstance(src, Texture):
             if src.width != self.width or src.height != self.height or src.depth != self.depth:
-                raise ValueError("Incompatible texture shapes for copy")
+                raise ValueError(
+                    f"Incompatible texture shapes for copy: destination shape={self._get_shape()}, "
+                    f"source shape={src._get_shape()}"
+                )
             if src.dtype != self.dtype or src.num_channels != self.num_channels:
-                raise ValueError("Incompatible texture data types for copy")
+                raise ValueError(
+                    f"Incompatible texture data types for copy: destination dtype={type_repr(self.dtype)}, "
+                    f"source dtype={type_repr(src.dtype)}, destination channels={self.num_channels}, "
+                    f"source channels={src.num_channels}"
+                )
         else:
             if isinstance(src, np.ndarray):
                 src = array(src, device="cpu", copy=False)
@@ -585,9 +593,15 @@ class Texture:
 
             arr_width, arr_height, arr_depth, arr_channels, arr_dtype = self._shape_from_warp_array(src, self._ndim)
             if arr_width != self.width or arr_height != self.height or arr_depth != self.depth:
-                raise ValueError("Incompatible array shape for copy")
+                raise ValueError(
+                    f"Incompatible array shape for copy: texture shape={self._get_shape()}, source shape={src.shape}"
+                )
             if arr_dtype != self.dtype or arr_channels != self.num_channels:
-                raise ValueError("Incompatible array data type for copy")
+                raise ValueError(
+                    f"Incompatible array data type for copy: texture dtype={type_repr(self.dtype)}, "
+                    f"source dtype={type_repr(arr_dtype)}, texture channels={self.num_channels}, "
+                    f"source channels={arr_channels}"
+                )
             if not src.is_contiguous:
                 raise ValueError("Source array must be contiguous")
 
@@ -668,9 +682,16 @@ class Texture:
             )
         if isinstance(dst, Texture):
             if dst.width != self.width or dst.height != self.height or dst.depth != self.depth:
-                raise ValueError("Incompatible texture shapes for copy")
+                raise ValueError(
+                    f"Incompatible texture shapes for copy: source shape={self._get_shape()}, "
+                    f"destination shape={dst._get_shape()}"
+                )
             if dst.dtype != self.dtype or dst.num_channels != self.num_channels:
-                raise ValueError("Incompatible texture data types for copy")
+                raise ValueError(
+                    f"Incompatible texture data types for copy: source dtype={type_repr(self.dtype)}, "
+                    f"destination dtype={type_repr(dst.dtype)}, source channels={self.num_channels}, "
+                    f"destination channels={dst.num_channels}"
+                )
         else:
             if isinstance(dst, np.ndarray):
                 dst = array(dst, device="cpu", copy=False)
@@ -679,9 +700,15 @@ class Texture:
 
             arr_width, arr_height, arr_depth, arr_channels, arr_dtype = self._shape_from_warp_array(dst, self._ndim)
             if arr_width != self.width or arr_height != self.height or arr_depth != self.depth:
-                raise ValueError("Incompatible array shape for copy")
+                raise ValueError(
+                    f"Incompatible array shape for copy: texture shape={self._get_shape()}, destination shape={dst.shape}"
+                )
             if arr_dtype != self.dtype or arr_channels != self.num_channels:
-                raise ValueError("Incompatible array data type for copy")
+                raise ValueError(
+                    f"Incompatible array data type for copy: texture dtype={type_repr(self.dtype)}, "
+                    f"destination dtype={type_repr(arr_dtype)}, texture channels={self.num_channels}, "
+                    f"destination channels={arr_channels}"
+                )
             if not dst.is_contiguous:
                 raise ValueError("Destination array must be contiguous")
 

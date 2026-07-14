@@ -461,8 +461,16 @@ def test_copy_invalid_args(test, device):
     dest_f64 = wp.zeros(4, dtype=wp.float64, device=device)
     test.assertTrue(src_f32.is_contiguous)
     test.assertTrue(dest_f64.is_contiguous)
-    with test.assertRaisesRegex(RuntimeError, "Incompatible array data types"):
+    with test.assertRaisesRegex(RuntimeError, "destination dtype=float64, source dtype=float32"):
         wp.copy(dest_f64, src_f32)
+
+    # mismatched shapes on the non-contiguous path should report both shapes
+    src_shape = wp.array(np.arange(18, dtype=np.float32).reshape((6, 3)), device=device)[::3, :]
+    dest_shape = wp.zeros((6, 2), dtype=wp.float32, device=device)[::2, :]
+    test.assertFalse(src_shape.is_contiguous)
+    test.assertFalse(dest_shape.is_contiguous)
+    with test.assertRaisesRegex(RuntimeError, r"destination shape=\(3, 2\), source shape=\(2, 3\)"):
+        wp.copy(dest_shape, src_shape)
 
 
 def test_copy_count_zero_copies_all(test, device):

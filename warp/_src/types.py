@@ -4483,7 +4483,9 @@ class array(Array[DType, NDim]):
             size *= d
 
         if size != self.size:
-            raise RuntimeError("Reshaped array must have the same total size as the original.")
+            raise RuntimeError(
+                f"cannot reshape array of shape {self.shape} (size {self.size}) into shape {shape} (size {size})"
+            )
 
         a = array(
             ptr=self.ptr,
@@ -4556,7 +4558,13 @@ class array(Array[DType, NDim]):
                 result_shape = (*self.shape, *self.dtype._shape_)
                 result_strides = (*self.strides, *strides_from_shape(self.dtype._shape_, self.dtype._wp_scalar_type_))
             else:
-                raise TypeError("Incompatible scalar type sizes")
+                raise TypeError(
+                    f"cannot create an array view with dtype {type_repr(dtype)} "
+                    f"from source dtype {type_repr(self.dtype)}: source scalar dtype "
+                    f"{type_repr(self.dtype._wp_scalar_type_)} has size "
+                    f"{type_size_in_bytes(self.dtype._wp_scalar_type_)} bytes, "
+                    f"but target dtype has size {type_size_in_bytes(dtype)} bytes"
+                )
         elif type_is_scalar(self.dtype) and hasattr(dtype, "_wp_scalar_type_"):
             # cast from scalar type to vec/mat type
             if type_size_in_bytes(self.dtype) == type_size_in_bytes(dtype._wp_scalar_type_):
@@ -4575,9 +4583,20 @@ class array(Array[DType, NDim]):
                 result_shape = self.shape[:-dtype_ndim] or (1,)
                 result_strides = self.strides[:-dtype_ndim] or (type_size_in_bytes(dtype),)
             else:
-                raise TypeError("Incompatible scalar type sizes")
+                raise TypeError(
+                    f"cannot create an array view with dtype {type_repr(dtype)} "
+                    f"from source dtype {type_repr(self.dtype)}: source dtype has size "
+                    f"{type_size_in_bytes(self.dtype)} bytes, but target scalar dtype "
+                    f"{type_repr(dtype._wp_scalar_type_)} has size "
+                    f"{type_size_in_bytes(dtype._wp_scalar_type_)} bytes"
+                )
         else:
-            raise TypeError("Incompatible data type sizes")
+            raise TypeError(
+                f"cannot create an array view with dtype {type_repr(dtype)} "
+                f"from source dtype {type_repr(self.dtype)}: source dtype has size "
+                f"{type_size_in_bytes(self.dtype)} bytes, but target dtype has size "
+                f"{type_size_in_bytes(dtype)} bytes"
+            )
 
         a = array(
             ptr=self.ptr,

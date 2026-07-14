@@ -322,6 +322,12 @@ def test_reshape(test, device):
     arr_comp = wp.array(np_arr.reshape((-1, 3)), dtype=float, device=device)
     assert_array_equal(arr_infer, arr_comp)
 
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"cannot reshape array of shape \(6,\) \(size 6\) into shape \(4, 2\) \(size 8\)",
+    ):
+        arr.reshape((4, 2))
+
 
 @wp.kernel
 def compare_stepped_window_a(x: wp.array2d[float]):
@@ -422,6 +428,13 @@ def test_view(test, device):
         assert_np_equal(wp_arr_c.view(dtype=wp.float16).numpy(), np_arr_c.view(dtype=np.float16))
         assert_np_equal(wp_arr_d.view(dtype=wp.uint16).numpy(), np_arr_d.view(dtype=np.uint16))
 
+        with test.assertRaisesRegex(
+            TypeError,
+            "cannot create an array view with dtype uint16 from source dtype float32: "
+            "source dtype has size 4 bytes, but target dtype has size 2 bytes",
+        ):
+            wp_arr_b.view(dtype=wp.uint16)
+
     with test.subTest(msg="vectors"):
         np_arr = np.arange(16, dtype=np.float32).reshape((4, 4))
 
@@ -453,6 +466,13 @@ def test_view(test, device):
         assert_np_equal(wp_arr_v.numpy(), wp_arr_vs.numpy())
         assert_np_equal(wp_arr_m.numpy(), wp_arr_ms.numpy())
 
+        with test.assertRaisesRegex(
+            TypeError,
+            "cannot create an array view with dtype float64 from source dtype vec4f: "
+            "source scalar dtype float32 has size 4 bytes, but target dtype has size 8 bytes",
+        ):
+            wp_arr_v.view(dtype=wp.float64)
+
     with test.subTest(msg="scalars to vectors"):
         np_arr_v = np.arange(16, dtype=np.float32).reshape((4, 4))
         np_arr_m = np.arange(16, dtype=np.float32).reshape((4, 2, 2))
@@ -469,6 +489,13 @@ def test_view(test, device):
 
         assert_np_equal(wp_arr_v.numpy(), wp_arr_fv.numpy())
         assert_np_equal(wp_arr_m.numpy(), wp_arr_fm.numpy())
+
+        with test.assertRaisesRegex(
+            TypeError,
+            "cannot create an array view with dtype vec4d from source dtype float32: "
+            "source dtype has size 4 bytes, but target scalar dtype float64 has size 8 bytes",
+        ):
+            wp_arr_fv.view(dtype=wp.vec4d)
 
         # corner case - single vector or matrix
         wp_arr_fv1 = wp.array([1, 2, 3, 4], dtype=float, device=device)
