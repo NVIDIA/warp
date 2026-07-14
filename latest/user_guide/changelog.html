@@ -533,6 +533,11 @@ context (<a class="reference external" href="https://github.com/NVIDIA/warp/issu
 </section>
 <section id="changed">
 <h3>Changed<a class="headerlink" href="#changed" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>Improve diagnostics for array copy, texture copy, array reshape/view, and unsupported DLPack source-device errors by
+reporting the relevant shapes, data types, channels, or device identifiers
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1644">GH-1644</a>).</p></li>
+</ul>
 </section>
 <section id="fixed">
 <h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">#</a></h3>
@@ -576,6 +581,8 @@ into a destination without enough row capacity
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1618">GH-1618</a>).</p></li>
 <li><p>Add an example of a distributed Jacobi solver that uses NCCL (via <code class="docutils literal notranslate"><span class="pre">nccl4py</span></code>) for nearest-neighbor halo exchange in
 <code class="docutils literal notranslate"><span class="pre">warp/examples/distributed/example_jacobi_nccl.py</span></code> (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1576">GH-1576</a>).</p></li>
+<li><p>Add an example of a distributed Jacobi solver that uses NVSHMEM (via <code class="docutils literal notranslate"><span class="pre">nvshmem4py</span></code>) for nearest-neighbor halo exchange
+in <code class="docutils literal notranslate"><span class="pre">warp/examples/distributed/example_jacobi_nvshmem.py</span></code> (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1582">GH-1582</a>).</p></li>
 </ul>
 </section>
 </section>
