@@ -509,6 +509,7 @@
 <li><p>Kernel</p></li>
 </ul>
 </td><td><ul class="simple">
+<li><p>Differentiable</p></li>
 </ul>
 </td><td><ul class="simple">
 </ul>
@@ -525,7 +526,9 @@
 </td></tr></table>
 <p>Solve for <code class="docutils literal notranslate"><span class="pre">z</span></code> in <code class="docutils literal notranslate"><span class="pre">Lz</span> <span class="pre">=</span> <span class="pre">y</span></code>, where <code class="docutils literal notranslate"><span class="pre">L</span></code> is a lower triangular matrix.</p>
 <p>This performs general forward substitution for a lower triangular system.</p>
-<p>Note that computing the adjoint is not yet supported.</p>
+<p>Backward propagation computes gradients with respect to <code class="docutils literal notranslate"><span class="pre">y</span></code> and the
+lower-triangular parameterization of <code class="docutils literal notranslate"><span class="pre">L</span></code>. The strictly upper triangle of
+<code class="docutils literal notranslate"><span class="pre">L</span></code> does not affect the solve and receives zero gradient.</p>
 <dl class="simple">
 <dt>Supported datatypes are:</dt><dd><ul class="simple">
 <li><p>float32</p></li>
