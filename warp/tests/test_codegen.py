@@ -129,7 +129,7 @@ def test_dynamic_reassign(n: int):
 
 
 @wp.kernel
-def test_range_static_sum(result: wp.array(dtype=int)):
+def test_range_static_sum(result: wp.array[int]):
     a = int(0)
     for _i in range(10):
         a = a + 1
@@ -148,7 +148,7 @@ def test_range_static_sum(result: wp.array(dtype=int)):
 
 
 @wp.kernel
-def test_range_dynamic_sum(start: int, end: int, step: int, result: wp.array(dtype=int)):
+def test_range_dynamic_sum(start: int, end: int, step: int, result: wp.array[int]):
     a = int(0)
     for _i in range(end):
         a = a + 1
@@ -172,7 +172,7 @@ def test_range_dynamic_sum(start: int, end: int, step: int, result: wp.array(dty
 
 
 @wp.kernel
-def test_range_dynamic(start: int, end: int, step: int, result: wp.array(dtype=int)):
+def test_range_dynamic(start: int, end: int, step: int, result: wp.array[int]):
     output = int(0)
     for i in range(start, end, step):
         result[output] = i
@@ -496,13 +496,13 @@ def test_invalid_namespace_path(test, device):
 def test_error_global_var(test, device):
     arr = wp.array((1.0, 2.0, 3.0), dtype=float, device=device)
 
-    def kernel_1_fn(out: wp.array(dtype=float)):
+    def kernel_1_fn(out: wp.array[float]):
         out[0] = arr[0]
 
-    def kernel_2_fn(out: wp.array(dtype=float)):
+    def kernel_2_fn(out: wp.array[float]):
         out[0] = arr
 
-    def kernel_3_fn(out: wp.array(dtype=float)):
+    def kernel_3_fn(out: wp.array[float]):
         out[0] = wp.lower_bound(arr, 2.0)
 
     out = wp.empty_like(arr)
@@ -688,7 +688,7 @@ def test_error_generic_kernel_return_alias_unique_module_reuse(test, device):
 
 def test_error_mutating_constant_in_dynamic_loop(test, device):
     @wp.kernel(module="unique")
-    def dynamic_loop_kernel(n: int, input: wp.array(dtype=float)):
+    def dynamic_loop_kernel(n: int, input: wp.array[float]):
         my_constant = 0.0
         for i in range(n):
             my_constant += input[i]
@@ -705,7 +705,7 @@ def test_error_mutating_constant_in_dynamic_loop(test, device):
     const_b = 5
 
     @wp.kernel(module="unique")
-    def mixed_dyn_static_loop_kernel(dyn_a: int, dyn_b: int, dyn_c: int, output: wp.array(dtype=float, ndim=2)):
+    def mixed_dyn_static_loop_kernel(dyn_a: int, dyn_b: int, dyn_c: int, output: wp.array2d[float]):
         tid = wp.tid()
         for i in range(const_a + 1):
             for j in range(dyn_a + 1):
@@ -732,7 +732,7 @@ def test_error_mutating_constant_in_dynamic_loop(test, device):
     assert_np_equal(output.numpy(), np.ones([num_threads, const_a + const_b + dyn_a + dyn_b + dyn_c + 1]))
 
     @wp.kernel(module="unique")
-    def static_then_dynamic_loop_kernel(mats: wp.array(dtype=wp.mat33d)):
+    def static_then_dynamic_loop_kernel(mats: wp.array[wp.mat33d]):
         tid = wp.tid()
         mat = wp.mat33d()
         for i in range(3):
@@ -751,7 +751,7 @@ def test_error_mutating_constant_in_dynamic_loop(test, device):
     assert_np_equal(mats.numpy(), np.ones((1, 3, 3)))
 
     @wp.kernel(module="unique")
-    def dynamic_then_static_loop_kernel(mats: wp.array(dtype=wp.mat33d)):
+    def dynamic_then_static_loop_kernel(mats: wp.array[wp.mat33d]):
         tid = wp.tid()
         mat = wp.mat33d()
 
@@ -871,7 +871,7 @@ def test_while_condition_eval():
 
 
 @wp.kernel
-def conditional_return_or_sum(result: wp.array(dtype=wp.int32)):
+def conditional_return_or_sum(result: wp.array[wp.int32]):
     tid = wp.tid()
 
     if tid < 256:
@@ -892,7 +892,7 @@ def test_codegen_return_in_kernel(test, device):
 
 
 @wp.kernel
-def conditional_ifexp(x: float, result: wp.array(dtype=wp.int32)):
+def conditional_ifexp(x: float, result: wp.array[wp.int32]):
     wp.atomic_add(result, 0, 1) if x > 0.0 else wp.atomic_add(result, 1, 1)
 
 
@@ -1044,7 +1044,7 @@ def test_cast():
 
 
 @wp.kernel
-def test_reference_params_kernel(fs: wp.array(dtype=float), vs: wp.array(dtype=wp.vec3), qs: wp.array(dtype=wp.quat)):
+def test_reference_params_kernel(fs: wp.array[float], vs: wp.array[wp.vec3], qs: wp.array[wp.quat]):
     tid = wp.tid()
 
     v = wp.vec3(fs[tid], fs[tid], fs[tid])
@@ -1081,7 +1081,7 @@ def test_reference_params(test, device):
 
 
 @wp.func
-def side_effect_add(counter: wp.array(dtype=int), a: float, b: float) -> float:
+def side_effect_add(counter: wp.array[int], a: float, b: float) -> float:
     """Add two values and increment counter to track call count."""
     wp.atomic_add(counter, 0, 1)
     return a + b
@@ -1089,8 +1089,8 @@ def side_effect_add(counter: wp.array(dtype=int), a: float, b: float) -> float:
 
 @wp.kernel
 def test_augassign_no_double_eval_kernel(
-    counter: wp.array(dtype=int),
-    result: wp.array(dtype=float),
+    counter: wp.array[int],
+    result: wp.array[float],
 ):
     total = float(0.0)
     # The RHS should be evaluated exactly once per augmented assignment.
@@ -1126,25 +1126,25 @@ class AugAssignTestStruct:
 
 
 @wp.func
-def side_effect_inc_int16(counter: wp.array(dtype=int), val: wp.int16) -> wp.int16:
+def side_effect_inc_int16(counter: wp.array[int], val: wp.int16) -> wp.int16:
     wp.atomic_add(counter, 0, 1)
     return val
 
 
 @wp.func
-def side_effect_vec3s(counter: wp.array(dtype=int), val: wp.vec3s) -> wp.vec3s:
+def side_effect_vec3s(counter: wp.array[int], val: wp.vec3s) -> wp.vec3s:
     wp.atomic_add(counter, 0, 1)
     return val
 
 
 @wp.func
-def side_effect_return_float(counter: wp.array(dtype=int), val: float) -> float:
+def side_effect_return_float(counter: wp.array[int], val: float) -> float:
     wp.atomic_add(counter, 0, 1)
     return val
 
 
 @wp.func
-def side_effect_index(counter: wp.array(dtype=int), idx: int) -> int:
+def side_effect_index(counter: wp.array[int], idx: int) -> int:
     wp.atomic_add(counter, 0, 1)
     return idx
 
@@ -1152,8 +1152,8 @@ def side_effect_index(counter: wp.array(dtype=int), idx: int) -> int:
 # Attribute target (s.value += expr)
 @wp.kernel
 def test_augassign_no_double_eval_attribute_kernel(
-    counter: wp.array(dtype=int),
-    result: wp.array(dtype=float),
+    counter: wp.array[int],
+    result: wp.array[float],
 ):
     s = AugAssignTestStruct()
     s.value = 1.0
@@ -1179,8 +1179,8 @@ def test_augassign_no_double_eval_attribute(test, device):
 # Non-atomic subscript (arr_int16[i] += expr)
 @wp.kernel
 def test_augassign_no_double_eval_nonatomic_subscript_kernel(
-    counter: wp.array(dtype=int),
-    data: wp.array(dtype=wp.int16),
+    counter: wp.array[int],
+    data: wp.array[wp.int16],
 ):
     i = wp.tid()
     data[i] += side_effect_inc_int16(counter, wp.int16(10))
@@ -1206,8 +1206,8 @@ def test_augassign_no_double_eval_nonatomic_subscript(test, device):
 # Composite non-atomic subscript (arr_vec3s[i] += expr)
 @wp.kernel
 def test_augassign_no_double_eval_composite_nonatomic_kernel(
-    counter: wp.array(dtype=int),
-    data: wp.array(dtype=wp.vec3s),
+    counter: wp.array[int],
+    data: wp.array[wp.vec3s],
 ):
     i = wp.tid()
     data[i] += side_effect_vec3s(counter, wp.vec3s(wp.int16(1), wp.int16(2), wp.int16(3)))
@@ -1238,8 +1238,8 @@ def test_augassign_no_double_eval_composite_nonatomic(test, device):
 # Mul on array subscript (arr[i] *= expr)
 @wp.kernel
 def test_augassign_no_double_eval_mul_subscript_kernel(
-    counter: wp.array(dtype=int),
-    data: wp.array(dtype=float),
+    counter: wp.array[int],
+    data: wp.array[float],
 ):
     i = wp.tid()
     data[i] *= side_effect_return_float(counter, 3.0)
@@ -1265,8 +1265,8 @@ def test_augassign_no_double_eval_mul_subscript(test, device):
 # Pow on array subscript (arr[i] **= expr)
 @wp.kernel
 def test_augassign_no_double_eval_pow_subscript_kernel(
-    counter: wp.array(dtype=int),
-    data: wp.array(dtype=float),
+    counter: wp.array[int],
+    data: wp.array[float],
 ):
     i = wp.tid()
     data[i] **= side_effect_return_float(counter, 2.0)
@@ -1292,9 +1292,9 @@ def test_augassign_no_double_eval_pow_subscript(test, device):
 # Mul on vec component (v[0] *= expr)
 @wp.kernel
 def test_augassign_no_double_eval_mul_vec_component_kernel(
-    counter: wp.array(dtype=int),
-    data: wp.array(dtype=wp.vec3),
-    result: wp.array(dtype=float),
+    counter: wp.array[int],
+    data: wp.array[wp.vec3],
+    result: wp.array[float],
 ):
     i = wp.tid()
     v = data[i]
@@ -1323,22 +1323,22 @@ def test_augassign_no_double_eval_mul_vec_component(test, device):
 
 # Adjoint (wp.adjoint[x] += expr)
 @wp.func
-def augassign_custom_scale(counter: wp.array(dtype=int), x: float, s: float) -> float:
+def augassign_custom_scale(counter: wp.array[int], x: float, s: float) -> float:
     return x * s
 
 
 @wp.func_grad(augassign_custom_scale)
-def adj_augassign_custom_scale(counter: wp.array(dtype=int), x: float, s: float, adj_ret: float):
+def adj_augassign_custom_scale(counter: wp.array[int], x: float, s: float, adj_ret: float):
     wp.adjoint[x] += side_effect_return_float(counter, adj_ret * s)
     wp.adjoint[s] += adj_ret * x
 
 
 @wp.kernel
 def test_augassign_no_double_eval_adjoint_kernel(
-    counter: wp.array(dtype=int),
-    input_val: wp.array(dtype=float),
-    scale_val: wp.array(dtype=float),
-    output_val: wp.array(dtype=float),
+    counter: wp.array[int],
+    input_val: wp.array[float],
+    scale_val: wp.array[float],
+    output_val: wp.array[float],
 ):
     tid = wp.tid()
     output_val[tid] = augassign_custom_scale(counter, input_val[tid], scale_val[tid])
@@ -1371,8 +1371,8 @@ def test_augassign_no_double_eval_adjoint(test, device):
 # Aggregate double-eval: data[side_effect_index(counter, i)].value += expr
 @wp.kernel
 def test_augassign_no_double_eval_subscript_attribute_kernel(
-    counter: wp.array(dtype=int),
-    data: wp.array(dtype=AugAssignTestStruct),
+    counter: wp.array[int],
+    data: wp.array[AugAssignTestStruct],
 ):
     i = wp.tid()
     data[side_effect_index(counter, i)].value += 5.0
@@ -1405,9 +1405,9 @@ def test_augassign_no_double_eval_subscript_attribute(test, device):
 # data[side_effect_index(idx_ctr, i)].value += side_effect_return_float(rhs_ctr, v)
 @wp.kernel
 def test_augassign_no_double_eval_both_kernel(
-    idx_counter: wp.array(dtype=int),
-    rhs_counter: wp.array(dtype=int),
-    data: wp.array(dtype=AugAssignTestStruct),
+    idx_counter: wp.array[int],
+    rhs_counter: wp.array[int],
+    data: wp.array[AugAssignTestStruct],
 ):
     i = wp.tid()
     data[side_effect_index(idx_counter, i)].value += side_effect_return_float(rhs_counter, 5.0)
@@ -1453,14 +1453,14 @@ func_to_local_handlers = {"double": func_to_local_double, "square": func_to_loca
 
 # Binding a @wp.func to a local and calling through it should behave like calling it directly.
 @wp.kernel
-def assign_function_to_local_kernel(out: wp.array(dtype=float)):
+def assign_function_to_local_kernel(out: wp.array[float]):
     f = func_to_local_double
     out[0] = f(3.0)
 
 
 # A function reached through wp.static(...) can be bound to a local and called.
 @wp.kernel
-def assign_static_function_to_local_kernel(out: wp.array(dtype=float)):
+def assign_static_function_to_local_kernel(out: wp.array[float]):
     add = wp.static(func_to_local_handlers["double"])
     sq = wp.static(func_to_local_handlers["square"])
     out[0] = add(3.0)
@@ -1469,7 +1469,7 @@ def assign_static_function_to_local_kernel(out: wp.array(dtype=float)):
 
 # wp.grad() of a function that was first bound to a local should match wp.grad() of the function.
 @wp.kernel(enable_backward=False)
-def grad_of_function_bound_to_local_kernel(out: wp.array(dtype=float)):
+def grad_of_function_bound_to_local_kernel(out: wp.array[float]):
     f = func_to_local_square
     g = wp.grad(f)
     out[0] = g(3.0)  # d/da a^2 = 2a = 6 at a = 3
@@ -1498,7 +1498,7 @@ def test_grad_of_function_bound_to_local(test, device):
 # (Warp has no function pointers) and should raise a clear error rather than miscompile.
 def test_rebind_function_local_errors(test, device):
     @wp.kernel
-    def rebind_function_local_kernel(out: wp.array(dtype=float)):
+    def rebind_function_local_kernel(out: wp.array[float]):
         f = func_to_local_double
         f = func_to_local_halve
         out[0] = f(3.0)
@@ -1511,7 +1511,7 @@ def test_rebind_function_local_errors(test, device):
 # codegen-able meaning either and should raise a clear error rather than fail on the generic type check.
 def test_rebind_function_local_to_value_errors(test, device):
     @wp.kernel
-    def rebind_function_local_to_value_kernel(out: wp.array(dtype=float)):
+    def rebind_function_local_to_value_kernel(out: wp.array[float]):
         f = func_to_local_double
         f = 1.0
         out[0] = f
@@ -1532,7 +1532,7 @@ def gradwrapper_rebind_square(x: float):
 
 def test_rebind_gradwrapper_local_to_value_errors(test, device):
     @wp.kernel(enable_backward=False, module="unique")
-    def rebind_gradwrapper_local_to_value_kernel(out: wp.array(dtype=float)):
+    def rebind_gradwrapper_local_to_value_kernel(out: wp.array[float]):
         g = wp.grad(gradwrapper_rebind_square)
         g = 1.0
         out[0] = g
@@ -1548,7 +1548,7 @@ def test_rebind_gradwrapper_local_to_value_errors(test, device):
 
 def test_rebind_gradwrapper_local_through_tuple_errors(test, device):
     @wp.kernel(enable_backward=False, module="unique")
-    def rebind_gradwrapper_local_through_tuple_kernel(out: wp.array(dtype=float)):
+    def rebind_gradwrapper_local_through_tuple_kernel(out: wp.array[float]):
         g = wp.grad(gradwrapper_rebind_square)
         g, x = (1.0, 2.0)
         out[0] = x
@@ -1564,7 +1564,7 @@ def test_rebind_gradwrapper_local_through_tuple_errors(test, device):
 
 def test_rebind_gradwrapper_local_through_augassign_errors(test, device):
     @wp.kernel(enable_backward=False, module="unique")
-    def rebind_gradwrapper_local_through_augassign_kernel(out: wp.array(dtype=float)):
+    def rebind_gradwrapper_local_through_augassign_kernel(out: wp.array[float]):
         g = wp.grad(gradwrapper_rebind_square)
         g += 1.0
         out[0] = 1.0
@@ -1583,14 +1583,14 @@ I64_CONST = wp.constant(wp.int64(7))
 
 
 @wp.kernel(module="test_unary_minus_on_64bit_constant_f64")
-def _unary_minus_f64_kernel(values: wp.array(dtype=wp.float64), out: wp.array(dtype=wp.float64)):
+def _unary_minus_f64_kernel(values: wp.array[wp.float64], out: wp.array[wp.float64]):
     b = values[0]
     c = values[1]
     out[0] = -F64_CONST * b / (c * c)
 
 
 @wp.kernel(module="test_unary_minus_on_64bit_constant_i64")
-def _unary_minus_i64_kernel(values: wp.array(dtype=wp.int64), out: wp.array(dtype=wp.int64)):
+def _unary_minus_i64_kernel(values: wp.array[wp.int64], out: wp.array[wp.int64]):
     out[0] = -I64_CONST * values[0]
 
 
@@ -1627,15 +1627,15 @@ class TestCodeGen(unittest.TestCase):
             wp.config.default_grid_stride = True
 
             @wp.kernel(module="unique")
-            def gs_unset(a: wp.array(dtype=float)):
+            def gs_unset(a: wp.array[float]):
                 a[wp.tid()] = 1.0
 
             @wp.kernel(grid_stride=True, module="unique")
-            def gs_true(a: wp.array(dtype=float)):
+            def gs_true(a: wp.array[float]):
                 a[wp.tid()] = 1.0
 
             @wp.kernel(grid_stride=False, module="unique")
-            def gs_false(a: wp.array(dtype=float)):
+            def gs_false(a: wp.array[float]):
                 a[wp.tid()] = 1.0
 
             for k in (gs_unset, gs_true, gs_false):
@@ -1890,7 +1890,7 @@ class TestCodeGen(unittest.TestCase):
         _value_a = 7
         _value_b = 13
 
-        def _kernel_with_two_statics(out: wp.array(dtype=int)):
+        def _kernel_with_two_statics(out: wp.array[int]):
             i = wp.tid()
             out[i] = wp.static(_value_a)
             out[i] += wp.static(_value_b)
@@ -1917,7 +1917,7 @@ class TestCodeGen(unittest.TestCase):
         loop-variable tracking in ``visit_For`` / ``visit_Call``.
         """
 
-        def _kernel_with_loop_var_static(out: wp.array(dtype=int)):
+        def _kernel_with_loop_var_static(out: wp.array[int]):
             for i in range(10):
                 out[i] = wp.static(i + 1)
 

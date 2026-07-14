@@ -8,7 +8,7 @@ import warp as wp
 
 def create_kernel_closure(value: int):
     @wp.kernel
-    def k(a: wp.array(dtype=int)):
+    def k(a: wp.array[int]):
         a[0] = value
 
     return k
