@@ -560,6 +560,9 @@ group (<a class="reference external" href="https://github.com/NVIDIA/warp/issues
 sequential assignment instead of raising a type error (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1581">GH-1581</a>).</p></li>
 <li><p>Fix CPU modules with different <code class="docutils literal notranslate"><span class="pre">cpu_compiler_flags</span></code> reusing incompatible precompiled headers, avoiding Clang
 target-feature errors and fallback compilation (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1649">GH-1649</a>).</p></li>
+<li><p>Fix heap corruption when capturing <code class="docutils literal notranslate"><span class="pre">wp.sparse.bsr_set_transpose()</span></code> with <code class="docutils literal notranslate"><span class="pre">topology=&quot;padded&quot;</span></code>
+into a destination without enough row capacity
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1630">GH-1630</a>).</p></li>
 </ul>
 </section>
 <section id="documentation">
