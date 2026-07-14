@@ -38,6 +38,10 @@
 - Improve diagnostics for array copy, texture copy, array reshape/view, and unsupported DLPack source-device errors by
   reporting the relevant shapes, data types, channels, or device identifiers
   ([GH-1644](https://github.com/NVIDIA/warp/issues/1644)).
+- Render `repr()` of array type annotations in their subscript form (such as `wp.array4d[wp.uint32]`) so that it matches
+  the written annotation and can be evaluated back to the same annotation, instead of the previous
+  `wp.array(dtype=..., ndim=...)` form. Warp array return types now read more naturally in Sphinx-generated API
+  documentation ([GH-1628](https://github.com/NVIDIA/warp/issues/1628)).
 
 ### Fixed
 
