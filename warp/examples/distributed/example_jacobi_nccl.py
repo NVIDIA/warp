@@ -213,7 +213,7 @@ def benchmark_single_gpu(nx: int, ny: int, iter_max: int, nccheck: int = 2, verb
     start_time = MPI.Wtime()
 
     while l2_norm > TOL and iter < iter_max:
-        calculate_norm = (iter % nccheck == 0) or ((iter + 1) % PRINT_INTERVAL == 0)
+        calculate_norm = ((iter + 1) % nccheck == 0) or ((iter + 1) % PRINT_INTERVAL == 0)
 
         with wp.ScopedStream(compute_stream):
             l2_norm_d.zero_()
