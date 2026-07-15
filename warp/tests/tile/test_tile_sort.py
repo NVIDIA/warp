@@ -122,8 +122,11 @@ def create_bfloat16_payload_sort_kernel(length):
 
 
 def test_tile_sort_bfloat16_payload(test, device):
-    # Sorting with a bfloat16 value payload exercises the bfloat16 warp-shuffle
-    # overload in the radix sort (GH-573). Integer values are exact in bfloat16.
+    """Sort keys with a bfloat16 value payload.
+
+    Exercises the bfloat16 warp-shuffle overload in the radix sort. Integer values are exact
+    in bfloat16.
+    """
     length = 8
     np_keys = np.arange(length - 1, -1, -1, dtype=np.float32)
     np_values = np.arange(1, length + 1, dtype=np.float32)

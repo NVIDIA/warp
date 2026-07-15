@@ -51,13 +51,13 @@ def _seed_state_grad(g: wp.array[StateStruct], pos: wp.vec3, vel: wp.vec3):
 
 
 @wp.kernel
-def _k_gh583(dst: wp.array[wp.vec3], src: wp.array[wp.float32]):
+def _k_array_vec_component(dst: wp.array[wp.vec3], src: wp.array[wp.float32]):
     i = wp.tid()
     dst[i].y = src[i]
 
 
 @wp.kernel
-def _k_gh248(y: wp.array[wp.vec3], x: wp.array[wp.float32]):
+def _k_sequential_component_writes(y: wp.array[wp.vec3], x: wp.array[wp.float32]):
     tid = wp.tid()
     y[tid].x = x[tid] * 2.0
     y[tid].y = x[tid] * 3.0
@@ -65,7 +65,7 @@ def _k_gh248(y: wp.array[wp.vec3], x: wp.array[wp.float32]):
 
 
 @wp.kernel
-def _k_gh1174(y: wp.array[Scalar], x: wp.array[wp.float32]):
+def _k_array_struct_field(y: wp.array[Scalar], x: wp.array[wp.float32]):
     i = wp.tid()
     y[i].a = x[i]
 
@@ -239,35 +239,51 @@ def _k_adjoint_component_write(xs: wp.array[AdjVecHolder], out: wp.array[wp.floa
 
 
 class TestCompositeComponentAdjoint(unittest.TestCase):
-    def test_gh583_array_vec_component(self):
+    def test_array_vec_component(self):
+        """Backpropagate through a single write to one vec3 component of an array element.
+
+        The kernel writes ``src[i]`` into ``dst[i].y``, so only that component's gradient flows
+        back to ``src[i]``. With a unit seed on every ``dst`` component, ``src.grad`` is all ones.
+        """
         n = 4
         src = wp.array(np.ones(n, dtype=np.float32), dtype=wp.float32, requires_grad=True)
         dst = wp.zeros(n, dtype=wp.vec3, requires_grad=True)
 
         tape = wp.Tape()
         with tape:
-            wp.launch(_k_gh583, n, inputs=[dst, src])
+            wp.launch(_k_array_vec_component, n, inputs=[dst, src])
 
         dst.grad = wp.array(np.ones((n, 3), dtype=np.float32), dtype=wp.vec3)
         tape.backward()
 
         assert_np_equal(src.grad.numpy(), np.ones(n, dtype=np.float32))
 
-    def test_gh248_sequential_component_writes(self):
+    def test_sequential_component_writes(self):
+        """Accumulate gradients across sequential writes to different components of one element.
+
+        The kernel writes ``x[tid]`` scaled by 2, 3, and 4 into ``y[tid].x``/``.y``/``.z``. With a
+        unit seed on every ``y`` component, the adjoint sums the three contributions, so ``x.grad``
+        is 9 everywhere.
+        """
         n = 3
         x = wp.array(np.ones(n, dtype=np.float32), dtype=wp.float32, requires_grad=True)
         y = wp.zeros(n, dtype=wp.vec3, requires_grad=True)
 
         tape = wp.Tape()
         with tape:
-            wp.launch(_k_gh248, n, inputs=[y, x])
+            wp.launch(_k_sequential_component_writes, n, inputs=[y, x])
 
         y.grad = wp.array(np.ones((n, 3), dtype=np.float32), dtype=wp.vec3)
         tape.backward()
 
         assert_np_equal(x.grad.numpy(), np.full(n, 9.0, dtype=np.float32))
 
-    def test_gh1174_array_struct_field(self):
+    def test_array_struct_field(self):
+        """Backpropagate through a write to a struct field of an array element.
+
+        The kernel writes ``x[i]`` into the ``a`` field of ``y[i]`` (a ``Scalar`` struct). Seeding
+        the adjoint so field ``a`` carries a unit gradient and ``b`` zero, ``x.grad`` is all ones.
+        """
         n = 3
         x = wp.array(np.ones(n, dtype=np.float32), dtype=wp.float32, requires_grad=True)
         y = wp.zeros(n, dtype=Scalar, requires_grad=True)
@@ -276,7 +292,7 @@ class TestCompositeComponentAdjoint(unittest.TestCase):
 
         tape = wp.Tape()
         with tape:
-            wp.launch(_k_gh1174, n, inputs=[y, x])
+            wp.launch(_k_array_struct_field, n, inputs=[y, x])
         tape.backward()
 
         assert_np_equal(x.grad.numpy(), np.ones(n, dtype=np.float32))
@@ -489,8 +505,7 @@ class TestCompositeComponentAdjoint(unittest.TestCase):
         assert_np_equal(x.grad.numpy(), np.ones((a, b, c), dtype=np.float32))
 
     def test_struct_array_field_write(self):
-        # Struct-held arrays should still compile and write through the regular
-        # array assignment path.
+        """Verify struct-held arrays still compile and write through the regular array assignment path."""
         n = 4
         x = wp.array(np.full(n, 3.0, dtype=np.float32), dtype=wp.float32)
         v = wp.zeros(n, dtype=wp.float32)
@@ -503,8 +518,7 @@ class TestCompositeComponentAdjoint(unittest.TestCase):
         assert_np_equal(v.numpy(), np.full(n, 6.0, dtype=np.float32))
 
     def test_indexedarray_composite_component_write(self):
-        # Indexed arrays should keep the generic lowering and preserve forward
-        # write behavior.
+        """Verify indexed arrays keep the generic lowering and preserve forward write behavior."""
         n = 4
         base = wp.zeros(n, dtype=wp.vec3, requires_grad=True)
         indices = wp.array(np.arange(n, dtype=np.int32), dtype=wp.int32)
@@ -519,8 +533,8 @@ class TestCompositeComponentAdjoint(unittest.TestCase):
         assert_np_equal(base.numpy(), expected)
 
     def test_slot_type_mismatch_reference_rhs_reports_error(self):
-        # Assigning a vector reference into a scalar component should report the
-        # normal type mismatch and emit no slot-store call.
+        """Reject a vector reference assigned into a scalar component with a type mismatch and no slot-store call."""
+
         @wp.kernel
         def _k_mismatch(y: wp.array[wp.vec3], src: wp.array[wp.vec3]):
             i = wp.tid()
@@ -536,8 +550,7 @@ class TestCompositeComponentAdjoint(unittest.TestCase):
         self.assertNotIn("adj_array_store_slot", forward + reverse)
 
     def test_wp_adjoint_composite_component_write(self):
-        # Plain component writes to ``wp.adjoint`` inside a custom grad should
-        # behave like normal adjoint stores.
+        """Verify plain component writes to ``wp.adjoint`` inside a custom grad behave like normal adjoint stores."""
         n = 2
         x = AdjVecHolder()
         x.vec = wp.vec3(1.0, 2.0, 3.0)

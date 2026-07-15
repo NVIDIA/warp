@@ -154,13 +154,14 @@ def run_cluster_probe(test, probe, cluster_total, n_clusters, device, block_dim=
 
 
 def test_cluster_kernel_runs_on_all_devices(test, device):
-    # cluster_dim is silently ignored on CPU and sub-Hopper CUDA; clustered
-    # kernels -- including a launch_bounds + cluster_dim combination -- must
-    # still run and produce correct results there. On Hopper+ devices compiling
-    # below sm90, the cluster attribute would be dropped, so loading must raise
-    # instead. Block counts are kept cluster-aligned (a multiple of cluster_dim)
-    # since active cluster targets reject padded launch shapes; elsewhere the
-    # alignment is irrelevant.
+    """Verify clustered kernels run correctly where ``cluster_dim`` is silently ignored, and raise otherwise.
+
+    ``cluster_dim`` is silently ignored on CPU and sub-Hopper CUDA; clustered kernels (including a ``launch_bounds``
+    plus ``cluster_dim`` combination) must still run and produce correct results there. On Hopper+ devices compiling
+    below sm90, the cluster attribute would be dropped, so loading must raise instead. Block counts are kept
+    cluster-aligned (a multiple of ``cluster_dim``) since active cluster targets reject padded launch shapes;
+    elsewhere the alignment is irrelevant.
+    """
     n = 256
     a = wp.zeros(n, dtype=int, device=device)
 
@@ -365,16 +366,18 @@ def test_apic_save_load_preserves_clusters(test, device):
 
 
 def test_max_cluster_dim_unsupported_returns_one(test, device):
-    # get_cuda_max_cluster_dim reports 1 on devices that cannot form clusters
-    # (CPU and sub-Hopper CUDA).
+    """Verify ``get_cuda_max_cluster_dim`` reports 1 on devices that cannot form clusters (CPU and sub-Hopper CUDA)."""
     if not (device.is_cuda and device.arch >= 90):
         test.assertEqual(wp.get_cuda_max_cluster_dim(query_probe, device), 1)
 
 
 def test_get_cuda_max_cluster_dim_preserves_module_block_dim(test, device):
-    # Regression: the query loads the module at a probe block_dim, which mutates
-    # module.options["block_dim"] as a side effect. It must restore the prior
-    # value so later launches that rely on the default are unaffected.
+    """Verify ``get_cuda_max_cluster_dim`` restores ``module.options["block_dim"]`` after probing.
+
+    The query loads the module at a probe ``block_dim``, which mutates ``module.options["block_dim"]`` as a side
+    effect. It must restore the prior value so later launches that rely on the default are unaffected.
+    """
+
     @wp.kernel(module="unique")
     def k(a: wp.array[int]):
         a[wp.tid()] = 0
@@ -480,12 +483,14 @@ class TestClusterDim(unittest.TestCase):
         self.assertIn("WP_CLUSTER_DIMS(4, 1, 1)", cuda_kernel_source(k_module))
 
     def test_aot_cluster_dim_below_sm90_errors(self):
-        # Compiling a clustered kernel for an arch < sm90 must hard-error rather
-        # than emit a binary with the cluster attribute silently stripped by the
-        # WP_CLUSTER_DIMS guard. The AOT-by-arch path has no backing device, so
-        # it exercises the "dropped" branch directly (the same compile-path check
-        # also fires for JIT loads onto a cluster-capable device compiled below
-        # sm90, e.g. with warp.config.ptx_target_arch < 90).
+        """Reject AOT compilation of a clustered kernel for an arch below sm90.
+
+        Compiling a clustered kernel for an arch below sm90 must hard-error rather than emit a binary with the
+        cluster attribute silently stripped by the ``WP_CLUSTER_DIMS`` guard. The AOT-by-arch path has no backing
+        device, so it exercises the "dropped" branch directly (the same compile-path check also fires for JIT loads
+        onto a cluster-capable device compiled below sm90, e.g. with ``warp.config.ptx_target_arch`` below 90).
+        """
+
         @wp.kernel(cluster_dim=2, module="unique")
         def k(a: wp.array[float]):
             i = wp.tid()
@@ -499,12 +504,13 @@ class TestClusterDim(unittest.TestCase):
             wp.compile_aot_module(k.module, device=None, arch=90, module_dir=module_dir)
 
     def test_aot_stale_live_clustered_kernel_errors(self):
-        # Regression: the sub-sm90 AOT guard must scan the same live unique-kernel
-        # set codegen emits, not module.kernels (latest per key). A kernel
-        # redefined with the same key leaves the latest entry unclustered while an
-        # older *live* clustered kernel still generates WP_CLUSTER_DIMS. Guarding
-        # only module.kernels would let that AOT-compile for sm < 90 with the
-        # cluster attribute silently stripped.
+        """Verify the sub-sm90 AOT guard scans the live unique-kernel set, not ``module.kernels``.
+
+        The sub-sm90 AOT guard must scan the same live unique-kernel set codegen emits, not ``module.kernels``
+        (latest per key). A kernel redefined with the same key leaves the latest entry unclustered while an older
+        live clustered kernel still generates ``WP_CLUSTER_DIMS``. Guarding only ``module.kernels`` would let that
+        AOT-compile for sm below 90 with the cluster attribute silently stripped.
+        """
         mod_name = "test_cluster_stale_live"
 
         def define(clustered: bool):

@@ -1603,7 +1603,7 @@ def test_ffi_jax_kernel_autodiff_pmap_multi_output(test, device):
     assert_np_equal(np.asarray(db), ref_db)
 
 
-# --- launch_dims + enable_backward=True tests (GH-1380) --------------------
+# --- launch_dims + enable_backward=True tests --------------------
 
 
 @wp.kernel
@@ -1630,7 +1630,7 @@ def scale_outer_2d_kernel(
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_launch_dims_autodiff_basic(test, device):
-    """launch_dims is accepted with enable_backward=True (GH-1380)."""
+    """launch_dims is accepted with enable_backward=True."""
     jax = _import_jax()
     jnp = _import_jax_numpy()
 
@@ -1656,7 +1656,7 @@ def test_ffi_jax_kernel_launch_dims_autodiff_basic(test, device):
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_launch_dims_autodiff_gradient(test, device):
-    """Gradient matches the analytical value when launch_dims is explicit (GH-1380).
+    """Gradient matches the analytical value when launch_dims is explicit.
 
     Without this fix, auto-inference returns the full 4-D shape and the
     adjoint kernel over-accumulates by a factor equal to the outer axis
@@ -1695,7 +1695,7 @@ def test_ffi_jax_kernel_launch_dims_autodiff_gradient(test, device):
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_launch_dims_autodiff_separate_cache(test, device):
     """Wrapping the same kernel with different launch_dims must not share
-    wrappers (GH-1380).
+    wrappers.
 
     Regression guard for the _FFI_DIFF_KERNEL_REGISTRY cache key: without
     launch_dims in the key, the second wrapper silently reuses the first
@@ -1821,7 +1821,7 @@ def test_ffi_jax_kernel_output_dims_autodiff_still_blocked(test, device):
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_launch_dims_autodiff_vmap(test, device):
-    """launch_dims + enable_backward=True composes with jax.vmap (GH-1380).
+    """launch_dims + enable_backward=True composes with jax.vmap.
 
     The user-supplied launch_dims fixes the inner (kernel tid) iteration
     space, and jax.vmap prefixes an additional outer axis which the FFI
@@ -2470,7 +2470,7 @@ try:
             devices=None,
         )
 
-        # launch_dims + enable_backward=True tests (GH-1380)
+        # launch_dims + enable_backward=True tests
         add_function_test(
             TestJax,
             "test_ffi_jax_kernel_launch_dims_autodiff_basic",

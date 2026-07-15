@@ -46,8 +46,10 @@ class TestModuleLite(unittest.TestCase):
         self.assertIn("nonexistent_module_that_does_not_exist", str(context.exception))
 
     def test_module_lite_load_no_warp_content(self):
-        # Test that loading a module without Warp content raises RuntimeError
-        # Use a standard library module that definitely has no Warp kernels
+        """Verify loading a module without Warp content raises ``RuntimeError``.
+
+        Uses a standard library module that definitely has no Warp kernels.
+        """
         with self.assertRaises(RuntimeError) as context:
             wp.load_module(unittest)
 
@@ -55,12 +57,13 @@ class TestModuleLite(unittest.TestCase):
         self.assertIn("unittest", str(context.exception))
 
     def test_module_lite_eager_source_registration(self):
-        # The source-to-public Warp module declarations live at the top of ``warp/__init__.py``
-        # and run before any ``warp._src`` submodule can be imported. So importing a source
-        # module directly — without importing its public package — still registers its
-        # constructs under the public Warp module name (no migration needed). Run in a
-        # subprocess so the import ordering is deterministic regardless of what the test
-        # process already imported.
+        """Verify importing a source module directly registers its constructs under the public Warp module name.
+
+        The source-to-public Warp module declarations live at the top of ``warp/__init__.py`` and run before any
+        ``warp._src`` submodule can be imported. So importing a source module directly (without importing its public
+        package) still registers its constructs under the public Warp module name (no migration needed). This runs in
+        a subprocess so the import ordering is deterministic regardless of what the test process already imported.
+        """
         code = (
             "import warp as wp\n"
             # Import the source module directly, WITHOUT importing warp.optim first.
@@ -81,11 +84,13 @@ class TestModuleLite(unittest.TestCase):
         self.assertIn("OK", result.stdout)
 
     def test_module_lite_placeholder_then_source(self):
-        # A bare ``get_module(public_name)`` lookup performed before the source module is
-        # imported creates an empty module under the public name. Because constructs always
-        # resolve to that same public name, importing the source afterwards must populate that
-        # very module rather than stranding the constructs elsewhere. Run in a subprocess so
-        # the import ordering is deterministic.
+        """Verify importing a source module populates a placeholder created by an earlier public-name lookup.
+
+        A bare ``get_module(public_name)`` lookup performed before the source module is imported creates an empty
+        module under the public name. Because constructs always resolve to that same public name, importing the source
+        afterwards must populate that very module rather than stranding the constructs elsewhere. This runs in a
+        subprocess so the import ordering is deterministic.
+        """
         code = (
             "import warp as wp\n"
             # Bare public-name lookup BEFORE the source is imported: empty placeholder.

@@ -376,7 +376,7 @@ def test_ref_forwarding(test, device):
 
 @wp.func
 def store_pair_ref(x: wp.ref[wp.float32], y: wp.ref[wp.float32], a: wp.float32, b: wp.float32):
-    x, y = a, b  # tuple-unpack assignment to ref params must mutate caller storage (GH-1581)
+    x, y = a, b  # tuple-unpack assignment to ref params must mutate caller storage
 
 
 @wp.func
@@ -437,7 +437,7 @@ def kernel_ref_tuple_unpack_mixed_targets(out: wp.array[wp.float32]):
 
 
 def test_ref_tuple_unpack_assignment(test, device):
-    """Tuple-unpack assignment to wp.ref[T] parameters mutates caller storage (GH-1581)."""
+    """Tuple-unpack assignment to wp.ref[T] parameters mutates caller storage."""
     out = wp.zeros(2, dtype=wp.float32, device=device)
     wp.launch(kernel_ref_tuple_unpack, dim=1, outputs=[out], device=device)
     np.testing.assert_allclose(out.numpy(), [3.0, 4.0])

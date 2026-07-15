@@ -244,9 +244,11 @@ def test_conditional_chain_mixed():
 
 
 def test_conditional_unequal_types(test: unittest.TestCase, device):
-    # The bad kernel must be in a separate module, otherwise the current module would fail to load
-    # Import the bad fixture only for this test so it can be removed from
-    # Warp's user module registry before later force-load checks.
+    """Reject a kernel that compares unequal types in a conditional.
+
+    The bad kernel must be in a separate module, otherwise the current module would fail to load. Import the bad
+    fixture only for this test so it can be removed from Warp's user module registry before later force-load checks.
+    """
     unequal_types_module = importlib.import_module("warp.tests.aux_test_conditional_unequal_types_kernels")
     unequal_types_kernel = unequal_types_module.unequal_types_kernel
 
@@ -301,7 +303,7 @@ def test_short_circuit_and_kernel(
     result: wp.array(dtype=int),
 ):
     tid = wp.tid()
-    # arr[tid] must not be evaluated when arr is None (GH-1329)
+    # arr[tid] must not be evaluated when arr is None
     if arr and tid >= 0 and arr[tid] == 0:
         result[tid] = -1
         return
@@ -324,11 +326,11 @@ def test_short_circuit_or_kernel(
 def test_short_circuit_and(test: unittest.TestCase, device):
     """Chained `and` must short-circuit so null array is never dereferenced."""
     result = wp.zeros(3, dtype=int, device=device)
-    # None array — should short-circuit, never access arr[tid]
+    # None array: should short-circuit, never access arr[tid]
     wp.launch(test_short_circuit_and_kernel, dim=3, inputs=[None, result], device=device)
     test.assertEqual(result.numpy().tolist(), [1, 1, 1])
 
-    # Real array — should evaluate fully
+    # Real array: should evaluate fully
     arr = wp.array([0, 1, 0], dtype=int, device=device)
     wp.launch(test_short_circuit_and_kernel, dim=3, inputs=[arr, result], device=device)
     test.assertEqual(result.numpy().tolist(), [-1, 1, -1])
@@ -337,11 +339,11 @@ def test_short_circuit_and(test: unittest.TestCase, device):
 def test_short_circuit_or(test: unittest.TestCase, device):
     """Chained `or` must short-circuit so null array is never dereferenced."""
     result = wp.zeros(3, dtype=int, device=device)
-    # None array — `not arr` is true, should short-circuit
+    # None array: `not arr` is true, should short-circuit
     wp.launch(test_short_circuit_or_kernel, dim=3, inputs=[None, result], device=device)
     test.assertEqual(result.numpy().tolist(), [-1, -1, -1])
 
-    # Real array with non-zero values — all conditions false, result = 1
+    # Real array with non-zero values: all conditions false, result = 1
     arr = wp.array([5, 6, 7], dtype=int, device=device)
     wp.launch(test_short_circuit_or_kernel, dim=3, inputs=[arr, result], device=device)
     test.assertEqual(result.numpy().tolist(), [1, 1, 1])
@@ -426,7 +428,7 @@ def branch_local_merge_codegen_kernel(x: wp.array(dtype=float), out: wp.array(dt
     # ``r`` is first assigned inside nested ``if``/``else`` branches, so it has no version
     # before the conditional. The ``else`` branch must be lowered against the pre-conditional
     # symbol map; otherwise the ``if`` branch's SSA version of ``r`` leaks into the ``else``
-    # branch's generated code (GH-1574) and miscompiles on CUDA under register pressure.
+    # branch's generated code and miscompiles on CUDA under register pressure.
     i = wp.tid()
     v = x[i]
     if v > 0.0:
@@ -443,13 +445,18 @@ def branch_local_merge_codegen_kernel(x: wp.array(dtype=float), out: wp.array(dt
 
 
 def test_branch_local_merge_codegen(test: unittest.TestCase, device):
-    # GH-1574: a variable reassigned inside nested ``if``/``else`` branches must never be
-    # referenced across sibling branches in the generated code. The fault is a register-
-    # pressure-dependent CUDA miscompile that produces no incorrect value (CPU and CUDA-debug
-    # compute the right answer), so the reliable, deterministic signal is the SSA invariant on
-    # the generated source itself. Because each assignment lowers to a fresh ``var_N``, no
-    # ``var_N`` first assigned inside the ``if`` block may appear inside the sibling ``else``
-    # block (and vice versa). Codegen is device-independent, so this does not depend on ``device``.
+    """Assert a variable reassigned in nested branches never leaks across sibling branches.
+
+    A variable first assigned inside nested ``if``/``else`` branches has no version before the
+    conditional, so each branch must be lowered against the pre-conditional symbol map. Otherwise
+    the ``if`` branch's SSA version of the variable is referenced from the sibling ``else`` branch's
+    generated code, which miscompiles on CUDA under register pressure into an illegal local memory
+    access. The miscompile produces no wrong value on CPU or CUDA-debug builds, so the reliable,
+    deterministic signal is the SSA invariant on the generated source itself: because each assignment
+    lowers to a fresh ``var_N``, no ``var_N`` first assigned inside the ``if`` block may appear inside
+    the sibling ``else`` block, and vice versa. Codegen is device-independent, so the check does not
+    depend on ``device``.
+    """
     branch_local_merge_codegen_kernel.adj.build(builder=None)
     source = codegen_func_forward(branch_local_merge_codegen_kernel.adj, func_type="kernel", device="cpu")
 
@@ -498,7 +505,7 @@ def test_branch_local_merge_codegen(test: unittest.TestCase, device):
         return set(re.findall(r"var_\d+", s))
 
     test.assertEqual(
-        assigned(if_body) & referenced(else_body), set(), "if-branch SSA versions leak into the else branch (GH-1574)"
+        assigned(if_body) & referenced(else_body), set(), "if-branch SSA versions leak into the else branch"
     )
     test.assertEqual(
         assigned(else_body) & referenced(if_body), set(), "else-branch SSA versions leak into the if branch"
@@ -506,14 +513,16 @@ def test_branch_local_merge_codegen(test: unittest.TestCase, device):
 
 
 def test_branch_local_merge_runtime(test: unittest.TestCase, device):
-    # End-to-end check that the branch-local merge executes correctly on each device. This is
-    # not a standalone regression guard for GH-1574 (the buggy lowering computes the same
-    # values and only crashes on CUDA under register pressure), but it confirms the generated
-    # code runs and that the merge selects the right branch on every path.
+    """Run the branch-local merge end-to-end and check each path selects the right branch.
+
+    Complements the codegen test by confirming the generated code runs on each device and that the
+    nested ``if``/``else`` merge produces the correct value on every path. The buggy lowering computes
+    the same values and only crashes on CUDA under register pressure, so this is not a standalone
+    regression guard for that fault, but it exercises the runtime behavior directly.
+    """
     x = wp.array([20.0, 5.0, -5.0, -20.0], dtype=float, device=device)
     out = wp.zeros(4, dtype=float, device=device)
     wp.launch(branch_local_merge_codegen_kernel, dim=4, inputs=[x], outputs=[out], device=device)
-    wp.synchronize_device(device)
     np.testing.assert_array_equal(out.numpy(), [100.0, 1.0, -1.0, -100.0])
 
 

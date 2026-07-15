@@ -135,12 +135,14 @@ def _trigger_inbounds_ok():
 
 
 def _trigger_logical_overflow():
-    # A single-element array is logically 4 bytes, well under the host allocator's 64-byte
-    # alignment. Writing a[1] is one element past the logical end but lands inside that
-    # alignment padding. ASan only catches this when the allocation is the exact requested
-    # size: wp_alloc_host() must use an exact-size aligned allocator (posix_memalign() on
-    # POSIX, _aligned_malloc() on Windows) rather than rounding the request up to a multiple
-    # of the alignment, which would bury the redzone past the padding and hide this access.
+    """Write one element past a sub-alignment array's logical end to exercise ASan's exact-size redzone.
+
+    A single-element array is logically 4 bytes, well under the host allocator's 64-byte alignment. Writing ``a[1]``
+    is one element past the logical end but lands inside that alignment padding. ASan only catches this when the
+    allocation is the exact requested size: ``wp_alloc_host()`` must use an exact-size aligned allocator
+    (``posix_memalign()`` on POSIX, ``_aligned_malloc()`` on Windows) rather than rounding the request up to a
+    multiple of the alignment, which would bury the redzone past the padding and hide this access.
+    """
     wp.config.cache_kernels = False
     wp.config.mode = "release"
     with wp.ScopedDevice("cpu"):
@@ -153,15 +155,17 @@ class TestSanitize(unittest.TestCase):
     """ASan coverage for JIT-compiled CPU kernels (runs only on ASan builds)."""
 
     def _skip_unless_asan(self):
-        # Skip only after a *successful* init that reports a non-ASan build. An
-        # init/load failure (e.g. a misconfigured ASan build where the runtime is
-        # not on PATH/LD_PRELOAD) propagates as a loud error rather than a silent
-        # skip that would hide lost coverage.
-        #
-        # Skip per test via self.skipTest() rather than in setUpClass: the parallel
-        # JUnit runner records a setUpClass skip via addSkip without a preceding
-        # startTest and then trips over its own timing state, and at --level test it
-        # bypasses setUpClass entirely. Skipping inside the running test avoids both.
+        """Skip the current test unless Warp is running on an ASan build.
+
+        Skip only after a successful init that reports a non-ASan build. An init/load failure (e.g. a misconfigured
+        ASan build where the runtime is not on PATH/LD_PRELOAD) propagates as a loud error rather than a silent skip
+        that would hide lost coverage.
+
+        Skip per test via ``self.skipTest()`` rather than in ``setUpClass``: the parallel JUnit runner records a
+        ``setUpClass`` skip via ``addSkip`` without a preceding ``startTest`` and then trips over its own timing
+        state, and at ``--level test`` it bypasses ``setUpClass`` entirely. Skipping inside the running test avoids
+        both.
+        """
         wp.init()
         if getattr(wp_context.runtime, "clang_sanitizer", "") != "address":
             self.skipTest("requires a warp-clang built with --sanitize=address")
@@ -174,9 +178,11 @@ class TestSanitize(unittest.TestCase):
         self.assertIn("heap-buffer-overflow", stderr)
 
     def test_logical_bound_overflow_detected(self):
-        # Regression for the host allocator rounding requests up to the alignment: a write
-        # just past a sub-alignment array's logical end must still be reported, proving the
-        # redzone tracks the requested size rather than the padded allocation.
+        """Verify a write just past a sub-alignment array's logical end is still reported.
+
+        Guards against the host allocator rounding requests up to the alignment: the write must still be reported,
+        proving the redzone tracks the requested size rather than the padded allocation.
+        """
         self._skip_unless_asan()
         returncode, _stdout, stderr = _run_in_subprocess("_trigger_logical_overflow")
         _assert_aborted(self, returncode)

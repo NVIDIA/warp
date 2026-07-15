@@ -385,8 +385,10 @@ def test_array_ctype_from_torch(test, device):
 
 
 def test_cuda_array_interface(test, device):
-    # We should be able to construct Torch tensors from Warp arrays via __cuda_array_interface__ on GPU.
-    # Note that Torch does not support __array_interface__ on CPU.
+    """Construct Torch tensors from Warp arrays via ``__cuda_array_interface__`` on GPU.
+
+    Torch does not support ``__array_interface__`` on CPU.
+    """
 
     torch_device = wp.device_to_torch(device)
     n = 10

@@ -429,9 +429,12 @@ def test_range_expression():
 
 
 def test_unresolved_func(test, device):
-    # kernel with unresolved function must be in a separate module, otherwise the current module would fail to load
-    # Import the bad fixture only for this test so it can be removed from
-    # Warp's user module registry before later force-load checks.
+    """Keep an unresolved-function kernel in a separate module so the current module still loads.
+
+    A kernel with an unresolved function must live in a separate module, otherwise the current module would fail to
+    load. The bad fixture is imported only for this test so it can be removed from Warp's user module registry before
+    later force-load checks.
+    """
     unresolved_func_module = importlib.import_module("warp.tests.aux_test_unresolved_func")
     unresolved_func_kernel = unresolved_func_module.unresolved_func_kernel
 
@@ -446,9 +449,12 @@ def test_unresolved_func(test, device):
 
 
 def test_unresolved_symbol(test, device):
-    # kernel with unresolved symbol must be in a separate module, otherwise the current module would fail to load
-    # Import the bad fixture only for this test so it can be removed from
-    # Warp's user module registry before later force-load checks.
+    """Keep an unresolved-symbol kernel in a separate module so the current module still loads.
+
+    A kernel with an unresolved symbol must live in a separate module, otherwise the current module would fail to
+    load. The bad fixture is imported only for this test so it can be removed from Warp's user module registry before
+    later force-load checks.
+    """
     unresolved_symbol_module = importlib.import_module("warp.tests.aux_test_unresolved_symbol")
     unresolved_symbol_kernel = unresolved_symbol_module.unresolved_symbol_kernel
 
@@ -1009,9 +1015,9 @@ def test_multiple_return_values(test, device):
 
     test.assertAlmostEqual(V[0][0], expected_V[0][0], places=5)
     test.assertAlmostEqual(V[0][1], expected_V[0][1], places=5)
-    test.assertAlmostEqual(V[0][2], expected_V[0][2], places=4)  # precision issue on ARM64 (GH-905)
+    test.assertAlmostEqual(V[0][2], expected_V[0][2], places=4)  # precision issue on ARM64
     test.assertAlmostEqual(V[1][0], expected_V[1][0], places=5)
-    test.assertAlmostEqual(V[1][1], expected_V[1][1], places=4)  # precision issue on ARM64 (GH-905)
+    test.assertAlmostEqual(V[1][1], expected_V[1][1], places=4)  # precision issue on ARM64
     test.assertAlmostEqual(V[1][2], expected_V[1][2], places=5)
     test.assertAlmostEqual(V[2][0], expected_V[2][0], places=5)
     test.assertAlmostEqual(V[2][1], expected_V[2][1], places=5)

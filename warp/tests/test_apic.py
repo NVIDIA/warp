@@ -2211,7 +2211,7 @@ def test_save_load_padded_bsr_transpose_cuda_rebuild(test, device):
     A padded destination's offsets are the fixed row-capacity layout, which the
     transpose reads but never writes; a recorded device-to-device copy restores
     that layout before the transpose so replay is correct even if the destination
-    offsets are stale (GH-1587). This test asserts the full transposed result
+    offsets are stale. This test asserts the full transposed result
     (offsets, row_counts, and active columns/values) round-trips through save/load,
     and -- by zeroing the destination offsets before save so their content snapshot
     is no longer the capacity layout -- that the recorded restore copy alone
@@ -2271,7 +2271,7 @@ def test_save_load_padded_bsr_transpose_cuda_rebuild(test, device):
 
     # (2) Stale-offsets save/load: zero the destination offsets before save so their
     # content snapshot is no longer the capacity layout. Correct replay then depends
-    # solely on the recorded device-to-device capacity-restore copy (GH-1587) -- if
+    # solely on the recorded device-to-device capacity-restore copy -- if
     # it were dropped from the byte stream, the transpose would read zeroed offsets
     # and produce wrong results.
     At.offsets.zero_()

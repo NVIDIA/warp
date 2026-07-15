@@ -403,7 +403,12 @@ def test_sparse_group_root_isolation(test, device):
                 test.assertEqual(int(face.numpy()[0]), expected_face)
 
 
-def test_gh_288(test, device):
+def test_ray_hits_single_bound(test, device):
+    """Hit a single-group, single-bound BVH with a ray query from any origin.
+
+    A grouped BVH containing exactly one bound assigned to one group must report that bound as
+    intersected for a ray passing through it, whether the ray starts outside the box or inside it.
+    """
     num_bounds = 1
     lowers = ((0.5, -1.0, -1.0),) * num_bounds
     uppers = ((1.0, 1.0, 1.0),) * num_bounds
@@ -660,7 +665,7 @@ class TestGroupedBvh(unittest.TestCase):
 
 add_function_test(TestGroupedBvh, "test_grouped_bvh_aabb", test_bvh_query_aabb, devices=devices)
 add_function_test(TestGroupedBvh, "test_grouped_bvh_ray", test_bvh_query_ray, devices=devices)
-add_function_test(TestGroupedBvh, "test_grouped_gh_288", test_gh_288, devices=devices)
+add_function_test(TestGroupedBvh, "test_grouped_ray_hits_single_bound", test_ray_hits_single_bound, devices=devices)
 add_function_test(TestGroupedBvh, "test_heterogeneous_group_sizes", test_heterogeneous_group_sizes, devices=devices)
 add_function_test(TestGroupedBvh, "test_sparse_group_root_isolation", test_sparse_group_root_isolation, devices=devices)
 
