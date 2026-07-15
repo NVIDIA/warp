@@ -51,6 +51,8 @@
 
 ### Fixed
 
+- Fix CPU precompiled headers not being reused when Warp is built against LLVM 22, avoiding repeated full kernel
+  compilation ([GH-1658](https://github.com/NVIDIA/warp/issues/1658)).
 - Fix CPU kernel compilation failures for power-of-two exponentiation on some Windows on Arm systems
   ([GH-1562](https://github.com/NVIDIA/warp/issues/1562)).
 - Fix unbounded memory growth when repeatedly launching identical kernels created by a factory or closure
