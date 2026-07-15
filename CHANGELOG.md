@@ -45,6 +45,10 @@
 
 ### Fixed
 
+- Fix CPU precompiled headers being rejected on every module build when Warp is built against LLVM 22, which
+  newly validates codegen options against the PCH. The PCH was generated at a fixed `-O3` while kernel modules
+  compile at `-O2`, causing a per-module generate/reject/delete cycle on LLVM 22 (and a silently mismatched PCH
+  on older LLVM). The PCH is now generated at the module's optimization level, keyed per level in the cache.
 - Fix CPU kernel compilation failures for power-of-two exponentiation on some Windows on Arm systems
   ([GH-1562](https://github.com/NVIDIA/warp/issues/1562)).
 - Fix unbounded memory growth when repeatedly launching identical kernels created by a factory or closure
