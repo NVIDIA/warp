@@ -862,6 +862,15 @@ def test_ffi_jax_kernel_launch_dims_custom(test, device):
 
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
+def test_ffi_jax_callable_incomplete_argument_annotations(test, device):
+    def missing_annotation(a: wp.array[float], b) -> None:
+        pass
+
+    with test.assertRaisesRegex(RuntimeError, r"Argument 'b' in function '.*' must be type annotated"):
+        wp.jax_callable(missing_annotation, num_outputs=1)
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_callable_scale_constant(test, device):
     # scale two arrays using a constant
     jp = _import_jax_numpy()
@@ -2246,6 +2255,12 @@ try:
     )
     add_function_test(TestJax, "test_dtype_from_jax", test_dtype_from_jax, devices=None)
     add_function_test(TestJax, "test_dtype_to_jax", test_dtype_to_jax, devices=None)
+    add_function_test(
+        TestJax,
+        "test_ffi_jax_callable_incomplete_argument_annotations",
+        test_ffi_jax_callable_incomplete_argument_annotations,
+        devices=None,
+    )
     if jax_compatible_devices:
         add_function_test(TestJax, "test_device_conversion", test_device_conversion, devices=jax_compatible_devices)
 

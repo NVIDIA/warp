@@ -650,6 +650,51 @@ def test_error_kernel_return_value(test, device):
         wp.launch(f6, dim=1, inputs=[3.0], device=device)
 
 
+def test_error_incomplete_argument_annotations(test, device):
+    def annotated_with_return(a: float, b: int) -> float:
+        return a + b
+
+    test.assertEqual(
+        wp._src.context.get_function_args(annotated_with_return),
+        {"a": float, "b": int},
+    )
+
+    def missing_annotation(a: float, b) -> None:
+        pass
+
+    with test.assertRaisesRegex(
+        RuntimeError, r"Argument 'b' in function '.*missing_annotation' must be type annotated"
+    ):
+        wp._src.context.get_function_args(missing_annotation)
+
+    with test.assertRaisesRegex(
+        wp.WarpCodegenError, r"Argument 'b' in function 'missing_kernel' must be type annotated"
+    ):
+
+        @wp.kernel(module="unique")
+        def missing_kernel(a: float, b) -> None:
+            pass
+
+    with test.assertRaisesRegex(wp.WarpCodegenError, r"Argument 'b' in function 'missing_func' must be type annotated"):
+
+        @wp.func
+        def missing_func(a: float, b) -> None:
+            pass
+
+    @wp.kernel
+    def generic_kernel(a: Any, b: Any):
+        pass
+
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"Argument 'b' in kernel overload 'generic_kernel' must be type annotated",
+    ):
+
+        @wp.overload
+        def generic_kernel(a: float, b) -> None:
+            pass
+
+
 def test_error_kernel_return_alias_unique_module_reuse(test, device):
     """Verify aliased kernel return annotations prevent unique-module reuse."""
 
@@ -2061,6 +2106,12 @@ add_function_test(
     func=test_error_kernel_return_value,
     name="test_error_kernel_return_value",
     devices=devices,
+)
+add_function_test(
+    TestCodeGen,
+    func=test_error_incomplete_argument_annotations,
+    name="test_error_incomplete_argument_annotations",
+    devices=None,
 )
 add_function_test(
     TestCodeGen,

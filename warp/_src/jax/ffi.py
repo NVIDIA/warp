@@ -562,8 +562,13 @@ class FfiCallable:
         if self.num_outputs < self.num_in_out:
             raise ValueError("Number of outputs cannot be smaller than the number of in_out_argnames")
 
-        if len(argspec.annotations) < num_args:
-            raise RuntimeError(f"Incomplete argument annotations on function {self.name}")
+        missing = [name for name in argspec.args if name not in argspec.annotations]
+        if missing:
+            raise RuntimeError(f"Argument '{missing[0]}' in function '{self.name}' must be type annotated")
+
+        return_type = argspec.annotations.get("return")
+        if return_type is not None:
+            raise TypeError("Function must not return a value")
 
         # parse type annotations
         self.args = []
@@ -571,19 +576,15 @@ class FfiCallable:
         self.arg_output_indices = [None] * num_args  # index in FFI output buffers
         arg_idx = 0
         output_idx = 0
-        for arg_name, arg_type in argspec.annotations.items():
-            if arg_name == "return":
-                if arg_type is not None:
-                    raise TypeError("Function must not return a value")
-                continue
-            else:
-                arg = FfiArg(arg_name, arg_type, arg_name in in_out_argnames)
-                if arg.in_out:
-                    in_out_argnames.remove(arg_name)
-                if arg.is_array:
-                    if arg_idx < self.num_inputs and self.first_array_arg is None:
-                        self.first_array_arg = arg_idx
-                self.args.append(arg)
+        for arg_name in argspec.args:
+            arg_type = argspec.annotations[arg_name]
+            arg = FfiArg(arg_name, arg_type, arg_name in in_out_argnames)
+            if arg.in_out:
+                in_out_argnames.remove(arg_name)
+            if arg.is_array:
+                if arg_idx < self.num_inputs and self.first_array_arg is None:
+                    self.first_array_arg = arg_idx
+            self.args.append(arg)
 
             if arg.in_out and arg_idx >= self.num_inputs:
                 raise AssertionError(
