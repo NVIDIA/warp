@@ -202,10 +202,12 @@ class TestParallelLoadSharedHelper(unittest.TestCase):
 
     @staticmethod
     def _make_kernel(idx: int):
-        # ``module="unique"`` puts every factory output in its own
-        # ``Module`` object; if N kernels share a helper, N separate
-        # modules each try to inline that helper's adjoint at compile
-        # time.
+        """Create a kernel in its own ``Module`` via ``module="unique"``.
+
+        With ``module="unique"``, every factory output lands in its own ``Module`` object. If N kernels
+        share a helper, N separate modules each try to inline that helper's adjoint at compile time.
+        """
+
         @wp.kernel(module="unique")
         def k(out: wp.array(dtype=float)):
             tid = wp.tid()
@@ -215,11 +217,12 @@ class TestParallelLoadSharedHelper(unittest.TestCase):
         return k
 
     def _build_kernels(self, attempt: int):
-        # Vary the spawn count per attempt so each invocation builds
-        # a fresh set of unique modules -- after the first attempt the
-        # earlier kernels' modules are already loaded, so subsequent
-        # ``force_load`` calls would short-circuit on the hash check
-        # and never exercise the codegen path again.
+        """Build a fresh set of unique modules for the given attempt.
+
+        Vary the spawn count per attempt so each invocation builds new modules. After the first
+        attempt the earlier kernels' modules are already loaded, so subsequent ``force_load`` calls
+        would short-circuit on the hash check and never exercise the codegen path again.
+        """
         offset = attempt * 1000
         kernels = [self._make_kernel(offset + i) for i in range(self.NUM_MODULES)]
         modules: list = []

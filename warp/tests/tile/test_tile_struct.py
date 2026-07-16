@@ -393,7 +393,7 @@ def tile_struct_non_atomic_fields_kernel(
     t = wp.tile_load(input, shape=TILE_M)
     # Load/store forces NVRTC to instantiate the struct atomic_add helper, which
     # unconditionally emitted a field atomic for the bool / int8 fields before the
-    # fix — and CUDA has no atomicAdd overload for those scalar types.
+    # fix, and CUDA has no atomicAdd overload for those scalar types.
     wp.tile_store(store_out, t)
 
     # tile_atomic_add accumulates the float field; the bool / int8 fields ride along
@@ -789,8 +789,11 @@ def test_tile_nested_struct_ops(test, device):
 
 
 def test_tile_nested_field_store_grad(test, device):
-    # gradients through direct nested struct field stores (out.payload.x = ...),
-    # as opposed to whole-struct assignment which test_tile_nested_struct_ops covers
+    """Verify gradients through direct nested struct field stores (``out.payload.x = ...``).
+
+    This covers the field-store path as opposed to whole-struct assignment, which
+    ``test_tile_nested_struct_ops`` covers.
+    """
     data = make_tile_map_nested_struct_data()
     input_wp = wp.array(data, dtype=TileMapNestedStruct, requires_grad=True, device=device)
     loss = wp.zeros(1, dtype=float, requires_grad=True, device=device)
@@ -860,8 +863,11 @@ def test_tile_struct_array_payload_sort(test, device):
 
 
 def test_tile_struct_indexed_array_payload_sort(test, device):
-    # A struct with an indexed-array field exercises the indexedarray_t warp-shuffle
-    # overload when the struct is permuted as a tile sort payload (GH-573).
+    """Sort a tile payload of structs with an indexed-array field.
+
+    Exercises the indexedarray_t warp-shuffle overload when the struct is permuted as a tile
+    sort payload.
+    """
     arrays = [wp.array([100.0 + float(i)], dtype=float, device=device) for i in range(TILE_M)]
     index_arrays = [wp.array([0], dtype=wp.int32, device=device) for _ in range(TILE_M)]
     payloads = []
@@ -899,8 +905,11 @@ def test_tile_struct_indexed_array_payload_sort(test, device):
 
 
 def test_tile_struct_value_ops(test, device):
-    # forward struct surface: indexed load/store, field-wise add/sub/sum, transpose, extract,
-    # atomic_add, sort, tile and element += / -=, plus scatter_add and stack push/pop
+    """Exercise the forward struct tile surface.
+
+    Covers indexed load/store, field-wise add/sub/sum, transpose, extract, ``atomic_add``, sort, tile
+    and element ``+=`` / ``-=``, plus ``scatter_add`` and stack push/pop.
+    """
     data = make_tile_map_struct_data()
     input_wp = wp.array(data, dtype=TileMapStruct, device=device)
 
@@ -1118,11 +1127,15 @@ def tile_struct_reduce_to_scalar(a: TileMapStruct, b: TileMapStruct) -> wp.float
 
 
 def test_tile_struct_reduction_ops_rejected(test, device):
-    # contract: ordering / custom-reduction / range tile ops reject struct dtypes cleanly at
-    # codegen rather than reaching the native compiler. tile_min() / tile_argmin() / tile_arange()
-    # are variadic, so the Scalar dtype constraint is not enforced by overload matching and needs
-    # an explicit guard; tile_reduce() must reject an operator with no overload accepting the
-    # struct element, or one whose return type is not the struct element type.
+    """Reject ordering, custom-reduction, and range tile ops on struct dtypes cleanly at codegen.
+
+    These ops must fail at codegen rather than reaching the native compiler. ``tile_min()``,
+    ``tile_argmin()``, and ``tile_arange()`` are variadic, so the ``Scalar`` dtype constraint is not
+    enforced by overload matching and needs an explicit guard. ``tile_reduce()`` must reject an
+    operator with no overload accepting the struct element, or one whose return type is not the struct
+    element type.
+    """
+
     @wp.kernel(module="unique")
     def tile_min_kernel(input: wp.array[TileMapStruct], output: wp.array[TileMapStruct]):
         t = wp.tile_load(input, shape=TILE_M, storage="shared")
@@ -1253,8 +1266,11 @@ def test_tile_struct_grad_ops(test, device):
 
 
 def test_tile_struct_additional_grad_ops(test, device):
-    # adjoints for the distinct struct mechanisms: tile_assign (movement), add, tile += , sub,
-    # element assign, axis-sum, atomic_add, store_indexed, atomic_add_indexed
+    """Verify adjoints for the distinct struct mechanisms.
+
+    Covers ``tile_assign`` (movement), add, tile ``+=``, sub, element assign, axis-sum,
+    ``atomic_add``, ``store_indexed``, and ``atomic_add_indexed``.
+    """
     data = make_tile_map_struct_data()
     x, y, value_sums, transformed_value_sums, expected_unit_grad, expected_transformed_y_grad = (
         make_tile_map_struct_expected_values()
@@ -1532,10 +1548,13 @@ def test_tile_struct_scatter_add_grad_ops(test, device):
 
 
 def test_tile_struct_half_fields(test, device):
-    # Regression: half-precision struct fields tripped the generated struct
-    # shuffle helpers during NVRTC compile. warp_shuffle_down built an anonymous union
-    # over the half field (deleted default constructor), and warp_shuffle_xor resolved
-    # to an ambiguous __shfl_xor_sync overload. Both are CUDA-only code paths.
+    """Verify half-precision struct fields compile through the generated struct shuffle helpers.
+
+    Half-precision struct fields previously tripped these helpers during NVRTC compile:
+    ``warp_shuffle_down`` built an anonymous union over the half field (deleted default constructor),
+    and ``warp_shuffle_xor`` resolved to an ambiguous ``__shfl_xor_sync`` overload. Both are CUDA-only
+    code paths.
+    """
     data = []
     for i in range(TILE_M):
         s = HalfFieldStruct()
@@ -1597,14 +1616,16 @@ def test_tile_struct_half_fields(test, device):
 
 
 def test_tile_struct_quat_transform_fields(test, device):
-    # Regression (GH-573): quaternion and transform struct fields tripped the generated
-    # struct shuffle helpers during NVRTC compile. Unlike vectors and matrices (which
-    # have dedicated overloads), these value types fall through to the generic
-    # warp_shuffle_down / warp_shuffle_xor templates. warp_shuffle_down built an
-    # anonymous union over the field (deleted default constructor for types with a
-    # non-trivial default constructor), and warp_shuffle_xor resolved to a
-    # __shfl_xor_sync overload that does not accept quat_t / transform_t. Both are
-    # CUDA-only code paths and fail even for a plain load/store.
+    """Load, sum, and sort structs with quaternion and transform fields.
+
+    Quaternion and transform struct fields tripped the generated struct shuffle helpers during
+    NVRTC compile. Unlike vectors and matrices (which have dedicated overloads), these value types
+    fall through to the generic ``warp_shuffle_down`` / ``warp_shuffle_xor`` templates.
+    ``warp_shuffle_down`` built an anonymous union over the field (deleted default constructor for
+    types with a non-trivial default constructor), and ``warp_shuffle_xor`` resolved to a
+    ``__shfl_xor_sync`` overload that does not accept ``quat_t`` / ``transform_t``. Both are
+    CUDA-only code paths and fail even for a plain load/store.
+    """
     data = []
     for i in range(TILE_M):
         s = QuatTransformFieldStruct()
@@ -1664,12 +1685,14 @@ def test_tile_struct_quat_transform_fields(test, device):
 
 
 def test_tile_struct_float64_fields(test, device):
-    # Regression (GH-573): float64 struct fields route through the generic
-    # warp_shuffle_down / warp_shuffle_xor templates, which shuffle word-by-word over a
-    # buffer of `unsigned int` (4-byte aligned) and then reinterpret it as the field
-    # type. float64 requires 8-byte alignment, so reading the value back through that
-    # under-aligned buffer was undefined behavior. The buffers are now aligned for the
-    # field type. CUDA-only code path.
+    """Load, sum, and sort structs with float64 fields.
+
+    float64 struct fields route through the generic ``warp_shuffle_down`` / ``warp_shuffle_xor``
+    templates, which shuffle word-by-word over a buffer of ``unsigned int`` (4-byte aligned) and
+    then reinterpret it as the field type. float64 requires 8-byte alignment, so reading the value
+    back through that under-aligned buffer was undefined behavior. The buffers are now aligned for
+    the field type. CUDA-only code path.
+    """
     data = []
     for i in range(TILE_M):
         s = Float64FieldStruct()
@@ -1725,9 +1748,11 @@ def test_tile_struct_float64_fields(test, device):
 
 
 def test_tile_struct_non_atomic_fields(test, device):
-    # Regression: on CUDA, struct fields whose scalar type has no atomicAdd overload
-    # (bool, int8) tripped the generated struct atomic_add helper during NVRTC compile,
-    # even for a plain load/store that never accumulates.
+    """Verify struct fields whose scalar type has no ``atomicAdd`` overload still compile.
+
+    On CUDA, such fields (bool, ``int8``) previously tripped the generated struct ``atomic_add`` helper
+    during NVRTC compile, even for a plain load/store that never accumulates.
+    """
     data = []
     for i in range(TILE_M):
         s = NonAtomicFieldStruct()

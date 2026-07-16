@@ -22,6 +22,8 @@
   context ([GH-1596](https://github.com/NVIDIA/warp/issues/1596)).
 - Add `wp.Stream.is_blocking` to report whether a CUDA stream is blocking
   ([GH-1618](https://github.com/NVIDIA/warp/issues/1618)).
+- Add adjoint for the out-of-place `wp.tile_lower_solve()` for vector and matrix right-hand sides
+  ([GH-1378](https://github.com/NVIDIA/warp/issues/1378))
 
 ### Removed
 
@@ -32,6 +34,14 @@
   `point_envs`, and `env_count` instead ([GH-1606](https://github.com/NVIDIA/warp/issues/1606)).
 
 ### Changed
+
+- Improve diagnostics for array copy, texture copy, array reshape/view, and unsupported DLPack source-device errors by
+  reporting the relevant shapes, data types, channels, or device identifiers
+  ([GH-1644](https://github.com/NVIDIA/warp/issues/1644)).
+- Render `repr()` of array type annotations in their subscript form (such as `wp.array4d[wp.uint32]`) so that it matches
+  the written annotation and can be evaluated back to the same annotation, instead of the previous
+  `wp.array(dtype=..., ndim=...)` form. Warp array return types now read more naturally in Sphinx-generated API
+  documentation ([GH-1628](https://github.com/NVIDIA/warp/issues/1628)).
 
 ### Fixed
 
@@ -59,11 +69,27 @@
 - Fix under-sized backward-kernel shared memory when a `@wp.func` custom gradient (`@wp.func_grad`) or custom replay
   needs more shared memory than the forward, which could cause an illegal memory access on GPU
   ([GH-1646](https://github.com/NVIDIA/warp/issues/1646)).
+- Fix `wp.tile_load_indexed()` reading out of bounds for a negative gather index. Negative indices now predicate the
+  loaded element to zero, matching indices past the end of the axis, so `-1` can serve as a padding sentinel for
+  masked gathers ([GH-1653](https://github.com/NVIDIA/warp/issues/1653)).
+- Fix tuple-unpack assignment to `wp.ref[T]` parameters (e.g. `x, y = a, b`) so it mutates the caller's storage like
+  sequential assignment instead of raising a type error ([GH-1581](https://github.com/NVIDIA/warp/issues/1581)).
+- Fix CPU modules with different `cpu_compiler_flags` reusing incompatible precompiled headers, avoiding Clang
+  target-feature errors and fallback compilation ([GH-1649](https://github.com/NVIDIA/warp/issues/1649)).
+- Fix heap corruption when capturing `wp.sparse.bsr_set_transpose()` with `topology="padded"`
+  into a destination without enough row capacity
+  ([GH-1630](https://github.com/NVIDIA/warp/issues/1630)).
+- Fix an illegal memory access on CUDA when a variable is reassigned inside nested ``if``/``else`` branches
+  ([GH-1574](https://github.com/NVIDIA/warp/issues/1574)).
 
 ### Documentation
 
 - Document working with non-blocking CUDA streams, including streams borrowed from PyTorch
   ([GH-1618](https://github.com/NVIDIA/warp/issues/1618)).
+- Add an example of a distributed Jacobi solver that uses NCCL (via `nccl4py`) for nearest-neighbor halo exchange in
+  `warp/examples/distributed/example_jacobi_nccl.py` ([GH-1576](https://github.com/NVIDIA/warp/issues/1576)).
+- Add an example of a distributed Jacobi solver that uses NVSHMEM (via `nvshmem4py`) for nearest-neighbor halo exchange
+  in `warp/examples/distributed/example_jacobi_nvshmem.py` ([GH-1582](https://github.com/NVIDIA/warp/issues/1582)).
 
 ## [1.15.0] - 2026-07-07
 

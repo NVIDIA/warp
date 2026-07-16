@@ -68,8 +68,11 @@ def tile_sum_bfloat16_kernel(input: wp.array[wp.bfloat16], output: wp.array[wp.b
 
 
 def test_tile_reduce_sum_bfloat16(test, device):
-    # On CUDA this exercises the bfloat16 warp-shuffle reduction overload (GH-573).
-    # Values and partial sums stay below 256 so the result is exact in bfloat16.
+    """Sum a bfloat16 tile and verify the reduction stays exact.
+
+    On CUDA this exercises the bfloat16 warp-shuffle reduction overload. Values and partial
+    sums stay below 256 so the result is exact in bfloat16.
+    """
     values = np.arange(1, TILE_M + 1, dtype=np.float32)
     input_wp = wp.array(values, dtype=wp.bfloat16, device=device)
     output_wp = wp.zeros(1, dtype=wp.bfloat16, device=device)
@@ -92,9 +95,12 @@ def tile_sum_float16_kernel(input: wp.array[wp.float16], output: wp.array[wp.flo
 
 
 def test_tile_reduce_sum_float16(test, device):
-    # On CUDA this exercises the float16 warp-shuffle reduction overload; before the fix the
-    # generic shuffle template failed to compile for half. Values and partial sums stay below
-    # 2048 so the result is exact in float16.
+    """Sum a float16 tile and verify the reduction stays exact.
+
+    On CUDA this exercises the float16 warp-shuffle reduction overload, which previously failed to
+    compile because the generic shuffle template did not support half. Values and partial sums stay
+    below 2048 so the result is exact in float16.
+    """
     values = np.arange(1, TILE_M + 1, dtype=np.float32)
     input_wp = wp.array(values, dtype=wp.float16, device=device)
     output_wp = wp.zeros(1, dtype=wp.float16, device=device)
@@ -112,9 +118,12 @@ def tile_narrow_int_kernel(input: wp.array[wp.int8], store_out: wp.array[wp.int8
 
 
 def test_tile_reduce_narrow_int(test, device):
-    # Regression: plain narrow-integer tiles failed to compile on CUDA because the adjoint
-    # tile_load helper routed gradient accumulation through the forward atomic_add, which has
-    # no atomicAdd overload for int8. Load/store and reduction must work.
+    """Verify load, store, and reduction on narrow-integer tiles compile and run.
+
+    Plain narrow-integer tiles previously failed to compile on CUDA because the adjoint ``tile_load``
+    helper routed gradient accumulation through the forward ``atomic_add``, which has no ``atomicAdd``
+    overload for ``int8``.
+    """
     values = np.arange(1, TILE_M + 1, dtype=np.int8)
     input_wp = wp.array(values, dtype=wp.int8, device=device)
     store_wp = wp.zeros(TILE_M, dtype=wp.int8, device=device)
@@ -127,8 +136,12 @@ def test_tile_reduce_narrow_int(test, device):
 
 
 def test_tile_atomic_add_unsupported_dtype(test, device):
-    # tile_atomic_add() has no CUDA atomicAdd for bool / narrow-integer scalar types and must
-    # reject them with a clear error rather than failing deep inside NVRTC.
+    """Reject ``tile_atomic_add`` on bool and narrow-integer dtypes with a clear error.
+
+    These scalar types have no CUDA ``atomicAdd`` overload, so the operation must fail early rather
+    than deep inside NVRTC.
+    """
+
     @wp.kernel(module="unique")
     def atomic_add_int8_kernel(input: wp.array[wp.int8], output: wp.array[wp.int8]):
         wp.tile_atomic_add(output, wp.tile_load(input, shape=TILE_M))

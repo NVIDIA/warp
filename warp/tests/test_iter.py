@@ -12,8 +12,8 @@ def reversed_kernel(
     start: wp.int32,
     end: wp.int32,
     step: wp.int32,
-    out_count: wp.array(dtype=wp.int32),
-    out_values: wp.array(dtype=wp.int32),
+    out_count: wp.array[wp.int32],
+    out_values: wp.array[wp.int32],
 ):
     count = wp.int32(0)
     for i in reversed(range(start, end, step)):

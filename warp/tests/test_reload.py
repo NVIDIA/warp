@@ -23,8 +23,11 @@ from warp.tests.unittest_utils import *
 
 
 def reload_module(module):
-    # Clearing the .pyc file associated with a module is a necessary workaround
-    # for `importlib.reload` to work as expected when run from within Kit.
+    """Reload ``module`` after clearing its cached ``.pyc`` file.
+
+    Clearing the ``.pyc`` file is a necessary workaround for ``importlib.reload`` to work as expected when run from
+    within Kit.
+    """
     cache_file = importlib.util.cache_from_source(module.__file__)
     if os.path.exists(cache_file):
         os.remove(cache_file)
@@ -65,9 +68,10 @@ def test_redefine(test, device):
 
 
 def test_redefine_command(test, device):
-    # Test whether executable modules are retained correctly.
-    # A module can have multiple executable versions in use if something
-    # still holds a reference to them.
+    """Verify executable modules are retained correctly.
+
+    A module can have multiple executable versions in use if something still holds a reference to them.
+    """
 
     @wp.kernel
     def k(value: int):
@@ -221,10 +225,12 @@ def test_reload_references(test, device):
 
 
 def test_reference_through_local(test, device):
-    # A function bound to a kernel-local (`f = ref.magic`) or to several locals via tuple
-    # unpacking (`f, g = ref.a, ref.b`) must still register a dependency on the module(s)
-    # that define them, so reloading those modules invalidates this kernel just as a direct
-    # call would. See Module._find_references.
+    """Verify a kernel-local function binding registers a module dependency for reload invalidation.
+
+    A function bound to a kernel-local (``f = ref.magic``) or to several locals via tuple unpacking
+    (``f, g = ref.a, ref.b``) must still register a dependency on the module(s) that define them, so reloading those
+    modules invalidates this kernel just as a direct call would. See ``Module._find_references``.
+    """
 
     # Building the dependent module scans its kernels for references.
     test_dependent_local.kern.module.get_module_hash()
@@ -285,7 +291,7 @@ def test_module_unload_during_graph_capture(test, device):
             wp.launch(aux_module_unload.k, dim=1, inputs=[])
 
             # Unloading a module whose kernel was captured should be deferred
-            # until the graph is destroyed — the graph retains module_execs.
+            # until the graph is destroyed. The graph retains module_execs.
             other_module.unload()
 
         wp.capture_launch(capture.graph)

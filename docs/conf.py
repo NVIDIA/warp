@@ -123,7 +123,7 @@ nitpick_ignore_regex = [
         r"warp\.(vec|mat|quat|transform|spatial_vector|spatial_matrix)\w*\.(from_ptr|scalar_export|scalar_import)",
     ),
     # Matrix accessor methods
-    (r"py:obj", r"warp\.(mat|spatial_matrix)\w+\.(get_col|get_row|set_col|set_row)"),
+    (r"py:obj", r"warp\.(mat|spatial_matrix)\w*\.(get_col|get_row|set_col|set_row)"),
     # Built-in numeric methods/properties inherited by enums/int/float subclasses
     (
         r"py:obj",
@@ -230,6 +230,14 @@ autodoc_default_options = {
 # Mock external dependencies that might not be installed.
 autodoc_mock_imports = ["jax", "paddle", "pxr", "torch"]
 
+# Merge the ``__init__`` docstring into the class description. Many Warp classes
+# (e.g. ``warp.array``, ``warp.Mesh``, ``warp.fem`` geometries) document their
+# constructor arguments on ``__init__`` rather than the class docstring. The
+# autosummary class template intentionally omits ``.. automethod:: __init__``
+# (it fails to resolve for the dynamically generated ctypes vec/mat/quat types),
+# so this setting is what keeps those constructor arguments in the rendered docs.
+autoclass_content = "both"
+
 # Show typehints as content of the function or method instead of in the signature.
 autodoc_typehints = "description"
 
@@ -238,6 +246,36 @@ autodoc_preserve_defaults = True
 
 # Prevent docstrings from being inherited from parent classes or methods.
 autodoc_inherit_docstrings = False
+
+
+# Work around a Sphinx 9 formatting bug: when a class is documented as an
+# attribute alias (``doc_as_attr``), ``sphinx.ext.autodoc._generate`` appends
+# the "alias of ..." note directly after the directive's content without a
+# separating blank line. Our public vec/mat/quat/transform and ``warp.fem``
+# index-type aliases carry autosummary "Methods"/"Attributes" tables, so the
+# unindented "alias of" line runs into the preceding ``.. autosummary::``
+# block and docutils reports "Explicit markup ends without a blank line".
+# Prepend a blank line so the generated reST stays well-formed. The private
+# ``_generate`` module was added in Sphinx 9, while Python <3.11 docs builds
+# still resolve to Sphinx 8 from ``uv.lock``.
+try:
+    import sphinx.ext.autodoc._generate as _autodoc_generate
+except ModuleNotFoundError as e:
+    if e.name != "sphinx.ext.autodoc._generate":
+        raise
+else:
+    if hasattr(_autodoc_generate, "_body_alias_lines"):
+        _orig_body_alias_lines = _autodoc_generate._body_alias_lines
+
+        def _body_alias_lines_with_blank(**kwargs):
+            emitted = False
+            for line in _orig_body_alias_lines(**kwargs):
+                if not emitted:
+                    yield ""  # separate the alias note from any preceding directive content
+                    emitted = True
+                yield line
+
+        _autodoc_generate._body_alias_lines = _body_alias_lines_with_blank
 
 
 # -- sphinx.ext.autosummary --------------------------------------------------

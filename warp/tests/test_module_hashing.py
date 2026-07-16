@@ -233,7 +233,7 @@ def test_module_load(test, device):
 
 
 class TestOptionResolution(unittest.TestCase):
-    """Tests for centralized option resolution (GH-1307)."""
+    """Tests for centralized option resolution."""
 
     def test_none_vs_explicit_optimization_level(self):
         """optimization_level=None must hash differently from any explicit level.
@@ -315,9 +315,11 @@ class TestModuleHasherKernelOptions(unittest.TestCase):
     """Regression tests: kernel.options must participate in ModuleHasher."""
 
     def test_kernel_options_hashed(self):
-        # Two kernels with identical bodies but different launch_bounds must
-        # produce different module hashes.  Before the fix, kernel.options was
-        # not fed into ContentHash, so both hashes collided.
+        """Verify kernels that differ only in ``launch_bounds`` produce different module hashes.
+
+        Before the fix, ``kernel.options`` was not fed into ``ContentHash``, so both hashes collided.
+        """
+
         def make(bounds):
             @wp.kernel(launch_bounds=bounds, module="unique")
             def k(a: wp.array[int]):
@@ -332,9 +334,12 @@ class TestModuleHasherKernelOptions(unittest.TestCase):
         self.assertNotEqual(h_a, h_b)
 
     def test_cluster_dim_hashed(self):
-        # cluster_dim is another kernel option fed through kernel.options, so
-        # distinct values must not collide on a shared compiled module (and
-        # identical values must hash the same).
+        """Verify distinct ``cluster_dim`` values hash differently while identical values hash the same.
+
+        ``cluster_dim`` is another kernel option fed through ``kernel.options``, so distinct values must not
+        collide on a shared compiled module.
+        """
+
         def make(cluster_dim):
             @wp.kernel(cluster_dim=cluster_dim, module="unique")
             def k(a: wp.array[int]):

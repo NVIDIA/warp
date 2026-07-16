@@ -98,8 +98,10 @@ def check_array_equal_value_4d(data: wp.array4d(dtype=Any), expect: Any):
 
 
 def test_large_arrays(test, device):
-    # Exercises zero_/fill_/kernel-launch on arrays with >2**31 elements across
-    # 2-D, 3-D, and 4-D shapes. int8 keeps each allocation near 2 GiB.
+    """Exercise ``zero_``, ``fill_``, and kernel launch on arrays with more than ``2**31`` elements.
+
+    Covers 2-D, 3-D, and 4-D shapes. ``int8`` keeps each allocation near 2 GiB.
+    """
     ndim_kernels = (
         (2, check_array_equal_value_2d),
         (3, check_array_equal_value_3d),
@@ -150,8 +152,10 @@ def conditional_sum_large_dim(result: wp.array(dtype=wp.uint64)):
 
 
 def test_max_blocks_requires_grid_stride(test, device):
-    # max_blocks > 0 can't be honored without a grid-stride loop, so a non-grid_stride CUDA kernel
-    # raises and points at the grid_stride opt-in.
+    """Reject ``max_blocks`` > 0 on a non-``grid_stride`` CUDA kernel and point at the ``grid_stride`` opt-in.
+
+    ``max_blocks`` > 0 cannot be honored without a grid-stride loop.
+    """
     test_result = wp.zeros(shape=(1,), dtype=wp.uint64, device=device)
 
     with test.assertRaisesRegex(RuntimeError, "grid_stride=True"):
@@ -171,8 +175,10 @@ def count_all_threads(result: wp.array(dtype=wp.uint64)):
 
 
 def test_block_dim_zero_normalized(test, device):
-    # A non-positive block_dim is clamped to 256 (matching the native launcher) rather than raising a
-    # divide-by-zero in the Python block-count check.
+    """Clamp a non-positive ``block_dim`` to 256 rather than raising a divide-by-zero in the Python block-count check.
+
+    The clamp to 256 matches the native launcher.
+    """
     test_result = wp.zeros(shape=(1,), dtype=wp.uint64, device=device)
     wp.launch(count_all_threads, dim=1000, inputs=[test_result], block_dim=0, device=device)
     wp.synchronize_device(device)
@@ -187,8 +193,11 @@ def conditional_sum_set_dim(result: wp.array(dtype=wp.uint64)):
 
 
 def test_set_dim_lean_3d(test, device):
-    # A recorded lean (grid_stride=False) launch runs on a 3D grid, so set_dim() can resize it past
-    # the old 1D gridDim.x limit (2**31-1 blocks) -- the 3D grid covers it directly, no fallback.
+    """Resize a recorded lean (``grid_stride=False``) launch past the old 1D ``gridDim.x`` limit with ``set_dim()``.
+
+    The lean launch runs on a 3D grid, so ``set_dim()`` can resize it past the old 1D ``gridDim.x`` limit
+    (``2**31-1`` blocks): the 3D grid covers it directly, with no fallback.
+    """
     test_result = wp.zeros(shape=(1,), dtype=wp.uint64, device=device)
 
     cmd = wp.launch(
@@ -220,9 +229,11 @@ def test_set_dim_lean_3d(test, device):
 
 
 def test_set_dim_zero_lean(test, device):
-    # set_dim(0) on a recorded lean (grid_stride=False) launch resizes to an empty launch. The native
-    # 3D launcher must clamp grid.z to 1 (like grid.x/grid.y) so cuLaunchKernel isn't invoked with
-    # grid_z=0; the launch is then a no-op rather than a crash.
+    """Resize a recorded lean (``grid_stride=False``) launch to an empty launch with ``set_dim(0)``.
+
+    The native 3D launcher must clamp ``grid.z`` to 1 (like ``grid.x``/``grid.y``) so ``cuLaunchKernel`` is not invoked
+    with ``grid_z=0``. The launch is then a no-op rather than a crash.
+    """
     test_result = wp.zeros(shape=(1,), dtype=wp.uint64, device=device)
     cmd = wp.launch(count_all_threads, dim=4, inputs=[test_result], device=device, record_cmd=True, block_dim=1)
     cmd.set_dim(0)
@@ -232,9 +243,12 @@ def test_set_dim_zero_lean(test, device):
 
 
 def test_default_grid_stride(test, device):
-    # The hard default is grid-stride, so an un-annotated kernel handles max_blocks normally. Setting
-    # wp.config.default_grid_stride = False opts un-annotated kernels into the 1D launch, where
-    # max_blocks then raises (the global default drives each kernel's effective grid_stride at build).
+    """Drive each kernel's effective ``grid_stride`` from the global ``default_grid_stride`` at build.
+
+    The hard default is grid-stride, so an un-annotated kernel handles ``max_blocks`` normally. Setting
+    ``wp.config.default_grid_stride = False`` opts un-annotated kernels into the 1D launch, where ``max_blocks`` then
+    raises.
+    """
     result = wp.zeros(1, dtype=wp.uint64, device=device)
 
     @wp.kernel(module="unique")
@@ -261,9 +275,12 @@ def test_default_grid_stride(test, device):
 
 
 def test_large_dim_lean_3d(test, device):
-    # A lean (grid_stride=False) kernel launches on a 3D grid, so a block count exceeding the 1D
-    # gridDim.x limit (2**31-1) is serviced directly -- no grid-stride loop, fallback, or warning.
-    # block_dim=1 makes the block count equal dim, so 2**31 blocks exceeds the 1D limit.
+    """Service a block count exceeding the 1D ``gridDim.x`` limit directly on a lean (``grid_stride=False``) launch.
+
+    A lean kernel launches on a 3D grid, so a block count exceeding the 1D ``gridDim.x`` limit (``2**31-1``) is
+    serviced directly, with no grid-stride loop, fallback, or warning. ``block_dim=1`` makes the block count equal
+    ``dim``, so ``2**31`` blocks exceeds the 1D limit.
+    """
     test_result = wp.zeros(shape=(1,), dtype=wp.uint64, device=device)
 
     wp.launch(
@@ -282,18 +299,23 @@ devices = get_test_devices()
 
 class TestLarge(unittest.TestCase):
     def test_max_blocks_ignored_on_cpu(self):
-        # max_blocks is a documented no-op on CPU, so a lean (grid_stride=False) kernel launched with
-        # max_blocks must not raise there (the max_blocks raise is CUDA-only).
+        """Do not raise for ``max_blocks`` on a lean (``grid_stride=False``) kernel launched on CPU.
+
+        ``max_blocks`` is a documented no-op on CPU, so the launch must not raise there. The ``max_blocks`` raise is
+        CUDA-only.
+        """
         test_result = wp.zeros(shape=(1,), dtype=wp.uint64, device="cpu")
         wp.launch(count_all_threads, dim=1000, inputs=[test_result], max_blocks=4, device="cpu")
         self.assertEqual(test_result.numpy()[0], 1000)
 
     def test_large_array_excessive_numpy(self):
-        # Shape-validation is pure Python; no ndarray or device allocation
-        # needed to exercise the 2**31-element boundary check. The user-facing
-        # wp.array(ndarray) path reaches this same validator via
-        # wp.array.__init__ -> _init_from_data -> _init_new -> check_array_shape;
-        # the separate test below covers the integration path.
+        """Exercise the ``2**31``-element boundary check through ``check_array_shape`` without allocation.
+
+        Shape validation is pure Python, so no ndarray or device allocation is needed. The user-facing
+        ``wp.array(ndarray)`` path reaches this same validator via
+        ``wp.array.__init__ -> _init_from_data -> _init_new -> check_array_shape``, and the separate test below covers
+        the integration path.
+        """
         with self.assertRaisesRegex(
             ValueError,
             "Array shapes must not exceed the maximum representable value of a signed 32-bit integer",
@@ -301,12 +323,13 @@ class TestLarge(unittest.TestCase):
             check_array_shape((2**31,))
 
     def test_large_array_excessive_ndarray(self):
-        # Exercise the wp.array(ndarray) -> _init_from_data -> _init_new path
-        # at the 2**31 boundary without allocating a real 2**31-element buffer.
-        # np.broadcast_to returns a zero-stride view over a single-element
-        # source, and np.asarray preserves the view (no copy when dtypes
-        # match). _init_new calls check_array_shape before any device
-        # allocation, so the ValueError fires for free.
+        """Exercise the ``wp.array(ndarray)`` path at the ``2**31`` boundary without allocating a real buffer.
+
+        Runs the ``wp.array(ndarray) -> _init_from_data -> _init_new`` path without allocating a real
+        ``2**31``-element buffer. ``np.broadcast_to`` returns a zero-stride view over a single-element source, and
+        ``np.asarray`` preserves the view (no copy when dtypes match). ``_init_new`` calls ``check_array_shape``
+        before any device allocation, so the ``ValueError`` fires for free.
+        """
         large_view = np.broadcast_to(np.zeros(1, dtype=np.int8), (2**31,))
         with self.assertRaisesRegex(
             ValueError,

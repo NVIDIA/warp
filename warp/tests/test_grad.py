@@ -11,7 +11,7 @@ from warp.tests.unittest_utils import *
 
 
 @wp.kernel
-def scalar_grad(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+def scalar_grad(x: wp.array[float], y: wp.array[float]):
     y[0] = x[0] ** 2.0
 
 
@@ -29,7 +29,7 @@ def test_scalar_grad(test, device):
 
 
 @wp.kernel
-def for_loop_grad(n: int, x: wp.array(dtype=float), s: wp.array(dtype=float)):
+def for_loop_grad(n: int, x: wp.array[float], s: wp.array[float]):
     sum = float(0.0)
 
     for i in range(n):
@@ -92,7 +92,7 @@ def test_for_loop_graph_grad(test, device):
 
 
 @wp.kernel
-def for_loop_nested_if_grad(n: int, x: wp.array(dtype=float), s: wp.array(dtype=float)):
+def for_loop_nested_if_grad(n: int, x: wp.array[float], s: wp.array[float]):
     sum = float(0.0)
 
     for i in range(n):
@@ -144,7 +144,7 @@ def test_for_loop_nested_if_grad(test, device):
 
 
 @wp.kernel
-def for_loop_grad_nested(n: int, x: wp.array(dtype=float), s: wp.array(dtype=float)):
+def for_loop_grad_nested(n: int, x: wp.array[float], s: wp.array[float]):
     sum = float(0.0)
 
     for i in range(n):
@@ -173,9 +173,9 @@ def test_for_loop_nested_for_grad(test, device):
 
 # @wp.kernel
 # def while_loop_grad(n: int,
-#                     x: wp.array(dtype=float),
-#                     c: wp.array(dtype=int),
-#                     s: wp.array(dtype=float)):
+#                     x: wp.array[float],
+#                     c: wp.array[int],
+#                     s: wp.array[float]):
 
 #     tid = wp.tid()
 
@@ -202,9 +202,7 @@ def test_for_loop_nested_for_grad(test, device):
 
 
 @wp.kernel
-def preserve_outputs(
-    n: int, x: wp.array(dtype=float), c: wp.array(dtype=float), s1: wp.array(dtype=float), s2: wp.array(dtype=float)
-):
+def preserve_outputs(n: int, x: wp.array[float], c: wp.array[float], s1: wp.array[float], s2: wp.array[float]):
     tid = wp.tid()
 
     # plain store
@@ -318,13 +316,13 @@ def test_vector_math_grad(test, device):
     # test unary operations
     for dim, vec_type in [(2, wp.vec2), (3, wp.vec3), (4, wp.vec4), (4, wp.quat)]:
 
-        def check_length(vs: wp.array(dtype=vec_type), out: wp.array(dtype=float)):
+        def check_length(vs: wp.array[vec_type], out: wp.array[float]):
             out[0] = wp.length(vs[0])
 
-        def check_length_sq(vs: wp.array(dtype=vec_type), out: wp.array(dtype=float)):
+        def check_length_sq(vs: wp.array[vec_type], out: wp.array[float]):
             out[0] = wp.length_sq(vs[0])
 
-        def check_normalize(vs: wp.array(dtype=vec_type), out: wp.array(dtype=float)):
+        def check_normalize(vs: wp.array[vec_type], out: wp.array[float]):
             out[0] = wp.length_sq(wp.normalize(vs[0]))  # compress to scalar output
 
         # run the tests with 5 different random inputs
@@ -341,10 +339,10 @@ def test_matrix_math_grad(test, device):
     # test unary operations
     for dim, mat_type in [(2, wp.mat22), (3, wp.mat33), (4, wp.mat44)]:
 
-        def check_determinant(vs: wp.array(dtype=mat_type), out: wp.array(dtype=float)):
+        def check_determinant(vs: wp.array[mat_type], out: wp.array[float]):
             out[0] = wp.determinant(vs[0])
 
-        def check_trace(vs: wp.array(dtype=mat_type), out: wp.array(dtype=float)):
+        def check_trace(vs: wp.array[mat_type], out: wp.array[float]):
             out[0] = wp.trace(vs[0])
 
         # run the tests with 5 different random inputs
@@ -358,20 +356,20 @@ def test_3d_math_grad(test, device):
     rng = np.random.default_rng(123)
 
     # test binary operations
-    def check_cross(vs: wp.array(dtype=wp.vec3), out: wp.array(dtype=float)):
+    def check_cross(vs: wp.array[wp.vec3], out: wp.array[float]):
         out[0] = wp.length(wp.cross(vs[0], vs[1]))
 
-    def check_dot(vs: wp.array(dtype=wp.vec3), out: wp.array(dtype=float)):
+    def check_dot(vs: wp.array[wp.vec3], out: wp.array[float]):
         out[0] = wp.dot(vs[0], vs[1])
 
-    def check_mat33(vs: wp.array(dtype=wp.vec3), out: wp.array(dtype=float)):
+    def check_mat33(vs: wp.array[wp.vec3], out: wp.array[float]):
         a = vs[0]
         b = vs[1]
         c = wp.cross(a, b)
         m = wp.mat33(a[0], b[0], c[0], a[1], b[1], c[1], a[2], b[2], c[2])
         out[0] = wp.determinant(m)
 
-    def check_trace_diagonal(vs: wp.array(dtype=wp.vec3), out: wp.array(dtype=float)):
+    def check_trace_diagonal(vs: wp.array[wp.vec3], out: wp.array[float]):
         a = vs[0]
         b = vs[1]
         c = wp.cross(a, b)
@@ -388,17 +386,17 @@ def test_3d_math_grad(test, device):
         )
         out[0] = wp.trace(m)
 
-    def check_rot_rpy(vs: wp.array(dtype=wp.vec3), out: wp.array(dtype=float)):
+    def check_rot_rpy(vs: wp.array[wp.vec3], out: wp.array[float]):
         v = vs[0]
         q = wp.quat_rpy(v[0], v[1], v[2])
         out[0] = wp.length(wp.quat_rotate(q, vs[1]))
 
-    def check_rot_axis_angle(vs: wp.array(dtype=wp.vec3), out: wp.array(dtype=float)):
+    def check_rot_axis_angle(vs: wp.array[wp.vec3], out: wp.array[float]):
         v = wp.normalize(vs[0])
         q = wp.quat_from_axis_angle(v, 0.5)
         out[0] = wp.length(wp.quat_rotate(q, vs[1]))
 
-    def check_rot_quat_inv(vs: wp.array(dtype=wp.vec3), out: wp.array(dtype=float)):
+    def check_rot_quat_inv(vs: wp.array[wp.vec3], out: wp.array[float]):
         v = vs[0]
         q = wp.normalize(wp.quat(v[0], v[1], v[2], 1.0))
         out[0] = wp.length(wp.quat_rotate_inv(q, vs[1]))
@@ -425,7 +423,7 @@ def test_multi_valued_function_grad(test, device):
         return wp.sin(x), wp.cos(y) * z, wp.sqrt(wp.abs(z)) / wp.abs(x)
 
     # test multi-valued functions
-    def check_multi_valued(vs: wp.array(dtype=wp.vec3), out: wp.array(dtype=float)):
+    def check_multi_valued(vs: wp.array[wp.vec3], out: wp.array[float]):
         tid = wp.tid()
         v = vs[tid]
         a, b, c = multi_valued(v[0], v[1], v[2])
@@ -469,7 +467,7 @@ def test_mesh_grad(test, device):
         return wp.length(wp.cross(b - a, c - a)) * 0.5
 
     @wp.kernel(module="unique")
-    def compute_area(mesh_id: wp.uint64, out: wp.array(dtype=wp.float32)):
+    def compute_area(mesh_id: wp.uint64, out: wp.array[wp.float32]):
         wp.atomic_add(out, 0, compute_triangle_area(mesh_id, wp.tid()))
 
     num_tris = int(len(indices) / 3)
@@ -530,9 +528,9 @@ def adj_name_clash(a: float, b: float, adj_ret: float):
 
 @wp.kernel
 def name_clash_kernel(
-    input_a: wp.array(dtype=float),
-    input_b: wp.array(dtype=float),
-    output: wp.array(dtype=float),
+    input_a: wp.array[float],
+    input_b: wp.array[float],
+    output: wp.array[float],
 ):
     tid = wp.tid()
     output[tid] = name_clash(input_a[tid], input_b[tid])
@@ -577,7 +575,7 @@ def sum2(v: wp.vec2):
 
 
 @wp.kernel
-def test_struct_attribute_gradient_kernel(src: wp.array(dtype=float), res: wp.array(dtype=float)):
+def test_struct_attribute_gradient_kernel(src: wp.array[float], res: wp.array[float]):
     tid = wp.tid()
 
     p = ParentStruct(src[tid], NestedStruct(wp.vec2(2.0 * src[tid])))
@@ -606,7 +604,7 @@ def test_struct_attribute_gradient(test, device):
 
 
 @wp.kernel
-def copy_kernel(a: wp.array(dtype=wp.float32), b: wp.array(dtype=wp.float32)):
+def copy_kernel(a: wp.array[wp.float32], b: wp.array[wp.float32]):
     tid = wp.tid()
     ai = a[tid]
     bi = ai
@@ -627,7 +625,7 @@ def test_copy(test, device):
 
 
 @wp.kernel
-def aliasing_kernel(a: wp.array(dtype=wp.float32), b: wp.array(dtype=wp.float32)):
+def aliasing_kernel(a: wp.array[wp.float32], b: wp.array[wp.float32]):
     tid = wp.tid()
     x = a[tid]
 
@@ -654,13 +652,13 @@ def test_aliasing(test, device):
 
 
 @wp.kernel
-def square_kernel(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+def square_kernel(x: wp.array[float], y: wp.array[float]):
     tid = wp.tid()
     y[tid] = x[tid] ** 2.0
 
 
 @wp.kernel
-def square_slice_2d_kernel(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float), row_idx: int):
+def square_slice_2d_kernel(x: wp.array2d[float], y: wp.array2d[float], row_idx: int):
     tid = wp.tid()
     x_slice = x[row_idx]
     y_slice = y[row_idx]
@@ -668,7 +666,7 @@ def square_slice_2d_kernel(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float
 
 
 @wp.kernel
-def square_slice_3d_1d_kernel(x: wp.array3d(dtype=float), y: wp.array3d(dtype=float), slice_idx: int):
+def square_slice_3d_1d_kernel(x: wp.array3d[float], y: wp.array3d[float], slice_idx: int):
     i, j = wp.tid()
     x_slice = x[slice_idx]
     y_slice = y[slice_idx]
@@ -676,7 +674,7 @@ def square_slice_3d_1d_kernel(x: wp.array3d(dtype=float), y: wp.array3d(dtype=fl
 
 
 @wp.kernel
-def square_slice_3d_2d_kernel(x: wp.array3d(dtype=float), y: wp.array3d(dtype=float), slice_i: int, slice_j: int):
+def square_slice_3d_2d_kernel(x: wp.array3d[float], y: wp.array3d[float], slice_i: int, slice_j: int):
     tid = wp.tid()
     x_slice = x[slice_i, slice_j]
     y_slice = y[slice_i, slice_j]

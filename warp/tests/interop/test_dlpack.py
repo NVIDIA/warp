@@ -125,6 +125,18 @@ def test_dlpack_incompatible_dtype_error(test, device):
         wp.from_dlpack(wp.to_dlpack(source), dtype=wp.float32)
 
 
+def test_dlpack_unsupported_source_device_error(test, _device):
+    class UnsupportedDLPackSource:
+        def __dlpack_device__(self):
+            return (123, 7)
+
+        def __dlpack__(self, stream=None):
+            raise AssertionError("__dlpack__ should not be called for unsupported devices")
+
+    with test.assertRaisesRegex(TypeError, "Unsupported source device for DLPack: device_type=123, device_id=7"):
+        wp.from_dlpack(UnsupportedDLPackSource())
+
+
 def test_dlpack_dtypes_and_shapes(test, device):
     # automatically determine scalar dtype
     def wrap_scalar_tensor_implicit(dtype):
@@ -704,6 +716,9 @@ add_function_test(TestDLPack, "test_dlpack_bool_round_trip", test_dlpack_bool_ro
 add_function_test(TestDLPack, "test_dlpack_bool_aliases", test_dlpack_bool_aliases, devices=devices)
 add_function_test(
     TestDLPack, "test_dlpack_incompatible_dtype_error", test_dlpack_incompatible_dtype_error, devices=devices
+)
+add_function_test(
+    TestDLPack, "test_dlpack_unsupported_source_device_error", test_dlpack_unsupported_source_device_error, devices=None
 )
 add_function_test(TestDLPack, "test_dlpack_dtypes_and_shapes", test_dlpack_dtypes_and_shapes, devices=devices)
 add_function_test(TestDLPack, "test_dlpack_stream_arg", test_dlpack_stream_arg, devices=devices)

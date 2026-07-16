@@ -2109,24 +2109,8 @@ static bool apic_cpu_replay_stream(
                       static_cast<size_t>(rec->col_count) * sizeof(int32_t)
                   )
                 : nullptr;
-            size_t transposed_capacity_bytes = int_bytes;
-            if (t_offsets && rec->transposed_row_counts_region_id >= 0)
-                transposed_capacity_bytes = std::max(
-                    transposed_capacity_bytes,
-                    static_cast<size_t>(reinterpret_cast<const int*>(t_offsets)[rec->col_count]) * sizeof(int32_t)
-                );
-            void* t_columns = resolve_ptr(
-                rec->transposed_columns_region_id, rec->transposed_columns_offset, transposed_capacity_bytes
-            );
-            void* block_indices
-                = resolve_ptr(rec->block_indices_region_id, rec->block_indices_offset, transposed_capacity_bytes);
-            void* status = rec->status_region_id >= 0
-                ? resolve_ptr(rec->status_region_id, rec->status_offset, sizeof(int32_t))
-                : nullptr;
-            if (!bsr_offsets || !bsr_columns || !t_offsets || !t_columns || !block_indices
-                || (rec->bsr_row_counts_region_id >= 0 && !bsr_row_counts)
-                || (rec->transposed_row_counts_region_id >= 0 && !t_row_counts)
-                || (rec->status_region_id >= 0 && !status)) {
+            if (!bsr_offsets || !bsr_columns || !t_offsets || (rec->bsr_row_counts_region_id >= 0 && !bsr_row_counts)
+                || (rec->transposed_row_counts_region_id >= 0 && !t_row_counts)) {
                 fprintf(stderr, "APIC: Error - bsr-transpose pointer resolution failed at operation %u\n", i);
                 return false;
             }
@@ -2134,10 +2118,38 @@ static bool apic_cpu_replay_stream(
             // capture time, so replay reconstructs the destination even if the
             // caller reset its offsets buffer before capture_launch. Compact
             // transposes recompute the offsets and carry no tail (GH-1587).
+            // This must happen before sizing the destination spans below: the
+            // recorded tail, not the (possibly reset) live offsets, is the
+            // authoritative capacity layout.
+            size_t transposed_capacity_bytes = int_bytes;
             if (rec->transposed_row_counts_region_id >= 0) {
                 size_t tail_bytes = static_cast<size_t>(rec->header.total_size) - sizeof(APICBsrTransposeRecord);
-                if (tail_bytes >= colp1_bytes)
+                if (tail_bytes >= colp1_bytes) {
                     memcpy(t_offsets, ptr + sizeof(APICBsrTransposeRecord), colp1_bytes);
+                    // The transpose touches the destination columns only within
+                    // the padded capacity (offsets[col_count] blocks), which may
+                    // be smaller than the source's nnz upper bound. Match the
+                    // span claimed at capture so resolution is bounds-checked
+                    // against the destination's real extent.
+                    int32_t capacity = reinterpret_cast<const int32_t*>(t_offsets)[rec->col_count];
+                    transposed_capacity_bytes = capacity > 0 ? static_cast<size_t>(capacity) * sizeof(int32_t) : 0;
+                }
+            }
+            void* t_columns = resolve_ptr(
+                rec->transposed_columns_region_id, rec->transposed_columns_offset, transposed_capacity_bytes
+            );
+            // block_indices carries the sorted source blocks (up to nnz entries)
+            // and, for padded destinations, per-slot gap markers up to the
+            // destination capacity.
+            void* block_indices = resolve_ptr(
+                rec->block_indices_region_id, rec->block_indices_offset, std::max(int_bytes, transposed_capacity_bytes)
+            );
+            void* status = rec->status_region_id >= 0
+                ? resolve_ptr(rec->status_region_id, rec->status_offset, sizeof(int32_t))
+                : nullptr;
+            if (!t_columns || !block_indices || (rec->status_region_id >= 0 && !status)) {
+                fprintf(stderr, "APIC: Error - bsr-transpose pointer resolution failed at operation %u\n", i);
+                return false;
             }
             // g_apic_state is null during replay, so this executes the real
             // transpose. Same entry point wp.sparse.bsr_set_transpose uses.

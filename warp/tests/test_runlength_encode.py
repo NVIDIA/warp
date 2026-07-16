@@ -85,9 +85,11 @@ def test_runlength_encode_error_run_count_unsupported_dtype(test, device):
 
 
 def test_runlength_encode_error_negative_value_count(test, device):
-    # A negative value_count must be rejected in Python before reaching the
-    # native path (which would otherwise leave outputs untouched, and in
-    # host-return mode return a stale/uninitialized count).
+    """Reject a negative ``value_count`` in Python before reaching the native path.
+
+    The native path would otherwise leave outputs untouched, and in host-return mode return a
+    stale or uninitialized count.
+    """
     values = wp.zeros(8, dtype=int, device=device)
     run_values = wp.empty(8, dtype=int, device=device)
     run_lengths = wp.empty(8, dtype=int, device=device)

@@ -249,7 +249,7 @@ class TestLogger(unittest.TestCase):
         self.assertEqual(output, "Warp Error: something broke\n")
 
     def test_basic_logger_warning_respects_filters(self):
-        """GH-1315: user warning filters must not be overridden."""
+        """User warning filters must not be overridden."""
         logger = LoggerBasic()
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -572,7 +572,7 @@ class TestLogger(unittest.TestCase):
         finally:
             wp.set_logger(original)
 
-    def test_gh1315_user_filters_respected(self):
+    def test_user_filters_respected(self):
         """Verify that warnings.filterwarnings('ignore') suppresses Warp warnings."""
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=DeprecationWarning)

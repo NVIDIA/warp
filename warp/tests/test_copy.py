@@ -265,9 +265,12 @@ def test_copy_adjoint(test, device):
 
 
 def test_copy_offset_strided(test, _, device1, device2):
-    # wp.copy must honor src_offset/dest_offset/count for non-contiguous arrays
-    # (GH-1533).  The non-contiguous code path is taken when *either* operand is
-    # non-contiguous, so all four contiguity combinations must agree.
+    """Honor src_offset/dest_offset/count for non-contiguous arrays.
+
+    The non-contiguous code path is taken when either operand is non-contiguous, so all four
+    contiguity combinations must agree.
+    """
+
     def run(src_strided, dst_strided):
         if src_strided:
             # logical src == [1, 2, 3, 4]
@@ -295,8 +298,10 @@ def test_copy_offset_strided(test, _, device1, device2):
 
 
 def test_copy_offset_partial_ranges(test, _, device1, device2):
-    # Various (src_offset, dest_offset, count) combinations on 1-D strided views,
-    # checked against the NumPy equivalent.
+    """Check assorted (src_offset, dest_offset, count) combinations on 1-D strided views.
+
+    Each case is verified against the NumPy equivalent.
+    """
     np_src = np.arange(1, 21, dtype=np.float32)
     np_dst = np.full(20, -1.0, dtype=np.float32)
 
@@ -322,10 +327,13 @@ def test_copy_offset_partial_ranges(test, _, device1, device2):
 
 
 def test_copy_offset_size_mismatch(test, _, device1, device2):
-    # A bounded copy where the count spans one array fully but not the other must
-    # behave the same for contiguous and non-contiguous arrays (GH-1533).  In
-    # particular count == src.size while dst is larger (and the omitted-count
-    # variant) must not raise "Incompatible array shapes" for strided views.
+    """Copy a count that spans one array fully but not the other.
+
+    Such a bounded copy must behave the same for contiguous and non-contiguous arrays. In
+    particular, count == src.size while dst is larger (and the omitted-count variant) must not
+    raise "Incompatible array shapes" for strided views.
+    """
+
     def strided(values):
         # interleave with zeros so [::2] is a non-contiguous view of `values`
         data = np.empty(2 * len(values), dtype=np.float32)
@@ -357,8 +365,10 @@ def test_copy_offset_size_mismatch(test, _, device1, device2):
 
 
 def test_copy_offset_adjoint(test, device):
-    # Gradients must flow through a sub-range copy on a non-contiguous array.
-    # Uses symmetric offsets (src_offset == dest_offset), matching GH-1533.
+    """Flow gradients through a sub-range copy on a non-contiguous array.
+
+    Uses symmetric offsets (src_offset == dest_offset).
+    """
     src_data = wp.array(np.arange(8, dtype=np.float32), requires_grad=True, device=device)
     src = src_data[::2]  # non-contiguous, logical len 4
     dst = wp.zeros(4, dtype=wp.float32, requires_grad=True, device=device)
@@ -376,11 +386,13 @@ def test_copy_offset_adjoint(test, device):
 
 
 def test_copy_offset_adjoint_asymmetric(test, device):
-    # The forward copies dst[dest_offset:...] = src[src_offset:...], so the adjoint
-    # must map adj_src[src_offset:...] = adj_dst[dest_offset:...].  With distinct
-    # src_offset and dest_offset this exposes whether the offsets are applied to
-    # the correct side (GH-1533).  Covers both the contiguous and non-contiguous
-    # copy paths, since they share adj_copy().
+    """Map adjoint offsets to the correct side for an asymmetric sub-range copy.
+
+    The forward copies dst[dest_offset:...] = src[src_offset:...], so the adjoint must map
+    adj_src[src_offset:...] = adj_dst[dest_offset:...]. With distinct src_offset and dest_offset
+    this exposes whether the offsets are applied to the correct side. Covers both the contiguous
+    and non-contiguous copy paths, since they share adj_copy().
+    """
     n = 6
     src_offset, dest_offset, count = 1, 3, 2
 
@@ -408,9 +420,11 @@ def test_copy_offset_adjoint_asymmetric(test, device):
 
 
 def test_copy_offset_unsupported(test, device):
-    # Offsets/count on non-contiguous arrays that can't be expressed as a 1-D
-    # strided view must raise a clear error rather than silently copying
-    # everything (GH-1533).
+    """Raise a clear error for offsets that can't be expressed as a 1-D strided view.
+
+    Offsets/count on non-contiguous arrays that cannot be reduced to a 1-D strided view must
+    raise rather than silently copying everything.
+    """
 
     # multi-dimensional non-contiguous
     src_nd = wp.array(np.arange(100, dtype=np.float32), device=device).reshape((10, 10))[1::2, 1::2]
@@ -461,8 +475,16 @@ def test_copy_invalid_args(test, device):
     dest_f64 = wp.zeros(4, dtype=wp.float64, device=device)
     test.assertTrue(src_f32.is_contiguous)
     test.assertTrue(dest_f64.is_contiguous)
-    with test.assertRaisesRegex(RuntimeError, "Incompatible array data types"):
+    with test.assertRaisesRegex(RuntimeError, "destination dtype=float64, source dtype=float32"):
         wp.copy(dest_f64, src_f32)
+
+    # mismatched shapes on the non-contiguous path should report both shapes
+    src_shape = wp.array(np.arange(18, dtype=np.float32).reshape((6, 3)), device=device)[::3, :]
+    dest_shape = wp.zeros((6, 2), dtype=wp.float32, device=device)[::2, :]
+    test.assertFalse(src_shape.is_contiguous)
+    test.assertFalse(dest_shape.is_contiguous)
+    with test.assertRaisesRegex(RuntimeError, r"destination shape=\(3, 2\), source shape=\(2, 3\)"):
+        wp.copy(dest_shape, src_shape)
 
 
 def test_copy_count_zero_copies_all(test, device):

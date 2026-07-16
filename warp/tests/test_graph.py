@@ -193,8 +193,11 @@ def test_graph_memset(test, device):
 
 
 def test_graph_fill_replay(test, device):
-    # Mutate the array between launches so the only way it ends up at
-    # fill_value is if the captured fill_() re-executes on every replay.
+    """Verify a captured ``fill_()`` re-executes on every graph replay.
+
+    The array is mutated between launches, so it can only end up at ``fill_value`` if the captured ``fill_()``
+    re-executes on every replay.
+    """
     n = 8
     fill_value = 42
     arr = wp.zeros(n, dtype=wp.int32, device=device)
@@ -215,10 +218,12 @@ def test_graph_fill_replay(test, device):
 
 
 def test_graph_fill_noncontiguous_cpu_rejected(test, device):
-    # Non-contiguous arr.fill_() during CPU APIC capture has no recording
-    # path yet. Surface this as a clear NotImplementedError so it does not
-    # silently produce wrong replay output (the user-visible symptom that
-    # motivated wp_memtile_host recording in the first place).
+    """Reject a non-contiguous ``fill_()`` during CPU APIC capture with a clear ``NotImplementedError``.
+
+    Non-contiguous ``arr.fill_()`` during CPU APIC capture has no recording path yet. Surfacing a clear
+    ``NotImplementedError`` prevents it from silently producing wrong replay output, the user-visible symptom that
+    motivated ``wp_memtile_host`` recording in the first place.
+    """
     if not device.is_cpu:
         test.skipTest("CPU-only: CUDA fills go through wp_array_fill_device")
     arr = wp.zeros((4, 4), dtype=wp.int32, device=device)
@@ -246,9 +251,11 @@ def test_graph_fill_indexed_cpu_rejected(test, device):
 
 
 def test_graph_copy_noncontiguous_cpu_rejected(test, device):
-    # Non-contiguous wp.copy() during CPU APIC capture has no recording path
-    # yet. Surface this as a clear NotImplementedError so it does not
-    # silently produce wrong replay output.
+    """Reject a non-contiguous ``wp.copy()`` during CPU APIC capture with a clear ``NotImplementedError``.
+
+    Non-contiguous ``wp.copy()`` during CPU APIC capture has no recording path yet. Surfacing a clear
+    ``NotImplementedError`` prevents it from silently producing wrong replay output.
+    """
     if not device.is_cpu:
         test.skipTest("CPU-only: CUDA copies go through wp_array_copy_device")
     src = wp.array(np.arange(16, dtype=np.int32).reshape(4, 4), device=device)
@@ -264,9 +271,11 @@ def test_graph_copy_noncontiguous_cpu_rejected(test, device):
 
 
 def test_graph_fill_drives_capture_while(test, device):
-    # End-to-end pattern from mujoco_warp's solver: fill_ initializes a
-    # capture_while counter at the top of the graph. Each replay must reset
-    # the counter so the body runs the expected number of iterations.
+    """Verify a captured ``fill_`` resets a ``capture_while`` counter on every graph replay.
+
+    End-to-end pattern from mujoco_warp's solver: ``fill_`` initializes a ``capture_while`` counter at the top of the
+    graph. Each replay must reset the counter so the body runs the expected number of iterations.
+    """
     counter = wp.empty(1, dtype=wp.int32, device=device)
     out = wp.zeros(1, dtype=wp.int32, device=device)
 

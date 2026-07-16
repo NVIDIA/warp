@@ -16,11 +16,11 @@ from warp.tests.unittest_utils import *
 
 @wp.kernel
 def kernel_3d(
-    a: wp.array3d(dtype=Any),
-    b: wp.array3d(dtype=Any),
-    c: wp.array3d(dtype=Any),
-    out1: wp.array3d(dtype=Any),
-    out2: wp.array3d(dtype=Any),
+    a: wp.array3d[Any],
+    b: wp.array3d[Any],
+    c: wp.array3d[Any],
+    out1: wp.array3d[Any],
+    out2: wp.array3d[Any],
 ):
     i, j, k = wp.tid()
     out1[i, j, k] = a[i, j, k] * b[i, j, k] + c[i, j, k]
@@ -30,32 +30,32 @@ def kernel_3d(
 wp.overload(
     kernel_3d,
     [
-        wp.array3d(dtype=wp.float32),
-        wp.array3d(dtype=wp.float32),
-        wp.array3d(dtype=wp.float32),
-        wp.array3d(dtype=wp.float32),
-        wp.array3d(dtype=wp.float32),
+        wp.array3d[wp.float32],
+        wp.array3d[wp.float32],
+        wp.array3d[wp.float32],
+        wp.array3d[wp.float32],
+        wp.array3d[wp.float32],
     ],
 )
 
 wp.overload(
     kernel_3d,
     [
-        wp.array3d(dtype=wp.float64),
-        wp.array3d(dtype=wp.float64),
-        wp.array3d(dtype=wp.float64),
-        wp.array3d(dtype=wp.float64),
-        wp.array3d(dtype=wp.float64),
+        wp.array3d[wp.float64],
+        wp.array3d[wp.float64],
+        wp.array3d[wp.float64],
+        wp.array3d[wp.float64],
+        wp.array3d[wp.float64],
     ],
 )
 
 
 @wp.kernel
 def kernel_mixed(
-    a: wp.array(dtype=float),
-    b: wp.array(dtype=wp.vec3),
-    out1: wp.array(dtype=wp.vec2),
-    out2: wp.array(dtype=wp.quat),
+    a: wp.array[float],
+    b: wp.array[wp.vec3],
+    out1: wp.array[wp.vec2],
+    out2: wp.array[wp.quat],
 ):
     tid = wp.tid()
     ai, bi = a[tid], b[tid]
@@ -64,7 +64,7 @@ def kernel_mixed(
 
 
 @wp.kernel
-def vec_length_kernel(a: wp.array(dtype=wp.vec3), out: wp.array(dtype=float)):
+def vec_length_kernel(a: wp.array[wp.vec3], out: wp.array[float]):
     tid = wp.tid()
     v = a[tid]
     # instead of wp.length(v), we use a trivial implementation that
@@ -83,16 +83,16 @@ def adj_wrong_grad_func(x: float, adj: float):
 
 
 @wp.kernel
-def wrong_grad_kernel(a: wp.array(dtype=float), out: wp.array(dtype=float)):
+def wrong_grad_kernel(a: wp.array[float], out: wp.array[float]):
     tid = wp.tid()
     out[tid] = wrong_grad_func(a[tid])
 
 
 @wp.kernel
 def transform_point_kernel(
-    transforms: wp.array(dtype=wp.transform),
-    points: wp.array(dtype=wp.vec3),
-    out: wp.array(dtype=wp.vec3),
+    transforms: wp.array[wp.transform],
+    points: wp.array[wp.vec3],
+    out: wp.array[wp.vec3],
 ):
     tid = wp.tid()
     out[tid] = wp.transform_point(transforms[tid], points[tid])

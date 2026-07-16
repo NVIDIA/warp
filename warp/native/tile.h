@@ -2763,8 +2763,9 @@ compute_index(array_t<T>& src, IndicesTile& indices, int axis, Coord offset, Coo
             // global = offset_coord + index_mapped_coord
             int index_along_axis = offset[i] + indices.data(c[i]);
 
-            // handle out of bounds case
-            if (index_along_axis >= src.shape[i])
+            // out of bounds on either side predicates to zero, so a -1 index
+            // acts as a padding sentinel (no physical zero row required)
+            if (index_along_axis < 0 || index_along_axis >= src.shape[i])
                 return false;
             else
                 byte_index += int64_t(src.strides[i]) * index_along_axis;
@@ -2772,8 +2773,8 @@ compute_index(array_t<T>& src, IndicesTile& indices, int axis, Coord offset, Coo
             // global = offset_coord + coord
             int g = offset[i] + c[i];
 
-            // handle out of bounds case
-            if (g >= src.shape[i])
+            // handle out of bounds case (both sides)
+            if (g < 0 || g >= src.shape[i])
                 return false;
             else
                 byte_index += int64_t(src.strides[i]) * g;

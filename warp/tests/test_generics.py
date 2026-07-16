@@ -33,7 +33,7 @@ def eager_generic_norm(x: Any):
 
 
 @wp.kernel
-def eager_generic_norm_use_vec2(out: wp.array(dtype=wp.float32)):
+def eager_generic_norm_use_vec2(out: wp.array[wp.float32]):
     out[0] = eager_generic_norm(wp.vec2(1.0, 2.0))
 
 
@@ -47,12 +47,12 @@ def test_eager_generic_func_after_concrete_overload(test, device):
 
 
 @wp.func
-def eager_generic_array_length(x: wp.array(dtype=Any)):
+def eager_generic_array_length(x: wp.array[Any]):
     return x.shape[0]
 
 
 @wp.kernel
-def eager_generic_array_length_use_float32(x: wp.array(dtype=wp.float32), out: wp.array(dtype=wp.int32)):
+def eager_generic_array_length_use_float32(x: wp.array[wp.float32], out: wp.array[wp.int32]):
     out[0] = eager_generic_array_length(x)
 
 
@@ -138,35 +138,35 @@ def generic_array_kernel_v1(a: Any, b: Any, c: Any):
     c[tid] = generic_adder(sum, sum)  # test generic function
 
 
-wp.overload(generic_array_kernel_v1, [wp.array(dtype=int), wp.array(dtype=int), wp.array(dtype=int)])
-wp.overload(generic_array_kernel_v1, [wp.array(dtype=float), wp.array(dtype=float), wp.array(dtype=float)])
-wp.overload(generic_array_kernel_v1, [wp.array(dtype=wp.vec3), wp.array(dtype=wp.vec3), wp.array(dtype=wp.vec3)])
+wp.overload(generic_array_kernel_v1, [wp.array[int], wp.array[int], wp.array[int]])
+wp.overload(generic_array_kernel_v1, [wp.array[float], wp.array[float], wp.array[float]])
+wp.overload(generic_array_kernel_v1, [wp.array[wp.vec3], wp.array[wp.vec3], wp.array[wp.vec3]])
 
 
 # generic array kernel, version 2 (generic dtype)
 @wp.kernel
-def generic_array_kernel_v2(a: wp.array(dtype=Any), b: wp.array(dtype=Any), c: wp.array(dtype=Any)):
+def generic_array_kernel_v2(a: wp.array[Any], b: wp.array[Any], c: wp.array[Any]):
     tid = wp.tid()
     sum = a[tid] + b[tid]  # test direct access
     c[tid] = generic_adder(sum, sum)  # test generic function
 
 
-wp.overload(generic_array_kernel_v2, [wp.array(dtype=int), wp.array(dtype=int), wp.array(dtype=int)])
-wp.overload(generic_array_kernel_v2, [wp.array(dtype=float), wp.array(dtype=float), wp.array(dtype=float)])
-wp.overload(generic_array_kernel_v2, [wp.array(dtype=wp.vec3), wp.array(dtype=wp.vec3), wp.array(dtype=wp.vec3)])
+wp.overload(generic_array_kernel_v2, [wp.array[int], wp.array[int], wp.array[int]])
+wp.overload(generic_array_kernel_v2, [wp.array[float], wp.array[float], wp.array[float]])
+wp.overload(generic_array_kernel_v2, [wp.array[wp.vec3], wp.array[wp.vec3], wp.array[wp.vec3]])
 
 
 # generic array kernel, version 3 (unspecified dtype)
 @wp.kernel
-def generic_array_kernel_v3(a: wp.array(), b: wp.array(), c: wp.array()):
+def generic_array_kernel_v3(a: wp.array[Any], b: wp.array[Any], c: wp.array[Any]):
     tid = wp.tid()
     sum = a[tid] + b[tid]  # test direct access
     c[tid] = generic_adder(sum, sum)  # test generic function
 
 
-wp.overload(generic_array_kernel_v3, [wp.array(dtype=int), wp.array(dtype=int), wp.array(dtype=int)])
-wp.overload(generic_array_kernel_v3, [wp.array(dtype=float), wp.array(dtype=float), wp.array(dtype=float)])
-wp.overload(generic_array_kernel_v3, [wp.array(dtype=wp.vec3), wp.array(dtype=wp.vec3), wp.array(dtype=wp.vec3)])
+wp.overload(generic_array_kernel_v3, [wp.array[int], wp.array[int], wp.array[int]])
+wp.overload(generic_array_kernel_v3, [wp.array[float], wp.array[float], wp.array[float]])
+wp.overload(generic_array_kernel_v3, [wp.array[wp.vec3], wp.array[wp.vec3], wp.array[wp.vec3]])
 
 
 def test_generic_array_kernel(test, device):
@@ -206,7 +206,7 @@ def test_generic_array_kernel(test, device):
 
 # kernel that adds any scalar value to an array
 @wp.kernel
-def generic_accumulator_kernel(a: wp.array(dtype=wp.float64), value: Any):
+def generic_accumulator_kernel(a: wp.array[wp.float64], value: Any):
     tid = wp.tid()
     a[tid] = a[tid] + wp.float64(value)
 
@@ -233,7 +233,7 @@ def test_generic_accumulator_kernel(test, device):
 
 # generic kernel used to automatically generate overloads from launch args
 @wp.kernel
-def generic_fill(a: wp.array(dtype=Any), value: Any):
+def generic_fill(a: wp.array[Any], value: Any):
     tid = wp.tid()
     a[tid] = value
 
@@ -259,17 +259,17 @@ def test_generic_fill(test, device):
 
 # generic kernel used to create and launch explicit overloads
 @wp.kernel
-def generic_fill_v2(a: wp.array(dtype=Any), value: Any):
+def generic_fill_v2(a: wp.array[Any], value: Any):
     tid = wp.tid()
     a[tid] = value
 
 
 vec3b_type = wp.types.vector(3, wp.bool)
 # create explicit overloads to be launched directly
-fill_int = wp.overload(generic_fill_v2, [wp.array(dtype=int), int])
-fill_float = wp.overload(generic_fill_v2, [wp.array(dtype=float), float])
-fill_vec3 = wp.overload(generic_fill_v2, [wp.array(dtype=wp.vec3), wp.vec3])
-fill_vec3b = wp.overload(generic_fill_v2, [wp.array(dtype=vec3b_type), vec3b_type])
+fill_int = wp.overload(generic_fill_v2, [wp.array[int], int])
+fill_float = wp.overload(generic_fill_v2, [wp.array[float], float])
+fill_vec3 = wp.overload(generic_fill_v2, [wp.array[wp.vec3], wp.vec3])
+fill_vec3b = wp.overload(generic_fill_v2, [wp.array[vec3b_type], vec3b_type])
 
 
 def test_generic_fill_overloads(test, device):
@@ -293,7 +293,7 @@ def test_generic_fill_overloads(test, device):
 
 # generic kernel used to test generic types mixed with specialized types
 @wp.func
-def generic_conditional_setter_func(a: wp.array(dtype=Any), i: int, value: Any, relative: bool):
+def generic_conditional_setter_func(a: wp.array[Any], i: int, value: Any, relative: bool):
     if relative:
         a[i] += value
     else:
@@ -301,7 +301,7 @@ def generic_conditional_setter_func(a: wp.array(dtype=Any), i: int, value: Any, 
 
 
 @wp.kernel
-def generic_conditional_setter(a: wp.array(dtype=Any), i: int, value: Any, relative: bool):
+def generic_conditional_setter(a: wp.array[Any], i: int, value: Any, relative: bool):
     generic_conditional_setter_func(a, i, value, relative)
 
 
@@ -412,15 +412,15 @@ def test_overload_stub_nonetype_return_annotation(test, device):
 
 
 @wp.kernel
-def generic_transform_array(v: wp.array(), m: wp.array(), result: wp.array()):
+def generic_transform_array(v: wp.array[Any], m: wp.array[Any], result: wp.array[Any]):
     tid = wp.tid()
     result[tid] = wp.mul(m[tid], v[tid])
 
 
-wp.overload(generic_transform_array, [wp.array(dtype=wp.vec2), wp.array(dtype=wp.mat22), wp.array(dtype=wp.vec2)])
-wp.overload(generic_transform_array, [wp.array(dtype=wp.vec3), wp.array(dtype=wp.mat33), wp.array(dtype=wp.vec3)])
-wp.overload(generic_transform_array, [wp.array(dtype=wp.vec4), wp.array(dtype=wp.mat44), wp.array(dtype=wp.vec4)])
-wp.overload(generic_transform_array, [wp.array(dtype=my_vec5), wp.array(dtype=my_mat55), wp.array(dtype=my_vec5)])
+wp.overload(generic_transform_array, [wp.array[wp.vec2], wp.array[wp.mat22], wp.array[wp.vec2]])
+wp.overload(generic_transform_array, [wp.array[wp.vec3], wp.array[wp.mat33], wp.array[wp.vec3]])
+wp.overload(generic_transform_array, [wp.array[wp.vec4], wp.array[wp.mat44], wp.array[wp.vec4]])
+wp.overload(generic_transform_array, [wp.array[my_vec5], wp.array[my_mat55], wp.array[my_vec5]])
 
 
 def test_generic_transform_array_kernel(test, device):
@@ -511,15 +511,15 @@ def test_generic_type_cast(test, device):
 
 
 @wp.kernel
-def test_generic_scalar_construction_kernel(a: wp.array(dtype=Any)):
+def test_generic_scalar_construction_kernel(a: wp.array[Any]):
     zero = type(a[0])(0)
     copy = a.dtype(a[0])
     copy += zero
     wp.expect_eq(copy, a[0])
 
 
-wp.overload(test_generic_scalar_construction_kernel, [wp.array(dtype=wp.int32)])
-wp.overload(test_generic_scalar_construction_kernel, [wp.array(dtype=wp.float64)])
+wp.overload(test_generic_scalar_construction_kernel, [wp.array[wp.int32]])
+wp.overload(test_generic_scalar_construction_kernel, [wp.array[wp.float64]])
 
 
 def test_generic_scalar_construction(test, device):
@@ -531,15 +531,15 @@ def test_generic_scalar_construction(test, device):
 
 
 @wp.kernel
-def test_generic_type_construction_kernel(a: wp.array(dtype=Any)):
+def test_generic_type_construction_kernel(a: wp.array[Any]):
     zero = type(a[0])()
     copy = type(a).dtype(a[0]) * a.dtype.dtype(1.0)
     copy += zero
     wp.expect_eq(copy, a[0])
 
 
-wp.overload(test_generic_type_construction_kernel, [wp.array(dtype=wp.vec3f)])
-wp.overload(test_generic_type_construction_kernel, [wp.array(dtype=wp.mat22d)])
+wp.overload(test_generic_type_construction_kernel, [wp.array[wp.vec3f]])
+wp.overload(test_generic_type_construction_kernel, [wp.array[wp.mat22d]])
 
 
 def test_generic_type_construction(test, device):

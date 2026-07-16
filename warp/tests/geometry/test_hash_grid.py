@@ -642,7 +642,7 @@ def test_hashgrid_grouped_graph_capture_changing_group_ids(test, device):
 
     wp.load_module(device=device)
 
-    with wp.ScopedCapture(device) as capture:
+    with wp.ScopedCapture(device, force_module_load=False) as capture:
         # captured work changes the active group id set before the rebuild
         wp.copy(groups_arr, groups_src)
         grid.build(points_arr, radius, groups=groups_arr)
@@ -693,7 +693,7 @@ def test_hashgrid_grouped_graph_capture_after_reserve(test, device):
 
     wp.load_module(device=device)
 
-    with wp.ScopedCapture(device) as capture:
+    with wp.ScopedCapture(device, force_module_load=False) as capture:
         grid.build(points_arr, radius, groups=groups_arr)
         wp.launch(
             kernel=count_neighbors_grouped,

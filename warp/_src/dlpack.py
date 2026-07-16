@@ -489,7 +489,7 @@ def from_dlpack(source, dtype=None, hint=None) -> warp.array | warp.Texture:
             # Note that we pass 1 for the null stream, per DLPack spec.
             cuda_stream = warp.get_cuda_device().stream.cuda_stream or 1
         else:
-            raise TypeError("Unsupported source device")
+            raise TypeError(f"Unsupported source device for DLPack: device_type={device_type}, device_id={device_id}")
 
         capsule = source.__dlpack__(stream=cuda_stream)
 

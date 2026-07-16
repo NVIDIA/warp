@@ -450,6 +450,8 @@ def build_warp_clang_for_arch(args, lib_name: str, arch: str) -> None:
             break  # just the top level contains library files
 
         if os.name == "nt":
+            # skip non-library files, e.g. components.json in Conan-packaged LLVM
+            libs = [lib for lib in libs if os.path.splitext(lib)[1].lower() == ".lib"]
             libs.append("Version.lib")
             libs.append("Ws2_32.lib")
             libs.append("ntdll.lib")

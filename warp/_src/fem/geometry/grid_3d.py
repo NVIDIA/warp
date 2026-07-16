@@ -608,7 +608,7 @@ class Grid3D(Geometry):
         def cell_lookup_env(
             args: self.CellArg,
             pos: vec3_type,
-            max_dist: float,
+            max_dist: scalar,
             filter_data: Any,
             filter_target: Any,
             env_index: int,
@@ -676,14 +676,16 @@ class Grid3D(Geometry):
         if self.environment_count() <= 1:
 
             @dynamic_func(suffix=suffix, allow_overloads=True)
-            def cell_lookup(args: self.CellArg, pos: vec3_type, max_dist: float, filter_data: Any, filter_target: Any):
+            def cell_lookup(
+                args: self.CellArg, pos: vec3_type, max_dist: self._scalar_type, filter_data: Any, filter_target: Any
+            ):
                 return cell_lookup_env(args, pos, max_dist, filter_data, filter_target, 0)
 
         @dynamic_func(suffix=suffix, allow_overloads=True)
         def cell_lookup(
             args: self.CellArg,
             pos: vec3_type,
-            max_dist: float,
+            max_dist: self._scalar_type,
             filter_data: Any,
             filter_target: Any,
             env_index: int,
@@ -707,11 +709,11 @@ class Grid3D(Geometry):
         if self.environment_count() <= 1:
 
             @cache.dynamic_func(suffix=lookup_suffix, allow_overloads=True)
-            def cell_lookup(args: self.CellArg, pos: pos_type, max_dist: float):
+            def cell_lookup(args: self.CellArg, pos: pos_type, max_dist: self._scalar_type):
                 return unfiltered_cell_lookup(args, pos, max_dist, null_filter_data, null_filter_target)
 
         @cache.dynamic_func(suffix=lookup_suffix, allow_overloads=True)
-        def cell_lookup(args: self.CellArg, pos: pos_type, max_dist: float, env_index: int):
+        def cell_lookup(args: self.CellArg, pos: pos_type, max_dist: self._scalar_type, env_index: int):
             return unfiltered_cell_lookup(args, pos, max_dist, null_filter_data, null_filter_target, env_index)
 
         @cache.dynamic_func(suffix=lookup_suffix, allow_overloads=True)
@@ -744,7 +746,7 @@ class Grid3D(Geometry):
             def cell_lookup(
                 args: self.CellArg,
                 pos: pos_type,
-                max_dist: float,
+                max_dist: self._scalar_type,
                 filter_array: wp.array(dtype=Any),
                 filter_target: Any,
             ):
@@ -754,7 +756,7 @@ class Grid3D(Geometry):
         def cell_lookup(
             args: self.CellArg,
             pos: pos_type,
-            max_dist: float,
+            max_dist: self._scalar_type,
             filter_array: wp.array(dtype=Any),
             filter_target: Any,
             env_index: int,

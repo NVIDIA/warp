@@ -13,10 +13,10 @@ from warp.tests.unittest_utils import *
 # construct kernel + test function for atomic ops on each vec/matrix type
 def make_atomic_test(type):
     def test_atomic_kernel(
-        out_add: wp.array(dtype=type),
-        out_min: wp.array(dtype=type),
-        out_max: wp.array(dtype=type),
-        val: wp.array(dtype=type),
+        out_add: wp.array[type],
+        out_min: wp.array[type],
+        out_max: wp.array[type],
+        val: wp.array[type],
     ):
         tid = wp.tid()
 
@@ -110,13 +110,13 @@ def make_atomic_test(type):
 # atomic functions must return the previous value that was stored
 def make_atomic_return_test(type):
     def test_atomic_return_value(
-        in_add: wp.array(dtype=type),
-        in_min: wp.array(dtype=type),
-        in_max: wp.array(dtype=type),
-        val: wp.array(dtype=type),
-        out_add: wp.array(dtype=type),
-        out_min: wp.array(dtype=type),
-        out_max: wp.array(dtype=type),
+        in_add: wp.array[type],
+        in_min: wp.array[type],
+        in_max: wp.array[type],
+        val: wp.array[type],
+        out_add: wp.array[type],
+        out_min: wp.array[type],
+        out_max: wp.array[type],
     ):
         tid = wp.tid()
 
@@ -189,7 +189,7 @@ def test_atomic_add_supported_dtypes(test, device, dtype):
     N = 64 if scalar_type is wp.bfloat16 else 1024
 
     @wp.kernel(module="unique")
-    def kernel(arr: wp.array(dtype=dtype)):
+    def kernel(arr: wp.array[dtype]):
         wp.atomic_add(arr, 0, dtype(scalar_type(1)))
 
     arr = wp.zeros(1, dtype=dtype, device=device)
@@ -213,7 +213,7 @@ def test_atomic_min_supported_dtypes(test, device, dtype):
     scalar_type = getattr(dtype, "_wp_scalar_type_", dtype)
 
     @wp.kernel(module="unique")
-    def kernel(arr: wp.array(dtype=dtype)):
+    def kernel(arr: wp.array[dtype]):
         wp.atomic_min(arr, 0, dtype(scalar_type(0)))
 
     arr = wp.zeros(1, dtype=dtype, device=device)
@@ -224,7 +224,7 @@ def test_atomic_max_supported_dtypes(test, device, dtype):
     scalar_type = getattr(dtype, "_wp_scalar_type_", dtype)
 
     @wp.kernel(module="unique")
-    def kernel(arr: wp.array(dtype=dtype)):
+    def kernel(arr: wp.array[dtype]):
         wp.atomic_max(arr, 0, dtype(scalar_type(0)))
 
     arr = wp.zeros(1, dtype=dtype, device=device)
@@ -238,7 +238,7 @@ def test_atomic_add_unsupported_dtypes(test, device, dtype):
     scalar_type_str = wp.types.type_repr(scalar_type)
 
     @wp.kernel(module="unique")
-    def kernel(arr: wp.array(dtype=dtype)):
+    def kernel(arr: wp.array[dtype]):
         wp.atomic_add(arr, 0, dtype(scalar_type(0)))
 
     arr = wp.zeros(1, dtype=dtype, device=device)
@@ -259,7 +259,7 @@ def test_atomic_min_unsupported_dtypes(test, device, dtype):
     scalar_type_str = wp.types.type_repr(scalar_type)
 
     @wp.kernel(module="unique")
-    def kernel(arr: wp.array(dtype=dtype)):
+    def kernel(arr: wp.array[dtype]):
         wp.atomic_min(arr, 0, dtype(scalar_type(0)))
 
     arr = wp.zeros(1, dtype=dtype, device=device)
@@ -280,7 +280,7 @@ def test_atomic_max_unsupported_dtypes(test, device, dtype):
     scalar_type_str = wp.types.type_repr(scalar_type)
 
     @wp.kernel(module="unique")
-    def kernel(arr: wp.array(dtype=dtype)):
+    def kernel(arr: wp.array[dtype]):
         wp.atomic_max(arr, 0, dtype(scalar_type(0)))
 
     arr = wp.zeros(1, dtype=dtype, device=device)

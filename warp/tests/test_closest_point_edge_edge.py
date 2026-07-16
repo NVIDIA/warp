@@ -71,10 +71,12 @@ def test_edge_edge_middle_crossing(test, device):
 
 
 def test_edge_edge_near_parallel_middle_crossing(test, device):
-    # Two unit segments crossing at their midpoints with sin^2(theta) just
-    # below the adjoint stability tolerance (1e-6). The forward must still
-    # find the intersection — the relative-tolerance gate is for the adjoint
-    # only, not for forward correctness.
+    """Verify the forward solve finds the midpoint intersection of two near-parallel segments.
+
+    The two unit segments cross at their midpoints with ``sin^2(theta)`` just below the adjoint stability tolerance
+    (1e-6). The forward must still find the intersection. The relative-tolerance gate is for the adjoint only, not for
+    forward correctness.
+    """
     p1_h = np.array([[0.0, 0.0, 0.0]], dtype=np.float32)
     q1_h = np.array([[1.0, 0.0, 0.0]], dtype=np.float32)
     p2_h = np.array([[0.0, -4.9e-4, 0.0]], dtype=np.float32)
@@ -136,8 +138,11 @@ def test_edge_edge_degenerate_first_edge(test, device):
 
 
 def test_edge_edge_degenerate_first_edge_projection_outside(test, device):
-    # Edge 1 is a point at x=10; edge 2 is the segment from x=0 to x=1.
-    # The projection lands at t=10 on the infinite line, which must clamp to 1.
+    """Clamp the projection parameter to 1 when a degenerate edge projects past the segment end.
+
+    Edge 1 is a point at x=10; edge 2 is the segment from x=0 to x=1. The projection lands at t=10 on the
+    infinite line, which must clamp to 1.
+    """
     p1_h = np.array([[10, 0, 0]])
     q1_h = np.array([[10, 0, 0]])
     p2_h = np.array([[0, 0, 0]])

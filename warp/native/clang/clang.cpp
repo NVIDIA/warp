@@ -15,6 +15,7 @@
 #include <llvm/Support/VirtualFileSystem.h>
 #endif
 #include <cmath>
+#include <cstdint>
 #include <cstring>
 #include <iostream>
 #include <string>
@@ -27,8 +28,12 @@
 #include <llvm/ExecutionEngine/GenericValue.h>
 #include <llvm/ExecutionEngine/JITEventListener.h>
 #include <llvm/ExecutionEngine/JITLink/JITLinkMemoryManager.h>
+#if LLVM_VERSION_MAJOR >= 22
+#include <llvm/ExecutionEngine/Orc/Debugging/ELFDebugObjectPlugin.h>
+#else
 #include <llvm/ExecutionEngine/Orc/DebugObjectManagerPlugin.h>
 #include <llvm/ExecutionEngine/Orc/EPCDebugObjectRegistrar.h>
+#endif
 #include <llvm/ExecutionEngine/Orc/ExecutionUtils.h>
 #include <llvm/ExecutionEngine/Orc/LLJIT.h>
 #include <llvm/ExecutionEngine/Orc/ObjectLinkingLayer.h>
@@ -110,8 +115,13 @@ static const HostCpuInfo& get_host_cpu_info()
         HostCpuInfo result;
         result.name = llvm::sys::getHostCPUName().str();
 
+#if LLVM_VERSION_MAJOR >= 19
+        // LLVM 19 changed getHostCPUFeatures() to return the feature map by value.
+        llvm::StringMap<bool> feature_map = llvm::sys::getHostCPUFeatures();
+#else
         llvm::StringMap<bool> feature_map;
         llvm::sys::getHostCPUFeatures(feature_map);
+#endif
 
         for (const auto& f : feature_map) {
             // Skip avx10.1-256: getHostCPUFeatures() reports it on Intel Granite Rapids,
@@ -221,7 +231,13 @@ static std::unique_ptr<clang::CompilerInstance> create_compiler(
     }
 
 #if LLVM_VERSION_MAJOR >= 21
-    clang::DiagnosticOptions diagnostic_options;
+    // LLVM 21 stopped heap-allocating DiagnosticOptions: TextDiagnosticPrinter
+    // and DiagnosticsEngine take it by reference and the printer keeps that
+    // reference for its lifetime. Since the printer is transferred to and
+    // outlives create_compiler via the CompilerInstance, bind the reference to
+    // the invocation's options rather than a local that would leave the printer
+    // dangling once this function returns.
+    clang::DiagnosticOptions& diagnostic_options = compiler_instance->getInvocation().getDiagnosticOpts();
     std::unique_ptr<clang::TextDiagnosticPrinter> text_diagnostic_printer
         = std::make_unique<clang::TextDiagnosticPrinter>(llvm::errs(), diagnostic_options);
     clang::IntrusiveRefCntPtr<clang::DiagnosticIDs> diagnostic_ids;
@@ -275,19 +291,23 @@ static std::unique_ptr<clang::CompilerInstance> create_compiler(
         compiler_instance->getLangOpts().DeclSpecKeyword = 1;  // __declspec
     }
 
-    // For LLVM >= 21, transfer ownership of the DiagnosticConsumer to the
-    // CompilerInstance so it outlives create_compiler's scope. First release
-    // the DiagnosticsEngine's ownership to avoid a double-free.
+    // For LLVM >= 21, transfer ownership of the DiagnosticConsumer from the
+    // local DiagnosticsEngine to the CompilerInstance so the printer outlives
+    // create_compiler's scope. takeClient() moves the owning unique_ptr out of
+    // the engine; setClient(getClient(), /*ShouldOwnClient=*/false) must NOT be
+    // used for this, because it resets the owning unique_ptr (deleting the
+    // printer) and then stores that freed pointer as the non-owned client,
+    // leaving the CompilerInstance's engine with a dangling consumer that every
+    // compile virtual-calls in FrontendAction::EndSourceFile().
     // For LLVM < 21, passing nullptr makes createDiagnostics create its own
     // internal printer (text_diagnostic_printer was already released into
     // diagnostic_engine above).
-#if LLVM_VERSION_MAJOR >= 21
-    diagnostic_engine->setClient(diagnostic_engine->getClient(), /*ShouldOwnClient=*/false);
-#endif
 #if LLVM_VERSION_MAJOR >= 22
-    compiler_instance->createDiagnostics(diagnostic_engine->getClient(), true);
+    compiler_instance->createDiagnostics(diagnostic_engine->takeClient().release(), true);
 #elif LLVM_VERSION_MAJOR == 21
-    compiler_instance->createDiagnostics(*llvm::vfs::getRealFileSystem(), diagnostic_engine->getClient(), true);
+    compiler_instance->createDiagnostics(
+        *llvm::vfs::getRealFileSystem(), diagnostic_engine->takeClient().release(), true
+    );
 #else
     compiler_instance->createDiagnostics(text_diagnostic_printer.get(), false);
 #endif
@@ -384,6 +404,44 @@ static std::unique_ptr<llvm::Module> source_to_llvm(
     return success ? std::move(emit_llvm_only_action.takeModule()) : nullptr;
 }
 
+// Return a stable filename component for the ordered flag tokens passed to
+// create_compiler(). Hash at the native boundary so the PCH key reflects the
+// tokenized flags, not inconsequential whitespace in the Python option string.
+//
+// FNV-1a is sufficient for this ephemeral cache key; this is not a security or
+// content-integrity hash. A null byte terminates each token in the hashed byte
+// stream, making token boundaries unambiguous because C strings cannot contain
+// embedded nulls. A null pointer and an empty array both represent no flags.
+static std::string hash_compiler_flags(const char** extra_flags)
+{
+    constexpr std::uint64_t fnv_offset_basis = 14695981039346656037ull;
+    constexpr std::uint64_t fnv_prime = 1099511628211ull;
+
+    std::uint64_t hash = fnv_offset_basis;
+    const auto hash_byte = [&hash, fnv_prime](unsigned char byte) {
+        hash ^= byte;
+        hash *= fnv_prime;
+    };
+
+    if (extra_flags) {
+        for (const char** flag = extra_flags; *flag; ++flag) {
+            const auto* byte = reinterpret_cast<const unsigned char*>(*flag);
+            while (*byte) {
+                hash_byte(*byte++);
+            }
+            hash_byte(0);
+        }
+    }
+
+    constexpr char hex_digits[] = "0123456789abcdef";
+    std::string hex_hash(16, '0');
+    for (size_t i = hex_hash.size(); i > 0; --i) {
+        hex_hash[i - 1] = hex_digits[hash & 0xf];
+        hash >>= 4;
+    }
+    return hex_hash;
+}
+
 extern "C" {
 
 WP_API int wp_compile_cpp(
@@ -411,25 +469,14 @@ WP_API int wp_compile_cpp(
     std::string pch_path_str;
     const char* pch_path = nullptr;
     if (use_precompiled_headers && pch_dir) {
-        // Encode preprocessor-affecting flags into the filename so that
-        // modules with different settings get separate PCH files.
-        // Note: extra_flags are not encoded — they are assumed constant
-        // within a session. If they differ, Clang rejects the PCH and
-        // the fallback path handles it. The one exception is -fsanitize=address:
-        // an ASan-instrumented PCH is ABI-incompatible with a non-ASan one, so
-        // tag the filename to keep them from colliding across sessions/installs.
-        bool sanitize_address = false;
-        if (extra_flags) {
-            for (const char** flag = extra_flags; *flag; ++flag) {
-                if (strcmp(*flag, "-fsanitize=address") == 0) {
-                    sanitize_address = true;
-                    break;
-                }
-            }
-        }
+        // Keep fixed, bounded PCH inputs readable in the filename. Hash the
+        // compiler flag sequence because it is ordered, variable-length, and may
+        // contain characters unsuitable for filenames. Any new input that can
+        // change PCH contents or compatibility must be represented here, either
+        // directly or by a separately named digest.
+        const std::string compiler_flags_hash = hash_compiler_flags(extra_flags);
         pch_path_str = std::string(pch_dir) + "/builtin_bd" + std::to_string(block_dim) + (verify_fp ? "_vfp" : "")
-            + (debug ? "_dbg" : "") + (tiles_in_stack_memory ? "_tis" : "") + (sanitize_address ? "_asan" : "")
-            + ".pch";
+            + (debug ? "_dbg" : "") + (tiles_in_stack_memory ? "_tis" : "") + "_cf" + compiler_flags_hash + ".pch";
 
         // Check if the PCH file already exists
         FILE* f = fopen(pch_path_str.c_str(), "rb");
@@ -696,8 +743,28 @@ static llvm::orc::LLJIT* get_or_create_jit(bool use_legacy_linker)
                 -> llvm::Expected<std::unique_ptr<llvm::orc::ObjectLayer>> {
                 auto layer = std::make_unique<llvm::orc::ObjectLinkingLayer>(session);
 
+                // Register debug-object plugin for GDB/LLDB JIT debugging support.
                 if (WP_ENABLE_DEBUG) {
-                    // Register debug-object plugin for GDB/LLDB JIT debugging support.
+#if LLVM_VERSION_MAJOR >= 22
+                    // LLVM 22 replaced DebugObjectManagerPlugin + createJITLoaderGDBRegistrar
+                    // with ELFDebugObjectPlugin, which resolves the GDB registration action
+                    // internally and reports failure through an Error out-parameter.
+                    llvm::Error err = llvm::Error::success();
+                    auto plugin = std::make_shared<llvm::orc::ELFDebugObjectPlugin>(
+                        session, /*RequireDebugSections=*/true, /*AutoRegisterCode=*/true, err
+                    );
+                    if (!err) {
+                        layer->addPlugin(std::move(plugin));
+                    } else {
+                        llvm::consumeError(std::move(err));
+                        std::cout << "Warp notice: JIT debug support is not available with "
+                                     "this LLVM build. Step-through debugging of CPU kernels "
+                                     "requires building Warp with --build-llvm, or setting "
+                                     "wp.config.legacy_cpu_linker = True to use the legacy "
+                                     "RTDyld linker."
+                                  << std::endl;
+                    }
+#else
                     auto registrar = llvm::orc::createJITLoaderGDBRegistrar(session);
                     if (registrar) {
 #if LLVM_VERSION_MAJOR >= 21
@@ -720,6 +787,7 @@ static llvm::orc::LLJIT* get_or_create_jit(bool use_legacy_linker)
                                      "RTDyld linker."
                                   << std::endl;
                     }
+#endif
                 }
 
                 return layer;

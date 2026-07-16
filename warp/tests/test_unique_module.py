@@ -525,8 +525,8 @@ def test_unique_module_deferred_static_expressions(test, device):
     wp.launch(kernel2, dim=1, inputs=[], outputs=[result2], device=device)
     assert_np_equal(result2.numpy(), np.array([999, 888]))
 
-    # Test with same last element but different first element — the hash must
-    # capture ALL loop iterations, not just the last one (GH-1211)
+    # Test with same last element but different first element. The hash must
+    # capture ALL loop iterations, not just the last one
     kernel3 = make_kernel([100, 999])
     kernel4 = make_kernel([200, 999])
     test.assertIsNot(kernel3, kernel4, "Kernels differing only in non-last elements should be different")

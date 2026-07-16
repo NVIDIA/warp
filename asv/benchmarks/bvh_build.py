@@ -19,7 +19,7 @@ import importlib.util
 import os
 
 import numpy as np
-from asv_runner.benchmarks.mark import skip_benchmark_if
+from asv_runner.benchmarks.mark import skip_benchmark_if, skip_for_params
 
 import warp as wp
 
@@ -105,7 +105,10 @@ class BvhBuild:
         self.uppers = wp.array(uppers_np, dtype=wp.vec3, device=self.device)
         wp.synchronize_device(self.device)
 
+    # This small median build exhibits host-dependent timing modes in CI while
+    # duplicating median coverage provided by the larger assets.
     @skip_benchmark_if(USD_AVAILABLE is False)
+    @skip_for_params([("median", "bear")])
     def time_build(self, asset_data, method, asset):
         _bvh = wp.Bvh(self.lowers, self.uppers, constructor=method)
         wp.synchronize_device(self.device)

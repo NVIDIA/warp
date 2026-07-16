@@ -823,7 +823,7 @@ class TestStruct(unittest.TestCase):
         wp.launch(check_default_attributes_kernel, dim=1, inputs=[s])
 
     def test_struct_field_type_preservation(self):
-        """Assigning a Warp scalar to a struct field should preserve the Warp type (GH-1288)."""
+        """Assigning a Warp scalar to a struct field should preserve the Warp type."""
 
         @wp.struct
         class ScalarStruct:

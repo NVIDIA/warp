@@ -750,7 +750,7 @@ def test_tile_n_map_with_constant(test, device):
     assert_np_equal(y.grad.numpy(), np.full(TILE_M, 0.5, dtype=np.float64))
 
 
-# --- tile_map with custom (non-pre-expanded) types (GH-1311) ---
+# --- tile_map with custom (non-pre-expanded) types ---
 
 vec5 = wp.types.vector(5, dtype=wp.float32)
 mat5 = wp.types.matrix(shape=(5, 5), dtype=wp.float32)
