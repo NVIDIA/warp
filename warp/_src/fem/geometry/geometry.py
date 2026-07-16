@@ -29,6 +29,7 @@ _NULL_BVH_ID = wp.uint64(0)
 _COORD_LOOKUP_ITERATIONS = 24
 _COORD_LOOKUP_ITERATIONS_F64 = 48
 _COORD_LOOKUP_STEP = 1.0
+_COORD_LOOKUP_STEP_F64 = wp.float64(1.0)
 _COORD_LOOKUP_EPS = float(2**-20)
 _COORD_LOOKUP_EPS_F64 = float(2**-44)
 _BVH_MIN_PADDING = float(2**-16)
@@ -565,6 +566,7 @@ class Geometry:
 
         lookup_iterations = _COORD_LOOKUP_ITERATIONS_F64 if self.scalar_type == wp.float64 else _COORD_LOOKUP_ITERATIONS
         lookup_eps = _COORD_LOOKUP_EPS_F64 if self.scalar_type == wp.float64 else _COORD_LOOKUP_EPS
+        lookup_step = _COORD_LOOKUP_STEP_F64 if self.scalar_type == wp.float64 else _COORD_LOOKUP_STEP
 
         @cache.dynamic_func(suffix=(self.name, element_kind))
         def element_coordinates(args: arg_type, element_index: ElementIndex, pos: pos_type):
@@ -577,7 +579,7 @@ class Geometry:
                 dc = elt_inv_grad(args, s) * (pos - x)
                 if wp.length_sq(dc) < lookup_eps:
                     break
-                coords = coords + ref_elt.coord_delta(_COORD_LOOKUP_STEP * dc)
+                coords = coords + ref_elt.coord_delta(lookup_step * dc)
 
             return coords
 
@@ -671,7 +673,7 @@ class Geometry:
                 while closest_cell == NULL_ELEMENT_INDEX:
                     query = wp.bvh_query_aabb(bvh_id, _bvh_vec(pos) - wp.vec3(pad), _bvh_vec(pos) + wp.vec3(pad), root)
                     cell_index = int(0)
-                    closest_dist = float(pad * pad)
+                    closest_dist = scalar(pad * pad)
 
                     while wp.bvh_query_next(query, cell_index):
                         if wp.static(filter_func is not None):
@@ -743,7 +745,7 @@ class Geometry:
         @cache.dynamic_func(suffix=lookup_suffix, allow_overloads=True)
         def cell_lookup(args: self.CellArg, pos: pos_type, guess: SampleType):
             guess_pos = self.cell_position(args, guess)
-            max_dist = wp.length(guess_pos - pos)
+            max_dist = wp.float32(wp.length(guess_pos - pos))
             if wp.static(self.environment_count() <= 1):
                 return unfiltered_cell_lookup(args, pos, max_dist, null_filter_data, null_filter_target)
 
