@@ -264,8 +264,8 @@ def test_conditional_unequal_types(test: unittest.TestCase, device):
 @wp.kernel
 def test_ifexp_with_array_access_kernel(
     idx: wp.int32,
-    transforms: wp.array(dtype=wp.transform),
-    result: wp.array(dtype=wp.vec3),
+    transforms: wp.array[wp.transform],
+    result: wp.array[wp.vec3],
 ):
     # Conditional expression with array element access in else branch
     # When idx < 0, should use transform_identity() and NOT access transforms[idx]
@@ -299,8 +299,8 @@ def test_ifexp_with_array_access(test: unittest.TestCase, device):
 
 @wp.kernel
 def test_short_circuit_and_kernel(
-    arr: wp.array(dtype=int),
-    result: wp.array(dtype=int),
+    arr: wp.array[int],
+    result: wp.array[int],
 ):
     tid = wp.tid()
     # arr[tid] must not be evaluated when arr is None
@@ -312,8 +312,8 @@ def test_short_circuit_and_kernel(
 
 @wp.kernel
 def test_short_circuit_or_kernel(
-    arr: wp.array(dtype=int),
-    result: wp.array(dtype=int),
+    arr: wp.array[int],
+    result: wp.array[int],
 ):
     tid = wp.tid()
     # Second operand must not be evaluated when first is true
@@ -351,9 +351,9 @@ def test_short_circuit_or(test: unittest.TestCase, device):
 
 @wp.kernel
 def test_short_circuit_and_grad_kernel(
-    x: wp.array(dtype=float),
-    flag: wp.array(dtype=int),
-    out: wp.array(dtype=float),
+    x: wp.array[float],
+    flag: wp.array[int],
+    out: wp.array[float],
 ):
     tid = wp.tid()
     # flag[tid] != 0 and tid < 2: only threads 0,1 with flag set take the branch.
@@ -367,9 +367,9 @@ def test_short_circuit_and_grad_kernel(
 
 @wp.kernel
 def test_short_circuit_or_grad_kernel(
-    x: wp.array(dtype=float),
-    flag: wp.array(dtype=int),
-    out: wp.array(dtype=float),
+    x: wp.array[float],
+    flag: wp.array[int],
+    out: wp.array[float],
 ):
     tid = wp.tid()
     # flag[tid] == 0 or tid >= 2: threads where flag is zero OR tid >= 2.
@@ -424,7 +424,7 @@ def test_short_circuit_or_grad(test: unittest.TestCase, device):
 
 
 @wp.kernel
-def branch_local_merge_codegen_kernel(x: wp.array(dtype=float), out: wp.array(dtype=float)):
+def branch_local_merge_codegen_kernel(x: wp.array[float], out: wp.array[float]):
     # ``r`` is first assigned inside nested ``if``/``else`` branches, so it has no version
     # before the conditional. The ``else`` branch must be lowered against the pre-conditional
     # symbol map; otherwise the ``if`` branch's SSA version of ``r`` leaks into the ``else``

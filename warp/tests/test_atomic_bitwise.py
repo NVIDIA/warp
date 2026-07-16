@@ -10,7 +10,7 @@ from warp.tests.unittest_utils import *
 
 
 @wp.kernel
-def test_atomic_bitwise_kernel(a: wp.array(dtype=wp.uint32), b: wp.array(dtype=wp.uint32), op_type: int):
+def test_atomic_bitwise_kernel(a: wp.array[wp.uint32], b: wp.array[wp.uint32], op_type: int):
     i = wp.tid()
     word_idx = i // 32
     bit_idx = i % 32
@@ -66,7 +66,7 @@ def test_atomic_bitwise_scalar(test, device):
 
 
 @wp.kernel
-def test_atomic_bitwise_vector_kernel(a: wp.array(dtype=wp.vec3ui), b: wp.array(dtype=wp.vec3ui), op_type: int):
+def test_atomic_bitwise_vector_kernel(a: wp.array[wp.vec3ui], b: wp.array[wp.vec3ui], op_type: int):
     i = wp.tid()
     word_idx = i // 32
     bit_idx = i % 32
@@ -125,7 +125,7 @@ mat33ui = wp.types.matrix(shape=(3, 3), dtype=wp.uint32)
 
 
 @wp.kernel
-def test_atomic_bitwise_matrix_kernel(a: wp.array(dtype=mat33ui), b: wp.array(dtype=mat33ui), op_type: int):
+def test_atomic_bitwise_matrix_kernel(a: wp.array[mat33ui], b: wp.array[mat33ui], op_type: int):
     i = wp.tid()
     word_idx = i // 32
     bit_idx = i % 32
