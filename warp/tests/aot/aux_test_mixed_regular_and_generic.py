@@ -14,14 +14,14 @@ import warp as wp
 
 
 @wp.kernel
-def regular_add(a: wp.array(dtype=wp.float32), b: wp.array(dtype=wp.float32), c: wp.array(dtype=wp.float32)):
+def regular_add(a: wp.array[wp.float32], b: wp.array[wp.float32], c: wp.array[wp.float32]):
     """Regular non-generic kernel that adds two arrays."""
     i = wp.tid()
     c[i] = a[i] + b[i]
 
 
 @wp.kernel
-def generic_scale(x: wp.array(dtype=Any), s: Any):
+def generic_scale(x: wp.array[Any], s: Any):
     """Generic kernel without overloads - should trigger a warning."""
     i = wp.tid()
     x[i] = s * x[i]

@@ -7,10 +7,10 @@ import warp as wp
 
 
 @wp.kernel
-def scale(x: wp.array(dtype=Any), s: Any):
+def scale(x: wp.array[Any], s: Any):
     i = wp.tid()
     x[i] = s * x[i]
 
 
 # Add exactly one overload
-scale_f32 = wp.overload(scale, [wp.array(dtype=wp.float32), wp.float32])
+scale_f32 = wp.overload(scale, [wp.array[wp.float32], wp.float32])
