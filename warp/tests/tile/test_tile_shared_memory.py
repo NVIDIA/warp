@@ -869,12 +869,12 @@ def test_tile_custom_grad_extra_shared(test, device):
     EXTRA = 8  # backward-only shared scratch is EXTRA x EXTRA, dwarfing the M x M forward tile
 
     @wp.func
-    def scale2x(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float), i: int):
+    def scale2x(x: wp.array2d[float], y: wp.array2d[float], i: int):
         # forward: y = 2x elementwise -> tiny shared footprint
         wp.tile_store(y, wp.tile_load(x, shape=(M, M), offset=(i * M, 0)) * float(2.0), offset=(i * M, 0))
 
     @wp.func_grad(scale2x)
-    def adj_scale2x(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float), i: int):
+    def adj_scale2x(x: wp.array2d[float], y: wp.array2d[float], i: int):
         # backward is dL/dx = 2*dL/dy, but routed through a large shared scratch tile (the
         # trigger); *0.0 keeps the value at 2 while the scratch still feeds the scatter.
         g = wp.tile_load(wp.adjoint[y], shape=(M, M), offset=(i * M, 0))
@@ -883,7 +883,7 @@ def test_tile_custom_grad_extra_shared(test, device):
         wp.tile_atomic_add(wp.adjoint[x], g * float(2.0) + pad * float(0.0), offset=(i * M, 0))
 
     @wp.kernel(module="unique")
-    def run(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
+    def run(x: wp.array2d[float], y: wp.array2d[float]):
         scale2x(x, y, wp.tid())
 
     x = wp.array(np.ones((NUM_TILES * M, M), dtype=np.float32), requires_grad=True, device=device)

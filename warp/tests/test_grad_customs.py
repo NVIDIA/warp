@@ -467,7 +467,7 @@ def adj_build_order_trigger(x: float, adj_ret: float):
 
 
 @wp.kernel
-def build_order_kernel(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+def build_order_kernel(x: wp.array[float], y: wp.array[float]):
     tid = wp.tid()
     # trigger (-> custom grad -> helper -> leaf) is visited before the direct helper call below.
     t = build_order_trigger(x[tid])
@@ -505,13 +505,13 @@ def cross_kernel_helper(x: float):
 
 
 @wp.kernel(enable_backward=False)
-def cross_kernel_forward_only(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+def cross_kernel_forward_only(x: wp.array[float], y: wp.array[float]):
     tid = wp.tid()
     y[tid] = cross_kernel_helper(x[tid])
 
 
 @wp.kernel
-def cross_kernel_backward(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+def cross_kernel_backward(x: wp.array[float], y: wp.array[float]):
     tid = wp.tid()
     y[tid] = cross_kernel_helper(x[tid])
 
