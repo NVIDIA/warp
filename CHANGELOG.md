@@ -78,6 +78,11 @@
   ([GH-1630](https://github.com/NVIDIA/warp/issues/1630)).
 - Fix an illegal memory access on CUDA when a variable is reassigned inside nested ``if``/``else`` branches
   ([GH-1574](https://github.com/NVIDIA/warp/issues/1574)).
+- Fix under-sized backward-kernel shared memory when a `@wp.func` custom gradient (`@wp.func_grad`) or custom replay
+  needs more shared memory than the forward, which could cause an illegal memory access on GPU
+  ([GH-1646](https://github.com/NVIDIA/warp/issues/1646)).
+- Fix gradients being silently zeroed when a `@wp.func` helper was shared between a kernel with backward disabled
+  and a backward-enabled kernel in the same module.
 - Fix compilation failures when calling `warp.fem.lookup()` with double-precision (`wp.float64`) geometries
   ([GH-1660](https://github.com/NVIDIA/warp/issues/1660)).
 

@@ -65,7 +65,7 @@ import warp._src.build
 import warp._src.codegen
 import warp._src.module_registry
 import warp.config
-from warp._src.codegen import WarpCodegenTypeError, _codegen_lock, synchronized
+from warp._src.codegen import WarpCodegenError, WarpCodegenTypeError, _codegen_lock, synchronized
 from warp._src.logger import LOG_DEBUG, LOG_WARNING, get_logger, log_debug, log_error, log_info, log_warning
 from warp._src.texture import Texture1D, Texture2D, Texture3D, texture1d_t, texture2d_t, texture3d_t
 from warp._src.types import LAUNCH_MAX_DIMS, Array, LaunchBounds, array_t, launch_bounds_t, type_repr
@@ -2719,6 +2719,12 @@ class ModuleBuilder:
         for func in self.deferred_functions:
             self.build_function(func)
 
+        # propagate used_by_backward_kernel now that the full call graph is known
+        self._propagate_used_by_backward_kernel()
+
+        # propagate callee replay/reverse shared-memory needs into backward-kernel sizing
+        self._propagate_backward_shared_memory()
+
     def build_struct_recursive(self, struct: warp._src.codegen.Struct):
         structs = []
 
@@ -2823,14 +2829,97 @@ class ModuleBuilder:
             # use dict to preserve import order
             self.functions[func] = None
 
+    def _propagate_used_by_backward_kernel(self):
+        # build_function() memoizes, so a helper built from a forward-only path before a backward
+        # kernel reaches it keeps its callees stubbed; re-propagate across the graph to a fixpoint.
+        worklist = [obj.adj for obj in (*self.kernels, *self.functions) if obj.adj.used_by_backward_kernel]
+        # worklist algorithm: an adj is enqueued only on a False->True flip, so the loop exits even on cycles
+        while worklist:
+            adj = worklist.pop()
+            for callee in adj.called_user_functions:
+                if not callee.adj.used_by_backward_kernel:
+                    callee.adj.used_by_backward_kernel = True
+                    worklist.append(callee.adj)
+        # backward use is final only now, so this is where wp.ref[T] calls recorded by
+        # add_call are rejected (a manual adjoint may also have been registered since);
+        # skip_build adjs hold stale records from a failed parse and cannot launch
+        for obj in (*self.kernels, *self.functions):
+            adj = obj.adj
+            if adj.skip_build or not adj.used_by_backward_kernel:
+                continue
+            for callee in adj.unvalidated_ref_calls:
+                if adj.has_manual_ref_adjoint(callee):
+                    continue
+                scope = "function" if adj.is_user_function else "kernel"
+                raise WarpCodegenError(
+                    f"In {scope} '{adj.fun_name}': "
+                    f"Cannot call '{callee.key}' with wp.ref[T] parameters from a backward-enabled "
+                    "kernel. Use enable_backward=False on the kernel, or switch to @wp.func_native "
+                    "with adj_snippet for a manually written adjoint."
+                )
+
+    def _propagate_backward_shared_memory(self):
+        # a backward call site replays the callee's forward, then calls its reverse; the two frames
+        # pop between the calls, so the larger one bounds the contribution. Custom grad/replay
+        # bodies are forward-emitted with no gradient buffers, hence counted once
+        adjs = [obj.adj for obj in (*self.functions, *self.kernels)]
+
+        # make sure custom grads/replays are built before reading their rooflines
+        # (callees reached through function-valued arguments are not in deferred_functions)
+        for adj in adjs:
+            # errored adjs (skip_build) hold stale call-graph edges
+            if adj.skip_build:
+                continue
+            for callee in adj.called_user_functions:
+                for extra_fn in (callee.custom_grad_func, callee.custom_replay_func):
+                    if extra_fn is not None:
+                        self.build_function(extra_fn)
+
+        # one pass in callees-before-callers order reaches the fixpoint: build_function()
+        # registers a function only after its callees finished building, so self.functions
+        # insertion order is topological, and kernels are roots
+        folded = set()
+        for adj in adjs:
+            # an errored adj (skip_build) has stale edges and can never launch; keep its value
+            # as-is, marked folded so live callers of such a function don't trip the guard below
+            if adj.skip_build:
+                folded.add(adj)
+                continue
+            required = adj.max_required_extra_shared_memory_backward
+            for callee in adj.called_user_functions:
+                if callee.custom_replay_func is not None:
+                    replay = callee.custom_replay_func.adj.get_total_required_shared()
+                else:
+                    replay = callee.adj.get_total_required_shared()
+                if callee.custom_grad_func is not None:
+                    reverse = callee.custom_grad_func.adj.get_total_required_shared()
+                elif callee.adj not in folded:
+                    # fail loudly instead of silently under-reserving
+                    raise RuntimeError(
+                        f"Cannot size backward shared memory for '{adj.fun_name}': callee '{callee.key}' was not "
+                        "sized first; the call graph should be acyclic and functions registered callees-first"
+                    )
+                else:
+                    reverse = callee.adj.get_total_required_shared_backward()
+                # max: the replay frame pops before the reverse frame pushes, so the two never coexist
+                required = max(required, replay, reverse)
+            adj.max_required_extra_shared_memory_backward = required
+            folded.add(adj)
+
     def build_meta(self):
         meta = {}
 
         for kernel in self.kernels:
             name = kernel.get_mangled_name()
+            options = self.options | kernel.options
 
             meta[name + "_cuda_kernel_forward_smem_bytes"] = kernel.adj.get_total_required_shared()
-            meta[name + "_cuda_kernel_backward_smem_bytes"] = kernel.adj.get_total_required_shared() * 2
+            if options["enable_backward"]:
+                backward_smem_bytes = kernel.adj.get_total_required_shared_backward()
+            else:
+                # no backward kernel is generated, so there is nothing to reserve
+                backward_smem_bytes = 0
+            meta[name + "_cuda_kernel_backward_smem_bytes"] = backward_smem_bytes
 
         return meta
 

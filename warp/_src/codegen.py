@@ -1733,19 +1733,32 @@ class Adjoint:
     def alloc_shared_extra(adj, num_bytes):
         adj.max_required_extra_shared_memory = max(adj.max_required_extra_shared_memory, num_bytes)
 
+    # backward-pass counterpart of alloc_shared_extra()
+    def alloc_shared_extra_backward(adj, num_bytes):
+        adj.max_required_extra_shared_memory_backward = max(adj.max_required_extra_shared_memory_backward, num_bytes)
+
+    # returns the number of bytes of shared memory required by this function's own tile
+    # variables, excluding anything required by callees
+    def get_own_required_shared(adj):
+        own_shared = 0
+        for var in adj.variables:
+            if is_tile(var.type) and var.type.storage == "shared" and var.type.owner:
+                own_shared += var.type.size_in_bytes()
+            elif is_tile_stack(var.type):
+                own_shared += var.type.size_in_bytes()
+        return own_shared
+
     # returns the total number of bytes for a function
     # based on it's own requirements + worst case
     # requirements of any dependent functions
     def get_total_required_shared(adj):
-        total_shared = 0
+        return adj.get_own_required_shared() + adj.max_required_extra_shared_memory
 
-        for var in adj.variables:
-            if is_tile(var.type) and var.type.storage == "shared" and var.type.owner:
-                total_shared += var.type.size_in_bytes()
-            elif is_tile_stack(var.type):
-                total_shared += var.type.size_in_bytes()
-
-        return total_shared + adj.max_required_extra_shared_memory
+    # backward counterpart of get_total_required_shared();
+    # callee frames come from ModuleBuilder._propagate_backward_shared_memory
+    def get_total_required_shared_backward(adj):
+        # x2: the reverse pass declares own tiles requires_grad, pairing each with an equal-sized gradient buffer
+        return adj.get_own_required_shared() * 2 + adj.max_required_extra_shared_memory_backward
 
     @staticmethod
     def extract_function_source(func: Callable) -> tuple[str, int, ast.Module]:
@@ -1927,6 +1940,15 @@ class Adjoint:
 
         # tracks how much additional shared memory is required by any dependent function calls
         adj.max_required_extra_shared_memory = 0
+
+        # backward-pass counterpart, resolved by ModuleBuilder._propagate_backward_shared_memory
+        adj.max_required_extra_shared_memory_backward = 0
+
+        # recorded at call sites for ModuleBuilder's post-build propagation passes
+        adj.called_user_functions = set()
+
+        # wp.ref[T] callees lacking a manual adjoint; rejected post-build, once used_by_backward_kernel is final
+        adj.unvalidated_ref_calls = []
 
         # Function-specialized functions replace selected argument Vars with
         # Function objects so calls like `op(x)` resolve statically.
@@ -2519,6 +2541,8 @@ class Adjoint:
 
         # if it is a user-function then build it recursively
         if not func.is_builtin():
+            # record the call-graph edge for the post-build propagation passes
+            adj.called_user_functions.add(func)
             # If the function called is a user function,
             # we need to ensure its adjoint is also being generated.
             if adj.used_by_backward_kernel:
@@ -2650,6 +2674,8 @@ class Adjoint:
 
             # if the argument is a function (and not a builtin), then build it recursively
             if isinstance(func_arg_var, warp._src.context.Function) and not func_arg_var.is_builtin():
+                # a function-valued argument is a call-graph edge too
+                adj.called_user_functions.add(func_arg_var)
                 if adj.used_by_backward_kernel:
                     func_arg_var.adj.used_by_backward_kernel = True
                 if adj.force_adjoint_codegen:
@@ -2707,14 +2733,11 @@ class Adjoint:
         )
 
         if func.is_differentiable and func_args and not skip_reverse and not has_nondifferentiable_callable_arg:
-            # Ref-param functions are not automatically differentiable: a silent
-            # skip would produce wrong gradients, so raise instead.
-            if func_has_ref_params and adj.used_by_backward_kernel and not adj.has_manual_ref_adjoint(func):
-                raise WarpCodegenError(
-                    f"Cannot call '{func.key}' with wp.ref[T] parameters from a backward-enabled "
-                    "kernel. Use enable_backward=False on the kernel, or switch to @wp.func_native "
-                    "with adj_snippet for a manually written adjoint."
-                )
+            # Ref-param functions are not automatically differentiable and a silent skip would
+            # produce wrong gradients, but used_by_backward_kernel is not known yet (callers may
+            # still be built); ModuleBuilder rejects the recorded calls once it is final
+            if func_has_ref_params and not adj.has_manual_ref_adjoint(func):
+                adj.unvalidated_ref_calls.append(func)
             adj_args = tuple(reverse_adj_args)
             reverse_has_output_args = (
                 func.require_original_output_arg or len(output_list) > 1
@@ -2747,6 +2770,9 @@ class Adjoint:
             adj.alloc_shared_extra(func.adj.get_total_required_shared() + extra_shared_memory)
         else:
             adj.alloc_shared_extra(extra_shared_memory)
+        # user-function callee frames are folded in post-build by ModuleBuilder._propagate_backward_shared_memory
+        # x2: the builtin's adjoint needs LTO workspace too; matches the previous blanket backward sizing
+        adj.alloc_shared_extra_backward(extra_shared_memory * 2)
 
         return return_value(output)
 

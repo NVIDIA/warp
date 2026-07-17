@@ -441,6 +441,104 @@ def test_custom_grad_with_helper_dependency(test, device):
     assert_np_equal(inputs.grad.numpy(), expected_grad, tol=1e-4)
 
 
+# A helper reached first through a custom grad (before the kernel's own differentiated call
+# to it) must still have its callee's adjoint enabled, not stubbed out.
+@wp.func
+def build_order_leaf(x: float):
+    return x * x
+
+
+@wp.func
+def build_order_helper(x: float):
+    return build_order_leaf(x)
+
+
+@wp.func
+def build_order_trigger(x: float):
+    return x
+
+
+@wp.func_grad(build_order_trigger)
+def adj_build_order_trigger(x: float, adj_ret: float):
+    # Reach the helpers from inside the custom grad (forcing them to build here first); *0.0
+    # keeps this contribution zero.
+    poison = build_order_helper(x)
+    wp.adjoint[x] += 0.0 * poison * adj_ret
+
+
+@wp.kernel
+def build_order_kernel(x: wp.array[float], y: wp.array[float]):
+    tid = wp.tid()
+    # trigger (-> custom grad -> helper -> leaf) is visited before the direct helper call below.
+    t = build_order_trigger(x[tid])
+    y[tid] = build_order_helper(x[tid]) + 0.0 * t
+
+
+def test_custom_grad_helper_backward_propagation(test, device):
+    """A helper reached first through a custom grad must keep its callee's adjoint enabled.
+
+    Otherwise ``adj_build_order_leaf`` is a disabled stub and the gradient is silently zeroed.
+    Forward value is x*x, so the expected gradient is d/dx (x*x) = 2x.
+    """
+    x = wp.array([3.0], dtype=wp.float32, requires_grad=True, device=device)
+    y = wp.zeros_like(x)
+
+    with wp.Tape() as tape:
+        wp.launch(build_order_kernel, dim=1, inputs=[x], outputs=[y], device=device)
+
+    tape.backward(grads={y: wp.ones_like(y)})
+
+    assert_np_equal(y.numpy(), np.array([9.0], dtype=np.float32), tol=1e-4)
+    assert_np_equal(x.grad.numpy(), np.array([6.0], dtype=np.float32), tol=1e-4)
+
+
+# General (no custom grad) form of the same hazard: a helper first built by a forward-only kernel,
+# then differentiated by a separate backward kernel, must still get its callee's adjoint enabled.
+@wp.func
+def cross_kernel_leaf(x: float):
+    return x * x
+
+
+@wp.func
+def cross_kernel_helper(x: float):
+    return cross_kernel_leaf(x)
+
+
+@wp.kernel(enable_backward=False)
+def cross_kernel_forward_only(x: wp.array[float], y: wp.array[float]):
+    tid = wp.tid()
+    y[tid] = cross_kernel_helper(x[tid])
+
+
+@wp.kernel
+def cross_kernel_backward(x: wp.array[float], y: wp.array[float]):
+    tid = wp.tid()
+    y[tid] = cross_kernel_helper(x[tid])
+
+
+def test_backward_use_propagation_across_kernels(test, device):
+    """A helper built by a forward-only kernel first must still differentiate in a backward kernel.
+
+    ``cross_kernel_forward_only`` (enable_backward=False) builds ``cross_kernel_helper`` /
+    ``cross_kernel_leaf`` with backward disabled; ``cross_kernel_backward`` then differentiates the
+    same helper. Without order-independent propagation ``adj_cross_kernel_leaf`` stays a disabled
+    stub and the gradient is zeroed. Expected d/dx (x*x) = 2x.
+    """
+    x = wp.array([3.0], dtype=wp.float32, requires_grad=True, device=device)
+    y = wp.zeros_like(x)
+
+    # Exercise the forward-only kernel first so it participates in the same module build.
+    wp.launch(cross_kernel_forward_only, dim=1, inputs=[x], outputs=[y], device=device)
+
+    with wp.Tape() as tape:
+        wp.launch(cross_kernel_backward, dim=1, inputs=[x], outputs=[y], device=device)
+
+    tape.backward(grads={y: wp.ones_like(y)})
+
+    assert_np_equal(y.numpy(), np.array([9.0], dtype=np.float32), tol=1e-4)
+    assert_np_equal(x.grad.numpy(), np.array([6.0], dtype=np.float32), tol=1e-4)
+
+
 # Native snippet called by function with custom gradient
 # This tests that native snippets are available when generating forward code
 # for functions that have custom gradients
@@ -604,6 +702,18 @@ add_function_test(TestGradCustoms, "test_custom_grad_no_return", test_custom_gra
 add_function_test(TestGradCustoms, "test_nested_custom_grad", test_nested_custom_grad, devices=devices)
 add_function_test(
     TestGradCustoms, "test_custom_grad_with_helper_dependency", test_custom_grad_with_helper_dependency, devices=devices
+)
+add_function_test(
+    TestGradCustoms,
+    "test_custom_grad_helper_backward_propagation",
+    test_custom_grad_helper_backward_propagation,
+    devices=devices,
+)
+add_function_test(
+    TestGradCustoms,
+    "test_backward_use_propagation_across_kernels",
+    test_backward_use_propagation_across_kernels,
+    devices=devices,
 )
 add_function_test(
     TestGradCustoms,
