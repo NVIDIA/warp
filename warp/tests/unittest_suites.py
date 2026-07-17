@@ -14,7 +14,6 @@ can be used in parallel or serial unit tests (with optional code coverage)
 # ruff: noqa: PLC0415
 
 import os
-import sys
 import unittest
 
 START_DIRECTORY = os.path.realpath(os.path.dirname(__file__))
@@ -54,10 +53,14 @@ def _iter_class_suites(test_suite):
 
 def compare_unittest_suites(
     test_loader: unittest.TestLoader, test_suite_name: str, reference_suite: unittest.TestSuite
-) -> None:
-    """Prints the tests in `test_suite` that are not in `reference_suite`."""
+) -> unittest.TestSuite:
+    """Print the test classes in ``reference_suite`` that the named suite omits.
 
-    test_suite_fn = getattr(sys.modules[__name__], test_suite_name + "_suite")
+    Returns:
+        The test suite built for ``test_suite_name``.
+    """
+
+    test_suite_fn = SUITE_FACTORIES[test_suite_name]
 
     test_suite = test_suite_fn(test_loader)
 
@@ -569,3 +572,15 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     ]
 
     return _create_suite_from_test_classes(test_loader, test_classes)
+
+
+# Registry of named test-suite factories keyed by the ``--suite`` value that
+# selects them. This is the single source of truth for the runner's suite
+# choices: ``unittest_parallel`` derives its accepted ``--suite`` values from
+# these keys, so a choice cannot be offered without a factory behind it. The
+# "autodetect" special mode is intentionally absent; it discovers tests
+# dynamically from a file pattern rather than resolving a fixed factory here.
+SUITE_FACTORIES = {
+    "default": default_suite,
+    "debug": debug_suite,
+}

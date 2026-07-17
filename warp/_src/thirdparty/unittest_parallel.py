@@ -64,7 +64,7 @@ def main(argv=None):
         formatter_class=argparse.RawTextHelpFormatter,
         epilog="""Example usage:
         python -m warp.tests -s autodetect -p 'test_a*.py'
-        python -m warp.tests -s kit
+        python -m warp.tests -s debug
         python -m warp.tests -k 'mgpu' -k 'cuda'
         """,
     )
@@ -102,7 +102,9 @@ def main(argv=None):
         "--suite",
         type=str,
         default="default",
-        choices=["autodetect", "default", "debug", "kit"],
+        # "autodetect" is a special mode; the named suites are derived from the
+        # registry so a choice cannot exist without a factory behind it.
+        choices=["autodetect", *warp.tests.unittest_suites.SUITE_FACTORIES],
         help="Name of the test suite to run (default is 'default').",
     )  # NVIDIA Modification
     group_parallel = parser.add_argument_group("parallelization options")
