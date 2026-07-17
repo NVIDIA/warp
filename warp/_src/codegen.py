@@ -1740,13 +1740,13 @@ class Adjoint:
     # returns the number of bytes of shared memory required by this function's own tile
     # variables, excluding anything required by callees
     def get_own_required_shared(adj):
-        total_shared = 0
+        own_shared = 0
         for var in adj.variables:
             if is_tile(var.type) and var.type.storage == "shared" and var.type.owner:
-                total_shared += var.type.size_in_bytes()
+                own_shared += var.type.size_in_bytes()
             elif is_tile_stack(var.type):
-                total_shared += var.type.size_in_bytes()
-        return total_shared
+                own_shared += var.type.size_in_bytes()
+        return own_shared
 
     # returns the total number of bytes for a function
     # based on it's own requirements + worst case
@@ -2565,7 +2565,7 @@ class Adjoint:
 
         # if it is a user-function then build it recursively
         if not func.is_builtin():
-            # record the call-graph edge for the post-build used_by_backward_kernel fixpoint
+            # record the call-graph edge for the post-build propagation passes
             adj.called_user_functions.add(func)
             # If the function called is a user function,
             # we need to ensure its adjoint is also being generated.
@@ -2698,7 +2698,7 @@ class Adjoint:
 
             # if the argument is a function (and not a builtin), then build it recursively
             if isinstance(func_arg_var, warp._src.context.Function) and not func_arg_var.is_builtin():
-                # record the call-graph edge for the post-build used_by_backward_kernel fixpoint
+                # a function-valued argument is a call-graph edge too
                 adj.called_user_functions.add(func_arg_var)
                 if adj.used_by_backward_kernel:
                     func_arg_var.adj.used_by_backward_kernel = True
