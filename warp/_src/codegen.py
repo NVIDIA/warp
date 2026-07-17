@@ -2798,10 +2798,8 @@ class Adjoint:
             adj.alloc_shared_extra(func.adj.get_total_required_shared() + extra_shared_memory)
         else:
             adj.alloc_shared_extra(extra_shared_memory)
-        # The backward-pass contribution of user-function callees is resolved once the whole
-        # module is built (see ModuleBuilder._propagate_backward_shared_memory); here only the
-        # call-site LTO workspace is recorded, doubled to keep the pre-split reservation for
-        # LTO builtins whose adjoint dispatch needs workspace of its own.
+        # user-function callee frames are folded in post-build by ModuleBuilder._propagate_backward_shared_memory
+        # x2: the builtin's adjoint needs LTO workspace too; matches the previous blanket backward sizing
         adj.alloc_shared_extra_backward(extra_shared_memory * 2)
 
         return return_value(output)
