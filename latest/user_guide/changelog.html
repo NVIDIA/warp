@@ -596,6 +596,11 @@ into a destination without enough row capacity
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1630">GH-1630</a>).</p></li>
 <li><p>Fix an illegal memory access on CUDA when a variable is reassigned inside nested <code class="docutils literal notranslate"><span class="pre">if</span></code>/<code class="docutils literal notranslate"><span class="pre">else</span></code> branches
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1574">GH-1574</a>).</p></li>
+<li><p>Fix under-sized backward-kernel shared memory when a <code class="docutils literal notranslate"><span class="pre">&#64;wp.func</span></code> custom gradient (<code class="docutils literal notranslate"><span class="pre">&#64;wp.func_grad</span></code>) or custom replay
+needs more shared memory than the forward, which could cause an illegal memory access on GPU
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1646">GH-1646</a>).</p></li>
+<li><p>Fix gradients being silently zeroed when a <code class="docutils literal notranslate"><span class="pre">&#64;wp.func</span></code> helper was shared between a kernel with backward disabled
+and a backward-enabled kernel in the same module.</p></li>
 <li><p>Fix compilation failures when calling <code class="docutils literal notranslate"><span class="pre">warp.fem.lookup()</span></code> with double-precision (<code class="docutils literal notranslate"><span class="pre">wp.float64</span></code>) geometries
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1660">GH-1660</a>).</p></li>
 </ul>

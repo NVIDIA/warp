@@ -514,7 +514,7 @@
 <h1>warp.CudaManagedAllocator<a class="headerlink" href="#warp-cudamanagedallocator" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.CudaManagedAllocator">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">CudaManagedAllocator</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L4266-L4318"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.CudaManagedAllocator" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">CudaManagedAllocator</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L4355-L4407"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.CudaManagedAllocator" title="Link to this definition">#</a></dt>
 <dd><p>Allocator that creates CUDA managed-memory arrays.</p>
 <p>The allocator object is not bound to one CUDA device and can be reused
 across devices. Each allocation still happens under a specific CUDA context,
@@ -560,12 +560,12 @@ captured work for maximum CUDA compatibility.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.CudaManagedAllocator.allocate">
-<span class="sig-name descname"><span class="pre">allocate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size_in_bytes</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L4283-L4308"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.CudaManagedAllocator.allocate" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">allocate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size_in_bytes</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L4372-L4397"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.CudaManagedAllocator.allocate" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.CudaManagedAllocator.deallocate">
-<span class="sig-name descname"><span class="pre">deallocate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ptr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size_in_bytes</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L4309-L4318"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.CudaManagedAllocator.deallocate" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">deallocate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ptr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size_in_bytes</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L4398-L4407"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.CudaManagedAllocator.deallocate" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
