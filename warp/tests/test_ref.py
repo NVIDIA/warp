@@ -135,6 +135,43 @@ class TestRef(unittest.TestCase):
                 wp.launch(bad_backward_kernel, dim=1, inputs=[arr])
             tape.backward()
 
+    def test_ref_backward_raises_mixed_build_order(self):
+        """The ref[T] backward check must also fire when a helper is first built forward-only.
+
+        A shared helper built through an ``enable_backward=False`` kernel is memoized with its
+        backward-only call validations skipped; when a backward-enabled kernel in the same module
+        reaches it later, the deferred validation must be replayed and raise ``WarpCodegenError``
+        instead of failing later in native compilation.
+        """
+
+        @wp.func
+        def mixed_order_ref_func(x: wp.ref[wp.float32]):
+            x += wp.float32(1.0)
+
+        @wp.func
+        def mixed_order_helper(arr: wp.array[wp.float32], i: int):
+            mixed_order_ref_func(arr[i])
+
+        @wp.kernel(module="test_ref_mixed_build_order", enable_backward=False)
+        def mixed_order_forward_kernel(arr: wp.array[wp.float32]):
+            mixed_order_helper(arr, wp.tid())
+
+        @wp.kernel(module="test_ref_mixed_build_order")
+        def mixed_order_backward_kernel(arr: wp.array[wp.float32]):
+            mixed_order_helper(arr, wp.tid())
+
+        module = wp.get_module("test_ref_mixed_build_order")
+        # force the forward-only kernel to build the shared helper first (the live-kernel
+        # set is otherwise unordered)
+        original_get_live_kernels = module._get_live_kernels
+        module._get_live_kernels = lambda: [mixed_order_forward_kernel, mixed_order_backward_kernel]
+        try:
+            arr = wp.zeros(1, dtype=wp.float32)
+            with self.assertRaisesRegex(WarpCodegenError, r"wp\.ref\[T\] parameters from a backward-enabled"):
+                wp.launch(mixed_order_forward_kernel, dim=1, inputs=[arr])
+        finally:
+            module._get_live_kernels = original_get_live_kernels
+
     def test_native_ref_without_adj_snippet_backward_raises(self):
         """Calling a wp.ref[T] @wp.func_native without adj_snippet from backward must raise."""
 

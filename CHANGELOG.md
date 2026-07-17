@@ -81,6 +81,10 @@
   ([GH-1630](https://github.com/NVIDIA/warp/issues/1630)).
 - Fix an illegal memory access on CUDA when a variable is reassigned inside nested ``if``/``else`` branches
   ([GH-1574](https://github.com/NVIDIA/warp/issues/1574)).
+- Fix gradients being silently zeroed when a `@wp.func` helper was first reached from a kernel with backward disabled
+  and later differentiated by another kernel in the same module. Backward use now propagates across the whole call
+  graph regardless of build order, and unsupported `wp.ref[T]` calls reached this way raise a `WarpCodegenError`
+  during module load instead of failing native compilation.
 
 ### Documentation
 

@@ -2842,6 +2842,12 @@ class ModuleBuilder:
                     callee.adj.used_by_backward_kernel = True
                     worklist.append(callee.adj)
 
+        # memoized builds also skip add_call's backward-only validations; replay them now
+        # that every function's backward use is final
+        for func in self.functions:
+            if func.adj.used_by_backward_kernel:
+                func.adj.validate_deferred_backward_calls()
+
     def build_meta(self):
         meta = {}
 

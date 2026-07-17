@@ -1932,6 +1932,11 @@ class Adjoint:
         # across the whole call graph after every function is built (see _propagate_used_by_backward_kernel)
         adj.called_functions = set()
 
+        # backward-only call validations skipped because this function was not yet known to be
+        # used by a backward kernel; replayed by validate_deferred_backward_calls() if the
+        # function is marked backward-used after its (memoized) build
+        adj.deferred_backward_call_validations = []
+
         # Function-specialized functions replace selected argument Vars with
         # Function objects so calls like `op(x)` resolve statically.
         for a in adj.args:
@@ -2309,6 +2314,30 @@ class Adjoint:
             return True
 
         return func.native_snippet is not None and func.adj_native_snippet is not None
+
+    @staticmethod
+    def _backward_ref_call_error(func):
+        return (
+            f"Cannot call '{func.key}' with wp.ref[T] parameters from a backward-enabled "
+            "kernel. Use enable_backward=False on the kernel, or switch to @wp.func_native "
+            "with adj_snippet for a manually written adjoint."
+        )
+
+    def _source_location(adj):
+        if adj.lineno is None:
+            return f'In function "{adj.fun_name}" at {adj.filename}:\n'
+        lineno = adj.lineno + adj.fun_lineno
+        line = adj.source_lines[adj.lineno]
+        return f'In function "{adj.fun_name}" at {adj.filename}:{lineno}:\n{line}\n'
+
+    def validate_deferred_backward_calls(adj):
+        """Replay backward-only call validations for a function first built before it was
+        known to be used by a backward kernel (see
+        ``ModuleBuilder._propagate_used_by_backward_kernel``)."""
+        for func, location in adj.deferred_backward_call_validations:
+            # a manual adjoint may have been registered after the call site was parsed
+            if not adj.has_manual_ref_adjoint(func):
+                raise WarpCodegenError(location + adj._backward_ref_call_error(func))
 
     def emit_ref_adjoint_pointer(adj, var, prelude: list[str] | None = None):
         if var.ref_origin is None:
@@ -2717,12 +2746,13 @@ class Adjoint:
         if func.is_differentiable and func_args and not skip_reverse and not has_nondifferentiable_callable_arg:
             # Ref-param functions are not automatically differentiable: a silent
             # skip would produce wrong gradients, so raise instead.
-            if func_has_ref_params and adj.used_by_backward_kernel and not adj.has_manual_ref_adjoint(func):
-                raise WarpCodegenError(
-                    f"Cannot call '{func.key}' with wp.ref[T] parameters from a backward-enabled "
-                    "kernel. Use enable_backward=False on the kernel, or switch to @wp.func_native "
-                    "with adj_snippet for a manually written adjoint."
-                )
+            if func_has_ref_params and not adj.has_manual_ref_adjoint(func):
+                if adj.used_by_backward_kernel:
+                    raise WarpCodegenError(adj._backward_ref_call_error(func))
+                # this function may still be marked backward-used once the module's full call
+                # graph is known (its build is memoized, so this check would never re-run);
+                # record it so validate_deferred_backward_calls() can replay it
+                adj.deferred_backward_call_validations.append((func, adj._source_location()))
             adj_args = tuple(reverse_adj_args)
             reverse_has_output_args = (
                 func.require_original_output_arg or len(output_list) > 1
