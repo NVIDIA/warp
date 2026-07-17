@@ -10,6 +10,7 @@ import unittest
 import warnings
 from functools import partial
 from typing import Any
+from unittest import mock
 
 import numpy as np
 
@@ -859,6 +860,30 @@ def test_ffi_jax_kernel_launch_dims_custom(test, device):
     test.assertEqual(result2.shape, expected2.shape)
     assert_np_equal(result1, expected1)
     assert_np_equal(result2, expected2)
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
+def test_ffi_all_devices_preload_skips_unsupported_device(test, device):
+    ffi_module = importlib.import_module("warp._src.jax.ffi")
+    unsupported_device = object()
+    jax_cuda_device = object()
+    warp_cuda_device = mock.Mock(is_cuda=True)
+    module = mock.Mock()
+    fake_jax = mock.Mock()
+
+    def device_from_jax(jax_device):
+        if jax_device is unsupported_device:
+            raise RuntimeError("unsupported device")
+        return warp_cuda_device
+
+    for jax_devices in ([unsupported_device, jax_cuda_device], [jax_cuda_device, unsupported_device]):
+        with test.subTest(jax_devices=jax_devices):
+            fake_jax.local_devices.return_value = jax_devices
+            module.load.reset_mock()
+            with mock.patch.object(ffi_module.wp, "device_from_jax", side_effect=device_from_jax):
+                ffi_module._preload_module_on_all_devices(module, fake_jax)
+
+            module.load.assert_called_once_with(warp_cuda_device)
 
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
@@ -2246,6 +2271,12 @@ try:
     )
     add_function_test(TestJax, "test_dtype_from_jax", test_dtype_from_jax, devices=None)
     add_function_test(TestJax, "test_dtype_to_jax", test_dtype_to_jax, devices=None)
+    add_function_test(
+        TestJax,
+        "test_ffi_all_devices_preload_skips_unsupported_device",
+        test_ffi_all_devices_preload_skips_unsupported_device,
+        devices=None,
+    )
     if jax_compatible_devices:
         add_function_test(TestJax, "test_device_conversion", test_device_conversion, devices=jax_compatible_devices)
 
