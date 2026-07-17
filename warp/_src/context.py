@@ -2841,10 +2841,11 @@ class ModuleBuilder:
                     callee.adj.used_by_backward_kernel = True
                     worklist.append(callee.adj)
         # backward use is final only now, so this is where wp.ref[T] calls recorded by
-        # add_call are rejected (a manual adjoint may also have been registered since)
+        # add_call are rejected (a manual adjoint may also have been registered since);
+        # skip_build adjs hold stale records from a failed parse and cannot launch
         for obj in (*self.kernels, *self.functions):
             adj = obj.adj
-            if not adj.used_by_backward_kernel:
+            if adj.skip_build or not adj.used_by_backward_kernel:
                 continue
             for callee in adj.unvalidated_ref_calls:
                 if adj.has_manual_ref_adjoint(callee):
@@ -2866,6 +2867,9 @@ class ModuleBuilder:
         # make sure custom grads/replays are built before reading their rooflines
         # (callees reached through function-valued arguments are not in deferred_functions)
         for adj in adjs:
+            # errored adjs (skip_build) hold stale call-graph edges
+            if adj.skip_build:
+                continue
             for callee in adj.called_user_functions:
                 for extra_fn in (callee.custom_grad_func, callee.custom_replay_func):
                     if extra_fn is not None:
@@ -2876,6 +2880,11 @@ class ModuleBuilder:
         # insertion order is topological, and kernels are roots
         folded = set()
         for adj in adjs:
+            # an errored adj (skip_build) has stale edges and can never launch; keep its value
+            # as-is, marked folded so live callers of such a function don't trip the guard below
+            if adj.skip_build:
+                folded.add(adj)
+                continue
             required = adj.max_required_extra_shared_memory_backward
             for callee in adj.called_user_functions:
                 if callee.custom_replay_func is not None:
