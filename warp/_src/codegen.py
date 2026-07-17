@@ -1950,8 +1950,8 @@ class Adjoint:
         # backward-pass counterpart, resolved by ModuleBuilder._propagate_backward_shared_memory
         adj.max_required_extra_shared_memory_backward = 0
 
-        # user functions called from this one, for ModuleBuilder's post-build propagation passes
-        adj.called_functions = set()
+        # recorded at call sites for ModuleBuilder's post-build propagation passes
+        adj.called_user_functions = set()
 
         # backward-only call checks skipped during build, replayed by validate_deferred_backward_calls()
         adj.deferred_backward_call_validations = []
@@ -2572,7 +2572,7 @@ class Adjoint:
         # if it is a user-function then build it recursively
         if not func.is_builtin():
             # record the call-graph edge for the post-build used_by_backward_kernel fixpoint
-            adj.called_functions.add(func)
+            adj.called_user_functions.add(func)
             # If the function called is a user function,
             # we need to ensure its adjoint is also being generated.
             if adj.used_by_backward_kernel:
@@ -2705,7 +2705,7 @@ class Adjoint:
             # if the argument is a function (and not a builtin), then build it recursively
             if isinstance(func_arg_var, warp._src.context.Function) and not func_arg_var.is_builtin():
                 # record the call-graph edge for the post-build used_by_backward_kernel fixpoint
-                adj.called_functions.add(func_arg_var)
+                adj.called_user_functions.add(func_arg_var)
                 if adj.used_by_backward_kernel:
                     func_arg_var.adj.used_by_backward_kernel = True
                 if adj.force_adjoint_codegen:

@@ -2835,7 +2835,7 @@ class ModuleBuilder:
         worklist = [obj.adj for obj in (*self.kernels, *self.functions) if obj.adj.used_by_backward_kernel]
         while worklist:
             adj = worklist.pop()
-            for callee in adj.called_functions:
+            for callee in adj.called_user_functions:
                 if not callee.adj.used_by_backward_kernel:
                     callee.adj.used_by_backward_kernel = True
                     worklist.append(callee.adj)
@@ -2862,7 +2862,7 @@ class ModuleBuilder:
             changed = False
             for adj in adjs:
                 required = adj.max_required_extra_shared_memory_backward
-                for callee in adj.called_functions:
+                for callee in adj.called_user_functions:
                     for extra_fn in (callee.custom_grad_func, callee.custom_replay_func):
                         if extra_fn is not None:
                             # normally built via deferred_functions; make sure (e.g. callees
