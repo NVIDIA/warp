@@ -66,9 +66,6 @@
   group ([GH-1612](https://github.com/NVIDIA/warp/issues/1612)).
 - Fix `wp.quat_twist_angle()` losing precision for small `wp.float32` rotations
   ([GH-1631](https://github.com/NVIDIA/warp/issues/1631)).
-- Fix under-sized backward-kernel shared memory when a `@wp.func` custom gradient (`@wp.func_grad`) or custom replay
-  needs more shared memory than the forward, which could cause an illegal memory access on GPU
-  ([GH-1646](https://github.com/NVIDIA/warp/issues/1646)).
 - Fix `wp.tile_load_indexed()` reading out of bounds for a negative gather index. Negative indices now predicate the
   loaded element to zero, matching indices past the end of the axis, so `-1` can serve as a padding sentinel for
   masked gathers ([GH-1653](https://github.com/NVIDIA/warp/issues/1653)).
@@ -81,10 +78,11 @@
   ([GH-1630](https://github.com/NVIDIA/warp/issues/1630)).
 - Fix an illegal memory access on CUDA when a variable is reassigned inside nested ``if``/``else`` branches
   ([GH-1574](https://github.com/NVIDIA/warp/issues/1574)).
-- Fix gradients being silently zeroed when a `@wp.func` helper was first reached from a kernel with backward disabled
-  and later differentiated by another kernel in the same module. Backward use now propagates across the whole call
-  graph regardless of build order, and unsupported `wp.ref[T]` calls reached this way raise a `WarpCodegenError`
-  during module load instead of failing native compilation.
+- Fix under-sized backward-kernel shared memory when a `@wp.func` custom gradient (`@wp.func_grad`) or custom replay
+  needs more shared memory than the forward, which could cause an illegal memory access on GPU
+  ([GH-1646](https://github.com/NVIDIA/warp/issues/1646)).
+- Fix gradients being silently zeroed when a `@wp.func` helper was shared between a kernel with backward disabled
+  and a backward-enabled kernel in the same module.
 
 ### Documentation
 
