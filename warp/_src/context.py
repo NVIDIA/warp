@@ -2702,7 +2702,6 @@ class ModuleBuilder:
         self.options = options
         self.module = module
         self.deferred_functions = []
-        self.building_functions = set()  # functions currently mid-build, to break build recursion
         self.fatbins = {}  # map from <some identifier> to fatbins, to add at link time
         self.ltoirs = {}  # map from lto symbol to lto binary
         self.ltoirs_decl = {}  # map from lto symbol to lto forward declaration
@@ -2722,6 +2721,9 @@ class ModuleBuilder:
 
         # propagate used_by_backward_kernel now that the full call graph is known
         self._propagate_used_by_backward_kernel()
+
+        # propagate custom grad/replay shared-memory needs into backward-kernel sizing
+        self._propagate_custom_grad_shared_memory()
 
     def build_struct_recursive(self, struct: warp._src.codegen.Struct):
         structs = []
@@ -2819,17 +2821,13 @@ class ModuleBuilder:
             raise WarpCodegenTypeError(f"'{kernel.key}': {_KERNEL_RETURN_ERROR}")
 
     def build_function(self, func):
-        # building_functions breaks recursion when a custom grad calls its own forward (built from add_call)
-        if func in self.functions or func in self.building_functions:
+        if func in self.functions:
             return
-        self.building_functions.add(func)
-        try:
+        else:
             func.build(self)
-        finally:
-            self.building_functions.discard(func)
 
-        # use dict to preserve import order
-        self.functions[func] = None
+            # use dict to preserve import order
+            self.functions[func] = None
 
     def _propagate_used_by_backward_kernel(self):
         # build_function() memoizes, so a helper built from a forward-only path before a backward
@@ -2848,6 +2846,33 @@ class ModuleBuilder:
             if func.adj.used_by_backward_kernel:
                 func.adj.validate_deferred_backward_calls()
 
+    def _propagate_custom_grad_shared_memory(self):
+        # Custom grad/replay functions run only in the backward pass, in place of the callee's
+        # auto-generated adjoint or forward replay, so their shared-memory frames must size the
+        # backward kernel without inflating the forward roofline (see
+        # Adjoint.get_total_required_shared_backward). Iterate to a fixpoint since builds are
+        # memoized: a callee's requirement may only be known after the caller was built.
+        adjs = [obj.adj for obj in (*self.kernels, *self.functions)]
+        changed = True
+        while changed:
+            changed = False
+            for adj in adjs:
+                required = adj.max_required_custom_grad_shared_memory
+                for callee in adj.called_functions:
+                    for extra_fn in (callee.custom_grad_func, callee.custom_replay_func):
+                        if extra_fn is not None:
+                            # normally built via deferred_functions; make sure (e.g. callees
+                            # reached through function-valued arguments are not deferred)
+                            self.build_function(extra_fn)
+                            required = max(required, extra_fn.adj.get_total_required_shared())
+                    if callee.custom_grad_func is None:
+                        # no custom grad: the callee's auto-generated adjoint runs in the
+                        # backward and can reach custom grads deeper in the call graph
+                        required = max(required, callee.adj.max_required_custom_grad_shared_memory)
+                if required > adj.max_required_custom_grad_shared_memory:
+                    adj.max_required_custom_grad_shared_memory = required
+                    changed = True
+
     def build_meta(self):
         meta = {}
 
@@ -2855,7 +2880,7 @@ class ModuleBuilder:
             name = kernel.get_mangled_name()
 
             meta[name + "_cuda_kernel_forward_smem_bytes"] = kernel.adj.get_total_required_shared()
-            meta[name + "_cuda_kernel_backward_smem_bytes"] = kernel.adj.get_total_required_shared() * 2
+            meta[name + "_cuda_kernel_backward_smem_bytes"] = kernel.adj.get_total_required_shared_backward()
 
         return meta
 

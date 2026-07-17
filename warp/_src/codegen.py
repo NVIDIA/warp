@@ -1747,6 +1747,15 @@ class Adjoint:
 
         return total_shared + adj.max_required_extra_shared_memory
 
+    # returns the total number of bytes to reserve for the backward kernel: reverse-mode
+    # codegen declares owning shared tiles with a paired gradient buffer (2x the forward
+    # roofline), while custom grad/replay frames are emitted through the forward path
+    # (no gradient buffers, 1x) and stack on top during the reverse pass. Slightly
+    # conservative for custom-grad calls: the doubled roofline still includes the forward
+    # frame whose auto-generated adjoint the custom grad replaced.
+    def get_total_required_shared_backward(adj):
+        return adj.get_total_required_shared() * 2 + adj.max_required_custom_grad_shared_memory
+
     @staticmethod
     def extract_function_source(func: Callable) -> tuple[str, int, ast.Module]:
         """Extract a function's source as ``inspect.getsourcelines`` would, but faster.
@@ -1928,8 +1937,15 @@ class Adjoint:
         # tracks how much additional shared memory is required by any dependent function calls
         adj.max_required_extra_shared_memory = 0
 
-        # user functions called from this one, recorded so used_by_backward_kernel can propagate
-        # across the whole call graph after every function is built (see _propagate_used_by_backward_kernel)
+        # worst-case shared-memory frame of any custom grad/replay function reachable from this
+        # function's call graph; those frames run only in the backward pass, so they are tracked
+        # separately from the forward roofline (computed post-build by
+        # ModuleBuilder._propagate_custom_grad_shared_memory)
+        adj.max_required_custom_grad_shared_memory = 0
+
+        # user functions called from this one, recorded so used_by_backward_kernel and custom
+        # grad shared-memory requirements can propagate across the whole call graph after every
+        # function is built (see ModuleBuilder._propagate_used_by_backward_kernel)
         adj.called_functions = set()
 
         # backward-only call validations skipped because this function was not yet known to be
@@ -2781,15 +2797,11 @@ class Adjoint:
 
         # update our smem roofline requirements based on any
         # shared memory required by the dependent function call
+        # (custom grad/replay frames run only in the backward pass and are accounted
+        # separately, after the whole module is built, by
+        # ModuleBuilder._propagate_custom_grad_shared_memory)
         if not func.is_builtin():
-            required = func.adj.get_total_required_shared()
-            # a custom grad/replay runs in the backward and may need more shared than the forward
-            for extra_fn in (func.custom_grad_func, func.custom_replay_func):
-                if extra_fn is not None and adj.builder is not None:
-                    adj.builder.build_function(extra_fn)
-                    if extra_fn in adj.builder.functions:  # skip if it re-entered mid-build
-                        required = max(required, extra_fn.adj.get_total_required_shared())
-            adj.alloc_shared_extra(required + extra_shared_memory)
+            adj.alloc_shared_extra(func.adj.get_total_required_shared() + extra_shared_memory)
         else:
             adj.alloc_shared_extra(extra_shared_memory)
 

@@ -897,6 +897,15 @@ def test_tile_custom_grad_extra_shared(test, device):
     # backward must not have corrupted memory (or crashed with CUDA 700): dL/dx == 2 everywhere
     assert_np_equal(x.grad.numpy(), np.full((NUM_TILES * M, M), 2.0, dtype=np.float32))
 
+    # the reservation must be split: the custom grad frame sizes the backward kernel only
+    hooks = next(iter(run.module.execs.values())).get_kernel_hooks(run)
+    scratch_bytes = EXTRA * EXTRA * 4
+    # the forward tile working set is register-only; the backward-only scratch must not leak in
+    test.assertEqual(hooks.forward_smem_bytes, 0)
+    # the backward reservation covers the scratch, added once (x1) rather than doubled
+    test.assertGreaterEqual(hooks.backward_smem_bytes, scratch_bytes)
+    test.assertLess(hooks.backward_smem_bytes, 2 * scratch_bytes)
+
 
 devices = get_cuda_test_devices()
 
