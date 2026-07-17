@@ -78,6 +78,8 @@
   ([GH-1630](https://github.com/NVIDIA/warp/issues/1630)).
 - Fix an illegal memory access on CUDA when a variable is reassigned inside nested ``if``/``else`` branches
   ([GH-1574](https://github.com/NVIDIA/warp/issues/1574)).
+- Fix compilation failures when calling `warp.fem.lookup()` with double-precision (`wp.float64`) geometries
+  ([GH-1660](https://github.com/NVIDIA/warp/issues/1660)).
 
 ### Documentation
 
