@@ -4,7 +4,6 @@
 """Tests for wp.ref[T] pass-by-reference and wp.address_of()."""
 
 import unittest
-from unittest import mock
 
 import numpy as np
 
@@ -136,45 +135,33 @@ class TestRef(unittest.TestCase):
                 wp.launch(bad_backward_kernel, dim=1, inputs=[arr])
             tape.backward()
 
-    def test_ref_forward_built_first_backward_raises(self):
-        """The ref[T] backward check must also fire when a helper is first built forward-only.
+    def test_ref_shared_helper_backward_raises(self):
+        """Calling a wp.ref[T] @wp.func from a backward-enabled kernel via a shared helper must raise.
 
-        A shared helper built through an ``enable_backward=False`` kernel is memoized with its
-        backward-only call validations skipped; when a backward-enabled kernel in the same module
-        reaches it later, the deferred validation must be replayed and raise ``WarpCodegenError``
-        instead of failing later in native compilation.
+        The helper may be built (and memoized) through the ``enable_backward=False`` kernel
+        first; validation runs at the end of the module build, once backward use is final,
+        so the error fires regardless of kernel build order.
         """
 
         @wp.func
-        def mixed_order_ref_func(x: wp.ref[wp.float32]):
+        def shared_ref_func(x: wp.ref[wp.float32]):
             x += wp.float32(1.0)
 
         @wp.func
-        def mixed_order_helper(arr: wp.array[wp.float32], i: int):
-            mixed_order_ref_func(arr[i])
+        def shared_helper(arr: wp.array[wp.float32], i: int):
+            shared_ref_func(arr[i])
 
-        @wp.kernel(module="test_ref_mixed_build_order", enable_backward=False)
-        def mixed_order_forward_kernel(arr: wp.array[wp.float32]):
-            mixed_order_helper(arr, wp.tid())
+        @wp.kernel(module="test_ref_shared_helper", enable_backward=False)
+        def forward_only_kernel(arr: wp.array[wp.float32]):
+            shared_helper(arr, wp.tid())
 
-        @wp.kernel(module="test_ref_mixed_build_order")
-        def mixed_order_backward_kernel(arr: wp.array[wp.float32]):
-            mixed_order_helper(arr, wp.tid())
+        @wp.kernel(module="test_ref_shared_helper")
+        def backward_kernel(arr: wp.array[wp.float32]):
+            shared_helper(arr, wp.tid())
 
-        module = wp.get_module("test_ref_mixed_build_order")
-        # force the forward-only kernel to build the shared helper first (the live-kernel
-        # set is otherwise unordered)
-        with mock.patch.object(
-            module, "_get_live_kernels", lambda: [mixed_order_forward_kernel, mixed_order_backward_kernel]
-        ):
-            arr = wp.zeros(1, dtype=wp.float32)
-            # anchored on the deferred-validation message prefix: if the kernel order ever stops
-            # being forced, the immediate check raises "Error while parsing ..." and this fails
-            with self.assertRaisesRegex(
-                WarpCodegenError,
-                r"(?s)^In function \"mixed_order_helper\".*Cannot call '\S*mixed_order_ref_func' with wp\.ref\[T\]",
-            ):
-                wp.launch(mixed_order_forward_kernel, dim=1, inputs=[arr])
+        arr = wp.zeros(1, dtype=wp.float32)
+        with self.assertRaisesRegex(WarpCodegenError, r"Cannot call '\S*shared_ref_func' with wp\.ref\[T\]"):
+            wp.launch(forward_only_kernel, dim=1, inputs=[arr])
 
     def test_native_ref_without_adj_snippet_backward_raises(self):
         """Calling a wp.ref[T] @wp.func_native without adj_snippet from backward must raise."""

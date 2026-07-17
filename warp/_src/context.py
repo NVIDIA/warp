@@ -65,7 +65,7 @@ import warp._src.build
 import warp._src.codegen
 import warp._src.module_registry
 import warp.config
-from warp._src.codegen import WarpCodegenTypeError, _codegen_lock, synchronized
+from warp._src.codegen import WarpCodegenError, WarpCodegenTypeError, _codegen_lock, synchronized
 from warp._src.logger import LOG_DEBUG, LOG_WARNING, get_logger, log_debug, log_error, log_info, log_warning
 from warp._src.texture import Texture1D, Texture2D, Texture3D, texture1d_t, texture2d_t, texture3d_t
 from warp._src.types import LAUNCH_MAX_DIMS, Array, LaunchBounds, array_t, launch_bounds_t, type_repr
@@ -2840,11 +2840,22 @@ class ModuleBuilder:
                 if not callee.adj.used_by_backward_kernel:
                     callee.adj.used_by_backward_kernel = True
                     worklist.append(callee.adj)
-        # memoized builds also skip add_call's backward-only validations; replay them now
-        # that every function's backward use is final
-        for func in self.functions:
-            if func.adj.used_by_backward_kernel:
-                func.adj.validate_deferred_backward_calls()
+        # backward use is final only now, so this is where wp.ref[T] calls recorded by
+        # add_call are rejected (a manual adjoint may also have been registered since)
+        for obj in (*self.kernels, *self.functions):
+            adj = obj.adj
+            if not adj.used_by_backward_kernel:
+                continue
+            for callee in adj.unvalidated_ref_calls:
+                if adj.has_manual_ref_adjoint(callee):
+                    continue
+                scope = "function" if adj.is_user_function else "kernel"
+                raise WarpCodegenError(
+                    f"In {scope} '{adj.fun_name}': "
+                    f"Cannot call '{callee.key}' with wp.ref[T] parameters from a backward-enabled "
+                    "kernel. Use enable_backward=False on the kernel, or switch to @wp.func_native "
+                    "with adj_snippet for a manually written adjoint."
+                )
 
     def _propagate_backward_shared_memory(self):
         # a backward call site replays the callee's forward, then calls its reverse; the two frames
