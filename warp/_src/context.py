@@ -2902,9 +2902,15 @@ class ModuleBuilder:
 
         for kernel in self.kernels:
             name = kernel.get_mangled_name()
+            options = self.options | kernel.options
 
             meta[name + "_cuda_kernel_forward_smem_bytes"] = kernel.adj.get_total_required_shared()
-            meta[name + "_cuda_kernel_backward_smem_bytes"] = kernel.adj.get_total_required_shared_backward()
+            if options["enable_backward"]:
+                backward_smem_bytes = kernel.adj.get_total_required_shared_backward()
+            else:
+                # no backward kernel is generated, so there is nothing to reserve
+                backward_smem_bytes = 0
+            meta[name + "_cuda_kernel_backward_smem_bytes"] = backward_smem_bytes
 
         return meta
 
