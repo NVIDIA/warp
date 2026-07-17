@@ -2833,13 +2833,13 @@ class ModuleBuilder:
         # build_function() memoizes, so a helper built from a forward-only path before a backward
         # kernel reaches it keeps its callees stubbed; re-propagate across the graph to a fixpoint.
         worklist = [obj.adj for obj in (*self.kernels, *self.functions) if obj.adj.used_by_backward_kernel]
+        # worklist algorithm: an adj is enqueued only on a False->True flip, so the loop exits even on cycles
         while worklist:
             adj = worklist.pop()
             for callee in adj.called_user_functions:
                 if not callee.adj.used_by_backward_kernel:
                     callee.adj.used_by_backward_kernel = True
                     worklist.append(callee.adj)
-
         # memoized builds also skip add_call's backward-only validations; replay them now
         # that every function's backward use is final
         for func in self.functions:
@@ -2847,39 +2847,44 @@ class ModuleBuilder:
                 func.adj.validate_deferred_backward_calls()
 
     def _propagate_backward_shared_memory(self):
-        # In the backward pass a call site first replays the callee's forward (its custom
-        # replay if present, else the forward function) and then calls its reverse (its
-        # custom grad if present, else the auto-generated adjoint). The two frames pop off
-        # the shared-memory stack between the calls, so the larger of them bounds the call's
-        # contribution. Custom grad/replay bodies are emitted through the forward path and
-        # allocate no gradient buffers, so they count once, while the auto-generated adjoint
-        # recursively doubles its own tiles (see Adjoint.get_total_required_shared_backward).
-        # Iterate to a fixpoint since builds are memoized: a callee's requirement may only
-        # be known after the caller was built.
-        adjs = [obj.adj for obj in (*self.kernels, *self.functions)]
-        changed = True
-        while changed:
-            changed = False
-            for adj in adjs:
-                required = adj.max_required_extra_shared_memory_backward
-                for callee in adj.called_user_functions:
-                    for extra_fn in (callee.custom_grad_func, callee.custom_replay_func):
-                        if extra_fn is not None:
-                            # normally built via deferred_functions; make sure (e.g. callees
-                            # reached through function-valued arguments are not deferred)
-                            self.build_function(extra_fn)
-                    if callee.custom_replay_func is not None:
-                        replay = callee.custom_replay_func.adj.get_total_required_shared()
-                    else:
-                        replay = callee.adj.get_total_required_shared()
-                    if callee.custom_grad_func is not None:
-                        reverse = callee.custom_grad_func.adj.get_total_required_shared()
-                    else:
-                        reverse = callee.adj.get_total_required_shared_backward()
-                    required = max(required, replay, reverse)
-                if required > adj.max_required_extra_shared_memory_backward:
-                    adj.max_required_extra_shared_memory_backward = required
-                    changed = True
+        # a backward call site replays the callee's forward, then calls its reverse; the two frames
+        # pop between the calls, so the larger one bounds the contribution. Custom grad/replay
+        # bodies are forward-emitted with no gradient buffers, hence counted once
+        adjs = [obj.adj for obj in (*self.functions, *self.kernels)]
+
+        # make sure custom grads/replays are built before reading their rooflines
+        # (callees reached through function-valued arguments are not in deferred_functions)
+        for adj in adjs:
+            for callee in adj.called_user_functions:
+                for extra_fn in (callee.custom_grad_func, callee.custom_replay_func):
+                    if extra_fn is not None:
+                        self.build_function(extra_fn)
+
+        # one pass in callees-before-callers order reaches the fixpoint: build_function()
+        # registers a function only after its callees finished building, so self.functions
+        # insertion order is topological, and kernels are roots
+        folded = set()
+        for adj in adjs:
+            required = adj.max_required_extra_shared_memory_backward
+            for callee in adj.called_user_functions:
+                if callee.custom_replay_func is not None:
+                    replay = callee.custom_replay_func.adj.get_total_required_shared()
+                else:
+                    replay = callee.adj.get_total_required_shared()
+                if callee.custom_grad_func is not None:
+                    reverse = callee.custom_grad_func.adj.get_total_required_shared()
+                elif callee.adj not in folded:
+                    # fail loudly instead of silently under-reserving
+                    raise RuntimeError(
+                        f"Cannot size backward shared memory for '{adj.fun_name}': callee '{callee.key}' was not "
+                        "sized first; the call graph should be acyclic and functions registered callees-first"
+                    )
+                else:
+                    reverse = callee.adj.get_total_required_shared_backward()
+                # max: the replay frame pops before the reverse frame pushes, so the two never coexist
+                required = max(required, replay, reverse)
+            adj.max_required_extra_shared_memory_backward = required
+            folded.add(adj)
 
     def build_meta(self):
         meta = {}
