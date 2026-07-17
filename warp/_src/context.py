@@ -2722,8 +2722,8 @@ class ModuleBuilder:
         # propagate used_by_backward_kernel now that the full call graph is known
         self._propagate_used_by_backward_kernel()
 
-        # propagate custom grad/replay shared-memory needs into backward-kernel sizing
-        self._propagate_custom_grad_shared_memory()
+        # propagate callee replay/reverse shared-memory needs into backward-kernel sizing
+        self._propagate_backward_shared_memory()
 
     def build_struct_recursive(self, struct: warp._src.codegen.Struct):
         structs = []
@@ -2846,31 +2846,39 @@ class ModuleBuilder:
             if func.adj.used_by_backward_kernel:
                 func.adj.validate_deferred_backward_calls()
 
-    def _propagate_custom_grad_shared_memory(self):
-        # Custom grad/replay functions run only in the backward pass, in place of the callee's
-        # auto-generated adjoint or forward replay, so their shared-memory frames must size the
-        # backward kernel without inflating the forward roofline (see
-        # Adjoint.get_total_required_shared_backward). Iterate to a fixpoint since builds are
-        # memoized: a callee's requirement may only be known after the caller was built.
+    def _propagate_backward_shared_memory(self):
+        # In the backward pass a call site first replays the callee's forward (its custom
+        # replay if present, else the forward function) and then calls its reverse (its
+        # custom grad if present, else the auto-generated adjoint). The two frames pop off
+        # the shared-memory stack between the calls, so the larger of them bounds the call's
+        # contribution. Custom grad/replay bodies are emitted through the forward path and
+        # allocate no gradient buffers, so they count once, while the auto-generated adjoint
+        # recursively doubles its own tiles (see Adjoint.get_total_required_shared_backward).
+        # Iterate to a fixpoint since builds are memoized: a callee's requirement may only
+        # be known after the caller was built.
         adjs = [obj.adj for obj in (*self.kernels, *self.functions)]
         changed = True
         while changed:
             changed = False
             for adj in adjs:
-                required = adj.max_required_custom_grad_shared_memory
+                required = adj.max_required_extra_shared_memory_backward
                 for callee in adj.called_functions:
                     for extra_fn in (callee.custom_grad_func, callee.custom_replay_func):
                         if extra_fn is not None:
                             # normally built via deferred_functions; make sure (e.g. callees
                             # reached through function-valued arguments are not deferred)
                             self.build_function(extra_fn)
-                            required = max(required, extra_fn.adj.get_total_required_shared())
-                    if callee.custom_grad_func is None:
-                        # no custom grad: the callee's auto-generated adjoint runs in the
-                        # backward and can reach custom grads deeper in the call graph
-                        required = max(required, callee.adj.max_required_custom_grad_shared_memory)
-                if required > adj.max_required_custom_grad_shared_memory:
-                    adj.max_required_custom_grad_shared_memory = required
+                    if callee.custom_replay_func is not None:
+                        replay = callee.custom_replay_func.adj.get_total_required_shared()
+                    else:
+                        replay = callee.adj.get_total_required_shared()
+                    if callee.custom_grad_func is not None:
+                        reverse = callee.custom_grad_func.adj.get_total_required_shared()
+                    else:
+                        reverse = callee.adj.get_total_required_shared_backward()
+                    required = max(required, replay, reverse)
+                if required > adj.max_required_extra_shared_memory_backward:
+                    adj.max_required_extra_shared_memory_backward = required
                     changed = True
 
     def build_meta(self):

@@ -907,6 +907,53 @@ def test_tile_custom_grad_extra_shared(test, device):
     test.assertLess(hooks.backward_smem_bytes, 2 * scratch_bytes)
 
 
+def test_tile_custom_grad_shared_forward(test, device):
+    """A custom func_grad on a function whose forward itself owns a shared tile.
+
+    The forward frame's auto-generated adjoint is replaced by the custom grad, so in the
+    backward it only ever runs as a replay (no gradient buffers): the reservation must be
+    the larger of the replay and custom grad frames, not their doubled sum.
+    """
+    NUM_TILES = 4
+    M = 4
+    EXTRA = 8
+
+    @wp.func
+    def scale2x(x: wp.array2d[float], y: wp.array2d[float], i: int):
+        # forward stages through an owning shared tile
+        t = wp.tile_load(x, shape=(M, M), offset=(i * M, 0), storage="shared")
+        wp.tile_store(y, t * float(2.0), offset=(i * M, 0))
+
+    @wp.func_grad(scale2x)
+    def adj_scale2x(x: wp.array2d[float], y: wp.array2d[float], i: int):
+        g = wp.tile_load(wp.adjoint[y], shape=(M, M), offset=(i * M, 0))
+        scratch = wp.tile_ones(shape=(EXTRA, EXTRA), dtype=float, storage="shared")
+        pad = wp.tile_broadcast(wp.tile_sum(scratch), shape=(M, M))
+        wp.tile_atomic_add(wp.adjoint[x], g * float(2.0) + pad * float(0.0), offset=(i * M, 0))
+
+    @wp.kernel(module="unique")
+    def run(x: wp.array2d[float], y: wp.array2d[float]):
+        scale2x(x, y, wp.tid())
+
+    x = wp.array(np.ones((NUM_TILES * M, M), dtype=np.float32), requires_grad=True, device=device)
+    y = wp.zeros_like(x)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(run, dim=(NUM_TILES,), inputs=[x], outputs=[y], block_dim=64, device=device)
+
+    tape.backward(grads={y: wp.ones_like(y)})
+
+    assert_np_equal(x.grad.numpy(), np.full((NUM_TILES * M, M), 2.0, dtype=np.float32))
+
+    hooks = next(iter(run.module.execs.values())).get_kernel_hooks(run)
+    forward_tile_bytes = M * M * 4
+    scratch_bytes = EXTRA * EXTRA * 4
+    test.assertEqual(hooks.forward_smem_bytes, forward_tile_bytes)
+    # the custom grad frame dominates the replayed forward frame; neither is doubled
+    test.assertGreaterEqual(hooks.backward_smem_bytes, scratch_bytes)
+    test.assertLess(hooks.backward_smem_bytes, 2 * hooks.forward_smem_bytes + scratch_bytes)
+
+
 devices = get_cuda_test_devices()
 
 
@@ -1026,6 +1073,12 @@ add_function_test(
     TestTileSharedMemory,
     "test_tile_custom_grad_extra_shared",
     test_tile_custom_grad_extra_shared,
+    devices=devices,
+)
+add_function_test(
+    TestTileSharedMemory,
+    "test_tile_custom_grad_shared_forward",
+    test_tile_custom_grad_shared_forward,
     devices=devices,
 )
 

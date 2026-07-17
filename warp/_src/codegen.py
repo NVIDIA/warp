@@ -1733,10 +1733,13 @@ class Adjoint:
     def alloc_shared_extra(adj, num_bytes):
         adj.max_required_extra_shared_memory = max(adj.max_required_extra_shared_memory, num_bytes)
 
-    # returns the total number of bytes for a function
-    # based on it's own requirements + worst case
-    # requirements of any dependent functions
-    def get_total_required_shared(adj):
+    # backward-pass counterpart of alloc_shared_extra()
+    def alloc_shared_extra_backward(adj, num_bytes):
+        adj.max_required_extra_shared_memory_backward = max(adj.max_required_extra_shared_memory_backward, num_bytes)
+
+    # returns the number of bytes of shared memory required by this function's own tile
+    # variables, excluding anything required by callees
+    def get_own_required_shared(adj):
         total_shared = 0
 
         for var in adj.variables:
@@ -1745,16 +1748,23 @@ class Adjoint:
             elif is_tile_stack(var.type):
                 total_shared += var.type.size_in_bytes()
 
-        return total_shared + adj.max_required_extra_shared_memory
+        return total_shared
+
+    # returns the total number of bytes for a function
+    # based on it's own requirements + worst case
+    # requirements of any dependent functions
+    def get_total_required_shared(adj):
+        return adj.get_own_required_shared() + adj.max_required_extra_shared_memory
 
     # returns the total number of bytes to reserve for the backward kernel: reverse-mode
-    # codegen declares owning shared tiles with a paired gradient buffer (2x the forward
-    # roofline), while custom grad/replay frames are emitted through the forward path
-    # (no gradient buffers, 1x) and stack on top during the reverse pass. Slightly
-    # conservative for custom-grad calls: the doubled roofline still includes the forward
-    # frame whose auto-generated adjoint the custom grad replaced.
+    # codegen declares this function's own tiles with a paired gradient buffer, so they
+    # count twice (tile stacks allocate no gradient buffer in reverse but are kept doubled,
+    # matching the sizing before backward accounting was split out). Callee frames contribute
+    # the larger of their replay and reverse frames, resolved post-build by
+    # ModuleBuilder._propagate_backward_shared_memory: custom grad/replay functions are
+    # emitted through the forward path (no gradient buffers) and count once.
     def get_total_required_shared_backward(adj):
-        return adj.get_total_required_shared() * 2 + adj.max_required_custom_grad_shared_memory
+        return adj.get_own_required_shared() * 2 + adj.max_required_extra_shared_memory_backward
 
     @staticmethod
     def extract_function_source(func: Callable) -> tuple[str, int, ast.Module]:
@@ -1937,11 +1947,11 @@ class Adjoint:
         # tracks how much additional shared memory is required by any dependent function calls
         adj.max_required_extra_shared_memory = 0
 
-        # worst-case shared-memory frame of any custom grad/replay function reachable from this
-        # function's call graph; those frames run only in the backward pass, so they are tracked
-        # separately from the forward roofline (computed post-build by
-        # ModuleBuilder._propagate_custom_grad_shared_memory)
-        adj.max_required_custom_grad_shared_memory = 0
+        # backward-pass counterpart of max_required_extra_shared_memory: call-site LTO
+        # workspace is folded in (doubled) during the build, and user-function callees'
+        # replay/reverse frames are folded in post-build by
+        # ModuleBuilder._propagate_backward_shared_memory once the whole call graph is known
+        adj.max_required_extra_shared_memory_backward = 0
 
         # user functions called from this one, recorded so used_by_backward_kernel and custom
         # grad shared-memory requirements can propagate across the whole call graph after every
@@ -2797,13 +2807,15 @@ class Adjoint:
 
         # update our smem roofline requirements based on any
         # shared memory required by the dependent function call
-        # (custom grad/replay frames run only in the backward pass and are accounted
-        # separately, after the whole module is built, by
-        # ModuleBuilder._propagate_custom_grad_shared_memory)
         if not func.is_builtin():
             adj.alloc_shared_extra(func.adj.get_total_required_shared() + extra_shared_memory)
         else:
             adj.alloc_shared_extra(extra_shared_memory)
+        # The backward-pass contribution of user-function callees is resolved once the whole
+        # module is built (see ModuleBuilder._propagate_backward_shared_memory); here only the
+        # call-site LTO workspace is recorded, doubled to keep the pre-split reservation for
+        # LTO builtins whose adjoint dispatch needs workspace of its own.
+        adj.alloc_shared_extra_backward(extra_shared_memory * 2)
 
         return return_value(output)
 
