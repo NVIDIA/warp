@@ -1741,13 +1741,11 @@ class Adjoint:
     # variables, excluding anything required by callees
     def get_own_required_shared(adj):
         total_shared = 0
-
         for var in adj.variables:
             if is_tile(var.type) and var.type.storage == "shared" and var.type.owner:
                 total_shared += var.type.size_in_bytes()
             elif is_tile_stack(var.type):
                 total_shared += var.type.size_in_bytes()
-
         return total_shared
 
     # returns the total number of bytes for a function
@@ -1756,14 +1754,10 @@ class Adjoint:
     def get_total_required_shared(adj):
         return adj.get_own_required_shared() + adj.max_required_extra_shared_memory
 
-    # returns the total number of bytes to reserve for the backward kernel: reverse-mode
-    # codegen declares this function's own tiles with a paired gradient buffer, so they
-    # count twice (tile stacks allocate no gradient buffer in reverse but are kept doubled,
-    # matching the sizing before backward accounting was split out). Callee frames contribute
-    # the larger of their replay and reverse frames, resolved post-build by
-    # ModuleBuilder._propagate_backward_shared_memory: custom grad/replay functions are
-    # emitted through the forward path (no gradient buffers) and count once.
+    # backward counterpart of get_total_required_shared();
+    # callee frames come from ModuleBuilder._propagate_backward_shared_memory
     def get_total_required_shared_backward(adj):
+        # x2: the reverse pass declares own tiles requires_grad, pairing each with an equal-sized gradient buffer
         return adj.get_own_required_shared() * 2 + adj.max_required_extra_shared_memory_backward
 
     @staticmethod
