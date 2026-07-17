@@ -1947,20 +1947,13 @@ class Adjoint:
         # tracks how much additional shared memory is required by any dependent function calls
         adj.max_required_extra_shared_memory = 0
 
-        # backward-pass counterpart of max_required_extra_shared_memory: call-site LTO
-        # workspace is folded in (doubled) during the build, and user-function callees'
-        # replay/reverse frames are folded in post-build by
-        # ModuleBuilder._propagate_backward_shared_memory once the whole call graph is known
+        # backward-pass counterpart, resolved by ModuleBuilder._propagate_backward_shared_memory
         adj.max_required_extra_shared_memory_backward = 0
 
-        # user functions called from this one, recorded so used_by_backward_kernel and custom
-        # grad shared-memory requirements can propagate across the whole call graph after every
-        # function is built (see ModuleBuilder._propagate_used_by_backward_kernel)
+        # user functions called from this one, for ModuleBuilder's post-build propagation passes
         adj.called_functions = set()
 
-        # backward-only call validations skipped because this function was not yet known to be
-        # used by a backward kernel; replayed by validate_deferred_backward_calls() if the
-        # function is marked backward-used after its (memoized) build
+        # backward-only call checks skipped during build, replayed by validate_deferred_backward_calls()
         adj.deferred_backward_call_validations = []
 
         # Function-specialized functions replace selected argument Vars with
