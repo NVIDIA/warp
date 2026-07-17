@@ -596,6 +596,8 @@ into a destination without enough row capacity
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1630">GH-1630</a>).</p></li>
 <li><p>Fix an illegal memory access on CUDA when a variable is reassigned inside nested <code class="docutils literal notranslate"><span class="pre">if</span></code>/<code class="docutils literal notranslate"><span class="pre">else</span></code> branches
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1574">GH-1574</a>).</p></li>
+<li><p>Fix compilation failures when calling <code class="docutils literal notranslate"><span class="pre">warp.fem.lookup()</span></code> with double-precision (<code class="docutils literal notranslate"><span class="pre">wp.float64</span></code>) geometries
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1660">GH-1660</a>).</p></li>
 </ul>
 </section>
 <section id="documentation">
