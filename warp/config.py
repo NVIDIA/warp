@@ -469,7 +469,7 @@ Accepted values are:
 
 Set this before module creation/import for it to apply broadly. Existing
 modules can be changed by setting the ``"deterministic"`` module option.
-See :doc:`/user_guide/deterministic_execution` for supported patterns,
+See :doc:`/user_guide/execution_and_performance/deterministic_execution` for supported patterns,
 performance considerations, and limitations.
 """
 

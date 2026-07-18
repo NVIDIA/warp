@@ -3,6 +3,14 @@ Interoperability
 
 Warp interoperates with other Python-based frameworks through standard interface protocols. Warp accepts external arrays in kernel launches as long as they implement the ``__array__``, ``__array_interface__``, or ``__cuda_array_interface__`` protocols. This works with NumPy, CuPy, PyTorch, JAX, and Paddle.
 
+Guides in this section
+----------------------
+
+* :doc:`PyTorch <interoperability/pytorch>`: Share arrays and streams,
+  integrate autograd, and call Warp kernels from custom operators.
+* :doc:`JAX <interoperability/jax>`: Convert arrays, call Warp kernels through
+  FFI, and use Warp with JAX transformations and distributed computation.
+
 Quick Reference
 ---------------
 
@@ -41,8 +49,8 @@ Quick Reference
 
 For full framework coverage, see:
 
-* :doc:`interoperability_pytorch`
-* :doc:`interoperability_jax`
+* :doc:`interoperability/pytorch`
+* :doc:`interoperability/jax`
 
 Paddle is documented inline below. NumPy, CuPy, Numba, and DLPack interop is protocol-level and covered in the sections that follow.
 
@@ -167,7 +175,7 @@ Less code is needed when we declare the optimization variables directly in Warp 
         print(f"{i}\tloss: {l.numpy()[0]}")
 
 .. note::
-   Paddle follows the same performance-tuning pattern as PyTorch. See the "Performance Tuning" section of :doc:`interoperability_pytorch` for ``return_ctype``, direct tensor passing, and reuse-don't-reconvert guidance.
+   Paddle follows the same performance-tuning pattern as PyTorch. See the "Performance Tuning" section of :doc:`interoperability/pytorch` for ``return_ctype``, direct tensor passing, and reuse-don't-reconvert guidance.
 
 .. _DLPack:
 
@@ -209,7 +217,8 @@ This approach is generally faster because it skips any stream synchronization, b
 The framework-specific converters (:func:`warp.to_torch`, :func:`warp.to_paddle`) are usually a better choice than DLPack when one exists, because DLPack does not carry gradient information. If autograd needs to flow between Warp and the other framework, use the direct converters. DLPack is most useful when no framework-specific converter exists, or when both producer and consumer are DLPack-native.
 
 .. toctree::
+   :hidden:
    :titlesonly:
 
-   interoperability_pytorch
-   interoperability_jax
+   interoperability/pytorch
+   interoperability/jax

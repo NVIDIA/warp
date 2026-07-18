@@ -260,7 +260,7 @@ For inquiries not suited for GitHub Issues, please email <warp-python@nvidia.com
 ## Contributing
 
 Contributions and pull requests from the community are welcome.
-Please see the [Contribution Guide](https://nvidia.github.io/warp/stable/user_guide/contribution_guide.html) for more
+Please see the [Contribution Guide](https://nvidia.github.io/warp/latest/project/contribution_guide.html) for more
 information on contributing to the development of Warp.
 
 ## License

@@ -19,7 +19,7 @@ This section helps reviewers navigate the diff efficiently. -->
 ## Checklist
 
 <!-- See the Contributing Guidelines for general guidance:
-     https://nvidia.github.io/warp/stable/user_guide/contribution_guide.html -->
+     https://nvidia.github.io/warp/latest/project/contribution_guide.html -->
 
 - [ ] New or existing tests cover these changes.
 - [ ] The documentation is up to date with these changes.

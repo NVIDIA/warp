@@ -4714,7 +4714,8 @@ class array(Array[DType, NDim]):
         if memory_kind == warp._src.context.MemoryKind.CUDA_MEMPOOL:
             raise RuntimeError(
                 "Currently, IPC is only supported for arrays using the default memory allocator.\n"
-                "See https://nvidia.github.io/warp/stable/deep_dive/allocators.html for instructions on how to disable\n"
+                "See https://nvidia.github.io/warp/stable/user_guide/execution_and_performance/"
+                "memory_management.html#configuration for instructions on how to disable\n"
                 f"the mempool allocator on device {self.device}."
             )
         elif getattr(self, "_ref", None) is not None:

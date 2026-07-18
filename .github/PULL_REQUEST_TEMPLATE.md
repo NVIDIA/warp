@@ -14,7 +14,7 @@ avoid repeating the diff.
 
 ## Checklist
 
-- [ ] I am familiar with the [Contributing Guidelines](https://nvidia.github.io/warp/stable/user_guide/contribution_guide.html).
+- [ ] I am familiar with the [Contributing Guidelines](https://nvidia.github.io/warp/latest/project/contribution_guide.html).
 - [ ] New or existing tests cover these changes.
 - [ ] The documentation is up to date with these changes.
 - [ ] [CHANGELOG.md](CHANGELOG.md) is updated for any user-facing changes under the `Unreleased` section.

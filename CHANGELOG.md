@@ -42,6 +42,8 @@
   the written annotation and can be evaluated back to the same annotation, instead of the previous
   `wp.array(dtype=..., ndim=...)` form. Warp array return types now read more naturally in Sphinx-generated API
   documentation ([GH-1628](https://github.com/NVIDIA/warp/issues/1628)).
+- Reorganize the documentation around substantive Programming Model and Execution and Performance guides, move the
+  Language Reference and API Reference closer to the User Guide, and consolidate memory-management guidance.
 
 ### Fixed
 
@@ -1186,7 +1188,7 @@
 - Add `wp.MarchingCubes.extract_surface_marching_cubes()` to extract a triangular mesh from a 3D scalar field
   ([GH-788](https://github.com/NVIDIA/warp/issues/788)).
 - Add `wp.compile_aot_module()` and `wp.load_aot_module()` to support basic ahead-of-time compilation workflows
-  ([docs](https://nvidia.github.io/warp/stable/deep_dive/codegen.html#ahead-of-time-compilation-workflows),
+  ([docs](https://nvidia.github.io/warp/stable/user_guide/programming_model/code_generation.html#ahead-of-time-compilation-workflows),
   [GH-766](https://github.com/NVIDIA/warp/issues/766)).
 - Add support for negative indexing and improve slicing for the `wp.matrix()`/`wp.vector()`/`wp.quaternion()` types
   ([GH-899](https://github.com/NVIDIA/warp/issues/899)).
@@ -1345,7 +1347,7 @@
 - Add support for profiling GPU runtime module compilation using the global `wp.config.compile_time_trace`
   setting or the module-level `"compile_time_trace"` option. When used, JSON files in the Trace Event
   format will be written in the kernel cache, which can be opened in a viewer like `chrome://tracing/`
-  ([docs](https://nvidia.github.io/warp/stable/deep_dive/profiling.html#profiling-module-compilation),
+  ([docs](https://nvidia.github.io/warp/stable/user_guide/execution_and_performance/profiling.html#profiling-module-compilation),
   [GH-609](https://github.com/NVIDIA/warp/issues/609)).
 - Add support for returning multiple values from native functions like `wp.svd3()` and `wp.quat_to_axis_angle()`
   ([GH-503](https://github.com/NVIDIA/warp/issues/503)).
@@ -1535,11 +1537,11 @@
 ### Added
 
 - Support JAX foreign function interface (FFI)
-  ([docs](https://nvidia.github.io/warp/stable/user_guide/interoperability_jax.html#generic-ffi-callbacks),
+  ([docs](https://nvidia.github.io/warp/stable/user_guide/interoperability/jax.html#generic-ffi-callbacks),
   [GH-511](https://github.com/NVIDIA/warp/issues/511)).
 - Support Python/SASS correlation in Nsight Compute reports by emitting `#line` directives in CUDA-C code.
   This setting is controlled by `wp.config.line_directives` and is `True` by default.
-  ([docs](https://nvidia.github.io/warp/stable/deep_dive/profiling.html#nsight-compute-profiling),
+  ([docs](https://nvidia.github.io/warp/stable/user_guide/execution_and_performance/profiling.html#nsight-compute-profiling),
    [GH-437](https://github.com/NVIDIA/warp/issues/437))
 - Support `vec4f` grid construction in `wp.Volume.allocate_by_tiles()`.
 - Add 2D SVD `wp.svd2()` ([GH-436](https://github.com/NVIDIA/warp/issues/436)).
@@ -1736,7 +1738,7 @@
 
 - Add PyTorch basics and custom operators notebooks to the `notebooks` directory.
 - Update PyTorch interop docs to include section on custom operators
-  ([docs](https://nvidia.github.io/warp/stable/user_guide/interoperability_pytorch.html#using-pytorch-custom-operators-pytorch-2-4-0)).
+  ([docs](https://nvidia.github.io/warp/stable/user_guide/interoperability/pytorch.html#using-pytorch-custom-operators-pytorch-2-4-0)).
 
 ### Fixed
 
@@ -1758,7 +1760,7 @@
 ### Added
 
 - Support for cooperative tile-based primitives using cuBLASDx and cuFFTDx, please see the tile
-  [documentation](https://nvidia.github.io/warp/stable/user_guide/tiles.html) for details.
+  [documentation](https://nvidia.github.io/warp/stable/user_guide/programming_model/tiles.html) for details.
 - Expose a `reversed()` built-in for iterators ([GH-311](https://github.com/NVIDIA/warp/issues/311)).
 - Support for saving Volumes into `.nvdb` files with the `save_to_nvdb` method.
 - warp.fem: Add `wp.fem.Trimesh3D` and `wp.fem.Quadmesh3D` geometry types for 3D surfaces with new `example_distortion_energy` example.
@@ -1838,16 +1840,16 @@
 ### Added
 
 - Support for a new `wp.static(expr)` function that allows arbitrary Python expressions to be evaluated at the time of
-  function/kernel definition ([docs](https://nvidia.github.io/warp/stable/deep_dive/codegen.html#static-expressions)).
+  function/kernel definition ([docs](https://nvidia.github.io/warp/stable/user_guide/programming_model/code_generation.html#static-expressions)).
 - Support for stream priorities to hint to the device that it should process pending work
   in high-priority streams over pending work in low-priority streams when possible
-  ([docs](https://nvidia.github.io/warp/stable/deep_dive/concurrency.html#stream-priorities)).
+  ([docs](https://nvidia.github.io/warp/stable/user_guide/execution_and_performance/concurrency.html#stream-priorities)).
 - Adaptive sparse grid geometry to `warp.fem` ([docs](https://nvidia.github.io/warp/stable/domain_modules/fem.html#adaptivity)).
 - Support for defining `wp.kernel` and `wp.func` objects from within closures.
 - Support for defining multiple versions of kernels, functions, and structs without manually assigning unique keys.
 - Support for default argument values for user functions decorated with `wp.func`.
 - Allow passing custom launch dimensions to `jax_kernel()` ([GH-310](https://github.com/NVIDIA/warp/pull/310)).
-- JAX interoperability examples for sharding and matrix multiplication ([docs](https://nvidia.github.io/warp/stable/user_guide/interoperability_jax.html#distributed-computation-with-shard-map)).
+- JAX interoperability examples for sharding and matrix multiplication ([docs](https://nvidia.github.io/warp/stable/user_guide/interoperability/jax.html#distributed-computation-with-shard-map)).
 - Interoperability support for the PaddlePaddle ML framework ([GH-318](https://github.com/NVIDIA/warp/pull/318)).
 - Support `wp.mod()` for vector types ([GH-282](https://github.com/NVIDIA/warp/issues/282)).
 - Expose the modulo operator `%` to Python's runtime scalar and vector types.
@@ -1857,8 +1859,8 @@
 - Support for redefining function overloads.
 - Add an ocean sample to the `omni.warp` extension.
 - `warp.sim.VBDIntegrator` now supports body-particle collision.
-- Add a [contributing guide](https://nvidia.github.io/warp/stable/user_guide/contribution_guide.html) to the Sphinx docs .
-- Add documentation for dynamic code generation ([docs](https://nvidia.github.io/warp/stable/deep_dive/codegen.html#dynamic-kernel-creation)).
+- Add a [contributing guide](https://nvidia.github.io/warp/stable/project/contribution_guide.html) to the Sphinx docs .
+- Add documentation for dynamic code generation ([docs](https://nvidia.github.io/warp/stable/user_guide/programming_model/code_generation.html#dynamic-kernel-creation)).
 
 ### Changed
 

@@ -45,5 +45,5 @@ By making a contribution to this project, I certify that:
     this project or the open source license(s) involved.
 ```
 
-See the [Contribution Guide](https://nvidia.github.io/warp/stable/user_guide/contribution_guide.html) for
+See the [Contribution Guide](https://nvidia.github.io/warp/latest/project/contribution_guide.html) for
 more information about how to contribute to Warp.

@@ -697,7 +697,7 @@ Note: Strict and checked modes impact performance.
 
 #### 1f. User-facing Documentation
 
-Add `docs/deep_dive/memory_access.rst` and link it from the docs index and device guide. The page should explain the CPU/GPU memory model for advanced users, including:
+Update `docs/user_guide/execution_and_performance/memory_management.rst` to explain the CPU/GPU memory model for advanced users, including:
 
 - The three public `Device` properties and that they are `False` for CPU devices.
 - How to guard mixed CPU/GPU launches using the capability properties.
@@ -1451,8 +1451,8 @@ Coverage lives in `warp/tests/cuda/test_unified_memory.py` (registered in `warp/
 
 - `wp.CudaManagedAllocator` is included in the CUDA memory-management API reference.
 - `wp.MemoryKind` and `array.memory_kind` documentation distinguish observed memory class from physical residency and accessibility.
-- `docs/deep_dive/allocators.rst` includes scoped and global managed-allocation examples.
-- `docs/deep_dive/memory_access.rst` distinguishes standard Warp CUDA arrays from managed arrays allocated through `wp.CudaManagedAllocator()`.
+- `docs/user_guide/execution_and_performance/memory_management.rst` includes scoped and global managed-allocation examples.
+- `docs/user_guide/execution_and_performance/memory_management.rst` distinguishes standard Warp CUDA arrays from managed arrays allocated through `wp.CudaManagedAllocator()`.
 - Managed arrays are documented as not promising initial physical residency. `wp.prefetch()` is the explicit placement hint once Phase 2 exists.
 - Graph-capture behavior is documented: managed arrays may be used by captured kernels, but users should allocate managed arrays before capture.
 
@@ -1515,7 +1515,7 @@ Coverage lives in `warp/tests/cuda/test_unified_memory.py` (registered in `warp/
 
 ### Phase 6 documentation
 
-- `docs/deep_dive/allocators.rst` should distinguish user-facing persistent
+- `docs/user_guide/execution_and_performance/memory_management.rst` should distinguish user-facing persistent
   resource allocations from internal temporary allocations.
 - Resource documentation should say which persistent buffers honor
   `ScopedAllocator` and which construction-time workspaces remain internal.
@@ -1524,7 +1524,7 @@ Coverage lives in `warp/tests/cuda/test_unified_memory.py` (registered in `warp/
 
 ### Phase 7 documentation
 
-- `docs/deep_dive/allocators.rst` should describe `ScopedAllocator` as the
+- `docs/user_guide/execution_and_performance/memory_management.rst` should describe `ScopedAllocator` as the
   preferred interface for selecting built-in CUDA allocators and custom
   allocators.
 - The docs should introduce built-in allocator accessors using memory-behavior
@@ -1535,7 +1535,7 @@ Coverage lives in `warp/tests/cuda/test_unified_memory.py` (registered in `warp/
 
 ### Phase 8 documentation
 
-- `docs/deep_dive/allocators.rst` should explain that capture-time managed allocation is a CUDA 13+ managed-pool feature, while CUDA 12.x builds require pre-allocation before capture.
+- `docs/user_guide/execution_and_performance/memory_management.rst` should explain that capture-time managed allocation is a CUDA 13+ managed-pool feature, while CUDA 12.x builds require pre-allocation before capture.
 - The docs should state that `wp.CudaManagedAllocator()` remains the public allocator API and `wp.MemoryKind.CUDA_MANAGED` remains the observed memory kind for both direct and pool-backed managed allocations.
 - Error messages should distinguish "managed allocation during capture is unsupported on this build/device" from "initialize the managed pool before capture."
 
