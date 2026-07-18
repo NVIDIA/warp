@@ -703,7 +703,10 @@ The CUDA API allows creating streams that are blocking or non-blocking. They dif
 
 Streams created by Warp are blocking. This has a number of advantages, especially for ease-of-use and interoperability with other frameworks. It avoids a range of synchronization-related issues and allows writing simpler code. The Warp runtime is designed around blocking streams and extra care is required when using external non-blocking streams.
 
-Let's use PyTorch as an interoperability example. Both Warp and PyTorch have a similar API for using streams, but Warp-created streams are blocking and PyTorch-created streams are non-blocking.
+Let's use PyTorch as an interoperability example. Both Warp and PyTorch have a
+similar API for using streams. Warp-created streams are blocking. PyTorch's
+CUDA default stream is also blocking, while non-default streams created with
+``torch.cuda.Stream()`` are non-blocking.
 
 By default, PyTorch code executes on the CUDA default stream (null stream) and Warp code executes on a blocking stream automatically created upon device initialization. Since Warp's blocking stream implicitly synchronizes with the null stream, we can interleave PyTorch and Warp operations without any explicit synchronization:
 
@@ -753,7 +756,12 @@ For operations meant to execute sequentially, using the same shared stream is ge
 
 This schedules both PyTorch and Warp operations on the same stream, so no synchronization (explicit or implicit) is necessary.
 
-Borrowing Warp's stream in PyTorch (and vice versa) does not change the stream's blocking behavior. A stream created by Warp is a blocking stream, even if it is borrowed in PyTorch using ``wp.stream_to_torch()``. Likewise, a stream created by PyTorch remains a non-blocking stream, even if it is borrowed in Warp using ``wp.stream_from_torch()``.
+Borrowing Warp's stream in PyTorch (and vice versa) does not change the stream's
+blocking behavior. A stream created by Warp remains blocking when borrowed in
+PyTorch using ``wp.stream_to_torch()``. A non-default stream created with
+``torch.cuda.Stream()`` remains non-blocking when borrowed in Warp using
+``wp.stream_from_torch()``. PyTorch's CUDA default stream remains blocking when
+wrapped by Warp.
 
 And therein lies the problem. Using non-blocking streams for Warp operations can lead to subtle synchronization-related bugs, particularly when it comes to releasing resources like memory allocated for arrays or other Warp data structures like meshes, hash grids, and volumes. Warp's resource deallocation relies on the behavior of blocking streams. A resource is released once all blocking streams using it finish their asynchronous work. Non-blocking streams are not covered, so a resource could be released prematurely. This can manifest in a wide range of symptoms, including illegal memory access errors or incorrect computation results. Consider this example:
 
