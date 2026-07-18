@@ -2175,10 +2175,16 @@ graph capture is active executes immediately instead of being recorded into the 
 and vice versa.</p></li>
 <li><p>Nested captures are rejected on both CPU and CUDA. Only one capture may be
 active at a time on a given thread.</p></li>
-<li><p>Arrays used during capture must remain alive for the lifetime of the captured
-graph. Reusing a freed CPU pointer during capture leads to undefined behavior;
-CUDA capture defers frees automatically while a capture is in progress, but
-the CPU path does not.</p></li>
+<li><p>A captured CPU graph replays correctly even after the caller releases its
+own references to the Warp arrays used during capture. You do not need to
+keep arrays passed to captured kernel launches or
+<a class="reference internal" href="../api_reference/_generated/warp.copy.html#warp.copy" title="warp.copy"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.copy()</span></code></a> operations alive for the graph to run, and an
+array view used as a kernel argument may be released once capture ends.</p></li>
+<li><p>This guarantee covers only memory Warp owns. It does not extend the lifetime
+of an external allocation passed to <code class="docutils literal notranslate"><span class="pre">wp.array(ptr=...)</span></code> without a
+<code class="docutils literal notranslate"><span class="pre">deleter</span></code>: the caller still owns that memory and must keep it alive, at the
+same address, until the graph is destroyed. Freeing or reusing it sooner is
+undefined behavior.</p></li>
 </ul>
 </section>
 <section id="saving-and-loading-graphs">
