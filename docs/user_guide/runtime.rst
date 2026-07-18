@@ -1705,10 +1705,16 @@ Current limitations of CPU graph capture:
   and vice versa.
 - Nested captures are rejected on both CPU and CUDA. Only one capture may be
   active at a time on a given thread.
-- Arrays used during capture must remain alive for the lifetime of the captured
-  graph. Reusing a freed CPU pointer during capture leads to undefined behavior;
-  CUDA capture defers frees automatically while a capture is in progress, but
-  the CPU path does not.
+- A captured CPU graph replays correctly even after the caller releases its
+  own references to the Warp arrays used during capture. You do not need to
+  keep arrays passed to captured kernel launches or
+  :func:`wp.copy() <warp.copy>` operations alive for the graph to run, and an
+  array view used as a kernel argument may be released once capture ends.
+- This guarantee covers only memory Warp owns. It does not extend the lifetime
+  of an external allocation passed to ``wp.array(ptr=...)`` without a
+  ``deleter``: the caller still owns that memory and must keep it alive, at the
+  same address, until the graph is destroyed. Freeing or reusing it sooner is
+  undefined behavior.
 
 
 .. _apic_save_load:

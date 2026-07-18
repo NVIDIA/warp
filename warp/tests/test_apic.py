@@ -4,9 +4,11 @@
 """Tests for APIC (API Capture) graph serialization and loading."""
 
 import ctypes
+import gc
 import os
 import tempfile
 import unittest
+import weakref
 from unittest import mock
 
 import numpy as np
@@ -727,6 +729,52 @@ def test_save_load_memcpy_and_kernel(test, device):
         result = wp.zeros(n, dtype=float, device=device)
         loaded.get_param("dst", result)
         np.testing.assert_allclose(result.numpy(), np.full(n, 20.0))
+
+
+def test_cpu_graph_replay_after_array_refs_released(test, device):
+    """CPU APIC replay must retain owned arrays used during capture."""
+    n = 32
+    sentinel = -100.0
+    src_values = np.arange(n, dtype=np.float32) + 1.0
+
+    expected_base = np.full(n + 4, sentinel, dtype=np.float32)
+    expected_base[2 : 2 + n] = src_values * 2.0
+
+    def record_graph():
+        src = wp.array(src_values, dtype=float, device=device)
+        tmp = wp.zeros(n, dtype=float, device=device)
+        dst_base = wp.full(n + 4, value=sentinel, dtype=float, device=device)
+        dst_view = dst_base[2 : 2 + n]
+        refs = {
+            "src": weakref.ref(src),
+            "tmp": weakref.ref(tmp),
+            "dst_base": weakref.ref(dst_base),
+        }
+
+        wp.load_module(device=device)
+        with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+            wp.copy(tmp, src)
+            wp.launch(scale_kernel, dim=n, inputs=[tmp, dst_view, 2.0], device=device)
+
+        return capture.graph, refs
+
+    graph, refs = record_graph()
+    gc.collect()
+
+    for name in ("src", "tmp", "dst_base"):
+        test.assertIsNotNone(refs[name](), f"{name} was not retained by the captured graph")
+
+    tmp = refs["tmp"]()
+    dst_base = refs["dst_base"]()
+    tmp.fill_(sentinel)
+    dst_base.fill_(sentinel)
+    del tmp, dst_base
+    gc.collect()
+
+    wp.capture_launch(graph)
+
+    np.testing.assert_allclose(refs["tmp"]().numpy(), src_values)
+    np.testing.assert_allclose(refs["dst_base"]().numpy(), expected_base)
 
 
 def test_save_load_fill(test, device):
@@ -2752,6 +2800,12 @@ add_function_test(
     "test_save_load_memcpy_and_kernel",
     test_save_load_memcpy_and_kernel,
     devices=devices_with_cuda_graph_module_load,
+)
+add_function_test(
+    TestApic,
+    "test_cpu_graph_replay_after_array_refs_released",
+    test_cpu_graph_replay_after_array_refs_released,
+    devices=[d for d in devices if d.is_cpu],
 )
 add_function_test(
     TestApic, "test_save_load_fill", test_save_load_fill, devices=get_cuda_test_devices()
