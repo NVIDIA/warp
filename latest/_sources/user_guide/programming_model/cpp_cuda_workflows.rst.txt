@@ -480,11 +480,11 @@ are the recommended starting points for native host integration.
 Related Topics
 --------------
 
-- :doc:`basics` covers regular :func:`@wp.func <warp.func>` functions called
+- :doc:`../basics` covers regular :func:`@wp.func <warp.func>` functions called
   from kernels.
-- :doc:`differentiability` covers custom gradients, custom replay functions,
+- :doc:`../differentiability` covers custom gradients, custom replay functions,
   tapes, and native-function adjoints.
-- :doc:`runtime` covers runtime kernel creation, CUDA graph capture, and APIC
+- :doc:`../runtime` covers runtime kernel creation, CUDA graph capture, and APIC
   save/load.
-- :doc:`../deep_dive/codegen` covers generated C++/CUDA source and AOT
+- :doc:`code_generation` covers generated C++/CUDA source and AOT
   compilation.

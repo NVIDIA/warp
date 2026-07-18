@@ -63,8 +63,8 @@
 
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="PyTorch Interoperability" href="interoperability_pytorch.html" />
-    <link rel="prev" title="Tiles" href="tiles.html" />
+    <link rel="next" title="PyTorch Interoperability" href="interoperability/pytorch.html" />
+    <link rel="prev" title="C++ and CUDA Workflows" href="programming_model/cpp_cuda_workflows.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -392,41 +392,37 @@
   <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="compatibility.html">Compatibility &amp; Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="basics.html">Basics</a></li>
 <li class="toctree-l1"><a class="reference internal" href="runtime.html">Runtime</a></li>
-<li class="toctree-l1"><a class="reference internal" href="devices.html">Devices</a></li>
 <li class="toctree-l1"><a class="reference internal" href="differentiability.html">Differentiability</a></li>
-<li class="toctree-l1"><a class="reference internal" href="generics.html">Generics</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tiles.html">Tiles</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="programming_model.html">Programming Model</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="programming_model/generics.html">Generics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="programming_model/tiles.html">Tiles</a></li>
+<li class="toctree-l2"><a class="reference internal" href="programming_model/code_generation.html">Code Generation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="programming_model/cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1 current active has-children"><a class="current reference internal" href="#">Interoperability</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l2"><a class="reference internal" href="interoperability_pytorch.html">PyTorch Interoperability</a></li>
-<li class="toctree-l2"><a class="reference internal" href="interoperability_jax.html">JAX Interoperability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="interoperability/pytorch.html">PyTorch Interoperability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="interoperability/jax.html">JAX Interoperability</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="execution_and_performance.html">Execution and Performance</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="execution_and_performance/concurrency.html">Concurrency</a></li>
+<li class="toctree-l2"><a class="reference internal" href="execution_and_performance/memory_management.html">Memory Allocation and Access</a></li>
+<li class="toctree-l2"><a class="reference internal" href="execution_and_performance/profiling.html">Profiling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="execution_and_performance/deterministic_execution.html">Deterministic Execution</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a></li>
-<li class="toctree-l1"><a class="reference internal" href="cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging</a></li>
-<li class="toctree-l1"><a class="reference internal" href="deterministic_execution.html">Deterministic Execution</a></li>
 <li class="toctree-l1"><a class="reference internal" href="limitations.html">Limitations</a></li>
-<li class="toctree-l1"><a class="reference internal" href="contribution_guide.html">Contribution Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="publications.html">Publications using Warp</a></li>
-<li class="toctree-l1"><a class="reference internal" href="compatibility.html">Compatibility &amp; Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="faq.html">FAQ</a></li>
-<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
 </ul>
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Deep Dive</span></p>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Language Reference</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../deep_dive/codegen.html">Code Generation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../deep_dive/allocators.html">Allocators</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../deep_dive/memory_access.html">CPU/GPU cross-device memory access</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../deep_dive/concurrency.html">Concurrency</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../deep_dive/profiling.html">Profiling</a></li>
-</ul>
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Domain Modules</span></p>
-<ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../domain_modules/sparse.html">Sparse Matrices</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../domain_modules/fem.html">FEM Toolkit</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../domain_modules/render.html">Rendering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../language_reference/builtins.html">Built-Ins</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="nav bd-sidenav">
@@ -440,9 +436,17 @@
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_types.html">warp.types</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_utils.html">warp.utils</a></li>
 </ul>
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Language Reference</span></p>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Domain Modules</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../language_reference/builtins.html">Built-Ins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../domain_modules/sparse.html">Sparse Matrices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../domain_modules/fem.html">FEM Toolkit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../domain_modules/render.html">Rendering</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../project/contribution_guide.html">Contribution Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../project/publications.html">Publications using Warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../project/changelog.html">Changelog</a></li>
 </ul>
 </div>
 </nav></div>
@@ -510,6 +514,15 @@
   <section id="interoperability">
 <h1>Interoperability<a class="headerlink" href="#interoperability" title="Link to this heading">#</a></h1>
 <p>Warp interoperates with other Python-based frameworks through standard interface protocols. Warp accepts external arrays in kernel launches as long as they implement the <code class="docutils literal notranslate"><span class="pre">__array__</span></code>, <code class="docutils literal notranslate"><span class="pre">__array_interface__</span></code>, or <code class="docutils literal notranslate"><span class="pre">__cuda_array_interface__</span></code> protocols. This works with NumPy, CuPy, PyTorch, JAX, and Paddle.</p>
+<section id="guides-in-this-section">
+<h2>Guides in this section<a class="headerlink" href="#guides-in-this-section" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="interoperability/pytorch.html"><span class="doc">PyTorch</span></a>: Share arrays and streams,
+integrate autograd, and call Warp kernels from custom operators.</p></li>
+<li><p><a class="reference internal" href="interoperability/jax.html"><span class="doc">JAX</span></a>: Convert arrays, call Warp kernels through
+FFI, and use Warp with JAX transformations and distributed computation.</p></li>
+</ul>
+</section>
 <section id="quick-reference">
 <h2>Quick Reference<a class="headerlink" href="#quick-reference" title="Link to this heading">#</a></h2>
 <div class="pst-scrollable-table-container"><table class="table">
@@ -562,8 +575,8 @@
 </div>
 <p>For full framework coverage, see:</p>
 <ul class="simple">
-<li><p><a class="reference internal" href="interoperability_pytorch.html"><span class="doc">PyTorch Interoperability</span></a></p></li>
-<li><p><a class="reference internal" href="interoperability_jax.html"><span class="doc">JAX Interoperability</span></a></p></li>
+<li><p><a class="reference internal" href="interoperability/pytorch.html"><span class="doc">PyTorch Interoperability</span></a></p></li>
+<li><p><a class="reference internal" href="interoperability/jax.html"><span class="doc">JAX Interoperability</span></a></p></li>
 </ul>
 <p>Paddle is documented inline below. NumPy, CuPy, Numba, and DLPack interop is protocol-level and covered in the sections that follow.</p>
 </section>
@@ -673,7 +686,7 @@
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Paddle follows the same performance-tuning pattern as PyTorch. See the “Performance Tuning” section of <a class="reference internal" href="interoperability_pytorch.html"><span class="doc">PyTorch Interoperability</span></a> for <code class="docutils literal notranslate"><span class="pre">return_ctype</span></code>, direct tensor passing, and reuse-don’t-reconvert guidance.</p>
+<p>Paddle follows the same performance-tuning pattern as PyTorch. See the “Performance Tuning” section of <a class="reference internal" href="interoperability/pytorch.html"><span class="doc">PyTorch Interoperability</span></a> for <code class="docutils literal notranslate"><span class="pre">return_ctype</span></code>, direct tensor passing, and reuse-don’t-reconvert guidance.</p>
 </div>
 </section>
 </section>
@@ -710,10 +723,6 @@
 </ul>
 <p>The framework-specific converters (<a class="reference internal" href="../api_reference/_generated/warp.to_torch.html#warp.to_torch" title="warp.to_torch"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.to_torch()</span></code></a>, <a class="reference internal" href="../api_reference/_generated/warp.to_paddle.html#warp.to_paddle" title="warp.to_paddle"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.to_paddle()</span></code></a>) are usually a better choice than DLPack when one exists, because DLPack does not carry gradient information. If autograd needs to flow between Warp and the other framework, use the direct converters. DLPack is most useful when no framework-specific converter exists, or when both producer and consumer are DLPack-native.</p>
 <div class="toctree-wrapper compound">
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="interoperability_pytorch.html">PyTorch Interoperability</a></li>
-<li class="toctree-l1"><a class="reference internal" href="interoperability_jax.html">JAX Interoperability</a></li>
-</ul>
 </div>
 </section>
 </section>
@@ -729,16 +738,16 @@
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="tiles.html"
+       href="programming_model/cpp_cuda_workflows.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Tiles</p>
+        <p class="prev-next-title">C++ and CUDA Workflows</p>
       </div>
     </a>
     <a class="right-next"
-       href="interoperability_pytorch.html"
+       href="interoperability/pytorch.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
@@ -767,6 +776,7 @@
   </div>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#guides-in-this-section">Guides in this section</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#quick-reference">Quick Reference</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#pass-arrays-directly">Pass Arrays Directly</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#numpy">NumPy</a></li>

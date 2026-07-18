@@ -145,7 +145,8 @@ the destination GPU is used to perform the copy, so we need to ensure that prior
     # wait for the copy to complete on the destination device
     wp.synchronize_device("cuda:1")
 
-Note that peer-to-peer transfers can be accelerated using :ref:`memory pool access <mempool_access>` or :ref:`peer access <peer_access>`, which enables DMA transfers between CUDA devices on supported systems.
+Peer-to-peer transfers can use DMA on supported systems by enabling
+:ref:`memory pool access <mempool_access>` or :ref:`CUDA peer access <peer_access>`.
 
 .. _streams:
 
@@ -483,8 +484,9 @@ be performed on a stream from any device.
     wp.copy(a1, a0, stream=stream0)
 
 Notice that we use event synchronization to make the source stream wait for the destination stream prior to the copy.
-This is due to the :ref:`stream-ordered memory pool allocators<mempool_allocators>` introduced in Warp 0.14.0.  The allocation of the
-empty array ``a1`` is scheduled on stream ``stream1``.  To avoid use-before-alloc errors, we need to wait until the 
+This wait is required because :ref:`stream-ordered memory pool allocation
+<mempool_allocators>` is scheduled on a CUDA stream. The allocation of the
+empty array ``a1`` is scheduled on stream ``stream1``. To avoid use-before-alloc errors, we need to wait until the
 allocation completes before using that array on a different stream.
 
 Stream Priorities

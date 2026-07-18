@@ -4,7 +4,7 @@ FAQ
 ===
 
 Use this page for quick answers to common Warp questions. Each answer links to
-the maintained details. The :doc:`publications` page collects examples of Warp
+the maintained details. The :doc:`/project/publications` page collects examples of Warp
 in research and production projects.
 
 About Warp
@@ -19,7 +19,7 @@ operations, and kernel launches. Warp maps that work onto the target device and
 handles many lower-level execution details. Warp lowers typed Python kernel
 code to generated C++ or CUDA C++ source. It then uses LLVM/Clang for CPU code
 or the CUDA runtime compiler (NVRTC) for CUDA code. The :doc:`basics` and
-:doc:`../deep_dive/codegen` guides explain the programming and compilation
+:doc:`programming_model/code_generation` guides explain the programming and compilation
 models.
 
 Warp generates reverse-mode automatic differentiation code for supported
@@ -74,7 +74,7 @@ larger application:
   version of Warp, so it is best treated as a research artifact rather than a
   current starter project.
 
-See :doc:`publications` for a broader collection.
+See :doc:`/project/publications` for a broader collection.
 
 How does Warp compare with other Python GPU programming approaches?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -153,7 +153,7 @@ use TMA. This is a difference between the current implementations, not an
 inherent limitation of CUDA C++ or PTX.
 
 Warp's tile backend does not currently use CUDA Tile IR or CUDA Tile C++. See
-Warp's :doc:`tiles` guide, the `Tile IR documentation
+Warp's :doc:`programming_model/tiles` guide, the `Tile IR documentation
 <https://docs.nvidia.com/cuda/tile-ir/latest/>`__, and the `CUDA Tile C++ guide
 <https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/writing-tile-kernels.html>`__.
 
@@ -175,7 +175,7 @@ Applications that need a ready-made simulation stack can start with Newton.
 Applications that need custom kernels or lower-level computation can use Warp
 directly, including alongside Newton. See Newton's `migration guide
 <https://newton-physics.github.io/newton/migration.html>`__ and Warp's
-:doc:`publications` page for examples.
+:doc:`/project/publications` page for examples.
 
 Installation and Compatibility
 ------------------------------
@@ -224,8 +224,8 @@ Query the device capability properties and use :func:`wp.can_access()
 systems, Warp exposes each GPU as a separate CUDA device. Applications still
 choose devices and coordinate data movement explicitly. Performance depends on
 the kernel and its memory-access pattern, so profile the target system. See
-:doc:`../deep_dive/memory_access`, :doc:`devices`, and
-:doc:`../deep_dive/profiling`.
+:doc:`execution_and_performance/memory_management`, :ref:`devices`, and
+:doc:`execution_and_performance/profiling`.
 
 Do I need to install the CUDA Toolkit?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -296,7 +296,7 @@ while building the image or follow :ref:`Ahead-of-Time Compilation Workflows
 If several workers may compile at once, populate a shared cache before starting
 them or give each worker a separate writable cache directory. Multiple
 processes should not populate the same cache concurrently.
-:doc:`../deep_dive/codegen` describes module hashing and compilation in detail.
+:doc:`programming_model/code_generation` describes module hashing and compilation in detail.
 
 Why can't I assign individual Warp array elements from Python?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -325,7 +325,7 @@ the compiled code. Keep compile-time choices stable, explicitly instantiate the
 generic overloads needed for deployment, and cache runtime-generated kernel
 objects in application code. See
 :ref:`External References and Constants <external_references>` and
-:doc:`generics`.
+:doc:`programming_model/generics`.
 
 Devices, Memory, and Execution
 ------------------------------
@@ -341,7 +341,7 @@ different performance and concurrency characteristics.
 Tile kernels need additional care on the CPU backend because its effective
 ``block_dim`` is one. Consult :ref:`CPU Tile Semantics <cpu_tile_semantics>`
 when the same tile kernel must run on both backends. Other device differences
-are covered in :doc:`devices`.
+are covered in :ref:`devices`.
 
 When do I need to synchronize explicitly?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -411,7 +411,7 @@ Multi-GPU Warp programs usually follow one of these execution models:
   ``cuda:i`` device aliases to allocate arrays and launch kernels. Work on
   separate devices may run concurrently. Check peer or memory-pool access
   before relying on direct cross-GPU access, and order transfers with events or
-  stream waits. See :doc:`devices` and the CUDA Programming Guide's
+  stream waits. See :ref:`devices` and the CUDA Programming Guide's
   `Programming Systems with Multiple GPUs
   <https://docs.nvidia.com/cuda/cuda-programming-guide/03-advanced/multi-gpu-systems.html>`__
   chapter.
@@ -449,7 +449,7 @@ Multi-GPU Warp programs usually follow one of these execution models:
   <https://docs.pytorch.org/docs/stable/distributed.html>`__ or JAX application,
   let the framework manage processes, devices, and communication. Warp runs the
   local computation on each process's tensors or shards through
-  :doc:`interoperability_pytorch` or :ref:`JAX shard_map <jax-shard-map>`.
+  :doc:`interoperability/pytorch` or :ref:`JAX shard_map <jax-shard-map>`.
 
 Multi-process deployments should normally assign one GPU to each process. Keep
 communication on the same CUDA stream as the Warp work when the API supports
@@ -546,8 +546,8 @@ PyTorch custom autograd function or registered custom operator, or use
 
 The wrapper must define how output gradients launch Warp's adjoint code and
 how the resulting input gradients return to the host framework. Integration
-details are in :doc:`interoperability_pytorch` and
-:doc:`interoperability_jax`.
+details are in :doc:`interoperability/pytorch` and
+:doc:`interoperability/jax`.
 
 Should I use direct framework converters, array interfaces, or DLPack?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -588,7 +588,7 @@ same GPU architecture. :attr:`wp.DeterministicMode.GPU_TO_GPU
 <warp.DeterministicMode.GPU_TO_GPU>` uses a stronger path intended to match
 across GPU architectures. These modes can take more time and temporary memory,
 and they must be selected before the module is compiled.
-:doc:`deterministic_execution` covers supported operations, configuration
+:doc:`execution_and_performance/deterministic_execution` covers supported operations, configuration
 scopes, and current limitations.
 
 How should I benchmark asynchronous Warp operations?
@@ -604,7 +604,7 @@ For a simple end-to-end measurement, use
 events provide targeted stream timing, while a profiler is better suited to
 concurrent workloads. The CUDA Programming Guide's `Asynchronous Execution
 <https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/asynchronous-execution.html>`__
-chapter explains stream and event timing. :doc:`../deep_dive/profiling`
+chapter explains stream and event timing. :doc:`execution_and_performance/profiling`
 describes each method.
 
 How do I find which kernel caused an illegal memory access or a non-finite value?
@@ -637,7 +637,7 @@ capture to the region of interest.
 Set :attr:`warp.config.log_level` to :data:`wp.LOG_DEBUG <warp.LOG_DEBUG>` to
 log detailed module and codegen messages. Warp also writes generated C++ and
 CUDA source into its kernel cache for direct inspection. See
-:doc:`../deep_dive/profiling` and :doc:`../deep_dive/codegen`.
+:doc:`execution_and_performance/profiling` and :doc:`programming_model/code_generation`.
 
 When should I use CUDA graph capture, and what is currently supported?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -657,7 +657,7 @@ Warp can record CUDA allocations made during capture when CUDA memory pools are
 supported and enabled. An array allocated this way is not usable until the
 graph has been launched. Managed-memory allocations and operations that need
 unsupported temporary or staging allocations must still be prepared before
-capture. See :doc:`../deep_dive/allocators` for the allocation rules.
+capture. See :doc:`execution_and_performance/memory_management` for the allocation rules.
 
 Requirements for capture-safe operations and conditional, multi-stream, CPU,
 and serialized graph behavior evolve with CUDA and Warp. Check the
@@ -674,7 +674,7 @@ generic overloads, and other specializations that the application will use.
 
 Any runtime-generated kernel or omitted specialization still needs
 compilation. See :ref:`Ahead-of-Time Compilation Workflows
-<ahead_of_time_compilation_workflows>` in :doc:`../deep_dive/codegen`.
+<ahead_of_time_compilation_workflows>` in :doc:`programming_model/code_generation`.
 
 Can Warp use existing C++ or CUDA code?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -682,7 +682,7 @@ Can Warp use existing C++ or CUDA code?
 Yes. Applications can insert small C++ or CUDA operations into generated Warp
 modules with :func:`@wp.func_native <warp.func_native>`. Larger library
 integrations require extending Warp's native bindings and build. See
-:doc:`cpp_cuda_workflows` for both approaches.
+:doc:`programming_model/cpp_cuda_workflows` for both approaches.
 
 Can Warp computations run from C or C++ without Python?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -692,7 +692,7 @@ metadata, PTX, and CUBIN files to disk. A native CUDA C++ application can load
 the generated CUBIN through the `CUDA Driver API
 <https://docs.nvidia.com/cuda/cuda-programming-guide/03-advanced/driver-api.html>`__
 or include the generated ``.cu`` source in its own translation unit. The
-``01_source_include`` example in :doc:`cpp_cuda_workflows` launches the
+``01_source_include`` example in :doc:`programming_model/cpp_cuda_workflows` launches the
 generated forward and backward kernels directly, making this workflow useful
 for both ordinary kernel execution and reverse-mode differentiation.
 
@@ -702,7 +702,7 @@ C++ program without a Python runtime.
 
 The native workflows expose fewer operations than the Python runtime and work
 at a lower level. API Capture can record only its documented set of operations.
-The C++ examples in :doc:`cpp_cuda_workflows` show each workflow.
+The C++ examples in :doc:`programming_model/cpp_cuda_workflows` show each workflow.
 
 Community and Support
 ---------------------

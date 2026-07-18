@@ -49,7 +49,7 @@
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../_static/copybutton.js?v=fd10adb8"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'user_guide/changelog';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'project/changelog';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
@@ -63,8 +63,7 @@
 
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Code Generation" href="../deep_dive/codegen.html" />
-    <link rel="prev" title="FAQ" href="faq.html" />
+    <link rel="prev" title="Publications using Warp" href="publications.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -390,43 +389,39 @@
      aria-label="Table of Contents">
   <p class="bd-links__title" role="heading" aria-level="1">Table of Contents</p>
   <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
-<ul class="current nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="basics.html">Basics</a></li>
-<li class="toctree-l1"><a class="reference internal" href="runtime.html">Runtime</a></li>
-<li class="toctree-l1"><a class="reference internal" href="devices.html">Devices</a></li>
-<li class="toctree-l1"><a class="reference internal" href="differentiability.html">Differentiability</a></li>
-<li class="toctree-l1"><a class="reference internal" href="generics.html">Generics</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tiles.html">Tiles</a></li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="interoperability.html">Interoperability</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l2"><a class="reference internal" href="interoperability_pytorch.html">PyTorch Interoperability</a></li>
-<li class="toctree-l2"><a class="reference internal" href="interoperability_jax.html">JAX Interoperability</a></li>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/compatibility.html">Compatibility &amp; Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/basics.html">Basics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/runtime.html">Runtime</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/differentiability.html">Differentiability</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../user_guide/programming_model.html">Programming Model</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../user_guide/programming_model/generics.html">Generics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../user_guide/programming_model/tiles.html">Tiles</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../user_guide/programming_model/code_generation.html">Code Generation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../user_guide/programming_model/cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a></li>
-<li class="toctree-l1"><a class="reference internal" href="cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
-<li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging</a></li>
-<li class="toctree-l1"><a class="reference internal" href="deterministic_execution.html">Deterministic Execution</a></li>
-<li class="toctree-l1"><a class="reference internal" href="limitations.html">Limitations</a></li>
-<li class="toctree-l1"><a class="reference internal" href="contribution_guide.html">Contribution Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="publications.html">Publications using Warp</a></li>
-<li class="toctree-l1"><a class="reference internal" href="compatibility.html">Compatibility &amp; Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="faq.html">FAQ</a></li>
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Changelog</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../user_guide/interoperability.html">Interoperability</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../user_guide/interoperability/pytorch.html">PyTorch Interoperability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../user_guide/interoperability/jax.html">JAX Interoperability</a></li>
 </ul>
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Deep Dive</span></p>
-<ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../deep_dive/codegen.html">Code Generation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../deep_dive/allocators.html">Allocators</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../deep_dive/memory_access.html">CPU/GPU cross-device memory access</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../deep_dive/concurrency.html">Concurrency</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../deep_dive/profiling.html">Profiling</a></li>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../user_guide/execution_and_performance.html">Execution and Performance</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../user_guide/execution_and_performance/concurrency.html">Concurrency</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../user_guide/execution_and_performance/memory_management.html">Memory Allocation and Access</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../user_guide/execution_and_performance/profiling.html">Profiling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../user_guide/execution_and_performance/deterministic_execution.html">Deterministic Execution</a></li>
 </ul>
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Domain Modules</span></p>
+</details></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/limitations.html">Limitations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/faq.html">FAQ</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Language Reference</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../domain_modules/sparse.html">Sparse Matrices</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../domain_modules/fem.html">FEM Toolkit</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../domain_modules/render.html">Rendering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../language_reference/builtins.html">Built-Ins</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="nav bd-sidenav">
@@ -440,9 +435,17 @@
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_types.html">warp.types</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_utils.html">warp.utils</a></li>
 </ul>
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Language Reference</span></p>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Domain Modules</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../language_reference/builtins.html">Built-Ins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../domain_modules/sparse.html">Sparse Matrices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../domain_modules/fem.html">FEM Toolkit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../domain_modules/render.html">Rendering</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="contribution_guide.html">Contribution Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="publications.html">Publications using Warp</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Changelog</a></li>
 </ul>
 </div>
 </nav></div>
@@ -490,7 +493,7 @@
         <div class="header-article-item">
 
 <div class="d-flex justify-content-end w-100">
-  <a href="../_sources/user_guide/changelog.md.txt">
+  <a href="../_sources/project/changelog.md.txt">
     <i class="fa-solid fa-file-code"></i> View page source
   </a>
 </div>
@@ -558,6 +561,8 @@ reporting the relevant shapes, data types, channels, or device identifiers
 the written annotation and can be evaluated back to the same annotation, instead of the previous
 <code class="docutils literal notranslate"><span class="pre">wp.array(dtype=...,</span> <span class="pre">ndim=...)</span></code> form. Warp array return types now read more naturally in Sphinx-generated API
 documentation (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1628">GH-1628</a>).</p></li>
+<li><p>Reorganize the documentation around substantive Programming Model and Execution and Performance guides, move the
+Language Reference and API Reference closer to the User Guide, and consolidate memory-management guidance.</p></li>
 </ul>
 </section>
 <section id="fixed">
@@ -1810,7 +1815,7 @@ cleaned up, as these can be safely ignored during process termination
 <li><p>Add <code class="docutils literal notranslate"><span class="pre">wp.MarchingCubes.extract_surface_marching_cubes()</span></code> to extract a triangular mesh from a 3D scalar field
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/788">GH-788</a>).</p></li>
 <li><p>Add <code class="docutils literal notranslate"><span class="pre">wp.compile_aot_module()</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.load_aot_module()</span></code> to support basic ahead-of-time compilation workflows
-(<a class="reference external" href="https://nvidia.github.io/warp/stable/deep_dive/codegen.html#ahead-of-time-compilation-workflows">docs</a>,
+(<a class="reference external" href="https://nvidia.github.io/warp/stable/user_guide/programming_model/code_generation.html#ahead-of-time-compilation-workflows">docs</a>,
 <a class="reference external" href="https://github.com/NVIDIA/warp/issues/766">GH-766</a>).</p></li>
 <li><p>Add support for negative indexing and improve slicing for the <code class="docutils literal notranslate"><span class="pre">wp.matrix()</span></code>/<code class="docutils literal notranslate"><span class="pre">wp.vector()</span></code>/<code class="docutils literal notranslate"><span class="pre">wp.quaternion()</span></code> types
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/899">GH-899</a>).</p></li>
@@ -1987,7 +1992,7 @@ them all to be rendered with the same scale <code class="docutils literal notran
 <li><p>Add support for profiling GPU runtime module compilation using the global <code class="docutils literal notranslate"><span class="pre">wp.config.compile_time_trace</span></code>
 setting or the module-level <code class="docutils literal notranslate"><span class="pre">&quot;compile_time_trace&quot;</span></code> option. When used, JSON files in the Trace Event
 format will be written in the kernel cache, which can be opened in a viewer like <code class="docutils literal notranslate"><span class="pre">chrome://tracing/</span></code>
-(<a class="reference external" href="https://nvidia.github.io/warp/stable/deep_dive/profiling.html#profiling-module-compilation">docs</a>,
+(<a class="reference external" href="https://nvidia.github.io/warp/stable/user_guide/execution_and_performance/profiling.html#profiling-module-compilation">docs</a>,
 <a class="reference external" href="https://github.com/NVIDIA/warp/issues/609">GH-609</a>).</p></li>
 <li><p>Add support for returning multiple values from native functions like <code class="docutils literal notranslate"><span class="pre">wp.svd3()</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.quat_to_axis_angle()</span></code>
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/503">GH-503</a>).</p></li>
@@ -2200,11 +2205,11 @@ with literal values and an explicit <code class="docutils literal notranslate"><
 <h3>Added<a class="headerlink" href="#id79" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Support JAX foreign function interface (FFI)
-(<a class="reference external" href="https://nvidia.github.io/warp/stable/user_guide/interoperability_jax.html#generic-ffi-callbacks">docs</a>,
+(<a class="reference external" href="https://nvidia.github.io/warp/stable/user_guide/interoperability/jax.html#generic-ffi-callbacks">docs</a>,
 <a class="reference external" href="https://github.com/NVIDIA/warp/issues/511">GH-511</a>).</p></li>
 <li><p>Support Python/SASS correlation in Nsight Compute reports by emitting <code class="docutils literal notranslate"><span class="pre">#line</span></code> directives in CUDA-C code.
 This setting is controlled by <code class="docutils literal notranslate"><span class="pre">wp.config.line_directives</span></code> and is <code class="docutils literal notranslate"><span class="pre">True</span></code> by default.
-(<a class="reference external" href="https://nvidia.github.io/warp/stable/deep_dive/profiling.html#nsight-compute-profiling">docs</a>,
+(<a class="reference external" href="https://nvidia.github.io/warp/stable/user_guide/execution_and_performance/profiling.html#nsight-compute-profiling">docs</a>,
 <a class="reference external" href="https://github.com/NVIDIA/warp/issues/437">GH-437</a>)</p></li>
 <li><p>Support <code class="docutils literal notranslate"><span class="pre">vec4f</span></code> grid construction in <code class="docutils literal notranslate"><span class="pre">wp.Volume.allocate_by_tiles()</span></code>.</p></li>
 <li><p>Add 2D SVD <code class="docutils literal notranslate"><span class="pre">wp.svd2()</span></code> (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/436">GH-436</a>).</p></li>
@@ -2423,7 +2428,7 @@ Use tile primitives instead.</p></li>
 <ul class="simple">
 <li><p>Add PyTorch basics and custom operators notebooks to the <code class="docutils literal notranslate"><span class="pre">notebooks</span></code> directory.</p></li>
 <li><p>Update PyTorch interop docs to include section on custom operators
-(<a class="reference external" href="https://nvidia.github.io/warp/stable/user_guide/interoperability_pytorch.html#using-pytorch-custom-operators-pytorch-2-4-0">docs</a>).</p></li>
+(<a class="reference external" href="https://nvidia.github.io/warp/stable/user_guide/interoperability/pytorch.html#using-pytorch-custom-operators-pytorch-2-4-0">docs</a>).</p></li>
 </ul>
 </section>
 <section id="id93">
@@ -2450,7 +2455,7 @@ Use tile primitives instead.</p></li>
 <h3>Added<a class="headerlink" href="#id95" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Support for cooperative tile-based primitives using cuBLASDx and cuFFTDx, please see the tile
-<a class="reference external" href="https://nvidia.github.io/warp/stable/user_guide/tiles.html">documentation</a> for details.</p></li>
+<a class="reference external" href="https://nvidia.github.io/warp/stable/user_guide/programming_model/tiles.html">documentation</a> for details.</p></li>
 <li><p>Expose a <code class="docutils literal notranslate"><span class="pre">reversed()</span></code> built-in for iterators (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/311">GH-311</a>).</p></li>
 <li><p>Support for saving Volumes into <code class="docutils literal notranslate"><span class="pre">.nvdb</span></code> files with the <code class="docutils literal notranslate"><span class="pre">save_to_nvdb</span></code> method.</p></li>
 <li><p>warp.fem: Add <code class="docutils literal notranslate"><span class="pre">wp.fem.Trimesh3D</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.fem.Quadmesh3D</span></code> geometry types for 3D surfaces with new <code class="docutils literal notranslate"><span class="pre">example_distortion_energy</span></code> example.</p></li>
@@ -2545,16 +2550,16 @@ to set a uniform radius for the added particles.</p></li>
 <h3>Added<a class="headerlink" href="#id104" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Support for a new <code class="docutils literal notranslate"><span class="pre">wp.static(expr)</span></code> function that allows arbitrary Python expressions to be evaluated at the time of
-function/kernel definition (<a class="reference external" href="https://nvidia.github.io/warp/stable/deep_dive/codegen.html#static-expressions">docs</a>).</p></li>
+function/kernel definition (<a class="reference external" href="https://nvidia.github.io/warp/stable/user_guide/programming_model/code_generation.html#static-expressions">docs</a>).</p></li>
 <li><p>Support for stream priorities to hint to the device that it should process pending work
 in high-priority streams over pending work in low-priority streams when possible
-(<a class="reference external" href="https://nvidia.github.io/warp/stable/deep_dive/concurrency.html#stream-priorities">docs</a>).</p></li>
+(<a class="reference external" href="https://nvidia.github.io/warp/stable/user_guide/execution_and_performance/concurrency.html#stream-priorities">docs</a>).</p></li>
 <li><p>Adaptive sparse grid geometry to <code class="docutils literal notranslate"><span class="pre">warp.fem</span></code> (<a class="reference external" href="https://nvidia.github.io/warp/stable/domain_modules/fem.html#adaptivity">docs</a>).</p></li>
 <li><p>Support for defining <code class="docutils literal notranslate"><span class="pre">wp.kernel</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.func</span></code> objects from within closures.</p></li>
 <li><p>Support for defining multiple versions of kernels, functions, and structs without manually assigning unique keys.</p></li>
 <li><p>Support for default argument values for user functions decorated with <code class="docutils literal notranslate"><span class="pre">wp.func</span></code>.</p></li>
 <li><p>Allow passing custom launch dimensions to <code class="docutils literal notranslate"><span class="pre">jax_kernel()</span></code> (<a class="reference external" href="https://github.com/NVIDIA/warp/pull/310">GH-310</a>).</p></li>
-<li><p>JAX interoperability examples for sharding and matrix multiplication (<a class="reference external" href="https://nvidia.github.io/warp/stable/user_guide/interoperability_jax.html#distributed-computation-with-shard-map">docs</a>).</p></li>
+<li><p>JAX interoperability examples for sharding and matrix multiplication (<a class="reference external" href="https://nvidia.github.io/warp/stable/user_guide/interoperability/jax.html#distributed-computation-with-shard-map">docs</a>).</p></li>
 <li><p>Interoperability support for the PaddlePaddle ML framework (<a class="reference external" href="https://github.com/NVIDIA/warp/pull/318">GH-318</a>).</p></li>
 <li><p>Support <code class="docutils literal notranslate"><span class="pre">wp.mod()</span></code> for vector types (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/282">GH-282</a>).</p></li>
 <li><p>Expose the modulo operator <code class="docutils literal notranslate"><span class="pre">%</span></code> to Python’s runtime scalar and vector types.</p></li>
@@ -2564,8 +2569,8 @@ in high-priority streams over pending work in low-priority streams when possible
 <li><p>Support for redefining function overloads.</p></li>
 <li><p>Add an ocean sample to the <code class="docutils literal notranslate"><span class="pre">omni.warp</span></code> extension.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">warp.sim.VBDIntegrator</span></code> now supports body-particle collision.</p></li>
-<li><p>Add a <a class="reference external" href="https://nvidia.github.io/warp/stable/user_guide/contribution_guide.html">contributing guide</a> to the Sphinx docs .</p></li>
-<li><p>Add documentation for dynamic code generation (<a class="reference external" href="https://nvidia.github.io/warp/stable/deep_dive/codegen.html#dynamic-kernel-creation">docs</a>).</p></li>
+<li><p>Add a <a class="reference external" href="https://nvidia.github.io/warp/stable/project/contribution_guide.html">contributing guide</a> to the Sphinx docs .</p></li>
+<li><p>Add documentation for dynamic code generation (<a class="reference external" href="https://nvidia.github.io/warp/stable/user_guide/programming_model/code_generation.html#dynamic-kernel-creation">docs</a>).</p></li>
 </ul>
 </section>
 <section id="id105">
@@ -3933,22 +3938,13 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="faq.html"
+       href="publications.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">FAQ</p>
+        <p class="prev-next-title">Publications using Warp</p>
       </div>
-    </a>
-    <a class="right-next"
-       href="../deep_dive/codegen.html"
-       title="next page">
-      <div class="prev-next-info">
-        <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Code Generation</p>
-      </div>
-      <i class="fa-solid fa-angle-right"></i>
     </a>
 </div>
                 </footer>
@@ -3967,7 +3963,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/main/docs/user_guide/changelog.md">
+    <a href="https://github.com/NVIDIA/warp/edit/main/docs/project/changelog.md">
       <i class="fa-solid fa-pencil"></i>
       
       

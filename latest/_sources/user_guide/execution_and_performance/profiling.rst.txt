@@ -43,7 +43,7 @@ The snippet above will print a message like this:
 
 By default, ``ScopedTimer`` measures the elapsed time on the CPU and does not introduce any CUDA synchronization.  Since most CUDA operations are asynchronous, the result does not include the time spent executing kernels and memory transfers on the CUDA device.  It's still a useful measurement, because it shows how long it took to schedule the CUDA operations on the CPU.
 
-To get the total amount of time including the device executions time, create the :class:`ScopedTimer`
+To get the total amount of time including the device execution time, create the :class:`ScopedTimer`
 with the ``synchronize=True`` flag.
 This is equivalent to calling :func:`wp.synchronize() <warp.synchronize>` before and after the timed section of code.
 Synchronizing at the beginning ensures that all prior CUDA work has completed prior to starting the timer.
@@ -79,7 +79,7 @@ The package allows you to insert custom NVTX ranges into your code (``nvtx.annot
 
 Here is what the demo code looks like in Nsight Systems (click to enlarge the image):
 
-.. image:: ../img/profiling_nosync.png
+.. image:: ../../img/profiling_nosync.png
     :width: 95%
     :align: center
 
@@ -94,7 +94,7 @@ Note that synchronization was not enabled in this run, so the NVTX range only sp
     with wp.ScopedTimer("Demo", use_nvtx=True, color="yellow", synchronize=True):
         ...
 
-.. image:: ../img/profiling_sync.png
+.. image:: ../../img/profiling_sync.png
     :width: 95%
     :align: center
 
@@ -502,7 +502,7 @@ report in the UI:
 
 The following screenshot shows the Python/SASS correlation view from the Nsight Compute report (click to enlarge):
 
-.. image:: ../img/nsight_compute_python_vs_sass.png
+.. image:: ../../img/nsight_compute_python_vs_sass.png
     :width: 95%
     :align: center
 

@@ -450,7 +450,7 @@ determine the tile argument type:
 See :ref:`Generic Functions` for details on using ``typing.Any`` in user function signatures.
 
 See :doc:`differentiability` for details on custom gradient and replay
-functions. See :doc:`cpp_cuda_workflows` for native C++/CUDA snippets and
+functions. See :doc:`programming_model/cpp_cuda_workflows` for native C++/CUDA snippets and
 other non-Python integration workflows.
 
 User Structs
@@ -471,76 +471,9 @@ As with kernel parameters, all attributes of a struct must have valid type hints
 Structs may be used as a ``dtype`` for :class:`wp.array <warp.array>` and may be passed to kernels directly as arguments.
 See :ref:`Structs Reference <Structs>` for more details on structs.
 
-.. _python-scope-vs-kernel-scope-api:
-
-Python Scope vs. Kernel Scope API
----------------------------------
-
-Some of the Warp API can only be called from the Python scope (i.e. outside of Warp user functions and kernels),
-while others can only be called from the kernel scope.
-
-The Python-scope API is documented in the :doc:`/api_reference/warp`,
-while the kernel-scope API is documented in the :doc:`/language_reference/builtins`.
-Generally, the kernel-scope API can also be used in the Python scope.
-
-Not all of the Python language is supported inside the kernel scope. Some features haven't been implemented yet, while
-other features do not map well to the GPU from a performance perspective.
-
-See the :doc:`Limitations <limitations>` documentation for more details.
-
-.. _Compilation Model:
-
-Compilation Model
------------------
-
-Warp uses a Python->C++/CUDA compilation model that generates kernel code from Python function definitions.
-All kernels belonging to a Python module are runtime compiled into dynamic libraries and PTX.
-The result is then cached between application restarts for fast startup times.
-
-Note that compilation is triggered on the first kernel launch for that module.
-Any kernels registered in the module with :func:`@wp.kernel <warp.kernel>` will be included in the shared library.
-
-.. image:: ../img/compiler_pipeline.svg
-
-By default, status messages will be printed out after each module has been loaded indicating basic information:
-
-* The name of the module that was just loaded
-* The first seven characters of the module hash
-* The device on which the module is being loaded for
-* How long it took to load the module in milliseconds
-* Whether the module was compiled ``(compiled)``, loaded from the cache ``(cached)``, or was unable to be loaded ``(error)``.
-
-For debugging purposes, ``wp.config.log_level = wp.LOG_DEBUG`` can be set to also get a printout when each module load begins.
-
-Here is an example illustrating the functionality of the kernel cache by running ``python -m warp.examples.tile.example_tile_cholesky``
-twice. The first time, we see:
-
-.. code:: bat
-
-    Warp 1.10.0.dev0 initialized:
-    CUDA Toolkit 13.0, Driver 13.0
-    Devices:
-        "cpu"      : "x86_64"
-        "cuda:0"   : "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition" (95 GiB, sm_120, mempool enabled)
-    Kernel cache:
-        /home/nvidia/.cache/warp/1.10.0.dev0
-    Module __main__ 0b0ecab load on device 'cuda:0' took 4136.19 ms  (compiled)
-
-The second time we run this example, we see that the module-loading message now says ``(cached)`` and that it takes
-much less time to load the module since code compilation is skipped:
-
-.. code:: bat
-
-    Warp 1.10.0.dev0 initialized:
-    CUDA Toolkit 13.0, Driver 13.0
-    Devices:
-        "cpu"      : "x86_64"
-        "cuda:0"   : "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition" (95 GiB, sm_120, mempool enabled)
-    Kernel cache:
-        /home/nvidia/.cache/warp/1.10.0.dev0
-    Module __main__ 0b0ecab load on device 'cuda:0' took 30.98 ms  (cached)
-
-For more information, see the :doc:`../deep_dive/codegen` section.
+For the boundary between Python and kernel execution, Warp's compilation
+pipeline, and the relationship between SIMT kernels and tile programming, see
+:doc:`programming_model`.
 
 Language Details
 ----------------
@@ -568,7 +501,7 @@ All kernel parameters must be annotated with the appropriate type, for example::
                       c: float):
 
 For convenience, ``typing.Any`` may be used in place of concrete types
-appearing in function signatures. See the :doc:`/user_guide/generics` documentation
+appearing in function signatures. See the :doc:`/user_guide/programming_model/generics` documentation
 for more information. A generic version of the above kernel could look like::
 
     from typing import Any

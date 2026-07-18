@@ -171,43 +171,26 @@ warp/examples/tile
 .. toctree::
     :maxdepth: 2
     :caption: User Guide
+    :includehidden:
 
     user_guide/installation
+    user_guide/compatibility
     user_guide/basics
     user_guide/runtime
-    user_guide/devices
     user_guide/differentiability
-    user_guide/generics
-    user_guide/tiles
+    user_guide/programming_model
     user_guide/interoperability
+    user_guide/execution_and_performance
     user_guide/configuration
-    user_guide/cpp_cuda_workflows
     user_guide/debugging
-    user_guide/deterministic_execution
     user_guide/limitations
-    user_guide/contribution_guide
-    user_guide/publications
-    user_guide/compatibility
     user_guide/faq
-    user_guide/changelog
 
 .. toctree::
     :maxdepth: 2
-    :caption: Deep Dive
+    :caption: Language Reference
 
-    deep_dive/codegen
-    deep_dive/allocators
-    deep_dive/memory_access
-    deep_dive/concurrency
-    deep_dive/profiling
-
-.. toctree::
-    :maxdepth: 2
-    :caption: Domain Modules
-
-    domain_modules/sparse
-    domain_modules/fem
-    domain_modules/render
+    language_reference/builtins
 
 .. toctree::
     :maxdepth: 1
@@ -225,9 +208,19 @@ warp/examples/tile
 
 .. toctree::
     :maxdepth: 2
-    :caption: Language Reference
+    :caption: Domain Modules
 
-    language_reference/builtins
+    domain_modules/sparse
+    domain_modules/fem
+    domain_modules/render
+
+.. toctree::
+    :maxdepth: 1
+    :caption: Project
+
+    project/contribution_guide
+    project/publications
+    project/changelog
 
 .. toctree::
     :hidden:

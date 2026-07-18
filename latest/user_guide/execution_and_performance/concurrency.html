@@ -3,7 +3,7 @@
 <!DOCTYPE html>
 
 
-<html lang="en" data-content_root="../" >
+<html lang="en" data-content_root="../../" >
 
   <head>
     <meta charset="utf-8" />
@@ -28,28 +28,28 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
-<link href="../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+  <link href="../../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
 
-    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
-    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=3d681599" />
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=3d681599" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
-<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
 
 
 
-    <script src="../_static/documentation_options.js?v=4ae37cce"></script>
-    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
-    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
-    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
-    <script src="../_static/copybutton.js?v=fd10adb8"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'deep_dive/concurrency';</script>
+    <script src="../../_static/documentation_options.js?v=4ae37cce"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../_static/copybutton.js?v=fd10adb8"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'user_guide/execution_and_performance/concurrency';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
@@ -59,12 +59,12 @@
         </script>
     <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
 
-    <link rel="icon" href="../_static/favicon.png"/>
+    <link rel="icon" href="../../_static/favicon.png"/>
 
-    <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Profiling" href="profiling.html" />
-    <link rel="prev" title="CPU/GPU cross-device memory access" href="memory_access.html" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Memory Allocation and Access" href="memory_management.html" />
+    <link rel="prev" title="Execution and Performance" href="../execution_and_performance.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -72,9 +72,9 @@
   <meta name="docsearch:version" content="1.16.0.dev0" />
   
     
-    <script src="../_static/searchtools.js"></script>
-    <script src="../_static/language_data.js"></script>
-    <script src="../searchindex.js"></script>
+    <script src="../../_static/searchtools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script src="../../searchindex.js"></script>
   
 
 
@@ -99,7 +99,7 @@
   <dialog id="pst-search-dialog">
     
 <form class="bd-search d-flex align-items-center"
-      action="../search.html"
+      action="../../search.html"
       method="get">
   <i class="fa-solid fa-magnifying-glass"></i>
   <input type="search"
@@ -135,7 +135,7 @@
     
   
 
-<a class="navbar-brand logo" href="../index.html">
+<a class="navbar-brand logo" href="../../index.html">
   
   
   
@@ -146,8 +146,8 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.16.0.dev0 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.16.0.dev0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.16.0.dev0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.16.0.dev0 - Home"/>
   
   
     <p class="title logo__title">Warp 1.16.0.dev0</p>
@@ -279,7 +279,7 @@
     
   
 
-<a class="navbar-brand logo" href="../index.html">
+<a class="navbar-brand logo" href="../../index.html">
   
   
   
@@ -290,8 +290,8 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.16.0.dev0 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.16.0.dev0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.16.0.dev0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.16.0.dev0 - Home"/>
   
   
     <p class="title logo__title">Warp 1.16.0.dev0</p>
@@ -390,59 +390,63 @@
      aria-label="Table of Contents">
   <p class="bd-links__title" role="heading" aria-level="1">Table of Contents</p>
   <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
-<ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../user_guide/installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../user_guide/basics.html">Basics</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../user_guide/runtime.html">Runtime</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../user_guide/devices.html">Devices</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../user_guide/differentiability.html">Differentiability</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../user_guide/generics.html">Generics</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../user_guide/tiles.html">Tiles</a></li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../user_guide/interoperability.html">Interoperability</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l2"><a class="reference internal" href="../user_guide/interoperability_pytorch.html">PyTorch Interoperability</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../user_guide/interoperability_jax.html">JAX Interoperability</a></li>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../compatibility.html">Compatibility &amp; Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../basics.html">Basics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../runtime.html">Runtime</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../differentiability.html">Differentiability</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../programming_model.html">Programming Model</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../programming_model/generics.html">Generics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../programming_model/tiles.html">Tiles</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../programming_model/code_generation.html">Code Generation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../programming_model/cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1"><a class="reference internal" href="../user_guide/configuration.html">Configuration</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../user_guide/cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../user_guide/debugging.html">Debugging</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../user_guide/deterministic_execution.html">Deterministic Execution</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../user_guide/limitations.html">Limitations</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../user_guide/contribution_guide.html">Contribution Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../user_guide/publications.html">Publications using Warp</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../user_guide/compatibility.html">Compatibility &amp; Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../user_guide/faq.html">FAQ</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../user_guide/changelog.html">Changelog</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../interoperability.html">Interoperability</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../interoperability/pytorch.html">PyTorch Interoperability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../interoperability/jax.html">JAX Interoperability</a></li>
 </ul>
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Deep Dive</span></p>
-<ul class="current nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="codegen.html">Code Generation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="allocators.html">Allocators</a></li>
-<li class="toctree-l1"><a class="reference internal" href="memory_access.html">CPU/GPU cross-device memory access</a></li>
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Concurrency</a></li>
-<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+</details></li>
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="../execution_and_performance.html">Execution and Performance</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">Concurrency</a></li>
+<li class="toctree-l2"><a class="reference internal" href="memory_management.html">Memory Allocation and Access</a></li>
+<li class="toctree-l2"><a class="reference internal" href="profiling.html">Profiling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deterministic_execution.html">Deterministic Execution</a></li>
 </ul>
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Domain Modules</span></p>
-<ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../domain_modules/sparse.html">Sparse Matrices</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../domain_modules/fem.html">FEM Toolkit</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../domain_modules/render.html">Rendering</a></li>
-</ul>
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
-<ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp.html">warp</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_autograd.html">warp.autograd</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_config.html">warp.config</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_fem.html">warp.fem</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_optim.html">warp.optim</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_render.html">warp.render</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_sparse.html">warp.sparse</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_types.html">warp.types</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_utils.html">warp.utils</a></li>
+</details></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../limitations.html">Limitations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">FAQ</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Language Reference</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../language_reference/builtins.html">Built-Ins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../language_reference/builtins.html">Built-Ins</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp.html">warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_autograd.html">warp.autograd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_config.html">warp.config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_fem.html">warp.fem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_optim.html">warp.optim</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_render.html">warp.render</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_sparse.html">warp.sparse</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_types.html">warp.types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_utils.html">warp.utils</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Domain Modules</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../domain_modules/sparse.html">Sparse Matrices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../domain_modules/fem.html">FEM Toolkit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../domain_modules/render.html">Rendering</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../project/contribution_guide.html">Contribution Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../project/publications.html">Publications using Warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../project/changelog.html">Changelog</a></li>
 </ul>
 </div>
 </nav></div>
@@ -473,10 +477,13 @@
   <ul class="bd-breadcrumbs">
     
     <li class="breadcrumb-item breadcrumb-home">
-      <a href="../index.html" class="nav-link" aria-label="Home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
         <i class="fa-solid fa-home"></i>
       </a>
     </li>
+    
+    <li class="breadcrumb-item"><a href="../execution_and_performance.html" class="nav-link">Execution and Performance</a></li>
+    
     <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Concurrency</span></li>
   </ul>
 </nav>
@@ -490,7 +497,7 @@
         <div class="header-article-item">
 
 <div class="d-flex justify-content-end w-100">
-  <a href="../_sources/deep_dive/concurrency.rst.txt">
+  <a href="../../_sources/user_guide/execution_and_performance/concurrency.rst.txt">
     <i class="fa-solid fa-file-code"></i> View page source
   </a>
 </div>
@@ -514,7 +521,7 @@
 <section id="kernel-launches">
 <h3>Kernel Launches<a class="headerlink" href="#kernel-launches" title="Link to this heading">#</a></h3>
 <p>Kernels launched on a CUDA device are asynchronous with respect to the host (CPU Python thread).  Launching a kernel schedules
-its execution on the CUDA device, but the <a class="reference internal" href="../api_reference/_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch()</span></code></a> function can return before the kernel execution
+its execution on the CUDA device, but the <a class="reference internal" href="../../api_reference/_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch()</span></code></a> function can return before the kernel execution
 completes.  This allows us to run some CPU computations while the CUDA kernel is executing, which is an
 easy way to introduce parallelism into our programs.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel1</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
@@ -532,7 +539,7 @@ easy way to introduce parallelism into our programs.</p>
 <span class="n">do_cpu_work</span><span class="p">()</span>
 </pre></div>
 </div>
-<p>Launching kernels on the CPU is currently a synchronous operation.  In other words, <a class="reference internal" href="../api_reference/_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch()</span></code></a> will return only after the kernel has finished executing on the CPU.  To run a CUDA kernel and a CPU kernel concurrently, the CUDA kernel should be launched first:</p>
+<p>Launching kernels on the CPU is currently a synchronous operation.  In other words, <a class="reference internal" href="../../api_reference/_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch()</span></code></a> will return only after the kernel has finished executing on the CPU.  To run a CUDA kernel and a CPU kernel concurrently, the CUDA kernel should be launched first:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># schedule a kernel on a CUDA device</span>
 <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel1</span><span class="p">,</span> <span class="o">...</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
 
@@ -628,7 +635,8 @@ the destination GPU is used to perform the copy, so we need to ensure that prior
 <span class="n">wp</span><span class="o">.</span><span class="n">synchronize_device</span><span class="p">(</span><span class="s2">&quot;cuda:1&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Note that peer-to-peer transfers can be accelerated using <a class="reference internal" href="allocators.html#mempool-access"><span class="std std-ref">memory pool access</span></a> or <a class="reference internal" href="../user_guide/devices.html#peer-access"><span class="std std-ref">peer access</span></a>, which enables DMA transfers between CUDA devices on supported systems.</p>
+<p>Peer-to-peer transfers can use DMA on supported systems by enabling
+<a class="reference internal" href="memory_management.html#mempool-access"><span class="std std-ref">memory pool access</span></a> or <a class="reference internal" href="memory_management.html#peer-access"><span class="std std-ref">CUDA peer access</span></a>.</p>
 </section>
 </section>
 <section id="streams">
@@ -639,23 +647,23 @@ and may be interleaved by the device scheduler.</p>
 All kernel launches and memory operations issued on that device are placed on the current stream.</p>
 <section id="creating-streams">
 <h3>Creating Streams<a class="headerlink" href="#creating-streams" title="Link to this heading">#</a></h3>
-<p>A stream is tied to a particular CUDA device.  New streams can be created using the <a class="reference internal" href="../api_reference/_generated/warp.Stream.html#warp.Stream" title="warp.Stream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Stream</span></code></a> constructor:</p>
+<p>A stream is tied to a particular CUDA device.  New streams can be created using the <a class="reference internal" href="../../api_reference/_generated/warp.Stream.html#warp.Stream" title="warp.Stream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Stream</span></code></a> constructor:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">s1</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Stream</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>  <span class="c1"># create a stream on a specific CUDA device</span>
 <span class="n">s2</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Stream</span><span class="p">()</span>          <span class="c1"># create a stream on the default device</span>
 </pre></div>
 </div>
-<p>If the device parameter is omitted, the default device will be used, which can be managed using <a class="reference internal" href="../api_reference/_generated/warp.ScopedDevice.html#warp.ScopedDevice" title="warp.ScopedDevice"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedDevice</span></code></a>.</p>
+<p>If the device parameter is omitted, the default device will be used, which can be managed using <a class="reference internal" href="../../api_reference/_generated/warp.ScopedDevice.html#warp.ScopedDevice" title="warp.ScopedDevice"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedDevice</span></code></a>.</p>
 <p>For interoperation with external code, it is possible to pass a CUDA stream handle to wrap an external stream:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">s3</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Stream</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">,</span> <span class="n">cuda_stream</span><span class="o">=</span><span class="n">stream_handle</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>The <code class="docutils literal notranslate"><span class="pre">cuda_stream</span></code> argument must be a native stream handle (<code class="docutils literal notranslate"><span class="pre">cudaStream_t</span></code> or <code class="docutils literal notranslate"><span class="pre">CUstream</span></code>) passed as a Python integer.
 This mechanism is used internally for sharing streams with external frameworks like PyTorch or DLPack.  The caller is responsible for ensuring
-that the external stream does not get destroyed while it is referenced by a <a class="reference internal" href="../api_reference/_generated/warp.Stream.html#warp.Stream" title="warp.Stream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Stream</span></code></a> object.</p>
+that the external stream does not get destroyed while it is referenced by a <a class="reference internal" href="../../api_reference/_generated/warp.Stream.html#warp.Stream" title="warp.Stream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Stream</span></code></a> object.</p>
 </section>
 <section id="using-streams">
 <h3>Using Streams<a class="headerlink" href="#using-streams" title="Link to this heading">#</a></h3>
-<p>Use <a class="reference internal" href="../api_reference/_generated/warp.ScopedStream.html#warp.ScopedStream" title="warp.ScopedStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></a> to temporarily change the current stream on a device and schedule a sequence of operations on that stream:</p>
+<p>Use <a class="reference internal" href="../../api_reference/_generated/warp.ScopedStream.html#warp.ScopedStream" title="warp.ScopedStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></a> to temporarily change the current stream on a device and schedule a sequence of operations on that stream:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Stream</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
 
 <span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedStream</span><span class="p">(</span><span class="n">stream</span><span class="p">):</span>
@@ -665,7 +673,7 @@ that the external stream does not get destroyed while it is referenced by a <a c
     <span class="n">wp</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Since streams are tied to a particular device, <a class="reference internal" href="../api_reference/_generated/warp.ScopedStream.html#warp.ScopedStream" title="warp.ScopedStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></a> subsumes the functionality of <a class="reference internal" href="../api_reference/_generated/warp.ScopedDevice.html#warp.ScopedDevice" title="warp.ScopedDevice"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedDevice</span></code></a>.  That’s why we don’t need to explicitly specify the <code class="docutils literal notranslate"><span class="pre">device</span></code> argument to each of the calls.</p>
+<p>Since streams are tied to a particular device, <a class="reference internal" href="../../api_reference/_generated/warp.ScopedStream.html#warp.ScopedStream" title="warp.ScopedStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></a> subsumes the functionality of <a class="reference internal" href="../../api_reference/_generated/warp.ScopedDevice.html#warp.ScopedDevice" title="warp.ScopedDevice"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedDevice</span></code></a>.  That’s why we don’t need to explicitly specify the <code class="docutils literal notranslate"><span class="pre">device</span></code> argument to each of the calls.</p>
 <p>An important benefit of streams is that they can be used to overlap compute and data transfer operations on the same device,
 which can improve the overall throughput of a program by doing those operations in parallel.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedDevice</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">):</span>
@@ -685,33 +693,33 @@ which can improve the overall throughput of a program by doing those operations 
         <span class="n">wp</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>The <a class="reference internal" href="../api_reference/_generated/warp.get_stream.html#warp.get_stream" title="warp.get_stream"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.get_stream()</span></code></a> function can be used to get the current stream on a device:</p>
+<p>The <a class="reference internal" href="../../api_reference/_generated/warp.get_stream.html#warp.get_stream" title="warp.get_stream"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.get_stream()</span></code></a> function can be used to get the current stream on a device:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">s1</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_stream</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>  <span class="c1"># get the current stream on a specific device</span>
 <span class="n">s2</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_stream</span><span class="p">()</span>          <span class="c1"># get the current stream on the default device</span>
 </pre></div>
 </div>
-<p>The <a class="reference internal" href="../api_reference/_generated/warp.set_stream.html#warp.set_stream" title="warp.set_stream"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.set_stream()</span></code></a> function can be used to set the current stream on a device:</p>
+<p>The <a class="reference internal" href="../../api_reference/_generated/warp.set_stream.html#warp.set_stream" title="warp.set_stream"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.set_stream()</span></code></a> function can be used to set the current stream on a device:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">set_stream</span><span class="p">(</span><span class="n">stream</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>  <span class="c1"># set the stream on a specific device</span>
 <span class="n">wp</span><span class="o">.</span><span class="n">set_stream</span><span class="p">(</span><span class="n">stream</span><span class="p">)</span>                   <span class="c1"># set the stream on the default device</span>
 </pre></div>
 </div>
-<p>In general, we recommend using <a class="reference internal" href="../api_reference/_generated/warp.ScopedStream.html#warp.ScopedStream" title="warp.ScopedStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></a> rather than <a class="reference internal" href="../api_reference/_generated/warp.set_stream.html#warp.set_stream" title="warp.set_stream"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.set_stream()</span></code></a>.</p>
+<p>In general, we recommend using <a class="reference internal" href="../../api_reference/_generated/warp.ScopedStream.html#warp.ScopedStream" title="warp.ScopedStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></a> rather than <a class="reference internal" href="../../api_reference/_generated/warp.set_stream.html#warp.set_stream" title="warp.set_stream"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.set_stream()</span></code></a>.</p>
 </section>
 <section id="synchronization">
 <h3>Synchronization<a class="headerlink" href="#synchronization" title="Link to this heading">#</a></h3>
-<p><a class="reference internal" href="../api_reference/_generated/warp.synchronize_stream.html#warp.synchronize_stream" title="warp.synchronize_stream"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize_stream()</span></code></a> can be used to block the host thread until the given stream completes:</p>
+<p><a class="reference internal" href="../../api_reference/_generated/warp.synchronize_stream.html#warp.synchronize_stream" title="warp.synchronize_stream"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize_stream()</span></code></a> can be used to block the host thread until the given stream completes:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">synchronize_stream</span><span class="p">(</span><span class="n">stream</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>In a program that uses multiple streams, this gives a more fine-grained level of control over synchronization behavior
-than <a class="reference internal" href="../api_reference/_generated/warp.synchronize_device.html#warp.synchronize_device" title="warp.synchronize_device"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize_device()</span></code></a>, which synchronizes all streams on the device.
+than <a class="reference internal" href="../../api_reference/_generated/warp.synchronize_device.html#warp.synchronize_device" title="warp.synchronize_device"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize_device()</span></code></a>, which synchronizes all streams on the device.
 For example, if a program has multiple compute and transfer streams, the host might only want to wait for one transfer stream
 to complete, without waiting for the other streams.  By synchronizing only one stream, we allow the others to continue running
 concurrently with the host thread.</p>
 </section>
 <section id="events">
 <span id="cuda-events"></span><h3>Events<a class="headerlink" href="#events" title="Link to this heading">#</a></h3>
-<p>Functions like <a class="reference internal" href="../api_reference/_generated/warp.synchronize_device.html#warp.synchronize_device" title="warp.synchronize_device"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize_device()</span></code></a> or <a class="reference internal" href="../api_reference/_generated/warp.synchronize_stream.html#warp.synchronize_stream" title="warp.synchronize_stream"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize_stream()</span></code></a> block the CPU thread until work completes on a CUDA device, but they’re not intended to synchronize multiple CUDA streams with each other.</p>
+<p>Functions like <a class="reference internal" href="../../api_reference/_generated/warp.synchronize_device.html#warp.synchronize_device" title="warp.synchronize_device"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize_device()</span></code></a> or <a class="reference internal" href="../../api_reference/_generated/warp.synchronize_stream.html#warp.synchronize_stream" title="warp.synchronize_stream"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize_stream()</span></code></a> block the CPU thread until work completes on a CUDA device, but they’re not intended to synchronize multiple CUDA streams with each other.</p>
 <p>CUDA events provide a mechanism for device-side synchronization between streams.
 This kind of synchronization does not block the host thread, but it allows one stream to wait for work on another stream
 to complete.</p>
@@ -733,23 +741,23 @@ wait on that event:</p>
 <p>Note that when recording events, the event must be from the same device as the recording stream.
 When waiting for events, the waiting stream can be from another device.  This allows using events to synchronize streams
 on different GPUs.</p>
-<p>If the <a class="reference internal" href="../api_reference/_generated/warp.Stream.html#warp.Stream.record_event" title="warp.Stream.record_event"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Stream.record_event()</span></code></a> method is called without an event argument, a temporary event will be created, recorded, and returned:</p>
+<p>If the <a class="reference internal" href="../../api_reference/_generated/warp.Stream.html#warp.Stream.record_event" title="warp.Stream.record_event"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Stream.record_event()</span></code></a> method is called without an event argument, a temporary event will be created, recorded, and returned:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">event</span> <span class="o">=</span> <span class="n">stream1</span><span class="o">.</span><span class="n">record_event</span><span class="p">()</span>
 <span class="n">stream2</span><span class="o">.</span><span class="n">wait_event</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>The <a class="reference internal" href="../api_reference/_generated/warp.Stream.html#warp.Stream.wait_stream" title="warp.Stream.wait_stream"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Stream.wait_stream()</span></code></a> method combines the acts of recording and waiting on an event in one call:</p>
+<p>The <a class="reference internal" href="../../api_reference/_generated/warp.Stream.html#warp.Stream.wait_stream" title="warp.Stream.wait_stream"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Stream.wait_stream()</span></code></a> method combines the acts of recording and waiting on an event in one call:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">stream2</span><span class="o">.</span><span class="n">wait_stream</span><span class="p">(</span><span class="n">stream1</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>Warp also provides global functions <a class="reference internal" href="../api_reference/_generated/warp.record_event.html#warp.record_event" title="warp.record_event"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.record_event()</span></code></a>, <a class="reference internal" href="../api_reference/_generated/warp.wait_event.html#warp.wait_event" title="warp.wait_event"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.wait_event()</span></code></a>, and <a class="reference internal" href="../api_reference/_generated/warp.wait_stream.html#warp.wait_stream" title="warp.wait_stream"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.wait_stream()</span></code></a> which operate on the current
+<p>Warp also provides global functions <a class="reference internal" href="../../api_reference/_generated/warp.record_event.html#warp.record_event" title="warp.record_event"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.record_event()</span></code></a>, <a class="reference internal" href="../../api_reference/_generated/warp.wait_event.html#warp.wait_event" title="warp.wait_event"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.wait_event()</span></code></a>, and <a class="reference internal" href="../../api_reference/_generated/warp.wait_stream.html#warp.wait_stream" title="warp.wait_stream"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.wait_stream()</span></code></a> which operate on the current
 stream of the default device:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">record_event</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>  <span class="c1"># record an event on the current stream</span>
 <span class="n">wp</span><span class="o">.</span><span class="n">wait_event</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>    <span class="c1"># make the current stream wait for an event</span>
 <span class="n">wp</span><span class="o">.</span><span class="n">wait_stream</span><span class="p">(</span><span class="n">stream</span><span class="p">)</span>  <span class="c1"># make the current stream wait for another stream</span>
 </pre></div>
 </div>
-<p>These variants are convenient to use inside of <a class="reference internal" href="../api_reference/_generated/warp.ScopedStream.html#warp.ScopedStream" title="warp.ScopedStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></a> and <a class="reference internal" href="../api_reference/_generated/warp.ScopedDevice.html#warp.ScopedDevice" title="warp.ScopedDevice"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedDevice</span></code></a> managers.</p>
+<p>These variants are convenient to use inside of <a class="reference internal" href="../../api_reference/_generated/warp.ScopedStream.html#warp.ScopedStream" title="warp.ScopedStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></a> and <a class="reference internal" href="../../api_reference/_generated/warp.ScopedDevice.html#warp.ScopedDevice" title="warp.ScopedDevice"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedDevice</span></code></a> managers.</p>
 <p>Here is a more complete example with a producer stream that copies data into an array and a consumer stream
 that uses the array in a kernel:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedDevice</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">):</span>
@@ -780,7 +788,7 @@ that uses the array in a kernel:</p>
         <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
 </pre></div>
 </div>
-<p>The function <a class="reference internal" href="../api_reference/_generated/warp.synchronize_event.html#warp.synchronize_event" title="warp.synchronize_event"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize_event()</span></code></a> can be used to block the host thread until a recorded event completes.  This is useful when the host wants to wait for a specific synchronization point on a stream, while allowing subsequent stream operations to continue executing asynchronously.</p>
+<p>The function <a class="reference internal" href="../../api_reference/_generated/warp.synchronize_event.html#warp.synchronize_event" title="warp.synchronize_event"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize_event()</span></code></a> can be used to block the host thread until a recorded event completes.  This is useful when the host wants to wait for a specific synchronization point on a stream, while allowing subsequent stream operations to continue executing asynchronously.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedDevice</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">):</span>
     <span class="c1"># CPU buffers for readback</span>
     <span class="n">a_host</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">pinned</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
@@ -817,9 +825,9 @@ that uses the array in a kernel:</p>
 </section>
 <section id="querying-stream-and-event-status">
 <h3>Querying Stream and Event Status<a class="headerlink" href="#querying-stream-and-event-status" title="Link to this heading">#</a></h3>
-<p>The <a class="reference internal" href="../api_reference/_generated/warp.Stream.html#warp.Stream.is_complete" title="warp.Stream.is_complete"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Stream.is_complete</span></code></a> and <a class="reference internal" href="../api_reference/_generated/warp.Event.html#warp.Event.is_complete" title="warp.Event.is_complete"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Event.is_complete</span></code></a> attributes can be used to query the status of a stream or
-event. These queries do not block the host thread unlike <a class="reference internal" href="../api_reference/_generated/warp.synchronize_stream.html#warp.synchronize_stream" title="warp.synchronize_stream"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize_stream()</span></code></a> and
-<a class="reference internal" href="../api_reference/_generated/warp.synchronize_event.html#warp.synchronize_event" title="warp.synchronize_event"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize_event()</span></code></a>.</p>
+<p>The <a class="reference internal" href="../../api_reference/_generated/warp.Stream.html#warp.Stream.is_complete" title="warp.Stream.is_complete"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Stream.is_complete</span></code></a> and <a class="reference internal" href="../../api_reference/_generated/warp.Event.html#warp.Event.is_complete" title="warp.Event.is_complete"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Event.is_complete</span></code></a> attributes can be used to query the status of a stream or
+event. These queries do not block the host thread unlike <a class="reference internal" href="../../api_reference/_generated/warp.synchronize_stream.html#warp.synchronize_stream" title="warp.synchronize_stream"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize_stream()</span></code></a> and
+<a class="reference internal" href="../../api_reference/_generated/warp.synchronize_event.html#warp.synchronize_event" title="warp.synchronize_event"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize_event()</span></code></a>.</p>
 <p>These attributes are useful for running operations on the CPU while waiting for GPU operations to complete:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">test_kernel</span><span class="p">(</span><span class="nb">sum</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">uint64</span><span class="p">]):</span>
@@ -836,7 +844,7 @@ event. These queries do not block the host thread unlike <a class="reference int
     <span class="n">counter</span> <span class="o">+=</span> <span class="mi">1</span>
 </pre></div>
 </div>
-<p><a class="reference internal" href="../api_reference/_generated/warp.Stream.html#warp.Stream.is_complete" title="warp.Stream.is_complete"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Stream.is_complete</span></code></a> and <a class="reference internal" href="../api_reference/_generated/warp.Event.html#warp.Event.is_complete" title="warp.Event.is_complete"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Event.is_complete</span></code></a> cannot be accessed during a graph capture.</p>
+<p><a class="reference internal" href="../../api_reference/_generated/warp.Stream.html#warp.Stream.is_complete" title="warp.Stream.is_complete"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Stream.is_complete</span></code></a> and <a class="reference internal" href="../../api_reference/_generated/warp.Event.html#warp.Event.is_complete" title="warp.Event.is_complete"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Event.is_complete</span></code></a> cannot be accessed during a graph capture.</p>
 </section>
 <section id="cuda-default-stream">
 <h3>CUDA Default Stream<a class="headerlink" href="#cuda-default-stream" title="Link to this heading">#</a></h3>
@@ -860,13 +868,13 @@ a readback, which is done using the <code class="docutils literal notranslate"><
 which means that no explicit synchronization is required.  The reason for this is convenience - printing an array is useful
 for debugging purposes, so it’s nice not to worry about synchronization.</p>
 <p>The drawback of this approach is that the CUDA default stream (and any methods that use it) cannot be used during graph capture.
-The regular <a class="reference internal" href="../api_reference/_generated/warp.copy.html#warp.copy" title="warp.copy"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.copy()</span></code></a> function should be used to capture readback operations in a graph.</p>
+The regular <a class="reference internal" href="../../api_reference/_generated/warp.copy.html#warp.copy" title="warp.copy"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.copy()</span></code></a> function should be used to capture readback operations in a graph.</p>
 </section>
 <section id="explicit-streams-arguments">
 <h3>Explicit Streams Arguments<a class="headerlink" href="#explicit-streams-arguments" title="Link to this heading">#</a></h3>
 <p>Several Warp functions accept optional <code class="docutils literal notranslate"><span class="pre">stream</span></code> arguments.  This allows directly specifying the stream without
-using a <a class="reference internal" href="../api_reference/_generated/warp.ScopedStream.html#warp.ScopedStream" title="warp.ScopedStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></a> manager.  There are benefits and drawbacks to both approaches, which will be discussed below.
-Functions that accept stream arguments directly include <a class="reference internal" href="../api_reference/_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch()</span></code></a>, <a class="reference internal" href="../api_reference/_generated/warp.capture_launch.html#warp.capture_launch" title="warp.capture_launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_launch()</span></code></a>, and <a class="reference internal" href="../api_reference/_generated/warp.copy.html#warp.copy" title="warp.copy"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.copy()</span></code></a>.</p>
+using a <a class="reference internal" href="../../api_reference/_generated/warp.ScopedStream.html#warp.ScopedStream" title="warp.ScopedStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></a> manager.  There are benefits and drawbacks to both approaches, which will be discussed below.
+Functions that accept stream arguments directly include <a class="reference internal" href="../../api_reference/_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch()</span></code></a>, <a class="reference internal" href="../../api_reference/_generated/warp.capture_launch.html#warp.capture_launch" title="warp.capture_launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_launch()</span></code></a>, and <a class="reference internal" href="../../api_reference/_generated/warp.copy.html#warp.copy" title="warp.copy"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.copy()</span></code></a>.</p>
 <p>To launch a kernel on a specific stream:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">n</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="o">...</span><span class="p">],</span> <span class="n">stream</span><span class="o">=</span><span class="n">my_stream</span><span class="p">)</span>
 </pre></div>
@@ -877,10 +885,10 @@ from the stream.  If both <code class="docutils literal notranslate"><span class
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">capture_launch</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">stream</span><span class="o">=</span><span class="n">my_stream</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>For both kernel and graph launches, specifying the stream directly can be faster than using <a class="reference internal" href="../api_reference/_generated/warp.ScopedStream.html#warp.ScopedStream" title="warp.ScopedStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></a>.
-While <a class="reference internal" href="../api_reference/_generated/warp.ScopedStream.html#warp.ScopedStream" title="warp.ScopedStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></a> is useful for scheduling a sequence of operations on a specific stream, there is some overhead
+<p>For both kernel and graph launches, specifying the stream directly can be faster than using <a class="reference internal" href="../../api_reference/_generated/warp.ScopedStream.html#warp.ScopedStream" title="warp.ScopedStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></a>.
+While <a class="reference internal" href="../../api_reference/_generated/warp.ScopedStream.html#warp.ScopedStream" title="warp.ScopedStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></a> is useful for scheduling a sequence of operations on a specific stream, there is some overhead
 in setting and restoring the current stream on the device.  This overhead is negligible for larger workloads,
-but performance-sensitive code may benefit from specifying the stream directly instead of using <a class="reference internal" href="../api_reference/_generated/warp.ScopedStream.html#warp.ScopedStream" title="warp.ScopedStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></a>, especially
+but performance-sensitive code may benefit from specifying the stream directly instead of using <a class="reference internal" href="../../api_reference/_generated/warp.ScopedStream.html#warp.ScopedStream" title="warp.ScopedStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></a>, especially
 for a single kernel or graph launch.</p>
 <p>In addition to these performance considerations, specifying the stream directly can be useful when copying arrays between
 two CUDA devices.  By default, Warp uses the following rules to determine which stream will be used for the copy:</p>
@@ -904,21 +912,21 @@ be performed on a stream from any device.</p>
 </pre></div>
 </div>
 <p>Notice that we use event synchronization to make the source stream wait for the destination stream prior to the copy.
-This is due to the <a class="reference internal" href="allocators.html#mempool-allocators"><span class="std std-ref">stream-ordered memory pool allocators</span></a> introduced in Warp 0.14.0.  The allocation of the
-empty array <code class="docutils literal notranslate"><span class="pre">a1</span></code> is scheduled on stream <code class="docutils literal notranslate"><span class="pre">stream1</span></code>.  To avoid use-before-alloc errors, we need to wait until the
+This wait is required because <a class="reference internal" href="memory_management.html#mempool-allocators"><span class="std std-ref">stream-ordered memory pool allocation</span></a> is scheduled on a CUDA stream. The allocation of the
+empty array <code class="docutils literal notranslate"><span class="pre">a1</span></code> is scheduled on stream <code class="docutils literal notranslate"><span class="pre">stream1</span></code>. To avoid use-before-alloc errors, we need to wait until the
 allocation completes before using that array on a different stream.</p>
 </section>
 <section id="stream-priorities">
 <h3>Stream Priorities<a class="headerlink" href="#stream-priorities" title="Link to this heading">#</a></h3>
 <p>Streams can be created with a specified numerical priority using the <code class="docutils literal notranslate"><span class="pre">priority</span></code> parameter when creating a new
-<a class="reference internal" href="../api_reference/_generated/warp.Stream.html#warp.Stream" title="warp.Stream"><code class="xref py py-class docutils literal notranslate"><span class="pre">Stream</span></code></a>. High-priority streams can be created with a priority of -1, while low-priority streams
+<a class="reference internal" href="../../api_reference/_generated/warp.Stream.html#warp.Stream" title="warp.Stream"><code class="xref py py-class docutils literal notranslate"><span class="pre">Stream</span></code></a>. High-priority streams can be created with a priority of -1, while low-priority streams
 have a priority of 0. By scheduling work on streams of different priorities, users can achieve finer-grained
 control of how the GPU schedules pending work. Priorities are only a hint to the GPU for how to
 process work and do not guarantee that pending work will be executed in a certain order.
 Stream priorities currently do not affect host-to-device or device-to-host memory transfers.</p>
 <p>Streams created with a priority outside the valid values of -1 and 0 will have
 the priority clamped.
-The priority of any stream can be queried using the <a class="reference internal" href="../api_reference/_generated/warp.Stream.html#warp.Stream.priority" title="warp.Stream.priority"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Stream.priority</span></code></a> attribute.
+The priority of any stream can be queried using the <a class="reference internal" href="../../api_reference/_generated/warp.Stream.html#warp.Stream.priority" title="warp.Stream.priority"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Stream.priority</span></code></a> attribute.
 If a CUDA device does not support stream priorities, then all streams will have
 a priority of 0 regardless of the priority requested when creating the stream.</p>
 <p>For more information on stream priorities, see the section in the
@@ -1009,10 +1017,10 @@ begins executing the kernel that consumes the array.</p>
 <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">stream</span><span class="o">=</span><span class="n">s</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>The <a class="reference internal" href="../api_reference/_generated/warp.ScopedStream.html#warp.ScopedStream" title="warp.ScopedStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></a> manager is designed to alleviate this common problem.  By default, it synchronizes the new stream with the
-previous stream on the device when entering the scope.  Its behavior is equivalent to inserting the <a class="reference internal" href="../api_reference/_generated/warp.Stream.html#warp.Stream.wait_stream" title="warp.Stream.wait_stream"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Stream.wait_stream()</span></code></a> call as shown above.
+<p>The <a class="reference internal" href="../../api_reference/_generated/warp.ScopedStream.html#warp.ScopedStream" title="warp.ScopedStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></a> manager is designed to alleviate this common problem.  By default, it synchronizes the new stream with the
+previous stream on the device when entering the scope.  Its behavior is equivalent to inserting the <a class="reference internal" href="../../api_reference/_generated/warp.Stream.html#warp.Stream.wait_stream" title="warp.Stream.wait_stream"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Stream.wait_stream()</span></code></a> call as shown above.
 This synchronization behavior can be configured via the <code class="docutils literal notranslate"><span class="pre">sync_enter</span></code> (default <code class="docutils literal notranslate"><span class="pre">True</span></code>) and <code class="docutils literal notranslate"><span class="pre">sync_exit</span></code> (default <code class="docutils literal notranslate"><span class="pre">False</span></code>) constructor parameters.
-With <a class="reference internal" href="../api_reference/_generated/warp.ScopedStream.html#warp.ScopedStream" title="warp.ScopedStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></a>, we don’t need to explicitly sync the new stream with the previous stream:</p>
+With <a class="reference internal" href="../../api_reference/_generated/warp.ScopedStream.html#warp.ScopedStream" title="warp.ScopedStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></a>, we don’t need to explicitly sync the new stream with the previous stream:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
 
 <span class="n">s</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Stream</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
@@ -1021,12 +1029,12 @@ With <a class="reference internal" href="../api_reference/_generated/warp.Scoped
     <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
 </pre></div>
 </div>
-<p>This makes <a class="reference internal" href="../api_reference/_generated/warp.ScopedStream.html#warp.ScopedStream" title="warp.ScopedStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></a> the recommended way of getting started with streams in Warp.  Using explicit stream arguments
+<p>This makes <a class="reference internal" href="../../api_reference/_generated/warp.ScopedStream.html#warp.ScopedStream" title="warp.ScopedStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></a> the recommended way of getting started with streams in Warp.  Using explicit stream arguments
 might be slightly more performant, but it requires more attention to stream synchronization mechanics.
 If you are a stream novice, consider the following trajectory for integrating streams into your Warp programs:</p>
 <ul class="simple">
 <li><p>Level 1:  Don’t.  You don’t need to use streams to use Warp.  Avoiding streams is a perfectly valid and respectable way to live.  Many interesting and sophisticated algorithms can be developed without fancy stream juggling.  Often it’s better to focus on solving a problem in a simple and elegant way, unencumbered by the vagaries of low-level stream management.</p></li>
-<li><p>Level 2:  Use <a class="reference internal" href="../api_reference/_generated/warp.ScopedStream.html#warp.ScopedStream" title="warp.ScopedStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></a>.  It helps to avoid some common hard-to-catch issues.  There’s a little bit of overhead, but it should be negligible if the GPU workloads are large enough.  Consider adding streams into your program as a form of targeted optimization, especially if some areas like memory transfers (“feeding the beast”) are a known bottleneck.  Streams are great for overlapping memory transfers with compute workloads.</p></li>
+<li><p>Level 2:  Use <a class="reference internal" href="../../api_reference/_generated/warp.ScopedStream.html#warp.ScopedStream" title="warp.ScopedStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></a>.  It helps to avoid some common hard-to-catch issues.  There’s a little bit of overhead, but it should be negligible if the GPU workloads are large enough.  Consider adding streams into your program as a form of targeted optimization, especially if some areas like memory transfers (“feeding the beast”) are a known bottleneck.  Streams are great for overlapping memory transfers with compute workloads.</p></li>
 <li><p>Level 3:  Use explicit stream arguments for kernel launches, array copying, etc.  This will be the most performant approach that can get you close to the speed of light.  You will need to take care of all stream synchronization yourself, but the results can be rewarding in the benchmarks.</p></li>
 </ul>
 </section>
@@ -1044,14 +1052,14 @@ A fast program is no good if it can’t guarantee correct results.</p>
 <h3>Host-side Synchronization<a class="headerlink" href="#host-side-synchronization" title="Link to this heading">#</a></h3>
 <p>Host-side synchronization blocks the host thread (Python) until GPU work completes.  This is necessary when
 you are waiting for some GPU work to complete so that you can access the results on the CPU.</p>
-<p><a class="reference internal" href="../api_reference/_generated/warp.synchronize.html#warp.synchronize" title="warp.synchronize"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize()</span></code></a> is the most heavy-handed synchronization function, since it synchronizes all the devices in the system.  It is almost never the right function to call if performance is important.  However, it can sometimes be useful when debugging synchronization-related issues.</p>
-<p><a class="reference internal" href="../api_reference/_generated/warp.synchronize_device.html#warp.synchronize_device" title="warp.synchronize_device"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize_device(device)</span></code></a> synchronizes a single device, which is generally better and faster.  This synchronizes all the streams on the specified device, including streams created by Warp and those created by any other framework.</p>
-<p><a class="reference internal" href="../api_reference/_generated/warp.synchronize_stream.html#warp.synchronize_stream" title="warp.synchronize_stream"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize_stream(stream)</span></code></a> synchronizes a single stream, which is better still.  If the program uses multiple streams, you can wait for a specific one to finish without waiting for the others.  This is handy if you have a readback stream that is copying data from the GPU to the CPU.  You can wait for the transfer to complete and start processing it on the CPU while other streams are still chugging along on the GPU, in parallel with the host code.</p>
-<p><a class="reference internal" href="../api_reference/_generated/warp.synchronize_event.html#warp.synchronize_event" title="warp.synchronize_event"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize_event(event)</span></code></a> is the most specific host synchronization function.  It blocks the host until an event previously recorded on a CUDA stream completes.  This can be used to wait for a specific stream synchronization point to be reached, while allowing subsequent operations on that stream to continue asynchronously.</p>
+<p><a class="reference internal" href="../../api_reference/_generated/warp.synchronize.html#warp.synchronize" title="warp.synchronize"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize()</span></code></a> is the most heavy-handed synchronization function, since it synchronizes all the devices in the system.  It is almost never the right function to call if performance is important.  However, it can sometimes be useful when debugging synchronization-related issues.</p>
+<p><a class="reference internal" href="../../api_reference/_generated/warp.synchronize_device.html#warp.synchronize_device" title="warp.synchronize_device"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize_device(device)</span></code></a> synchronizes a single device, which is generally better and faster.  This synchronizes all the streams on the specified device, including streams created by Warp and those created by any other framework.</p>
+<p><a class="reference internal" href="../../api_reference/_generated/warp.synchronize_stream.html#warp.synchronize_stream" title="warp.synchronize_stream"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize_stream(stream)</span></code></a> synchronizes a single stream, which is better still.  If the program uses multiple streams, you can wait for a specific one to finish without waiting for the others.  This is handy if you have a readback stream that is copying data from the GPU to the CPU.  You can wait for the transfer to complete and start processing it on the CPU while other streams are still chugging along on the GPU, in parallel with the host code.</p>
+<p><a class="reference internal" href="../../api_reference/_generated/warp.synchronize_event.html#warp.synchronize_event" title="warp.synchronize_event"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize_event(event)</span></code></a> is the most specific host synchronization function.  It blocks the host until an event previously recorded on a CUDA stream completes.  This can be used to wait for a specific stream synchronization point to be reached, while allowing subsequent operations on that stream to continue asynchronously.</p>
 </section>
 <section id="device-side-synchronization">
 <h3>Device-side Synchronization<a class="headerlink" href="#device-side-synchronization" title="Link to this heading">#</a></h3>
-<p>Device-side synchronization uses CUDA events to make one stream wait for a synchronization point recorded on another stream (<a class="reference internal" href="../api_reference/_generated/warp.record_event.html#warp.record_event" title="warp.record_event"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.record_event()</span></code></a>, <a class="reference internal" href="../api_reference/_generated/warp.wait_event.html#warp.wait_event" title="warp.wait_event"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.wait_event()</span></code></a>, <a class="reference internal" href="../api_reference/_generated/warp.wait_stream.html#warp.wait_stream" title="warp.wait_stream"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.wait_stream()</span></code></a>).</p>
+<p>Device-side synchronization uses CUDA events to make one stream wait for a synchronization point recorded on another stream (<a class="reference internal" href="../../api_reference/_generated/warp.record_event.html#warp.record_event" title="warp.record_event"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.record_event()</span></code></a>, <a class="reference internal" href="../../api_reference/_generated/warp.wait_event.html#warp.wait_event" title="warp.wait_event"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.wait_event()</span></code></a>, <a class="reference internal" href="../../api_reference/_generated/warp.wait_stream.html#warp.wait_stream" title="warp.wait_stream"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.wait_stream()</span></code></a>).</p>
 <p>These functions don’t block the host thread, so the CPU can stay busy doing useful work, like preparing the next batch of data
 to feed the beast.  Events can be used to synchronize streams on the same device or even different CUDA devices, so you can
 choreograph very sophisticated multi-stream and multi-device workloads that execute entirely on the available GPUs.
@@ -1237,20 +1245,20 @@ wrapped by Warp.</p>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="memory_access.html"
+       href="../execution_and_performance.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">CPU/GPU cross-device memory access</p>
+        <p class="prev-next-title">Execution and Performance</p>
       </div>
     </a>
     <a class="right-next"
-       href="profiling.html"
+       href="memory_management.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Profiling</p>
+        <p class="prev-next-title">Memory Allocation and Access</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -1308,7 +1316,7 @@ wrapped by Warp.</p>
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/main/docs/deep_dive/concurrency.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/main/docs/user_guide/execution_and_performance/concurrency.rst">
       <i class="fa-solid fa-pencil"></i>
       
       
@@ -1335,8 +1343,8 @@ wrapped by Warp.</p>
   
 
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
-<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
 
 
   <footer class="bd-footer">
@@ -1346,8 +1354,8 @@ wrapped by Warp.</p>
       
         <div class="footer-item">
 <a class="footer-brand logo" href="https://www.nvidia.com">
-  <img src="../_static/nvidia-logo-horiz-rgb-1c-blk-for-screen.svg" class="logo__image only-light" alt="NVIDIA"/>
-  <img src="../_static/nvidia-logo-horiz-rgb-1c-wht-for-screen.svg" class="logo__image only-dark" alt="NVIDIA"/>
+  <img src="../../_static/nvidia-logo-horiz-rgb-1c-blk-for-screen.svg" class="logo__image only-light" alt="NVIDIA"/>
+  <img src="../../_static/nvidia-logo-horiz-rgb-1c-wht-for-screen.svg" class="logo__image only-dark" alt="NVIDIA"/>
 </a></div>
       
         <div class="footer-item">

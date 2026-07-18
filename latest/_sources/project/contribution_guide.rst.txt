@@ -9,7 +9,7 @@ Some ways to contribute to the development of Warp include:
 * Adding new examples to the Warp repository.
 * Documentation improvements.
 * Contributing bug fixes or new features.
-* Adding your work to the :doc:`publications list </user_guide/publications>`.
+* Adding your work to the :doc:`publications list </project/publications>`.
 
 .. _before-you-start:
 

@@ -1087,13 +1087,13 @@ paths to keep in sync:
     TILE_SIZE = wp.constant(256)
 
     @wp.kernel
-    def gpu_reduce(x: wp.array2d(dtype=float), out: wp.array2d(dtype=float)):
+    def gpu_reduce(x: wp.array2d[float], out: wp.array2d[float]):
         i = wp.tid()
         t = wp.tile_load(x[i], TILE_SIZE)
         wp.tile_store(out[i], wp.tile_sum(t))   # cooperative block reduction
 
     @wp.kernel
-    def cpu_reduce(x: wp.array2d(dtype=float), out: wp.array2d(dtype=float)):
+    def cpu_reduce(x: wp.array2d[float], out: wp.array2d[float]):
         i = wp.tid()
         s = float(0.0)
         for k in range(TILE_SIZE):

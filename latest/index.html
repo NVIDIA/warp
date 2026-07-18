@@ -391,41 +391,37 @@
   <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="user_guide/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="user_guide/compatibility.html">Compatibility &amp; Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="user_guide/basics.html">Basics</a></li>
 <li class="toctree-l1"><a class="reference internal" href="user_guide/runtime.html">Runtime</a></li>
-<li class="toctree-l1"><a class="reference internal" href="user_guide/devices.html">Devices</a></li>
 <li class="toctree-l1"><a class="reference internal" href="user_guide/differentiability.html">Differentiability</a></li>
-<li class="toctree-l1"><a class="reference internal" href="user_guide/generics.html">Generics</a></li>
-<li class="toctree-l1"><a class="reference internal" href="user_guide/tiles.html">Tiles</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="user_guide/programming_model.html">Programming Model</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/programming_model/generics.html">Generics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/programming_model/tiles.html">Tiles</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/programming_model/code_generation.html">Code Generation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/programming_model/cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="user_guide/interoperability.html">Interoperability</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/interoperability_pytorch.html">PyTorch Interoperability</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/interoperability_jax.html">JAX Interoperability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/interoperability/pytorch.html">PyTorch Interoperability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/interoperability/jax.html">JAX Interoperability</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="user_guide/execution_and_performance.html">Execution and Performance</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/execution_and_performance/concurrency.html">Concurrency</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/execution_and_performance/memory_management.html">Memory Allocation and Access</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/execution_and_performance/profiling.html">Profiling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/execution_and_performance/deterministic_execution.html">Deterministic Execution</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="user_guide/configuration.html">Configuration</a></li>
-<li class="toctree-l1"><a class="reference internal" href="user_guide/cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
 <li class="toctree-l1"><a class="reference internal" href="user_guide/debugging.html">Debugging</a></li>
-<li class="toctree-l1"><a class="reference internal" href="user_guide/deterministic_execution.html">Deterministic Execution</a></li>
 <li class="toctree-l1"><a class="reference internal" href="user_guide/limitations.html">Limitations</a></li>
-<li class="toctree-l1"><a class="reference internal" href="user_guide/contribution_guide.html">Contribution Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="user_guide/publications.html">Publications using Warp</a></li>
-<li class="toctree-l1"><a class="reference internal" href="user_guide/compatibility.html">Compatibility &amp; Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="user_guide/faq.html">FAQ</a></li>
-<li class="toctree-l1"><a class="reference internal" href="user_guide/changelog.html">Changelog</a></li>
 </ul>
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Deep Dive</span></p>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Language Reference</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="deep_dive/codegen.html">Code Generation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="deep_dive/allocators.html">Allocators</a></li>
-<li class="toctree-l1"><a class="reference internal" href="deep_dive/memory_access.html">CPU/GPU cross-device memory access</a></li>
-<li class="toctree-l1"><a class="reference internal" href="deep_dive/concurrency.html">Concurrency</a></li>
-<li class="toctree-l1"><a class="reference internal" href="deep_dive/profiling.html">Profiling</a></li>
-</ul>
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Domain Modules</span></p>
-<ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="domain_modules/sparse.html">Sparse Matrices</a></li>
-<li class="toctree-l1"><a class="reference internal" href="domain_modules/fem.html">FEM Toolkit</a></li>
-<li class="toctree-l1"><a class="reference internal" href="domain_modules/render.html">Rendering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="language_reference/builtins.html">Built-Ins</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="nav bd-sidenav">
@@ -439,9 +435,17 @@
 <li class="toctree-l1"><a class="reference internal" href="api_reference/warp_types.html">warp.types</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api_reference/warp_utils.html">warp.utils</a></li>
 </ul>
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Language Reference</span></p>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Domain Modules</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="language_reference/builtins.html">Built-Ins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="domain_modules/sparse.html">Sparse Matrices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="domain_modules/fem.html">FEM Toolkit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="domain_modules/render.html">Rendering</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="project/contribution_guide.html">Contribution Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="project/publications.html">Publications using Warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="project/changelog.html">Changelog</a></li>
 </ul>
 </div>
 </nav></div>
@@ -737,6 +741,11 @@ tile-based GPU programming. Install the optional dependencies with
 <li class="toctree-l2"><a class="reference internal" href="user_guide/installation.html#using-warp-in-omniverse">Using Warp in Omniverse</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="user_guide/compatibility.html">Compatibility &amp; Support</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/compatibility.html#platform-compatibility">Platform compatibility</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/compatibility.html#support-policies">Support policies</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="user_guide/basics.html">Basics</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="user_guide/basics.html#tutorial-notebooks">Tutorial Notebooks</a></li>
 <li class="toctree-l2"><a class="reference internal" href="user_guide/basics.html#initialization">Initialization</a></li>
@@ -744,8 +753,6 @@ tile-based GPU programming. Install the optional dependencies with
 <li class="toctree-l2"><a class="reference internal" href="user_guide/basics.html#arrays">Arrays</a></li>
 <li class="toctree-l2"><a class="reference internal" href="user_guide/basics.html#user-functions">User Functions</a></li>
 <li class="toctree-l2"><a class="reference internal" href="user_guide/basics.html#user-structs">User Structs</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/basics.html#python-scope-vs-kernel-scope-api">Python Scope vs. Kernel Scope API</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/basics.html#compilation-model">Compilation Model</a></li>
 <li class="toctree-l2"><a class="reference internal" href="user_guide/basics.html#language-details">Language Details</a></li>
 </ul>
 </li>
@@ -755,6 +762,7 @@ tile-based GPU programming. Install the optional dependencies with
 <li class="toctree-l2"><a class="reference internal" href="user_guide/runtime.html#data-types">Data Types</a></li>
 <li class="toctree-l2"><a class="reference internal" href="user_guide/runtime.html#constants">Constants</a></li>
 <li class="toctree-l2"><a class="reference internal" href="user_guide/runtime.html#operators">Operators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/runtime.html#devices">Devices</a></li>
 <li class="toctree-l2"><a class="reference internal" href="user_guide/runtime.html#streams">Streams</a></li>
 <li class="toctree-l2"><a class="reference internal" href="user_guide/runtime.html#events">Events</a></li>
 <li class="toctree-l2"><a class="reference internal" href="user_guide/runtime.html#graphs">Graphs</a></li>
@@ -765,15 +773,6 @@ tile-based GPU programming. Install the optional dependencies with
 <li class="toctree-l2"><a class="reference internal" href="user_guide/runtime.html#interprocess-communication-ipc">Interprocess Communication (IPC)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="user_guide/runtime.html#lto-cache">LTO Cache</a></li>
 <li class="toctree-l2"><a class="reference internal" href="user_guide/runtime.html#random-number-generation">Random Number Generation</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="user_guide/devices.html">Devices</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/devices.html#default-device">Default Device</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/devices.html#scoped-devices">Scoped Devices</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/devices.html#current-cuda-device">Current CUDA Device</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/devices.html#device-synchronization">Device Synchronization</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/devices.html#custom-cuda-contexts">Custom CUDA Contexts</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/devices.html#cuda-peer-access">CUDA Peer Access</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="user_guide/differentiability.html">Differentiability</a><ul>
@@ -787,33 +786,15 @@ tile-based GPU programming. Install the optional dependencies with
 <li class="toctree-l2"><a class="reference internal" href="user_guide/differentiability.html#limitations-and-workarounds">Limitations and Workarounds</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="user_guide/generics.html">Generics</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/generics.html#generic-kernels">Generic Kernels</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/generics.html#generic-functions">Generic Functions</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/generics.html#type-operator">type() Operator</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/generics.html#limitations-and-rough-edges">Limitations and Rough Edges</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="user_guide/tiles.html">Tiles</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/tiles.html#requirements">Requirements</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/tiles.html#execution-model">Execution Model</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/tiles.html#tile-properties">Tile Properties</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/tiles.html#tile-storage">Tile Storage</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/tiles.html#example-general-matrix-multiply-gemm">Example: General Matrix Multiply (GEMM)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/tiles.html#tile-operations">Tile Operations</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/tiles.html#tile-stack">Tile Stack</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/tiles.html#tiles-and-simt-code">Tiles and SIMT Code</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/tiles.html#cpu-tile-semantics">CPU Tile Semantics</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/tiles.html#automatic-differentiation">Automatic Differentiation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/tiles.html#tiles-in-wp-func-functions">Tiles in <code class="docutils literal notranslate"><span class="pre">&#64;wp.func</span></code> Functions</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/tiles.html#vectorized-tile-loads">Vectorized Tile Loads</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/tiles.html#software-pipelining-with-register-tiles">Software Pipelining with Register Tiles</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/tiles.html#failed-to-compile-lto-error-message"><code class="docutils literal notranslate"><span class="pre">Failed</span> <span class="pre">to</span> <span class="pre">compile</span> <span class="pre">LTO</span></code> Error Message</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/tiles.html#building-with-mathdx">Building with MathDx</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/tiles.html#frequently-asked-questions">Frequently Asked Questions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="user_guide/programming_model.html">Programming Model</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/programming_model.html#guides-in-this-section">Guides in this section</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/programming_model.html#python-scope-and-kernel-scope">Python Scope and Kernel Scope</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/programming_model.html#compilation-model">Compilation Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/programming_model.html#execution-models">Execution Models</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="user_guide/interoperability.html">Interoperability</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/interoperability.html#guides-in-this-section">Guides in this section</a></li>
 <li class="toctree-l2"><a class="reference internal" href="user_guide/interoperability.html#quick-reference">Quick Reference</a></li>
 <li class="toctree-l2"><a class="reference internal" href="user_guide/interoperability.html#pass-arrays-directly">Pass Arrays Directly</a></li>
 <li class="toctree-l2"><a class="reference internal" href="user_guide/interoperability.html#numpy">NumPy</a></li>
@@ -822,18 +803,14 @@ tile-based GPU programming. Install the optional dependencies with
 <li class="toctree-l2"><a class="reference internal" href="user_guide/interoperability.html#dlpack">DLPack</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="user_guide/execution_and_performance.html">Execution and Performance</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/execution_and_performance.html#guides-in-this-section">Guides in this section</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="user_guide/configuration.html">Configuration</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="user_guide/configuration.html#global-settings">Global Settings</a></li>
 <li class="toctree-l2"><a class="reference internal" href="user_guide/configuration.html#module-settings">Module Settings</a></li>
 <li class="toctree-l2"><a class="reference internal" href="user_guide/configuration.html#kernel-settings">Kernel Settings</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="user_guide/cpp_cuda_workflows.html">C++ and CUDA Workflows</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/cpp_cuda_workflows.html#native-snippets-in-warp-kernels">Native Snippets in Warp Kernels</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/cpp_cuda_workflows.html#ahead-of-time-c-cuda-workflows">Ahead-of-Time C++/CUDA Workflows</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/cpp_cuda_workflows.html#api-capture-replay-from-c">API Capture Replay from C++</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/cpp_cuda_workflows.html#native-library-headers">Native Library Headers</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/cpp_cuda_workflows.html#related-topics">Related Topics</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="user_guide/debugging.html">Debugging</a><ul>
@@ -850,21 +827,6 @@ tile-based GPU programming. Install the optional dependencies with
 <li class="toctree-l2"><a class="reference internal" href="user_guide/debugging.html#cpu-memory-error-detection-with-addresssanitizer">CPU Memory Error Detection with AddressSanitizer</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="user_guide/deterministic_execution.html">Deterministic Execution</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/deterministic_execution.html#quick-start">Quick Start</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/deterministic_execution.html#choosing-a-scope">Choosing a Scope</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/deterministic_execution.html#what-warp-supports">What Warp Supports</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/deterministic_execution.html#tape-and-backward-passes">Tape and Backward Passes</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/deterministic_execution.html#writing-manual-deterministic-code">Writing Manual Deterministic Code</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/deterministic_execution.html#picking-the-right-mode">Picking the Right Mode</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/deterministic_execution.html#capacity-and-dynamic-loops">Capacity and Dynamic Loops</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/deterministic_execution.html#cuda-graph-capture">CUDA Graph Capture</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/deterministic_execution.html#performance">Performance</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/deterministic_execution.html#limitations">Limitations</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/deterministic_execution.html#checklist">Checklist</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/deterministic_execution.html#related-nvidia-libraries">Related NVIDIA Libraries</a></li>
-</ul>
-</li>
 <li class="toctree-l1"><a class="reference internal" href="user_guide/limitations.html">Limitations</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="user_guide/limitations.html#unsupported-features">Unsupported Features</a></li>
 <li class="toctree-l2"><a class="reference internal" href="user_guide/limitations.html#kernels-and-user-functions">Kernels and User Functions</a></li>
@@ -878,19 +840,6 @@ tile-based GPU programming. Install the optional dependencies with
 <li class="toctree-l2"><a class="reference internal" href="user_guide/limitations.html#arrays-in-structs">Arrays in Structs</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="user_guide/contribution_guide.html">Contribution Guide</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/contribution_guide.html#before-you-start">Before You Start</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/contribution_guide.html#code-contributions">Code Contributions</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/contribution_guide.html#testing-warp">Testing Warp</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/contribution_guide.html#benchmarks">Benchmarks</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="user_guide/publications.html">Publications using Warp</a></li>
-<li class="toctree-l1"><a class="reference internal" href="user_guide/compatibility.html">Compatibility &amp; Support</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/compatibility.html#platform-compatibility">Platform compatibility</a></li>
-<li class="toctree-l2"><a class="reference internal" href="user_guide/compatibility.html#support-policies">Support policies</a></li>
-</ul>
-</li>
 <li class="toctree-l1"><a class="reference internal" href="user_guide/faq.html">FAQ</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="user_guide/faq.html#about-warp">About Warp</a></li>
 <li class="toctree-l2"><a class="reference internal" href="user_guide/faq.html#installation-and-compatibility">Installation and Compatibility</a></li>
@@ -901,53 +850,42 @@ tile-based GPU programming. Install the optional dependencies with
 <li class="toctree-l2"><a class="reference internal" href="user_guide/faq.html#community-and-support">Community and Support</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="user_guide/changelog.html">Changelog</a></li>
 </ul>
 </div>
 <div class="toctree-wrapper compound">
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Deep Dive</span></p>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Language Reference</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="deep_dive/codegen.html">Code Generation</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="deep_dive/codegen.html#overview">Overview</a></li>
-<li class="toctree-l2"><a class="reference internal" href="deep_dive/codegen.html#external-references-and-constants">External References and Constants</a></li>
-<li class="toctree-l2"><a class="reference internal" href="deep_dive/codegen.html#static-expressions">Static Expressions</a></li>
-<li class="toctree-l2"><a class="reference internal" href="deep_dive/codegen.html#dynamic-kernel-creation">Dynamic Kernel Creation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="deep_dive/codegen.html#late-binding-and-static-expressions">Late Binding and Static Expressions</a></li>
-<li class="toctree-l2"><a class="reference internal" href="deep_dive/codegen.html#ahead-of-time-compilation-workflows">Ahead-of-Time Compilation Workflows</a></li>
+<li class="toctree-l1"><a class="reference internal" href="language_reference/builtins.html">Built-Ins</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="language_reference/builtins.html#scalar-math">Scalar Math</a></li>
+<li class="toctree-l2"><a class="reference internal" href="language_reference/builtins.html#vector-math">Vector Math</a></li>
+<li class="toctree-l2"><a class="reference internal" href="language_reference/builtins.html#quaternion-math">Quaternion Math</a></li>
+<li class="toctree-l2"><a class="reference internal" href="language_reference/builtins.html#transformations">Transformations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="language_reference/builtins.html#spatial-math">Spatial Math</a></li>
+<li class="toctree-l2"><a class="reference internal" href="language_reference/builtins.html#tile-primitives">Tile Primitives</a></li>
+<li class="toctree-l2"><a class="reference internal" href="language_reference/builtins.html#geometry">Geometry</a></li>
+<li class="toctree-l2"><a class="reference internal" href="language_reference/builtins.html#volumes">Volumes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="language_reference/builtins.html#textures">Textures</a></li>
+<li class="toctree-l2"><a class="reference internal" href="language_reference/builtins.html#random">Random</a></li>
+<li class="toctree-l2"><a class="reference internal" href="language_reference/builtins.html#utility">Utility</a></li>
+<li class="toctree-l2"><a class="reference internal" href="language_reference/builtins.html#other">Other</a></li>
+<li class="toctree-l2"><a class="reference internal" href="language_reference/builtins.html#operators">Operators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="language_reference/builtins.html#code-generation">Code Generation</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="deep_dive/allocators.html">Allocators</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="deep_dive/allocators.html#stream-ordered-memory-pool-allocators">Stream-Ordered Memory Pool Allocators</a></li>
-<li class="toctree-l2"><a class="reference internal" href="deep_dive/allocators.html#custom-allocators">Custom Allocators</a></li>
 </ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="deep_dive/memory_access.html">CPU/GPU cross-device memory access</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="deep_dive/memory_access.html#launching-with-arrays-on-the-same-device">Launching with arrays on the same device</a></li>
-<li class="toctree-l2"><a class="reference internal" href="deep_dive/memory_access.html#device-capability-properties">Device capability properties</a></li>
-<li class="toctree-l2"><a class="reference internal" href="deep_dive/memory_access.html#common-cpu-gpu-memory-models">Common CPU/GPU memory models</a></li>
-<li class="toctree-l2"><a class="reference internal" href="deep_dive/memory_access.html#launching-gpu-kernels-with-cpu-arrays">Launching GPU kernels with CPU arrays</a></li>
-<li class="toctree-l2"><a class="reference internal" href="deep_dive/memory_access.html#accessing-gpu-data-from-cpu-code">Accessing GPU data from CPU code</a></li>
-<li class="toctree-l2"><a class="reference internal" href="deep_dive/memory_access.html#checking-access-for-a-specific-array-with-wp-can-access">Checking access for a specific array with <code class="docutils literal notranslate"><span class="pre">wp.can_access()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="deep_dive/memory_access.html#checking-coarse-device-access-with-device-can-access">Checking coarse device access with <code class="docutils literal notranslate"><span class="pre">Device.can_access()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="deep_dive/memory_access.html#checking-array-access-before-launch">Checking array access before launch</a></li>
-<li class="toctree-l2"><a class="reference internal" href="deep_dive/memory_access.html#choosing-a-memory-access-pattern">Choosing a memory access pattern</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="deep_dive/concurrency.html">Concurrency</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="deep_dive/concurrency.html#asynchronous-operations">Asynchronous Operations</a></li>
-<li class="toctree-l2"><a class="reference internal" href="deep_dive/concurrency.html#streams">Streams</a></li>
-<li class="toctree-l2"><a class="reference internal" href="deep_dive/concurrency.html#synchronization-guidance">Synchronization Guidance</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="deep_dive/profiling.html">Profiling</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="deep_dive/profiling.html#scopedtimer"><code class="docutils literal notranslate"><span class="pre">ScopedTimer</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="deep_dive/profiling.html#cuda-activity-profiling">CUDA Activity Profiling</a></li>
-<li class="toctree-l2"><a class="reference internal" href="deep_dive/profiling.html#cuda-events-timing">CUDA Events Timing</a></li>
-<li class="toctree-l2"><a class="reference internal" href="deep_dive/profiling.html#limiting-the-profiler-capture-range">Limiting the Profiler Capture Range</a></li>
-<li class="toctree-l2"><a class="reference internal" href="deep_dive/profiling.html#nsight-compute-profiling">Nsight Compute Profiling</a></li>
-<li class="toctree-l2"><a class="reference internal" href="deep_dive/profiling.html#profiling-module-compilation">Profiling Module Compilation</a></li>
-</ul>
-</li>
+</div>
+<div class="toctree-wrapper compound">
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api_reference/warp.html">warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api_reference/warp_autograd.html">warp.autograd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api_reference/warp_config.html">warp.config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api_reference/warp_fem.html">warp.fem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api_reference/warp_optim.html">warp.optim</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api_reference/warp_render.html">warp.render</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api_reference/warp_sparse.html">warp.sparse</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api_reference/warp_types.html">warp.types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api_reference/warp_utils.html">warp.utils</a></li>
 </ul>
 </div>
 <div class="toctree-wrapper compound">
@@ -976,39 +914,11 @@ tile-based GPU programming. Install the optional dependencies with
 </ul>
 </div>
 <div class="toctree-wrapper compound">
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="api_reference/warp.html">warp</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api_reference/warp_autograd.html">warp.autograd</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api_reference/warp_config.html">warp.config</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api_reference/warp_fem.html">warp.fem</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api_reference/warp_optim.html">warp.optim</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api_reference/warp_render.html">warp.render</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api_reference/warp_sparse.html">warp.sparse</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api_reference/warp_types.html">warp.types</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api_reference/warp_utils.html">warp.utils</a></li>
-</ul>
-</div>
-<div class="toctree-wrapper compound">
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Language Reference</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="language_reference/builtins.html">Built-Ins</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="language_reference/builtins.html#scalar-math">Scalar Math</a></li>
-<li class="toctree-l2"><a class="reference internal" href="language_reference/builtins.html#vector-math">Vector Math</a></li>
-<li class="toctree-l2"><a class="reference internal" href="language_reference/builtins.html#quaternion-math">Quaternion Math</a></li>
-<li class="toctree-l2"><a class="reference internal" href="language_reference/builtins.html#transformations">Transformations</a></li>
-<li class="toctree-l2"><a class="reference internal" href="language_reference/builtins.html#spatial-math">Spatial Math</a></li>
-<li class="toctree-l2"><a class="reference internal" href="language_reference/builtins.html#tile-primitives">Tile Primitives</a></li>
-<li class="toctree-l2"><a class="reference internal" href="language_reference/builtins.html#geometry">Geometry</a></li>
-<li class="toctree-l2"><a class="reference internal" href="language_reference/builtins.html#volumes">Volumes</a></li>
-<li class="toctree-l2"><a class="reference internal" href="language_reference/builtins.html#textures">Textures</a></li>
-<li class="toctree-l2"><a class="reference internal" href="language_reference/builtins.html#random">Random</a></li>
-<li class="toctree-l2"><a class="reference internal" href="language_reference/builtins.html#utility">Utility</a></li>
-<li class="toctree-l2"><a class="reference internal" href="language_reference/builtins.html#other">Other</a></li>
-<li class="toctree-l2"><a class="reference internal" href="language_reference/builtins.html#operators">Operators</a></li>
-<li class="toctree-l2"><a class="reference internal" href="language_reference/builtins.html#code-generation">Code Generation</a></li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="project/contribution_guide.html">Contribution Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="project/publications.html">Publications using Warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="project/changelog.html">Changelog</a></li>
 </ul>
 </div>
 <div class="toctree-wrapper compound">

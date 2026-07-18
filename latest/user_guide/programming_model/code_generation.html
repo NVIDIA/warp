@@ -3,7 +3,7 @@
 <!DOCTYPE html>
 
 
-<html lang="en" data-content_root="../" >
+<html lang="en" data-content_root="../../" >
 
   <head>
     <meta charset="utf-8" />
@@ -28,28 +28,28 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
-<link href="../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+  <link href="../../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
 
-    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
-    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=3d681599" />
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=3d681599" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
-<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
 
 
 
-    <script src="../_static/documentation_options.js?v=4ae37cce"></script>
-    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
-    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
-    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
-    <script src="../_static/copybutton.js?v=fd10adb8"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'deep_dive/codegen';</script>
+    <script src="../../_static/documentation_options.js?v=4ae37cce"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../_static/copybutton.js?v=fd10adb8"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'user_guide/programming_model/code_generation';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
@@ -59,12 +59,12 @@
         </script>
     <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
 
-    <link rel="icon" href="../_static/favicon.png"/>
+    <link rel="icon" href="../../_static/favicon.png"/>
 
-    <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Allocators" href="allocators.html" />
-    <link rel="prev" title="Changelog" href="../user_guide/changelog.html" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="C++ and CUDA Workflows" href="cpp_cuda_workflows.html" />
+    <link rel="prev" title="Tiles" href="tiles.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -72,9 +72,9 @@
   <meta name="docsearch:version" content="1.16.0.dev0" />
   
     
-    <script src="../_static/searchtools.js"></script>
-    <script src="../_static/language_data.js"></script>
-    <script src="../searchindex.js"></script>
+    <script src="../../_static/searchtools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script src="../../searchindex.js"></script>
   
 
 
@@ -99,7 +99,7 @@
   <dialog id="pst-search-dialog">
     
 <form class="bd-search d-flex align-items-center"
-      action="../search.html"
+      action="../../search.html"
       method="get">
   <i class="fa-solid fa-magnifying-glass"></i>
   <input type="search"
@@ -135,7 +135,7 @@
     
   
 
-<a class="navbar-brand logo" href="../index.html">
+<a class="navbar-brand logo" href="../../index.html">
   
   
   
@@ -146,8 +146,8 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.16.0.dev0 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.16.0.dev0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.16.0.dev0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.16.0.dev0 - Home"/>
   
   
     <p class="title logo__title">Warp 1.16.0.dev0</p>
@@ -279,7 +279,7 @@
     
   
 
-<a class="navbar-brand logo" href="../index.html">
+<a class="navbar-brand logo" href="../../index.html">
   
   
   
@@ -290,8 +290,8 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.16.0.dev0 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.16.0.dev0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.16.0.dev0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.16.0.dev0 - Home"/>
   
   
     <p class="title logo__title">Warp 1.16.0.dev0</p>
@@ -390,59 +390,63 @@
      aria-label="Table of Contents">
   <p class="bd-links__title" role="heading" aria-level="1">Table of Contents</p>
   <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
-<ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../user_guide/installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../user_guide/basics.html">Basics</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../user_guide/runtime.html">Runtime</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../user_guide/devices.html">Devices</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../user_guide/differentiability.html">Differentiability</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../user_guide/generics.html">Generics</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../user_guide/tiles.html">Tiles</a></li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../user_guide/interoperability.html">Interoperability</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l2"><a class="reference internal" href="../user_guide/interoperability_pytorch.html">PyTorch Interoperability</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../user_guide/interoperability_jax.html">JAX Interoperability</a></li>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../compatibility.html">Compatibility &amp; Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../basics.html">Basics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../runtime.html">Runtime</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../differentiability.html">Differentiability</a></li>
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="../programming_model.html">Programming Model</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="generics.html">Generics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tiles.html">Tiles</a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">Code Generation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1"><a class="reference internal" href="../user_guide/configuration.html">Configuration</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../user_guide/cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../user_guide/debugging.html">Debugging</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../user_guide/deterministic_execution.html">Deterministic Execution</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../user_guide/limitations.html">Limitations</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../user_guide/contribution_guide.html">Contribution Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../user_guide/publications.html">Publications using Warp</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../user_guide/compatibility.html">Compatibility &amp; Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../user_guide/faq.html">FAQ</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../user_guide/changelog.html">Changelog</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../interoperability.html">Interoperability</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../interoperability/pytorch.html">PyTorch Interoperability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../interoperability/jax.html">JAX Interoperability</a></li>
 </ul>
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Deep Dive</span></p>
-<ul class="current nav bd-sidenav">
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Code Generation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="allocators.html">Allocators</a></li>
-<li class="toctree-l1"><a class="reference internal" href="memory_access.html">CPU/GPU cross-device memory access</a></li>
-<li class="toctree-l1"><a class="reference internal" href="concurrency.html">Concurrency</a></li>
-<li class="toctree-l1"><a class="reference internal" href="profiling.html">Profiling</a></li>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../execution_and_performance.html">Execution and Performance</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../execution_and_performance/concurrency.html">Concurrency</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../execution_and_performance/memory_management.html">Memory Allocation and Access</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../execution_and_performance/profiling.html">Profiling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../execution_and_performance/deterministic_execution.html">Deterministic Execution</a></li>
 </ul>
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Domain Modules</span></p>
-<ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../domain_modules/sparse.html">Sparse Matrices</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../domain_modules/fem.html">FEM Toolkit</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../domain_modules/render.html">Rendering</a></li>
-</ul>
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
-<ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp.html">warp</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_autograd.html">warp.autograd</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_config.html">warp.config</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_fem.html">warp.fem</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_optim.html">warp.optim</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_render.html">warp.render</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_sparse.html">warp.sparse</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_types.html">warp.types</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_utils.html">warp.utils</a></li>
+</details></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../limitations.html">Limitations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">FAQ</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Language Reference</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../language_reference/builtins.html">Built-Ins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../language_reference/builtins.html">Built-Ins</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp.html">warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_autograd.html">warp.autograd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_config.html">warp.config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_fem.html">warp.fem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_optim.html">warp.optim</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_render.html">warp.render</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_sparse.html">warp.sparse</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_types.html">warp.types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_utils.html">warp.utils</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Domain Modules</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../domain_modules/sparse.html">Sparse Matrices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../domain_modules/fem.html">FEM Toolkit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../domain_modules/render.html">Rendering</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../project/contribution_guide.html">Contribution Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../project/publications.html">Publications using Warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../project/changelog.html">Changelog</a></li>
 </ul>
 </div>
 </nav></div>
@@ -473,10 +477,13 @@
   <ul class="bd-breadcrumbs">
     
     <li class="breadcrumb-item breadcrumb-home">
-      <a href="../index.html" class="nav-link" aria-label="Home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
         <i class="fa-solid fa-home"></i>
       </a>
     </li>
+    
+    <li class="breadcrumb-item"><a href="../programming_model.html" class="nav-link">Programming Model</a></li>
+    
     <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Code Generation</span></li>
   </ul>
 </nav>
@@ -490,7 +497,7 @@
         <div class="header-article-item">
 
 <div class="d-flex justify-content-end w-100">
-  <a href="../_sources/deep_dive/codegen.rst.txt">
+  <a href="../../_sources/user_guide/programming_model/code_generation.rst.txt">
     <i class="fa-solid fa-file-code"></i> View page source
   </a>
 </div>
@@ -511,6 +518,10 @@
 <span id="id1"></span><h1>Code Generation<a class="headerlink" href="#code-generation" title="Link to this heading">#</a></h1>
 <section id="overview">
 <h2>Overview<a class="headerlink" href="#overview" title="Link to this heading">#</a></h2>
+<p>This guide covers module specialization, generated source, cache behavior,
+compile-time expressions, dynamic kernel construction, and ahead-of-time
+workflows. See <a class="reference internal" href="../programming_model.html"><span class="doc">Programming Model</span></a> for the shared host/kernel execution
+boundary and compilation pipeline.</p>
 <p>Warp kernels are grouped together by Python module.  Before they can run on a device, they must be translated and compiled for the device architecture.  All kernels in a module are compiled together, which is faster than compiling each one individually.  When a kernel is launched, Warp checks if the module is up-to-date and will compile it if needed.  Adding new kernels to a module at runtime modifies the module, which means that it will need to be reloaded on next launch.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">kernel_foo</span><span class="p">():</span>
@@ -582,16 +593,16 @@ hello
 </pre></div>
 </div>
 <p>Warp generates C++/CUDA source code for CPU/GPU and stores the .cpp/.cu source files under the module directories of the kernel cache.
-The kernel cache folder path is printed during the <a class="reference internal" href="../user_guide/basics.html#warp-initialization"><span class="std std-ref">Warp initialization</span></a> and
-can be retrieved after Warp has been initialized from the <code class="docutils literal notranslate"><span class="pre">warp.config.kernel_cache_dir</span></code> <a class="reference internal" href="../user_guide/configuration.html#global-settings"><span class="std std-ref">configuration setting</span></a>.</p>
+The kernel cache folder path is printed during the <a class="reference internal" href="../basics.html#warp-initialization"><span class="std std-ref">Warp initialization</span></a> and
+can be retrieved after Warp has been initialized from the <code class="docutils literal notranslate"><span class="pre">warp.config.kernel_cache_dir</span></code> <a class="reference internal" href="../configuration.html#global-settings"><span class="std std-ref">configuration setting</span></a>.</p>
 <p>When needed, users can intentionally insert small C++/CUDA snippets into
-generated modules with <a class="reference internal" href="../api_reference/_generated/warp.func_native.html#warp.func_native" title="warp.func_native"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.func_native</span></code></a>. See
-<a class="reference internal" href="../user_guide/cpp_cuda_workflows.html#native-functions"><span class="std std-ref">Native Snippets in Warp Kernels</span></a> for the public
+generated modules with <a class="reference internal" href="../../api_reference/_generated/warp.func_native.html#warp.func_native" title="warp.func_native"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.func_native</span></code></a>. See
+<a class="reference internal" href="cpp_cuda_workflows.html#native-functions"><span class="std std-ref">Native Snippets in Warp Kernels</span></a> for the public
 native-function API.</p>
 <p>In addition to Warp’s kernel cache, the NVIDIA CUDA driver maintains a separate
 compute cache that stores JIT-compiled GPU binaries (e.g., native code produced
 from PTX). This driver-level cache is not managed by Warp and is not affected by
-<a class="reference internal" href="../api_reference/_generated/warp.clear_kernel_cache.html#warp.clear_kernel_cache" title="warp.clear_kernel_cache"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.clear_kernel_cache()</span></code></a>. See <a class="reference internal" href="profiling.html#benchmarking-cold-start-compilation"><span class="std std-ref">Benchmarking Cold-Start Compilation</span></a>
+<a class="reference internal" href="../../api_reference/_generated/warp.clear_kernel_cache.html#warp.clear_kernel_cache" title="warp.clear_kernel_cache"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.clear_kernel_cache()</span></code></a>. See <a class="reference internal" href="../execution_and_performance/profiling.html#benchmarking-cold-start-compilation"><span class="std std-ref">Benchmarking Cold-Start Compilation</span></a>
 for details on how to account for it when measuring compilation times.</p>
 <p>Consider the following example:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
@@ -624,7 +635,7 @@ for details on how to account for it when measuring compilation times.</p>
 <p>The generated code follows <a class="reference external" href="https://en.wikipedia.org/wiki/Static_single-assignment_form">static-single-assignment (SSA) form</a>.
 To ease the readability, comments referring to the original Python source code lines are inserted.
 Besides the forward pass, the gradient function is also generated, and,
-if a <a class="reference internal" href="../user_guide/differentiability.html#custom-gradient-functions"><span class="std std-ref">custom replay function</span></a> is provided, the replay function is generated as well.</p>
+if a <a class="reference internal" href="../differentiability.html#custom-gradient-functions"><span class="std std-ref">custom replay function</span></a> is provided, the replay function is generated as well.</p>
 <p>Warp passes the generated source code to native compilers (e.g., LLVM for CPU and NVRTC for CUDA) to produce executable code that is invoked when launching kernels.</p>
 </section>
 <section id="external-references-and-constants">
@@ -672,8 +683,8 @@ if a <a class="reference internal" href="../user_guide/differentiability.html#cu
 <p>The reason why arrays cannot be captured is because they exist on a particular device and contain pointers to the device memory, which would make the kernel not portable across different devices.  Arrays should always be passed as kernel inputs.</p>
 </section>
 <section id="usage-of-wp-constant">
-<h3>Usage of <a class="reference internal" href="../api_reference/_generated/warp.constant.html#warp.constant" title="warp.constant"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.constant()</span></code></a><a class="headerlink" href="#usage-of-wp-constant" title="Link to this heading">#</a></h3>
-<p>In older versions of Warp, <a class="reference internal" href="../api_reference/_generated/warp.constant.html#warp.constant" title="warp.constant"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.constant()</span></code></a> was required to declare constants that can be used in a kernel. This is no longer necessary, but the old syntax is still supported for backward compatibility. <a class="reference internal" href="../api_reference/_generated/warp.constant.html#warp.constant" title="warp.constant"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.constant()</span></code></a> can still be used to check if a value can be referenced in a kernel:</p>
+<h3>Usage of <a class="reference internal" href="../../api_reference/_generated/warp.constant.html#warp.constant" title="warp.constant"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.constant()</span></code></a><a class="headerlink" href="#usage-of-wp-constant" title="Link to this heading">#</a></h3>
+<p>In older versions of Warp, <a class="reference internal" href="../../api_reference/_generated/warp.constant.html#warp.constant" title="warp.constant"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.constant()</span></code></a> was required to declare constants that can be used in a kernel. This is no longer necessary, but the old syntax is still supported for backward compatibility. <a class="reference internal" href="../../api_reference/_generated/warp.constant.html#warp.constant" title="warp.constant"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.constant()</span></code></a> can still be used to check if a value can be referenced in a kernel:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">x</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mf">17.0</span><span class="p">)</span>  <span class="c1"># ok</span>
 <span class="n">v</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">))</span>  <span class="c1"># ok</span>
 <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">))</span>  <span class="c1"># error, invalid constant type</span>
@@ -684,7 +695,7 @@ if a <a class="reference internal" href="../user_guide/differentiability.html#cu
     <span class="n">a</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span> <span class="o">*</span> <span class="n">v</span>
 </pre></div>
 </div>
-<p>In this snippet, a <code class="docutils literal notranslate"><span class="pre">TypeError</span></code> will be raised when declaring the array with <a class="reference internal" href="../api_reference/_generated/warp.constant.html#warp.constant" title="warp.constant"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.constant()</span></code></a>. If <a class="reference internal" href="../api_reference/_generated/warp.constant.html#warp.constant" title="warp.constant"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.constant()</span></code></a> was omitted, the error would be raised later during code generation, which might be slightly harder to debug.</p>
+<p>In this snippet, a <code class="docutils literal notranslate"><span class="pre">TypeError</span></code> will be raised when declaring the array with <a class="reference internal" href="../../api_reference/_generated/warp.constant.html#warp.constant" title="warp.constant"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.constant()</span></code></a>. If <a class="reference internal" href="../../api_reference/_generated/warp.constant.html#warp.constant" title="warp.constant"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.constant()</span></code></a> was omitted, the error would be raised later during code generation, which might be slightly harder to debug.</p>
 </section>
 <section id="updating-constants">
 <h3>Updating Constants<a class="headerlink" href="#updating-constants" title="Link to this heading">#</a></h3>
@@ -747,11 +758,11 @@ Module __main__ 9a0664f load on device &#39;cuda:0&#39; took 164.83 ms  (compile
 <p>We often encounter situations where a kernel needs to be specialized for a given input or where certain parts of the code are static by the time the code is executed.
 With static expressions, we can write Python expressions to be evaluated at the time of declaring a Warp function or kernel.</p>
 <p><code class="docutils literal notranslate"><span class="pre">wp.static(...)</span></code> expressions allow the user to run arbitrary Python code at the time the Warp function or kernel containing the expression is defined.
-<a class="reference internal" href="../api_reference/_generated/warp.static.html#warp.static" title="warp.static"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.static(expr)</span></code></a> accepts a Python expression and replaces it with the result.
+<a class="reference internal" href="../../api_reference/_generated/warp.static.html#warp.static" title="warp.static"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.static(expr)</span></code></a> accepts a Python expression and replaces it with the result.
 Note that the expression can only access variables that can be evaluated at the time the expression is declared.
 This includes global variables and variables captured in a closure in which the Warp function or kernel is defined.
 Additionally, Warp constants from within the kernel or function can be accessed, such as the constant iteration variable for static for-loops (i.e. when the range is known at the time of code generation).</p>
-<p>The result from <a class="reference internal" href="../api_reference/_generated/warp.static.html#warp.static" title="warp.static"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.static()</span></code></a> must be a non-null value of one of the following types:</p>
+<p>The result from <a class="reference internal" href="../../api_reference/_generated/warp.static.html#warp.static" title="warp.static"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.static()</span></code></a> must be a non-null value of one of the following types:</p>
 <ul class="simple">
 <li><p>A Warp function</p></li>
 <li><p>A string</p></li>
@@ -773,7 +784,7 @@ Additionally, Warp constants from within the kernel or function can be accessed,
 <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">my_kernel</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>The static expressions are evaluated at the time of when the <a class="reference internal" href="../api_reference/_generated/warp.kernel_decorator.html#warp.kernel" title="warp.kernel"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.kernel</span></code></a> decorator is evaluated and replaced in the code by their respective constant result values. The generated code will therefore contain the results of the expressions hard-coded in the source file (shown an abbreviated version):</p>
+<p>The static expressions are evaluated at the time of when the <a class="reference internal" href="../../api_reference/_generated/warp.kernel_decorator.html#warp.kernel" title="warp.kernel"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.kernel</span></code></a> decorator is evaluated and replaced in the code by their respective constant result values. The generated code will therefore contain the results of the expressions hard-coded in the source file (shown an abbreviated version):</p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">const</span><span class="w"> </span><span class="n">wp</span><span class="o">::</span><span class="n">int32</span><span class="w"> </span><span class="n">var_0</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">5</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="n">wp</span><span class="o">::</span><span class="n">float64</span><span class="w"> </span><span class="n">var_1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">5.0</span><span class="p">;</span>
 <span class="k">const</span><span class="w"> </span><span class="n">wp</span><span class="o">::</span><span class="n">str</span><span class="w"> </span><span class="n">var_2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;static_var = %i</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">;</span>
@@ -788,7 +799,7 @@ Additionally, Warp constants from within the kernel or function can be accessed,
 </section>
 <section id="example-static-conditionals">
 <h3>Example: Static Conditionals<a class="headerlink" href="#example-static-conditionals" title="Link to this heading">#</a></h3>
-<p>If/else/elif conditions that are constant can be eliminated from the generated code by using <a class="reference internal" href="../api_reference/_generated/warp.static.html#warp.static" title="warp.static"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.static()</span></code></a> inside the branch condition to yield a constant boolean.
+<p>If/else/elif conditions that are constant can be eliminated from the generated code by using <a class="reference internal" href="../../api_reference/_generated/warp.static.html#warp.static" title="warp.static"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.static()</span></code></a> inside the branch condition to yield a constant boolean.
 This can provide improved performance by avoiding branching and can be useful for generating specialized kernels:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
 
@@ -810,7 +821,7 @@ This can provide improved performance by avoiding branching and can be useful fo
 </section>
 <section id="example-static-loop-unrolling">
 <h3>Example: Static Loop Unrolling<a class="headerlink" href="#example-static-loop-unrolling" title="Link to this heading">#</a></h3>
-<p>Static expressions can be used to unroll for-loops during code generation. We place <a class="reference internal" href="../api_reference/_generated/warp.static.html#warp.static" title="warp.static"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.static()</span></code></a> expressions inside the loop’s <code class="docutils literal notranslate"><span class="pre">range</span></code> to yield static for-loops that can be unrolled. The iteration variable becomes a constant and can therefore be accessed from within a static expression in the loop body:</p>
+<p>Static expressions can be used to unroll for-loops during code generation. We place <a class="reference internal" href="../../api_reference/_generated/warp.static.html#warp.static" title="warp.static"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.static()</span></code></a> expressions inside the loop’s <code class="docutils literal notranslate"><span class="pre">range</span></code> to yield static for-loops that can be unrolled. The iteration variable becomes a constant and can therefore be accessed from within a static expression in the loop body:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
 
 <span class="k">def</span><span class="w"> </span><span class="nf">loop_limit</span><span class="p">():</span>
@@ -890,7 +901,7 @@ This can provide improved performance by avoiding branching and can be useful fo
 </section>
 <section id="example-static-length-query">
 <h3>Example: Static Length Query<a class="headerlink" href="#example-static-length-query" title="Link to this heading">#</a></h3>
-<p>Python’s built-in function <code class="docutils literal notranslate"><span class="pre">len()</span></code> can also be evaluated statically for types with fixed length, such as vectors, quaternions, and matrices, and can be wrapped into <a class="reference internal" href="../api_reference/_generated/warp.static.html#warp.static" title="warp.static"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.static()</span></code></a> calls to initialize other constructs:</p>
+<p>Python’s built-in function <code class="docutils literal notranslate"><span class="pre">len()</span></code> can also be evaluated statically for types with fixed length, such as vectors, quaternions, and matrices, and can be wrapped into <a class="reference internal" href="../../api_reference/_generated/warp.static.html#warp.static" title="warp.static"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.static()</span></code></a> calls to initialize other constructs:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
 
 <span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
@@ -1137,7 +1148,7 @@ This can provide improved performance by avoiding branching and can be useful fo
 </section>
 <section id="function-closures">
 <h3>Function Closures<a class="headerlink" href="#function-closures" title="Link to this heading">#</a></h3>
-<p>Warp functions (<a class="reference internal" href="../api_reference/_generated/warp.func.html#warp.func" title="warp.func"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.func</span></code></a>) also support closures, just like kernels:</p>
+<p>Warp functions (<a class="reference internal" href="../../api_reference/_generated/warp.func.html#warp.func" title="warp.func"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.func</span></code></a>) also support closures, just like kernels:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">create_function_with_constant</span><span class="p">(</span><span class="n">constant</span><span class="p">):</span>
     <span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">f</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
@@ -1484,7 +1495,7 @@ Module __main__ e93fbb9 load on device &#39;cuda:0&#39; took 167.84 ms  (compile
 </pre></div>
 </div>
 <p>This might be surprising, but creating a similar program in pure Python would lead to the same results.  Because of late binding, the captured loop variable <code class="docutils literal notranslate"><span class="pre">i</span></code> is not evaluated until the kernels are launched.  At that moment, the value of <code class="docutils literal notranslate"><span class="pre">i</span></code> is 2 and we see the same output from each kernel.</p>
-<p>In Warp, <a class="reference internal" href="../api_reference/_generated/warp.static.html#warp.static" title="warp.static"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.static()</span></code></a> can be used to get around this problem:</p>
+<p>In Warp, <a class="reference internal" href="../../api_reference/_generated/warp.static.html#warp.static" title="warp.static"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.static()</span></code></a> can be used to get around this problem:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># create a list of kernels that use the loop variable</span>
 <span class="n">kernels</span> <span class="o">=</span> <span class="p">[]</span>
 <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">3</span><span class="p">):</span>
@@ -1500,7 +1511,7 @@ Module __main__ e93fbb9 load on device &#39;cuda:0&#39; took 167.84 ms  (compile
 <span class="n">wp</span><span class="o">.</span><span class="n">synchronize_device</span><span class="p">()</span>
 </pre></div>
 </div>
-<p>Warp replaces the call to <a class="reference internal" href="../api_reference/_generated/warp.static.html#warp.static" title="warp.static"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.static()</span></code></a> with the value of the expression passed as its argument.  The expression is evaluated immediately at the time of kernel definition.  This is similar to static binding used by languages like C++, which means that all variables referenced by the static expression must already be defined.</p>
+<p>Warp replaces the call to <a class="reference internal" href="../../api_reference/_generated/warp.static.html#warp.static" title="warp.static"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.static()</span></code></a> with the value of the expression passed as its argument.  The expression is evaluated immediately at the time of kernel definition.  This is similar to static binding used by languages like C++, which means that all variables referenced by the static expression must already be defined.</p>
 <p>To further illustrate the difference between the default late binding behavior and static expressions, consider this program:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">C</span> <span class="o">=</span> <span class="mi">17</span>
 
@@ -1561,17 +1572,17 @@ Module __main__ e93fbb9 load on device &#39;cuda:0&#39; took 167.84 ms  (compile
 <section id="ahead-of-time-compilation-workflows">
 <span id="id3"></span><h2>Ahead-of-Time Compilation Workflows<a class="headerlink" href="#ahead-of-time-compilation-workflows" title="Link to this heading">#</a></h2>
 <p>Under typical use cases, Warp will compile and load modules automatically at runtime when kernels are launched using
-<a class="reference internal" href="../api_reference/_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch()</span></code></a> or <a class="reference internal" href="../api_reference/_generated/warp.launch_tiled.html#warp.launch_tiled" title="warp.launch_tiled"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch_tiled()</span></code></a>.</p>
+<a class="reference internal" href="../../api_reference/_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch()</span></code></a> or <a class="reference internal" href="../../api_reference/_generated/warp.launch_tiled.html#warp.launch_tiled" title="warp.launch_tiled"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch_tiled()</span></code></a>.</p>
 <p>However, there are some cases where it is convenient to compile a module ahead of time, perhaps even on a different
 machine.
 For example, you might want to use Warp to generate source code that can be included in a native CUDA C++ application.</p>
 <p>By disabling module hashing, you can even distribute pre-compiled modules without the original source code.</p>
-<p>The <a class="reference internal" href="../api_reference/_generated/warp.compile_aot_module.html#warp.compile_aot_module" title="warp.compile_aot_module"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.compile_aot_module()</span></code></a> and <a class="reference internal" href="../api_reference/_generated/warp.load_aot_module.html#warp.load_aot_module" title="warp.load_aot_module"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.load_aot_module()</span></code></a>
+<p>The <a class="reference internal" href="../../api_reference/_generated/warp.compile_aot_module.html#warp.compile_aot_module" title="warp.compile_aot_module"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.compile_aot_module()</span></code></a> and <a class="reference internal" href="../../api_reference/_generated/warp.load_aot_module.html#warp.load_aot_module" title="warp.load_aot_module"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.load_aot_module()</span></code></a>
 functions can be used to compile and load modules manually.</p>
 <section id="example-compile-a-module-manually-without-launching-any-kernels">
 <h3>Example: Compile a module manually without launching any kernels<a class="headerlink" href="#example-compile-a-module-manually-without-launching-any-kernels" title="Link to this heading">#</a></h3>
 <p>The following example shows how to compile a module manually without launching any kernels.
-We pass <code class="docutils literal notranslate"><span class="pre">__name__</span></code> as the first argument to <a class="reference internal" href="../api_reference/_generated/warp.compile_aot_module.html#warp.compile_aot_module" title="warp.compile_aot_module"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.compile_aot_module()</span></code></a> to indicate
+We pass <code class="docutils literal notranslate"><span class="pre">__name__</span></code> as the first argument to <a class="reference internal" href="../../api_reference/_generated/warp.compile_aot_module.html#warp.compile_aot_module" title="warp.compile_aot_module"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.compile_aot_module()</span></code></a> to indicate
 that the current module is the one that should be compiled, but it is also possible to pass the name of another
 module containing Warp kernels.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
@@ -1599,7 +1610,7 @@ module containing Warp kernels.</p>
 <p>In this example, our goal is to load and run kernels from a pre-compiled module without the original source
 code that produced the module (either the Python function or the generated CUDA C++ code).</p>
 <p>First, we will disable module hashing when we ahead-of-time compile the code by passing <code class="docutils literal notranslate"><span class="pre">strip_hash=True</span></code> to
-<a class="reference internal" href="../api_reference/_generated/warp.compile_aot_module.html#warp.compile_aot_module" title="warp.compile_aot_module"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.compile_aot_module()</span></code></a>.
+<a class="reference internal" href="../../api_reference/_generated/warp.compile_aot_module.html#warp.compile_aot_module" title="warp.compile_aot_module"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.compile_aot_module()</span></code></a>.
 When hashing is disabled, the generated function names and filenames become more readable.
 For example, instead of a function named <code class="docutils literal notranslate"><span class="pre">sum_kernel_b6a8b352_cuda_kernel_forward()</span></code> in the file
 <code class="docutils literal notranslate"><span class="pre">wp___main___3a2e577/wp___main___3a2e577.cu</span></code>, you get the cleaner function <code class="docutils literal notranslate"><span class="pre">sum_kernel_cuda_kernel_forward()</span></code>
@@ -1607,7 +1618,7 @@ in the file <code class="docutils literal notranslate"><span class="pre">wp___ma
 <div class="admonition important">
 <p class="admonition-title">Important</p>
 <p>Not all modules can be compiled successfully with hashing disabled. Name collisions can occur when
-hashes are removed from the function names, particularly when using <a class="reference internal" href="../user_guide/generics.html"><span class="doc">Generics</span></a>, which can
+hashes are removed from the function names, particularly when using <a class="reference internal" href="generics.html"><span class="doc">Generics</span></a>, which can
 result in multiple versions of the same function or kernel.</p>
 </div>
 <p>Only use <code class="docutils literal notranslate"><span class="pre">strip_hash=True</span></code> when your module has a single version of each function and kernel.</p>
@@ -1668,10 +1679,10 @@ empty body of the <code class="docutils literal notranslate"><span class="pre">m
 <p>This example assumed both the module compilation and loading happened on the same machine, but it might be necessary
 to compile a module for multiple GPU architectures.
 A list of GPU architectures for which to generate code as well as whether to generate PTX or CUBIN files can be
-specified when calling <a class="reference internal" href="../api_reference/_generated/warp.compile_aot_module.html#warp.compile_aot_module" title="warp.compile_aot_module"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.compile_aot_module()</span></code></a>.</p>
+specified when calling <a class="reference internal" href="../../api_reference/_generated/warp.compile_aot_module.html#warp.compile_aot_module" title="warp.compile_aot_module"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.compile_aot_module()</span></code></a>.</p>
 <p>The following example shows how to compile a module without hashing for multiple architectures as CUBIN files
 by passing in a list of architectures returned by
-<a class="reference internal" href="../api_reference/_generated/warp.get_cuda_supported_archs.html#warp.get_cuda_supported_archs" title="warp.get_cuda_supported_archs"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.get_cuda_supported_archs()</span></code></a> to the <code class="docutils literal notranslate"><span class="pre">arch</span></code> argument.</p>
+<a class="reference internal" href="../../api_reference/_generated/warp.get_cuda_supported_archs.html#warp.get_cuda_supported_archs" title="warp.get_cuda_supported_archs"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.get_cuda_supported_archs()</span></code></a> to the <code class="docutils literal notranslate"><span class="pre">arch</span></code> argument.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
 
 
@@ -1728,9 +1739,9 @@ prints a message like:</p>
      &quot;cpu&quot;      : &quot;CPU&quot;
 </pre></div>
 </div>
-<p>In this mode, <a class="reference internal" href="../api_reference/_generated/warp.get_cuda_supported_archs.html#warp.get_cuda_supported_archs" title="warp.get_cuda_supported_archs"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.get_cuda_supported_archs()</span></code></a> returns the
+<p>In this mode, <a class="reference internal" href="../../api_reference/_generated/warp.get_cuda_supported_archs.html#warp.get_cuda_supported_archs" title="warp.get_cuda_supported_archs"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.get_cuda_supported_archs()</span></code></a> returns the
 full list of architectures supported by NVRTC, and
-<a class="reference internal" href="../api_reference/_generated/warp.compile_aot_module.html#warp.compile_aot_module" title="warp.compile_aot_module"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.compile_aot_module()</span></code></a> can compile CUDA kernels as long as the
+<a class="reference internal" href="../../api_reference/_generated/warp.compile_aot_module.html#warp.compile_aot_module" title="warp.compile_aot_module"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.compile_aot_module()</span></code></a> can compile CUDA kernels as long as the
 <code class="docutils literal notranslate"><span class="pre">arch</span></code> parameter is specified.</p>
 <p>The following self-contained <code class="docutils literal notranslate"><span class="pre">Dockerfile</span></code> demonstrates compiling Warp kernels during
 <code class="docutils literal notranslate"><span class="pre">docker</span> <span class="pre">build</span></code> (without <code class="docutils literal notranslate"><span class="pre">--gpus</span></code>). Save it and run <code class="docutils literal notranslate"><span class="pre">docker</span> <span class="pre">build</span> <span class="pre">-t</span> <span class="pre">warp-aot-example</span> <span class="pre">.</span></code>
@@ -1760,7 +1771,7 @@ EOF
 from cache, avoiding JIT compilation delays.</p>
 <p><strong>The</strong> <code class="docutils literal notranslate"><span class="pre">arch</span></code> <strong>parameter is required when compiling without a GPU</strong>, since Warp cannot infer
 the target architecture from a device. Use
-<a class="reference internal" href="../api_reference/_generated/warp.get_cuda_supported_archs.html#warp.get_cuda_supported_archs" title="warp.get_cuda_supported_archs"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.get_cuda_supported_archs()</span></code></a> to query which architectures
+<a class="reference internal" href="../../api_reference/_generated/warp.get_cuda_supported_archs.html#warp.get_cuda_supported_archs" title="warp.get_cuda_supported_archs"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.get_cuda_supported_archs()</span></code></a> to query which architectures
 are available for compilation.</p>
 </section>
 </section>
@@ -1777,20 +1788,20 @@ are available for compilation.</p>
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="../user_guide/changelog.html"
+       href="tiles.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">Changelog</p>
+        <p class="prev-next-title">Tiles</p>
       </div>
     </a>
     <a class="right-next"
-       href="allocators.html"
+       href="cpp_cuda_workflows.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Allocators</p>
+        <p class="prev-next-title">C++ and CUDA Workflows</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -1861,7 +1872,7 @@ are available for compilation.</p>
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/main/docs/deep_dive/codegen.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/main/docs/user_guide/programming_model/code_generation.rst">
       <i class="fa-solid fa-pencil"></i>
       
       
@@ -1888,8 +1899,8 @@ are available for compilation.</p>
   
 
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
-<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
+  <script defer src="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
 
 
   <footer class="bd-footer">
@@ -1899,8 +1910,8 @@ are available for compilation.</p>
       
         <div class="footer-item">
 <a class="footer-brand logo" href="https://www.nvidia.com">
-  <img src="../_static/nvidia-logo-horiz-rgb-1c-blk-for-screen.svg" class="logo__image only-light" alt="NVIDIA"/>
-  <img src="../_static/nvidia-logo-horiz-rgb-1c-wht-for-screen.svg" class="logo__image only-dark" alt="NVIDIA"/>
+  <img src="../../_static/nvidia-logo-horiz-rgb-1c-blk-for-screen.svg" class="logo__image only-light" alt="NVIDIA"/>
+  <img src="../../_static/nvidia-logo-horiz-rgb-1c-wht-for-screen.svg" class="logo__image only-dark" alt="NVIDIA"/>
 </a></div>
       
         <div class="footer-item">
