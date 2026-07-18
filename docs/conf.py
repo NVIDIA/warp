@@ -9,6 +9,7 @@
 import ast
 import importlib
 import inspect
+import json
 import operator
 import os
 import pkgutil
@@ -791,6 +792,114 @@ def drop_autosummary_toctrees(app, doctree):
         asum.parent.remove(asum)
 
 
+# Redirects for documentation pages that moved or were removed during the
+# navigation reorganization, so old URLs (bookmarks, external links, search
+# results) keep resolving. Maps an old page path without the ``.html`` suffix
+# to its new target, both relative to the docs root and without a leading
+# slash. Targets include ``.html`` and may include an optional ``#anchor``,
+# used when the old URL has no fragment of its own. GitHub Pages has no
+# server-side redirects and the site is served with ``.nojekyll`` (so
+# ``jekyll-redirect-from`` cannot run), hence
+# we emit redirect stubs at build time. Targets are rewritten relative to each
+# old page so the stubs work unchanged under any version prefix (``/stable/``,
+# ``/latest/``, ``/vX.Y/``).
+DOC_REDIRECTS = {
+    "user_guide/tiles": "user_guide/programming_model/tiles.html",
+    "user_guide/generics": "user_guide/programming_model/generics.html",
+    "user_guide/cpp_cuda_workflows": "user_guide/programming_model/cpp_cuda_workflows.html",
+    "deep_dive/codegen": "user_guide/programming_model/code_generation.html",
+    "deep_dive/concurrency": "user_guide/execution_and_performance/concurrency.html",
+    "deep_dive/allocators": "user_guide/execution_and_performance/memory_management.html",
+    "deep_dive/profiling": "user_guide/execution_and_performance/profiling.html",
+    "user_guide/deterministic_execution": "user_guide/execution_and_performance/deterministic_execution.html",
+    "user_guide/interoperability_jax": "user_guide/interoperability/jax.html",
+    "user_guide/interoperability_pytorch": "user_guide/interoperability/pytorch.html",
+    "user_guide/changelog": "project/changelog.html",
+    "user_guide/contribution_guide": "project/contribution_guide.html",
+    "user_guide/publications": "project/publications.html",
+    "deep_dive/memory_access": "user_guide/execution_and_performance/memory_management.html",
+    "user_guide/devices": "user_guide/runtime.html#devices",
+}
+
+# Legacy fragments whose content moved to a different page or whose generated
+# heading ID changed. All other incoming fragments are preserved as-is.
+DOC_FRAGMENT_REDIRECTS = {
+    "deep_dive/allocators": {
+        "allocators": "user_guide/execution_and_performance/memory_management.html#memory-allocation-and-access",
+        "introduction": "user_guide/execution_and_performance/memory_management.html#stream-ordered-memory-pool-allocators",
+    },
+    "deep_dive/memory_access": {
+        "cpu-gpu-cross-device-memory-access": (
+            "user_guide/execution_and_performance/memory_management.html#cross-device-memory-access"
+        ),
+        "launching-with-arrays-on-the-same-device": (
+            "user_guide/execution_and_performance/memory_management.html#launch-device-versus-allocation-device"
+        ),
+        "launching-gpu-kernels-with-cpu-arrays": (
+            "user_guide/execution_and_performance/memory_management.html#gpu-kernels-using-cpu-arrays"
+        ),
+        "accessing-gpu-data-from-cpu-code": (
+            "user_guide/execution_and_performance/memory_management.html#cpu-code-using-gpu-resident-data"
+        ),
+        "checking-access-for-a-specific-array-with-wp-can-access": (
+            "user_guide/execution_and_performance/memory_management.html#checking-a-concrete-array-with-wp-can-access"
+        ),
+        "checking-array-access-before-launch": (
+            "user_guide/execution_and_performance/memory_management.html#checked-launch-validation"
+        ),
+    },
+    "user_guide/devices": {
+        "cuda-peer-access": "user_guide/execution_and_performance/memory_management.html#cuda-peer-access",
+        "peer-access": "user_guide/execution_and_performance/memory_management.html#peer-access",
+    },
+}
+
+
+def write_redirect_stubs(app, exception):
+    """Emit meta-refresh stubs at moved/removed pages' old URLs (see ``DOC_REDIRECTS``)."""
+    if exception is not None or app.builder.name != "html":
+        return
+    logger = sphinx.util.logging.getLogger(__name__)
+    written = 0
+    for old, new in DOC_REDIRECTS.items():
+        dest = os.path.join(app.outdir, old + ".html")
+        if os.path.exists(dest):
+            logger.warning("skipping redirect for %s: a real page exists there", old)
+            continue
+        target, sep, frag = new.partition("#")
+        if not os.path.exists(os.path.join(app.outdir, target)):
+            logger.warning("redirect for %s targets missing page %s", old, target)
+        url = os.path.relpath(target, os.path.dirname(old)).replace(os.sep, "/") + sep + frag
+        script_url = json.dumps(url).replace("<", r"\u003c")
+        fragment_urls = {}
+        for old_fragment, fragment_target in DOC_FRAGMENT_REDIRECTS.get(old, {}).items():
+            fragment_page, fragment_sep, fragment_anchor = fragment_target.partition("#")
+            if not os.path.exists(os.path.join(app.outdir, fragment_page)):
+                logger.warning("fragment redirect for %s#%s targets missing page %s", old, old_fragment, fragment_page)
+            fragment_urls[f"#{old_fragment}"] = (
+                os.path.relpath(fragment_page, os.path.dirname(old)).replace(os.sep, "/")
+                + fragment_sep
+                + fragment_anchor
+            )
+        script_fragment_urls = json.dumps(fragment_urls, sort_keys=True).replace("<", r"\u003c")
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        with open(dest, "w", encoding="utf-8") as f:
+            f.write(
+                '<!DOCTYPE html>\n<html><head><meta charset="utf-8">'
+                f'<link rel="canonical" href="{url}">'
+                f"<script>const target = new URL({script_url}, window.location.href);"
+                f"const fragmentTargets = {script_fragment_urls};"
+                "const fragmentTarget = fragmentTargets[window.location.hash];"
+                "if (fragmentTarget) target.href = new URL(fragmentTarget, window.location.href).href;"
+                "else if (window.location.hash) target.hash = window.location.hash;"
+                "window.location.replace(target.href);</script>"
+                f'<noscript><meta http-equiv="refresh" content="0; url={url}"></noscript></head>'
+                f'<body>Redirecting to <a href="{url}">{url}</a>&hellip;</body></html>\n'
+            )
+        written += 1
+    logger.info("wrote %d documentation redirect stub(s)", written)
+
+
 def setup(app):
     """Sphinx extension setup."""
     # Priority must be lower than autosummary's default (500) so that the
@@ -808,3 +917,4 @@ def setup(app):
     app.connect("doctree-read", drop_autosummary_toctrees, priority=400)
     app.connect("doctree-resolved", rewrite_internal_module_paths)
     app.connect("doctree-resolved", strip_repr_addresses)
+    app.connect("build-finished", write_redirect_stubs)
