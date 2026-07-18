@@ -720,6 +720,22 @@ class TestUtils(unittest.TestCase):
         self.assertRegex(f.getvalue(), r"^         \d+ function calls in \d+\.\d+ seconds")
         self.assertRegex(f.getvalue(), r"hello took \d+\.\d+ ms$")
 
+    @unittest.skipUnless(wp.is_cuda_available(), "Requires CUDA")
+    def test_scoped_timer_cuda_timing(self):
+        """Verify ``ScopedTimer`` returns usable CUDA memory-copy timing results."""
+        src = wp.ones(16, dtype=wp.float32, device="cuda:0")
+        dst = wp.zeros_like(src)
+
+        with wp.ScopedTimer("copy", print=False, synchronize=True, cuda_filter=wp.TIMING_MEMCPY) as timer:
+            wp.copy(dst, src)
+
+        self.assertEqual(len(timer.timing_results), 1)
+        result = timer.timing_results[0]
+        self.assertEqual(result.device, wp.get_device("cuda:0"))
+        self.assertEqual(result.name, "memcpy DtoD")
+        self.assertEqual(result.filter, wp.TIMING_MEMCPY)
+        self.assertGreaterEqual(result.elapsed, 0.0)
+
 
 add_function_test(TestUtils, "test_array_scan", test_array_scan, devices=devices)
 add_function_test(TestUtils, "test_array_scan_vector", test_array_scan_vector, devices=devices)

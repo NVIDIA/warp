@@ -144,6 +144,17 @@ complex_type_hints = (Any, Callable, tuple)
 sequence_types = (list, tuple)
 
 
+class timing_result_t(ctypes.Structure):
+    """CUDA timing struct for fetching values from C++."""
+
+    _fields_ = (
+        ("context", ctypes.c_void_p),
+        ("name", ctypes.c_char_p),
+        ("flag", ctypes.c_int),
+        ("elapsed", ctypes.c_float),
+    )
+
+
 class det_scatter_buf_t(ctypes.Structure):
     _fields_ = [
         ("keys", ctypes.c_void_p),
@@ -7287,7 +7298,7 @@ class Runtime:
             self.core.wp_cuda_timing_begin.restype = None
             self.core.wp_cuda_timing_get_result_count.argtypes = []
             self.core.wp_cuda_timing_get_result_count.restype = int
-            self.core.wp_cuda_timing_end.argtypes = []
+            self.core.wp_cuda_timing_end.argtypes = [ctypes.POINTER(timing_result_t), ctypes.c_int]
             self.core.wp_cuda_timing_end.restype = None
 
             self.core.wp_graph_coloring.argtypes = [

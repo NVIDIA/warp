@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import cProfile
-import ctypes
 import gc
 import os
 import sys
@@ -20,7 +19,7 @@ import warp as wp
 import warp._src.context
 import warp._src.types
 from warp._src import logger as _logger_module
-from warp._src.context import Allocator, CaptureMode, DeviceLike, _validate_allocator
+from warp._src.context import Allocator, CaptureMode, DeviceLike, _validate_allocator, timing_result_t
 from warp._src.logger import Logger, LoggerBasic, _validate_logger, get_logger, log_debug, set_logger
 from warp._src.types import Array, DType, type_repr, types_equal
 
@@ -1935,17 +1934,6 @@ def check_p2p():
     return True
 
 
-class timing_result_t(ctypes.Structure):
-    """CUDA timing struct for fetching values from C++."""
-
-    _fields_ = (
-        ("context", ctypes.c_void_p),
-        ("name", ctypes.c_char_p),
-        ("filter", ctypes.c_int),
-        ("elapsed", ctypes.c_float),
-    )
-
-
 class TimingResult:
     """Timing result for a single activity."""
 
@@ -1995,13 +1983,13 @@ def timing_end(synchronize: bool = True) -> list[TimingResult]:
 
     # get result array from C++
     result_buffer = (timing_result_t * count)()
-    warp._src.context.runtime.core.wp_cuda_timing_end(ctypes.byref(result_buffer), count)
+    warp._src.context.runtime.core.wp_cuda_timing_end(result_buffer, count)
 
     # prepare Python result list
     results = []
     for r in result_buffer:
         device = warp._src.context.runtime.context_map.get(r.context)
-        filter = r.filter
+        filter = r.flag
         elapsed = r.elapsed
 
         name = r.name.decode()
