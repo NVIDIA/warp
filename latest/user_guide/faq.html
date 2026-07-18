@@ -49,7 +49,6 @@
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../_static/copybutton.js?v=fd10adb8"></script>
-    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'user_guide/faq';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
@@ -509,153 +508,628 @@
                 <article class="bd-article">
                   
   <section id="faq">
-<h1>FAQ<a class="headerlink" href="#faq" title="Link to this heading">#</a></h1>
-<section id="how-does-warp-relate-to-other-python-projects-for-gpu-programming-e-g-numba-taichi-cupy-pytorch-etc">
-<h2>How does Warp relate to other Python projects for GPU programming, e.g.: Numba, Taichi, cuPy, PyTorch, etc.?<a class="headerlink" href="#how-does-warp-relate-to-other-python-projects-for-gpu-programming-e-g-numba-taichi-cupy-pytorch-etc" title="Link to this heading">#</a></h2>
-<p>Warp is inspired by many of these projects, and is closely related to
-Numba and Taichi which both expose kernel programming to Python. These
-frameworks map to traditional GPU programming models, so many of the
-high-level concepts are similar, however there are some functionality
-and implementation differences.</p>
-<p>Compared to Numba, Warp supports a smaller subset of Python, but
-offering auto-differentiation of kernel programs, which is useful for
-machine learning. Unlike Numba and Taichi, Warp uses C++/CUDA as an
-intermediate representation, which makes it convenient to implement and
-expose low-level routines and leverage existing C++ libraries in kernels.
-In addition, Warp has built in data structures to support geometry processing (meshes, sparse volumes,
-point clouds, USD data) as first-class citizens that are not exposed in
-other runtimes.</p>
-<p>Warp does not offer a full tensor-based programming model like PyTorch
-and JAX, but is designed to work well with these frameworks through data
-sharing mechanisms like <code class="docutils literal notranslate"><span class="pre">__cuda_array_interface__</span></code>. For computations
-that map well to tensors (e.g.: neural-network inference) it makes sense
-to use these existing tools. For problems with a lot of sparsity,
-conditional logic, heterogeneous workloads (like the ones we often find in
-simulation and graphics), etc., then kernel-based programming models like
-the one in Warp are often more convenient since users have control over
-individual threads.</p>
+<span id="id1"></span><h1>FAQ<a class="headerlink" href="#faq" title="Link to this heading">#</a></h1>
+<p>Use this page for quick answers to common Warp questions. Each answer links to
+the maintained details. The <a class="reference internal" href="publications.html"><span class="doc">Publications using Warp</span></a> page collects examples of Warp
+in research and production projects.</p>
+<section id="about-warp">
+<h2>About Warp<a class="headerlink" href="#about-warp" title="Link to this heading">#</a></h2>
+<section id="what-is-warp-and-how-does-it-fit-into-an-existing-application">
+<h3>What is Warp, and how does it fit into an existing application?<a class="headerlink" href="#what-is-warp-and-how-does-it-fit-into-an-existing-application" title="Link to this heading">#</a></h3>
+<p>Warp is a Python framework for writing kernels that run on CPUs and NVIDIA
+GPUs. Authors express parallel work through logical thread indices, array
+operations, and kernel launches. Warp maps that work onto the target device and
+handles many lower-level execution details. Warp lowers typed Python kernel
+code to generated C++ or CUDA C++ source. It then uses LLVM/Clang for CPU code
+or the CUDA runtime compiler (NVRTC) for CUDA code. The <a class="reference internal" href="basics.html"><span class="doc">Basics</span></a> and
+<a class="reference internal" href="../deep_dive/codegen.html"><span class="doc">Code Generation</span></a> guides explain the programming and compilation
+models.</p>
+<p>Warp generates reverse-mode automatic differentiation code for supported
+kernels and functions. Its spatial API includes GPU-accelerated BVHs, hash
+grids, triangle meshes, and sparse volumes, together with the query primitives
+needed to use them. Warp also includes sparse linear algebra and a finite
+element toolkit for building simulation and partial differential equation
+(PDE) solvers. See <a class="reference internal" href="differentiability.html"><span class="doc">Differentiability</span></a>, the
+<a class="reference internal" href="../api_reference/warp.html"><span class="doc">Warp API reference</span></a>, the
+<a class="reference internal" href="../api_reference/warp_sparse.html"><span class="doc">sparse API</span></a>, and the <a class="reference internal" href="../domain_modules/fem.html"><span class="doc">finite element
+method (FEM) toolkit</span></a>.</p>
+<p>Warp is designed to interoperate with existing Python libraries and frameworks.
+An application can use it for a single kernel, a performance-critical
+subsystem, or most of its computation. Array interfaces, DLPack, and dedicated
+converters enable data sharing without a copy when the underlying protocol
+allows it, so existing NumPy, PyTorch, JAX, and other framework code can remain
+in place. <a class="reference internal" href="interoperability.html"><span class="doc">Interoperability</span></a> documents the available paths.</p>
 </section>
-<section id="what-are-some-examples-of-projects-that-use-warp">
-<h2>What are some examples of projects that use Warp?<a class="headerlink" href="#what-are-some-examples-of-projects-that-use-warp" title="Link to this heading">#</a></h2>
-<p>Some examples are:</p>
+<section id="what-are-some-projects-built-with-warp">
+<h3>What are some projects built with Warp?<a class="headerlink" href="#what-are-some-projects-built-with-warp" title="Link to this heading">#</a></h3>
+<p>The projects below use Warp for kernels, interoperability, or as the basis of a
+larger application:</p>
 <ul class="simple">
-<li><p><a class="reference external" href="https://github.com/google-deepmind/mujoco_warp">MuJoCo Warp</a>: A GPU-optimized version of the MuJoCo physics simulator,
-designed for NVIDIA hardware. Maintained by Google DeepMind and NVIDIA.</p></li>
-<li><p><a class="reference external" href="https://github.com/rewarped/rewarped">Rewarped</a>: A platform for reinforcement learning in parallel differentiable multi-physics simulation.</p></li>
-<li><p><a class="reference external" href="https://github.com/Autodesk/XLB">XLB (Accelerated Lattice Boltzmann)</a>: A lattice Boltzmann solver with a backend option using Warp.
-Maintained by Autodesk.</p></li>
-<li><p><a class="reference external" href="https://github.com/zeshunzong/warp-mpm">warp-mpm</a>: An MPM simulator used in projects like
-<a class="reference external" href="https://zeshunzong.github.io/reduced-order-mpm/">Neural Stress Fields for Reduced-order Elastoplasticity and Fracture</a>
-and <a class="reference external" href="https://xpandora.github.io/PhysGaussian/">PhysGaussian: Physics-Integrated 3D Gaussians for Generative Dynamics</a>.</p></li>
+<li><p><a class="reference external" href="https://github.com/newton-physics/newton">Newton</a> is a GPU-accelerated
+physics engine for robotics and simulation research. Its higher-level
+models, states, solvers, importers, and viewers build on Warp’s arrays,
+runtime, and GPU programming model.</p></li>
+<li><p><a class="reference external" href="https://github.com/Computational-Morphogenomics-Group/waxmorph">waxMorph</a> is a
+differentiable cell-based framework for three-dimensional morphogenesis.
+Its forward-simulation kernels and primary rendering paths use Warp, while
+learned emulation workflows integrate with PyTorch and JAX.</p></li>
+<li><p><a class="reference external" href="https://github.com/NVIDIA/nvalchemi-toolkit-ops">NVIDIA ALCHEMI Toolkit-Ops</a> implements batched
+operations for computational chemistry and atomistic simulation. Its Warp
+kernels cover neighbor lists, molecular-dynamics integrators, dispersion
+corrections, and electrostatics, with optional PyTorch and JAX bindings.</p></li>
+<li><p><a class="reference external" href="https://github.com/google-deepmind/mujoco_warp">MuJoCo Warp</a> is a
+GPU-accelerated implementation of MuJoCo for NVIDIA hardware that uses Warp
+kernels for high-throughput parallel robotics simulation. Google DeepMind
+and NVIDIA maintain it as part of Newton.</p></li>
+<li><p><a class="reference external" href="https://github.com/Autodesk/XLB">XLB</a> is a differentiable
+lattice-Boltzmann library for fluid simulation and physics-based machine
+learning. Warp is one of its main compute backends and implements fluid
+operators as Python-authored GPU kernels.</p></li>
+<li><p><a class="reference external" href="https://github.com/PingchuanMa/NCLaw">NCLaw</a> is the International
+Conference on Machine Learning (ICML) 2023 research implementation of neural
+constitutive laws learned from observed motion. It couples PyTorch training
+to a differentiable material-point simulation built with an older vendored
+version of Warp, so it is best treated as a research artifact rather than a
+current starter project.</p></li>
 </ul>
-<p>See <a class="reference internal" href="publications.html"><span class="doc">Publications using Warp</span></a> for a list of academic and research publications that have used Warp.</p>
+<p>See <a class="reference internal" href="publications.html"><span class="doc">Publications using Warp</span></a> for a broader collection.</p>
 </section>
-<section id="does-warp-support-all-of-the-python-language">
-<h2>Does Warp support all of the Python language?<a class="headerlink" href="#does-warp-support-all-of-the-python-language" title="Link to this heading">#</a></h2>
-<p>No, Warp supports a subset of Python that maps well to the GPU. Our goal
-is to not have any performance cliffs so that users can expect
-consistently good behavior from kernels that is close to native code.
-Examples of unsupported concepts that don’t map well to the GPU are
-dynamic types, list comprehensions, exceptions, garbage collection, etc.</p>
+<section id="how-does-warp-compare-with-other-python-gpu-programming-approaches">
+<h3>How does Warp compare with other Python GPU programming approaches?<a class="headerlink" href="#how-does-warp-compare-with-other-python-gpu-programming-approaches" title="Link to this heading">#</a></h3>
+<p>Warp is built for authoring typed kernels and can run alongside other
+frameworks. The main differences are in the level of programming each exposes.</p>
+<p>PyTorch and JAX center on tensor operations and program transformations. With
+Warp, authors express parallel work as kernels over logical threads and can
+control memory access and kernel decomposition when needed. Warp maps that work
+onto the target device. This flexibility suits irregular and sparse algorithms,
+simulations, and geometry processing.</p>
+<p><a class="reference external" href="https://cupy.dev/">CuPy</a> provides NumPy- and SciPy-compatible arrays on
+NVIDIA and AMD GPUs. Many operations call optimized GPU libraries, and CuPy
+also has custom-kernel and fusion APIs. Warp’s API is organized around
+authored kernels and includes automatic differentiation and spatial APIs.</p>
+<p><a class="reference external" href="https://triton-lang.org/">Triton</a> is a language and compiler for custom GPU
+kernels. Its blocked programming model targets dense machine-learning tensor
+computations. Warp primarily exposes explicit single-instruction,
+multiple-thread (SIMT) execution, also supports cooperative tile operations,
+and can run kernels on CPUs as well as NVIDIA GPUs.</p>
+<p>An application can also combine Warp with these frameworks, libraries, and
+languages. On CUDA, Warp arrays interoperate with PyTorch, JAX, CuPy, and other
+array libraries through framework adapters and standard exchange protocols.
+See <a class="reference internal" href="interoperability.html"><span class="doc">Interoperability</span></a> for the supported paths.</p>
 </section>
-<section id="when-should-i-call-wp-synchronize">
-<h2>When should I call <a class="reference internal" href="../api_reference/_generated/warp.synchronize.html#warp.synchronize" title="warp.synchronize"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize()</span></code></a>?<a class="headerlink" href="#when-should-i-call-wp-synchronize" title="Link to this heading">#</a></h2>
-<p>One of the common sources of confusion for new users is when calls to
-<a class="reference internal" href="../api_reference/_generated/warp.synchronize.html#warp.synchronize" title="warp.synchronize"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize()</span></code></a> are necessary. The answer is “almost never”!
-Synchronization is quite expensive and should generally be avoided
-unless necessary. Warp naturally takes care of synchronization between
-operations (e.g.: kernel launches, device memory copies).</p>
-<p>For example, the following requires no manual synchronization, as the
-conversion to NumPy will automatically synchronize:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># run some kernels</span>
-<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel_1</span><span class="p">,</span> <span class="n">dim</span><span class="p">,</span> <span class="p">[</span><span class="n">array_x</span><span class="p">,</span> <span class="n">array_y</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
-<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel_2</span><span class="p">,</span> <span class="n">dim</span><span class="p">,</span> <span class="p">[</span><span class="n">array_y</span><span class="p">,</span> <span class="n">array_z</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
-
-<span class="c1"># bring data back to host (and implicitly synchronize)</span>
-<span class="n">x</span> <span class="o">=</span> <span class="n">array_z</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+<section id="how-does-warp-s-tile-programming-model-differ-from-cutile-python">
+<h3>How does Warp’s tile programming model differ from cuTile Python?<a class="headerlink" href="#how-does-warp-s-tile-programming-model-differ-from-cutile-python" title="Link to this heading">#</a></h3>
+<p>Warp tiles and cuTile Python use different compiler models. In Warp, tiles are
+cooperative abstractions within ordinary <a class="reference external" href="https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/writing-cuda-kernels.html">SIMT kernels</a>.
+Warp generates CUDA C++ and passes it to NVRTC, which produces PTX or a compiled
+CUDA binary (cubin). cuTile Python instead targets the CUDA Tile intermediate
+representation (Tile IR), a tile-native virtual instruction set. Its compiler
+maps tile programs onto GPU threads, memory, Tensor Cores, and other hardware.</p>
+<p>The Python authoring experience looks similar because both models use decorated
+Python kernels, multidimensional array and tile values, and explicit load and
+store operations. Warp tiles still run as part of SIMT kernels. cuTile leaves
+the mapping of individual threads to the Tile IR compiler.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<colgroup>
+<col style="width: 20.0%" />
+<col style="width: 40.0%" />
+<col style="width: 40.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Dimension</p></th>
+<th class="head"><p>Warp tiles</p></th>
+<th class="head"><p>cuTile Python</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Machine model</p></td>
+<td><p>Explicit SIMT threads and blocks with cooperative tile operations</p></td>
+<td><p>First-class tile blocks and multidimensional tile values</p></td>
+</tr>
+<tr class="row-odd"><td><p>Hardware mapping</p></td>
+<td><p>Generated CUDA C++ follows SIMT execution; selected operations call
+device libraries that can use Tensor Cores</p></td>
+<td><p>Tile IR compiler mapping to threads, memory, Tensor Cores, and the
+Tensor Memory Accelerator (TMA) for supported access patterns</p></td>
+</tr>
+<tr class="row-even"><td><p>Control</p></td>
+<td><p>Users choose <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> and may mix SIMT and tile code</p></td>
+<td><p>Individual hardware threads are hidden and mapped by the compiler</p></td>
+</tr>
+<tr class="row-odd"><td><p>Library scope</p></td>
+<td><p>CPU and CUDA kernel runtime with built-in reverse-mode automatic
+differentiation, BVHs, triangle meshes, hash grids, sparse volumes, and
+spatial query primitives</p></td>
+<td><p>GPU-focused tile language and compiler for authoring custom kernels</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Both models can use Tensor Cores, but their access to other hardware features
+differs. The CUDA Tile compiler can lower structured tile-space loads to the
+<a class="reference external" href="https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/async-copies.html">Tensor Memory Accelerator (TMA)</a>
+on supported GPUs. Warp’s tile load and store implementation does not currently
+use TMA. This is a difference between the current implementations, not an
+inherent limitation of CUDA C++ or PTX.</p>
+<p>Warp’s tile backend does not currently use CUDA Tile IR or CUDA Tile C++. See
+Warp’s <a class="reference internal" href="tiles.html"><span class="doc">Tiles</span></a> guide, the <a class="reference external" href="https://docs.nvidia.com/cuda/tile-ir/latest/">Tile IR documentation</a>, and the <a class="reference external" href="https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/writing-tile-kernels.html">CUDA Tile C++ guide</a>.</p>
+</section>
+<section id="is-warp-a-physics-engine-and-how-does-newton-relate-to-it">
+<h3>Is Warp a physics engine, and how does Newton relate to it?<a class="headerlink" href="#is-warp-a-physics-engine-and-how-does-newton-relate-to-it" title="Link to this heading">#</a></h3>
+<p>Warp itself is not a turnkey physics engine. It provides a programming model,
+geometry and numerical primitives, automatic differentiation, and examples for
+building simulators or accelerating parts of a larger physics system.</p>
+<p><a class="reference external" href="https://github.com/newton-physics/newton">Newton</a> is a separate
+GPU-accelerated physics simulation engine built on Warp. Warp supplies Newton’s
+kernel compiler, runtime, arrays, geometry operations, and automatic
+differentiation. Newton adds models, states, solvers, importers, viewers, and
+physics workflows. It extends and generalizes the former <code class="docutils literal notranslate"><span class="pre">warp.sim</span></code> module,
+with MuJoCo Warp as its primary backend.</p>
+<p>Applications that need a ready-made simulation stack can start with Newton.
+Applications that need custom kernels or lower-level computation can use Warp
+directly, including alongside Newton. See Newton’s <a class="reference external" href="https://newton-physics.github.io/newton/migration.html">migration guide</a> and Warp’s
+<a class="reference internal" href="publications.html"><span class="doc">Publications using Warp</span></a> page for examples.</p>
+</section>
+</section>
+<section id="installation-and-compatibility">
+<h2>Installation and Compatibility<a class="headerlink" href="#installation-and-compatibility" title="Link to this heading">#</a></h2>
+<section id="which-operating-systems-python-versions-and-gpus-does-warp-support">
+<h3>Which operating systems, Python versions, and GPUs does Warp support?<a class="headerlink" href="#which-operating-systems-python-versions-and-gpus-does-warp-support" title="Link to this heading">#</a></h3>
+<p>Warp requires Python 3.10 or newer and supports Windows and Linux on x86-64,
+Linux on ARM64, and Apple Silicon macOS. CUDA acceleration needs a supported
+NVIDIA GPU and driver; macOS uses the CPU backend.</p>
+<p>Python, operating-system, GPU-architecture, and driver requirements may change
+between releases. Check <a class="reference internal" href="compatibility.html"><span class="doc">Compatibility &amp; Support</span></a> for the current requirements.</p>
+</section>
+<section id="does-warp-support-nvidia-grace-and-grace-blackwell-systems-such-as-dgx-spark-and-gb200">
+<h3>Does Warp support NVIDIA Grace and Grace Blackwell systems such as DGX Spark and GB200?<a class="headerlink" href="#does-warp-support-nvidia-grace-and-grace-blackwell-systems-such-as-dgx-spark-and-gb200" title="Link to this heading">#</a></h3>
+<p>Currently, yes. Warp publishes Linux AArch64 packages and supports CPU and CUDA
+execution on Linux AArch64 systems. That includes Grace, Grace Hopper, and Grace
+Blackwell platforms when the system meets the current driver and runtime
+requirements. Run <a class="reference internal" href="../api_reference/_generated/warp.print_diagnostics.html#warp.print_diagnostics" title="warp.print_diagnostics"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.print_diagnostics()</span></code></a> to
+see the installed Warp build and the devices it detects.</p>
+<p>On DGX Spark, use <code class="docutils literal notranslate"><span class="pre">warp-lang[examples]</span></code> when the examples or Universal Scene
+Description (USD) rendering are needed. It installs <code class="docutils literal notranslate"><span class="pre">usd-exchange</span></code> because
+<code class="docutils literal notranslate"><span class="pre">usd-core</span></code> does not publish Linux AArch64 wheels. The core <code class="docutils literal notranslate"><span class="pre">warp-lang</span></code>
+package does not require either one. See <a class="reference internal" href="installation.html"><span class="doc">Installation</span></a> for the current
+package choices.</p>
+<p>CPU/GPU coherence does not make ordinary Warp CPU and CUDA arrays
+interchangeable. Standard Warp CUDA arrays are not managed-memory allocations.
+Warp supports opt-in CUDA managed-memory arrays through
+<a class="reference internal" href="../api_reference/_generated/warp.CudaManagedAllocator.html#warp.CudaManagedAllocator" title="warp.CudaManagedAllocator"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.CudaManagedAllocator</span></code></a>. On systems where
+CUDA reports compatible access, CPU and GPU code can address these arrays
+subject to CUDA managed-memory synchronization rules. See <a class="reference internal" href="../deep_dive/allocators.html#managed-memory-allocation-options"><span class="std std-ref">Managed Memory
+Allocator</span></a> for the allocation options and
+usage example.</p>
+<p>For the underlying memory model on Grace Hopper and Grace Blackwell, see the
+CUDA Programming Guide’s <a class="reference external" href="https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/understanding-memory.html">Unified and System Memory</a>
+chapter.</p>
+<p>Query the device capability properties and use <a class="reference internal" href="../api_reference/_generated/warp.can_access.html#warp.can_access" title="warp.can_access"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.can_access()</span></code></a> before relying on cross-device access. On multi-GPU GB200
+systems, Warp exposes each GPU as a separate CUDA device. Applications still
+choose devices and coordinate data movement explicitly. Performance depends on
+the kernel and its memory-access pattern, so profile the target system. See
+<a class="reference internal" href="../deep_dive/memory_access.html"><span class="doc">CPU/GPU cross-device memory access</span></a>, <a class="reference internal" href="devices.html"><span class="doc">Devices</span></a>, and
+<a class="reference internal" href="../deep_dive/profiling.html"><span class="doc">Profiling</span></a>.</p>
+</section>
+<section id="do-i-need-to-install-the-cuda-toolkit">
+<h3>Do I need to install the CUDA Toolkit?<a class="headerlink" href="#do-i-need-to-install-the-cuda-toolkit" title="Link to this heading">#</a></h3>
+<p>A pre-built Warp package does not require a system CUDA Toolkit. CUDA-enabled
+packages include the components that Warp needs, but the system still needs a
+compatible NVIDIA driver.</p>
+<p>Building Warp with CUDA support from source does require a CUDA Toolkit. If a
+build uses shared CUDA libraries, those libraries must also be available at
+runtime. The current driver and build requirements are in
+<a class="reference internal" href="installation.html"><span class="doc">Installation</span></a>.</p>
+</section>
+<section id="which-warp-package-or-build-should-i-install">
+<h3>Which Warp package or build should I install?<a class="headerlink" href="#which-warp-package-or-build-should-i-install" title="Link to this heading">#</a></h3>
+<p>Most users should install the stable <code class="docutils literal notranslate"><span class="pre">warp-lang</span></code> package from PyPI. The
+<a class="reference external" href="https://anaconda.org/conda-forge/warp-lang">warp-lang packages on conda-forge</a>
+provide managed CPU and CUDA variants. Nightly packages contain unreleased
+changes, GitHub Releases provide wheels for alternate CUDA runtimes, and source
+builds support custom toolchains or build options.</p>
+<p>Package variants and commands change over time. Follow <a class="reference internal" href="installation.html"><span class="doc">Installation</span></a>
+instead of copying a version-specific command from an old issue or message.</p>
+</section>
+</section>
+<section id="programming-with-warp">
+<h2>Programming with Warp<a class="headerlink" href="#programming-with-warp" title="Link to this heading">#</a></h2>
+<section id="what-python-features-can-i-use-inside-warp-kernels-and-functions">
+<h3>What Python features can I use inside Warp kernels and functions?<a class="headerlink" href="#what-python-features-can-i-use-inside-warp-kernels-and-functions" title="Link to this heading">#</a></h3>
+<p>Host-side Warp code is ordinary Python. Code inside
+<a class="reference internal" href="../api_reference/_generated/warp.kernel_decorator.html#warp.kernel" title="warp.kernel"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.kernel</span></code></a> and <a class="reference internal" href="../api_reference/_generated/warp.func.html#warp.func" title="warp.func"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.func</span></code></a>, however, runs
+without a Python interpreter and is limited to Warp’s documented language
+subset, which includes typed scalar and aggregate values, control flow,
+fixed-size local values, and Warp’s device-callable built-ins.</p>
+<p>Compiled code cannot use dynamic containers, list comprehensions, lambdas,
+exceptions, recursion, <code class="docutils literal notranslate"><span class="pre">eval()</span></code>, or arbitrary Python and standard-library
+calls. Check <a class="reference internal" href="limitations.html"><span class="doc">Limitations</span></a> and the
+<a class="reference internal" href="../language_reference/builtins.html"><span class="doc">Built-Ins</span></a> reference for a specific feature.</p>
+</section>
+<section id="why-is-the-first-kernel-launch-slow-and-when-does-warp-recompile">
+<h3>Why is the first kernel launch slow, and when does Warp recompile?<a class="headerlink" href="#why-is-the-first-kernel-launch-slow-and-when-does-warp-recompile" title="Link to this heading">#</a></h3>
+<p>The first launch can be slow when Warp must compile the kernel’s module for the
+selected device. Warp generates C++ or CUDA source, compiles it, and saves the
+result in its kernel cache. Later processes can load a matching cached module
+much faster.</p>
+<p>Warp caches kernels by module. The generated module content and target form the
+cache key, so changes to kernel code, referenced compile-time values, overloads,
+module options, or the target can trigger another compilation.</p>
+<p>Module-load messages distinguish a compiled module from one loaded out of the
+cache. Initialization reports the cache location and lets applications
+configure it for deployment or process isolation. Warm up the required modules
+before measuring execution, and measure cold-start compilation separately if
+startup latency matters.</p>
+<p>In containers and other ephemeral environments, put the cache on storage that
+survives the process. Set <code class="docutils literal notranslate"><span class="pre">WARP_CACHE_PATH</span></code> to a writable mounted directory,
+or set <a class="reference internal" href="../api_reference/_generated/warp.config.kernel_cache_dir.html#warp.config.kernel_cache_dir" title="warp.config.kernel_cache_dir"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.kernel_cache_dir</span></code></a> before calling
+<a class="reference internal" href="../api_reference/_generated/warp.init.html#warp.init" title="warp.init"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.init()</span></code></a>. For a fixed deployment, warm the required modules
+while building the image or follow <a class="reference internal" href="../deep_dive/codegen.html#ahead-of-time-compilation-workflows"><span class="std std-ref">Ahead-of-Time Compilation Workflows</span></a>.</p>
+<p>If several workers may compile at once, populate a shared cache before starting
+them or give each worker a separate writable cache directory. Multiple
+processes should not populate the same cache concurrently.
+<a class="reference internal" href="../deep_dive/codegen.html"><span class="doc">Code Generation</span></a> describes module hashing and compilation in detail.</p>
+</section>
+<section id="why-can-t-i-assign-individual-warp-array-elements-from-python">
+<h3>Why can’t I assign individual Warp array elements from Python?<a class="headerlink" href="#why-can-t-i-assign-individual-warp-array-elements-from-python" title="Link to this heading">#</a></h3>
+<p>Warp does not expose element assignment from Python because a single write to
+GPU memory would require hidden synchronization and data transfer. Bulk
+operations make those costs explicit and preserve asynchronous execution.</p>
+<p>Create arrays from Python, NumPy, or another supported framework. For bulk
+updates, use
+<a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.fill_" title="warp.array.fill_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.fill_()</span></code></a>,
+<a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.assign" title="warp.array.assign"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.assign()</span></code></a>, or
+<a class="reference internal" href="../api_reference/_generated/warp.copy.html#warp.copy" title="warp.copy"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.copy()</span></code></a>. Launch a kernel when writes need individual
+indices. The <a class="reference internal" href="runtime.html#arrays"><span class="std std-ref">Arrays</span></a> section of <a class="reference internal" href="runtime.html"><span class="doc">Runtime</span></a> covers these operations.</p>
+</section>
+<section id="how-do-runtime-values-constants-generics-and-specialized-kernels-affect-compilation">
+<h3>How do runtime values, constants, generics, and specialized kernels affect compilation?<a class="headerlink" href="#how-do-runtime-values-constants-generics-and-specialized-kernels-affect-compilation" title="Link to this heading">#</a></h3>
+<p>Pass frequently changing scalar values as kernel arguments. Ordinary runtime
+arguments do not need a new specialization. Supported Python values referenced
+from kernel scope, however, are folded into generated code. Concrete generic
+types and generated kernels can also produce new compiled module content.</p>
+<p>Rebinding a captured Python value after its module has loaded does not update
+the compiled code. Keep compile-time choices stable, explicitly instantiate the
+generic overloads needed for deployment, and cache runtime-generated kernel
+objects in application code. See
+<a class="reference internal" href="../deep_dive/codegen.html#external-references"><span class="std std-ref">External References and Constants</span></a> and
+<a class="reference internal" href="generics.html"><span class="doc">Generics</span></a>.</p>
+</section>
+</section>
+<section id="devices-memory-and-execution">
+<h2>Devices, Memory, and Execution<a class="headerlink" href="#devices-memory-and-execution" title="Link to this heading">#</a></h2>
+<section id="how-does-cpu-execution-differ-from-cuda-execution">
+<h3>How does CPU execution differ from CUDA execution?<a class="headerlink" href="#how-does-cpu-execution-differ-from-cuda-execution" title="Link to this heading">#</a></h3>
+<p>CPU kernel launches currently run serially and synchronously, whereas CUDA
+launches run many threads in parallel and are generally asynchronous with
+respect to Python. Both devices use the same kernel language, but they have
+different performance and concurrency characteristics.</p>
+<p>Tile kernels need additional care on the CPU backend because its effective
+<code class="docutils literal notranslate"><span class="pre">block_dim</span></code> is one. Consult <a class="reference internal" href="tiles.html#cpu-tile-semantics"><span class="std std-ref">CPU Tile Semantics</span></a>
+when the same tile kernel must run on both backends. Other device differences
+are covered in <a class="reference internal" href="devices.html"><span class="doc">Devices</span></a>.</p>
+</section>
+<section id="when-do-i-need-to-synchronize-explicitly">
+<h3>When do I need to synchronize explicitly?<a class="headerlink" href="#when-do-i-need-to-synchronize-explicitly" title="Link to this heading">#</a></h3>
+<p>If an application uses the CPU backend, or one GPU on one CUDA stream, it
+generally does not need explicit synchronization. CPU launches are synchronous,
+CUDA operations on the same stream are ordered, and convenience readbacks such
+as <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.numpy" title="warp.array.numpy"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.numpy()</span></code></a> perform the required wait.</p>
+<p>Explicit ordering matters when work crosses streams, devices, or frameworks
+that have not already established a dependency. Prefer device-side ordering
+with <a class="reference internal" href="../api_reference/_generated/warp.wait_stream.html#warp.wait_stream" title="warp.wait_stream"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.wait_stream()</span></code></a> or
+<a class="reference internal" href="../api_reference/_generated/warp.record_event.html#warp.record_event" title="warp.record_event"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.record_event()</span></code></a> and
+<a class="reference internal" href="../api_reference/_generated/warp.wait_event.html#warp.wait_event" title="warp.wait_event"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.wait_event()</span></code></a>. These operations do not block Python.</p>
+<p>When Python itself must wait, choose the narrowest host-blocking call:
+<a class="reference internal" href="../api_reference/_generated/warp.synchronize_event.html#warp.synchronize_event" title="warp.synchronize_event"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize_event()</span></code></a>,
+<a class="reference internal" href="../api_reference/_generated/warp.synchronize_stream.html#warp.synchronize_stream" title="warp.synchronize_stream"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize_stream()</span></code></a>, or
+<a class="reference internal" href="../api_reference/_generated/warp.synchronize_device.html#warp.synchronize_device" title="warp.synchronize_device"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize_device()</span></code></a>. Use
+<a class="reference internal" href="../api_reference/_generated/warp.synchronize.html#warp.synchronize" title="warp.synchronize"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize()</span></code></a> only when every device must finish.
+One easy-to-miss case is an asynchronous <a class="reference internal" href="../api_reference/_generated/warp.copy.html#warp.copy" title="warp.copy"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.copy()</span></code></a> into a
+pinned CPU array. Wait for the relevant event, stream, or device before reading
+the destination. See <a class="reference internal" href="../deep_dive/concurrency.html#synchronization-guidance"><span class="std std-ref">Synchronization Guidance</span></a>.</p>
+</section>
+<section id="how-do-i-safely-use-warp-with-external-or-non-blocking-cuda-streams">
+<h3>How do I safely use Warp with external or non-blocking CUDA streams?<a class="headerlink" href="#how-do-i-safely-use-warp-with-external-or-non-blocking-cuda-streams" title="Link to this heading">#</a></h3>
+<p>An external stream is not necessarily non-blocking. Streams created by Warp are
+blocking. PyTorch’s CUDA default stream is also blocking, while non-default
+streams created with <code class="docutils literal notranslate"><span class="pre">torch.cuda.Stream()</span></code> are non-blocking. Converting or
+wrapping a stream preserves this behavior; check
+<a class="reference internal" href="../api_reference/_generated/warp.Stream.html#warp.Stream.is_blocking" title="warp.Stream.is_blocking"><code class="xref py py-attr docutils literal notranslate"><span class="pre">wp.Stream.is_blocking</span></code></a> when in doubt.</p>
+<p>Every Warp resource used on a non-blocking stream must remain alive until work
+on that stream has completed.</p>
+<p>Before releasing temporary arrays, meshes, hash grids, or volumes, synchronize
+the non-blocking stream or make a Warp-created blocking stream wait for it. A
+stream wait keeps Python asynchronous. See
+<a class="reference internal" href="../deep_dive/concurrency.html#nonblocking-streams"><span class="std std-ref">Blocking and Non-Blocking Streams</span></a> and the CUDA
+Programming Guide’s <a class="reference external" href="https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/asynchronous-execution.html">Asynchronous Execution</a>
+chapter.</p>
+</section>
+<section id="when-are-arrays-copied-and-when-is-memory-shared">
+<h3>When are arrays copied, and when is memory shared?<a class="headerlink" href="#when-are-arrays-copied-and-when-is-memory-shared" title="Link to this heading">#</a></h3>
+<p>Constructing an array copies data unless the chosen API explicitly creates a
+view. CPU arrays can share memory with NumPy. Framework converters and array
+interfaces can share compatible CPU or CUDA allocations. DLPack can exchange
+zero-copy views with standardized stream ordering. Calling
+<a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.numpy" title="warp.array.numpy"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.numpy()</span></code></a> on a CUDA array copies its data to host
+memory.</p>
+<p>The original producer still owns an allocation shared through a zero-copy
+wrapper. The producer and consumer must follow the lifetime rules of the
+selected protocol. <a class="reference internal" href="interoperability.html"><span class="doc">Interoperability</span></a> contains the conversion matrix and
+lifetime guidance.</p>
+</section>
+<section id="how-do-i-use-multiple-gpus">
+<h3>How do I use multiple GPUs?<a class="headerlink" href="#how-do-i-use-multiple-gpus" title="Link to this heading">#</a></h3>
+<p>Multi-GPU Warp programs usually follow one of these execution models:</p>
+<ul class="simple">
+<li><p>One Python process can control several GPUs on the same host. Use explicit
+<code class="docutils literal notranslate"><span class="pre">cuda:i</span></code> device aliases to allocate arrays and launch kernels. Work on
+separate devices may run concurrently. Check peer or memory-pool access
+before relying on direct cross-GPU access, and order transfers with events or
+stream waits. See <a class="reference internal" href="devices.html"><span class="doc">Devices</span></a> and the CUDA Programming Guide’s
+<a class="reference external" href="https://docs.nvidia.com/cuda/cuda-programming-guide/03-advanced/multi-gpu-systems.html">Programming Systems with Multiple GPUs</a>
+chapter.</p></li>
+<li><p>A process-per-GPU program uses an external launcher. Python multiprocessing
+can start workers on one host, while a cluster launcher can start them across
+nodes. In each worker, select the process-local GPU before allocating Warp
+arrays, loading modules, or capturing graphs. If another framework selects
+the GPU before <a class="reference internal" href="../api_reference/_generated/warp.init.html#warp.init" title="warp.init"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.init()</span></code></a>, Warp adopts that current CUDA
+context as its default. Otherwise, set Warp’s default explicitly with
+<a class="reference internal" href="../api_reference/_generated/warp.set_device.html#warp.set_device" title="warp.set_device"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.set_device()</span></code></a> before beginning device-dependent
+work. When <code class="docutils literal notranslate"><span class="pre">CUDA_VISIBLE_DEVICES</span></code> exposes one GPU per worker, that GPU
+normally appears as <code class="docutils literal notranslate"><span class="pre">cuda:0</span></code> inside the process. The CUDA Programming
+Guide’s <a class="reference external" href="https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/environment-variables.html">CUDA Environment Variables</a>
+chapter explains device visibility and enumeration. For new GPU-native
+distributed applications, prefer <a class="reference external" href="https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/nccl4py.html">NCCL4Py</a>
+for collective and point-to-point communication, or <a class="reference external" href="https://docs.nvidia.com/nvshmem/api/api/language_bindings/python/index.html">NVSHMEM4Py</a>
+for symmetric-memory and one-sided communication. NCCL4Py accepts Warp arrays
+through DLPack or the CUDA Array Interface. NVSHMEM4Py allocations can be
+wrapped by Warp through DLPack.</p></li>
+<li><p>The Message Passing Interface (MPI) remains useful when the application
+already uses it. GPU buffers passed through <a class="reference external" href="https://mpi4py.readthedocs.io/en/stable/install.html#building-from-sources">mpi4py</a>
+require a CUDA-aware MPI implementation. Installing mpi4py from PyPI or
+conda-forge does not by itself provide a CUDA-aware MPI stack. One way to
+produce a CUDA-aware mpi4py installation is to download <a class="reference external" href="https://developer.nvidia.com/networking/hpc-x">NVIDIA HPC-X</a> and build mpi4py from
+source against its <code class="docutils literal notranslate"><span class="pre">mpicc</span></code>. Call <a class="reference internal" href="../api_reference/_generated/warp.synchronize_device.html#warp.synchronize_device" title="warp.synchronize_device"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize_device()</span></code></a> before passing a GPU buffer to MPI because mpi4py
+cannot synchronize GPU work for you. See the <a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/examples/distributed/example_jacobi_mpi.py">distributed Jacobi example</a>.</p></li>
+<li><p>In a <a class="reference external" href="https://docs.pytorch.org/docs/stable/distributed.html">PyTorch Distributed</a> or JAX application,
+let the framework manage processes, devices, and communication. Warp runs the
+local computation on each process’s tensors or shards through
+<a class="reference internal" href="interoperability_pytorch.html"><span class="doc">PyTorch Interoperability</span></a> or <a class="reference internal" href="interoperability_jax.html#jax-shard-map"><span class="std std-ref">JAX shard_map</span></a>.</p></li>
+</ul>
+<p>Multi-process deployments should normally assign one GPU to each process. Keep
+communication on the same CUDA stream as the Warp work when the API supports
+it. Otherwise, synchronize explicitly before sharing a buffer. The next
+question covers Warp initialization and kernel-cache setup for child processes.</p>
+</section>
+<section id="how-should-i-initialize-and-configure-warp-in-multiprocessing-applications">
+<h3>How should I initialize and configure Warp in multiprocessing applications?<a class="headerlink" href="#how-should-i-initialize-and-configure-warp-in-multiprocessing-applications" title="Link to this heading">#</a></h3>
+<p>Each child process should initialize Warp before allocating Warp objects or
+launching kernels. Do not use a CUDA context inherited through <code class="docutils literal notranslate"><span class="pre">fork</span></code>. Use
+<code class="docutils literal notranslate"><span class="pre">spawn</span></code> or <code class="docutils literal notranslate"><span class="pre">forkserver</span></code> instead, or make sure the parent has not initialized
+CUDA before it forks.</p>
+<p>Processes that compile concurrently need separate kernel-cache directories to
+avoid cache races. Set <a class="reference internal" href="../api_reference/_generated/warp.config.kernel_cache_dir.html#warp.config.kernel_cache_dir" title="warp.config.kernel_cache_dir"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.kernel_cache_dir</span></code></a> before calling
+<a class="reference internal" href="../api_reference/_generated/warp.init.html#warp.init" title="warp.init"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.init()</span></code></a>, or assign a distinct <code class="docutils literal notranslate"><span class="pre">WARP_CACHE_PATH</span></code> to each
+process. Current multiprocessing restrictions are listed in
+<a class="reference internal" href="limitations.html"><span class="doc">Limitations</span></a>.</p>
+</section>
+</section>
+<section id="differentiation-and-interoperability">
+<h2>Differentiation and Interoperability<a class="headerlink" href="#differentiation-and-interoperability" title="Link to this heading">#</a></h2>
+<section id="how-does-automatic-differentiation-work-and-what-state-must-i-preserve">
+<h3>How does automatic differentiation work, and what state must I preserve?<a class="headerlink" href="#how-does-automatic-differentiation-work-and-what-state-must-i-preserve" title="Link to this heading">#</a></h3>
+<p>Warp generates the backward, or adjoint, code for differentiable kernels and
+functions. Mark participating arrays with <code class="docutils literal notranslate"><span class="pre">requires_grad=True</span></code>, record
+launches in a <a class="reference internal" href="../api_reference/_generated/warp.Tape.html#warp.Tape" title="warp.Tape"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Tape</span></code></a>, and call
+<a class="reference internal" href="../api_reference/_generated/warp.Tape.html#warp.Tape.backward" title="warp.Tape.backward"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Tape.backward()</span></code></a> with a scalar loss or explicit
+output gradients.</p>
+<p>A tape records launches and references to their arrays. It does not save a new
+version of an array each time the array is written. The backward pass may need
+values that were present during an earlier forward launch, so the application
+must preserve those values. PyTorch and JAX commonly create new tensor values
+for operation outputs; Warp leaves output allocation and reuse to the
+application. An iterative simulation may therefore need separate state arrays
+for multiple time steps.</p>
+<p>Keeping every state makes memory use grow with the number of simulation steps.
+Gradient checkpointing trades computation for storage: it saves periodic
+states and replays the work between them during the backward pass. Applications
+currently implement this themselves. The <a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/examples/optim/example_fluid_checkpoint.py">fluid checkpointing example</a>
+shows one implementation. See <a class="reference internal" href="differentiability.html"><span class="doc">Differentiability</span></a> for the full overwrite
+and replay rules.</p>
+</section>
+<section id="why-can-array-overwrites-produce-unexpected-gradients">
+<h3>Why can array overwrites produce unexpected gradients?<a class="headerlink" href="#why-can-array-overwrites-produce-unexpected-gradients" title="Link to this heading">#</a></h3>
+<p>A tape tracks array objects, not historical versions of their contents. If the
+backward pass needs an earlier value, overwriting that array destroys the value
+that the adjoint calculation expects. Across kernel launches, Warp propagates
+gradients through the final write to an array element. Retaining gradients on
+values written more than once can count them twice.</p>
+<p>Preserve required values in distinct state arrays or use differentiable
+<a class="reference internal" href="../api_reference/_generated/warp.copy.html#warp.copy" title="warp.copy"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.copy()</span></code></a>, <a class="reference internal" href="../api_reference/_generated/warp.clone.html#warp.clone" title="warp.clone"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.clone()</span></code></a>, or
+<a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.assign" title="warp.array.assign"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.assign()</span></code></a> operations. During debugging, enable
+<a class="reference internal" href="../api_reference/_generated/warp.config.verify_autograd_array_access.html#warp.config.verify_autograd_array_access" title="warp.config.verify_autograd_array_access"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.verify_autograd_array_access</span></code></a> to find problematic overwrite
+patterns. Supported in-place accumulation has separate rules. See
+<a class="reference internal" href="differentiability.html#array-overwrite-tracking"><span class="std std-ref">Array Overwrite Tracking</span></a> and
+<a class="reference internal" href="differentiability.html#in-place-math"><span class="std std-ref">In-Place Math</span></a>.</p>
+</section>
+<section id="can-i-define-custom-gradients-for-warp-functions">
+<h3>Can I define custom gradients for Warp functions?<a class="headerlink" href="#can-i-define-custom-gradients-for-warp-functions" title="Link to this heading">#</a></h3>
+<p>Yes. Define the forward calculation with <a class="reference internal" href="../api_reference/_generated/warp.func.html#warp.func" title="warp.func"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.func</span></code></a>, then
+register a replacement adjoint with
+<a class="reference internal" href="../api_reference/_generated/warp.func_grad.html#warp.func_grad" title="warp.func_grad"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.func_grad</span></code></a>. Warp uses the custom gradient instead
+of the derivative it would otherwise generate for that function.</p>
+<p>Define a custom gradient to choose the behavior at a non-smooth point, avoid a
+non-finite derivative, or supply a simpler analytic derivative. The custom
+gradient function receives the original inputs and output adjoints, then
+accumulates input gradients through <code class="docutils literal notranslate"><span class="pre">wp.adjoint</span></code>.</p>
+<p>For an expression built from existing functions, wrap the expression in a
+user-defined Warp function and attach the custom gradient there. If the
+backward pass must replay the forward function differently, use
+<a class="reference internal" href="../api_reference/_generated/warp.func_replay.html#warp.func_replay" title="warp.func_replay"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.func_replay</span></code></a>. See
+<a class="reference internal" href="differentiability.html#custom-gradient-functions"><span class="std std-ref">Custom Gradient Functions</span></a> for signatures
+and examples.</p>
+</section>
+<section id="how-do-gradients-flow-between-warp-and-pytorch-or-jax">
+<h3>How do gradients flow between Warp and PyTorch or JAX?<a class="headerlink" href="#how-do-gradients-flow-between-warp-and-pytorch-or-jax" title="Link to this heading">#</a></h3>
+<p>Sharing an allocation does not connect two automatic-differentiation systems
+by itself. Use Warp’s framework-specific integration: wrap the Warp work in a
+PyTorch custom autograd function or registered custom operator, or use
+<a class="reference internal" href="../api_reference/_generated/warp.jax_kernel.html#warp.jax_kernel" title="warp.jax_kernel"><code class="xref py py-func docutils literal notranslate"><span class="pre">jax_kernel()</span></code></a> and its custom vector-Jacobian product
+(VJP) support for JAX.</p>
+<p>The wrapper must define how output gradients launch Warp’s adjoint code and
+how the resulting input gradients return to the host framework. Integration
+details are in <a class="reference internal" href="interoperability_pytorch.html"><span class="doc">PyTorch Interoperability</span></a> and
+<a class="reference internal" href="interoperability_jax.html"><span class="doc">JAX Interoperability</span></a>.</p>
+</section>
+<section id="should-i-use-direct-framework-converters-array-interfaces-or-dlpack">
+<h3>Should I use direct framework converters, array interfaces, or DLPack?<a class="headerlink" href="#should-i-use-direct-framework-converters-array-interfaces-or-dlpack" title="Link to this heading">#</a></h3>
+<p>Use a framework-specific converter when Warp provides one and the application
+needs gradient buffers or framework-specific dtype handling. An
+array-interface object can be passed directly when a compatible allocation is
+needed only as a kernel argument. DLPack supports framework-neutral zero-copy
+exchange with standardized stream synchronization.</p>
+<p>Neither array interfaces nor DLPack carry automatic-differentiation metadata.
+The producer must keep shared memory alive as required by the selected
+protocol. The quick-reference table in <a class="reference internal" href="interoperability.html"><span class="doc">Interoperability</span></a> compares these
+options.</p>
+</section>
+</section>
+<section id="performance-debugging-and-deployment">
+<h2>Performance, Debugging, and Deployment<a class="headerlink" href="#performance-debugging-and-deployment" title="Link to this heading">#</a></h2>
+<section id="why-can-warp-results-differ-between-runs-or-devices-and-how-can-i-make-them-deterministic">
+<h3>Why can Warp results differ between runs or devices, and how can I make them deterministic?<a class="headerlink" href="#why-can-warp-results-differ-between-runs-or-devices-and-how-can-i-make-them-deterministic" title="Link to this heading">#</a></h3>
+<p>Small floating-point differences can come from changes in operation order or
+the math implementation used by a backend. Concurrent floating-point atomics
+are another common source: CUDA does not guarantee the order in which threads
+update the same value, and different orders can round differently. Larger or
+erratic differences may point to a race, invalid memory access, or uninitialized
+data.</p>
+<p>The CUDA Programming Guide’s <a class="reference external" href="https://docs.nvidia.com/cuda/cuda-programming-guide/05-appendices/mathematical-functions.html">Floating-Point Computation</a>
+chapter explains how evaluation order and implementation differences affect
+results.</p>
+<p>Warp does not constrain atomic ordering by default. For supported atomic
+patterns, <a class="reference internal" href="../api_reference/_generated/warp.DeterministicMode.html#warp.DeterministicMode.RUN_TO_RUN" title="warp.DeterministicMode.RUN_TO_RUN"><code class="xref py py-attr docutils literal notranslate"><span class="pre">wp.DeterministicMode.RUN_TO_RUN</span></code></a> produces bit-exact repeated results on the
+same GPU architecture. <a class="reference internal" href="../api_reference/_generated/warp.DeterministicMode.html#warp.DeterministicMode.GPU_TO_GPU" title="warp.DeterministicMode.GPU_TO_GPU"><code class="xref py py-attr docutils literal notranslate"><span class="pre">wp.DeterministicMode.GPU_TO_GPU</span></code></a> uses a stronger path intended to match
+across GPU architectures. These modes can take more time and temporary memory,
+and they must be selected before the module is compiled.
+<a class="reference internal" href="deterministic_execution.html"><span class="doc">Deterministic Execution</span></a> covers supported operations, configuration
+scopes, and current limitations.</p>
+</section>
+<section id="how-should-i-benchmark-asynchronous-warp-operations">
+<h3>How should I benchmark asynchronous Warp operations?<a class="headerlink" href="#how-should-i-benchmark-asynchronous-warp-operations" title="Link to this heading">#</a></h3>
+<p>Warm up compilation before benchmarking, and measure GPU completion instead
+of Python dispatch alone. Because CUDA launches are asynchronous, a host timer
+around <a class="reference internal" href="../api_reference/_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch()</span></code></a> measures scheduling unless the timed
+region synchronizes or uses CUDA events.</p>
+<p>For a simple end-to-end measurement, use
+<a class="reference internal" href="../api_reference/_generated/warp.ScopedTimer.html#warp.ScopedTimer" title="warp.ScopedTimer"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedTimer</span></code></a> with <code class="docutils literal notranslate"><span class="pre">synchronize=True</span></code>. CUDA
+events provide targeted stream timing, while a profiler is better suited to
+concurrent workloads. The CUDA Programming Guide’s <a class="reference external" href="https://docs.nvidia.com/cuda/cuda-programming-guide/02-basics/asynchronous-execution.html">Asynchronous Execution</a>
+chapter explains stream and event timing. <a class="reference internal" href="../deep_dive/profiling.html"><span class="doc">Profiling</span></a>
+describes each method.</p>
+</section>
+<section id="how-do-i-find-which-kernel-caused-an-illegal-memory-access-or-a-non-finite-value">
+<h3>How do I find which kernel caused an illegal memory access or a non-finite value?<a class="headerlink" href="#how-do-i-find-which-kernel-caused-an-illegal-memory-access-or-a-non-finite-value" title="Link to this heading">#</a></h3>
+<p>CUDA launches are asynchronous, so an error may surface during a later
+operation. Call <a class="reference internal" href="../api_reference/_generated/warp.synchronize_device.html#warp.synchronize_device" title="warp.synchronize_device"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize_device()</span></code></a> after
+a suspected launch, or set <a class="reference internal" href="../api_reference/_generated/warp.config.verify_cuda.html#warp.config.verify_cuda" title="warp.config.verify_cuda"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.verify_cuda</span></code></a> to <code class="docutils literal notranslate"><span class="pre">True</span></code> to check
+the CUDA context after every launch. The latter adds synchronization overhead
+and cannot be used during CUDA graph capture.</p>
+<p>Set <a class="reference internal" href="../api_reference/_generated/warp.config.verify_fp.html#warp.config.verify_fp" title="warp.config.verify_fp"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.verify_fp</span></code></a> to <code class="docutils literal notranslate"><span class="pre">True</span></code> to locate non-finite values such
+as NaN or infinity. Debug mode adds array bounds checks, assertions, and device
+line information. Set <a class="reference internal" href="../api_reference/_generated/warp.config.print_launches.html#warp.config.print_launches" title="warp.config.print_launches"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.print_launches</span></code></a> to <code class="docutils literal notranslate"><span class="pre">True</span></code>, or set
+<a class="reference internal" href="../api_reference/_generated/warp.config.log_level.html#warp.config.log_level" title="warp.config.log_level"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.log_level</span></code></a> to <a class="reference internal" href="../api_reference/_generated/warp.LOG_DEBUG.html#warp.LOG_DEBUG" title="warp.LOG_DEBUG"><code class="xref py py-data docutils literal notranslate"><span class="pre">wp.LOG_DEBUG</span></code></a>, to
+identify the launch that failed. If those checks do not isolate the problem,
+run the application with NVIDIA Compute Sanitizer. After an illegal access,
+rerun in a fresh process because later launches in the affected CUDA context
+may fail and hide the original cause. See <a class="reference internal" href="debugging.html"><span class="doc">Debugging</span></a> for details and
+additional tools.</p>
+</section>
+<section id="how-can-i-profile-kernels-and-inspect-generated-code">
+<h3>How can I profile kernels and inspect generated code?<a class="headerlink" href="#how-can-i-profile-kernels-and-inspect-generated-code" title="Link to this heading">#</a></h3>
+<p>Use <a class="reference internal" href="../api_reference/_generated/warp.ScopedTimer.html#warp.ScopedTimer" title="warp.ScopedTimer"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedTimer</span></code></a> to summarize Warp activity and
+NVIDIA Nsight Systems or Nsight Compute for device-level profiling. NVIDIA
+Tools Extension (NVTX) ranges and Warp’s CUDA profiler controls can restrict a
+capture to the region of interest.</p>
+<p>Set <a class="reference internal" href="../api_reference/_generated/warp.config.log_level.html#warp.config.log_level" title="warp.config.log_level"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.log_level</span></code></a> to <a class="reference internal" href="../api_reference/_generated/warp.LOG_DEBUG.html#warp.LOG_DEBUG" title="warp.LOG_DEBUG"><code class="xref py py-data docutils literal notranslate"><span class="pre">wp.LOG_DEBUG</span></code></a> to
+log detailed module and codegen messages. Warp also writes generated C++ and
+CUDA source into its kernel cache for direct inspection. See
+<a class="reference internal" href="../deep_dive/profiling.html"><span class="doc">Profiling</span></a> and <a class="reference internal" href="../deep_dive/codegen.html"><span class="doc">Code Generation</span></a>.</p>
+</section>
+<section id="when-should-i-use-cuda-graph-capture-and-what-is-currently-supported">
+<h3>When should I use CUDA graph capture, and what is currently supported?<a class="headerlink" href="#when-should-i-use-cuda-graph-capture-and-what-is-currently-supported" title="Link to this heading">#</a></h3>
+<p><a class="reference external" href="https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/cuda-graphs.html">CUDA graph capture</a>
+is useful when the same stable operation sequence runs many times and Python or
+driver launch overhead is significant. Capture has a setup cost, records
+supported device operations rather than arbitrary Python, and is most useful
+after modules and external libraries have been warmed up.</p>
+<p>Prefer to allocate long-lived inputs, outputs, and reusable scratch storage
+before capture. Keep every array and spatial object referenced by the captured
+work alive for as long as the graph may be replayed.</p>
+<p>Warp can record CUDA allocations made during capture when CUDA memory pools are
+supported and enabled. An array allocated this way is not usable until the
+graph has been launched. Managed-memory allocations and operations that need
+unsupported temporary or staging allocations must still be prepared before
+capture. See <a class="reference internal" href="../deep_dive/allocators.html"><span class="doc">Allocators</span></a> for the allocation rules.</p>
+<p>Requirements for capture-safe operations and conditional, multi-stream, CPU,
+and serialized graph behavior evolve with CUDA and Warp. Check the
+<a class="reference internal" href="runtime.html#graphs"><span class="std std-ref">Graphs</span></a> section of <a class="reference internal" href="runtime.html"><span class="doc">Runtime</span></a> for current support.</p>
+</section>
+<section id="can-i-precompile-and-package-kernels-for-deployment">
+<h3>Can I precompile and package kernels for deployment?<a class="headerlink" href="#can-i-precompile-and-package-kernels-for-deployment" title="Link to this heading">#</a></h3>
+<p>Yes. Warp can compile a module ahead of time with
+<a class="reference internal" href="../api_reference/_generated/warp.compile_aot_module.html#warp.compile_aot_module" title="warp.compile_aot_module"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.compile_aot_module()</span></code></a> and load the resulting
+artifacts with <a class="reference internal" href="../api_reference/_generated/warp.load_aot_module.html#warp.load_aot_module" title="warp.load_aot_module"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.load_aot_module()</span></code></a>. Deployment
+artifacts must cover the required target architectures, module options,
+generic overloads, and other specializations that the application will use.</p>
+<p>Any runtime-generated kernel or omitted specialization still needs
+compilation. See <a class="reference internal" href="../deep_dive/codegen.html#ahead-of-time-compilation-workflows"><span class="std std-ref">Ahead-of-Time Compilation Workflows</span></a> in <a class="reference internal" href="../deep_dive/codegen.html"><span class="doc">Code Generation</span></a>.</p>
+</section>
+<section id="can-warp-use-existing-c-or-cuda-code">
+<h3>Can Warp use existing C++ or CUDA code?<a class="headerlink" href="#can-warp-use-existing-c-or-cuda-code" title="Link to this heading">#</a></h3>
+<p>Yes. Applications can insert small C++ or CUDA operations into generated Warp
+modules with <a class="reference internal" href="../api_reference/_generated/warp.func_native.html#warp.func_native" title="warp.func_native"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.func_native</span></code></a>. Larger library
+integrations require extending Warp’s native bindings and build. See
+<a class="reference internal" href="cpp_cuda_workflows.html"><span class="doc">C++ and CUDA Workflows</span></a> for both approaches.</p>
+</section>
+<section id="can-warp-computations-run-from-c-or-c-without-python">
+<h3>Can Warp computations run from C or C++ without Python?<a class="headerlink" href="#can-warp-computations-run-from-c-or-c-without-python" title="Link to this heading">#</a></h3>
+<p>Yes. During an ahead-of-time build, Warp can write generated CUDA C++ source,
+metadata, PTX, and CUBIN files to disk. A native CUDA C++ application can load
+the generated CUBIN through the <a class="reference external" href="https://docs.nvidia.com/cuda/cuda-programming-guide/03-advanced/driver-api.html">CUDA Driver API</a>
+or include the generated <code class="docutils literal notranslate"><span class="pre">.cu</span></code> source in its own translation unit. The
+<code class="docutils literal notranslate"><span class="pre">01_source_include</span></code> example in <a class="reference internal" href="cpp_cuda_workflows.html"><span class="doc">C++ and CUDA Workflows</span></a> launches the
+generated forward and backward kernels directly, making this workflow useful
+for both ordinary kernel execution and reverse-mode differentiation.</p>
+<p>For applications that need to replay a larger sequence of Warp operations,
+API Capture can serialize a captured sequence and replay it from a standalone
+C++ program without a Python runtime.</p>
+<p>The native workflows expose fewer operations than the Python runtime and work
+at a lower level. API Capture can record only its documented set of operations.
+The C++ examples in <a class="reference internal" href="cpp_cuda_workflows.html"><span class="doc">C++ and CUDA Workflows</span></a> show each workflow.</p>
+</section>
+</section>
+<section id="community-and-support">
+<h2>Community and Support<a class="headerlink" href="#community-and-support" title="Link to this heading">#</a></h2>
+<p>Submit bug reports, feature requests, and technical questions through
+<a class="reference external" href="https://github.com/NVIDIA/warp/issues">GitHub Issues</a>. Before opening an
+issue, run:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="gp">$ </span>python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;import warp as wp; wp.print_diagnostics()&quot;</span>
 </pre></div>
 </div>
-<p>The <em>only</em> case where manual synchronization is needed is when copies
-are being performed back to CPU asynchronously, e.g.:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># copy data back to cpu from gpu, all copies will happen asynchronously to Python</span>
-<span class="n">wp</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">cpu_array_1</span><span class="p">,</span> <span class="n">gpu_array_1</span><span class="p">)</span>
-<span class="n">wp</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">cpu_array_2</span><span class="p">,</span> <span class="n">gpu_array_2</span><span class="p">)</span>
-<span class="n">wp</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">cpu_array_3</span><span class="p">,</span> <span class="n">gpu_array_3</span><span class="p">)</span>
-
-<span class="c1"># ensure that the copies have finished</span>
-<span class="n">wp</span><span class="o">.</span><span class="n">synchronize</span><span class="p">()</span>
-
-<span class="c1"># return a numpy wrapper around the cpu arrays, note there is no implicit synchronization here</span>
-<span class="n">a1</span> <span class="o">=</span> <span class="n">cpu_array_1</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
-<span class="n">a2</span> <span class="o">=</span> <span class="n">cpu_array_2</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
-<span class="n">a3</span> <span class="o">=</span> <span class="n">cpu_array_3</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
-</pre></div>
-</div>
-<p>For more information about asynchronous operations, please refer to the <a class="reference internal" href="../deep_dive/concurrency.html"><span class="doc">concurrency documentation</span></a>
-and <a class="reference internal" href="../deep_dive/concurrency.html#synchronization-guidance"><span class="std std-ref">synchronization guidance</span></a>.</p>
+<p>Include the output along with the smallest reproducible example, the observed
+error, and the expected behavior. For inquiries that do not belong in a public
+issue, email <code class="docutils literal notranslate"><span class="pre">warp-python&#64;nvidia.com</span></code>.</p>
+<section id="how-can-i-share-work-built-with-warp">
+<h3>How can I share work built with Warp?<a class="headerlink" href="#how-can-i-share-work-built-with-warp" title="Link to this heading">#</a></h3>
+<p>Share projects, demos, research, and other examples in the Warp GitHub
+Discussions <a class="reference external" href="https://github.com/NVIDIA/warp/discussions/categories/show-and-tell">Show and tell</a>
+section. For a public GitHub repository, add <code class="docutils literal notranslate"><span class="pre">nvidia-warp</span></code> to its repository
+topics so that it appears on the <a class="reference external" href="https://github.com/topics/nvidia-warp">nvidia-warp topic page</a> and is easier for other Warp users
+to find. Include a short explanation of how the project uses Warp, along with
+images, videos, or results when useful.</p>
 </section>
-<section id="what-happens-when-you-differentiate-a-function-like-wp-abs-x">
-<h2>What happens when you differentiate a function like <code class="docutils literal notranslate"><span class="pre">wp.abs(x)</span></code>?<a class="headerlink" href="#what-happens-when-you-differentiate-a-function-like-wp-abs-x" title="Link to this heading">#</a></h2>
-<p>Non-smooth functions such as <span class="math notranslate nohighlight">\(y=|x|\)</span> do not have a single unique
-gradient at <span class="math notranslate nohighlight">\(x=0\)</span>, rather they have what is known as a
-<em>subgradient</em>, which is formally the convex hull of directional
-derivatives at that point. The way that Warp (and most
-auto-differentiation frameworks) handles these points is to pick an
-arbitrary gradient from this set, e.g.: for <a class="reference external" href="https://docs.python.org/3/library/functions.html#abs" title="(in Python v3.14)"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.abs()</span></code></a>, it will
-arbitrarily choose the gradient to be 1.0 at the origin. You can find
-the implementation for these functions in
-<a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/native/builtin.h">warp/native/builtin.h</a>.</p>
-<p>Most optimizers (particularly ones that exploit stochasticity), are not
-sensitive to the choice of which gradient to use from the subgradient,
-although there are exceptions.</p>
-</section>
-<section id="does-warp-support-multi-gpu-programming">
-<h2>Does Warp support multi-GPU programming?<a class="headerlink" href="#does-warp-support-multi-gpu-programming" title="Link to this heading">#</a></h2>
-<p>Yes! Since version <code class="docutils literal notranslate"><span class="pre">0.4.0</span></code> we support allocating, launching, and
-copying between multiple GPUs in a single process. We follow the naming
-conventions of PyTorch and use aliases such as <code class="docutils literal notranslate"><span class="pre">cuda:0</span></code>, <code class="docutils literal notranslate"><span class="pre">cuda:1</span></code>,
-<code class="docutils literal notranslate"><span class="pre">cpu</span></code> to identify individual devices. For more information, see the
-<a class="reference internal" href="devices.html"><span class="doc">Devices</span></a> documentation.</p>
-<p>Warp applications can also be parallelized over multiple GPUs using
-<a class="reference external" href="https://github.com/mpi4py/mpi4py">mpi4py</a>. Warp arrays on the GPU may be
-passed directly to MPI calls if mpi4py is built against a CUDA-aware MPI installation.</p>
-</section>
-<section id="should-i-switch-to-warp-over-isaacgym-physx">
-<h2>Should I switch to Warp over IsaacGym/PhysX?<a class="headerlink" href="#should-i-switch-to-warp-over-isaacgym-physx" title="Link to this heading">#</a></h2>
-<p>Warp is not a replacement for IsaacGym, IsaacSim, or PhysX—while Warp
-does offer some physical simulation capabilities, this is primarily aimed
-at developers who need differentiable physics, rather than a fully
-featured physics engine. Warp is also integrated with IsaacGym and is
-great for performing auxiliary tasks such as reward and observation
-computations for reinforcement learning.</p>
-</section>
-<section id="why-aren-t-assignments-to-warp-arrays-supported-outside-of-kernels">
-<h2>Why aren’t assignments to Warp arrays supported outside of kernels?<a class="headerlink" href="#why-aren-t-assignments-to-warp-arrays-supported-outside-of-kernels" title="Link to this heading">#</a></h2>
-<p>For best performance, reading and writing data that is living on the GPU can
-only be performed inside Warp CUDA kernels. Otherwise individual element accesses
-such as <code class="docutils literal notranslate"><span class="pre">array[i]</span> <span class="pre">=</span> <span class="pre">1.0</span></code> in Python scope would require prohibitively slow device
-synchronization and copies.</p>
-<p>We recommend to either initialize Warp arrays from other native arrays
-(Python lists, NumPy arrays, etc.) or by launching a kernel to set its values.</p>
-<p>For the common use case of filling an array with a given value, we
-also support the following forms:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">wp.full(8,</span> <span class="pre">1.23,</span> <span class="pre">dtype=float)</span></code>: initializes a new array of 8 float values set
-to <code class="docutils literal notranslate"><span class="pre">1.23</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">arr.fill_(1.23)</span></code>: sets the content of an existing float array to <code class="docutils literal notranslate"><span class="pre">1.23</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">arr[:4].fill_(1.23)</span></code>: sets the four first values of an existing float array to <code class="docutils literal notranslate"><span class="pre">1.23</span></code>.</p></li>
-</ul>
-</section>
-<section id="where-can-i-find-frequently-asked-questions-about-tiles">
-<h2>Where can I find frequently asked questions about tiles?<a class="headerlink" href="#where-can-i-find-frequently-asked-questions-about-tiles" title="Link to this heading">#</a></h2>
-<p>The <a class="reference internal" href="tiles.html"><span class="doc">Tiles</span></a> page has a dedicated <a class="reference internal" href="tiles.html#tile-faq"><span class="std std-ref">FAQ section</span></a> covering launch mechanics,
-CPU/GPU differences, cooperative-branch rules, register vs. shared storage, debugging,
-block/tile sizing, and more.</p>
-</section>
-<section id="how-can-i-contact-the-warp-team-directly">
-<h2>How can I contact the Warp team directly?<a class="headerlink" href="#how-can-i-contact-the-warp-team-directly" title="Link to this heading">#</a></h2>
-<p>For bug reports, feature requests, and technical questions, we recommend using <a class="reference external" href="https://github.com/NVIDIA/warp/issues">GitHub Issues</a>.</p>
-<p>For inquiries not suited for GitHub Issues, please email <a class="reference external" href="mailto:warp-python&#37;&#52;&#48;nvidia&#46;com">warp-python<span>&#64;</span>nvidia<span>&#46;</span>com</a>.</p>
 </section>
 </section>
 
@@ -708,16 +1182,60 @@ block/tile sizing, and more.</p>
   </div>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#how-does-warp-relate-to-other-python-projects-for-gpu-programming-e-g-numba-taichi-cupy-pytorch-etc">How does Warp relate to other Python projects for GPU programming, e.g.: Numba, Taichi, cuPy, PyTorch, etc.?</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-are-some-examples-of-projects-that-use-warp">What are some examples of projects that use Warp?</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#does-warp-support-all-of-the-python-language">Does Warp support all of the Python language?</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#when-should-i-call-wp-synchronize">When should I call <code class="xref py py-func docutils literal notranslate"><span class="pre">wp.synchronize()</span></code>?</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#what-happens-when-you-differentiate-a-function-like-wp-abs-x">What happens when you differentiate a function like <code class="docutils literal notranslate"><span class="pre">wp.abs(x)</span></code>?</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#does-warp-support-multi-gpu-programming">Does Warp support multi-GPU programming?</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#should-i-switch-to-warp-over-isaacgym-physx">Should I switch to Warp over IsaacGym/PhysX?</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#why-aren-t-assignments-to-warp-arrays-supported-outside-of-kernels">Why aren’t assignments to Warp arrays supported outside of kernels?</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#where-can-i-find-frequently-asked-questions-about-tiles">Where can I find frequently asked questions about tiles?</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#how-can-i-contact-the-warp-team-directly">How can I contact the Warp team directly?</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#about-warp">About Warp</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#what-is-warp-and-how-does-it-fit-into-an-existing-application">What is Warp, and how does it fit into an existing application?</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#what-are-some-projects-built-with-warp">What are some projects built with Warp?</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#how-does-warp-compare-with-other-python-gpu-programming-approaches">How does Warp compare with other Python GPU programming approaches?</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#how-does-warp-s-tile-programming-model-differ-from-cutile-python">How does Warp’s tile programming model differ from cuTile Python?</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#is-warp-a-physics-engine-and-how-does-newton-relate-to-it">Is Warp a physics engine, and how does Newton relate to it?</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#installation-and-compatibility">Installation and Compatibility</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#which-operating-systems-python-versions-and-gpus-does-warp-support">Which operating systems, Python versions, and GPUs does Warp support?</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#does-warp-support-nvidia-grace-and-grace-blackwell-systems-such-as-dgx-spark-and-gb200">Does Warp support NVIDIA Grace and Grace Blackwell systems such as DGX Spark and GB200?</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#do-i-need-to-install-the-cuda-toolkit">Do I need to install the CUDA Toolkit?</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#which-warp-package-or-build-should-i-install">Which Warp package or build should I install?</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#programming-with-warp">Programming with Warp</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#what-python-features-can-i-use-inside-warp-kernels-and-functions">What Python features can I use inside Warp kernels and functions?</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#why-is-the-first-kernel-launch-slow-and-when-does-warp-recompile">Why is the first kernel launch slow, and when does Warp recompile?</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#why-can-t-i-assign-individual-warp-array-elements-from-python">Why can’t I assign individual Warp array elements from Python?</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#how-do-runtime-values-constants-generics-and-specialized-kernels-affect-compilation">How do runtime values, constants, generics, and specialized kernels affect compilation?</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#devices-memory-and-execution">Devices, Memory, and Execution</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#how-does-cpu-execution-differ-from-cuda-execution">How does CPU execution differ from CUDA execution?</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#when-do-i-need-to-synchronize-explicitly">When do I need to synchronize explicitly?</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#how-do-i-safely-use-warp-with-external-or-non-blocking-cuda-streams">How do I safely use Warp with external or non-blocking CUDA streams?</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#when-are-arrays-copied-and-when-is-memory-shared">When are arrays copied, and when is memory shared?</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#how-do-i-use-multiple-gpus">How do I use multiple GPUs?</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#how-should-i-initialize-and-configure-warp-in-multiprocessing-applications">How should I initialize and configure Warp in multiprocessing applications?</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#differentiation-and-interoperability">Differentiation and Interoperability</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#how-does-automatic-differentiation-work-and-what-state-must-i-preserve">How does automatic differentiation work, and what state must I preserve?</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#why-can-array-overwrites-produce-unexpected-gradients">Why can array overwrites produce unexpected gradients?</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#can-i-define-custom-gradients-for-warp-functions">Can I define custom gradients for Warp functions?</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#how-do-gradients-flow-between-warp-and-pytorch-or-jax">How do gradients flow between Warp and PyTorch or JAX?</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#should-i-use-direct-framework-converters-array-interfaces-or-dlpack">Should I use direct framework converters, array interfaces, or DLPack?</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#performance-debugging-and-deployment">Performance, Debugging, and Deployment</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#why-can-warp-results-differ-between-runs-or-devices-and-how-can-i-make-them-deterministic">Why can Warp results differ between runs or devices, and how can I make them deterministic?</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#how-should-i-benchmark-asynchronous-warp-operations">How should I benchmark asynchronous Warp operations?</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#how-do-i-find-which-kernel-caused-an-illegal-memory-access-or-a-non-finite-value">How do I find which kernel caused an illegal memory access or a non-finite value?</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#how-can-i-profile-kernels-and-inspect-generated-code">How can I profile kernels and inspect generated code?</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#when-should-i-use-cuda-graph-capture-and-what-is-currently-supported">When should I use CUDA graph capture, and what is currently supported?</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#can-i-precompile-and-package-kernels-for-deployment">Can I precompile and package kernels for deployment?</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#can-warp-use-existing-c-or-cuda-code">Can Warp use existing C++ or CUDA code?</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#can-warp-computations-run-from-c-or-c-without-python">Can Warp computations run from C or C++ without Python?</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#community-and-support">Community and Support</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#how-can-i-share-work-built-with-warp">How can I share work built with Warp?</a></li>
+</ul>
+</li>
 </ul>
   </nav></div>
 
