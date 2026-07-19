@@ -2025,7 +2025,7 @@ class Adjoint:
                 )
             elif (
                 isinstance(adj.return_var[0].type, warp._src.types.fixedarray)
-                and type(adj.arg_types["return"]) is warp._src.types.array
+                and concrete_array_type(adj.arg_types["return"]) is warp._src.types.array
             ):
                 # If the return statement yields a `fixedarray` while the function is annotated
                 # to return a standard `array`, then raise an error since the `fixedarray` storage
