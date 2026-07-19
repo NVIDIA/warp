@@ -579,8 +579,9 @@ linux-x86_64 python free-threaded test:
     - !reference [.snippets, move-linux-x86_64-binaries]
     # usd-core wheels use ABI tag "none" but are built against the regular
     # (GIL) CPython ABI, so importing pxr on a free-threaded interpreter
-    # segfaults. Keep usd-core out of this environment.
-    - uv sync --python 3.14t --extra dev --no-install-package usd-core
+    # segfaults. Blosc also does not support free-threaded Python and importing
+    # its extension re-enables the GIL. Keep both packages out of this environment.
+    - uv sync --python 3.14t --extra dev --no-install-package usd-core --no-install-package blosc
     - !reference [.snippets, section-end-install-deps]
   script:
     - uv run --python 3.14t --no-sync -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
