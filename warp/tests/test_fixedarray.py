@@ -49,7 +49,7 @@ def test_zeros():
 
 
 @wp.func
-def test_func_arg_func(arr: wp.array(ndim=2, dtype=int)):
+def test_func_arg_func(arr: wp.array2d[int]):
     for i in range(arr.shape[0]):
         for j in range(arr.shape[1]):
             arr[i][j] = i * arr.shape[1] + j
@@ -109,7 +109,7 @@ def test_func_return_annotation():
 
 def test_error_invalid_func_return_annotation(test, device):
     @wp.func
-    def func() -> wp.array(ndim=2, dtype=int):
+    def func() -> wp.array2d[int]:
         arr = wp.zeros(shape=(2, 3), dtype=int)
         for i in range(arr.shape[0]):
             for j in range(arr.shape[1]):
@@ -123,7 +123,8 @@ def test_error_invalid_func_return_annotation(test, device):
 
     with test.assertRaisesRegex(
         wp.WarpCodegenError,
-        r"The function `func` returns a fixed-size array whereas it has its return type annotated as `Array\[int32\]`.$",
+        r"The function `func` has its return type annotated as `Array\[int32\]` but the code returns a value of type "
+        r"`Array\[int32\]`\.$",
     ):
         wp.launch(kernel, 1, device=device)
 
@@ -211,7 +212,7 @@ def test_func_struct():
 
 
 @wp.kernel
-def test_fixedarray_ptr_reinterpret(output: wp.array(dtype=wp.vec2)):
+def test_fixedarray_ptr_reinterpret(output: wp.array[wp.vec2]):
     # Allocate a fixedarray inside the kernel
     m_b = wp.zeros(shape=(24,), dtype=wp.float32)
 
@@ -240,13 +241,13 @@ def test_fixedarray_ptr(test, device):
 # This test ensures that fixedarray can match array template parameters even when the template
 # has a concrete dtype (not Any), which is essential since fixedarray inherits from array.
 @wp.func
-def array_template_func_concrete(arr: wp.array(ndim=1, dtype=wp.vec2f)):
+def array_template_func_concrete(arr: wp.array[wp.vec2f]):
     """Function with concrete array template - fixedarray should match"""
     return arr[0]
 
 
 @wp.func
-def array_template_func_generic(arr: wp.array(ndim=1, dtype=Any)):
+def array_template_func_generic(arr: wp.array[Any]):
     """Function with generic array template - fixedarray should match"""
     return arr[0]
 

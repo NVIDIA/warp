@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import unittest
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 
@@ -12,7 +12,7 @@ from warp.tests.unittest_utils import *
 
 
 @wp.kernel
-def kernel_1d(a: wp.indexedarray(dtype=float), expected: wp.array(dtype=float)):
+def kernel_1d(a: wp.indexedarray[float], expected: wp.array[float]):
     i = wp.tid()
 
     wp.expect_eq(a[i], expected[i])
@@ -44,7 +44,7 @@ def test_indexedarray_1d(test, device):
 
 @wp.struct
 class IndexedArrayStruct:
-    iarr: wp.indexedarray(dtype=float)
+    iarr: wp.indexedarray[float]
 
 
 @wp.struct
@@ -53,7 +53,7 @@ class NestedIndexedArrayStruct:
 
 
 @wp.kernel
-def kernel_indexedarray_in_struct(arg: IndexedArrayStruct, expected: wp.array(dtype=float)):
+def kernel_indexedarray_in_struct(arg: IndexedArrayStruct, expected: wp.array[float]):
     i = wp.tid()
 
     wp.expect_eq(arg.iarr[i], expected[i])
@@ -65,7 +65,7 @@ def kernel_indexedarray_in_struct(arg: IndexedArrayStruct, expected: wp.array(dt
 
 
 @wp.kernel
-def kernel_indexedarray_in_nested_struct(arg: NestedIndexedArrayStruct, expected: wp.array(dtype=float)):
+def kernel_indexedarray_in_nested_struct(arg: NestedIndexedArrayStruct, expected: wp.array[float]):
     i = wp.tid()
 
     wp.expect_eq(arg.inner.iarr[i], expected[i])
@@ -77,7 +77,7 @@ def kernel_indexedarray_in_nested_struct(arg: NestedIndexedArrayStruct, expected
 
 
 @wp.kernel
-def kernel_indexedarray_in_struct_array(args: wp.array(dtype=IndexedArrayStruct), expected: wp.array(dtype=float)):
+def kernel_indexedarray_in_struct_array(args: wp.array[IndexedArrayStruct], expected: wp.array[float]):
     i = wp.tid()
 
     s = args[0]
@@ -189,7 +189,7 @@ def test_indexedarray_in_struct_to_device_transfer(test, device):
 
 
 @wp.kernel
-def kernel_2d(a: wp.indexedarray2d(dtype=float), expected: wp.array2d(dtype=float)):
+def kernel_2d(a: wp.indexedarray[float, Literal[2]], expected: wp.array2d[float]):
     i, j = wp.tid()
 
     # check expected values
@@ -226,7 +226,7 @@ def test_indexedarray_2d(test, device):
 
 
 @wp.kernel
-def kernel_3d(a: wp.indexedarray3d(dtype=float), expected: wp.array3d(dtype=float)):
+def kernel_3d(a: wp.indexedarray[float, Literal[3]], expected: wp.array3d[float]):
     i, j, k = wp.tid()
 
     # check expected values
@@ -269,7 +269,7 @@ def test_indexedarray_3d(test, device):
 
 
 @wp.kernel
-def kernel_4d(a: wp.indexedarray4d(dtype=float), expected: wp.array4d(dtype=float)):
+def kernel_4d(a: wp.indexedarray[float, Literal[4]], expected: wp.array4d[float]):
     i, j, k, l = wp.tid()
 
     # check expected values
@@ -408,12 +408,12 @@ vec4i = wp.types.vector(length=4, dtype=wp.int32)
 
 
 @wp.kernel
-def shape_kernel_1d(arr: wp.indexedarray1d(dtype=float), expected: int):
+def shape_kernel_1d(arr: wp.indexedarray[float], expected: int):
     wp.expect_eq(arr.shape[0], expected)
 
 
 @wp.kernel
-def shape_kernel_2d(arr: wp.indexedarray2d(dtype=float), expected: vec2i):
+def shape_kernel_2d(arr: wp.indexedarray[float, Literal[2]], expected: vec2i):
     wp.expect_eq(arr.shape[0], expected[0])
     wp.expect_eq(arr.shape[1], expected[1])
 
@@ -423,7 +423,7 @@ def shape_kernel_2d(arr: wp.indexedarray2d(dtype=float), expected: vec2i):
 
 
 @wp.kernel
-def shape_kernel_3d(arr: wp.indexedarray3d(dtype=float), expected: vec3i):
+def shape_kernel_3d(arr: wp.indexedarray[float, Literal[3]], expected: vec3i):
     wp.expect_eq(arr.shape[0], expected[0])
     wp.expect_eq(arr.shape[1], expected[1])
     wp.expect_eq(arr.shape[2], expected[2])
@@ -439,7 +439,7 @@ def shape_kernel_3d(arr: wp.indexedarray3d(dtype=float), expected: vec3i):
 
 
 @wp.kernel
-def shape_kernel_4d(arr: wp.indexedarray4d(dtype=float), expected: vec4i):
+def shape_kernel_4d(arr: wp.indexedarray[float, Literal[4]], expected: vec4i):
     wp.expect_eq(arr.shape[0], expected[0])
     wp.expect_eq(arr.shape[1], expected[1])
     wp.expect_eq(arr.shape[2], expected[2])
@@ -613,15 +613,15 @@ def inc_4d(a: Any):
 
 
 # optional overloads to avoid module reloading
-wp.overload(inc_1d, [wp.array1d(dtype=int)])
-wp.overload(inc_2d, [wp.array2d(dtype=int)])
-wp.overload(inc_3d, [wp.array3d(dtype=int)])
-wp.overload(inc_4d, [wp.array4d(dtype=int)])
+wp.overload(inc_1d, [wp.array1d[int]])
+wp.overload(inc_2d, [wp.array2d[int]])
+wp.overload(inc_3d, [wp.array3d[int]])
+wp.overload(inc_4d, [wp.array4d[int]])
 
-wp.overload(inc_1d, [wp.indexedarray1d(dtype=int)])
-wp.overload(inc_2d, [wp.indexedarray2d(dtype=int)])
-wp.overload(inc_3d, [wp.indexedarray3d(dtype=int)])
-wp.overload(inc_4d, [wp.indexedarray4d(dtype=int)])
+wp.overload(inc_1d, [wp.indexedarray[int]])
+wp.overload(inc_2d, [wp.indexedarray[int, Literal[2]]])
+wp.overload(inc_3d, [wp.indexedarray[int, Literal[3]]])
+wp.overload(inc_4d, [wp.indexedarray[int, Literal[4]]])
 
 
 def test_indexedarray_generics(test, device):

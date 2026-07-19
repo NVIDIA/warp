@@ -12,36 +12,36 @@ from warp.tests.unittest_utils import *
 
 
 @wp.kernel
-def mul_1d(a: wp.array1d(dtype=float), s: float):
+def mul_1d(a: wp.array1d[float], s: float):
     i = wp.tid()
     a[i] = a[i] * s
 
 
 @wp.kernel
-def mul_2d(a: wp.array2d(dtype=float), s: float):
+def mul_2d(a: wp.array2d[float], s: float):
     i, j = wp.tid()
     a[i, j] = a[i, j] * s
 
 
 @wp.kernel
-def mul_3d(a: wp.array3d(dtype=float), s: float):
+def mul_3d(a: wp.array3d[float], s: float):
     i, j, k = wp.tid()
     a[i, j, k] = a[i, j, k] * s
 
 
 @wp.kernel
-def mul_4d(a: wp.array4d(dtype=float), s: float):
+def mul_4d(a: wp.array4d[float], s: float):
     i, j, k, l = wp.tid()
     a[i, j, k, l] = a[i, j, k, l] * s
 
 
 @wp.kernel
-def all_equal_kernel(a: wp.array(dtype=float), value: float, result: wp.array(dtype=int)):
+def all_equal_kernel(a: wp.array[float], value: float, result: wp.array[int]):
     tid = wp.tid()
     wp.atomic_min(result, 0, int(a[tid] == value))
 
 
-def assert_all_equal(a: wp.array(dtype=float), value: float):
+def assert_all_equal(a: wp.array[float], value: float):
     result = wp.ones(1, dtype=int, device=a.device)
     wp.launch(all_equal_kernel, dim=a.shape, inputs=[a, value, result], device=a.device)
     assert result.numpy()[0] == 1

@@ -186,6 +186,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_fabricarray import TestFabricArray
     from warp.tests.test_factory_style_array_annotations import TestFactoryStyleArrayAnnotations
     from warp.tests.test_fast_math import TestFastMath
+    from warp.tests.test_fixedarray import TestFixedArray
     from warp.tests.test_fp16 import TestFp16
     from warp.tests.test_func import TestFunc
     from warp.tests.test_func_parameter_targets import TestFuncParameterTargets
@@ -336,6 +337,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestFemMultiEnv,
         TestFemQuadrature,
         TestFemShape,
+        TestFixedArray,
         TestFp16,
         TestFunc,
         TestFuncParameterTargets,

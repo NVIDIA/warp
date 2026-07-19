@@ -214,7 +214,7 @@ def _create_fabric_array_array_interface(data: list, attrib: str, bucket_sizes: 
 
 
 @wp.kernel
-def fa_kernel(a: wp.fabricarray(dtype=float), expected: wp.array(dtype=float)):
+def fa_kernel(a: wp.fabricarray[float], expected: wp.array[float]):
     i = wp.tid()
 
     wp.expect_eq(a[i], expected[i])
@@ -227,7 +227,7 @@ def fa_kernel(a: wp.fabricarray(dtype=float), expected: wp.array(dtype=float)):
 
 
 @wp.kernel
-def fa_kernel_indexed(a: wp.indexedfabricarray(dtype=float), expected: wp.indexedarray(dtype=float)):
+def fa_kernel_indexed(a: wp.indexedfabricarray[float], expected: wp.indexedarray[float]):
     i = wp.tid()
 
     wp.expect_eq(a[i], expected[i])
@@ -270,13 +270,13 @@ def test_fabricarray_kernel(test, device):
 
 
 @wp.kernel
-def fa_generic_dtype_kernel(a: wp.fabricarray(dtype=Any), b: wp.fabricarray(dtype=Any)):
+def fa_generic_dtype_kernel(a: wp.fabricarray[Any], b: wp.fabricarray[Any]):
     i = wp.tid()
     b[i] = a[i] + a[i]
 
 
 @wp.kernel
-def fa_generic_dtype_kernel_indexed(a: wp.indexedfabricarray(dtype=Any), b: wp.indexedfabricarray(dtype=Any)):
+def fa_generic_dtype_kernel_indexed(a: wp.indexedfabricarray[Any], b: wp.indexedfabricarray[Any]):
     i = wp.tid()
     b[i] = a[i] + a[i]
 
@@ -821,7 +821,7 @@ def test_fabricarray_fill_matrix(test, device):
 
 @wp.kernel
 def fa_kernel_indexing_types(
-    a: wp.fabricarray(dtype=wp.int32),
+    a: wp.fabricarray[wp.int32],
 ):
     x = a[wp.uint8(0)]
     y = a[wp.int16(1)]
@@ -852,7 +852,7 @@ def test_fabricarray_indexing_types(test, device):
 
 
 @wp.kernel
-def fa_generic_sums_kernel(a: wp.fabricarrayarray(dtype=Any), sums: wp.array(dtype=Any)):
+def fa_generic_sums_kernel(a: wp.fabricarrayarray(dtype=Any), sums: wp.array[Any]):
     i = wp.tid()
 
     # get sub-array using wp::view()
@@ -867,7 +867,7 @@ def fa_generic_sums_kernel(a: wp.fabricarrayarray(dtype=Any), sums: wp.array(dty
 
 
 @wp.kernel
-def fa_generic_sums_kernel_indexed(a: wp.indexedfabricarrayarray(dtype=Any), sums: wp.array(dtype=Any)):
+def fa_generic_sums_kernel_indexed(a: wp.indexedfabricarrayarray(dtype=Any), sums: wp.array[Any]):
     i = wp.tid()
 
     # get sub-array using wp::view()
@@ -947,14 +947,14 @@ def test_fabricarrayarray(test, device):
 
 # explicit kernel overloads
 for T in _fabric_types:
-    wp.overload(fa_generic_dtype_kernel, [wp.fabricarray(dtype=T), wp.fabricarray(dtype=T)])
-    wp.overload(fa_generic_dtype_kernel_indexed, [wp.indexedfabricarray(dtype=T), wp.indexedfabricarray(dtype=T)])
+    wp.overload(fa_generic_dtype_kernel, [wp.fabricarray[T], wp.fabricarray[T]])
+    wp.overload(fa_generic_dtype_kernel_indexed, [wp.indexedfabricarray[T], wp.indexedfabricarray[T]])
 
-    wp.overload(fa_generic_array_kernel, [wp.fabricarray(dtype=T), wp.fabricarray(dtype=T)])
-    wp.overload(fa_generic_array_kernel, [wp.indexedfabricarray(dtype=T), wp.indexedfabricarray(dtype=T)])
+    wp.overload(fa_generic_array_kernel, [wp.fabricarray[T], wp.fabricarray[T]])
+    wp.overload(fa_generic_array_kernel, [wp.indexedfabricarray[T], wp.indexedfabricarray[T]])
 
-    wp.overload(fa_generic_sums_kernel, [wp.fabricarrayarray(dtype=T), wp.array(dtype=T)])
-    wp.overload(fa_generic_sums_kernel_indexed, [wp.indexedfabricarrayarray(dtype=T), wp.array(dtype=T)])
+    wp.overload(fa_generic_sums_kernel, [wp.fabricarrayarray(dtype=T), wp.array[T]])
+    wp.overload(fa_generic_sums_kernel_indexed, [wp.indexedfabricarrayarray(dtype=T), wp.array[T]])
 
 
 devices = get_test_devices()

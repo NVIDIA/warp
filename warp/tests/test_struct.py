@@ -17,13 +17,13 @@ from warp.tests.unittest_utils import *
 class Model:
     dt: float
     gravity: wp.vec3
-    m: wp.array(dtype=float)
+    m: wp.array[float]
 
 
 @wp.struct
 class State:
-    x: wp.array(dtype=wp.vec3)
-    v: wp.array(dtype=wp.vec3)
+    x: wp.array[wp.vec3]
+    v: wp.array[wp.vec3]
 
 
 @wp.kernel
@@ -86,7 +86,7 @@ def test_step(test, device):
 
 
 @wp.kernel
-def kernel_loss(x: wp.array(dtype=wp.vec3), loss: wp.array(dtype=float)):
+def kernel_loss(x: wp.array[wp.vec3], loss: wp.array[float]):
     i = wp.tid()
     wp.atomic_add(loss, 0, x[i][0] * x[i][0] + x[i][1] * x[i][1] + x[i][2] * x[i][2])
 
@@ -162,7 +162,7 @@ def test_empty(input: Empty):
 
 @wp.struct
 class Uninitialized:
-    data: wp.array(dtype=int)
+    data: wp.array[int]
 
 
 @wp.kernel
@@ -172,7 +172,7 @@ def test_uninitialized(input: Uninitialized):
 
 @wp.struct
 class Baz:
-    data: wp.array(dtype=int)
+    data: wp.array[int]
     z: wp.vec3
 
 
@@ -226,7 +226,7 @@ class MatStruct:
 
 
 @wp.kernel
-def kernel_nested_mat(out: wp.array(dtype=wp.mat44)):
+def kernel_nested_mat(out: wp.array[wp.mat44]):
     s = MatStruct()
 
     s.m[0, 0] = 2.0
@@ -257,7 +257,7 @@ def test_nested_mat(test, device):
 
 def test_assign_view(test, device):
     @wp.kernel
-    def kernel_assign_view(out: wp.array2d(dtype=wp.mat44)):
+    def kernel_assign_view(out: wp.array2d[wp.mat44]):
         out[0][2, 2] = 6.0
 
     m = wp.array([[wp.mat44()]], dtype=wp.mat44, device=device)
@@ -296,7 +296,7 @@ def test_struct_inheritance_error(test, device):
 
 
 @wp.kernel
-def test_struct_instantiate(data: wp.array(dtype=int)):
+def test_struct_instantiate(data: wp.array[int]):
     baz = Baz(data, wp.vec3(0.0, 0.0, 26.0))
     bar = Bar(baz, 25.0)
     foo = Foo(bar, 24)
@@ -363,7 +363,7 @@ def GetTestData(value: wp.int32):
 
 
 @wp.kernel
-def test_return_struct(data: wp.array(dtype=wp.int32)):
+def test_return_struct(data: wp.array[wp.int32]):
     tid = wp.tid()
     data[tid] = GetTestData(tid).value
 
@@ -400,7 +400,7 @@ class DefaultAttribStruct:
     d: wp.float64
     v: wp.vec3
     m: wp.mat22
-    a: wp.array(dtype=wp.int32)
+    a: wp.array[wp.int32]
     s: DefaultAttribNested
 
 
@@ -450,7 +450,7 @@ class InnerStruct:
 
 @wp.struct
 class ArrayStruct:
-    array: wp.array(dtype=InnerStruct)
+    array: wp.array[InnerStruct]
 
 
 @wp.kernel
@@ -479,12 +479,12 @@ class VecStruct:
 
 @wp.struct
 class Bar2:
-    z: wp.array(dtype=float)
+    z: wp.array[float]
 
 
 @wp.struct
 class Foo2:
-    x: wp.array(dtype=float)
+    x: wp.array[float]
     y: Bar2
 
 
@@ -657,7 +657,7 @@ def test_struct_array_hash(test, device):
         i: int
 
     @wp.kernel
-    def dummy_kernel(a: wp.array(dtype=ContentHashStruct)):
+    def dummy_kernel(a: wp.array[ContentHashStruct]):
         i = wp.tid()
 
     module_hash_0 = wp.get_module(dummy_kernel.__module__).hash_module()
@@ -668,7 +668,7 @@ def test_struct_array_hash(test, device):
         i: int
 
     @wp.kernel
-    def dummy_kernel(a: wp.array(dtype=ContentHashStruct)):
+    def dummy_kernel(a: wp.array[ContentHashStruct]):
         i = wp.tid()
 
     module_hash_1 = wp.get_module(dummy_kernel.__module__).hash_module()
@@ -685,7 +685,7 @@ def test_struct_array_hash(test, device):
         i: float
 
     @wp.kernel
-    def dummy_kernel(a: wp.array(dtype=ContentHashStruct)):
+    def dummy_kernel(a: wp.array[ContentHashStruct]):
         i = wp.tid()
 
     module_hash_2 = wp.get_module(dummy_kernel.__module__).hash_module()
@@ -698,19 +698,19 @@ def test_struct_array_hash(test, device):
 # Tests for garbage collection behavior with arrays in structs
 @wp.struct
 class StructWithArray:
-    data: wp.array(dtype=float)
+    data: wp.array[float]
     some_value: int
 
 
 @wp.kernel
-def access_array_kernel(s: StructWithArray, out: wp.array(dtype=float)):
+def access_array_kernel(s: StructWithArray, out: wp.array[float]):
     # This kernel is used to verify data integrity by reading the first element.
     # Assumes s.data has at least 1 element for this test.
     out[0] = s.data[0]
 
 
 @wp.kernel
-def compute_loss_from_struct_array_kernel(s_in: StructWithArray, loss_val: wp.array(dtype=float)):
+def compute_loss_from_struct_array_kernel(s_in: StructWithArray, loss_val: wp.array[float]):
     # Compute a simple scalar loss from the array elements for grad testing.
     # Assumes s_in.data has at least 2 elements for this test.
     res = 0.0
@@ -873,11 +873,11 @@ class TestStruct(unittest.TestCase):
     def test_struct_array_field_assignment_validation(self):
         @wp.struct
         class ArrayFieldStruct:
-            values: wp.array(dtype=wp.int32)
+            values: wp.array[wp.int32]
 
         @wp.struct
         class IndexedArrayFieldStruct:
-            values: wp.indexedarray(dtype=wp.int32)
+            values: wp.indexedarray[wp.int32]
 
         wrong_dtype_array = wp.array([1.0], dtype=wp.float32)
         indices = wp.array([0], dtype=wp.int32)

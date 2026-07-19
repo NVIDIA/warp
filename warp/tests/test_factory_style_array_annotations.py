@@ -25,6 +25,11 @@ class FactoryStyleArrayStruct:
     values: wp.array(dtype=float)
 
 
+@wp.struct
+class FactoryStyleIndexedArrayStruct:
+    values: wp.indexedarray(dtype=float)
+
+
 @wp.func
 def factory_style_read_func(values: wp.array(dtype=Any), index: int):
     return values[index]
@@ -232,6 +237,23 @@ def test_factory_style_string_annotation_scope(test, device):
     test.assertAlmostEqual(float(out.numpy()[0]), 4.56, places=5)
 
 
+def test_factory_style_func_return_annotation_error(test, device):
+    @wp.func
+    def factory_style_func() -> wp.array(ndim=2, dtype=int):
+        return wp.zeros(shape=(2, 3), dtype=int)
+
+    @wp.kernel
+    def kernel():
+        factory_style_func()
+
+    with test.assertRaisesRegex(
+        wp.WarpCodegenError,
+        r"The function `factory_style_func` returns a fixed-size array whereas it has its return type annotated as "
+        r"`Array\[int32\]`\.$",
+    ):
+        wp.launch(kernel, 1, device=device)
+
+
 class TestFactoryStyleArrayAnnotations(unittest.TestCase):
     """Tests for backward-compatible factory-style array annotations."""
 
@@ -316,13 +338,31 @@ class TestFactoryStyleArrayAnnotations(unittest.TestCase):
 
     def test_factory_style_noncontiguous_array_metadata(self):
         annotations = (
+            (wp.indexedarray1d(dtype=wp.float64), wp.indexedarray[wp.float64], ARRAY_TYPE_INDEXED),
+            (
+                wp.indexedarray2d(dtype=wp.float64),
+                wp.indexedarray[wp.float64, Literal[2]],
+                ARRAY_TYPE_INDEXED,
+            ),
             (wp.indexedarray(dtype=wp.float64, ndim=3), wp.indexedarray[wp.float64, Literal[3]], ARRAY_TYPE_INDEXED),
-            (wp.fabricarray(dtype=wp.float32, ndim=2), wp.fabricarray[wp.float32, 2], ARRAY_TYPE_FABRIC),
+            (
+                wp.indexedarray3d(dtype=wp.float64),
+                wp.indexedarray[wp.float64, Literal[3]],
+                ARRAY_TYPE_INDEXED,
+            ),
+            (
+                wp.indexedarray4d(dtype=wp.float64),
+                wp.indexedarray[wp.float64, Literal[4]],
+                ARRAY_TYPE_INDEXED,
+            ),
+            (wp.fabricarray(dtype=wp.float32, ndim=2), wp.fabricarray[wp.float32, Literal[2]], ARRAY_TYPE_FABRIC),
+            (wp.fabricarray(dtype=Any), wp.fabricarray[Any], ARRAY_TYPE_FABRIC),
             (
                 wp.indexedfabricarray(dtype=wp.float64, ndim=2),
-                wp.indexedfabricarray[wp.float64, 2],
+                wp.indexedfabricarray[wp.float64, Literal[2]],
                 ARRAY_TYPE_FABRIC_INDEXED,
             ),
+            (wp.indexedfabricarray(dtype=Any), wp.indexedfabricarray[Any], ARRAY_TYPE_FABRIC_INDEXED),
         )
 
         for factory_style, subscript_style, expected_array_type in annotations:
@@ -331,6 +371,15 @@ class TestFactoryStyleArrayAnnotations(unittest.TestCase):
                 self.assertEqual(factory_style.ndim, subscript_style.ndim)
                 self.assertEqual(array_type_id(factory_style), expected_array_type)
                 self.assertEqual(get_type_code(factory_style), get_type_code(subscript_style))
+
+    def test_factory_style_indexedarray_struct_metadata(self):
+        factory_style = FactoryStyleIndexedArrayStruct.vars["values"].type
+        subscript_style = wp.indexedarray[float]
+
+        self.assertEqual(factory_style.dtype, subscript_style.dtype)
+        self.assertEqual(factory_style.ndim, subscript_style.ndim)
+        self.assertEqual(array_type_id(factory_style), ARRAY_TYPE_INDEXED)
+        self.assertEqual(get_type_code(factory_style), get_type_code(subscript_style))
 
 
 devices = get_test_devices()
@@ -393,6 +442,12 @@ add_function_test(
     TestFactoryStyleArrayAnnotations,
     "test_factory_style_string_annotation_scope",
     test_factory_style_string_annotation_scope,
+    devices=devices,
+)
+add_function_test(
+    TestFactoryStyleArrayAnnotations,
+    "test_factory_style_func_return_annotation_error",
+    test_factory_style_func_return_annotation_error,
     devices=devices,
 )
 
