@@ -3,6 +3,7 @@
 
 import gc
 import unittest
+from functools import cache
 from unittest import mock
 
 import numpy as np
@@ -36,9 +37,6 @@ def _try_import_torch():
         return None, False
 
     return torch, True
-
-
-torch, torch_available = _try_import_torch()
 
 
 class CountingAllocator:
@@ -103,6 +101,8 @@ class TorchCachingAllocatorForWarp:
         if size_in_bytes == 0:
             return 0
 
+        import torch  # noqa: PLC0415
+
         device, stream = self._get_warp_device_and_stream()
         ptr = torch.cuda.caching_allocator_alloc(size_in_bytes, device=device, stream=stream)
         if not ptr:
@@ -116,6 +116,8 @@ class TorchCachingAllocatorForWarp:
     def deallocate(self, ptr: int, size_in_bytes: int) -> None:
         if ptr == 0:
             return
+
+        import torch  # noqa: PLC0415
 
         allocated_size = self._active_allocations.get(ptr)
         if allocated_size is None:
@@ -136,24 +138,30 @@ class TorchCachingAllocatorForWarp:
         return f"{type(self).__name__}(active_allocations={len(self._active_allocations)})"
 
 
-def _get_torch_cuda_allocator_test_devices():
+@cache
+def _torch_cuda_allocator_error(device_alias):
+    torch, torch_available = _try_import_torch()
     if not torch_available:
-        return []
+        return "PyTorch could not be imported"
     if not torch.cuda.is_available():
-        return []
+        return "PyTorch CUDA is unavailable"
     if not hasattr(torch.cuda, "caching_allocator_alloc") or not hasattr(torch.cuda, "caching_allocator_delete"):
-        return []
+        return "PyTorch CUDA caching allocator APIs are unavailable"
 
-    devices = []
-    for device in cuda_test_devices:
-        try:
-            torch.empty(1, device=wp.device_to_torch(device))
-        except _TORCH_CUDA_PROBE_EXCEPTIONS as e:
-            print(f"Skipping PyTorch allocator test on device '{device}' due to exception: {e}")
-        else:
-            devices.append(device)
+    device = wp.get_device(device_alias)
+    try:
+        torch.empty(1, device=wp.device_to_torch(device))
+    except _TORCH_CUDA_PROBE_EXCEPTIONS as error:
+        return f"{type(error).__name__}: {error}"
 
-    return devices
+    return None
+
+
+def _check_torch_cuda_allocator_device(test, device):
+    device = wp.get_device(device)
+    error = _torch_cuda_allocator_error(device.alias)
+    if error is not None:
+        test.skipTest(f"PyTorch CUDA caching allocator is unavailable on Warp device '{device}': {error}")
 
 
 # -- Protocol conformance ---------------------------------------------------
@@ -608,6 +616,8 @@ class TestTorchAllocator(unittest.TestCase):
 
 def test_torch_caching_allocator(test, device):
     """Warp arrays can allocate from PyTorch's CUDA caching allocator."""
+    import torch  # noqa: PLC0415
+
     device = wp.get_device(device)
     allocator = TorchCachingAllocatorForWarp()
     baseline_allocated = torch.cuda.memory_allocated(device.ordinal)
@@ -647,7 +657,8 @@ add_function_test(
     TestTorchAllocator,
     "test_torch_caching_allocator",
     test_torch_caching_allocator,
-    devices=_get_torch_cuda_allocator_test_devices(),
+    devices=cuda_test_devices,
+    device_check=_check_torch_cuda_allocator_device,
 )
 
 

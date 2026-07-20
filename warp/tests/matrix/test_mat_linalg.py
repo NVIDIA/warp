@@ -19,8 +19,6 @@ kernel_cache = {}
 
 
 def test_matvec_multiplication(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 2.0e-2,
         np.float32: 5.0e-6,
@@ -85,6 +83,8 @@ def test_matvec_multiplication(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
+    rng = np.random.default_rng(123)
+
     v2 = wp.array(randvals(rng, [1, 2], dtype), dtype=vec2, requires_grad=True, device=device)
     v4 = wp.array(randvals(rng, [1, 4], dtype), dtype=vec4, requires_grad=True, device=device)
     v32 = wp.array(randvals(rng, [1, 2], dtype), dtype=vec2, requires_grad=True, device=device)
@@ -124,8 +124,6 @@ def test_matvec_multiplication(test, device, dtype, register_kernels=False):
 
 
 def test_vecmat_multiplication(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 2.0e-2,
         np.float32: 5.0e-6,
@@ -190,6 +188,8 @@ def test_vecmat_multiplication(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
+    rng = np.random.default_rng(123)
+
     v2 = wp.array(randvals(rng, [1, 2], dtype), dtype=vec2, requires_grad=True, device=device)
     v4 = wp.array(randvals(rng, [1, 4], dtype), dtype=vec4, requires_grad=True, device=device)
     v32 = wp.array(randvals(rng, [1, 2], dtype), dtype=vec2, requires_grad=True, device=device)
@@ -231,8 +231,6 @@ def test_vecmat_multiplication(test, device, dtype, register_kernels=False):
 
 
 def test_matmat_multiplication(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 2.0e-2,
         np.float32: 5.0e-6,
@@ -299,6 +297,8 @@ def test_matmat_multiplication(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
+    rng = np.random.default_rng(123)
+
     a2 = wp.array(randvals(rng, [1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
     a4 = wp.array(randvals(rng, [1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
     a32 = wp.array(randvals(rng, [1, 3, 2], dtype), dtype=mat32, requires_grad=True, device=device)
@@ -348,8 +348,6 @@ def test_matmat_multiplication(test, device, dtype, register_kernels=False):
 
 
 def test_outer_product(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 5.0e-3,
         np.float32: 1.0e-6,
@@ -396,6 +394,8 @@ def test_outer_product(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     s2 = wp.array(randvals(rng, [1, 2], dtype), dtype=vec2, requires_grad=True, device=device)
     s4 = wp.array(randvals(rng, [1, 4], dtype), dtype=vec4, requires_grad=True, device=device)
@@ -448,8 +448,6 @@ def test_outer_product(test, device, dtype, register_kernels=False):
 
 
 def test_transpose(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 1.0e-2,
         np.float32: 1.0e-6,
@@ -495,6 +493,8 @@ def test_transpose(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
+    rng = np.random.default_rng(123)
+
     m2 = wp.array(randvals(rng, [1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
     m4 = wp.array(randvals(rng, [1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
     m32 = wp.array(randvals(rng, [1, 3, 2], dtype), dtype=mat32, requires_grad=True, device=device)
@@ -530,8 +530,6 @@ def test_transpose(test, device, dtype, register_kernels=False):
 
 
 def test_ddot(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 5.0e-3,
         np.float32: 1.0e-6,
@@ -558,6 +556,8 @@ def test_ddot(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     s2 = wp.array(randvals(rng, [1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
     s4 = wp.array(randvals(rng, [1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
@@ -604,8 +604,6 @@ def test_ddot(test, device, dtype, register_kernels=False):
 
 
 def test_trace(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 1.0e-3,
         np.float32: 1.0e-6,
@@ -630,6 +628,8 @@ def test_trace(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     v2 = wp.array(randvals(rng, [1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
     v4 = wp.array(randvals(rng, [1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)

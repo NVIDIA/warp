@@ -8,7 +8,7 @@ import os
 import sys
 import unittest
 import warnings
-from functools import partial
+from functools import cache, partial
 from typing import Any
 
 import numpy as np
@@ -16,6 +16,10 @@ import numpy as np
 import warp as wp
 from warp._src.jax import get_jax_device
 from warp.tests.unittest_utils import *
+
+# Prevent JAX from preallocating GPU memory before any module-level version checks import it.
+os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
+os.environ["XLA_PYTHON_CLIENT_ALLOCATOR"] = "platform"
 
 # default array size for tests
 ARRAY_SIZE = 1024 * 1024
@@ -89,10 +93,10 @@ for T in [*vector_types, *matrix_types]:
 def _jax_version():
     try:
         jax = _import_jax()
-
-        return jax.__version_info__
-    except ImportError:
+    except Exception:
         return (0, 0, 0)
+
+    return jax.__version_info__
 
 
 def _import_jax():
@@ -2201,30 +2205,37 @@ class TestJax(unittest.TestCase):
 
 # try adding Jax tests if Jax is installed correctly
 try:
-    # prevent Jax from gobbling up GPU memory
-    os.environ["XLA_PYTHON_CLIENT_PREALLOCATE"] = "false"
-    os.environ["XLA_PYTHON_CLIENT_ALLOCATOR"] = "platform"
-
     import jax
-
+except Exception as error:
+    print(f"Skipping JAX tests due to exception: {error}")
+else:
     # NOTE: we must enable 64-bit types in Jax to test the full gamut of types
     jax.config.update("jax_enable_x64", True)
 
-    # check which Warp devices work with Jax
-    # CUDA devices may fail if Jax cannot find a CUDA Toolkit
-    test_devices = get_test_devices()
-    jax_compatible_devices = []
-    jax_compatible_cuda_devices = []
-    for d in test_devices:
+    jax_candidate_devices = get_test_devices()
+    jax_cuda_candidate_devices = [device for device in jax_candidate_devices if device.is_cuda]
+
+    @cache
+    def _jax_device_error(device_alias):
+        device = wp.get_device(device_alias)
         try:
-            with jax.default_device(wp.device_to_jax(d)):
-                j = jax.numpy.arange(10, dtype=jax.numpy.float32)
-                j += 1
-            jax_compatible_devices.append(d)
-            if d.is_cuda:
-                jax_compatible_cuda_devices.append(d)
-        except Exception as e:
-            print(f"Skipping JAX interop tests on device '{d}' due to exception: {e}")
+            with jax.default_device(wp.device_to_jax(device)):
+                array = jax.numpy.arange(10, dtype=jax.numpy.float32)
+                array += 1
+            jax.block_until_ready(array)
+        except Exception as error:
+            return f"{type(error).__name__}: {error}"
+        return None
+
+    def _check_jax_device(test, device):
+        device = wp.get_device(device)
+        error = _jax_device_error(device.alias)
+        if error is not None:
+            test.skipTest(f"JAX is unavailable on Warp device '{device}': {error}")
+
+    def _check_all_jax_cuda_devices(test, _device):
+        for device in jax_cuda_candidate_devices:
+            _check_jax_device(test, device)
 
     add_function_test(
         TestJax,
@@ -2246,10 +2257,16 @@ try:
     )
     add_function_test(TestJax, "test_dtype_from_jax", test_dtype_from_jax, devices=None)
     add_function_test(TestJax, "test_dtype_to_jax", test_dtype_to_jax, devices=None)
-    if jax_compatible_devices:
-        add_function_test(TestJax, "test_device_conversion", test_device_conversion, devices=jax_compatible_devices)
+    if jax_candidate_devices:
+        add_function_test(
+            TestJax,
+            "test_device_conversion",
+            test_device_conversion,
+            devices=jax_candidate_devices,
+            device_check=_check_jax_device,
+        )
 
-    if jax_compatible_cuda_devices:
+    if jax_cuda_candidate_devices:
         # tests for both custom_call and ffi variants of jax_kernel(), selected by installed JAX version
         if jax.__version_info__ < (0, 4, 25):
             # no interop supported
@@ -2270,74 +2287,99 @@ try:
                 TestJax,
                 f"test_jax_kernel_basic_{suffix}",
                 test_jax_kernel_basic,
-                devices=jax_compatible_cuda_devices,
+                devices=jax_cuda_candidate_devices,
+                device_check=_check_jax_device,
                 use_ffi=use_ffi,
             )
             add_function_test(
                 TestJax,
                 f"test_jax_kernel_scalar_{suffix}",
                 test_jax_kernel_scalar,
-                devices=jax_compatible_cuda_devices,
+                devices=jax_cuda_candidate_devices,
+                device_check=_check_jax_device,
                 use_ffi=use_ffi,
             )
             add_function_test(
                 TestJax,
                 f"test_jax_kernel_vecmat_{suffix}",
                 test_jax_kernel_vecmat,
-                devices=jax_compatible_cuda_devices,
+                devices=jax_cuda_candidate_devices,
+                device_check=_check_jax_device,
                 use_ffi=use_ffi,
             )
             add_function_test(
                 TestJax,
                 f"test_jax_kernel_multiarg_{suffix}",
                 test_jax_kernel_multiarg,
-                devices=jax_compatible_cuda_devices,
+                devices=jax_cuda_candidate_devices,
+                device_check=_check_jax_device,
                 use_ffi=use_ffi,
             )
             add_function_test(
                 TestJax,
                 f"test_jax_kernel_launch_dims_{suffix}",
                 test_jax_kernel_launch_dims,
-                devices=jax_compatible_cuda_devices,
+                devices=jax_cuda_candidate_devices,
+                device_check=_check_jax_device,
                 use_ffi=use_ffi,
             )
 
         # ffi.jax_kernel() tests
         add_function_test(
-            TestJax, "test_ffi_jax_kernel_add", test_ffi_jax_kernel_add, devices=jax_compatible_cuda_devices
+            TestJax,
+            "test_ffi_jax_kernel_add",
+            test_ffi_jax_kernel_add,
+            devices=jax_cuda_candidate_devices,
+            device_check=_check_jax_device,
         )
         add_function_test(
-            TestJax, "test_ffi_jax_kernel_sincos", test_ffi_jax_kernel_sincos, devices=jax_compatible_cuda_devices
+            TestJax,
+            "test_ffi_jax_kernel_sincos",
+            test_ffi_jax_kernel_sincos,
+            devices=jax_cuda_candidate_devices,
+            device_check=_check_jax_device,
         )
         add_function_test(
-            TestJax, "test_ffi_jax_kernel_diagonal", test_ffi_jax_kernel_diagonal, devices=jax_compatible_cuda_devices
+            TestJax,
+            "test_ffi_jax_kernel_diagonal",
+            test_ffi_jax_kernel_diagonal,
+            devices=jax_cuda_candidate_devices,
+            device_check=_check_jax_device,
         )
         add_function_test(
-            TestJax, "test_ffi_jax_kernel_in_out", test_ffi_jax_kernel_in_out, devices=jax_compatible_cuda_devices
+            TestJax,
+            "test_ffi_jax_kernel_in_out",
+            test_ffi_jax_kernel_in_out,
+            devices=jax_cuda_candidate_devices,
+            device_check=_check_jax_device,
         )
         add_function_test(
             TestJax,
             "test_ffi_jax_kernel_scale_vec_constant",
             test_ffi_jax_kernel_scale_vec_constant,
-            devices=jax_compatible_cuda_devices,
+            devices=jax_cuda_candidate_devices,
+            device_check=_check_jax_device,
         )
         add_function_test(
             TestJax,
             "test_ffi_jax_kernel_scale_vec_static",
             test_ffi_jax_kernel_scale_vec_static,
-            devices=jax_compatible_cuda_devices,
+            devices=jax_cuda_candidate_devices,
+            device_check=_check_jax_device,
         )
         add_function_test(
             TestJax,
             "test_ffi_jax_kernel_launch_dims_default",
             test_ffi_jax_kernel_launch_dims_default,
-            devices=jax_compatible_cuda_devices,
+            devices=jax_cuda_candidate_devices,
+            device_check=_check_jax_device,
         )
         add_function_test(
             TestJax,
             "test_ffi_jax_kernel_launch_dims_custom",
             test_ffi_jax_kernel_launch_dims_custom,
-            devices=jax_compatible_cuda_devices,
+            devices=jax_cuda_candidate_devices,
+            device_check=_check_jax_device,
         )
 
         # subscript-style type hint tests (wp.array[dtype] syntax)
@@ -2345,19 +2387,22 @@ try:
             TestJax,
             "test_ffi_jax_kernel_subscript_scalar",
             test_ffi_jax_kernel_subscript_scalar,
-            devices=jax_compatible_cuda_devices,
+            devices=jax_cuda_candidate_devices,
+            device_check=_check_jax_device,
         )
         add_function_test(
             TestJax,
             "test_ffi_jax_kernel_subscript_vec",
             test_ffi_jax_kernel_subscript_vec,
-            devices=jax_compatible_cuda_devices,
+            devices=jax_cuda_candidate_devices,
+            device_check=_check_jax_device,
         )
         add_function_test(
             TestJax,
             "test_ffi_jax_kernel_subscript_autodiff",
             test_ffi_jax_kernel_subscript_autodiff,
-            devices=jax_compatible_cuda_devices,
+            devices=jax_cuda_candidate_devices,
+            device_check=_check_jax_device,
         )
 
         # ffi.jax_callable() tests
@@ -2365,22 +2410,29 @@ try:
             TestJax,
             "test_ffi_jax_callable_scale_constant",
             test_ffi_jax_callable_scale_constant,
-            devices=jax_compatible_cuda_devices,
+            devices=jax_cuda_candidate_devices,
+            device_check=_check_jax_device,
         )
         add_function_test(
             TestJax,
             "test_ffi_jax_callable_scale_static",
             test_ffi_jax_callable_scale_static,
-            devices=jax_compatible_cuda_devices,
+            devices=jax_cuda_candidate_devices,
+            device_check=_check_jax_device,
         )
         add_function_test(
-            TestJax, "test_ffi_jax_callable_in_out", test_ffi_jax_callable_in_out, devices=jax_compatible_cuda_devices
+            TestJax,
+            "test_ffi_jax_callable_in_out",
+            test_ffi_jax_callable_in_out,
+            devices=jax_cuda_candidate_devices,
+            device_check=_check_jax_device,
         )
         add_function_test(
             TestJax,
             "test_ffi_jax_callable_graph_cache",
             test_ffi_jax_callable_graph_cache,
-            devices=jax_compatible_cuda_devices,
+            devices=jax_cuda_candidate_devices,
+            device_check=_check_jax_device,
         )
 
         # pmap tests
@@ -2389,71 +2441,88 @@ try:
             "test_ffi_jax_callable_pmap_multi_output",
             test_ffi_jax_callable_pmap_multi_output,
             devices=None,
+            device_check=_check_all_jax_cuda_devices,
         )
         add_function_test(
             TestJax,
             "test_ffi_jax_callable_pmap_mul",
             test_ffi_jax_callable_pmap_mul,
             devices=None,
+            device_check=_check_all_jax_cuda_devices,
         )
         add_function_test(
             TestJax,
             "test_ffi_jax_callable_pmap_multi_stage",
             test_ffi_jax_callable_pmap_multi_stage,
             devices=None,
+            device_check=_check_all_jax_cuda_devices,
         )
 
         # ffi callback tests
-        add_function_test(TestJax, "test_ffi_callback", test_ffi_callback, devices=jax_compatible_cuda_devices)
+        add_function_test(
+            TestJax,
+            "test_ffi_callback",
+            test_ffi_callback,
+            devices=jax_cuda_candidate_devices,
+            device_check=_check_jax_device,
+        )
 
         # autodiff tests
         add_function_test(
             TestJax,
             "test_ffi_jax_kernel_autodiff_simple",
             test_ffi_jax_kernel_autodiff_simple,
-            devices=jax_compatible_cuda_devices,
+            devices=jax_cuda_candidate_devices,
+            device_check=_check_jax_device,
         )
         add_function_test(
             TestJax,
             "test_ffi_jax_kernel_autodiff_jit_of_grad_simple",
             test_ffi_jax_kernel_autodiff_jit_of_grad_simple,
-            devices=jax_compatible_cuda_devices,
+            devices=jax_cuda_candidate_devices,
+            device_check=_check_jax_device,
         )
         add_function_test(
             TestJax,
             "test_ffi_jax_kernel_autodiff_multi_output",
             test_ffi_jax_kernel_autodiff_multi_output,
-            devices=jax_compatible_cuda_devices,
+            devices=jax_cuda_candidate_devices,
+            device_check=_check_jax_device,
         )
         add_function_test(
             TestJax,
             "test_ffi_jax_kernel_autodiff_jit_of_grad_multi_output",
             test_ffi_jax_kernel_autodiff_jit_of_grad_multi_output,
-            devices=jax_compatible_cuda_devices,
+            devices=jax_cuda_candidate_devices,
+            device_check=_check_jax_device,
         )
         add_function_test(
             TestJax,
             "test_ffi_jax_kernel_autodiff_2d",
             test_ffi_jax_kernel_autodiff_2d,
-            devices=jax_compatible_cuda_devices,
+            devices=jax_cuda_candidate_devices,
+            device_check=_check_jax_device,
         )
         add_function_test(
             TestJax,
             "test_ffi_jax_kernel_autodiff_vec2",
             test_ffi_jax_kernel_autodiff_vec2,
-            devices=jax_compatible_cuda_devices,
+            devices=jax_cuda_candidate_devices,
+            device_check=_check_jax_device,
         )
         add_function_test(
             TestJax,
             "test_ffi_jax_kernel_autodiff_mat22",
             test_ffi_jax_kernel_autodiff_mat22,
-            devices=jax_compatible_cuda_devices,
+            devices=jax_cuda_candidate_devices,
+            device_check=_check_jax_device,
         )
         add_function_test(
             TestJax,
             "test_ffi_jax_kernel_autodiff_static_required",
             test_ffi_jax_kernel_autodiff_static_required,
-            devices=jax_compatible_cuda_devices,
+            devices=jax_cuda_candidate_devices,
+            device_check=_check_jax_device,
         )
 
         # autodiff with pmap tests
@@ -2462,12 +2531,14 @@ try:
             "test_ffi_jax_kernel_autodiff_pmap_triple",
             test_ffi_jax_kernel_autodiff_pmap_triple,
             devices=None,
+            device_check=_check_all_jax_cuda_devices,
         )
         add_function_test(
             TestJax,
             "test_ffi_jax_kernel_autodiff_pmap_multi_output",
             test_ffi_jax_kernel_autodiff_pmap_multi_output,
             devices=None,
+            device_check=_check_all_jax_cuda_devices,
         )
 
         # launch_dims + enable_backward=True tests
@@ -2475,37 +2546,43 @@ try:
             TestJax,
             "test_ffi_jax_kernel_launch_dims_autodiff_basic",
             test_ffi_jax_kernel_launch_dims_autodiff_basic,
-            devices=jax_compatible_cuda_devices,
+            devices=jax_cuda_candidate_devices,
+            device_check=_check_jax_device,
         )
         add_function_test(
             TestJax,
             "test_ffi_jax_kernel_launch_dims_autodiff_gradient",
             test_ffi_jax_kernel_launch_dims_autodiff_gradient,
-            devices=jax_compatible_cuda_devices,
+            devices=jax_cuda_candidate_devices,
+            device_check=_check_jax_device,
         )
         add_function_test(
             TestJax,
             "test_ffi_jax_kernel_launch_dims_autodiff_separate_cache",
             test_ffi_jax_kernel_launch_dims_autodiff_separate_cache,
-            devices=jax_compatible_cuda_devices,
+            devices=jax_cuda_candidate_devices,
+            device_check=_check_jax_device,
         )
         add_function_test(
             TestJax,
             "test_ffi_jax_kernel_autodiff_per_call_override_rejected",
             test_ffi_jax_kernel_autodiff_per_call_override_rejected,
-            devices=jax_compatible_cuda_devices,
+            devices=jax_cuda_candidate_devices,
+            device_check=_check_jax_device,
         )
         add_function_test(
             TestJax,
             "test_ffi_jax_kernel_output_dims_autodiff_still_blocked",
             test_ffi_jax_kernel_output_dims_autodiff_still_blocked,
-            devices=jax_compatible_cuda_devices,
+            devices=jax_cuda_candidate_devices,
+            device_check=_check_jax_device,
         )
         add_function_test(
             TestJax,
             "test_ffi_jax_kernel_launch_dims_autodiff_vmap",
             test_ffi_jax_kernel_launch_dims_autodiff_vmap,
-            devices=jax_compatible_cuda_devices,
+            devices=jax_cuda_candidate_devices,
+            device_check=_check_jax_device,
         )
 
         # vmap tests
@@ -2514,29 +2591,36 @@ try:
                 TestJax,
                 f"test_ffi_vmap_add_{vmap_method}",
                 partial(test_ffi_vmap_add, vmap_method=vmap_method),
-                devices=jax_compatible_cuda_devices,
+                devices=jax_cuda_candidate_devices,
+                device_check=_check_jax_device,
             )
             add_function_test(
                 TestJax,
                 f"test_ffi_vmap_rowsum_{vmap_method}",
                 partial(test_ffi_vmap_rowsum, vmap_method=vmap_method),
-                devices=jax_compatible_cuda_devices,
+                devices=jax_cuda_candidate_devices,
+                device_check=_check_jax_device,
             )
             add_function_test(
                 TestJax,
                 f"test_ffi_vmap_lookup_{vmap_method}",
                 partial(test_ffi_vmap_lookup, vmap_method=vmap_method),
-                devices=jax_compatible_cuda_devices,
+                devices=jax_cuda_candidate_devices,
+                device_check=_check_jax_device,
             )
 
     # bfloat16 tests require arch >= 80
-    bf16_jax_devices = [d for d in jax_compatible_devices if d.is_cpu or (d.is_cuda and d.arch >= 80)]
+    bf16_jax_devices = [
+        device for device in jax_candidate_devices if device.is_cpu or (device.is_cuda and device.arch >= 80)
+    ]
     if bf16_jax_devices:
-        add_function_test(TestJax, "test_bf16_interop_jax", test_bf16_interop_jax, devices=bf16_jax_devices)
-
-except Exception as e:
-    print(f"Skipping Jax tests due to exception: {e}")
-
+        add_function_test(
+            TestJax,
+            "test_bf16_interop_jax",
+            test_bf16_interop_jax,
+            devices=bf16_jax_devices,
+            device_check=_check_jax_device,
+        )
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

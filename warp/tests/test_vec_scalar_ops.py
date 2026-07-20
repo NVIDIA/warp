@@ -199,8 +199,6 @@ def test_py_arithmetic_ops(test, device, dtype):
 
 
 def test_constructors(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 5.0e-3,
         np.float32: 1.0e-6,
@@ -318,6 +316,8 @@ def test_constructors(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     input = wp.array(randvals(rng, [1], dtype), requires_grad=True, device=device)
     v2 = wp.zeros(1, dtype=vec2, device=device)
@@ -443,8 +443,6 @@ def test_constructors(test, device, dtype, register_kernels=False):
 
 
 def test_anon_type_instance(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 5.0e-3,
         np.float32: 1.0e-6,
@@ -506,6 +504,8 @@ def test_anon_type_instance(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
+    rng = np.random.default_rng(123)
+
     input = wp.array(randvals(rng, [4], dtype), requires_grad=True, device=device)
     output = wp.zeros(2 + 3 + 4 + 5, dtype=wptype, requires_grad=True, device=device)
 
@@ -566,8 +566,6 @@ def test_anon_type_instance(test, device, dtype, register_kernels=False):
 
 
 def test_indexing(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 5.0e-3,
         np.float32: 1.0e-6,
@@ -623,6 +621,8 @@ def test_indexing(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     v2 = wp.array(randvals(rng, (1, 2), dtype), dtype=vec2, requires_grad=True, device=device)
     v3 = wp.array(randvals(rng, (1, 3), dtype), dtype=vec3, requires_grad=True, device=device)
@@ -801,8 +801,6 @@ def test_equality(test, device, dtype, register_kernels=False):
 
 
 def test_scalar_multiplication(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 5.0e-3,
         np.float32: 1.0e-6,
@@ -864,6 +862,8 @@ def test_scalar_multiplication(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     s = wp.array(randvals(rng, [1], dtype), requires_grad=True, device=device)
     v2 = wp.array(randvals(rng, (1, 2), dtype), dtype=vec2, requires_grad=True, device=device)
@@ -933,8 +933,6 @@ def test_scalar_multiplication(test, device, dtype, register_kernels=False):
 
 
 def test_scalar_multiplication_rightmul(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 5.0e-3,
         np.float32: 1.0e-6,
@@ -996,6 +994,8 @@ def test_scalar_multiplication_rightmul(test, device, dtype, register_kernels=Fa
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     s = wp.array(randvals(rng, [1], dtype), requires_grad=True, device=device)
     v2 = wp.array(randvals(rng, (1, 2), dtype), dtype=vec2, requires_grad=True, device=device)
@@ -1065,8 +1065,6 @@ def test_scalar_multiplication_rightmul(test, device, dtype, register_kernels=Fa
 
 
 def test_cw_multiplication(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 5.0e-3,
         np.float32: 1.0e-6,
@@ -1130,6 +1128,8 @@ def test_cw_multiplication(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     s2 = wp.array(randvals(rng, (1, 2), dtype), dtype=vec2, requires_grad=True, device=device)
     s3 = wp.array(randvals(rng, (1, 3), dtype), dtype=vec3, requires_grad=True, device=device)
@@ -1210,8 +1210,6 @@ def test_cw_multiplication(test, device, dtype, register_kernels=False):
 
 
 def test_scalar_division(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 5.0e-3,
         np.float32: 1.0e-6,
@@ -1272,6 +1270,8 @@ def test_scalar_division(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     s = wp.array(randvals(rng, [1], dtype), requires_grad=True, device=device)
     v2 = wp.array(randvals(rng, (1, 2), dtype), dtype=vec2, requires_grad=True, device=device)
@@ -1366,8 +1366,6 @@ def test_scalar_division(test, device, dtype, register_kernels=False):
 
 
 def test_cw_division(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 1.0e-2,
         np.float32: 1.0e-6,
@@ -1431,6 +1429,8 @@ def test_cw_division(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     s2 = wp.array(randvals(rng, (1, 2), dtype), dtype=vec2, requires_grad=True, device=device)
     s3 = wp.array(randvals(rng, (1, 3), dtype), dtype=vec3, requires_grad=True, device=device)
@@ -1534,8 +1534,6 @@ def test_cw_division(test, device, dtype, register_kernels=False):
 
 
 def test_addition(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 5.0e-3,
         np.float32: 1.0e-6,
@@ -1599,6 +1597,8 @@ def test_addition(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     s2 = wp.array(randvals(rng, (1, 2), dtype), dtype=vec2, requires_grad=True, device=device)
     s3 = wp.array(randvals(rng, (1, 3), dtype), dtype=vec3, requires_grad=True, device=device)
@@ -1675,8 +1675,6 @@ def test_addition(test, device, dtype, register_kernels=False):
 
 
 def test_dotproduct(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 1.0e-2,
         np.float32: 1.0e-6,
@@ -1712,6 +1710,8 @@ def test_dotproduct(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     s2 = wp.array(randvals(rng, (1, 2), dtype), dtype=vec2, requires_grad=True, device=device)
     s3 = wp.array(randvals(rng, (1, 3), dtype), dtype=vec3, requires_grad=True, device=device)
@@ -1796,8 +1796,6 @@ def test_dotproduct(test, device, dtype, register_kernels=False):
 
 
 def test_modulo(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 1.0e-2,
         np.float32: 1.0e-6,
@@ -1856,6 +1854,8 @@ def test_modulo(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     s2 = wp.array(randvals(rng, (1, 2), dtype), dtype=vec2, requires_grad=True, device=device)
     s3 = wp.array(randvals(rng, (1, 3), dtype), dtype=vec3, requires_grad=True, device=device)
@@ -2091,8 +2091,6 @@ def test_sign(test, device, dtype, register_kernels=False):
 
 
 def test_minmax(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     # \TODO: not quite sure why, but the numbers are off for 16 bit float
     # on the cpu (but not cuda). This is probably just the sketchy float16
     # arithmetic I implemented to get all this stuff working, so
@@ -2178,6 +2176,8 @@ def test_minmax(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     a = wp.array(randvals(rng, (10, 14), dtype), dtype=wptype, requires_grad=True, device=device)
     b = wp.array(randvals(rng, (10, 14), dtype), dtype=wptype, requires_grad=True, device=device)

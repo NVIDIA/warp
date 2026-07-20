@@ -157,14 +157,15 @@ class TestSanitize(unittest.TestCase):
     def _skip_unless_asan(self):
         """Skip the current test unless Warp is running on an ASan build.
 
-        Skip only after a successful init that reports a non-ASan build. An init/load failure (e.g. a misconfigured
-        ASan build where the runtime is not on PATH/LD_PRELOAD) propagates as a loud error rather than a silent skip
+        Skip only after a successful init that reports a non-ASan build. An
+        init/load failure (e.g. a misconfigured ASan build where the runtime is not
+        on PATH/LD_PRELOAD) propagates as a loud error rather than a silent skip
         that would hide lost coverage.
 
-        Skip per test via ``self.skipTest()`` rather than in ``setUpClass``: the parallel JUnit runner records a
-        ``setUpClass`` skip via ``addSkip`` without a preceding ``startTest`` and then trips over its own timing
-        state, and at ``--level test`` it bypasses ``setUpClass`` entirely. Skipping inside the running test avoids
-        both.
+        Skip per test via ``self.skipTest()`` rather than in ``setUpClass``: the
+        parallel JUnit runner records a ``setUpClass`` skip via ``addSkip`` without
+        a preceding ``startTest`` and then trips over its own timing state. Skipping
+        inside the running test ensures the skip follows ``startTest``.
         """
         wp.init()
         if getattr(wp_context.runtime, "clang_sanitizer", "") != "address":

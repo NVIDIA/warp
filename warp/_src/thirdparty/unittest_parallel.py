@@ -154,7 +154,7 @@ def main(argv=None):
     )  # NVIDIA Modification
     group_parallel.add_argument(
         "--level",
-        choices=["module", "class", "test"],
+        choices=["module", "class"],
         default="class",
         help="Set the test parallelism level (default is 'class')",
     )
@@ -251,11 +251,9 @@ def main(argv=None):
                 discover_suite = auto_discover_suite
 
         # Get the parallelizable test suites
-        if args.level == "test":
-            test_suites = list(_iter_test_cases(discover_suite))
-        elif args.level == "class":
+        if args.level == "class":
             test_suites = list(_iter_class_suites(discover_suite))
-        else:  # args.level == 'module'
+        else:  # args.level == "module"
             test_suites = list(_iter_module_suites(discover_suite))
 
         # Don't use more processes than test suites

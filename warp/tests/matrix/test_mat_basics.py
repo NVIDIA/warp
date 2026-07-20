@@ -93,8 +93,6 @@ def test_components(test, device, dtype):
 
 
 def test_indexing(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 1.0e-3,
         np.float32: 1.0e-6,
@@ -128,6 +126,8 @@ def test_indexing(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     m2 = wp.array(randvals(rng, [1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
     m4 = wp.array(randvals(rng, [1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)

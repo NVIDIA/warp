@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+from functools import cache
 
 import numpy as np
 
@@ -344,38 +345,43 @@ class TestTileMLP(unittest.TestCase):
     pass
 
 
-test_devices = get_test_devices()
-
 try:
     import torch
 
-    # check which Warp devices work with Torch
-    torch_compatible_devices = []
-    torch_compatible_cuda_devices = []
+    torch_candidate_devices = get_test_devices()
+    torch_cuda_candidate_devices = [device for device in torch_candidate_devices if device.is_cuda]
 
-    for d in test_devices:
+    @cache
+    def _torch_device_error(device_alias):
+        device = wp.get_device(device_alias)
         try:
-            t = torch.arange(10, device=wp.device_to_torch(d))
-            t += 1
-            torch_compatible_devices.append(d)
-            if d.is_cuda:
-                torch_compatible_cuda_devices.append(d)
-        except Exception as e:
-            print(f"Skipping Torch tests on device '{d}' due to exception: {e}")
+            tensor = torch.arange(10, device=wp.device_to_torch(device))
+            tensor += 1
+        except Exception as error:
+            return f"{type(error).__name__}: {error}"
+        return None
+
+    def _check_torch_device(test, device):
+        device = wp.get_device(device)
+        error = _torch_device_error(device.alias)
+        if error is not None:
+            test.skipTest(f"Torch is unavailable on Warp device '{device}': {error}")
 
     add_function_test(
         TestTileMLP,
         "test_single_layer_nn",
         test_single_layer_nn,
         check_output=False,
-        devices=torch_compatible_devices,
+        devices=torch_candidate_devices,
+        device_check=_check_torch_device,
     )
     add_function_test(
         TestTileMLP,
         "test_multi_layer_nn",
         test_multi_layer_nn,
         check_output=False,
-        devices=torch_compatible_cuda_devices,
+        devices=torch_cuda_candidate_devices,
+        device_check=_check_torch_device,
     )
 
 except Exception as e:

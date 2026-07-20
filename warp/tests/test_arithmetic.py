@@ -89,8 +89,6 @@ def test_arrays(test, device, dtype):
 
 
 def test_unary_ops(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 5.0e-3,
         np.float32: 1.0e-6,
@@ -122,6 +120,8 @@ def test_unary_ops(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     if dtype in np_float_types:
         inputs = wp.array(
@@ -205,8 +205,6 @@ def test_unary_ops(test, device, dtype, register_kernels=False):
 
 
 def test_nonzero(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 5.0e-3,
         np.float32: 1.0e-6,
@@ -228,6 +226,8 @@ def test_nonzero(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     inputs = wp.array(rng.integers(-2, high=3, size=10).astype(dtype), dtype=wptype, requires_grad=True, device=device)
     outputs = wp.zeros_like(inputs)
@@ -251,8 +251,6 @@ def test_nonzero(test, device, dtype, register_kernels=False):
 
 
 def test_binary_ops(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 5.0e-2,
         np.float32: 1.0e-6,
@@ -299,6 +297,8 @@ def test_binary_ops(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     vals1 = randvals(rng, [8, 10], dtype)
     if dtype in [np_unsigned_int_types]:
@@ -456,8 +456,6 @@ def test_binary_ops(test, device, dtype, register_kernels=False):
 
 
 def test_special_funcs(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 1.0e-2,
         np.float32: 1.0e-6,
@@ -493,6 +491,8 @@ def test_special_funcs(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     invals = rng.normal(size=(15, 10)).astype(dtype)
     invals[[0, 1, 2, 7, 14]] = 0.1 + np.abs(invals[[0, 1, 2, 7, 14]])
@@ -709,8 +709,6 @@ def test_special_funcs(test, device, dtype, register_kernels=False):
 
 
 def test_special_funcs_2arg(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 1.0e-2,
         np.float32: 1.0e-6,
@@ -734,6 +732,8 @@ def test_special_funcs_2arg(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     in1 = wp.array(np.abs(randvals(rng, [2, 10], dtype)), dtype=wptype, requires_grad=True, device=device)
     in2 = wp.array(randvals(rng, [2, 10], dtype), dtype=wptype, requires_grad=True, device=device)
@@ -776,8 +776,6 @@ def test_special_funcs_2arg(test, device, dtype, register_kernels=False):
 
 
 def test_float_to_int(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 5.0e-3,
         np.float32: 1.0e-6,
@@ -803,6 +801,8 @@ def test_float_to_int(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     inputs = wp.array(rng.standard_normal(size=(6, 10)).astype(dtype), dtype=wptype, requires_grad=True, device=device)
     outputs = wp.zeros_like(inputs)
@@ -832,8 +832,6 @@ def test_float_to_int(test, device, dtype, register_kernels=False):
 
 
 def test_interp(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 1.0e-2,
         np.float32: 5.0e-6,
@@ -858,6 +856,8 @@ def test_interp(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     e0 = randvals(rng, [2, 10], dtype)
     e1 = e0 + randvals(rng, [2, 10], dtype) + 0.1
@@ -963,8 +963,6 @@ def test_interp(test, device, dtype, register_kernels=False):
 
 
 def test_clamp(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 5.0e-3,
         np.float32: 1.0e-6,
@@ -988,6 +986,8 @@ def test_clamp(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     in1 = wp.array(randvals(rng, [100], dtype), dtype=wptype, requires_grad=True, device=device)
     starts = randvals(rng, [100], dtype)

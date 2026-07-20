@@ -78,8 +78,6 @@ def test_py_arithmetic_ops(test, device, dtype):
 
 
 def test_negation(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 1.0e-2,
         np.float32: 1.0e-6,
@@ -133,6 +131,8 @@ def test_negation(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
+    rng = np.random.default_rng(123)
+
     m2 = wp.array(randvals(rng, [1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
     m3 = wp.array(randvals(rng, [1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
     m4 = wp.array(randvals(rng, [1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
@@ -167,8 +167,6 @@ def test_negation(test, device, dtype, register_kernels=False):
 
 
 def test_matmul(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 5.0e-3,
         np.float32: 1.0e-6,
@@ -201,6 +199,8 @@ def test_matmul(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     test_adj = dtype in np_float_types
 
@@ -238,8 +238,6 @@ def test_matmul(test, device, dtype, register_kernels=False):
 
 
 def test_subtraction(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 5.0e-3,
         np.float32: 1.0e-6,
@@ -296,6 +294,8 @@ def test_subtraction(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     s2 = wp.array(randvals(rng, [1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
     s3 = wp.array(randvals(rng, [1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
@@ -359,8 +359,6 @@ def test_subtraction(test, device, dtype, register_kernels=False):
 
 
 def test_determinant(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 5.0e-3,
         np.float32: 1.0e-6,
@@ -388,6 +386,8 @@ def test_determinant(test, device, dtype, register_kernels=False):
     kernel = getkernel(kernel_cache, check_mat_det, suffix=dtype.__name__)
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     v2 = wp.array(randvals(rng, [1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
     v3 = wp.array(randvals(rng, [1, 3, 3], dtype), dtype=mat33, requires_grad=True, device=device)
@@ -552,8 +552,6 @@ def test_determinant(test, device, dtype, register_kernels=False):
 
 
 def test_inverse(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 5.0e-2,
         np.float32: 1.0e-5,
@@ -598,6 +596,8 @@ def test_inverse(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     m2 = wp.array(
         2 * (randvals(rng, [1, 2, 2], dtype) + 0.2 * np.eye(2)), dtype=mat22, requires_grad=True, device=device
@@ -722,8 +722,6 @@ def test_inverse(test, device, dtype, register_kernels=False):
 
 
 def test_svd(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 1.0e-3,
         np.float32: 1.0e-6,
@@ -773,6 +771,8 @@ def test_svd(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     m3 = wp.array(randvals(rng, [1, 3, 3], dtype) + np.eye(3), dtype=mat33, requires_grad=True, device=device)
 
@@ -841,8 +841,6 @@ def test_svd(test, device, dtype, register_kernels=False):
 
 
 def test_svd_2D(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 1.0e-3,
         np.float32: 1.0e-6,
@@ -898,6 +896,8 @@ def test_svd_2D(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     mats = np.concatenate(
         (
@@ -989,8 +989,6 @@ def test_svd_2D(test, device, dtype, register_kernels=False):
 
 
 def test_qr(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 2.5e-3,
         np.float32: 1.0e-6,
@@ -1031,6 +1029,8 @@ def test_qr(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     m3 = wp.array(0.5 * (randvals(rng, [1, 3, 3], dtype) + np.eye(3)), dtype=mat33, requires_grad=True, device=device)
 
@@ -1101,8 +1101,6 @@ def test_qr(test, device, dtype, register_kernels=False):
 
 
 def test_eig(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 4.0e-2,
         np.float32: 1.0e-5,
@@ -1143,6 +1141,8 @@ def test_eig(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     m3_np = randvals(rng, [1, 3, 3], dtype) + np.eye(3, dtype=dtype)
     m3 = wp.array(m3_np, dtype=mat33, requires_grad=True, device=device)
@@ -1213,8 +1213,6 @@ def test_eig(test, device, dtype, register_kernels=False):
 
 
 def test_skew(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 1.0e-3,
         np.float32: 1.0e-6,
@@ -1243,6 +1241,8 @@ def test_skew(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     v3 = wp.array(randvals(rng, [1, 3], dtype), dtype=vec3, requires_grad=True, device=device)
 
@@ -1314,8 +1314,6 @@ def test_skew(test, device, dtype, register_kernels=False):
 
 
 def test_transform_point(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 5.0e-3,
         np.float32: 1.0e-6,
@@ -1344,6 +1342,8 @@ def test_transform_point(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     v3 = wp.array(randvals(rng, [1, 3], dtype), dtype=vec3, requires_grad=True, device=device)
     m4 = wp.array(randvals(rng, [1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
@@ -1375,8 +1375,6 @@ def test_transform_point(test, device, dtype, register_kernels=False):
 
 
 def test_transform_vector(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 5.0e-3,
         np.float32: 1.0e-6,
@@ -1405,6 +1403,8 @@ def test_transform_vector(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     v3 = wp.array(randvals(rng, [1, 3], dtype), dtype=vec3, requires_grad=True, device=device)
     m4 = wp.array(randvals(rng, [1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)

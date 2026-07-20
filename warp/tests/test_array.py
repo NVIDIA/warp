@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import unittest
+from functools import cache
 from typing import Any
 
 import numpy as np
@@ -4104,22 +4105,32 @@ add_function_test(TestArray, "test_graph_fill_vecmat", test_graph_fill_vecmat, d
 try:
     import torch
 
-    # check which Warp devices work with Torch
-    # CUDA devices may fail if Torch was not compiled with CUDA support
-    torch_compatible_devices = []
-    torch_compatible_cuda_devices = []
+    torch_candidate_devices = get_test_devices()
+    torch_cuda_candidate_devices = [device for device in torch_candidate_devices if device.is_cuda]
 
-    for d in devices:
+    @cache
+    def _torch_device_error(device_alias):
+        device = wp.get_device(device_alias)
         try:
-            t = torch.arange(10, device=wp.device_to_torch(d))
-            t += 1
-            torch_compatible_devices.append(d)
-            if d.is_cuda:
-                torch_compatible_cuda_devices.append(d)
-        except Exception as e:
-            print(f"Skipping Array tests that use Torch on device '{d}' due to exception: {e}")
+            tensor = torch.arange(10, device=wp.device_to_torch(device))
+            tensor += 1
+        except Exception as error:
+            return f"{type(error).__name__}: {error}"
+        return None
 
-    add_function_test(TestArray, "test_array_from_cai", test_array_from_cai, devices=torch_compatible_cuda_devices)
+    def _check_torch_device(test, device):
+        device = wp.get_device(device)
+        error = _torch_device_error(device.alias)
+        if error is not None:
+            test.skipTest(f"Torch is unavailable on Warp device '{device}': {error}")
+
+    add_function_test(
+        TestArray,
+        "test_array_from_cai",
+        test_array_from_cai,
+        devices=torch_cuda_candidate_devices,
+        device_check=_check_torch_device,
+    )
 
 except Exception as e:
     print(f"Skipping Array tests that use Torch due to exception: {e}")

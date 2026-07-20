@@ -19,8 +19,6 @@ kernel_cache = {}
 
 
 def test_scalar_multiplication(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 1.0e-2,
         np.float32: 1.0e-6,
@@ -64,6 +62,8 @@ def test_scalar_multiplication(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     s = wp.array(randvals(rng, [1], dtype), requires_grad=True, device=device)
     m2 = wp.array(randvals(rng, [1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
@@ -134,8 +134,6 @@ def test_scalar_multiplication(test, device, dtype, register_kernels=False):
 
 
 def test_addition(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 2.0e-2,
         np.float32: 5.0e-6,
@@ -174,6 +172,8 @@ def test_addition(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     s2 = wp.array(randvals(rng, [1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
     s4 = wp.array(randvals(rng, [1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
@@ -222,8 +222,6 @@ def test_addition(test, device, dtype, register_kernels=False):
 
 
 def test_scalar_division(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 1.0e-2,
         np.float32: 1.0e-6,
@@ -261,6 +259,8 @@ def test_scalar_division(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     s = wp.array(randvals(rng, [1], dtype), requires_grad=True, device=device)
     m2 = wp.array(randvals(rng, [1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
@@ -302,8 +302,6 @@ def test_scalar_division(test, device, dtype, register_kernels=False):
 
 
 def test_cw_multiplication(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 5.0e-2,
         np.float32: 1.0e-6,
@@ -342,6 +340,8 @@ def test_cw_multiplication(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     s2 = wp.array(randvals(rng, [1, 2, 2], dtype), dtype=mat22, requires_grad=True, device=device)
     s4 = wp.array(randvals(rng, [1, 4, 4], dtype), dtype=mat44, requires_grad=True, device=device)
@@ -392,8 +392,6 @@ def test_cw_multiplication(test, device, dtype, register_kernels=False):
 
 
 def test_cw_division(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 1.0e-2,
         np.float32: 1.0e-6,
@@ -432,6 +430,8 @@ def test_cw_division(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     s2 = randvals(rng, [1, 2, 2], dtype)
     s4 = randvals(rng, [1, 4, 4], dtype)

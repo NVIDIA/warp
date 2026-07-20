@@ -63,8 +63,6 @@ def test_length_mismatch(test, device):
 
 
 def test_negation(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 5.0e-3,
         np.float32: 1.0e-6,
@@ -134,6 +132,8 @@ def test_negation(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     v2 = wp.array(randvals(rng, (1, 2), dtype), dtype=vec2, requires_grad=True, device=device)
     v3 = wp.array(randvals(rng, (1, 3), dtype), dtype=vec3, requires_grad=True, device=device)
@@ -217,8 +217,6 @@ def test_subtraction_unsigned(test, device, dtype, register_kernels=False):
 
 
 def test_subtraction(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 5.0e-3,
         np.float32: 1.0e-6,
@@ -283,6 +281,8 @@ def test_subtraction(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     s2 = wp.array(randvals(rng, (1, 2), dtype), dtype=vec2, requires_grad=True, device=device)
     s3 = wp.array(randvals(rng, (1, 3), dtype), dtype=vec3, requires_grad=True, device=device)
@@ -354,8 +354,6 @@ def test_subtraction(test, device, dtype, register_kernels=False):
 
 
 def test_length(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 5.0e-3,
         np.float32: 1.0e-6,
@@ -396,6 +394,8 @@ def test_length(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     v2 = wp.array(randvals(rng, (1, 2), dtype), dtype=vec2, requires_grad=True, device=device)
     v3 = wp.array(randvals(rng, (1, 3), dtype), dtype=vec3, requires_grad=True, device=device)
@@ -476,8 +476,6 @@ def test_length(test, device, dtype, register_kernels=False):
 
 
 def test_normalize(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 5.0e-3,
         np.float32: 1.0e-6,
@@ -582,6 +580,8 @@ def test_normalize(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
+    rng = np.random.default_rng(123)
+
     # I've already tested the things I'm using in check_normalize_alt, so I'll just
     # make sure the two are giving the same results/gradients
     v2 = wp.array(randvals(rng, (1, 2), dtype), dtype=vec2, requires_grad=True, device=device)
@@ -683,8 +683,6 @@ def test_normalize(test, device, dtype, register_kernels=False):
 
 
 def test_crossproduct(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 5.0e-3,
         np.float32: 1.0e-6,
@@ -712,6 +710,8 @@ def test_crossproduct(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     s3 = wp.array(randvals(rng, (1, 3), dtype), dtype=vec3, requires_grad=True, device=device)
     v3 = wp.array(randvals(rng, (1, 3), dtype), dtype=vec3, requires_grad=True, device=device)

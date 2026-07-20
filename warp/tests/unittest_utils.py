@@ -341,9 +341,12 @@ def assert_np_equal(result: np.ndarray, expect: np.ndarray, tol=0.0):
 
 
 # if check_output is True any output to stdout will be treated as an error
-def create_test_func(func, device, check_output, **kwargs):
+def create_test_func(func, device, check_output, device_check=None, **kwargs):
     # pass args to func
     def test_func(self):
+        if device_check is not None:
+            device_check(self, device)
+
         if check_output:
             with CheckOutput(self):
                 func(self, device, **kwargs)
@@ -372,9 +375,9 @@ def sanitize_identifier(s):
         return re.sub(r"\W|^(?=\d)", "_", s)
 
 
-def add_function_test(cls, name, func, devices=None, check_output=True, **kwargs):
+def add_function_test(cls, name, func, devices=None, check_output=True, device_check=None, **kwargs):
     if devices is None:
-        setattr(cls, name, create_test_func(func, None, check_output, **kwargs))
+        setattr(cls, name, create_test_func(func, None, check_output, device_check=device_check, **kwargs))
     elif isinstance(devices, list):
         if not devices:
             # No devices to run this test
@@ -384,21 +387,25 @@ def add_function_test(cls, name, func, devices=None, check_output=True, **kwargs
                 setattr(
                     cls,
                     name + "_" + sanitize_identifier(device),
-                    create_test_func(func, device, check_output, **kwargs),
+                    create_test_func(func, device, check_output, device_check=device_check, **kwargs),
                 )
     else:
         setattr(
             cls,
             name + "_" + sanitize_identifier(devices),
-            create_test_func(func, devices, check_output, **kwargs),
+            create_test_func(func, devices, check_output, device_check=device_check, **kwargs),
         )
 
 
-def add_kernel_test(cls, kernel, dim, name=None, expect=None, inputs=None, devices=None):
+def add_kernel_test(cls, kernel, dim, name=None, expect=None, inputs=None, devices=None, inputs_factory=None):
+    if inputs is not None and inputs_factory is not None:
+        raise ValueError("Only one of `inputs` and `inputs_factory` may be provided.")
+
     def test_func(self, device):
         args = []
-        if inputs:
-            args.extend(inputs)
+        test_inputs = inputs_factory(device) if inputs_factory is not None else inputs
+        if test_inputs:
+            args.extend(test_inputs)
 
         if expect:
             # allocate outputs to match results

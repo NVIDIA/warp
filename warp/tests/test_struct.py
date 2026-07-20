@@ -963,16 +963,16 @@ for device in devices:
         kernel=test_struct_instantiate,
         name="test_struct_instantiate",
         dim=1,
-        inputs=[wp.array([1], dtype=int, device=device)],
         devices=[device],
+        inputs_factory=lambda selected_device: [wp.array([1], dtype=int, device=selected_device)],
     )
     add_kernel_test(
         TestStruct,
         kernel=test_return_struct,
         name="test_return_struct",
         dim=1,
-        inputs=[wp.zeros(10, dtype=int, device=device)],
         devices=[device],
+        inputs_factory=lambda selected_device: [wp.zeros(10, dtype=int, device=selected_device)],
     )
 
 add_kernel_test(

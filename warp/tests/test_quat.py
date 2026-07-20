@@ -72,8 +72,6 @@ def get_select_kernel(dtype):
 
 
 def test_constructors(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 5.0e-3,
         np.float32: 1.0e-6,
@@ -111,6 +109,8 @@ def test_constructors(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     quat_components = wp.array(rng.standard_normal(size=4).astype(dtype), requires_grad=True, device=device)
     output_quats = wp.zeros_like(quat_components)
@@ -263,8 +263,6 @@ def test_casting_constructors(test, device, dtype, register_kernels=False):
 
 
 def test_inverse(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 2.0e-3,
         np.float32: 1.0e-6,
@@ -298,6 +296,8 @@ def test_inverse(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
+    rng = np.random.default_rng(123)
+
     quat_components = wp.array(rng.standard_normal(size=4).astype(dtype), requires_grad=True, device=device)
     identity_quat = wp.zeros((1,), dtype=quat_type, requires_grad=True, device=device)
     inverse_output = wp.zeros_like(quat_components)
@@ -324,8 +324,6 @@ def test_inverse(test, device, dtype, register_kernels=False):
 
 
 def test_dotproduct(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 1.0e-2,
         np.float32: 1.0e-6,
@@ -345,6 +343,8 @@ def test_dotproduct(test, device, dtype, register_kernels=False):
     dotkernel = getkernel(check_quat_dot, suffix=dtype.__name__)
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     s = wp.array(rng.standard_normal(size=4).astype(dtype), dtype=quat_type, requires_grad=True, device=device)
     v = wp.array(rng.standard_normal(size=4).astype(dtype), dtype=quat_type, requires_grad=True, device=device)
@@ -366,8 +366,6 @@ def test_dotproduct(test, device, dtype, register_kernels=False):
 
 
 def test_length(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 5.0e-3,
         np.float32: 1.0e-6,
@@ -389,6 +387,8 @@ def test_length(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     q = wp.array(rng.standard_normal(size=4).astype(dtype), dtype=quat_type, requires_grad=True, device=device)
     l = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
@@ -414,8 +414,6 @@ def test_length(test, device, dtype, register_kernels=False):
 
 
 def test_normalize(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 5.0e-3,
         np.float32: 1.0e-6,
@@ -459,6 +457,8 @@ def test_normalize(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
+    rng = np.random.default_rng(123)
+
     # I've already tested the things I'm using in check_normalize_alt, so I'll just
     # make sure the two are giving the same results/gradients
     q = wp.array(rng.standard_normal(size=4).astype(dtype), dtype=quat_type, requires_grad=True, device=device)
@@ -496,8 +496,6 @@ def test_normalize(test, device, dtype, register_kernels=False):
 
 
 def test_addition(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 5.0e-3,
         np.float32: 1.0e-6,
@@ -526,6 +524,8 @@ def test_addition(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     q = wp.array(rng.standard_normal(size=4).astype(dtype), dtype=quat_type, requires_grad=True, device=device)
     v = wp.array(rng.standard_normal(size=4).astype(dtype), dtype=quat_type, requires_grad=True, device=device)
@@ -559,8 +559,6 @@ def test_addition(test, device, dtype, register_kernels=False):
 
 
 def test_subtraction(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 5.0e-3,
         np.float32: 1.0e-6,
@@ -589,6 +587,8 @@ def test_subtraction(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     q = wp.array(rng.standard_normal(size=4).astype(dtype), dtype=quat_type, requires_grad=True, device=device)
     v = wp.array(rng.standard_normal(size=4).astype(dtype), dtype=quat_type, requires_grad=True, device=device)
@@ -623,8 +623,6 @@ def test_subtraction(test, device, dtype, register_kernels=False):
 
 
 def test_scalar_multiplication(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 5.0e-3,
         np.float32: 1.0e-6,
@@ -664,6 +662,8 @@ def test_scalar_multiplication(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     s = wp.array(rng.standard_normal(size=1).astype(dtype), requires_grad=True, device=device)
     q = wp.array(rng.standard_normal(size=(1, 4)).astype(dtype), dtype=quat_type, requires_grad=True, device=device)
@@ -706,8 +706,6 @@ def test_scalar_multiplication(test, device, dtype, register_kernels=False):
 
 
 def test_scalar_division(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 1.0e-3,
         np.float32: 1.0e-6,
@@ -737,6 +735,8 @@ def test_scalar_division(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     s = wp.array(rng.standard_normal(size=1).astype(dtype), requires_grad=True, device=device)
     q = wp.array(rng.standard_normal(size=(1, 4)).astype(dtype), dtype=quat_type, requires_grad=True, device=device)
@@ -768,8 +768,6 @@ def test_scalar_division(test, device, dtype, register_kernels=False):
 
 
 def test_quat_multiplication(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 1.0e-2,
         np.float32: 1.0e-6,
@@ -799,6 +797,8 @@ def test_quat_multiplication(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     s = wp.array(rng.standard_normal(size=(1, 4)).astype(dtype), dtype=quat_type, requires_grad=True, device=device)
     q = wp.array(rng.standard_normal(size=(1, 4)).astype(dtype), dtype=quat_type, requires_grad=True, device=device)
@@ -861,8 +861,6 @@ def test_quat_multiplication(test, device, dtype, register_kernels=False):
 
 
 def test_indexing(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 5.0e-3,
         np.float32: 1.0e-6,
@@ -889,6 +887,8 @@ def test_indexing(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     q = wp.array(rng.standard_normal(size=(1, 4)).astype(dtype), dtype=quat_type, requires_grad=True, device=device)
     r0 = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
@@ -928,8 +928,6 @@ def test_assignment():
 
 
 def test_quat_lerp(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 1.0e-2,
         np.float32: 1.0e-6,
@@ -960,6 +958,8 @@ def test_quat_lerp(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     s = wp.array(rng.standard_normal(size=(1, 4)).astype(dtype), dtype=quat_type, requires_grad=True, device=device)
     q = wp.array(rng.standard_normal(size=(1, 4)).astype(dtype), dtype=quat_type, requires_grad=True, device=device)
@@ -998,8 +998,6 @@ def test_quat_lerp(test, device, dtype, register_kernels=False):
 
 
 def test_quat_rotate(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 1.0e-2,
         np.float32: 1.0e-6,
@@ -1044,6 +1042,8 @@ def test_quat_rotate(test, device, dtype, register_kernels=False):
 
     if register_kernels:
         return
+
+    rng = np.random.default_rng(123)
 
     q_np = rng.standard_normal(size=(1, 4))
     q_np /= np.linalg.norm(q_np)
@@ -1133,8 +1133,6 @@ def test_quat_rotate(test, device, dtype, register_kernels=False):
 
 
 def test_quat_to_matrix(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
-
     tol = {
         np.float16: 1.0e-2,
         np.float32: 1.0e-6,
@@ -1193,6 +1191,8 @@ def test_quat_to_matrix(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
+    rng = np.random.default_rng(123)
+
     q = rng.standard_normal(size=(1, 4))
     q /= np.linalg.norm(q)
     q = wp.array(q.astype(dtype), dtype=quat_type, requires_grad=True, device=device)
@@ -1238,7 +1238,6 @@ def test_quat_to_matrix(test, device, dtype, register_kernels=False):
 
 
 def test_slerp_grad(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
     seed = 42
 
     wptype = wp.dtype_from_numpy(np.dtype(dtype))
@@ -1297,6 +1296,7 @@ def test_slerp_grad(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
+    rng = np.random.default_rng(123)
     N = 50
 
     q0 = wp.zeros(N, dtype=quat_type, device=device, requires_grad=True)
@@ -1531,7 +1531,6 @@ def test_quat_to_axis_angle_grad(test, device, dtype, register_kernels=False):
 
 
 def test_quat_rpy_grad(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
     N = 3
 
     wptype = wp.dtype_from_numpy(np.dtype(dtype))
@@ -1580,6 +1579,7 @@ def test_quat_rpy_grad(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
+    rng = np.random.default_rng(123)
     rpy_arr = rng.uniform(low=-np.pi, high=np.pi, size=(N, 3))
     rpy_arr = wp.array(rpy_arr, dtype=vec3, device=device, requires_grad=True)
 
@@ -1814,20 +1814,23 @@ def test_quat_identity(test, device, dtype, register_kernels=False):
     assert_np_equal(output.numpy(), expected)
 
 
-def test_quat_euler_conversion(test, device, dtype, register_kernels=False):
+def test_quat_euler_conversion(test, device, dtype):
     rng = np.random.default_rng(123)
-    N = 3
+    n = 3
 
-    rpy_arr = rng.uniform(low=-np.pi, high=np.pi, size=(N, 3))
+    rpy_arr = rng.uniform(low=-np.pi, high=np.pi, size=(n, 3))
 
     quats_from_euler = [[float(x) for x in quat_from_euler(wp.vec3(*rpy), 0, 1, 2)] for rpy in rpy_arr]
     quats_from_rpy = [[float(x) for x in wp.quat_rpy(rpy[0], rpy[1], rpy[2])] for rpy in rpy_arr]
 
-    assert_np_equal(np.array(quats_from_euler), np.array(quats_from_rpy), tol=1e-4)
+    assert_np_equal(
+        np.array(quats_from_euler),
+        np.array(quats_from_rpy),
+        tol=1e-4,
+    )
 
 
 def test_anon_type_instance(test, device, dtype, register_kernels=False):
-    rng = np.random.default_rng(123)
     wptype = wp.dtype_from_numpy(np.dtype(dtype))
 
     def quat_create_test(input: wp.array[wptype], output: wp.array[wptype]):
@@ -1851,6 +1854,7 @@ def test_anon_type_instance(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
+    rng = np.random.default_rng(123)
     quat_components = wp.array(rng.standard_normal(size=8).astype(dtype), requires_grad=True, device=device)
     output_quats = wp.zeros(8, dtype=wptype, requires_grad=True, device=device)
     wp.launch(quat_create_kernel, dim=1, inputs=(quat_components,), outputs=(output_quats,), device=device)
@@ -2489,7 +2493,7 @@ for dtype in np_float_types:
     add_function_test_register_kernel(
         TestQuat, f"test_quat_to_matrix_{dtype.__name__}", test_quat_to_matrix, devices=devices, dtype=dtype
     )
-    add_function_test_register_kernel(
+    add_function_test(
         TestQuat,
         f"test_quat_euler_conversion_{dtype.__name__}",
         test_quat_euler_conversion,

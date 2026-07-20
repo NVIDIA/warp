@@ -19,9 +19,6 @@ def getkernel(func, suffix=""):
 
 def test_atomic_cas(test, device, dtype, register_kernels=False):
     warp_type = wp.dtype_from_numpy(np.dtype(dtype))
-    n = 100
-    counter = wp.array([0], dtype=warp_type, device=device)
-    lock = wp.array([0], dtype=warp_type, device=device)
 
     @wp.func
     def spinlock_acquire_1d(lock: wp.array[warp_type]):
@@ -59,6 +56,9 @@ def test_atomic_cas(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
+    n = 100
+    counter = wp.array([0], dtype=warp_type, device=device)
+    lock = wp.array([0], dtype=warp_type, device=device)
     wp.launch(kernel, dim=n, inputs=[counter, lock], device=device)
 
     # Verify counter reached n
@@ -73,9 +73,6 @@ def test_atomic_cas(test, device, dtype, register_kernels=False):
 
 def test_atomic_cas_2d(test, device, dtype, register_kernels=False):
     warp_type = wp.dtype_from_numpy(np.dtype(dtype))
-    n = 100
-    counter = wp.array([0], dtype=warp_type, device=device)
-    lock = wp.zeros(shape=(1, 1), dtype=warp_type, device=device)
 
     @wp.func
     def spinlock_acquire_2d(lock: wp.array2d[warp_type]):
@@ -113,6 +110,9 @@ def test_atomic_cas_2d(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
+    n = 100
+    counter = wp.array([0], dtype=warp_type, device=device)
+    lock = wp.zeros(shape=(1, 1), dtype=warp_type, device=device)
     wp.launch(kernel, dim=n, inputs=[counter, lock], device=device)
 
     # Verify counter reached n
@@ -127,9 +127,6 @@ def test_atomic_cas_2d(test, device, dtype, register_kernels=False):
 
 def test_atomic_cas_3d(test, device, dtype, register_kernels=False):
     warp_type = wp.dtype_from_numpy(np.dtype(dtype))
-    n = 100
-    counter = wp.array([0], dtype=warp_type, device=device)
-    lock = wp.zeros(shape=(1, 1, 1), dtype=warp_type, device=device)
 
     @wp.func
     def spinlock_acquire_3d(lock: wp.array3d[warp_type]):
@@ -167,6 +164,9 @@ def test_atomic_cas_3d(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
+    n = 100
+    counter = wp.array([0], dtype=warp_type, device=device)
+    lock = wp.zeros(shape=(1, 1, 1), dtype=warp_type, device=device)
     wp.launch(kernel, dim=n, inputs=[counter, lock], device=device)
 
     # Verify counter reached n
@@ -217,9 +217,6 @@ def create_spinlock_test_4d(dtype):
 
 def test_atomic_cas_4d(test, device, dtype, register_kernels=False):
     warp_type = wp.dtype_from_numpy(np.dtype(dtype))
-    n = 100
-    counter = wp.array([0], dtype=warp_type, device=device)
-    lock = wp.zeros(shape=(1, 1, 1, 1), dtype=warp_type, device=device)
 
     @wp.func
     def spinlock_acquire_4d(lock: wp.array4d[warp_type]):
@@ -257,6 +254,9 @@ def test_atomic_cas_4d(test, device, dtype, register_kernels=False):
     if register_kernels:
         return
 
+    n = 100
+    counter = wp.array([0], dtype=warp_type, device=device)
+    lock = wp.zeros(shape=(1, 1, 1, 1), dtype=warp_type, device=device)
     wp.launch(kernel, dim=n, inputs=[counter, lock], device=device)
 
     # Verify counter reached n

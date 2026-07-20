@@ -705,8 +705,9 @@ linux-x86_64 test warp-init:
     - df -h
     - !reference [.snippets, move-linux-x86_64-binaries]
   script:
-    # Each test must start without Warp runtime state inherited from an earlier test.
-    - uv run --python 3.12 --extra dev -m warp.tests --junit-report-xml rspec.xml -s autodetect --isolate-test-processes --level test -p 'test_implicit_init.py'
+    # Keep exactly one test per class: class-level isolation must give every test
+    # a fresh process without Warp runtime state inherited from an earlier test.
+    - uv run --python 3.12 --extra dev -m warp.tests --junit-report-xml rspec.xml -s autodetect --isolate-test-processes --level class -p 'test_implicit_init.py'
 
 # Optional job to test MuJoCo Warp
 linux-x86_64 test mujoco warp:

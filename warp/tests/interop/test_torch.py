@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import unittest
+from functools import cache
 
 import numpy as np
 
@@ -1021,104 +1022,195 @@ class TestTorch(unittest.TestCase):
     pass
 
 
-test_devices = get_test_devices()
-
 try:
     import torch
+except Exception as error:
+    print(f"Skipping Torch tests due to exception: {error}")
+else:
+    torch_candidate_devices = get_test_devices()
+    torch_cuda_candidate_devices = [device for device in torch_candidate_devices if device.is_cuda]
 
-    # check which Warp devices work with Torch
-    # CUDA devices may fail if Torch was not compiled with CUDA support
-    torch_compatible_devices = []
-    torch_compatible_cuda_devices = []
-
-    for d in test_devices:
+    @cache
+    def _torch_device_error(device_alias):
+        device = wp.get_device(device_alias)
         try:
-            t = torch.arange(10, device=wp.device_to_torch(d))
-            t += 1
-            torch_compatible_devices.append(d)
-            if d.is_cuda:
-                torch_compatible_cuda_devices.append(d)
-        except Exception as e:
-            print(f"Skipping Torch tests on device '{d}' due to exception: {e}")
+            tensor = torch.arange(10, device=wp.device_to_torch(device))
+            tensor += 1
+        except Exception as error:
+            return f"{type(error).__name__}: {error}"
+        return None
+
+    def _check_torch_device(test, device):
+        device = wp.get_device(device)
+        error = _torch_device_error(device.alias)
+        if error is not None:
+            test.skipTest(f"Torch is unavailable on Warp device '{device}': {error}")
+
+    def _check_required_torch_cuda_devices(test, _device):
+        for device in ("cuda:0", "cuda:1"):
+            _check_torch_device(test, device)
 
     add_function_test(TestTorch, "test_dtype_from_torch", test_dtype_from_torch, devices=None)
     add_function_test(TestTorch, "test_dtype_to_torch", test_dtype_to_torch, devices=None)
 
-    if torch_compatible_devices:
-        add_function_test(TestTorch, "test_device_conversion", test_device_conversion, devices=torch_compatible_devices)
-        add_function_test(TestTorch, "test_from_torch", test_from_torch, devices=torch_compatible_devices)
-        add_function_test(TestTorch, "test_from_torch_slices", test_from_torch_slices, devices=torch_compatible_devices)
+    if torch_candidate_devices:
         add_function_test(
-            TestTorch, "test_array_ctype_from_torch", test_array_ctype_from_torch, devices=torch_compatible_devices
+            TestTorch,
+            "test_device_conversion",
+            test_device_conversion,
+            devices=torch_candidate_devices,
+            device_check=_check_torch_device,
+        )
+        add_function_test(
+            TestTorch,
+            "test_from_torch",
+            test_from_torch,
+            devices=torch_candidate_devices,
+            device_check=_check_torch_device,
+        )
+        add_function_test(
+            TestTorch,
+            "test_from_torch_slices",
+            test_from_torch_slices,
+            devices=torch_candidate_devices,
+            device_check=_check_torch_device,
+        )
+        add_function_test(
+            TestTorch,
+            "test_array_ctype_from_torch",
+            test_array_ctype_from_torch,
+            devices=torch_candidate_devices,
+            device_check=_check_torch_device,
         )
         add_function_test(
             TestTorch,
             "test_from_torch_zero_strides",
             test_from_torch_zero_strides,
-            devices=torch_compatible_devices,
+            devices=torch_candidate_devices,
+            device_check=_check_torch_device,
         )
-        add_function_test(TestTorch, "test_to_torch", test_to_torch, devices=torch_compatible_devices)
-        add_function_test(TestTorch, "test_torch_zerocopy", test_torch_zerocopy, devices=torch_compatible_devices)
-        add_function_test(TestTorch, "test_torch_autograd", test_torch_autograd, devices=torch_compatible_devices)
+        add_function_test(
+            TestTorch,
+            "test_to_torch",
+            test_to_torch,
+            devices=torch_candidate_devices,
+            device_check=_check_torch_device,
+        )
+        add_function_test(
+            TestTorch,
+            "test_torch_zerocopy",
+            test_torch_zerocopy,
+            devices=torch_candidate_devices,
+            device_check=_check_torch_device,
+        )
+        add_function_test(
+            TestTorch,
+            "test_torch_autograd",
+            test_torch_autograd,
+            devices=torch_candidate_devices,
+            device_check=_check_torch_device,
+        )
         add_function_test(
             TestTorch,
             "test_torch_retain_grad_from_torch",
             test_torch_retain_grad_from_torch,
-            devices=torch_compatible_devices,
+            devices=torch_candidate_devices,
+            device_check=_check_torch_device,
         )
-        add_function_test(TestTorch, "test_direct", test_direct, devices=torch_compatible_devices)
         add_function_test(
-            TestTorch, "test_tensor_in_warp_kernel", test_tensor_in_warp_kernel, devices=torch_compatible_devices
+            TestTorch,
+            "test_direct",
+            test_direct,
+            devices=torch_candidate_devices,
+            device_check=_check_torch_device,
+        )
+        add_function_test(
+            TestTorch,
+            "test_tensor_in_warp_kernel",
+            test_tensor_in_warp_kernel,
+            devices=torch_candidate_devices,
+            device_check=_check_torch_device,
         )
 
-    if torch_compatible_cuda_devices:
+    if torch_cuda_candidate_devices:
         add_function_test(
             TestTorch,
             "test_torch_graph_torch_stream",
             test_torch_graph_torch_stream,
-            devices=torch_compatible_cuda_devices,
+            devices=torch_cuda_candidate_devices,
+            device_check=_check_torch_device,
         )
         add_function_test(
             TestTorch,
             "test_torch_graph_warp_stream",
             test_torch_graph_warp_stream,
-            devices=torch_compatible_cuda_devices,
+            devices=torch_cuda_candidate_devices,
+            device_check=_check_torch_device,
         )
         add_function_test(
             TestTorch,
             "test_warp_graph_warp_stream",
             test_warp_graph_warp_stream,
-            devices=torch_compatible_cuda_devices,
+            devices=torch_cuda_candidate_devices,
+            device_check=_check_torch_device,
         )
         add_function_test(
             TestTorch,
             "test_warp_graph_torch_stream",
             test_warp_graph_torch_stream,
-            devices=torch_compatible_cuda_devices,
+            devices=torch_cuda_candidate_devices,
+            device_check=_check_torch_device,
         )
         add_function_test(
-            TestTorch, "test_cuda_array_interface", test_cuda_array_interface, devices=torch_compatible_cuda_devices
+            TestTorch,
+            "test_cuda_array_interface",
+            test_cuda_array_interface,
+            devices=torch_cuda_candidate_devices,
+            device_check=_check_torch_device,
         )
 
     # multi-GPU tests
-    if len(torch_compatible_cuda_devices) > 1:
-        add_function_test(TestTorch, "test_torch_mgpu_from_torch", test_torch_mgpu_from_torch)
-        add_function_test(TestTorch, "test_torch_mgpu_to_torch", test_torch_mgpu_to_torch)
-        add_function_test(TestTorch, "test_torch_mgpu_interop", test_torch_mgpu_interop)
+    if len(torch_cuda_candidate_devices) > 1:
+        add_function_test(
+            TestTorch,
+            "test_torch_mgpu_from_torch",
+            test_torch_mgpu_from_torch,
+            device_check=_check_required_torch_cuda_devices,
+        )
+        add_function_test(
+            TestTorch,
+            "test_torch_mgpu_to_torch",
+            test_torch_mgpu_to_torch,
+            device_check=_check_required_torch_cuda_devices,
+        )
+        add_function_test(
+            TestTorch,
+            "test_torch_mgpu_interop",
+            test_torch_mgpu_interop,
+            device_check=_check_required_torch_cuda_devices,
+        )
 
     add_function_test(TestTorch, "test_torch_to_warp_types", test_torch_to_warp_types)
 
     # bfloat16 tests require arch >= 80
-    bf16_torch_devices = [d for d in torch_compatible_devices if d.is_cpu or (d.is_cuda and d.arch >= 80)]
+    bf16_torch_devices = [
+        device for device in torch_candidate_devices if device.is_cpu or (device.is_cuda and device.arch >= 80)
+    ]
     if bf16_torch_devices:
-        add_function_test(TestTorch, "test_bf16_interop_torch", test_bf16_interop_torch, devices=bf16_torch_devices)
         add_function_test(
-            TestTorch, "test_bf16_torch_compound_types", test_bf16_torch_compound_types, devices=bf16_torch_devices
+            TestTorch,
+            "test_bf16_interop_torch",
+            test_bf16_interop_torch,
+            devices=bf16_torch_devices,
+            device_check=_check_torch_device,
         )
-
-except Exception as e:
-    print(f"Skipping Torch tests due to exception: {e}")
-
+        add_function_test(
+            TestTorch,
+            "test_bf16_torch_compound_types",
+            test_bf16_torch_compound_types,
+            devices=bf16_torch_devices,
+            device_check=_check_torch_device,
+        )
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
