@@ -267,6 +267,14 @@ class TestFactoryStyleArrayAnnotations(unittest.TestCase):
         self.assertEqual(arr.dtype, wp.float64)
         self.assertEqual(arr.ndim, 2)
 
+        factory_style_1d = wp.array(dtype=int, ndim=1)
+        subscript_style_1d = wp.array[int]
+        self.assertEqual(factory_style_1d.dtype, subscript_style_1d.dtype)
+        self.assertEqual(factory_style_1d.ndim, subscript_style_1d.ndim)
+        self.assertEqual(array_type_id(factory_style_1d), ARRAY_TYPE_REGULAR)
+        self.assertEqual(array_type_id(subscript_style_1d), ARRAY_TYPE_REGULAR)
+        self.assertEqual(get_type_code(factory_style_1d), get_type_code(subscript_style_1d))
+
         self.assertEqual(wp.array1d(dtype=float).ndim, 1)
         self.assertEqual(wp.array2d(dtype=float).ndim, 2)
         self.assertEqual(wp.array3d(dtype=float).ndim, 3)
@@ -281,6 +289,7 @@ class TestFactoryStyleArrayAnnotations(unittest.TestCase):
         self.assertIs(generic_4d.dtype, Any)
         self.assertEqual(generic_4d.ndim, 4)
         self.assertEqual(array_type_id(generic_4d), ARRAY_TYPE_REGULAR)
+        self.assertEqual(array_type_id(wp.array4d[Any]), ARRAY_TYPE_REGULAR)
         self.assertEqual(get_type_code(generic_4d), get_type_code(wp.array4d[Any]))
 
         default_generic = wp.array()
@@ -299,6 +308,7 @@ class TestFactoryStyleArrayAnnotations(unittest.TestCase):
                 self.assertEqual(factory_style.dtype, subscript_style.dtype)
                 self.assertEqual(factory_style.ndim, subscript_style.ndim)
                 self.assertEqual(array_type_id(factory_style), ARRAY_TYPE_REGULAR)
+                self.assertEqual(array_type_id(subscript_style), ARRAY_TYPE_REGULAR)
                 self.assertEqual(get_type_code(factory_style), get_type_code(subscript_style))
 
     def test_factory_style_geometry_array_metadata(self):
@@ -317,6 +327,7 @@ class TestFactoryStyleArrayAnnotations(unittest.TestCase):
                 self.assertEqual(factory_style.dtype, subscript_style.dtype)
                 self.assertEqual(factory_style.ndim, subscript_style.ndim)
                 self.assertEqual(array_type_id(factory_style), ARRAY_TYPE_REGULAR)
+                self.assertEqual(array_type_id(subscript_style), ARRAY_TYPE_REGULAR)
                 self.assertEqual(get_type_code(factory_style), get_type_code(subscript_style))
 
     def test_factory_style_vector_matrix_quaternion_transform_array_metadata(self):
@@ -339,6 +350,7 @@ class TestFactoryStyleArrayAnnotations(unittest.TestCase):
                 self.assertEqual(factory_style.dtype, subscript_style.dtype)
                 self.assertEqual(factory_style.ndim, subscript_style.ndim)
                 self.assertEqual(array_type_id(factory_style), ARRAY_TYPE_REGULAR)
+                self.assertEqual(array_type_id(subscript_style), ARRAY_TYPE_REGULAR)
                 self.assertEqual(get_type_code(factory_style), get_type_code(subscript_style))
 
     def test_factory_style_noncontiguous_array_metadata(self):
@@ -375,6 +387,7 @@ class TestFactoryStyleArrayAnnotations(unittest.TestCase):
                 self.assertEqual(factory_style.dtype, subscript_style.dtype)
                 self.assertEqual(factory_style.ndim, subscript_style.ndim)
                 self.assertEqual(array_type_id(factory_style), expected_array_type)
+                self.assertEqual(array_type_id(subscript_style), expected_array_type)
                 self.assertEqual(get_type_code(factory_style), get_type_code(subscript_style))
 
     def test_factory_style_indexedarray_struct_metadata(self):
@@ -384,6 +397,7 @@ class TestFactoryStyleArrayAnnotations(unittest.TestCase):
         self.assertEqual(factory_style.dtype, subscript_style.dtype)
         self.assertEqual(factory_style.ndim, subscript_style.ndim)
         self.assertEqual(array_type_id(factory_style), ARRAY_TYPE_INDEXED)
+        self.assertEqual(array_type_id(subscript_style), ARRAY_TYPE_INDEXED)
         self.assertEqual(get_type_code(factory_style), get_type_code(subscript_style))
 
     def test_factory_style_struct_element_metadata(self):
@@ -393,6 +407,7 @@ class TestFactoryStyleArrayAnnotations(unittest.TestCase):
         self.assertEqual(factory_style.dtype, subscript_style.dtype)
         self.assertEqual(factory_style.ndim, subscript_style.ndim)
         self.assertEqual(array_type_id(factory_style), ARRAY_TYPE_REGULAR)
+        self.assertEqual(array_type_id(subscript_style), ARRAY_TYPE_REGULAR)
         self.assertEqual(get_type_code(factory_style), get_type_code(subscript_style))
 
 

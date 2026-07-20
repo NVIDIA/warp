@@ -18,7 +18,7 @@ devices = get_test_devices()
 
 
 @wp.kernel
-def inc_one_kernel(a: wp.array(dtype=float)):
+def inc_one_kernel(a: wp.array[float]):
     """Increment each element of ``a`` by one (used to give the smoke test work to launch)."""
     i = wp.tid()
     a[i] = a[i] + 1.0

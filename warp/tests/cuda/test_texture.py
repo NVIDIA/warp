@@ -2670,7 +2670,7 @@ def test_texture3d_array(test, device):
 @wp.kernel
 def sample_texture2d_mipmap(
     tex: wp.Texture2D,
-    output: wp.array2d(dtype=wp.vec4f),
+    output: wp.array2d[wp.vec4f],
     width: int,
     height: int,
     lod: float,
@@ -2684,7 +2684,7 @@ def sample_texture2d_mipmap(
 @wp.kernel
 def sample_texture1d_mipmap(
     tex: wp.Texture1D,
-    output: wp.array(dtype=float),
+    output: wp.array[float],
     width: int,
     lod: float,
 ):
@@ -2696,7 +2696,7 @@ def sample_texture1d_mipmap(
 @wp.kernel
 def sample_texture3d_mipmap(
     tex: wp.Texture3D,
-    output: wp.array3d(dtype=float),
+    output: wp.array3d[float],
     width: int,
     height: int,
     depth: int,

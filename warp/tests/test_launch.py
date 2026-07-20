@@ -15,35 +15,35 @@ dim_w = wp.constant(2)
 
 
 @wp.kernel
-def kernel1d(a: wp.array(dtype=int, ndim=1)):
+def kernel1d(a: wp.array[int]):
     i = wp.tid()
 
     wp.expect_eq(a[i], i)
 
 
 @wp.kernel
-def kernel2d(a: wp.array(dtype=int, ndim=2)):
+def kernel2d(a: wp.array2d[int]):
     i, j = wp.tid()
 
     wp.expect_eq(a[i, j], i * dim_y + j)
 
 
 @wp.kernel
-def kernel3d(a: wp.array(dtype=int, ndim=3)):
+def kernel3d(a: wp.array3d[int]):
     i, j, k = wp.tid()
 
     wp.expect_eq(a[i, j, k], i * dim_y * dim_z + j * dim_z + k)
 
 
 @wp.kernel
-def kernel4d(a: wp.array(dtype=int, ndim=4)):
+def kernel4d(a: wp.array4d[int]):
     i, j, k, l = wp.tid()
 
     wp.expect_eq(a[i, j, k, l], i * dim_y * dim_z * dim_w + j * dim_z * dim_w + k * dim_w + l)
 
 
 @wp.kernel
-def square_kernel(input: wp.array(dtype=float), output: wp.array(dtype=float)):
+def square_kernel(input: wp.array[float], output: wp.array[float]):
     i = wp.tid()
     output[i] = input[i] * input[i]
 
@@ -79,13 +79,13 @@ def test4d(test, device):
 
 @wp.struct
 class Params:
-    a: wp.array(dtype=int)
+    a: wp.array[int]
     i: int
     f: float
 
 
 @wp.kernel
-def kernel_cmd(params: Params, i: int, f: float, v: wp.vec3, m: wp.mat33, out: wp.array(dtype=int)):
+def kernel_cmd(params: Params, i: int, f: float, v: wp.vec3, m: wp.mat33, out: wp.array[int]):
     tid = wp.tid()
 
     wp.expect_eq(params.i, i)
@@ -238,7 +238,7 @@ def test_launch_cmd_set_ctype(test, device):
 
 
 @wp.kernel
-def arange(out: wp.array(dtype=int)):
+def arange(out: wp.array[int]):
     tid = wp.tid()
     out[tid] = tid
 
@@ -347,7 +347,7 @@ def test_launch_cmd_adjoint_empty(test, device):
 
 
 @wp.kernel
-def kernel_mul(values: wp.array(dtype=int), coeff: int, out: wp.array(dtype=int)):
+def kernel_mul(values: wp.array[int], coeff: int, out: wp.array[int]):
     tid = wp.tid()
     out[tid] = values[tid] * coeff
 
@@ -382,31 +382,31 @@ def test_launch_tuple_args(test, device):
 
 
 @wp.kernel
-def kernel_no_bounds(x: wp.array(dtype=float)):
+def kernel_no_bounds(x: wp.array[float]):
     tid = wp.tid()
     x[tid] = x[tid] * 2.0
 
 
 @wp.kernel(launch_bounds=256)
-def kernel_single_bound(x: wp.array(dtype=float)):
+def kernel_single_bound(x: wp.array[float]):
     tid = wp.tid()
     x[tid] = x[tid] * 2.0
 
 
 @wp.kernel(launch_bounds=(256, 1))
-def kernel_tuple_bounds(x: wp.array(dtype=float)):
+def kernel_tuple_bounds(x: wp.array[float]):
     tid = wp.tid()
     x[tid] = x[tid] * 2.0
 
 
 @wp.kernel(launch_bounds=(512,))
-def kernel_single_tuple_bound(x: wp.array(dtype=float)):
+def kernel_single_tuple_bound(x: wp.array[float]):
     tid = wp.tid()
     x[tid] = x[tid] * 2.0
 
 
 @wp.kernel(launch_bounds=256)
-def bounded_square_kernel(data: wp.array(dtype=float), output: wp.array(dtype=float)):
+def bounded_square_kernel(data: wp.array[float], output: wp.array[float]):
     i = wp.tid()
     output[i] = data[i] * data[i]
 

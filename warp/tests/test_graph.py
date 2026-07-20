@@ -28,31 +28,31 @@ from warp.tests.unittest_utils import (
 
 
 @wp.kernel
-def scale_kernel(input: wp.array(dtype=float), output: wp.array(dtype=float), s: float):
+def scale_kernel(input: wp.array[float], output: wp.array[float], s: float):
     i = wp.tid()
     output[i] = input[i] * s
 
 
 @wp.kernel
-def add_kernel(a: wp.array(dtype=float), b: wp.array(dtype=float), output: wp.array(dtype=float)):
+def add_kernel(a: wp.array[float], b: wp.array[float], output: wp.array[float]):
     i = wp.tid()
     output[i] = a[i] + b[i]
 
 
 @wp.kernel
-def warmup_kernel(buf: wp.array(dtype=float)):
+def warmup_kernel(buf: wp.array[float]):
     tid = wp.tid()
     buf[tid] = buf[tid] + 0.0
 
 
 @wp.kernel
-def write_tid_kernel(ptr: wp.array(dtype=float)):
+def write_tid_kernel(ptr: wp.array[float]):
     tid = wp.tid()
     ptr[tid] = float(tid)
 
 
 @wp.kernel
-def slow_write_two_kernel(out: wp.array(dtype=float), spin: int):
+def slow_write_two_kernel(out: wp.array[float], spin: int):
     tid = wp.tid()
     s = float(0.0)
     for _ in range(spin):
@@ -62,13 +62,13 @@ def slow_write_two_kernel(out: wp.array(dtype=float), spin: int):
 
 
 @wp.kernel
-def copy_kernel(src: wp.array(dtype=float), dst: wp.array(dtype=float)):
+def copy_kernel(src: wp.array[float], dst: wp.array[float]):
     tid = wp.tid()
     dst[tid] = src[tid]
 
 
 @wp.kernel
-def accum_kernel(a: wp.array(dtype=float), b: wp.array(dtype=float)):
+def accum_kernel(a: wp.array[float], b: wp.array[float]):
     tid = wp.tid()
     a[tid] = a[tid] + b[tid]
 
@@ -280,7 +280,7 @@ def test_graph_fill_drives_capture_while(test, device):
     out = wp.zeros(1, dtype=wp.int32, device=device)
 
     @wp.kernel
-    def decrement_and_count(c: wp.array(dtype=wp.int32), o: wp.array(dtype=wp.int32)):
+    def decrement_and_count(c: wp.array[wp.int32], o: wp.array[wp.int32]):
         wp.atomic_sub(c, 0, 1)
         wp.atomic_add(o, 0, 1)
 

@@ -12,7 +12,7 @@ from warp.tests.unittest_utils import *
 
 
 @wp.kernel
-def conditional_sum(result: wp.array(dtype=wp.uint64)):
+def conditional_sum(result: wp.array[wp.uint64]):
     i, _j, _k = wp.tid()
 
     if i == 0:
@@ -35,12 +35,12 @@ def test_large_launch_large_kernel(test, device):
 
 
 @wp.kernel(grid_stride=True)
-def count_elements(result: wp.array(dtype=wp.uint64)):
+def count_elements(result: wp.array[wp.uint64]):
     wp.atomic_add(result, 0, wp.uint64(1))
 
 
 @wp.kernel(grid_stride=True)
-def conditional_sum_grid_stride(result: wp.array(dtype=wp.uint64)):
+def conditional_sum_grid_stride(result: wp.array[wp.uint64]):
     i, _j, _k = wp.tid()
 
     if i == 0:
@@ -80,19 +80,19 @@ def test_large_launch_very_large_kernel(test, device):
 
 
 @wp.kernel
-def check_array_equal_value_2d(data: wp.array2d(dtype=Any), expect: Any):
+def check_array_equal_value_2d(data: wp.array2d[Any], expect: Any):
     i, j = wp.tid()
     wp.expect_eq(data[i, j], expect)
 
 
 @wp.kernel
-def check_array_equal_value_3d(data: wp.array3d(dtype=Any), expect: Any):
+def check_array_equal_value_3d(data: wp.array3d[Any], expect: Any):
     i, j, k = wp.tid()
     wp.expect_eq(data[i, j, k], expect)
 
 
 @wp.kernel
-def check_array_equal_value_4d(data: wp.array4d(dtype=Any), expect: Any):
+def check_array_equal_value_4d(data: wp.array4d[Any], expect: Any):
     i, j, k, l = wp.tid()
     wp.expect_eq(data[i, j, k, l], expect)
 
@@ -138,14 +138,14 @@ def test_large_array_excessive_zeros(test, device):
 # grid_stride=False opts these kernels into the lean 3D launch (grid-stride is the default), so
 # max_blocks raises while oversized dims are serviced directly by the 3D grid.
 @wp.kernel(grid_stride=False)
-def conditional_sum_max_blocks(result: wp.array(dtype=wp.uint64)):
+def conditional_sum_max_blocks(result: wp.array[wp.uint64]):
     i, _j, _k = wp.tid()
     if i == 0:
         wp.atomic_add(result, 0, wp.uint64(1))
 
 
 @wp.kernel(grid_stride=False)
-def conditional_sum_large_dim(result: wp.array(dtype=wp.uint64)):
+def conditional_sum_large_dim(result: wp.array[wp.uint64]):
     i, _j, _k = wp.tid()
     if i == 0:
         wp.atomic_add(result, 0, wp.uint64(1))
@@ -170,7 +170,7 @@ def test_max_blocks_requires_grid_stride(test, device):
 
 # grid_stride=False so the CPU no-op and block_dim normalization checks exercise the lean launch path.
 @wp.kernel(grid_stride=False)
-def count_all_threads(result: wp.array(dtype=wp.uint64)):
+def count_all_threads(result: wp.array[wp.uint64]):
     wp.atomic_add(result, 0, wp.uint64(1))
 
 
@@ -186,7 +186,7 @@ def test_block_dim_zero_normalized(test, device):
 
 
 @wp.kernel(grid_stride=False)
-def conditional_sum_set_dim(result: wp.array(dtype=wp.uint64)):
+def conditional_sum_set_dim(result: wp.array[wp.uint64]):
     i, _j, _k = wp.tid()
     if i == 0:
         wp.atomic_add(result, 0, wp.uint64(1))
@@ -252,7 +252,7 @@ def test_default_grid_stride(test, device):
     result = wp.zeros(1, dtype=wp.uint64, device=device)
 
     @wp.kernel(module="unique")
-    def count_default(r: wp.array(dtype=wp.uint64)):
+    def count_default(r: wp.array[wp.uint64]):
         wp.atomic_add(r, 0, wp.uint64(1))
 
     wp.launch(count_default, dim=1000, inputs=[result], max_blocks=1, device=device)
@@ -264,7 +264,7 @@ def test_default_grid_stride(test, device):
         wp.config.default_grid_stride = False
 
         @wp.kernel(module="unique")
-        def count_opted_into_1d(r: wp.array(dtype=wp.uint64)):
+        def count_opted_into_1d(r: wp.array[wp.uint64]):
             wp.atomic_add(r, 0, wp.uint64(1))
 
         result.zero_()

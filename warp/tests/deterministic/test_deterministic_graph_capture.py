@@ -326,7 +326,7 @@ def test_apic_capture_rejects_deterministic_cuda_kernel(test, device):
 
 
 @wp.kernel
-def _decrement_iter_kernel(iters: wp.array(dtype=wp.int32)):
+def _decrement_iter_kernel(iters: wp.array[wp.int32]):
     """Decrement the loop counter used as the while-condition."""
     iters[0] = iters[0] - 1
 

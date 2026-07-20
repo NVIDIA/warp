@@ -18,24 +18,24 @@ from warp.tests.unittest_utils import *
 
 @wp.kernel
 def scale(
-    x: wp.array(dtype=float),
-    y: wp.array(dtype=float),
+    x: wp.array[float],
+    y: wp.array[float],
 ):
     y[0] = x[0] ** 2.0
 
 
 @wp.kernel(enable_backward=True)
 def scale_1(
-    x: wp.array(dtype=float),
-    y: wp.array(dtype=float),
+    x: wp.array[float],
+    y: wp.array[float],
 ):
     y[0] = x[0] ** 2.0
 
 
 @wp.kernel(enable_backward=False)
 def scale_2(
-    x: wp.array(dtype=float),
-    y: wp.array(dtype=float),
+    x: wp.array[float],
+    y: wp.array[float],
 ):
     y[0] = x[0] ** 2.0
 
