@@ -85,9 +85,9 @@ for dim in [2, 3, 4]:
 
 # explicitly overload generic kernels to avoid module reloading during tests
 for T in scalar_types:
-    wp.overload(triple_kernel_scalar, [wp.array(dtype=T), wp.array(dtype=T)])
+    wp.overload(triple_kernel_scalar, [wp.array[T], wp.array[T]])
 for T in [*vector_types, *matrix_types]:
-    wp.overload(triple_kernel_vecmat, [wp.array(dtype=T), wp.array(dtype=T)])
+    wp.overload(triple_kernel_vecmat, [wp.array[T], wp.array[T]])
 
 
 def _jax_version():

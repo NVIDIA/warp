@@ -30,6 +30,11 @@ class FactoryStyleIndexedArrayStruct:
     values: wp.indexedarray(dtype=float)
 
 
+@wp.struct
+class FactoryStyleElementStruct:
+    value: wp.float32
+
+
 @wp.func
 def factory_style_read_func(values: wp.array(dtype=Any), index: int):
     return values[index]
@@ -379,6 +384,15 @@ class TestFactoryStyleArrayAnnotations(unittest.TestCase):
         self.assertEqual(factory_style.dtype, subscript_style.dtype)
         self.assertEqual(factory_style.ndim, subscript_style.ndim)
         self.assertEqual(array_type_id(factory_style), ARRAY_TYPE_INDEXED)
+        self.assertEqual(get_type_code(factory_style), get_type_code(subscript_style))
+
+    def test_factory_style_struct_element_metadata(self):
+        factory_style = wp.array(dtype=FactoryStyleElementStruct)
+        subscript_style = wp.array[FactoryStyleElementStruct]
+
+        self.assertEqual(factory_style.dtype, subscript_style.dtype)
+        self.assertEqual(factory_style.ndim, subscript_style.ndim)
+        self.assertEqual(array_type_id(factory_style), ARRAY_TYPE_REGULAR)
         self.assertEqual(get_type_code(factory_style), get_type_code(subscript_style))
 
 

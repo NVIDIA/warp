@@ -132,7 +132,7 @@ def test_function_parameter_local_binding(test, device):
 
 
 @wp.kernel
-def function_parameter_external_module_kernel(cond: wp.array(dtype=bool), out: wp.array(dtype=float)):
+def function_parameter_external_module_kernel(cond: wp.array[bool], out: wp.array[float]):
     i = wp.tid()
     if cond[i]:
         out[i] = function_apply_unary(function_double_module.function_external_module_double_it, 3.0)
@@ -151,7 +151,7 @@ def test_function_parameter_external_module(test, device):
 
 
 @wp.kernel
-def function_builtin_parameter_kernel(out: wp.array(dtype=float)):
+def function_builtin_parameter_kernel(out: wp.array[float]):
     out[0] = function_apply_unary(wp.sin, 0.5)
     out[1] = function_apply_unary(wp.sqrt, 9.0)
     out[2] = function_apply_binary(wp.add, 2.0, 3.0)
@@ -178,7 +178,7 @@ def function_write_after_callable(g: wp.Function, dst: wp.ref[wp.float32], x: wp
 
 
 @wp.kernel(enable_backward=False)
-def function_ref_after_function_parameter_kernel(out: wp.array(dtype=wp.float32)):
+def function_ref_after_function_parameter_kernel(out: wp.array[wp.float32]):
     function_write_after_callable(function_double_it, out[0], wp.float32(3.0))
     function_write_after_callable(function_triple_it, out[1], wp.float32(4.0))
 
@@ -265,17 +265,17 @@ def function_builtin_grad_kernel(out: wp.array[float]):
 
 
 @wp.func
-def function_read_array(arr: wp.array(dtype=float), i: int):
+def function_read_array(arr: wp.array[float], i: int):
     return arr[i]
 
 
 @wp.func
-def function_apply_array(g: wp.Function, arr: wp.array(dtype=float), i: int):
+def function_apply_array(g: wp.Function, arr: wp.array[float], i: int):
     return g(arr, i)
 
 
 @wp.kernel(module="unique")
-def function_array_read_kernel(arr: wp.array(dtype=float), out: wp.array(dtype=float)):
+def function_array_read_kernel(arr: wp.array[float], out: wp.array[float]):
     out[0] = function_apply_array(function_read_array, arr, 0)
 
 
@@ -387,7 +387,7 @@ def function_dependency_apply_dynamic_overload(g: wp.Function, x: float):
 
 
 @wp.kernel(module=FUNCTION_DEPENDENCY_DYNAMIC_OVERLOAD_CONSUMER_MODULE)
-def function_dependency_dynamic_overload_kernel(vals: wp.array(dtype=float), out: wp.array(dtype=float)):
+def function_dependency_dynamic_overload_kernel(vals: wp.array[float], out: wp.array[float]):
     out[0] = function_dependency_apply_dynamic_overload(FUNCTION_DEPENDENCY_DYNAMIC_OVERLOAD_TARGET, vals[0])
 
 
@@ -410,12 +410,12 @@ def function_dependency_grad_apply(g: wp.Function, x: float):
 
 
 @wp.kernel(enable_backward=False, module=FUNCTION_DEPENDENCY_GRAD_CONSUMER_MODULE)
-def function_dependency_grad_nested_kernel(out: wp.array(dtype=float)):
+def function_dependency_grad_nested_kernel(out: wp.array[float]):
     out[0] = wp.grad(function_dependency_grad_apply)(FUNCTION_DEPENDENCY_GRAD_TARGET, 3.0)
 
 
 @wp.kernel(module=FUNCTION_DEPENDENCY_EXTERNAL_CONSUMER_MODULE)
-def function_dependency_external_module_kernel(cond: wp.array(dtype=bool), out: wp.array(dtype=float)):
+def function_dependency_external_module_kernel(cond: wp.array[bool], out: wp.array[float]):
     i = wp.tid()
     if cond[i]:
         out[i] = function_apply_unary(function_double_module.function_external_module_double_it, 3.0)

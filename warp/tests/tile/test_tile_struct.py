@@ -34,7 +34,7 @@ class TileMapArrayPayload:
 
 @wp.struct
 class TileMapIndexedArrayPayload:
-    data: wp.indexedarray(dtype=float)
+    data: wp.indexedarray[float]
     tag: wp.int32
 
 

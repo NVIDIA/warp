@@ -43,21 +43,21 @@ def _assert_aborted(test_case, returncode):
 
 
 @wp.kernel
-def expect_ones(a: wp.array(dtype=int)):
+def expect_ones(a: wp.array[int]):
     i = wp.tid()
 
     assert a[i] == 1
 
 
 @wp.kernel
-def expect_ones_with_msg(a: wp.array(dtype=int)):
+def expect_ones_with_msg(a: wp.array[int]):
     i = wp.tid()
 
     assert a[i] == 1, "Array element must be 1"
 
 
 @wp.kernel
-def expect_ones_compound(a: wp.array(dtype=int)):
+def expect_ones_compound(a: wp.array[int]):
     i = wp.tid()
 
     assert a[i] > 0 and a[i] < 2
@@ -69,7 +69,7 @@ def expect_ones_function(value: int):
 
 
 @wp.kernel
-def expect_ones_call_function(a: wp.array(dtype=int)):
+def expect_ones_call_function(a: wp.array[int]):
     i = wp.tid()
     expect_ones_function(a[i])
 
@@ -131,7 +131,7 @@ def _trigger_mode_switch():
     wp.config.mode = "debug"
 
     @wp.kernel
-    def expect_ones_debug(a: wp.array(dtype=int)):
+    def expect_ones_debug(a: wp.array[int]):
         i = wp.tid()
         assert a[i] == 1
 

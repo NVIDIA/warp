@@ -22,7 +22,7 @@ class TestStruct:
 
 
 @wp.kernel
-def finite_kernel(foos: wp.array(dtype=TestStruct)):
+def finite_kernel(foos: wp.array[TestStruct]):
     i = wp.tid()
     foos[i].field += wp.float32(1.0)
 
@@ -46,7 +46,7 @@ def test_finite(test, device):
 
 
 @wp.kernel
-def nan_kernel(foos: wp.array(dtype=TestStruct)):
+def nan_kernel(foos: wp.array[TestStruct]):
     i = wp.tid()
     foos[i].field /= wp.float32(0.0)  # Division by zero produces Not-a-Number (NaN)
 

@@ -90,7 +90,7 @@ def test_override_func():
 
 def test_func_closure_capture(test, device):
     def make_closure_kernel(func):
-        def closure_kernel_fn(data: wp.array(dtype=float), expected: float):
+        def closure_kernel_fn(data: wp.array[float], expected: float):
             f = func(data[wp.tid()])
             wp.expect_eq(f, expected)
 
@@ -113,7 +113,7 @@ def test_func(param1: wp.int32, param2: wp.int32, param3: wp.int32) -> wp.float3
 
 
 @wp.kernel
-def test_return_kernel(test_data: wp.array(dtype=wp.float32)):
+def test_return_kernel(test_data: wp.array[wp.float32]):
     tid = wp.tid()
     test_data[tid] = wp.lerp(test_func(0, 1, 2), test_func(0, 1, 2), 0.5)
 
@@ -130,7 +130,7 @@ def multi_valued_func(a: wp.float32, b: wp.float32):
 
 def test_multi_valued_func(test, device):
     @wp.kernel(module="unique")
-    def test_multi_valued_kernel(test_data1: wp.array(dtype=wp.float32), test_data2: wp.array(dtype=wp.float32)):
+    def test_multi_valued_kernel(test_data1: wp.array[wp.float32], test_data2: wp.array[wp.float32]):
         tid = wp.tid()
         d1, d2 = test_data1[tid], test_data2[tid]
         a, b, c, d = multi_valued_func(d1, d2)
@@ -219,7 +219,7 @@ def test_user_func_return_multiple_values():
 
 @wp.func
 def user_func_overload(
-    b: wp.array(dtype=Any),
+    b: wp.array[Any],
     i: int,
 ):
     return b[i] * 2.0
@@ -227,8 +227,8 @@ def user_func_overload(
 
 @wp.kernel
 def user_func_overload_resolution_kernel(
-    a: wp.array(dtype=Any),
-    b: wp.array(dtype=Any),
+    a: wp.array[Any],
+    b: wp.array[Any],
 ):
     i = wp.tid()
     a[i] = user_func_overload(b, i)
@@ -274,7 +274,7 @@ def divide_float64(x: wp.float64):
 
 
 @wp.func
-def get_array_len(arr: wp.array(dtype=wp.float32)):
+def get_array_len(arr: wp.array[wp.float32]):
     return len(arr)
 
 
@@ -291,12 +291,12 @@ def grad_func(x: float):
 
 @wp.kernel(enable_backward=False)
 def grad_kernel(
-    x: wp.array(dtype=float),
-    y: wp.array(dtype=float),
-    grad_x: wp.array(dtype=float),
-    grad_atan2_y: wp.array(dtype=float),
-    grad_atan2_x: wp.array(dtype=float),
-    z: wp.array(dtype=float),
+    x: wp.array[float],
+    y: wp.array[float],
+    grad_x: wp.array[float],
+    grad_atan2_y: wp.array[float],
+    grad_atan2_x: wp.array[float],
+    z: wp.array[float],
 ):
     tid = wp.tid()
 
@@ -356,7 +356,7 @@ def adj_safe_sqrt(x: float, adj_ret: float):
 
 
 @wp.kernel
-def safe_sqrt_kernel(x: wp.array(dtype=float), y: wp.array(dtype=float)):
+def safe_sqrt_kernel(x: wp.array[float], y: wp.array[float]):
     tid = wp.tid()
     y[tid] = safe_sqrt(x[tid])
 

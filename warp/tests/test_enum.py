@@ -74,7 +74,7 @@ def test_static_accessors(test, device):
 
 def test_intflag_compare(test, device):
     @wp.kernel(module="unique")
-    def compute_intflag_compare(ins: wp.array(dtype=wp.int32), outs: wp.array(dtype=wp.int32)):
+    def compute_intflag_compare(ins: wp.array[wp.int32], outs: wp.array[wp.int32]):
         tid = wp.tid()
         if ins[tid] & MyIntFlag.A:
             outs[tid] += MyIntFlag.A

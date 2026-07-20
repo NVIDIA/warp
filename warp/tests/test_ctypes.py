@@ -10,13 +10,13 @@ from warp.tests.unittest_utils import *
 
 
 @wp.kernel
-def add_vec2(dest: wp.array(dtype=wp.vec2), c: wp.vec2):
+def add_vec2(dest: wp.array[wp.vec2], c: wp.vec2):
     tid = wp.tid()
     dest[tid] = c
 
 
 @wp.kernel
-def transform_vec2(dest_right: wp.array(dtype=wp.vec2), dest_left: wp.array(dtype=wp.vec2), m: wp.mat22, v: wp.vec2):
+def transform_vec2(dest_right: wp.array[wp.vec2], dest_left: wp.array[wp.vec2], m: wp.mat22, v: wp.vec2):
     tid = wp.tid()
 
     dest_right[tid] = wp.mul(m, v)
@@ -24,13 +24,13 @@ def transform_vec2(dest_right: wp.array(dtype=wp.vec2), dest_left: wp.array(dtyp
 
 
 @wp.kernel
-def add_vec3(dest: wp.array(dtype=wp.vec3), c: wp.vec3):
+def add_vec3(dest: wp.array[wp.vec3], c: wp.vec3):
     tid = wp.tid()
     dest[tid] = c
 
 
 @wp.kernel
-def transform_vec3(dest_right: wp.array(dtype=wp.vec3), dest_left: wp.array(dtype=wp.vec3), m: wp.mat33, v: wp.vec3):
+def transform_vec3(dest_right: wp.array[wp.vec3], dest_left: wp.array[wp.vec3], m: wp.mat33, v: wp.vec3):
     tid = wp.tid()
 
     dest_right[tid] = wp.mul(m, v)
@@ -38,7 +38,7 @@ def transform_vec3(dest_right: wp.array(dtype=wp.vec3), dest_left: wp.array(dtyp
 
 
 @wp.kernel
-def transform_multiply(xforms: wp.array(dtype=wp.transform), a: wp.transform):
+def transform_multiply(xforms: wp.array[wp.transform], a: wp.transform):
     tid = wp.tid()
 
     xforms[tid] = wp.transform_multiply(xforms[tid], a)
@@ -116,14 +116,14 @@ def test_spatial_vector_constructor():
 # construct kernel + test harness for given matrix / vector types
 def make_matrix_test(dim, matrix, vector):
     def test_matrix_kernel(
-        a: wp.array(dtype=matrix),
-        b: wp.array(dtype=matrix),
-        c: wp.array(dtype=matrix),
-        x: wp.array(dtype=vector),
-        result_m: wp.array(dtype=matrix),
-        result_i: wp.array(dtype=matrix),
-        result_d: wp.array(dtype=float),
-        result_x: wp.array(dtype=vector),
+        a: wp.array[matrix],
+        b: wp.array[matrix],
+        c: wp.array[matrix],
+        x: wp.array[vector],
+        result_m: wp.array[matrix],
+        result_i: wp.array[matrix],
+        result_d: wp.array[float],
+        result_x: wp.array[vector],
     ):
         tid = wp.tid()
 
@@ -247,16 +247,16 @@ def test_scalar_arg_types(
 
 @wp.kernel
 def test_scalar_array_types_load(
-    i8: wp.array(dtype=wp.int8),
-    u8: wp.array(dtype=wp.uint8),
-    i16: wp.array(dtype=wp.int16),
-    u16: wp.array(dtype=wp.uint16),
-    i32: wp.array(dtype=wp.int32),
-    u32: wp.array(dtype=wp.uint32),
-    i64: wp.array(dtype=wp.int64),
-    u64: wp.array(dtype=wp.uint64),
-    f32: wp.array(dtype=wp.float32),
-    f64: wp.array(dtype=wp.float64),
+    i8: wp.array[wp.int8],
+    u8: wp.array[wp.uint8],
+    i16: wp.array[wp.int16],
+    u16: wp.array[wp.uint16],
+    i32: wp.array[wp.int32],
+    u32: wp.array[wp.uint32],
+    i64: wp.array[wp.int64],
+    u64: wp.array[wp.uint64],
+    f32: wp.array[wp.float32],
+    f64: wp.array[wp.float64],
 ):
     tid = wp.tid()
 
@@ -274,16 +274,16 @@ def test_scalar_array_types_load(
 
 @wp.kernel
 def test_scalar_array_types_store(
-    i8: wp.array(dtype=wp.int8),
-    u8: wp.array(dtype=wp.uint8),
-    i16: wp.array(dtype=wp.int16),
-    u16: wp.array(dtype=wp.uint16),
-    i32: wp.array(dtype=wp.int32),
-    u32: wp.array(dtype=wp.uint32),
-    i64: wp.array(dtype=wp.int64),
-    u64: wp.array(dtype=wp.uint64),
-    f32: wp.array(dtype=wp.float32),
-    f64: wp.array(dtype=wp.float64),
+    i8: wp.array[wp.int8],
+    u8: wp.array[wp.uint8],
+    i16: wp.array[wp.int16],
+    u16: wp.array[wp.uint16],
+    i32: wp.array[wp.int32],
+    u32: wp.array[wp.uint32],
+    i64: wp.array[wp.int64],
+    u64: wp.array[wp.uint64],
+    f32: wp.array[wp.float32],
+    f64: wp.array[wp.float64],
 ):
     tid = wp.tid()
 
