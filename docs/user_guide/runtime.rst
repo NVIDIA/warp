@@ -1876,6 +1876,10 @@ The operations recorded on CPU now cover most of the CUDA path:
   :meth:`wp.Bvh.rebuild() <warp.Bvh.rebuild>`), re-run on replay against the
   current ``lowers`` / ``uppers`` so a captured graph queries the updated tree.
   These make the graph replay-only (see the limitations below).
+- Live CPU graphs record :meth:`HashGrid.build() <warp.HashGrid.build>` in
+  operation order. Each replay reads the current contents of the normalized
+  point and optional group arrays, and the first replay may allocate or grow
+  the grid buffers.
 - Conditional graph nodes (:func:`wp.capture_if() <warp.capture_if>` and
   :func:`wp.capture_while() <warp.capture_while>`). The condition is re-evaluated
   on every replay, so a captured ``while`` loop can iterate a different number
@@ -2006,6 +2010,9 @@ A few operations cannot be captured for save/load on CUDA and raise
 :exc:`NotImplementedError` during an ``apic=True`` capture; build these outside the captured
 region:
 
+- :meth:`HashGrid.build() <warp.HashGrid.build>`, because ``HashGrid``
+  resources and their process-local IDs cannot yet be serialized. Use
+  ``apic=False`` for live CUDA graph capture.
 - :func:`wp.sparse.bsr_set_from_triplets() <warp.sparse.bsr_set_from_triplets>` (and the
   ``warp.sparse`` matrix products that build topology with it), because it reads the resulting
   ``nnz`` back to the host after its own kernels, which a captured graph cannot reproduce.
@@ -2282,6 +2289,12 @@ Current limitations of API Capture:
 - Only :class:`wp.Mesh <warp.Mesh>` object handles are serialized.
   :class:`wp.Volume <warp.Volume>` and :class:`wp.Bvh <warp.Bvh>` handles are not
   yet supported.
+- ``HashGrid.build()`` is supported by live CPU graphs captured with
+  ``apic=False``. It is not supported by saveable captures because ``HashGrid``
+  resources and their process-local IDs cannot yet be serialized. Calling
+  ``HashGrid.build()`` with ``apic=True`` raises :class:`NotImplementedError`.
+  Call ``HashGrid.reserve()`` before CPU graph capture; reserve calls inside a
+  capture are rejected.
 - ``.wrp`` files are not portable across CUDA compute architectures unless the
   capture was built with PTX output (set ``warp.config.cuda_output = "ptx"``
   before capture). Multi-GPU and cross-architecture loading are not yet
@@ -2833,6 +2846,12 @@ undefined behavior when the kernel tries to access the freed memory.
 Always maintain references to spatial computing primitive objects
 (like :class:`wp.HashGrid <warp.HashGrid>`, :class:`wp.Bvh <warp.Bvh>`, etc.) rather than just their ID values.
 This is especially important in loops, functions, and temporary variables where object scope might be unclear.
+
+When a graph captures a :class:`wp.HashGrid <warp.HashGrid>` ID, the caller must
+keep the ``HashGrid`` alive until every graph that captures its ID is destroyed.
+This caller-ownership contract is the same for live CPU and CUDA graphs. The
+graph retains the array inputs captured by ``HashGrid.build()``, including
+normalized views and their backing allocations.
 
 Marching Cubes
 --------------

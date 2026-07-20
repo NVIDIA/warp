@@ -3,6 +3,8 @@
 
 #include "warp.h"
 
+#include "apic.h"
+#include "apic_internal.h"
 #include "cuda_util.h"
 #include "hashgrid.h"
 #include "sort.h"
@@ -361,11 +363,28 @@ void hash_grid_update_device_impl(
 // Exported API
 // =============================================================================
 
-enum HashGridTypeId {
-    HASH_GRID_TYPE_FLOAT16 = 0,
-    HASH_GRID_TYPE_FLOAT32 = 1,
-    HASH_GRID_TYPE_FLOAT64 = 2,
-};
+// CPU capture is record-only: returning true makes the caller skip the eager
+// rebuild so replay performs it in operation-stream order.
+template <typename Type>
+static bool hash_grid_record_update_host(
+    APICState* state,
+    uint64_t id,
+    int grid_type,
+    double cell_width,
+    const wp::array_t<vec_t<3, Type>>* points,
+    const wp::array_t<int>* groups
+)
+{
+    if (!state)
+        return false;
+
+    apic_record_hash_grid_update(
+        state, id, static_cast<uint8_t>(grid_type), cell_width, points ? points->data : nullptr,
+        points ? points->shape[0] : -1, points ? points->strides[0] : 0, groups ? groups->data : nullptr,
+        groups ? groups->strides[0] : 0, groups ? 1 : 0
+    );
+    return true;
+}
 
 uint64_t wp_hash_grid_create_host(int type, int dim_x, int dim_y, int dim_z)
 {
@@ -402,21 +421,30 @@ void wp_hash_grid_destroy_host(uint64_t id, int type)
 void wp_hash_grid_update_host(uint64_t id, int type, double cell_width, const void* points, const void* groups)
 {
     switch (type) {
-    case HASH_GRID_TYPE_FLOAT16:
-        hash_grid_update_host_impl<half>(
-            id, half(cell_width), (const wp::array_t<wp::vec3h>*)points, (const wp::array_t<int>*)groups
-        );
+    case HASH_GRID_TYPE_FLOAT16: {
+        const auto* points_desc = static_cast<const wp::array_t<wp::vec3h>*>(points);
+        const auto* groups_desc = static_cast<const wp::array_t<int>*>(groups);
+        if (hash_grid_record_update_host(wp_apic_get_recording_state(), id, type, cell_width, points_desc, groups_desc))
+            break;
+        hash_grid_update_host_impl<half>(id, half(cell_width), points_desc, groups_desc);
         break;
-    case HASH_GRID_TYPE_FLOAT32:
-        hash_grid_update_host_impl<float>(
-            id, float(cell_width), (const wp::array_t<wp::vec3f>*)points, (const wp::array_t<int>*)groups
-        );
+    }
+    case HASH_GRID_TYPE_FLOAT32: {
+        const auto* points_desc = static_cast<const wp::array_t<wp::vec3f>*>(points);
+        const auto* groups_desc = static_cast<const wp::array_t<int>*>(groups);
+        if (hash_grid_record_update_host(wp_apic_get_recording_state(), id, type, cell_width, points_desc, groups_desc))
+            break;
+        hash_grid_update_host_impl<float>(id, float(cell_width), points_desc, groups_desc);
         break;
-    case HASH_GRID_TYPE_FLOAT64:
-        hash_grid_update_host_impl<double>(
-            id, cell_width, (const wp::array_t<wp::vec3d>*)points, (const wp::array_t<int>*)groups
-        );
+    }
+    case HASH_GRID_TYPE_FLOAT64: {
+        const auto* points_desc = static_cast<const wp::array_t<wp::vec3d>*>(points);
+        const auto* groups_desc = static_cast<const wp::array_t<int>*>(groups);
+        if (hash_grid_record_update_host(wp_apic_get_recording_state(), id, type, cell_width, points_desc, groups_desc))
+            break;
+        hash_grid_update_host_impl<double>(id, cell_width, points_desc, groups_desc);
         break;
+    }
     default:
         fprintf(stderr, "Warp error: Invalid hash grid type %d\n", type);
     }

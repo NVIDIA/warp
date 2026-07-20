@@ -616,6 +616,16 @@ def test_hashgrid_grouped_many_groups(test, device):
     assert_np_equal(counts.numpy(), np.ones(num_points, dtype=np.int32))
 
 
+def test_hashgrid_saveable_capture_unsupported(test, device):
+    """Report saveable capture as unsupported pending HashGrid serialization."""
+    points = wp.array([[0.0, 0.0, 0.0]], dtype=wp.vec3, device=device)
+    grid = wp.HashGrid(16, 16, 16, device=device)
+
+    with test.assertRaisesRegex(NotImplementedError, "HashGrid serialization is not yet supported"):
+        with wp.ScopedCapture(device=device, apic=True, force_module_load=False):
+            grid.build(points, 1.0)
+
+
 def test_hashgrid_grouped_graph_capture_changing_group_ids(test, device):
     """Group values written by captured work are honored on replay, including unseen group ids."""
     points = np.array(
@@ -1020,6 +1030,179 @@ class TestHashGrid(unittest.TestCase):
         self.assertIn("HashGridQueryD", output)
         self.assertIn("warp.hash_grid_query()", output)
 
+    def test_hashgrid_graph_rebuilds_current_points(self):
+        """Rebuild a CPU HashGrid from a current strided point view on every replay."""
+        device = "cpu"
+        radius = 0.25
+        point_buffer = wp.array(
+            [[0.0, 0.0, 0.0], [20.0, 0.0, 0.0], [0.1, 0.0, 0.0], [30.0, 0.0, 0.0]],
+            dtype=wp.vec3,
+            device=device,
+        )
+        points = point_buffer[::2]
+        source = wp.array(
+            [[2.0, 0.0, 0.0], [20.0, 0.0, 0.0], [6.0, 0.0, 0.0], [30.0, 0.0, 0.0]],
+            dtype=wp.vec3,
+            device=device,
+        )
+        counts = wp.zeros(2, dtype=int, device=device)
+        grid = wp.HashGrid(16, 16, 16, device=device)
+        grid.build(points, radius)
+
+        wp.load_module(device=device)
+        with wp.ScopedCapture(device=device, apic=False, force_module_load=False) as capture:
+            wp.copy(point_buffer, source)
+            grid.build(points, radius)
+            wp.launch(
+                count_neighbors_f32,
+                dim=2,
+                inputs=[wp.uint64(grid.id), wp.float32(radius), points, counts],
+                device=device,
+            )
+
+        wp.capture_launch(capture.graph)
+        assert_np_equal(counts.numpy(), np.array([1, 1], dtype=np.int32))
+
+        source.assign([[2.0, 0.0, 0.0], [20.0, 0.0, 0.0], [2.1, 0.0, 0.0], [30.0, 0.0, 0.0]])
+        wp.capture_launch(capture.graph)
+        assert_np_equal(counts.numpy(), np.array([2, 2], dtype=np.int32))
+
+    def test_hashgrid_graph_first_build_all_precisions(self):
+        """Allocate and rebuild every supported CPU HashGrid precision on first replay."""
+        device = "cpu"
+        precision_types = (
+            (wp.float16, wp.vec3h, count_neighbors_f16),
+            (wp.float32, wp.vec3f, count_neighbors_f32),
+            (wp.float64, wp.vec3d, count_neighbors_f64),
+        )
+
+        for scalar_dtype, vector_dtype, kernel in precision_types:
+            with self.subTest(dtype=scalar_dtype.__name__):
+                points = wp.zeros(2, dtype=vector_dtype, device=device)
+                source = wp.array([[3.0, 0.0, 0.0], [3.1, 0.0, 0.0]], dtype=vector_dtype, device=device)
+                counts = wp.zeros(2, dtype=int, device=device)
+                grid = wp.HashGrid(16, 16, 16, device=device, dtype=scalar_dtype)
+
+                wp.load_module(device=device)
+                with wp.ScopedCapture(device=device, apic=False, force_module_load=False) as capture:
+                    wp.copy(points, source)
+                    grid.build(points, 0.25)
+                    wp.launch(
+                        kernel,
+                        dim=2,
+                        inputs=[wp.uint64(grid.id), scalar_dtype(0.25), points, counts],
+                        device=device,
+                    )
+
+                wp.capture_launch(capture.graph)
+                assert_np_equal(counts.numpy(), np.array([2, 2], dtype=np.int32))
+
+    def test_hashgrid_grouped_graph_first_build(self):
+        """Allocate a grouped CPU HashGrid on first replay and rebuild from current groups."""
+        device = "cpu"
+        radius = 0.25
+        points = wp.array(
+            [[0.0, 0.0, 0.0], [0.1, 0.0, 0.0], [0.0, 0.0, 0.0], [0.1, 0.0, 0.0]],
+            dtype=wp.vec3,
+            device=device,
+        )
+        groups = wp.array([0, 0, 1, 1], dtype=int, device=device)
+        counts = wp.zeros(4, dtype=int, device=device)
+        grid = wp.HashGrid(16, 16, 16, device=device)
+
+        wp.load_module(device=device)
+        with wp.ScopedCapture(device=device, apic=False, force_module_load=False) as capture:
+            grid.build(points, radius, groups=groups)
+            wp.launch(
+                count_neighbors_grouped,
+                dim=4,
+                inputs=[wp.uint64(grid.id), radius, points, groups, counts],
+                device=device,
+            )
+
+        wp.capture_launch(capture.graph)
+        assert_np_equal(counts.numpy(), np.array([2, 2, 2, 2], dtype=np.int32))
+
+        groups.assign([3, 3, 3, 3])
+        wp.capture_launch(capture.graph)
+        assert_np_equal(counts.numpy(), np.array([4, 4, 4, 4], dtype=np.int32))
+
+    def test_hashgrid_graph_empty_build(self):
+        """Clear prior grouped CPU HashGrid contents when an empty build replays."""
+        device = "cpu"
+        radius = 1.0
+        query_points = wp.array([[0.0, 0.0, 0.0]], dtype=wp.vec3, device=device)
+        warm_groups = wp.array([7], dtype=int, device=device)
+        empty_points = wp.empty(0, dtype=wp.vec3, device=device)
+        empty_groups = wp.empty(0, dtype=int, device=device)
+        counts = wp.zeros(1, dtype=int, device=device)
+        grid = wp.HashGrid(16, 16, 16, device=device)
+        grid.build(query_points, radius, groups=warm_groups)
+
+        wp.load_module(device=device)
+        with wp.ScopedCapture(device=device, apic=False, force_module_load=False) as capture:
+            grid.build(empty_points, radius, groups=empty_groups)
+            wp.launch(
+                count_neighbors_fixed_group,
+                dim=1,
+                inputs=[wp.uint64(grid.id), radius, 7, query_points, counts],
+                device=device,
+            )
+
+        wp.capture_launch(capture.graph)
+        assert_np_equal(counts.numpy(), np.array([0], dtype=np.int32))
+
+    def test_hashgrid_graph_multidimensional_inputs(self):
+        """Replay builds from current two-dimensional point and group arrays."""
+        device = "cpu"
+        radius = 0.25
+        clustered_points = np.array(
+            [[0.0, 0.0, 0.0], [0.1, 0.0, 0.0], [0.0, 0.0, 0.0], [0.1, 0.0, 0.0]],
+            dtype=np.float32,
+        )
+        separated_points = np.array(
+            [[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [4.0, 0.0, 0.0], [6.0, 0.0, 0.0]],
+            dtype=np.float32,
+        )
+        initial_groups = np.array([0, 0, 1, 1], dtype=np.int32)
+        updated_groups = np.array([3, 3, 3, 3], dtype=np.int32)
+
+        shape = (2, 2)
+        points = wp.array(clustered_points.reshape((*shape, 3)), dtype=wp.vec3, device=device)
+        groups = wp.array(initial_groups.reshape(shape), dtype=int, device=device)
+        points_flat = points.flatten()
+        groups_flat = groups.flatten()
+        counts = wp.zeros(4, dtype=int, device=device)
+        grid = wp.HashGrid(16, 16, 16, device=device)
+
+        wp.load_module(device=device)
+        with wp.ScopedCapture(device=device, apic=False, force_module_load=False) as capture:
+            grid.build(points, radius, groups=groups)
+            wp.launch(
+                count_neighbors_grouped,
+                dim=4,
+                inputs=[wp.uint64(grid.id), radius, points_flat, groups_flat, counts],
+                device=device,
+            )
+
+        wp.capture_launch(capture.graph)
+        assert_np_equal(counts.numpy(), np.array([2, 2, 2, 2], dtype=np.int32))
+
+        points.assign(separated_points.reshape((*shape, 3)))
+        groups.assign(updated_groups.reshape(shape))
+        wp.capture_launch(capture.graph)
+        assert_np_equal(counts.numpy(), np.array([1, 1, 1, 1], dtype=np.int32))
+
+    def test_hashgrid_reserve_during_capture_unsupported(self):
+        """Report reserve as unsupported while a live CPU graph capture is active."""
+        device = "cpu"
+        grid = wp.HashGrid(16, 16, 16, device=device)
+        grid.reserve(4)
+
+        with self.assertRaisesRegex(NotImplementedError, "reserve before capture"):
+            with wp.ScopedCapture(device=device, apic=False, force_module_load=False):
+                grid.reserve(8)
+
 
 add_function_test(TestHashGrid, "test_hashgrid_query", test_hashgrid_query, devices=devices)
 add_function_test(TestHashGrid, "test_hashgrid_inputs", test_hashgrid_inputs, devices=devices)
@@ -1041,15 +1224,21 @@ add_function_test(
 add_function_test(TestHashGrid, "test_hashgrid_grouped_many_groups", test_hashgrid_grouped_many_groups, devices=devices)
 add_function_test(
     TestHashGrid,
+    "test_hashgrid_saveable_capture_unsupported",
+    test_hashgrid_saveable_capture_unsupported,
+    devices=devices,
+)
+add_function_test(
+    TestHashGrid,
     "test_hashgrid_grouped_graph_capture_changing_group_ids",
     test_hashgrid_grouped_graph_capture_changing_group_ids,
-    devices=cuda_devices,
+    devices=devices,
 )
 add_function_test(
     TestHashGrid,
     "test_hashgrid_grouped_graph_capture_after_reserve",
     test_hashgrid_grouped_graph_capture_after_reserve,
-    devices=cuda_devices,
+    devices=devices,
 )
 add_function_test(TestHashGrid, "test_hashgrid_device_validation", test_hashgrid_device_validation, devices=devices)
 add_function_test(

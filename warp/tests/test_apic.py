@@ -6,9 +6,11 @@
 import ctypes
 import gc
 import os
+import struct
 import tempfile
 import unittest
 import weakref
+from functools import partial
 from unittest import mock
 
 import numpy as np
@@ -64,6 +66,72 @@ class TestApic(unittest.TestCase):
     pass
 
 
+# Must match APICSectionType in warp/native/apic_types.h.
+_APIC_SECTION_MEMORY = 2
+_APIC_SECTION_OPERATIONS = 3
+
+# These layouts mirror the packed structs in warp/native/apic_types.h. "<"
+# selects little-endian standard sizes without implicit alignment; "4s", "i",
+# "I", and "Q" mean four raw bytes, int32_t, uint32_t, and uint64_t.
+
+# APICFileHeader prefix: magic, version, flags, section count, section-table offset.
+_APIC_FILE_HEADER_PREFIX = struct.Struct("<4sIIIQ")
+
+# APICSectionEntry: type, flags, offset, stored size, uncompressed size.
+_APIC_SECTION_ENTRY = struct.Struct("<IIQQQ")
+
+# APICCondRecord: operation type/size, condition region/padding/offset, then each
+# branch's byte size and operation count.
+_APIC_COND_RECORD = struct.Struct("<IIiIQIIII")
+_APIC_UINT32 = struct.Struct("<I")  # One serialized uint32_t.
+
+
+def _find_apic_section(wrp_data, requested_section_type):
+    """Return the byte offset and size of one WRP section."""
+    magic, _, _, section_count, section_table_offset = _APIC_FILE_HEADER_PREFIX.unpack_from(wrp_data)
+    if magic != b"WRP1":
+        raise ValueError("Not a WRP file")
+
+    matching_sections = []
+    for section_index in range(section_count):
+        entry = _APIC_SECTION_ENTRY.unpack_from(
+            wrp_data, section_table_offset + _APIC_SECTION_ENTRY.size * section_index
+        )
+        section_type, _, section_offset, section_size, _ = entry
+        if section_type == requested_section_type:
+            matching_sections.append((section_offset, section_size))
+
+    if len(matching_sections) != 1:
+        raise ValueError(f"Expected one WRP section of type {requested_section_type}")
+    return matching_sections[0]
+
+
+def _corrupt_apic_empty_branch_count(path, branch_name):
+    """Make one empty conditional branch declare an operation."""
+    branch_fields = {"branch_a": (5, 6), "branch_b": (7, 8)}
+    branch_size_index, branch_count_index = branch_fields[branch_name]
+
+    with open(path, "r+b") as wrp_file:
+        wrp_data = wrp_file.read()
+        section_offset, section_size = _find_apic_section(wrp_data, _APIC_SECTION_OPERATIONS)
+
+        if section_size < _APIC_UINT32.size + _APIC_COND_RECORD.size:
+            raise ValueError("WRP operations section has no conditional record")
+
+        operation_count = _APIC_UINT32.unpack_from(wrp_data, section_offset)[0]
+        if operation_count != 1:
+            raise ValueError("Expected exactly one operation")
+
+        conditional_offset = section_offset + _APIC_UINT32.size
+        conditional = list(_APIC_COND_RECORD.unpack_from(wrp_data, conditional_offset))
+        if conditional[branch_size_index] != 0 or conditional[branch_count_index] != 0:
+            raise ValueError(f"Expected an empty {branch_name}")
+
+        conditional[branch_count_index] = 1
+        wrp_file.seek(conditional_offset)
+        wrp_file.write(_APIC_COND_RECORD.pack(*conditional))
+
+
 def test_save_apic_false_error(test, device):
     """capture_save() should raise when apic=False."""
     n = 64
@@ -77,6 +145,102 @@ def test_save_apic_false_error(test, device):
     with tempfile.TemporaryDirectory() as tmpdir:
         with test.assertRaises(RuntimeError):
             wp.capture_save(capture.graph, os.path.join(tmpdir, "should_not_exist"))
+
+
+def test_apic_native_save_reports_hashgrid_serialization_unsupported(test, device):
+    """Report HashGrid serialization as unsupported pending grid-handle remapping."""
+    points = wp.array([[0.0, 0.0, 0.0]], dtype=wp.vec3, device=device)
+    condition = wp.array([1], dtype=wp.int32, device=device)
+
+    for nested in (False, True):
+        with test.subTest(nested=nested):
+            grid = wp.HashGrid(16, 16, 16, device=device)
+
+            with wp.ScopedCapture(device=device, apic=False, force_module_load=False) as capture:
+                if nested:
+                    wp.capture_if(condition, on_true=partial(grid.build, points, 1.0))
+                else:
+                    grid.build(points, 1.0)
+
+            with tempfile.TemporaryDirectory() as tmpdir:
+                path = os.path.join(tmpdir, "hashgrid.wrp")
+                saved_error_output_enabled = wp_context.runtime.core.wp_is_error_output_enabled()
+                try:
+                    wp_context.runtime.core.wp_set_error_output_enabled(False)
+                    result = wp_context.runtime.core.wp_apic_state_save(
+                        capture.graph.apic_state,
+                        path.encode("utf-8"),
+                        0,
+                        None,
+                    )
+                    test.assertFalse(result)
+                    test.assertIn(
+                        "HashGrid serialization is not yet supported in APIC graphs",
+                        wp_context.runtime.get_error_string(),
+                    )
+                    test.assertFalse(os.path.exists(path))
+                finally:
+                    wp_context.runtime.core.wp_set_error_output_enabled(saved_error_output_enabled)
+
+
+def test_capture_load_rejects_empty_conditional_branches_with_operations(test, device):
+    """Reject conditional branches that declare operations without bytes."""
+    condition = wp.array([1], dtype=wp.int32, device=device)
+
+    def empty_branch():
+        """Record an intentionally empty conditional branch."""
+
+    for branch_name in ("branch_a", "branch_b"):
+        with test.subTest(branch=branch_name), tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, f"{branch_name}.wrp")
+            with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+                if branch_name == "branch_a":
+                    wp.capture_if(condition, on_true=empty_branch)
+                else:
+                    wp.capture_if(condition, on_false=empty_branch)
+            wp.capture_save(capture.graph, path)
+            _corrupt_apic_empty_branch_count(path, branch_name)
+
+            saved_error_output_enabled = wp_context.runtime.core.wp_is_error_output_enabled()
+            try:
+                wp_context.runtime.core.wp_set_error_output_enabled(False)
+                with test.assertRaisesRegex(RuntimeError, "operation stream failed validation"):
+                    wp.capture_load(path, device=device)
+            finally:
+                wp_context.runtime.core.wp_set_error_output_enabled(saved_error_output_enabled)
+
+
+def test_live_hashgrid_capture_does_not_snapshot_inputs(test, device):
+    """Keep live-only HashGrid input regions out of serialized snapshots."""
+    base = wp.zeros(4096, dtype=wp.vec3, device=device)
+    points = base[:1]
+    grid = wp.HashGrid(16, 16, 16, device=device)
+
+    with wp.ScopedCapture(device=device, apic=False, force_module_load=False) as capture:
+        apic_capture = wp_context.runtime._apic_capture
+        branch_start = wp_context.runtime.core.wp_apic_begin_branch(apic_capture.apic_state)
+        try:
+            grid.build(points, 1.0)
+        finally:
+            branch_body = wp_context.runtime.core.wp_apic_end_branch(apic_capture.apic_state, branch_start)
+            wp_context.runtime.core.wp_apic_free_branch_body(branch_body)
+
+    test.assertEqual(capture.graph._apic_capture.operation_count, 0)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "live_hashgrid_inputs.wrp")
+        result = wp_context.runtime.core.wp_apic_state_save(
+            capture.graph.apic_state,
+            path.encode("utf-8"),
+            0,
+            None,
+        )
+        test.assertTrue(result, wp_context.runtime.get_error_string())
+
+        with open(path, "rb") as wrp_file:
+            wrp_data = wrp_file.read()
+        memory_offset, memory_size = _find_apic_section(wrp_data, _APIC_SECTION_MEMORY)
+        test.assertEqual(memory_size, 4)
+        test.assertEqual(_APIC_UINT32.unpack_from(wrp_data, memory_offset)[0], 0)
 
 
 def test_save_single_kernel(test, device):
@@ -2765,6 +2929,42 @@ def test_capture_with_bvh_rebuild_save_rejected(test, device):
         test.assertFalse(os.path.exists(path + ".wrp"))
 
 
+def test_discarded_bvh_op_does_not_block_save(test, device):
+    """A BVH op discarded when a branch body unwinds must not block a later save.
+
+    Non-serializability is derived from the finalized operation stream, not from
+    a flag set when the op is recorded. So recording a BVH refit inside a branch
+    that is then discarded (as capture_if/capture_while do when a body raises)
+    leaves the finalized stream serializable, and capture_save() must accept it.
+    """
+    lowers = wp.array([(0.0, 0.0, 0.0)], dtype=wp.vec3, device=device)
+    uppers = wp.array([(1.0, 1.0, 1.0)], dtype=wp.vec3, device=device)
+    bvh = wp.Bvh(lowers, uppers)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        apic_capture = wp_context.runtime._apic_capture
+        branch_start = wp_context.runtime.core.wp_apic_begin_branch(apic_capture.apic_state)
+        try:
+            bvh.refit()
+        finally:
+            branch_body = wp_context.runtime.core.wp_apic_end_branch(apic_capture.apic_state, branch_start)
+            wp_context.runtime.core.wp_apic_free_branch_body(branch_body)
+
+    # The refit was discarded with the branch, so nothing non-serializable remains.
+    test.assertEqual(capture.graph._apic_capture.operation_count, 0)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "discarded_bvh_refit.wrp")
+        result = wp_context.runtime.core.wp_apic_state_save(
+            capture.graph.apic_state,
+            path.encode("utf-8"),
+            0,
+            None,
+        )
+        test.assertTrue(result, wp_context.runtime.get_error_string())
+        test.assertTrue(os.path.exists(path))
+
+
 devices = get_test_devices()
 devices_with_graph_capture_allocation = get_test_devices_with_graph_capture_allocation()
 devices_with_cuda_graph_module_load = get_test_devices_with_cuda_graph_module_load()
@@ -2798,9 +2998,33 @@ add_function_test(
 )
 add_function_test(
     TestApic,
+    "test_discarded_bvh_op_does_not_block_save",
+    test_discarded_bvh_op_does_not_block_save,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
     "test_save_apic_false_error",
     test_save_apic_false_error,
     devices=devices_with_cuda_graph_module_load,
+)
+add_function_test(
+    TestApic,
+    "test_apic_native_save_reports_hashgrid_serialization_unsupported",
+    test_apic_native_save_reports_hashgrid_serialization_unsupported,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_capture_load_rejects_empty_conditional_branches_with_operations",
+    test_capture_load_rejects_empty_conditional_branches_with_operations,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_live_hashgrid_capture_does_not_snapshot_inputs",
+    test_live_hashgrid_capture_does_not_snapshot_inputs,
+    devices=[d for d in devices if d.is_cpu],
 )
 add_function_test(
     TestApic,

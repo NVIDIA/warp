@@ -7768,50 +7768,67 @@ class HashGrid:
                 interact, even when their coordinates overlap. Omitting the group argument in
                 :func:`warp.hash_grid_query` preserves the all-points traversal behavior.
                 Group ids may be arbitrary ``int32`` values and are consumed on-device, so group assignments may
-                change between rebuilds, including during CUDA graph replay.
+                change between rebuilds, including during CPU and CUDA graph replay.
         """
         if not types_equal(points.dtype, self._vec_type):
             raise TypeError(f"Hash grid points should have type {self._vec_type.__name__}, got {points.dtype}")
-
         if radius <= 0.0:
             raise ValueError(f"Hash grid cell width must be positive, got {radius}")
-
-        if points.ndim > 1:
-            points = points.contiguous().flatten()
         if points.device != self.device:
             raise RuntimeError("points must live on the same device as this HashGrid")
 
-        groups_arg = None
         if groups is not None:
             if groups.dtype != int32:
                 raise RuntimeError("groups should be an array of type wp.int32")
             if groups.device != self.device:
                 raise RuntimeError("groups must live on the same device as this HashGrid")
+            if groups.size != points.size:
+                raise RuntimeError("groups must have the same length as points")
+
+        apic_capture = warp._src.context._get_apic_capture_for_device(self.device)
+        if apic_capture is not None and apic_capture.apic_savable:
+            raise NotImplementedError(
+                "HashGrid.build() cannot be used in a saveable APIC capture because "
+                "HashGrid serialization is not yet supported; use apic=False or build outside capture"
+            )
+
+        if points.ndim > 1:
+            points = points.contiguous().flatten()
+
+        groups_arg = None
+        if groups is not None:
             if groups.ndim > 1:
                 groups = groups.contiguous().flatten()
             elif not groups.is_contiguous:
                 groups = groups.contiguous()
-            if len(groups) != len(points):
-                raise RuntimeError("groups must have the same length as points")
-
             groups_arg = ctypes.byref(groups.__ctype__())
 
-        self.groups = groups
+        if apic_capture is not None:
+            apic_capture.track_array(points)
+            apic_capture.track_array(groups)
 
+        self.groups = groups
         self._native_func("update")(self.id, self._type_id, radius, ctypes.byref(points.__ctype__()), groups_arg)
         self.reserved = True
 
     def reserve(self, num_points, with_groups=False):
         """Reserve enough memory to build the grid for the given number of points.
 
-        Reserving ahead of CUDA graph capture makes subsequent :meth:`build` calls of up to
-        ``num_points`` points allocation-free, without requiring a warm-up build before capture.
+        Reserving ahead of CPU or CUDA graph capture makes subsequent :meth:`build` calls of up to
+        ``num_points`` points allocation-free, without requiring a warm-up build before capture. CPU live replay can
+        allocate on the first replayed build, so pre-reserving is optional. :meth:`reserve` cannot be called during CPU
+        graph capture.
 
         Args:
             num_points (int): Number of points the grid should accommodate.
             with_groups (bool): Also reserve the buffers used by grouped builds, so that a
                 grouped :meth:`build` (with ``groups``) is allocation-free as well.
         """
+        if self.device.is_cpu and warp._src.context._get_apic_capture_for_device(self.device) is not None:
+            raise NotImplementedError(
+                "HashGrid.reserve() cannot be called during CPU graph capture; reserve before capture"
+            )
+
         self._native_func("reserve")(self.id, self._type_id, num_points, with_groups)
         self.reserved = True
 
