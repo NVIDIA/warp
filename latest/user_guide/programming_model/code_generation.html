@@ -852,6 +852,17 @@ This can provide improved performance by avoiding branching and can be useful fo
 <span class="n">printf</span><span class="p">(</span><span class="n">var_9</span><span class="p">,</span><span class="w"> </span><span class="n">var_8</span><span class="p">);</span>
 </pre></div>
 </div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>When a static <code class="docutils literal notranslate"><span class="pre">range()</span></code> loop is unrolled, its index leaks into the enclosing scope as a
+compile-time constant holding the loop’s final value, matching Python’s scoping. Reusing that
+name afterwards is supported: only reading it (for example, <code class="docutils literal notranslate"><span class="pre">range(i)</span></code>) keeps it constant so
+further static loops still unroll, while re-declaring it (<code class="docutils literal notranslate"><span class="pre">i</span> <span class="pre">=</span> <span class="pre">int(0)</span></code>) or mutating it inside a
+later <code class="docutils literal notranslate"><span class="pre">while</span></code> or dynamic <code class="docutils literal notranslate"><span class="pre">for</span></code> loop demotes it to an ordinary runtime variable, so the
+mutation is carried across iterations. Mutating a genuine (non-iterator) constant inside a
+dynamic loop still raises an error asking you to declare a dynamic variable first (for example,
+<code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">=</span> <span class="pre">float(0.0)</span></code>).</p>
+</div>
 </section>
 <section id="example-function-pointers">
 <h3>Example: Function Pointers<a class="headerlink" href="#example-function-pointers" title="Link to this heading">#</a></h3>

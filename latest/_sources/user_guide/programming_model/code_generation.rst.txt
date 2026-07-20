@@ -411,6 +411,17 @@ The generated code will not contain the for-loop but instead the loop body will 
     printf(var_6, var_5);
     printf(var_9, var_8);
 
+.. note::
+
+    When a static ``range()`` loop is unrolled, its index leaks into the enclosing scope as a
+    compile-time constant holding the loop's final value, matching Python's scoping. Reusing that
+    name afterwards is supported: only reading it (for example, ``range(i)``) keeps it constant so
+    further static loops still unroll, while re-declaring it (``i = int(0)``) or mutating it inside a
+    later ``while`` or dynamic ``for`` loop demotes it to an ordinary runtime variable, so the
+    mutation is carried across iterations. Mutating a genuine (non-iterator) constant inside a
+    dynamic loop still raises an error asking you to declare a dynamic variable first (for example,
+    ``x = float(0.0)``).
+
 Example: Function Pointers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 

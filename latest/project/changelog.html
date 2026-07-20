@@ -613,6 +613,12 @@ and a backward-enabled kernel in the same module.</p></li>
 <li><p>Fix kernel launches using stale deterministic launch metadata after switching a module’s <code class="docutils literal notranslate"><span class="pre">deterministic</span></code> mode,
 which could execute consumed-return counter atomics twice or crash the process
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1637">GH-1637</a>).</p></li>
+<li><p>Fix incorrect code generation when an unrolled <code class="docutils literal notranslate"><span class="pre">range()</span></code> loop index is re-declared (for example, <code class="docutils literal notranslate"><span class="pre">i</span> <span class="pre">=</span> <span class="pre">int(0)</span></code>)
+and reused as the induction variable of a later <code class="docutils literal notranslate"><span class="pre">while</span></code> or dynamic <code class="docutils literal notranslate"><span class="pre">for</span></code> loop</p></li>
+<li><p>Fix incorrect code generation when an unrolled <code class="docutils literal notranslate"><span class="pre">range()</span></code> loop index is reused as the induction variable of a
+later <code class="docutils literal notranslate"><span class="pre">while</span></code> or dynamic <code class="docutils literal notranslate"><span class="pre">for</span></code> loop; mutating the index now carries across iterations whether or not it is
+first re-declared (for example, <code class="docutils literal notranslate"><span class="pre">i</span> <span class="pre">=</span> <span class="pre">int(0)</span></code>), instead of being silently dropped
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1534">GH-1534</a>).</p></li>
 </ul>
 </section>
 <section id="documentation">
