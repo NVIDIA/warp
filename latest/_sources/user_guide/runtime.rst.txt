@@ -549,7 +549,7 @@ NumPy does not natively support the bfloat16 format, so Warp stores
 how array contents are displayed when calling :meth:`~warp.array.numpy` or
 printing an array.
 
-Without `ml-dtypes <https://github.com/jax-ml/ml-dtypes>`__,
+Without `ml-dtypes <https://github.com/jax-ml/ml_dtypes>`__,
 :meth:`~warp.array.numpy` and :func:`print` show raw ``uint16`` values:
 
 .. code-block:: python
