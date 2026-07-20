@@ -18,6 +18,7 @@ import re
 import textwrap
 import threading
 import types
+import weakref
 from collections import deque
 from collections.abc import Callable, Mapping, Sequence
 from copy import copy as shallowcopy
@@ -32,6 +33,14 @@ from warp._src.types import *
 # used as a globally accessible copy
 # of current compile options (block_dim) etc
 options = {}
+
+# Extraction products shared across Adjoints of one code object, populated
+# lazily by Adjoint.__init__ (see _SharedFunctionSource).
+# id(code object) -> (weakref to the code object, _SharedFunctionSource).
+# Keyed by identity, not equality: equal code objects can have divergent current
+# source text (a stale .pyc reused after an in-process file rewrite), so each new
+# code object re-extracts through linecache's checkcache refresh (test_reload_references).
+_shared_function_sources = {}
 
 
 def _escape_line_directive_filename(filename: str) -> str:
@@ -1578,6 +1587,45 @@ class SlotAccessPlan(NamedTuple):
     slot_type: object  # informational leaf type; already validated against rhs_type
 
 
+class _SharedFunctionSource:
+    """Extraction products shared by every Adjoint built from one code object.
+
+    Source, tree, and reference nodes are pure functions of the code object;
+    only reference *resolution* is rebind-sensitive and stays per-adjoint.
+    Sharing requires an unmutated tree, so transformers, explicit ``source=``,
+    and ``wp.static`` (which rewrites the tree) exclude an adjoint.
+    """
+
+    __slots__ = ("fun_lineno", "reference_nodes", "source", "tree")
+
+    def __init__(self, source, fun_lineno, tree):
+        self.source = source
+        self.fun_lineno = fun_lineno
+        self.tree = tree
+        self.reference_nodes = None
+
+
+def _shared_source_for_code(code):
+    rec = _shared_function_sources.get(id(code))
+    if rec is not None and rec[0]() is code:
+        return rec[1]
+    return None
+
+
+def _store_shared_source(code, entry):
+    # Concurrent first declarations may both store (dict ops are GIL-atomic); the
+    # last one wins and the loser keeps a private, equally valid entry.
+    key = id(code)
+
+    def _remove(ref, _key=key):
+        # The id may already back a newer entry; only remove our own record.
+        rec = _shared_function_sources.get(_key)
+        if rec is not None and rec[0] is ref:
+            del _shared_function_sources[_key]
+
+    _shared_function_sources[key] = (weakref.ref(code, _remove), entry)
+
+
 class Adjoint:
     # Source code transformer, this class takes a Python function and
     # generates forward and backward SSA forms of the function instructions
@@ -1615,8 +1663,20 @@ class Adjoint:
         adj.filename = inspect.getsourcefile(func) or "unknown source file"
         # get source file line number where function starts
         adj.fun_lineno = 0
+        adj._shared_source = None
         if source is None:
-            adj.source, adj.fun_lineno, adj.tree = adj.extract_function_source(func)
+            code = getattr(inspect.unwrap(func), "__code__", None)
+            shared = _shared_source_for_code(code) if code is not None and not transformers else None
+            if shared is not None:
+                adj.source, adj.fun_lineno, adj.tree = shared.source, shared.fun_lineno, shared.tree
+                adj._shared_source = shared
+            else:
+                adj.source, adj.fun_lineno, adj.tree = adj.extract_function_source(func)
+                # The substring check conservatively matches the replace_static_expressions
+                # gate below; any wp.static kernel rewrites its tree and must not share it.
+                if code is not None and not transformers and "static" not in adj.source:
+                    adj._shared_source = _SharedFunctionSource(adj.source, adj.fun_lineno, adj.tree)
+                    _store_shared_source(code, adj._shared_source)
         else:
             # ensures that indented class methods can be parsed as kernels
             adj.source = textwrap.dedent(source)
@@ -5687,13 +5747,22 @@ class Adjoint:
         make a regular kernel's hash stale if a referenced global or constant is rebound
         before the kernel is first built.
 
-        This cache assumes ``adj.tree`` is structurally final before the first call. Any code
-        that mutates ``adj.tree`` afterwards must reset ``adj._reference_nodes`` to ``None``.
+        This cache assumes ``adj.tree`` is structurally final before the first call; adjoints
+        whose tree is mutated (transformers, ``wp.static`` rewriting) never share it. Any new
+        code that mutates ``adj.tree`` afterwards must reset ``adj._reference_nodes`` -- and
+        ``adj._shared_source.reference_nodes`` when set, which invalidates every adjoint
+        sharing the tree -- or better, exclude the adjoint from sharing like the cases above.
         """
         if adj._reference_nodes is None:
-            adj._reference_nodes = tuple(
-                iter_ast_nodes_of_types(adj.tree, ast.Name, ast.Attribute, ast.Call, ast.Assign)
-            )
+            shared = adj._shared_source
+            if shared is not None and shared.reference_nodes is not None:
+                adj._reference_nodes = shared.reference_nodes
+            else:
+                adj._reference_nodes = tuple(
+                    iter_ast_nodes_of_types(adj.tree, ast.Name, ast.Attribute, ast.Call, ast.Assign)
+                )
+                if shared is not None:
+                    shared.reference_nodes = adj._reference_nodes
         return adj._reference_nodes
 
     def get_references(adj) -> tuple[dict[str, Any], dict[Any, Any], dict[warp._src.context.Function, Any]]:
