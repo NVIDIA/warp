@@ -1685,6 +1685,7 @@ def kernel(
         elif module == "unique":
             # Create a new temporary module that will be renamed based on hash.
             m = Module(f.__name__, None)
+            m.defer_reference_scan = True
         elif isinstance(module, str):
             # Look up module by name
             m = get_module(module)
@@ -1801,7 +1802,10 @@ def kernel(
                 for existing_kernel in existing_module._get_live_kernels():
                     existing_kernel.adj.skip_build = False
             else:
-                # This is the first time we've seen this kernel
+                # This is the first time we've seen this kernel; the module is kept,
+                # so run the dependency scan that registration deferred.
+                m.defer_reference_scan = False
+                m._find_references(k.adj)
                 # Register the new unique module in the global registry
                 user_modules[k.module.name] = k.module
                 log_debug(f"[wp.kernel] Created new unique module: {k.module.name}")
@@ -3260,6 +3264,10 @@ class Module:
         # Indicates whether the module has functions or kernels with unresolved static expressions.
         self.has_unresolved_static_expressions = False
 
+        # Set while a module="unique" module awaits its dedup decision: the dependency scan
+        # runs only if the module is kept, so a duplicate never creates edges to detach.
+        self.defer_reference_scan = False
+
         self.options = {
             "max_unroll": warp.config.max_unroll,
             "enable_backward": warp.config.enable_backward,
@@ -3390,7 +3398,8 @@ class Module:
         if kernel.adj.has_unresolved_static_expressions:
             self.has_unresolved_static_expressions = True
 
-        self._find_references(kernel.adj)
+        if not self.defer_reference_scan:
+            self._find_references(kernel.adj)
 
         # for a reload of module on next launch
         self.mark_modified()

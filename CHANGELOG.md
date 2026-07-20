@@ -44,6 +44,8 @@
   documentation ([GH-1628](https://github.com/NVIDIA/warp/issues/1628)).
 - Reorganize the documentation around substantive Programming Model and Execution and Performance guides, move the
   Language Reference and API Reference closer to the User Guide, and consolidate memory-management guidance.
+- Speed up redeclaring kernels created by factory functions
+  ([GH-1486](https://github.com/NVIDIA/warp/issues/1486)).
 
 ### Fixed
 
