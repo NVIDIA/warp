@@ -191,6 +191,9 @@ omit = [
     "*/warp/_src/thirdparty/*",
     "*/warp/examples/*",
     "*/warp/tests/*",
+    # The parallel test runner is the harness that collects coverage, not
+    # library code under test.
+    "*/warp/_src/test_runner/*",
     "*/warp/_src/fem/*",
     "appdirs.py",
     "render_opengl.py",

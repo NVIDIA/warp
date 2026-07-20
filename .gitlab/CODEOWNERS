@@ -26,7 +26,7 @@
 /docker/
 /tools/
 /uv.lock
-/warp/_src/thirdparty/unittest_parallel.py
+/warp/_src/test_runner/
 .clang-format
 .gitignore
 .gitattributes

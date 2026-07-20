@@ -63,6 +63,10 @@ include:
     ref: "main"
     file: "/.gitlab/ci/common.yml"
 
+variables:
+  # Equivalent to --diagnostics-dir; keep aligned with test artifact paths.
+  WARP_TEST_DIAGNOSTICS_DIR: "$CI_PROJECT_DIR/test-diagnostics"
+
 # ==============================================================================
 # Default pipeline configuration
 # ==============================================================================
@@ -143,6 +147,9 @@ default:
 # Used to log the output of jobs that run only run unit tests (no coverage report)
 .save_test_report_artifact:
   artifacts:
+    when: always
+    paths:
+      - test-diagnostics/
     reports:
       junit: rspec.xml
 

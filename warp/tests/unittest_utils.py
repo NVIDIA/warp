@@ -41,6 +41,12 @@ _normalize_direct_test_sys_path()
 import numpy as np  # noqa: E402
 
 import warp as wp  # noqa: E402
+from warp._src.test_runner.events import (  # noqa: E402
+    emit_test_cleanup_started,
+    emit_test_outcome,
+    emit_test_started,
+    emit_test_stopped,
+)
 
 pxr = importlib.util.find_spec("pxr")
 USD_AVAILABLE = pxr is not None
@@ -486,16 +492,19 @@ def add_function_test_register_kernel(cls, name, func, devices=None, **kwargs):
 def write_junit_results(
     outfile: str,
     test_records: list,
-    tests_run: int,
-    tests_failed: int,
-    tests_errored: int,
-    tests_skipped: int,
     test_duration: float,
+    extra_records=(),
 ):
     """Write a JUnit XML from our report data.
 
     The report file is needed for GitLab to add test reports in merge requests.
     """
+    records = [*test_records, *extra_records]
+    tests_run = len(records)
+    tests_failed = sum(record[3] == "FAIL" for record in records)
+    tests_errored = sum(record[3] == "ERROR" for record in records)
+    tests_skipped = sum(record[3] == "SKIP" for record in records)
+
     root = ET.Element(
         "testsuite",
         name="Warp Tests",
@@ -506,7 +515,7 @@ def write_junit_results(
         time=f"{test_duration:.3f}",
     )
 
-    for test_data in test_records:
+    for test_data in records:
         test_classname = test_data[0]
         test_methodname = test_data[1]
         test_duration = test_data[2]
@@ -520,7 +529,7 @@ def write_junit_results(
             failure = ET.SubElement(test_case, "failure", message=str(test_data[4]))
             failure.text = str(test_data[5])  # Stacktrace
         elif test_status == "ERROR":
-            error = ET.SubElement(test_case, "error")
+            error = ET.SubElement(test_case, "error", message=str(test_data[4]))
             error.text = str(test_data[5])  # Stacktrace
         elif test_status == "SKIP":
             skip = ET.SubElement(test_case, "skipped")
@@ -532,75 +541,139 @@ def write_junit_results(
     if hasattr(ET, "indent"):
         ET.indent(root)  # Pretty-printed XML output
 
-    tree.write(outfile, encoding="utf-8", xml_declaration=True)
+    output_path = os.path.abspath(outfile)
+    output_directory = os.path.dirname(output_path)
+    os.makedirs(output_directory, exist_ok=True)
+    fd, temporary = tempfile.mkstemp(
+        prefix=f".{os.path.basename(output_path)}.",
+        suffix=".tmp",
+        dir=output_directory,
+    )
+    try:
+        with os.fdopen(fd, "wb") as stream:
+            tree.write(stream, encoding="utf-8", xml_declaration=True)
+            stream.flush()
+        os.replace(temporary, output_path)
+    except BaseException:
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
+        raise
+
+
+_FIXTURE_ID_RE = re.compile(r"^(setUpClass|tearDownClass|setUpModule|tearDownModule) \((.+)\)$")
+
+
+def _junit_test_identifier(test):
+    identifier_method = getattr(test, "id", None)
+    if callable(identifier_method):
+        try:
+            identifier = identifier_method()
+        except Exception:
+            identifier = str(test)
+    else:
+        identifier = str(test)
+    return str(identifier)
+
+
+def _junit_record_identity(test, identifier=None):
+    if isinstance(test, unittest.TestCase):
+        return test.__class__.__name__, test._testMethodName
+
+    if identifier is None:
+        identifier = _junit_test_identifier(test)
+
+    fixture_match = _FIXTURE_ID_RE.match(identifier)
+    if fixture_match is not None:
+        hook, target = fixture_match.groups()
+        return target, hook
+
+    classname, separator, name = identifier.rpartition(".")
+    if separator and classname and name:
+        return classname, name
+    return test.__class__.__name__, identifier
 
 
 class ParallelJunitTestResult(unittest.TextTestResult):
     def __init__(self, stream, descriptions, verbosity):
         stream = type(stream)(sys.stderr)
         self.test_record = []
+        self._active_test = None
+        self.start_time = None
+        self._diagnostic_started_ns = None
         super().__init__(stream, descriptions, verbosity)
 
     def startTest(self, test):
-        if self.showAll:
-            self.stream.writeln(f"{self.getDescription(test)} ...")
-            self.stream.flush()
-        self.start_time = time.perf_counter_ns()
+        start_time = time.perf_counter_ns()
+        diagnostic_started_ns = emit_test_started(test)
         super(unittest.TextTestResult, self).startTest(test)
+        self._active_test = test
+        self.start_time = start_time
+        self._diagnostic_started_ns = diagnostic_started_ns
 
     def stopTest(self, test):
-        super().stopTest(test)
-        # Force garbage collection of CPU-side allocations to reduce peak
-        # host RSS in parallel test runs.
-        gc.collect()
+        try:
+            super().stopTest(test)
+            emit_test_cleanup_started(test)
+            # Force garbage collection of CPU-side allocations to reduce peak
+            # host RSS in parallel test runs.
+            try:
+                gc.collect()
+            finally:
+                emit_test_stopped(test)
+        finally:
+            self._active_test = None
+            self.start_time = None
+            self._diagnostic_started_ns = None
 
-    def _add_helper(self, test, dots_message, show_all_message):
-        if self.showAll:
-            self.stream.writeln(f"{self.getDescription(test)} ... {show_all_message}")
-        elif self.dots:
-            self.stream.write(dots_message)
-        self.stream.flush()
+    def _record_test(self, test, duration, code, message=None, details=None, identifier=None):
+        classname, name = _junit_record_identity(test, identifier)
+        self.test_record.append((classname, name, duration, code, message, details))
 
-    def _record_test(self, test, code, message=None, details=None):
-        duration = round((time.perf_counter_ns() - self.start_time) * 1e-9, 3)  # [s]
-        self.test_record.append((test.__class__.__name__, test._testMethodName, duration, code, message, details))
+    def _record_outcome(self, test, code, message=None, details=None):
+        if self._active_test is test and self.start_time is not None and self._diagnostic_started_ns is not None:
+            duration = round((time.perf_counter_ns() - self.start_time) * 1e-9, 3)  # [s]
+            emit_test_outcome(test, code, self._diagnostic_started_ns)
+            self._record_test(test, duration, code, message, details)
+            return
+
+        identifier = _junit_test_identifier(test)
+        diagnostic_started_ns = emit_test_started(identifier)
+        emit_test_outcome(identifier, code, diagnostic_started_ns)
+        self._record_test(test, 0.0, code, message, details, identifier)
+        emit_test_cleanup_started(identifier)
+        emit_test_stopped(identifier)
 
     def addSuccess(self, test):
         super(unittest.TextTestResult, self).addSuccess(test)
-        self._add_helper(test, ".", "ok")
-        self._record_test(test, "OK")
+        self._record_outcome(test, "OK")
 
     def addError(self, test, err):
         super(unittest.TextTestResult, self).addError(test, err)
-        self._add_helper(test, "E", "ERROR")
-        self._record_test(test, "ERROR", str(err[1]), self._exc_info_to_string(err, test))
+        self._record_outcome(test, "ERROR", str(err[1]), self._exc_info_to_string(err, test))
 
     def addFailure(self, test, err):
         super(unittest.TextTestResult, self).addFailure(test, err)
-        self._add_helper(test, "F", "FAIL")
-        self._record_test(test, "FAIL", str(err[1]), self._exc_info_to_string(err, test))
+        self._record_outcome(test, "FAIL", str(err[1]), self._exc_info_to_string(err, test))
 
     def addSkip(self, test, reason):
         super(unittest.TextTestResult, self).addSkip(test, reason)
-        self._add_helper(test, "s", f"skipped {reason!r}")
-        self._record_test(test, "SKIP", reason)
+        self._record_outcome(test, "SKIP", reason)
 
     def addExpectedFailure(self, test, err):
         super(unittest.TextTestResult, self).addExpectedFailure(test, err)
-        self._add_helper(test, "x", "expected failure")
-        self._record_test(test, "OK", "expected failure")
+        self._record_outcome(test, "OK", "expected failure")
 
     def addUnexpectedSuccess(self, test):
         super(unittest.TextTestResult, self).addUnexpectedSuccess(test)
-        self._add_helper(test, "u", "unexpected success")
-        self._record_test(test, "FAIL", "unexpected success")
+        self._record_outcome(test, "FAIL", "unexpected success")
 
     def addSubTest(self, test, subtest, err):
         super(unittest.TextTestResult, self).addSubTest(test, subtest, err)
         if err is not None:
-            self._add_helper(test, "E", "ERROR")
             # err is (class, error, traceback)
-            self._record_test(test, "FAIL", str(err[1]), self._exc_info_to_string(err, test))
+            self._record_outcome(test, "FAIL", str(err[1]), self._exc_info_to_string(err, test))
 
     def printErrors(self):
         pass

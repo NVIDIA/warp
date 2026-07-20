@@ -443,6 +443,7 @@ cppcheck:
     paths:
       - rspec.xml
       - coverage.xml
+      - test-diagnostics/
     reports:
       junit: rspec.xml
       coverage_report:

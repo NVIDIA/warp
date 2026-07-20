@@ -369,7 +369,8 @@ would benefit from one.
 ### Running the Test Suite
 
 Warp's test suite uses the [unittest](https://docs.python.org/3/library/unittest.html) unit testing framework,
-along with [unittest-parallel](https://github.com/craigahobbs/unittest-parallel) to run tests in parallel.
+along with a parallel test runner in `warp/_src/test_runner/` (derived from
+[unittest-parallel](https://github.com/craigahobbs/unittest-parallel)) to run tests in parallel.
 
 The majority of the Warp tests are located in the [warp/tests](https://github.com/NVIDIA/warp/tree/main/warp/tests)
 directory. As part of the test suite, most examples in the `warp/examples` subdirectories are tested via
