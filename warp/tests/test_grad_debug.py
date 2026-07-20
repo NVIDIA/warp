@@ -2,14 +2,18 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import unittest
+import warnings
 from typing import Any
+from unittest.mock import patch
 
 import warp as wp
+from warp._src.autograd import FunctionMetadata
 from warp.autograd import (
     gradcheck,
     gradcheck_tape,
     jacobian,
     jacobian_fd,
+    jacobian_plot,
 )
 from warp.tests.unittest_utils import *
 
@@ -96,6 +100,33 @@ def transform_point_kernel(
 ):
     tid = wp.tid()
     out[tid] = wp.transform_point(transforms[tid], points[tid])
+
+
+@wp.kernel
+def jacobian_plot_scale_kernel(a: wp.array[float], out: wp.array[float]):
+    tid = wp.tid()
+    out[tid] = 2.0 * a[tid]
+
+
+def jacobian_plot_pipeline(a):
+    out = wp.zeros_like(a, requires_grad=True)
+    wp.launch(
+        jacobian_plot_scale_kernel,
+        dim=len(a),
+        inputs=[a],
+        outputs=[out],
+        device=a.device,
+    )
+    return out
+
+
+def _get_test_pyplot():
+    import matplotlib  # noqa: PLC0415
+
+    matplotlib.use("Agg", force=True)
+    import matplotlib.pyplot as plt  # noqa: PLC0415
+
+    return plt
 
 
 def test_gradcheck_3d(test, device, dtype):
@@ -239,7 +270,261 @@ devices = get_test_devices()
 
 
 class TestGradDebug(unittest.TestCase):
-    pass
+    def test_jacobian_plot_function(self):
+        """Verify Jacobian plotting supports Python function pipelines."""
+        plt = _get_test_pyplot()
+        self.addCleanup(plt.close, "all")
+
+        for jacobian_function in (jacobian, jacobian_fd):
+            with self.subTest(jacobian_function=jacobian_function.__name__):
+                plt.close("all")
+                a = wp.array([1.0, 2.0], dtype=wp.float32, requires_grad=True, device="cpu")
+
+                with patch.object(plt, "show") as show:
+                    jacobians = jacobian_function(
+                        jacobian_plot_pipeline,
+                        inputs=[a],
+                        plot_jacobians=True,
+                    )
+
+                np.testing.assert_allclose(
+                    jacobians[(0, 0)].numpy(),
+                    np.eye(2, dtype=np.float32) * 2.0,
+                    atol=1.0e-3,
+                    rtol=1.0e-3,
+                )
+                figure = plt.gcf()
+                self.assertEqual(figure.get_suptitle(), "jacobian_plot_pipeline kernel Jacobian")
+                self.assertEqual(figure.axes[0].get_xlabel(), "a")
+                self.assertEqual(figure.axes[0].get_ylabel(), "output_0")
+                show.assert_called_once_with()
+
+    def test_jacobian_plot_kernel(self):
+        """Verify Jacobian plotting uses typed kernel metadata."""
+        plt = _get_test_pyplot()
+        self.addCleanup(plt.close, "all")
+
+        for jacobian_function in (jacobian, jacobian_fd):
+            with self.subTest(jacobian_function=jacobian_function.__name__):
+                plt.close("all")
+                a = wp.array([2.0, -1.0], dtype=wp.float32, requires_grad=True, device="cpu")
+                b = wp.array(
+                    [wp.vec3(3.0, 1.0, 2.0), wp.vec3(-4.0, -1.0, 0.0)],
+                    dtype=wp.vec3,
+                    requires_grad=True,
+                    device="cpu",
+                )
+                out1 = wp.zeros(2, dtype=wp.vec2, requires_grad=True, device="cpu")
+                out2 = wp.zeros(2, dtype=wp.quat, requires_grad=True, device="cpu")
+
+                with patch.object(plt, "show") as show:
+                    jacobians = jacobian_function(
+                        kernel_mixed,
+                        dim=len(a),
+                        inputs=[a, b],
+                        outputs=[out1, out2],
+                        input_output_mask=[("b", "out1"), ("a", "out2")],
+                        plot_jacobians=True,
+                    )
+
+                self.assertEqual(sorted(jacobians), [(0, 1), (1, 0)])
+                figure = plt.gcf()
+                self.assertEqual(figure.get_suptitle(), "kernel_mixed kernel Jacobian")
+                self.assertEqual(len(figure.axes), 5)
+                axes = figure.axes[:4]
+                self.assertFalse(axes[0].axison)
+                self.assertTrue(axes[1].axison)
+                self.assertEqual(axes[1].get_xlabel(), "b")
+                self.assertEqual(axes[1].get_ylabel(), "out1")
+                self.assertTrue(axes[2].axison)
+                self.assertEqual(axes[2].get_xlabel(), "a")
+                self.assertEqual(axes[2].get_ylabel(), "out2")
+                self.assertFalse(axes[3].axison)
+                self.assertEqual(axes[0].get_gridspec().get_width_ratios(), [2, 6])
+                self.assertEqual(axes[0].get_gridspec().get_height_ratios(), [4, 8])
+                show.assert_called_once_with()
+
+    def test_gradcheck_plotting(self):
+        """Verify gradient checks render both error matrices without layout warnings."""
+        plt = _get_test_pyplot()
+        self.addCleanup(plt.close, "all")
+
+        a = wp.array([1.0, 2.0], dtype=wp.float32, requires_grad=True, device="cpu")
+        out = wp.zeros_like(a, requires_grad=True)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", UserWarning)
+            with patch.object(plt, "show") as show:
+                passed = gradcheck(
+                    jacobian_plot_scale_kernel,
+                    dim=len(a),
+                    inputs=[a],
+                    outputs=[out],
+                    plot_relative_error=True,
+                    plot_absolute_error=True,
+                    show_summary=False,
+                )
+            figures = [plt.figure(number) for number in plt.get_fignums()]
+            for figure in figures:
+                figure.canvas.draw()
+
+        self.assertTrue(passed)
+        self.assertEqual(
+            [figure.get_suptitle() for figure in figures],
+            [
+                "jacobian_plot_scale_kernel kernel Jacobian relative error",
+                "jacobian_plot_scale_kernel kernel Jacobian absolute error",
+            ],
+        )
+        self.assertEqual(show.call_count, 2)
+
+    def test_jacobian_plot_direct_kernel(self):
+        """Verify direct kernel plotting preserves its public contract."""
+        plt = _get_test_pyplot()
+        self.addCleanup(plt.close, "all")
+
+        inputs = [wp.zeros((1, 1, 1), dtype=wp.float32, requires_grad=True, device="cpu") for _ in range(3)]
+        jacobian_matrix = wp.array([[1.0]], dtype=wp.float32, device="cpu")
+
+        with patch.object(plt, "show") as show:
+            figure = jacobian_plot(
+                {(0, 0): jacobian_matrix},
+                kernel_3d,
+                inputs=inputs,
+                show_plot=False,
+                show_colorbar=False,
+            )
+
+        self.assertEqual(figure.get_suptitle(), "kernel_3d kernel Jacobian")
+        self.assertEqual(figure.axes[0].get_xlabel(), "a")
+        self.assertEqual(figure.axes[0].get_ylabel(), "out1")
+        self.assertEqual(figure.axes[0].get_gridspec().get_width_ratios(), [1])
+        show.assert_not_called()
+
+    def test_jacobian_plot_validation(self):
+        """Reject incomplete metadata before constructing Jacobian figures.
+
+        A displayed Jacobian key must resolve to an input label, input array
+        dtype, and output label in the normalized metadata.
+        """
+        plt = _get_test_pyplot()
+        self.addCleanup(plt.close, "all")
+
+        with self.assertRaisesRegex(ValueError, "inputs must be provided"):
+            jacobian_plot({}, jacobian_plot_scale_kernel)
+
+        empty_metadata = FunctionMetadata(
+            key="empty",
+            input_labels=[],
+            output_labels=[],
+            input_strides=[],
+            output_strides=[],
+            input_dtypes=[],
+            output_dtypes=[],
+        )
+        self.assertIsNone(jacobian_plot({}, empty_metadata, show_plot=False))
+
+        anonymous_metadata = FunctionMetadata(
+            input_labels=["a"],
+            output_labels=["output_0"],
+            input_strides=[None],
+            output_strides=[None],
+            input_dtypes=[wp.float32],
+            output_dtypes=[wp.float32],
+        )
+        jacobian_matrix = wp.array([[1.0]], dtype=wp.float32, device="cpu")
+        figure = jacobian_plot(
+            {(0, 0): jacobian_matrix},
+            anonymous_metadata,
+            show_plot=False,
+            show_colorbar=False,
+        )
+        self.assertEqual(figure.get_suptitle(), "unknown kernel Jacobian")
+
+        invalid_cases = [
+            (
+                "missing input label",
+                FunctionMetadata(
+                    key="malformed",
+                    input_labels=[],
+                    output_labels=["output_0"],
+                    input_strides=[],
+                    output_strides=[None],
+                    input_dtypes=[],
+                    output_dtypes=[wp.float32],
+                ),
+                "Jacobian input index 0",
+            ),
+            (
+                "null input label",
+                FunctionMetadata(
+                    key="malformed",
+                    input_labels=[None],
+                    output_labels=["output_0"],
+                    input_strides=[None],
+                    output_strides=[None],
+                    input_dtypes=[wp.float32],
+                    output_dtypes=[wp.float32],
+                ),
+                "Jacobian input index 0: missing label",
+            ),
+            (
+                "missing input dtype",
+                FunctionMetadata(
+                    key="malformed",
+                    input_labels=["a"],
+                    output_labels=["output_0"],
+                    input_strides=[None],
+                    output_strides=[None],
+                    input_dtypes=[None],
+                    output_dtypes=[wp.float32],
+                ),
+                "missing array dtype",
+            ),
+            (
+                "generic input dtype",
+                FunctionMetadata(
+                    key="malformed",
+                    input_labels=["a"],
+                    output_labels=["output_0"],
+                    input_strides=[None],
+                    output_strides=[None],
+                    input_dtypes=[Any],
+                    output_dtypes=[wp.float32],
+                ),
+                "component count",
+            ),
+            (
+                "missing output label",
+                FunctionMetadata(
+                    key="malformed",
+                    input_labels=["a"],
+                    output_labels=[],
+                    input_strides=[None],
+                    output_strides=[],
+                    input_dtypes=[wp.float32],
+                    output_dtypes=[],
+                ),
+                "Jacobian output index 0",
+            ),
+            (
+                "null output label",
+                FunctionMetadata(
+                    key="malformed",
+                    input_labels=["a"],
+                    output_labels=[None],
+                    input_strides=[None],
+                    output_strides=[None],
+                    input_dtypes=[wp.float32],
+                    output_dtypes=[wp.float32],
+                ),
+                "Jacobian output index 0: missing label",
+            ),
+        ]
+        for case, metadata, error in invalid_cases:
+            with self.subTest(case=case):
+                with self.assertRaisesRegex(ValueError, error):
+                    jacobian_plot({(0, 0): jacobian_matrix}, metadata, show_plot=False)
 
 
 for dtype in [wp.float32, wp.float64]:
