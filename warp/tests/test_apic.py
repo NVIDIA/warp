@@ -58,6 +58,13 @@ def fill_runs_kernel(values: wp.array(dtype=wp.int32)):
     values[i] = i // 3
 
 
+@wp.kernel
+def fill_reduction_inputs_kernel(a: wp.array[wp.float32], b: wp.array[wp.float32]):
+    i = wp.tid()
+    a[i] = float(i + 1)
+    b[i] = float(2 * i + 1)
+
+
 class TestApic(unittest.TestCase):
     pass
 
@@ -1566,6 +1573,89 @@ def test_capture_with_array_scan(test, device):
     np.testing.assert_allclose(dst_ex.numpy(), np.arange(0, n, dtype=np.int32))
 
 
+def test_capture_with_array_reductions(test, device):
+    """Replay captured array reductions."""
+    n = 8
+    a = wp.zeros(n, dtype=wp.float32, device=device)
+    b = wp.zeros(n, dtype=wp.float32, device=device)
+    sum_out = wp.full(1, -1.0, dtype=wp.float32, device=device)
+    inner_out = wp.full(1, -1.0, dtype=wp.float32, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.launch(fill_reduction_inputs_kernel, dim=n, inputs=[a, b], device=device)
+        wp.utils.array_sum(a, out=sum_out)
+        wp.utils.array_inner(a, b, out=inner_out)
+
+    np.testing.assert_array_equal(sum_out.numpy(), np.array([-1.0], dtype=np.float32))
+    np.testing.assert_array_equal(inner_out.numpy(), np.array([-1.0], dtype=np.float32))
+
+    wp.capture_launch(capture.graph)
+
+    expected_a = np.arange(1, n + 1, dtype=np.float32)
+    expected_b = np.arange(1, 2 * n, 2, dtype=np.float32)
+    np.testing.assert_allclose(sum_out.numpy(), np.array([expected_a.sum()], dtype=np.float32))
+    np.testing.assert_allclose(inner_out.numpy(), np.array([expected_a @ expected_b], dtype=np.float32))
+
+
+def test_array_reduction_capture_errors(test, device):
+    """Reject unsupported array reductions during capture."""
+    values = wp.array([1.0, 2.0, 3.0], dtype=wp.float32, device=device)
+    reversed_values = wp.array(
+        ptr=values.ptr + 2 * values.strides[0],
+        dtype=values.dtype,
+        shape=values.shape,
+        strides=(-values.strides[0],),
+        capacity=values.capacity,
+        device=device,
+    )
+    reversed_values._ref = values
+    out = wp.zeros(1, dtype=wp.float32, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False):
+        out.zero_()
+        with test.assertRaisesRegex(NotImplementedError, r"array_sum\(\).*explicit out"):
+            wp.utils.array_sum(values)
+        with test.assertRaisesRegex(NotImplementedError, r"array_inner\(\).*explicit out"):
+            wp.utils.array_inner(values, values)
+        with test.assertRaisesRegex(NotImplementedError, r"array_sum\(\).*negative strides"):
+            wp.utils.array_sum(reversed_values, out=out, axis=0)
+        with test.assertRaisesRegex(NotImplementedError, r"array_inner\(\).*negative strides"):
+            wp.utils.array_inner(reversed_values, reversed_values, out=out, axis=0)
+        with test.assertRaisesRegex(RuntimeError, r"array_sum\(\).*negative count"):
+            wp.utils.array_sum(values, out=out, value_count=-1)
+        with test.assertRaisesRegex(RuntimeError, r"array_inner\(\).*negative count"):
+            wp.utils.array_inner(values, values, out=out, count=-1)
+
+
+def test_empty_array_reductions_during_capture(test, device):
+    """Preserve empty array-reduction behavior during capture."""
+    empty_vector = wp.empty(0, dtype=wp.vec2, device=device)
+    empty_matrix = wp.empty((0, 3), dtype=wp.float32, device=device)
+    seed = wp.zeros(1, dtype=wp.float32, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False):
+        seed.zero_()
+        operation_count = wp_context.runtime._apic_capture.operation_count
+
+        sum_result = wp.utils.array_sum(empty_vector)
+        inner_result = wp.utils.array_inner(empty_vector, empty_vector)
+        axis_sum = wp.utils.array_sum(empty_matrix, axis=1)
+        axis_inner = wp.utils.array_inner(empty_matrix, empty_matrix, axis=1)
+
+        test.assertEqual(wp_context.runtime._apic_capture.operation_count, operation_count)
+
+    np.testing.assert_array_equal(sum_result, np.zeros(2, dtype=np.float32))
+    test.assertEqual(inner_result, 0.0)
+    for result in (axis_sum, axis_inner):
+        test.assertEqual(result.shape, (0, 1))
+        test.assertEqual(result.dtype, wp.float32)
+        test.assertEqual(result.device, device)
+        np.testing.assert_array_equal(result.numpy(), np.empty((0, 1), dtype=np.float32))
+
+
 def test_cpu_helper_not_recorded_during_cuda_capture(test, device):
     """A CPU host helper invoked during a CUDA APIC capture must execute live,
     not record into the CUDA byte stream. The native host hooks are gated on the
@@ -1585,6 +1675,25 @@ def test_cpu_helper_not_recorded_during_cuda_capture(test, device):
     # If the CPU scan had been recorded (and thus deferred) into the CUDA capture
     # instead of executing live, dst would still be all zeros here.
     np.testing.assert_allclose(dst.numpy(), np.arange(1, n + 1, dtype=np.int32))
+
+
+def test_array_reduction_cpu_not_recorded_during_cuda_capture(test, device):
+    """Execute CPU array reductions during CUDA capture."""
+    a_np = np.array([1.0, 2.0, 3.0], dtype=np.float32)
+    b_np = np.array([4.0, 5.0, 6.0], dtype=np.float32)
+    a = wp.array(a_np, dtype=wp.float32, device="cpu")
+    b = wp.array(b_np, dtype=wp.float32, device="cpu")
+    sum_out = wp.full(1, -1.0, dtype=wp.float32, device="cpu")
+    inner_out = wp.full(1, -1.0, dtype=wp.float32, device="cpu")
+    cuda_marker = wp.zeros(1, dtype=wp.float32, device=device)
+
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False):
+        cuda_marker.fill_(1.0)
+        wp.utils.array_sum(a, out=sum_out)
+        wp.utils.array_inner(a, b, out=inner_out)
+
+    np.testing.assert_allclose(sum_out.numpy(), np.array([a_np.sum()], dtype=np.float32))
+    np.testing.assert_allclose(inner_out.numpy(), np.array([a_np @ b_np], dtype=np.float32))
 
 
 def test_capture_pause_resume_allows_unrecorded_allocation(test, device):
@@ -1705,6 +1814,110 @@ def test_bsr_status_sync_during_cpu_apic_capture_rejected(test, device):
     with test.assertRaisesRegex(NotImplementedError, "CPU APIC graph capture"):
         with wp.ScopedCapture(device=device, apic=True, force_module_load=False):
             bsr.status_sync()
+
+
+def test_save_load_array_reductions(test, device):
+    """Replay saved array reductions with updated inputs."""
+    original_a = np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float32)
+    original_b = np.array([2.0, 4.0, 6.0, 8.0], dtype=np.float32)
+    updated_a = np.array([5.0, 1.0, 4.0, 2.0], dtype=np.float32)
+    updated_b = np.array([3.0, 7.0, 2.0, 6.0], dtype=np.float32)
+
+    a = wp.array(original_a, dtype=wp.float32, device=device)
+    b = wp.array(original_b, dtype=wp.float32, device=device)
+    sum_out = wp.zeros(1, dtype=wp.float32, device=device)
+    inner_out = wp.zeros(1, dtype=wp.float32, device=device)
+
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.utils.array_sum(a, out=sum_out)
+        wp.utils.array_inner(a, b, out=inner_out)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "array_reductions")
+        wp.capture_save(
+            capture.graph,
+            path,
+            inputs={"a": a, "b": b},
+            outputs={"sum_out": sum_out, "inner_out": inner_out},
+        )
+
+        loaded = wp.capture_load(path, device=device)
+        loaded.set_param("a", wp.array(updated_a, dtype=wp.float32, device=device))
+        loaded.set_param("b", wp.array(updated_b, dtype=wp.float32, device=device))
+        wp.capture_launch(loaded)
+
+        loaded_sum = wp.zeros_like(sum_out)
+        loaded_inner = wp.zeros_like(inner_out)
+        loaded.get_param("sum_out", loaded_sum)
+        loaded.get_param("inner_out", loaded_inner)
+
+    np.testing.assert_allclose(loaded_sum.numpy(), np.array([updated_a.sum()], dtype=np.float32))
+    np.testing.assert_allclose(loaded_inner.numpy(), np.array([updated_a @ updated_b], dtype=np.float32))
+
+
+def test_save_load_array_reduction_metadata(test, device):
+    """Preserve array-reduction metadata through save and load."""
+    base_np = np.arange(1.0, 13.0, dtype=np.float64)
+    other_np = np.arange(13.0, 25.0, dtype=np.float64)
+    updated_base_np = np.arange(101.0, 113.0, dtype=np.float64)
+    updated_other_np = np.arange(211.0, 223.0, dtype=np.float64)
+    base = wp.array(base_np, dtype=wp.float64, device=device)
+    other = wp.array(other_np, dtype=wp.float64, device=device)
+    strided = base[1::2]
+    other_strided = other[1::2]
+
+    vec_np = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], dtype=np.float64)
+    updated_vec_np = np.array([[7.0, 1.0, 2.0], [3.0, 4.0, 5.0]], dtype=np.float64)
+    vec = wp.array(vec_np, dtype=wp.vec3d, device=device)
+    matrix_np = np.arange(1.0, 7.0, dtype=np.float32).reshape(2, 3)
+    updated_matrix_np = np.array([[9.0, 8.0, 7.0], [6.0, 5.0, 4.0]], dtype=np.float32)
+    matrix = wp.array(matrix_np, shape=(2, 3), dtype=wp.float32, device=device)
+
+    outputs = {
+        "strided_sum": wp.zeros(1, dtype=wp.float64, device=device),
+        "strided_inner": wp.zeros(1, dtype=wp.float64, device=device),
+        "vec_sum": wp.zeros(1, dtype=wp.vec3d, device=device),
+        "vec_inner": wp.zeros(1, dtype=wp.float64, device=device),
+        "axis_sum": wp.zeros((2, 1), dtype=wp.float32, device=device),
+        "axis_inner": wp.zeros((2, 1), dtype=wp.float32, device=device),
+    }
+
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.utils.array_sum(strided, out=outputs["strided_sum"], value_count=3, axis=0)
+        wp.utils.array_inner(strided, other_strided, out=outputs["strided_inner"], count=3, axis=0)
+        wp.utils.array_sum(vec, out=outputs["vec_sum"])
+        wp.utils.array_inner(vec, vec, out=outputs["vec_inner"])
+        wp.utils.array_sum(matrix, out=outputs["axis_sum"], axis=1)
+        wp.utils.array_inner(matrix, matrix, out=outputs["axis_inner"], axis=1)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "array_reduction_metadata")
+        wp.capture_save(
+            capture.graph,
+            path,
+            inputs={"base": base, "other": other, "vec": vec, "matrix": matrix},
+            outputs=outputs,
+        )
+        loaded = wp.capture_load(path, device=device)
+        loaded.set_param("base", wp.array(updated_base_np, dtype=wp.float64, device=device))
+        loaded.set_param("other", wp.array(updated_other_np, dtype=wp.float64, device=device))
+        loaded.set_param("vec", wp.array(updated_vec_np, dtype=wp.vec3d, device=device))
+        loaded.set_param("matrix", wp.array(updated_matrix_np, shape=(2, 3), dtype=wp.float32, device=device))
+        wp.capture_launch(loaded)
+
+        results = {}
+        for name, output in outputs.items():
+            results[name] = wp.empty_like(output)
+            loaded.get_param(name, results[name])
+
+    np.testing.assert_allclose(results["strided_sum"].numpy(), [updated_base_np[1::2][:3].sum()])
+    np.testing.assert_allclose(
+        results["strided_inner"].numpy(), [updated_base_np[1::2][:3] @ updated_other_np[1::2][:3]]
+    )
+    np.testing.assert_allclose(results["vec_sum"].numpy(), updated_vec_np.sum(axis=0, keepdims=True))
+    np.testing.assert_allclose(results["vec_inner"].numpy(), [np.square(updated_vec_np).sum()])
+    np.testing.assert_allclose(results["axis_sum"].numpy()[:, 0], updated_matrix_np.sum(axis=1))
+    np.testing.assert_allclose(results["axis_inner"].numpy()[:, 0], np.square(updated_matrix_np).sum(axis=1))
 
 
 def test_save_load_array_scan_replay_with_updated_input(test, device):
@@ -2886,8 +3099,32 @@ add_function_test(
 add_function_test(TestApic, "test_capture_with_array_scan", test_capture_with_array_scan, devices=devices)
 add_function_test(
     TestApic,
+    "test_capture_with_array_reductions",
+    test_capture_with_array_reductions,
+    devices=devices_with_graph_capture_allocation_and_cuda_graph_module_load,
+)
+add_function_test(
+    TestApic,
+    "test_array_reduction_capture_errors",
+    test_array_reduction_capture_errors,
+    devices=devices_with_graph_capture_allocation_and_cuda_graph_module_load,
+)
+add_function_test(
+    TestApic,
+    "test_empty_array_reductions_during_capture",
+    test_empty_array_reductions_during_capture,
+    devices=devices_with_graph_capture_allocation_and_cuda_graph_module_load,
+)
+add_function_test(
+    TestApic,
     "test_cpu_helper_not_recorded_during_cuda_capture",
     test_cpu_helper_not_recorded_during_cuda_capture,
+    devices=get_cuda_test_devices(),
+)
+add_function_test(
+    TestApic,
+    "test_array_reduction_cpu_not_recorded_during_cuda_capture",
+    test_array_reduction_cpu_not_recorded_during_cuda_capture,
     devices=get_cuda_test_devices(),
 )
 add_function_test(
@@ -3057,6 +3294,18 @@ add_function_test(
     "test_apic_capture_resume_rejects_finished_graph",
     test_apic_capture_resume_rejects_finished_graph,
     devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_save_load_array_reductions",
+    test_save_load_array_reductions,
+    devices=devices_with_graph_capture_allocation,
+)
+add_function_test(
+    TestApic,
+    "test_save_load_array_reduction_metadata",
+    test_save_load_array_reduction_metadata,
+    devices=devices_with_graph_capture_allocation,
 )
 add_function_test(
     TestApic,

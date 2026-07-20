@@ -16,7 +16,7 @@ from typing import Any
 import numpy as np
 
 import warp as wp
-import warp._src.context
+import warp._src.context as context
 import warp._src.types
 from warp._src import logger as _logger_module
 from warp._src.context import Allocator, CaptureMode, DeviceLike, _validate_allocator, timing_result_t
@@ -467,6 +467,46 @@ def runlength_encode(
     return run_count
 
 
+def _array_reduce_host_zero(dtype):
+    """Return the NumPy-shaped zero used by a whole-array host reduction."""
+    scalar_type = wp._src.types.type_scalar_type(dtype)
+    type_shape = getattr(dtype, "_shape_", ())
+    if not type_shape and wp._src.types.type_size(dtype) > 1:
+        type_shape = (wp._src.types.type_size(dtype),)
+    return np.zeros(type_shape, dtype=wp._src.types.dtype_to_numpy(scalar_type))[()]
+
+
+_APIC_REDUCTION_INT_MAX = (1 << 31) - 1
+
+
+def _validate_apic_array_reduction_layout(operation, inputs, out, axis, output_shape, scalar_size):
+    """Validate reduction metadata that crosses the native signed-int ABI."""
+    if axis is None:
+        reduction_strides = [wp._src.types.type_size_in_bytes(arr.dtype) for arr in inputs]
+    else:
+        reduction_strides = [arr.strides[axis] for arr in inputs]
+
+    if any(stride > _APIC_REDUCTION_INT_MAX for stride in reduction_strides):
+        raise RuntimeError(
+            f"APIC capture does not support {operation}() with a reduction stride greater than "
+            f"{_APIC_REDUCTION_INT_MAX} bytes"
+        )
+
+    participating_arrays = (*inputs, out)
+    if any(not arr.ptr or arr.ptr % scalar_size != 0 for arr in participating_arrays):
+        raise RuntimeError(f"APIC capture requires {operation}() input and output addresses to be scalar-aligned")
+
+    if axis is None:
+        return
+
+    layout_strides = []
+    for arr in inputs:
+        layout_strides.extend(stride for dim, stride in enumerate(arr.strides) if dim == axis or output_shape[dim] > 1)
+    layout_strides.extend(stride for dim, stride in enumerate(out.strides) if output_shape[dim] > 1)
+    if any(stride % scalar_size != 0 for stride in layout_strides):
+        raise RuntimeError(f"APIC capture requires {operation}() participating strides to be scalar-aligned")
+
+
 def array_sum(
     values: wp.array, out: wp.array | None = None, value_count: int | None = None, axis: int | None = None
 ) -> wp.array | float:
@@ -475,8 +515,15 @@ def array_sum(
     This function computes the sum of array elements, optionally along a specified axis.
     The operation can be performed on the entire array or along a specific dimension.
 
+    During matching-device APIC graph capture, non-empty calls require an explicit
+    ``out`` array so replay can store the current result. Existing whole-array,
+    explicit-count, composite-dtype, and positive-stride axis reductions are
+    recorded. Negative strides raise ``NotImplementedError`` during APIC capture.
+    Counts and reduction strides must fit the native signed 32-bit ABI, and
+    participating addresses and strides must be aligned to the scalar type.
+
     Args:
-        values: Input array to sum. Must be of type ``float32`` or ``float64``.
+        values: Input array to sum. Its scalar type must be ``float32`` or ``float64``.
         out: Output array to store results. If ``None``, a new array is created.
         value_count: Number of elements to process. If ``None``, processes entire array.
         axis: Axis along which to compute sum. If ``None``, computes sum of all elements.
@@ -486,7 +533,11 @@ def array_sum(
         otherwise returns the ``out`` array.
 
     Raises:
-        RuntimeError: If output array storage device or data type is incompatible with input array.
+        RuntimeError: If output array storage device or data type is incompatible with input array, or if a
+            matching-device APIC-captured call uses a count or layout that the native reduction ABI cannot represent.
+        NotImplementedError: If a non-empty call under matching-device APIC graph capture omits ``out``. Also raised
+            if any input or output array has a negative stride under matching-device APIC graph capture, including
+            for a zero-count call.
     """
     if value_count is None:
         if axis is None:
@@ -503,11 +554,30 @@ def array_sum(
 
         output_shape = tuple(output_dim(ax, dim) for ax, dim in enumerate(values.shape))
 
+    has_reduction_work = value_count > 0 and all(dim > 0 for dim in output_shape)
     type_size = wp._src.types.type_size(values.dtype)
     scalar_type = wp._src.types.type_scalar_type(values.dtype)
 
-    # User can provide a device output array for storing the number of runs
-    # For convenience, if no such array is provided, number of runs is returned on host
+    apic_capture = context._get_apic_capture_for_device(values.device)
+    if apic_capture is not None:
+        if value_count < 0:
+            raise RuntimeError("APIC capture does not support array_sum() with a negative count")
+        if value_count > _APIC_REDUCTION_INT_MAX:
+            raise RuntimeError(
+                f"APIC capture does not support array_sum() with a count greater than {_APIC_REDUCTION_INT_MAX}"
+            )
+        if has_reduction_work and out is None:
+            raise NotImplementedError("APIC capture requires array_sum() to receive an explicit out array")
+        if any(stride < 0 for stride in values.strides) or (
+            out is not None and any(stride < 0 for stride in out.strides)
+        ):
+            raise NotImplementedError("APIC capture does not support array_sum() with negative strides")
+
+    if apic_capture is not None and value_count == 0 and out is None and axis is None:
+        return _array_reduce_host_zero(values.dtype)
+
+    # Users can provide a device output array for storing the sum result.
+    # For convenience, if no output array is provided, the result is returned on the host.
     if out is None:
         host_return = True
         out = wp.empty(shape=output_shape, dtype=values.dtype, device=values.device)
@@ -520,26 +590,31 @@ def array_sum(
         if out.shape != output_shape:
             raise RuntimeError(f"out array should have shape {output_shape}")
 
+    if apic_capture is not None:
+        if has_reduction_work:
+            scalar_size = wp._src.types.type_size_in_bytes(scalar_type)
+            _validate_apic_array_reduction_layout("array_sum", (values,), out, axis, output_shape, scalar_size)
+        apic_capture.track_array(values)
+        apic_capture.track_array(out)
+
     if value_count == 0:
         out.zero_()
         if axis is None and host_return:
             return out.numpy()[0]
         return out
 
-    from warp._src.context import runtime  # noqa: PLC0415
-
     if values.device.is_cpu:
         if scalar_type == wp.float32:
-            native_func = runtime.core.wp_array_sum_float_host
+            native_func = context.runtime.core.wp_array_sum_float_host
         elif scalar_type == wp.float64:
-            native_func = runtime.core.wp_array_sum_double_host
+            native_func = context.runtime.core.wp_array_sum_double_host
         else:
             raise RuntimeError(f"Unsupported data type: {type_repr(values.dtype)}")
     elif values.device.is_cuda:
         if scalar_type == wp.float32:
-            native_func = runtime.core.wp_array_sum_float_device
+            native_func = context.runtime.core.wp_array_sum_float_device
         elif scalar_type == wp.float64:
-            native_func = runtime.core.wp_array_sum_double_device
+            native_func = context.runtime.core.wp_array_sum_double_device
         else:
             raise RuntimeError(f"Unsupported data type: {type_repr(values.dtype)}")
 
@@ -575,6 +650,13 @@ def array_inner(
     This function computes the dot product between two arrays, optionally along a specified axis.
     The operation can be performed on the entire arrays or along a specific dimension.
 
+    During matching-device APIC graph capture, non-empty calls require an explicit
+    ``out`` array so replay can store the current result. Existing whole-array,
+    explicit-count, composite-dtype, and positive-stride axis reductions are
+    recorded. Negative strides raise ``NotImplementedError`` during APIC capture.
+    Counts and reduction strides must fit the native signed 32-bit ABI, and
+    participating addresses and strides must be aligned to the scalar type.
+
     Args:
         a: First input array.
         b: Second input array. Must match shape and type of a.
@@ -587,7 +669,11 @@ def array_inner(
         otherwise returns the ``out`` array.
 
     Raises:
-        RuntimeError: If array storage devices, sizes, or data types are incompatible.
+        RuntimeError: If array storage devices, sizes, or data types are incompatible, or if a matching-device
+            APIC-captured call uses a count or layout that the native reduction ABI cannot represent.
+        NotImplementedError: If a non-empty call under matching-device APIC graph capture omits ``out``. Also raised
+            if any input or output array has a negative stride under matching-device APIC graph capture, including
+            for a zero-count call.
     """
     if a.size != b.size:
         raise RuntimeError(f"A and b array storage sizes do not match ({a.size} vs {b.size})")
@@ -613,11 +699,27 @@ def array_inner(
 
         output_shape = tuple(output_dim(ax, dim) for ax, dim in enumerate(a.shape))
 
+    has_reduction_work = count > 0 and all(dim > 0 for dim in output_shape)
     type_size = wp._src.types.type_size(a.dtype)
     scalar_type = wp._src.types.type_scalar_type(a.dtype)
 
-    # User can provide a device output array for storing the number of runs
-    # For convenience, if no such array is provided, number of runs is returned on host
+    apic_capture = context._get_apic_capture_for_device(a.device)
+    if apic_capture is not None:
+        if count < 0:
+            raise RuntimeError("APIC capture does not support array_inner() with a negative count")
+        if count > _APIC_REDUCTION_INT_MAX:
+            raise RuntimeError(
+                f"APIC capture does not support array_inner() with a count greater than {_APIC_REDUCTION_INT_MAX}"
+            )
+        if has_reduction_work and out is None:
+            raise NotImplementedError("APIC capture requires array_inner() to receive an explicit out array")
+        has_negative_stride = any(stride < 0 for stride in a.strides) or any(stride < 0 for stride in b.strides)
+        has_negative_stride = has_negative_stride or (out is not None and any(stride < 0 for stride in out.strides))
+        if has_negative_stride:
+            raise NotImplementedError("APIC capture does not support array_inner() with negative strides")
+
+    # Users can provide a device output array for storing the inner-product result.
+    # For convenience, if no output array is provided, the result is returned on the host.
     if out is None:
         host_return = True
         out = wp.empty(shape=output_shape, dtype=scalar_type, device=a.device)
@@ -630,26 +732,32 @@ def array_inner(
         if out.shape != output_shape:
             raise RuntimeError(f"out array should have shape {output_shape}")
 
+    if apic_capture is not None:
+        if has_reduction_work:
+            scalar_size = wp._src.types.type_size_in_bytes(scalar_type)
+            _validate_apic_array_reduction_layout("array_inner", (a, b), out, axis, output_shape, scalar_size)
+        apic_capture.track_array(a)
+        apic_capture.track_array(b)
+        apic_capture.track_array(out)
+
     if count == 0:
         if axis is None and host_return:
             return 0.0
         out.zero_()
         return out
 
-    from warp._src.context import runtime  # noqa: PLC0415
-
     if a.device.is_cpu:
         if scalar_type == wp.float32:
-            native_func = runtime.core.wp_array_inner_float_host
+            native_func = context.runtime.core.wp_array_inner_float_host
         elif scalar_type == wp.float64:
-            native_func = runtime.core.wp_array_inner_double_host
+            native_func = context.runtime.core.wp_array_inner_double_host
         else:
             raise RuntimeError(f"Unsupported data type: {type_repr(a.dtype)}")
     elif a.device.is_cuda:
         if scalar_type == wp.float32:
-            native_func = runtime.core.wp_array_inner_float_device
+            native_func = context.runtime.core.wp_array_inner_float_device
         elif scalar_type == wp.float64:
-            native_func = runtime.core.wp_array_inner_double_device
+            native_func = context.runtime.core.wp_array_inner_double_device
         else:
             raise RuntimeError(f"Unsupported data type: {type_repr(a.dtype)}")
 
