@@ -23,24 +23,20 @@ def test_basic(test, device):
     @wp.func_native(snippet, adj_snippet)
     def saxpy(
         a: wp.float32,
-        x: wp.array(dtype=wp.float32),
-        y: wp.array(dtype=wp.float32),
-        out: wp.array(dtype=wp.float32),
+        x: wp.array[wp.float32],
+        y: wp.array[wp.float32],
+        out: wp.array[wp.float32],
         tid: int,
     ):  # fmt: skip
         ...
 
     @wp.kernel(module="unique")
-    def saxpy_cu(
-        a: wp.float32, x: wp.array(dtype=wp.float32), y: wp.array(dtype=wp.float32), out: wp.array(dtype=wp.float32)
-    ):
+    def saxpy_cu(a: wp.float32, x: wp.array[wp.float32], y: wp.array[wp.float32], out: wp.array[wp.float32]):
         tid = wp.tid()
         saxpy(a, x, y, out, tid)
 
     @wp.kernel(module="unique")
-    def saxpy_py(
-        a: wp.float32, x: wp.array(dtype=wp.float32), y: wp.array(dtype=wp.float32), out: wp.array(dtype=wp.float32)
-    ):
+    def saxpy_py(a: wp.float32, x: wp.array[wp.float32], y: wp.array[wp.float32], out: wp.array[wp.float32]):
         tid = wp.tid()
         out[tid] = a * x[tid] + y[tid]
 
@@ -87,12 +83,12 @@ def test_shared_memory(test, device):
         """
 
     @wp.func_native(snippet)
-    def reverse(d: wp.array(dtype=int), N: int, tid: int):
+    def reverse(d: wp.array[int], N: int, tid: int):
         """Reverse the array d in place using shared memory."""
         return
 
     @wp.kernel(module="unique")
-    def reverse_kernel(d: wp.array(dtype=int), N: int):
+    def reverse_kernel(d: wp.array[int], N: int):
         tid = wp.tid()
         reverse(d, N, tid)
 
@@ -114,14 +110,14 @@ def test_cpu_snippet(test, device):
 
     @wp.func_native(snippet)
     def increment_snippet(
-        x: wp.array(dtype=wp.int32),
-        out: wp.array(dtype=wp.int32),
+        x: wp.array[wp.int32],
+        out: wp.array[wp.int32],
         tid: int,
     ):  # fmt: skip
         ...
 
     @wp.kernel(module="unique")
-    def increment(x: wp.array(dtype=wp.int32), out: wp.array(dtype=wp.int32)):
+    def increment(x: wp.array[wp.int32], out: wp.array[wp.int32]):
         tid = wp.tid()
         increment_snippet(x, out, tid)
 
@@ -148,15 +144,15 @@ def test_custom_replay_grad(test, device):
     replay_snippet = ""
 
     @wp.func_native(snippet, replay_snippet=replay_snippet)
-    def reversible_increment(counter: wp.array(dtype=int), thread_values: wp.array(dtype=int), tid: int):  # fmt: skip
+    def reversible_increment(counter: wp.array[int], thread_values: wp.array[int], tid: int):  # fmt: skip
         ...
 
     @wp.kernel(module="unique")
     def run_atomic_add(
-        input: wp.array(dtype=float),
-        counter: wp.array(dtype=int),
-        thread_values: wp.array(dtype=int),
-        output: wp.array(dtype=float),
+        input: wp.array[float],
+        counter: wp.array[int],
+        thread_values: wp.array[int],
+        output: wp.array[float],
     ):
         tid = wp.tid()
         reversible_increment(counter, thread_values, tid)
@@ -184,11 +180,11 @@ def test_replay_simplification(test, device):
     adj_snippet = "adj_x[tid] += 2.0 * adj_y[tid];"
 
     @wp.func_native(snippet, adj_snippet=adj_snippet, replay_snippet=replay_snippet)
-    def square(x: wp.array(dtype=float), y: wp.array(dtype=float), tid: int):  # fmt: skip
+    def square(x: wp.array[float], y: wp.array[float], tid: int):  # fmt: skip
         ...
 
     @wp.kernel(module="unique")
-    def log_square_kernel(x: wp.array(dtype=float), y: wp.array(dtype=float), z: wp.array(dtype=float)):
+    def log_square_kernel(x: wp.array[float], y: wp.array[float], z: wp.array[float]):
         tid = wp.tid()
         square(x, y, tid)
         z[tid] = wp.log(y[tid])
@@ -209,14 +205,14 @@ def test_recompile_snippet(test, device):
 
     @wp.func_native(snippet)
     def increment_snippet(
-        x: wp.array(dtype=wp.int32),
-        out: wp.array(dtype=wp.int32),
+        x: wp.array[wp.int32],
+        out: wp.array[wp.int32],
         tid: int,
     ):  # fmt: skip
         ...
 
     @wp.kernel
-    def increment(x: wp.array(dtype=wp.int32), out: wp.array(dtype=wp.int32)):
+    def increment(x: wp.array[wp.int32], out: wp.array[wp.int32]):
         tid = wp.tid()
         increment_snippet(x, out, tid)
 
@@ -235,8 +231,8 @@ def test_recompile_snippet(test, device):
 
     @wp.func_native(snippet)
     def increment_snippet(
-        x: wp.array(dtype=wp.int32),
-        out: wp.array(dtype=wp.int32),
+        x: wp.array[wp.int32],
+        out: wp.array[wp.int32],
         tid: int,
     ):  # fmt: skip
         ...
@@ -264,7 +260,7 @@ def test_return_type(test, device):
     def square(x: wp.float32) -> wp.float32: ...
 
     @wp.kernel(module="unique")
-    def square_kernel(i: wp.array(dtype=float), o: wp.array(dtype=float)):
+    def square_kernel(i: wp.array[float], o: wp.array[float]):
         tid = wp.tid()
         x = i[tid]
         o[tid] = square(x)
@@ -307,22 +303,22 @@ def test_return_vector_matrix(test, device):
     def make_mat22_named(x: wp.float32) -> wp.mat22f: ...
 
     @wp.kernel
-    def vec_kernel_generic(input: wp.array(dtype=wp.float32), output: wp.array(dtype=wp.vec3f)):
+    def vec_kernel_generic(input: wp.array[wp.float32], output: wp.array[wp.vec3f]):
         tid = wp.tid()
         output[tid] = make_vec3_generic(input[tid])
 
     @wp.kernel
-    def vec_kernel_named(input: wp.array(dtype=wp.float32), output: wp.array(dtype=wp.vec3f)):
+    def vec_kernel_named(input: wp.array[wp.float32], output: wp.array[wp.vec3f]):
         tid = wp.tid()
         output[tid] = make_vec3_named(input[tid])
 
     @wp.kernel
-    def mat_kernel_generic(input: wp.array(dtype=wp.float32), output: wp.array(dtype=wp.mat22f)):
+    def mat_kernel_generic(input: wp.array[wp.float32], output: wp.array[wp.mat22f]):
         tid = wp.tid()
         output[tid] = make_mat22_generic(input[tid])
 
     @wp.kernel
-    def mat_kernel_named(input: wp.array(dtype=wp.float32), output: wp.array(dtype=wp.mat22f)):
+    def mat_kernel_named(input: wp.array[wp.float32], output: wp.array[wp.mat22f]):
         tid = wp.tid()
         output[tid] = make_mat22_named(input[tid])
 
@@ -360,10 +356,10 @@ def test_return_array(test, device):
         """
 
     @wp.func_native(snippet)
-    def passthrough(arr: wp.array(dtype=wp.float32)) -> wp.array(dtype=wp.float32): ...
+    def passthrough(arr: wp.array[wp.float32]) -> wp.array[wp.float32]: ...
 
     @wp.kernel
-    def kernel(input: wp.array(dtype=wp.float32), output: wp.array(dtype=wp.float32)):
+    def kernel(input: wp.array[wp.float32], output: wp.array[wp.float32]):
         tid = wp.tid()
         a = passthrough(input)
         output[tid] = a[tid]
@@ -390,10 +386,10 @@ def test_return_fixedarray(test, device):
 
     @wp.kernel
     def kernel(
-        input: wp.array(dtype=wp.float32),
-        out0: wp.array(dtype=wp.float32),
-        out1: wp.array(dtype=wp.float32),
-        out2: wp.array(dtype=wp.float32),
+        input: wp.array[wp.float32],
+        out0: wp.array[wp.float32],
+        out1: wp.array[wp.float32],
+        out2: wp.array[wp.float32],
     ):
         tid = wp.tid()
         f = make_fixed(input[tid])
@@ -426,7 +422,7 @@ def test_return_struct_unsupported(test, device):
     def make_pair(a: wp.float32) -> Pair: ...
 
     @wp.kernel
-    def kernel(input: wp.array(dtype=wp.float32), output: wp.array(dtype=wp.float32)):
+    def kernel(input: wp.array[wp.float32], output: wp.array[wp.float32]):
         tid = wp.tid()
         p = make_pair(input[tid])
         output[tid] = p.x

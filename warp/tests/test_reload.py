@@ -39,7 +39,7 @@ def test_redefine(test, device):
     # first pass
 
     @wp.kernel
-    def basic(x: wp.array(dtype=float)):
+    def basic(x: wp.array[float]):
         tid = wp.tid()
 
         x[tid] = float(tid) * 1.0
@@ -54,7 +54,7 @@ def test_redefine(test, device):
     # redefine kernel, should trigger a recompile
 
     @wp.kernel
-    def basic(x: wp.array(dtype=float)):
+    def basic(x: wp.array[float]):
         tid = wp.tid()
 
         x[tid] = float(tid) * 2.0
@@ -246,7 +246,7 @@ def test_reference_through_local(test, device):
 
 def test_graph_launch_after_module_reload(test, device):
     @wp.kernel
-    def foo(a: wp.array(dtype=int)):
+    def foo(a: wp.array[int]):
         a[0] = 42
 
     with wp.ScopedDevice(device):
@@ -270,7 +270,7 @@ def test_graph_launch_after_module_reload(test, device):
 
 def test_module_unload_during_graph_capture(test, device):
     @wp.kernel
-    def foo(a: wp.array(dtype=int)):
+    def foo(a: wp.array[int]):
         a[0] = 42
 
     # preload module before graph capture

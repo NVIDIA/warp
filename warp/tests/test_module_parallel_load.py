@@ -66,7 +66,7 @@ def _generate_module_code(index):
 import warp as wp
 
 @wp.kernel
-def test_kernel_{index}(output: wp.array(dtype=float)):
+def test_kernel_{index}(output: wp.array[float]):
     tid = wp.tid()
     x = float(tid) + 1.0
     x = wp.sin(x) + wp.cos(x)
@@ -209,7 +209,7 @@ class TestParallelLoadSharedHelper(unittest.TestCase):
         """
 
         @wp.kernel(module="unique")
-        def k(out: wp.array(dtype=float)):
+        def k(out: wp.array[float]):
             tid = wp.tid()
             x = float(tid) + float(idx)
             out[tid] = _race_helper(x, idx)

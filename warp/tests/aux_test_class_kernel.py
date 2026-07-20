@@ -17,6 +17,6 @@ class ClassKernelTest:
         return wp.mat33(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0)
 
     @wp.kernel
-    def gen_identities_kernel(s: wp.array(dtype=wp.mat33)):
+    def gen_identities_kernel(s: wp.array[wp.mat33]):
         tid = wp.tid()
         s[tid] = ClassKernelTest.return_identity(tid)

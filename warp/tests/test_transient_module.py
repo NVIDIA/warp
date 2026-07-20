@@ -15,7 +15,7 @@ import warp as wp
 
 @wp.struct
 class Data:
-    x: wp.array(dtype=int)
+    x: wp.array[int]
 
 @wp.func
 def increment(x: int):

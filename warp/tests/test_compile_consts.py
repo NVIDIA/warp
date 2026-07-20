@@ -91,7 +91,7 @@ def test_hash_redefine_kernel(test, device):
     """This test defines a second ``test_function`` so that the second launch returns the correct result."""
 
     @wp.kernel
-    def test_function(data: wp.array(dtype=wp.float32)):
+    def test_function(data: wp.array[wp.float32]):
         i = wp.tid()
         data[i] = TEST_CONSTANT
 
@@ -104,7 +104,7 @@ def test_hash_redefine_kernel(test, device):
     module_hash_0 = wp.get_module(test_function.__module__).hash_module()
 
     @wp.kernel
-    def test_function(data: wp.array(dtype=wp.float32)):
+    def test_function(data: wp.array[wp.float32]):
         i = wp.tid()
         data[i] = TEST_CONSTANT
 
@@ -125,7 +125,7 @@ def test_hash_redefine_constant_only(test, device):
     """
 
     @wp.kernel
-    def test_function(data: wp.array(dtype=wp.float32)):
+    def test_function(data: wp.array[wp.float32]):
         i = wp.tid()
         data[i] = TEST_CONSTANT
 
@@ -154,7 +154,7 @@ def test_hash_shadowed_var(test, device):
     TEST_CONSTANT_SHADOW_2 = wp.constant(1.0)
 
     @wp.kernel
-    def test_function(data: wp.array(dtype=wp.float32)):
+    def test_function(data: wp.array[wp.float32]):
         i = wp.tid()
         TEST_CONSTANT_SHADOW_0 = 2.0
         TEST_CONSTANT_SHADOW_1, TEST_CONSTANT_SHADOW_2 = 4.0, 8.0
@@ -177,7 +177,7 @@ def test_uint64_large_constant(test, device):
     """Tests that uint64 literals larger than uint32 max are not truncated."""
 
     @wp.kernel
-    def uint64_large_const_kernel(data: wp.array(dtype=wp.uint64)):
+    def uint64_large_const_kernel(data: wp.array[wp.uint64]):
         i = wp.tid()
         h = data[i]
         h = h * wp.uint64(0xFF51AFD7ED558CCD)
@@ -193,7 +193,7 @@ def test_float64_precision(test, device):
     """Tests that float64 literals are not truncated to float32 precision."""
 
     @wp.kernel
-    def float64_precision_kernel(data: wp.array(dtype=wp.float64)):
+    def float64_precision_kernel(data: wp.array[wp.float64]):
         i = wp.tid()
         x = data[i]
         x = x + wp.float64(3.141592653589793)
@@ -211,7 +211,7 @@ def test_float64_wp_pi(test, device):
     """Tests that wp.PI preserves full float64 precision through wp.float64()."""
 
     @wp.kernel
-    def wp_pi_kernel(data: wp.array(dtype=wp.float64)):
+    def wp_pi_kernel(data: wp.array[wp.float64]):
         i = wp.tid()
         pi = wp.float64(wp.PI)
         data[i] = pi + wp.float64(1.0)
@@ -227,7 +227,7 @@ def test_int64_negative(test, device):
     """Tests that negative int64 literals preserve precision."""
 
     @wp.kernel
-    def int64_neg_kernel(data: wp.array(dtype=wp.int64)):
+    def int64_neg_kernel(data: wp.array[wp.int64]):
         i = wp.tid()
         data[i] = wp.int64(-9223372036854775807)
 
@@ -242,9 +242,9 @@ def test_scalar_constructor_edge_cases(test, device):
 
     @wp.kernel
     def special_float_kernel(
-        inf_data: wp.array(dtype=wp.float64),
-        nan_data: wp.array(dtype=wp.float64),
-        neg_inf_data: wp.array(dtype=wp.float64),
+        inf_data: wp.array[wp.float64],
+        nan_data: wp.array[wp.float64],
+        neg_inf_data: wp.array[wp.float64],
     ):
         i = wp.tid()
         inf_data[i] = wp.float64(wp.INF)
@@ -264,7 +264,7 @@ def test_float64_from_large_int(test, device):
     """Tests that float64(large_int) preserves precision for ints beyond float32 range."""
 
     @wp.kernel
-    def float64_large_int_kernel(data: wp.array(dtype=wp.float64)):
+    def float64_large_int_kernel(data: wp.array[wp.float64]):
         i = wp.tid()
         # 2**53 - 1 = 9007199254740991, the largest integer exactly representable in float64.
         # float32 cannot represent this exactly (float32 max exact int is 2**24).
@@ -281,8 +281,8 @@ def test_negative_constant_codegen(test, device):
 
     @wp.kernel
     def neg_codegen_kernel(
-        f64_data: wp.array(dtype=wp.float64),
-        i64_data: wp.array(dtype=wp.int64),
+        f64_data: wp.array[wp.float64],
+        i64_data: wp.array[wp.int64],
     ):
         i = wp.tid()
         f64_data[i] = wp.float64(-1.5)

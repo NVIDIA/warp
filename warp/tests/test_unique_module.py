@@ -23,12 +23,12 @@ from warp.tests.unittest_utils import *
 
 @wp.struct
 class _UniqueWriterAData:
-    out: wp.array(dtype=int)
+    out: wp.array[int]
 
 
 @wp.struct
 class _UniqueWriterBData:
-    out: wp.array(dtype=int)
+    out: wp.array[int]
 
 
 @wp.func
@@ -42,14 +42,14 @@ def _unique_writer_b(value: int, writer_data: _UniqueWriterBData, output_index: 
 
 
 @wp.kernel(module_options={"fast_math": True}, module="unique")
-def _kernel_fast_math(a: wp.array(dtype=float), b: wp.array(dtype=float)):
+def _kernel_fast_math(a: wp.array[float], b: wp.array[float]):
     tid = wp.tid()
     b[tid] = a[tid] + 1.0
 
 
 def _make_unique_writer_kernel(writer_func: Any):
     @wp.kernel(module="unique")
-    def _unique_writer_kernel(values: wp.array(dtype=int), writer_data: Any):
+    def _unique_writer_kernel(values: wp.array[int], writer_data: Any):
         tid = wp.tid()
         writer_func(values[tid], writer_data, tid)
 
@@ -67,7 +67,7 @@ def test_unique_module_kernel_object_reuse(test, device):
 
     # First definition
     @wp.kernel(module="unique")
-    def my_unique_kernel(x: wp.array(dtype=wp.float32)):
+    def my_unique_kernel(x: wp.array[wp.float32]):
         tid = wp.tid()
         x[tid] = x[tid] * 2.0
 
@@ -76,7 +76,7 @@ def test_unique_module_kernel_object_reuse(test, device):
 
     # Second definition (same code, should reuse)
     @wp.kernel(module="unique")
-    def my_unique_kernel(x: wp.array(dtype=wp.float32)):
+    def my_unique_kernel(x: wp.array[wp.float32]):
         tid = wp.tid()
         x[tid] = x[tid] * 2.0
 
@@ -107,7 +107,7 @@ class TestUniqueModule(unittest.TestCase):
         for _ in range(3):
             # Define generic kernel - should reuse after first iteration
             @wp.kernel(module="unique")
-            def generic_unique_kernel(x: wp.array(dtype=Any), scale: Any):
+            def generic_unique_kernel(x: wp.array[Any], scale: Any):
                 tid = wp.tid()
                 x[tid] = x[tid] * scale
 
@@ -149,7 +149,7 @@ class TestUniqueModule(unittest.TestCase):
         # Define an identical kernel without fast_math to prove the option
         # changes the module hash (not just the dict value).
         @wp.kernel(module_options={"fast_math": False}, module="unique")
-        def _kernel_no_fast_math(a: wp.array(dtype=float), b: wp.array(dtype=float)):
+        def _kernel_no_fast_math(a: wp.array[float], b: wp.array[float]):
             tid = wp.tid()
             b[tid] = a[tid] + 1.0
 
@@ -170,9 +170,7 @@ class TestUniqueModule(unittest.TestCase):
         """Module options must contribute to unique module hashing."""
 
         @wp.kernel(module="unique")
-        def _scatter_normal(
-            values: wp.array(dtype=wp.float32), indices: wp.array(dtype=wp.int32), out: wp.array(dtype=float)
-        ):
+        def _scatter_normal(values: wp.array[wp.float32], indices: wp.array[wp.int32], out: wp.array[float]):
             tid = wp.tid()
             wp.atomic_add(out, indices[tid], values[tid])
 
@@ -180,9 +178,7 @@ class TestUniqueModule(unittest.TestCase):
             module="unique",
             module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN, "deterministic_max_records": 1},
         )
-        def _scatter_deterministic(
-            values: wp.array(dtype=wp.float32), indices: wp.array(dtype=wp.int32), out: wp.array(dtype=float)
-        ):
+        def _scatter_deterministic(values: wp.array[wp.float32], indices: wp.array[wp.int32], out: wp.array[float]):
             tid = wp.tid()
             wp.atomic_add(out, indices[tid], values[tid])
 
@@ -217,9 +213,7 @@ class TestUniqueModule(unittest.TestCase):
             module="unique",
             module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN, "deterministic_max_records": 1},
         )
-        def _scatter_deterministic(
-            values: wp.array(dtype=wp.float32), indices: wp.array(dtype=wp.int32), out: wp.array(dtype=float)
-        ):
+        def _scatter_deterministic(values: wp.array[wp.float32], indices: wp.array[wp.int32], out: wp.array[float]):
             tid = wp.tid()
             wp.atomic_add(out, indices[tid], values[tid])
 
@@ -245,7 +239,7 @@ class TestUniqueModule(unittest.TestCase):
             wp.config.deterministic = wp.DeterministicMode.NOT_GUARANTEED
 
             @wp.kernel(module="unique")
-            def _config_capture_kernel(out: wp.array(dtype=float)):
+            def _config_capture_kernel(out: wp.array[float]):
                 tid = wp.tid()
                 wp.atomic_add(out, 0, float(tid))
 
@@ -270,7 +264,7 @@ class TestUniqueModule(unittest.TestCase):
         """``deterministic_max_records`` must be a non-negative integer."""
 
         @wp.kernel(module="unique", module_options={"deterministic_max_records": 2})
-        def _valid_max_records(a: wp.array(dtype=float)):
+        def _valid_max_records(a: wp.array[float]):
             pass
 
         self.assertEqual(_valid_max_records.module.options["deterministic_max_records"], 2)
@@ -280,13 +274,13 @@ class TestUniqueModule(unittest.TestCase):
             with self.subTest(value=value), self.assertRaises(TypeError):
 
                 @wp.kernel(module="unique", module_options={"deterministic_max_records": value})
-                def _bad_kernel_type(a: wp.array(dtype=float)):
+                def _bad_kernel_type(a: wp.array[float]):
                     pass
 
         with self.assertRaises(ValueError):
 
             @wp.kernel(module="unique", module_options={"deterministic_max_records": -1})
-            def _bad_kernel_value(a: wp.array(dtype=float)):
+            def _bad_kernel_value(a: wp.array[float]):
                 pass
 
     def test_module_options_error_without_unique(self):
@@ -294,7 +288,7 @@ class TestUniqueModule(unittest.TestCase):
         with self.assertRaises(ValueError) as cm:
 
             @wp.kernel(module_options={"fast_math": True})
-            def _bad_kernel(a: wp.array(dtype=float)):
+            def _bad_kernel(a: wp.array[float]):
                 pass
 
         self.assertIn("module_options", str(cm.exception))
@@ -305,7 +299,7 @@ class TestUniqueModule(unittest.TestCase):
         with contextlib.redirect_stdout(io.StringIO()) as f:
 
             @wp.kernel(module="unique", module_options={})
-            def _empty_opts_kernel(a: wp.array(dtype=float)):
+            def _empty_opts_kernel(a: wp.array[float]):
                 pass
 
         self.assertEqual(f.getvalue(), "")
@@ -315,7 +309,7 @@ class TestUniqueModule(unittest.TestCase):
         with self.assertRaises(ValueError) as cm:
 
             @wp.kernel(module_options={})
-            def _bad_kernel(a: wp.array(dtype=float)):
+            def _bad_kernel(a: wp.array[float]):
                 pass
 
         self.assertIn('module="unique"', str(cm.exception))
@@ -325,7 +319,7 @@ class TestUniqueModule(unittest.TestCase):
         with contextlib.redirect_stdout(io.StringIO()) as f:
 
             @wp.kernel(module_options={"fast_math": True}, module="unique")
-            def _no_warn_kernel(a: wp.array(dtype=float)):
+            def _no_warn_kernel(a: wp.array[float]):
                 pass
 
         self.assertEqual(f.getvalue(), "")
@@ -334,7 +328,7 @@ class TestUniqueModule(unittest.TestCase):
         """Multiple module_options are applied to unique modules."""
 
         @wp.kernel(module_options={"fast_math": True, "mode": "release"}, module="unique")
-        def _multi_opts_kernel(a: wp.array(dtype=float)):
+        def _multi_opts_kernel(a: wp.array[float]):
             pass
 
         self.assertTrue(_multi_opts_kernel.module.options["fast_math"])
@@ -345,7 +339,7 @@ class TestUniqueModule(unittest.TestCase):
         with self.assertRaises(ValueError) as cm:
 
             @wp.kernel(module_options={"fast_mth": True}, module="unique")
-            def _typo_kernel(a: wp.array(dtype=float)):
+            def _typo_kernel(a: wp.array[float]):
                 pass
 
         self.assertIn("fast_mth", str(cm.exception))
@@ -356,7 +350,7 @@ class TestUniqueModule(unittest.TestCase):
         with self.assertRaises(TypeError) as cm:
 
             @wp.kernel(module_options="fast_math", module="unique")
-            def _bad_kernel(a: wp.array(dtype=float)):
+            def _bad_kernel(a: wp.array[float]):
                 pass
 
         self.assertIn("must be a dict", str(cm.exception))
@@ -367,7 +361,7 @@ class TestUniqueModule(unittest.TestCase):
         with self.assertRaises(ValueError) as cm:
 
             @wp.kernel(module_options={"fast_math": True}, module="some_shared_module")
-            def _named_mod_kernel(a: wp.array(dtype=float)):
+            def _named_mod_kernel(a: wp.array[float]):
                 pass
 
         self.assertIn("module_options", str(cm.exception))
@@ -385,7 +379,7 @@ class TestUniqueModule(unittest.TestCase):
         """
 
         @wp.kernel(module="unique")
-        def multi_type_kernel(x: wp.array(dtype=Any), y: wp.array(dtype=Any)):
+        def multi_type_kernel(x: wp.array[Any], y: wp.array[Any]):
             tid = wp.tid()
             y[tid] = x[tid] + x[tid]
 
@@ -457,7 +451,7 @@ class TestUniqueModule(unittest.TestCase):
                 enable_backward=enable_backward,
                 launch_bounds=launch_bounds,
             )
-            def _opt_kernel(x: wp.array(dtype=Any)):
+            def _opt_kernel(x: wp.array[Any]):
                 i = wp.tid()
                 x[i] = x[i] + x[i]
 
@@ -495,7 +489,7 @@ def test_unique_module_deferred_static_expressions(test, device):
 
     def make_kernel(values):
         @wp.kernel(module="unique", enable_backward=False)
-        def kernel_with_deferred_static(result: wp.array(dtype=int)):
+        def kernel_with_deferred_static(result: wp.array[int]):
             tid = wp.tid()
             if tid == 0:
                 for i in range(wp.static(len(values))):
@@ -611,7 +605,7 @@ def test_unique_module_reuse_does_not_retain_temporary_dependents(test, device):
 
     def make_kernel():
         @wp.kernel(module="unique", enable_backward=False)
-        def _kernel_with_dependency(out: wp.array(dtype=int)):
+        def _kernel_with_dependency(out: wp.array[int]):
             tid = wp.tid()
             for i in range(wp.static(len(values))):
                 if wp.static(values[i]) == 7:
@@ -655,7 +649,7 @@ def test_unique_module_nongeneric_closure_disambiguation(test, device):
 
     def _make_nongeneric_closure_kernel(helper_func):
         @wp.kernel(module="unique")
-        def _nongeneric_closure_kernel(inp: wp.array(dtype=int), out: wp.array(dtype=int)):
+        def _nongeneric_closure_kernel(inp: wp.array[int], out: wp.array[int]):
             tid = wp.tid()
             out[tid] = helper_func(inp[tid])
 

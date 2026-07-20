@@ -14,7 +14,7 @@ def _make_arange_kernel():
     """Create a fresh unique-module kernel so each call gets its own Module."""
 
     @wp.kernel(module="unique")
-    def arange(a: wp.array(dtype=float)):
+    def arange(a: wp.array[float]):
         tid = wp.tid()
         a[tid] = float(tid) * 2.0
 
