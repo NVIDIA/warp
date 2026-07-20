@@ -518,10 +518,16 @@
 <h1>warp.utils.array_inner<a class="headerlink" href="#warp-utils-array-inner" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.utils.array_inner">
-<span class="sig-prename descclassname"><span class="pre">warp.utils.</span></span><span class="sig-name descname"><span class="pre">array_inner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/utils.py#L570-L684"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.utils.array_inner" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.utils.</span></span><span class="sig-name descname"><span class="pre">array_inner</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/utils.py#L645-L792"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.utils.array_inner" title="Link to this definition">#</a></dt>
 <dd><p>Compute the inner product of two arrays.</p>
 <p>This function computes the dot product between two arrays, optionally along a specified axis.
 The operation can be performed on the entire arrays or along a specific dimension.</p>
+<p>During matching-device APIC graph capture, non-empty calls require an explicit
+<code class="docutils literal notranslate"><span class="pre">out</span></code> array so replay can store the current result. Existing whole-array,
+explicit-count, composite-dtype, and positive-stride axis reductions are
+recorded. Negative strides raise <code class="docutils literal notranslate"><span class="pre">NotImplementedError</span></code> during APIC capture.
+Counts and reduction strides must fit the native signed 32-bit ABI, and
+participating addresses and strides must be aligned to the scalar type.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -537,7 +543,13 @@ The operation can be performed on the entire arrays or along a specific dimensio
 otherwise returns the <code class="docutils literal notranslate"><span class="pre">out</span></code> array.</p>
 </dd>
 <dt class="field-odd">Raises<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If array storage devices, sizes, or data types are incompatible.</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If array storage devices, sizes, or data types are incompatible, or if a matching-device
+    APIC-captured call uses a count or layout that the native reduction ABI cannot represent.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><strong>NotImplementedError</strong></a> – If a non-empty call under matching-device APIC graph capture omits <code class="docutils literal notranslate"><span class="pre">out</span></code>. Also raised
+    if any input or output array has a negative stride under matching-device APIC graph capture, including
+    for a zero-count call.</p></li>
+</ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>

@@ -2318,6 +2318,8 @@ are replayed with <a class="reference internal" href="../api_reference/_generate
 (<a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.zero_" title="warp.array.zero_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.zero_()</span></code></a>), plus contiguous
 <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.fill_" title="warp.array.fill_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.fill_()</span></code></a>.</p></li>
 <li><p>Host library helpers including
+<a class="reference internal" href="../api_reference/_generated/warp.utils.array_sum.html#warp.utils.array_sum" title="warp.utils.array_sum"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_sum()</span></code></a>,
+<a class="reference internal" href="../api_reference/_generated/warp.utils.array_inner.html#warp.utils.array_inner" title="warp.utils.array_inner"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_inner()</span></code></a>,
 <a class="reference internal" href="../api_reference/_generated/warp.utils.array_scan.html#warp.utils.array_scan" title="warp.utils.array_scan"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_scan()</span></code></a>,
 <a class="reference internal" href="../api_reference/_generated/warp.utils.radix_sort_pairs.html#warp.utils.radix_sort_pairs" title="warp.utils.radix_sort_pairs"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.radix_sort_pairs()</span></code></a>,
 <a class="reference internal" href="../api_reference/_generated/warp.utils.segmented_sort_pairs.html#warp.utils.segmented_sort_pairs" title="warp.utils.segmented_sort_pairs"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.segmented_sort_pairs()</span></code></a>,
@@ -2345,6 +2347,13 @@ setup work that should not enter the replay stream.</p>
 (non-contiguous) 1D arrays – into the CPU APIC byte stream. Negative strides raise
 <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a> inside a CPU <a class="reference internal" href="../api_reference/_generated/warp.ScopedCapture.html#warp.ScopedCapture" title="warp.ScopedCapture"><code class="xref py py-class docutils literal notranslate"><span class="pre">ScopedCapture</span></code></a>; run them outside the
 captured region.</p></li>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.utils.array_sum.html#warp.utils.array_sum" title="warp.utils.array_sum"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_sum()</span></code></a> and
+<a class="reference internal" href="../api_reference/_generated/warp.utils.array_inner.html#warp.utils.array_inner" title="warp.utils.array_inner"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_inner()</span></code></a> require an explicit
+<code class="docutils literal notranslate"><span class="pre">out</span></code> array for non-empty APIC captures. Explicit counts, composite dtypes,
+and positive-stride axis reductions are recorded; negative strides raise
+<a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a>, and negative counts raise <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">RuntimeError</span></code></a>.
+Counts and reduction strides must fit a signed 32-bit integer, and participating
+addresses and layout strides must be aligned to the reduction’s scalar type.</p></li>
 <li><p><a class="reference internal" href="../api_reference/_generated/warp.utils.runlength_encode.html#warp.utils.runlength_encode" title="warp.utils.runlength_encode"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.runlength_encode()</span></code></a> requires an explicit
 <code class="docutils literal notranslate"><span class="pre">run_count</span></code> array during CPU APIC capture; the host-return form (<code class="docutils literal notranslate"><span class="pre">run_count=None</span></code>) raises
 <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a>, because its capture-time host integer cannot represent the
@@ -2391,7 +2400,8 @@ undefined behavior.</p></li>
 <a class="reference internal" href="../api_reference/_generated/warp.capture_save.html#warp.capture_save" title="warp.capture_save"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_save()</span></code></a> / <a class="reference internal" href="../api_reference/_generated/warp.capture_load.html#warp.capture_load" title="warp.capture_load"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_load()</span></code></a>
 surface, the C <code class="docutils literal notranslate"><span class="pre">wp_apic_*</span></code> API, and the recorded operation set are all
 subject to change without a formal deprecation cycle. <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> files written
-by one version of Warp may not be loadable by another.</p>
+by one version of Warp may not be loadable by another. The current writer
+emits format version 15, and the reader accepts versions 13 through 15.</p>
 </div>
 <p>API Capture lets you serialize a captured graph to disk and load it back later, either
 from another Python program, or from a standalone C++ application that links only
@@ -2409,14 +2419,24 @@ mechanism), and <code class="docutils literal notranslate"><span class="pre">api
 <p>On CUDA, <code class="docutils literal notranslate"><span class="pre">apic=True</span></code> records the same extended operation set as the CPU path so saved
 graphs replay it from current inputs: kernel launches (forward, adjoint, and reusable
 <code class="docutils literal notranslate"><span class="pre">record_cmd=True</span></code> launches), contiguous same-device memory copies and memsets, contiguous
-<a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.fill_" title="warp.array.fill_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.fill_()</span></code></a>, <a class="reference internal" href="../api_reference/_generated/warp.utils.array_scan.html#warp.utils.array_scan" title="warp.utils.array_scan"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_scan()</span></code></a>,
+<a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.fill_" title="warp.array.fill_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.fill_()</span></code></a>,
+<a class="reference internal" href="../api_reference/_generated/warp.utils.array_sum.html#warp.utils.array_sum" title="warp.utils.array_sum"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_sum()</span></code></a>,
+<a class="reference internal" href="../api_reference/_generated/warp.utils.array_inner.html#warp.utils.array_inner" title="warp.utils.array_inner"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_inner()</span></code></a>,
+<a class="reference internal" href="../api_reference/_generated/warp.utils.array_scan.html#warp.utils.array_scan" title="warp.utils.array_scan"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_scan()</span></code></a>,
 <a class="reference internal" href="../api_reference/_generated/warp.utils.radix_sort_pairs.html#warp.utils.radix_sort_pairs" title="warp.utils.radix_sort_pairs"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.radix_sort_pairs()</span></code></a>,
 <a class="reference internal" href="../api_reference/_generated/warp.utils.segmented_sort_pairs.html#warp.utils.segmented_sort_pairs" title="warp.utils.segmented_sort_pairs"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.segmented_sort_pairs()</span></code></a>,
 <a class="reference internal" href="../api_reference/_generated/warp.utils.runlength_encode.html#warp.utils.runlength_encode" title="warp.utils.runlength_encode"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.runlength_encode()</span></code></a> (with an explicit
 <code class="docutils literal notranslate"><span class="pre">run_count</span></code>), <a class="reference internal" href="../api_reference/_generated/warp.sparse.bsr_set_transpose.html#warp.sparse.bsr_set_transpose" title="warp.sparse.bsr_set_transpose"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.sparse.bsr_set_transpose()</span></code></a>, and
 <a class="reference internal" href="../api_reference/_generated/warp.capture_if.html#warp.capture_if" title="warp.capture_if"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_if()</span></code></a> / <a class="reference internal" href="../api_reference/_generated/warp.capture_while.html#warp.capture_while" title="warp.capture_while"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_while()</span></code></a>
-conditionals. Unlike the CPU path (which records only), these still execute during capture so
-the driver also records them into the native CUDA graph.</p>
+conditionals. Unlike the CPU path, CUDA host code for these reductions issues CUDA operations
+while native stream capture is active so the driver records native graph nodes. No GPU
+reduction executes during capture; GPU work begins only when the graph is launched.</p>
+<p>During a matching-device CUDA <code class="docutils literal notranslate"><span class="pre">apic=True</span></code> capture, non-empty calls to these reductions
+require an explicit <code class="docutils literal notranslate"><span class="pre">out</span></code> array. Explicit counts, composite dtypes, and positive-stride axis
+reductions are recorded. A negative count raises <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">RuntimeError</span></code></a> in that capture, and any
+negative input or output stride raises <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a>, including for a zero-count
+call. Counts and reduction strides must fit a signed 32-bit integer, and participating
+addresses and layout strides must be aligned to the reduction’s scalar type.</p>
 <p>A few operations cannot be captured for save/load on CUDA and raise
 <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a> during an <code class="docutils literal notranslate"><span class="pre">apic=True</span></code> capture; build these outside the captured
 region:</p>

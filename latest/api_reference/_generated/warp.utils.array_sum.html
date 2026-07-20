@@ -518,14 +518,20 @@
 <h1>warp.utils.array_sum<a class="headerlink" href="#warp-utils-array-sum" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.utils.array_sum">
-<span class="sig-prename descclassname"><span class="pre">warp.utils.</span></span><span class="sig-name descname"><span class="pre">array_sum</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">values</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value_count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/utils.py#L470-L568"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.utils.array_sum" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.utils.</span></span><span class="sig-name descname"><span class="pre">array_sum</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">values</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">value_count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">axis</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/utils.py#L510-L643"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.utils.array_sum" title="Link to this definition">#</a></dt>
 <dd><p>Compute the sum of array elements.</p>
 <p>This function computes the sum of array elements, optionally along a specified axis.
 The operation can be performed on the entire array or along a specific dimension.</p>
+<p>During matching-device APIC graph capture, non-empty calls require an explicit
+<code class="docutils literal notranslate"><span class="pre">out</span></code> array so replay can store the current result. Existing whole-array,
+explicit-count, composite-dtype, and positive-stride axis reductions are
+recorded. Negative strides raise <code class="docutils literal notranslate"><span class="pre">NotImplementedError</span></code> during APIC capture.
+Counts and reduction strides must fit the native signed 32-bit ABI, and
+participating addresses and strides must be aligned to the scalar type.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>values</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>) – Input array to sum. Must be of type <code class="docutils literal notranslate"><span class="pre">float32</span></code> or <code class="docutils literal notranslate"><span class="pre">float64</span></code>.</p></li>
+<li><p><strong>values</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>) – Input array to sum. Its scalar type must be <code class="docutils literal notranslate"><span class="pre">float32</span></code> or <code class="docutils literal notranslate"><span class="pre">float64</span></code>.</p></li>
 <li><p><strong>out</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>) – Output array to store results. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, a new array is created.</p></li>
 <li><p><strong>value_count</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Number of elements to process. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, processes entire array.</p></li>
 <li><p><strong>axis</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Axis along which to compute sum. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, computes sum of all elements.</p></li>
@@ -536,7 +542,13 @@ The operation can be performed on the entire array or along a specific dimension
 otherwise returns the <code class="docutils literal notranslate"><span class="pre">out</span></code> array.</p>
 </dd>
 <dt class="field-odd">Raises<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If output array storage device or data type is incompatible with input array.</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><strong>RuntimeError</strong></a> – If output array storage device or data type is incompatible with input array, or if a
+    matching-device APIC-captured call uses a count or layout that the native reduction ABI cannot represent.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><strong>NotImplementedError</strong></a> – If a non-empty call under matching-device APIC graph capture omits <code class="docutils literal notranslate"><span class="pre">out</span></code>. Also raised
+    if any input or output array has a negative stride under matching-device APIC graph capture, including
+    for a zero-count call.</p></li>
+</ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
 <dd class="field-even"><p><a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a> | <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
