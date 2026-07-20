@@ -113,14 +113,38 @@ class TestCpuPrecompiledHeaders(unittest.TestCase):
 
             pch_files = sorted(glob.glob(os.path.join(pch_dir, "*.pch")))
             self.assertEqual(len(pch_files), 2)
-            self.assertTrue(all("_cf" in os.path.basename(pch_file) for pch_file in pch_files))
+            self.assertTrue(all("_f" in os.path.basename(pch_file) for pch_file in pch_files))
 
             compiler_flag_keys = {
-                os.path.basename(pch_file).rsplit("_cf", 1)[1].removesuffix(".pch") for pch_file in pch_files
+                os.path.basename(pch_file).rsplit("_f", 1)[1].removesuffix(".pch") for pch_file in pch_files
             }
             self.assertEqual(len(compiler_flag_keys), 2)
             self.assertTrue(all(len(key) == 16 for key in compiler_flag_keys))
             self.assertTrue(all(set(key) <= set("0123456789abcdef") for key in compiler_flag_keys))
+
+    def test_debug_optimization_level_cache_key(self):
+        """Verify that debug modules share the PCH for their effective optimization level."""
+        with tempfile.TemporaryDirectory(prefix="wp_pch_debug_opt_test_") as pch_dir:
+            with mock.patch.object(warp_context.Runtime, "get_clang_pch_dir", return_value=pch_dir), _use_temp_cache():
+
+                @wp.kernel(module="unique", module_options={"mode": "debug", "optimization_level": 1})
+                def increment(a: wp.array[int]):
+                    a[0] += 1
+
+                @wp.kernel(module="unique", module_options={"mode": "debug", "optimization_level": 2})
+                def double(a: wp.array[int]):
+                    a[0] *= 2
+
+                a = wp.array([1], dtype=int, device="cpu")
+                wp.launch(increment, dim=1, inputs=[a], device="cpu")
+                wp.launch(double, dim=1, inputs=[a], device="cpu")
+
+                np.testing.assert_array_equal(a.numpy(), [4])
+
+            pch_files = glob.glob(os.path.join(pch_dir, "*.pch"))
+            self.assertEqual(len(pch_files), 1)
+            self.assertIn("_dbg_", os.path.basename(pch_files[0]))
+            self.assertIn("_o0_", os.path.basename(pch_files[0]))
 
     def test_fallback(self):
         """Verify graceful fallback when PCH file is corrupted."""

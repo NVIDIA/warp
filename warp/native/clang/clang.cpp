@@ -142,6 +142,22 @@ static const HostCpuInfo& get_host_cpu_info()
     return info;
 }
 
+static int get_effective_optimization_level(bool debug, int optimization_level)
+{
+    if (debug) {
+        return 0;
+    }
+
+    switch (optimization_level) {
+    case 0:
+    case 1:
+    case 2:
+        return optimization_level;
+    default:
+        return 3;
+    }
+}
+
 static std::unique_ptr<clang::CompilerInstance> create_compiler(
     const std::string& input_file,
     const char* include_dir,
@@ -162,23 +178,19 @@ static std::unique_ptr<clang::CompilerInstance> create_compiler(
     args.push_back(include_dir);
     args.push_back("-std=c++17");
 
-    if (debug) {
+    switch (get_effective_optimization_level(debug, optimization_level)) {
+    case 0:
         args.push_back("-O0");
-    } else {
-        switch (optimization_level) {
-        case 0:
-            args.push_back("-O0");
-            break;
-        case 1:
-            args.push_back("-O1");
-            break;
-        case 2:
-            args.push_back("-O2");
-            break;
-        default:
-            args.push_back("-O3");
-            break;
-        }
+        break;
+    case 1:
+        args.push_back("-O1");
+        break;
+    case 2:
+        args.push_back("-O2");
+        break;
+    default:
+        args.push_back("-O3");
+        break;
     }
 
     if (is_cuda) {
@@ -322,6 +334,7 @@ static bool generate_pch(
     bool verify_fp,
     bool tiles_in_stack_memory,
     const char** extra_flags,
+    int optimization_level,
     bool verbose,
     int block_dim
 )
@@ -332,8 +345,15 @@ static bool generate_pch(
 
     std::string input_file = "pch_gen.cpp";
 
-    auto compiler
-        = create_compiler(input_file, include_dir, false, debug, verify_fp, tiles_in_stack_memory, extra_flags);
+    // Build the PCH at the same optimization level as the modules that will
+    // consume it. Clang records the -O level in the PCH and rejects it with
+    // "OptimizationLevel differs in precompiled file" if a module is compiled
+    // at a different level. Without this the PCH defaulted to -O3 while CPU
+    // modules build at -O2 (see build_cpu in build.py), so every module failed
+    // the PCH check and paid a full no-PCH recompile.
+    auto compiler = create_compiler(
+        input_file, include_dir, false, debug, verify_fp, tiles_in_stack_memory, extra_flags, optimization_level
+    );
 
     // Create a source buffer that includes the main header.
     // WP_NO_CRT skips system headers (assert.h, math.h, etc.) which aren't
@@ -462,6 +482,7 @@ WP_API int wp_compile_cpp(
 )
 {
     initialize_llvm();
+    const int effective_optimization_level = get_effective_optimization_level(debug, optimization_level);
 
     // Determine PCH path if requested.
     // Each block_dim value gets its own PCH file because tile.h templates
@@ -476,7 +497,8 @@ WP_API int wp_compile_cpp(
         // directly or by a separately named digest.
         const std::string compiler_flags_hash = hash_compiler_flags(extra_flags);
         pch_path_str = std::string(pch_dir) + "/builtin_bd" + std::to_string(block_dim) + (verify_fp ? "_vfp" : "")
-            + (debug ? "_dbg" : "") + (tiles_in_stack_memory ? "_tis" : "") + "_cf" + compiler_flags_hash + ".pch";
+            + (debug ? "_dbg" : "") + (tiles_in_stack_memory ? "_tis" : "") + "_o"
+            + std::to_string(effective_optimization_level) + "_f" + compiler_flags_hash + ".pch";
 
         // Check if the PCH file already exists
         FILE* f = fopen(pch_path_str.c_str(), "rb");
@@ -488,7 +510,8 @@ WP_API int wp_compile_cpp(
         } else {
             // Generate the PCH file
             if (!generate_pch(
-                    include_dir, pch_path_str, debug, verify_fp, tiles_in_stack_memory, extra_flags, verbose, block_dim
+                    include_dir, pch_path_str, debug, verify_fp, tiles_in_stack_memory, extra_flags,
+                    effective_optimization_level, verbose, block_dim
                 )) {
                 std::cerr << "Warp: PCH generation failed, compiling without precompiled headers" << std::endl;
                 remove(pch_path_str.c_str());
@@ -506,7 +529,7 @@ WP_API int wp_compile_cpp(
     auto llvm_context = std::make_unique<llvm::LLVMContext>();
     std::unique_ptr<llvm::Module> module = source_to_llvm(
         false, input_file, cpp_src, include_dir, debug, verify_fp, *llvm_context, tiles_in_stack_memory, extra_flags,
-        optimization_level, pch_path
+        effective_optimization_level, pch_path
     );
 
     // Fallback: if compilation failed with PCH, retry without it
@@ -521,7 +544,7 @@ WP_API int wp_compile_cpp(
         llvm_context = std::make_unique<llvm::LLVMContext>();
         module = source_to_llvm(
             false, input_file, cpp_src, include_dir, debug, verify_fp, *llvm_context, tiles_in_stack_memory,
-            extra_flags, optimization_level, nullptr
+            extra_flags, effective_optimization_level, nullptr
         );
     }
 
@@ -568,23 +591,19 @@ WP_API int wp_compile_cpp(
     llvm::CodeGenOpt::Level codegen_opt;
 #define CodeGenOptLevel CodeGenOpt
 #endif
-    if (debug) {
+    switch (effective_optimization_level) {
+    case 0:
         codegen_opt = llvm::CodeGenOptLevel::None;
-    } else {
-        switch (optimization_level) {
-        case 0:
-            codegen_opt = llvm::CodeGenOptLevel::None;
-            break;
-        case 1:
-            codegen_opt = llvm::CodeGenOptLevel::Less;
-            break;
-        case 2:
-            codegen_opt = llvm::CodeGenOptLevel::Default;
-            break;
-        default:
-            codegen_opt = llvm::CodeGenOptLevel::Aggressive;
-            break;
-        }
+        break;
+    case 1:
+        codegen_opt = llvm::CodeGenOptLevel::Less;
+        break;
+    case 2:
+        codegen_opt = llvm::CodeGenOptLevel::Default;
+        break;
+    default:
+        codegen_opt = llvm::CodeGenOptLevel::Aggressive;
+        break;
     }
 
 #if LLVM_VERSION_MAJOR >= 20
