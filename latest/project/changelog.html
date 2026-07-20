@@ -572,6 +572,8 @@ Language Reference and API Reference closer to the User Guide, and consolidate m
 <section id="fixed">
 <h3>Fixed<a class="headerlink" href="#fixed" title="Link to this heading">#</a></h3>
 <ul class="simple">
+<li><p>Fix CPU precompiled headers not being reused when Warp is built against LLVM 22, avoiding repeated full kernel
+compilation (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1658">GH-1658</a>).</p></li>
 <li><p>Fix CPU kernel compilation failures for power-of-two exponentiation on some Windows on Arm systems
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1562">GH-1562</a>).</p></li>
 <li><p>Fix unbounded memory growth when repeatedly launching identical kernels created by a factory or closure
