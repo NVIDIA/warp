@@ -24,6 +24,8 @@
   ([GH-1618](https://github.com/NVIDIA/warp/issues/1618)).
 - Add adjoint for the out-of-place `wp.tile_lower_solve()` for vector and matrix right-hand sides
   ([GH-1378](https://github.com/NVIDIA/warp/issues/1378))
+- **Experimental:** Record `wp.utils.array_sum()` and `wp.utils.array_inner()` in APIC capture so saved and replayed
+  graphs recompute them from current inputs on CPU and CUDA ([GH-1663](https://github.com/NVIDIA/warp/issues/1663)).
 
 ### Removed
 

@@ -580,6 +580,58 @@ static bool apic_replay_ops_into_cuda_capture(
             break;
         }
 
+        case APIC_OP_REDUCTION: {
+            const APICReductionRecord* rec = reinterpret_cast<const APICReductionRecord*>(ptr);
+            size_t scalar_size = apic_type_size(rec->dtype);
+            size_t input_a_bytes
+                = apic_reduction_input_bytes(rec->count, rec->input_a_stride, rec->type_len, scalar_size);
+            size_t input_b_bytes = rec->kind == APIC_REDUCTION_INNER
+                ? apic_reduction_input_bytes(rec->count, rec->input_b_stride, rec->type_len, scalar_size)
+                : 0;
+            size_t output_bytes
+                = rec->kind == APIC_REDUCTION_SUM ? static_cast<size_t>(rec->type_len) * scalar_size : scalar_size;
+
+            void* input_a = apic_resolve_region_ptr(graph, rec->input_a_region_id, rec->input_a_offset, input_a_bytes);
+            void* input_b = rec->kind == APIC_REDUCTION_INNER
+                ? apic_resolve_region_ptr(graph, rec->input_b_region_id, rec->input_b_offset, input_b_bytes)
+                : nullptr;
+            void* output = apic_resolve_region_ptr(graph, rec->output_region_id, rec->output_offset, output_bytes);
+            if (!input_a || !output || (rec->kind == APIC_REDUCTION_INNER && !input_b)) {
+                wp::set_error_string("APIC reduction: failed to resolve region (op %u)", i);
+                success = false;
+                break;
+            }
+
+            // Reissue the CUB entry points while stream capture is active to
+            // record native graph nodes. GPU work runs only at graph launch.
+            if (rec->kind == APIC_REDUCTION_SUM) {
+                if (rec->dtype == APIC_TYPE_FLOAT32)
+                    wp_array_sum_float_device(
+                        reinterpret_cast<uint64_t>(input_a), reinterpret_cast<uint64_t>(output),
+                        static_cast<int>(rec->count), rec->input_a_stride, rec->type_len
+                    );
+                else
+                    wp_array_sum_double_device(
+                        reinterpret_cast<uint64_t>(input_a), reinterpret_cast<uint64_t>(output),
+                        static_cast<int>(rec->count), rec->input_a_stride, rec->type_len
+                    );
+            } else {
+                if (rec->dtype == APIC_TYPE_FLOAT32)
+                    wp_array_inner_float_device(
+                        reinterpret_cast<uint64_t>(input_a), reinterpret_cast<uint64_t>(input_b),
+                        reinterpret_cast<uint64_t>(output), static_cast<int>(rec->count), rec->input_a_stride,
+                        rec->input_b_stride, rec->type_len
+                    );
+                else
+                    wp_array_inner_double_device(
+                        reinterpret_cast<uint64_t>(input_a), reinterpret_cast<uint64_t>(input_b),
+                        reinterpret_cast<uint64_t>(output), static_cast<int>(rec->count), rec->input_a_stride,
+                        rec->input_b_stride, rec->type_len
+                    );
+            }
+            break;
+        }
+
         case APIC_OP_SEGMENTED_SORT: {
             const APICSegmentedSortRecord* rec = reinterpret_cast<const APICSegmentedSortRecord*>(ptr);
             size_t key_size = (rec->dtype == APIC_TYPE_INT32 ? sizeof(int32_t) : sizeof(float));
@@ -898,7 +950,7 @@ static bool apic_rebuild_cuda_graph(APICGraph* graph, CUstream stream)
         return false;
 
     // Use Warp's capture management (not a raw cudaStreamBeginCapture) so the
-    // allocator knows a capture is active. Extended ops (scan/sort/bsr) allocate
+    // allocator knows a capture is active. Extended ops (reduction/scan/sort/bsr) allocate
     // CUB scratch during capture; the allocator only routes those allocs/frees
     // to graph memory nodes when it sees an active Warp capture, otherwise it
     // would cudaFreeAsync on the null stream and invalidate the capture.
@@ -906,7 +958,7 @@ static bool apic_rebuild_cuda_graph(APICGraph* graph, CUstream stream)
         return false;
     }
 
-    // Extended ops (SCAN/SORT/RUNLENGTH/BSR/MEMTILE) issue their kernels on the
+    // Extended ops (REDUCTION/SCAN/SORT/RUNLENGTH/BSR/MEMTILE) issue their kernels on the
     // context's current stream rather than the passed stream. Point the current
     // stream at the capture stream so they are recorded into the graph, then
     // restore it after the replay loop.

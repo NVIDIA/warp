@@ -23,6 +23,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <climits>
 #include <cstddef>  // offsetof
 #include <cstdint>  // SIZE_MAX
 #include <cstdio>
@@ -481,6 +482,43 @@ void apic_record_scan(
     rec.type_len = type_len;
     rec.dtype = dtype;
     rec.inclusive = inclusive;
+    state->append_bytes(&rec, sizeof(rec));
+    state->operation_count++;
+}
+
+void apic_record_reduction(
+    APICState* state,
+    int32_t input_a_region_id,
+    uint64_t input_a_offset,
+    int32_t input_b_region_id,
+    uint64_t input_b_offset,
+    int32_t output_region_id,
+    uint64_t output_offset,
+    uint32_t count,
+    int32_t input_a_stride,
+    int32_t input_b_stride,
+    int32_t type_len,
+    uint8_t kind,
+    uint8_t dtype
+)
+{
+    if (!state)
+        return;
+    APICReductionRecord rec = {};
+    rec.header.op_type = APIC_OP_REDUCTION;
+    rec.header.total_size = sizeof(rec);
+    rec.input_a_region_id = input_a_region_id;
+    rec.input_b_region_id = input_b_region_id;
+    rec.output_region_id = output_region_id;
+    rec.count = count;
+    rec.input_a_offset = input_a_offset;
+    rec.input_b_offset = input_b_offset;
+    rec.output_offset = output_offset;
+    rec.input_a_stride = input_a_stride;
+    rec.input_b_stride = input_b_stride;
+    rec.type_len = type_len;
+    rec.kind = kind;
+    rec.dtype = dtype;
     state->append_bytes(&rec, sizeof(rec));
     state->operation_count++;
 }
@@ -1237,6 +1275,14 @@ static bool apic_mul_check(uint64_t a, uint64_t b, uint64_t* out)
     return true;
 }
 
+static bool apic_add_check(uint64_t a, uint64_t b, uint64_t* out)
+{
+    if (a > UINT64_MAX - b)
+        return false;
+    *out = a + b;
+    return true;
+}
+
 // Walks the byte stream once and verifies every record fits in bounds, its
 // variable-length fields don't overflow its declared total_size, and the
 // op_type is recognized. Called once at stream-close time (end of recording
@@ -1442,6 +1488,46 @@ bool apic_validate_operation_stream(const uint8_t* data, size_t size, uint32_t o
                     fprintf(stderr, "APIC: Error - scan span overflow at operation %u\n", i);
                     return false;
                 }
+            }
+            break;
+        }
+        case APIC_OP_REDUCTION: {
+            if (header->total_size != sizeof(APICReductionRecord) || op_end < op_start + sizeof(APICReductionRecord)) {
+                fprintf(stderr, "APIC: Error - reduction record size invalid at operation %u\n", i);
+                return false;
+            }
+            const APICReductionRecord* rec = reinterpret_cast<const APICReductionRecord*>(ptr);
+            bool is_sum = rec->kind == APIC_REDUCTION_SUM;
+            bool is_inner = rec->kind == APIC_REDUCTION_INNER;
+            if ((!is_sum && !is_inner) || (rec->dtype != APIC_TYPE_FLOAT32 && rec->dtype != APIC_TYPE_FLOAT64)
+                || rec->count == 0 || rec->count > static_cast<uint32_t>(INT_MAX) || rec->type_len <= 0
+                || rec->input_a_stride < 0 || rec->input_a_region_id < 0 || rec->output_region_id < 0
+                || (is_sum && (rec->input_b_region_id != -1 || rec->input_b_offset != 0 || rec->input_b_stride != 0))
+                || (is_inner && (rec->input_b_region_id < 0 || rec->input_b_stride < 0))) {
+                fprintf(stderr, "APIC: Error - invalid reduction metadata at operation %u\n", i);
+                return false;
+            }
+
+            uint64_t scalar_size = apic_type_size(rec->dtype);
+            if (rec->input_a_offset % scalar_size != 0 || rec->output_offset % scalar_size != 0
+                || rec->input_a_stride % scalar_size != 0
+                || (is_inner && (rec->input_b_offset % scalar_size != 0 || rec->input_b_stride % scalar_size != 0))) {
+                fprintf(stderr, "APIC: Error - misaligned reduction metadata at operation %u\n", i);
+                return false;
+            }
+            uint64_t input_a_bytes
+                = apic_reduction_input_bytes(rec->count, rec->input_a_stride, rec->type_len, scalar_size);
+            uint64_t input_b_bytes = is_inner
+                ? apic_reduction_input_bytes(rec->count, rec->input_b_stride, rec->type_len, scalar_size)
+                : 0;
+            uint64_t output_bytes = is_sum ? static_cast<uint64_t>(rec->type_len) * scalar_size : scalar_size;
+            uint64_t span_end;
+            if (input_a_bytes == 0 || output_bytes == 0 || (is_inner && input_b_bytes == 0)
+                || !apic_add_check(rec->input_a_offset, input_a_bytes, &span_end)
+                || !apic_add_check(rec->output_offset, output_bytes, &span_end)
+                || (is_inner && !apic_add_check(rec->input_b_offset, input_b_bytes, &span_end))) {
+                fprintf(stderr, "APIC: Error - reduction span overflow at operation %u\n", i);
+                return false;
             }
             break;
         }
@@ -1913,6 +1999,55 @@ static bool apic_cpu_replay_stream(
                     reinterpret_cast<uint64_t>(src), reinterpret_cast<uint64_t>(dst), static_cast<int>(rec->length),
                     rec->in_stride, rec->out_stride, rec->type_len, rec->inclusive != 0
                 );
+            }
+            break;
+        }
+
+        case APIC_OP_REDUCTION: {
+            const APICReductionRecord* rec = reinterpret_cast<const APICReductionRecord*>(ptr);
+            size_t scalar_size = apic_type_size(rec->dtype);
+            size_t input_a_bytes
+                = apic_reduction_input_bytes(rec->count, rec->input_a_stride, rec->type_len, scalar_size);
+            size_t input_b_bytes = rec->kind == APIC_REDUCTION_INNER
+                ? apic_reduction_input_bytes(rec->count, rec->input_b_stride, rec->type_len, scalar_size)
+                : 0;
+            size_t output_bytes
+                = rec->kind == APIC_REDUCTION_SUM ? static_cast<size_t>(rec->type_len) * scalar_size : scalar_size;
+
+            const void* input_a = resolve_ptr(rec->input_a_region_id, rec->input_a_offset, input_a_bytes);
+            const void* input_b = rec->kind == APIC_REDUCTION_INNER
+                ? resolve_ptr(rec->input_b_region_id, rec->input_b_offset, input_b_bytes)
+                : nullptr;
+            void* output = resolve_ptr(rec->output_region_id, rec->output_offset, output_bytes);
+            if (!input_a || !output || (rec->kind == APIC_REDUCTION_INNER && !input_b)) {
+                fprintf(stderr, "APIC: Error - reduction pointer resolution failed at operation %u\n", i);
+                return false;
+            }
+
+            if (rec->kind == APIC_REDUCTION_SUM) {
+                if (rec->dtype == APIC_TYPE_FLOAT32)
+                    wp_array_sum_float_host(
+                        reinterpret_cast<uint64_t>(input_a), reinterpret_cast<uint64_t>(output),
+                        static_cast<int>(rec->count), rec->input_a_stride, rec->type_len
+                    );
+                else
+                    wp_array_sum_double_host(
+                        reinterpret_cast<uint64_t>(input_a), reinterpret_cast<uint64_t>(output),
+                        static_cast<int>(rec->count), rec->input_a_stride, rec->type_len
+                    );
+            } else {
+                if (rec->dtype == APIC_TYPE_FLOAT32)
+                    wp_array_inner_float_host(
+                        reinterpret_cast<uint64_t>(input_a), reinterpret_cast<uint64_t>(input_b),
+                        reinterpret_cast<uint64_t>(output), static_cast<int>(rec->count), rec->input_a_stride,
+                        rec->input_b_stride, rec->type_len
+                    );
+                else
+                    wp_array_inner_double_host(
+                        reinterpret_cast<uint64_t>(input_a), reinterpret_cast<uint64_t>(input_b),
+                        reinterpret_cast<uint64_t>(output), static_cast<int>(rec->count), rec->input_a_stride,
+                        rec->input_b_stride, rec->type_len
+                    );
             }
             break;
         }

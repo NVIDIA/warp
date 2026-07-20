@@ -55,6 +55,47 @@ inline size_t apic_strided_access_bytes(uint32_t length, int32_t stride, int32_t
     return static_cast<size_t>(length - 1) * static_cast<size_t>(stride) + static_cast<size_t>(type_len) * scalar_size;
 }
 
+inline size_t apic_reduction_input_bytes(uint32_t count, int32_t stride, int32_t type_len, size_t scalar_size)
+{
+    if (count == 0 || stride < 0 || type_len <= 0 || scalar_size == 0)
+        return 0;
+
+    size_t count_minus_one = static_cast<size_t>(count - 1);
+    size_t byte_stride = static_cast<size_t>(stride);
+    size_t lanes = static_cast<size_t>(type_len);
+    if ((byte_stride != 0 && count_minus_one > SIZE_MAX / byte_stride) || lanes > SIZE_MAX / scalar_size)
+        return 0;
+
+    size_t strided_bytes = count_minus_one * byte_stride;
+    size_t value_bytes = lanes * scalar_size;
+    if (strided_bytes > SIZE_MAX - value_bytes)
+        return 0;
+    return strided_bytes + value_bytes;
+}
+
+inline bool apic_reduction_metadata_valid(
+    uint64_t input_a,
+    uint64_t input_b,
+    uint64_t output,
+    int32_t count,
+    int32_t input_a_stride,
+    int32_t input_b_stride,
+    int32_t type_len,
+    uint8_t kind,
+    uint8_t dtype
+)
+{
+    bool is_sum = kind == APIC_REDUCTION_SUM;
+    bool is_inner = kind == APIC_REDUCTION_INNER;
+    size_t scalar_size = apic_type_size(dtype);
+    return (is_sum || is_inner) && scalar_size > 0 && count > 0 && type_len > 0 && input_a != 0 && output != 0
+        && input_a_stride >= 0 && input_a % scalar_size == 0 && output % scalar_size == 0
+        && input_a_stride % scalar_size == 0
+        && ((is_sum && input_b == 0 && input_b_stride == 0)
+            || (is_inner && input_b != 0 && input_b_stride >= 0 && input_b % scalar_size == 0
+                && input_b_stride % scalar_size == 0));
+}
+
 namespace apic_detail {
 
 constexpr size_t launch_bounds_align8(size_t offset) { return (offset + 7) & ~size_t(7); }
@@ -300,6 +341,22 @@ void apic_record_scan(
     int32_t type_len,
     uint8_t dtype,
     uint8_t inclusive
+);
+
+void apic_record_reduction(
+    APICState* state,
+    int32_t input_a_region_id,
+    uint64_t input_a_offset,
+    int32_t input_b_region_id,
+    uint64_t input_b_offset,
+    int32_t output_region_id,
+    uint64_t output_offset,
+    uint32_t count,
+    int32_t input_a_stride,
+    int32_t input_b_stride,
+    int32_t type_len,
+    uint8_t kind,
+    uint8_t dtype
 );
 
 // Records a wp.utils.segmented_sort_pairs() call. dtype is the key

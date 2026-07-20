@@ -3,6 +3,8 @@
 
 #include "warp.h"
 
+#include "apic.h"
+#include "apic_internal.h"
 #include "cuda_util.h"
 #include "temp_buffer.h"
 
@@ -274,10 +276,68 @@ void array_inner_device_dispatch(
 
 }  // anonymous namespace
 
+// Record metadata, then continue through CUB so its CUDA operations become
+// native graph nodes. Stream capture defers device execution until graph launch.
+static void apic_capture_reduction_device(
+    uint64_t input_a,
+    uint64_t input_b,
+    uint64_t output,
+    int count,
+    int input_a_stride,
+    int input_b_stride,
+    int type_len,
+    uint8_t kind,
+    uint8_t dtype
+)
+{
+    APICState* state = wp_apic_get_cuda_recording_state();
+    if (!state)
+        return;
+
+    if (!apic_reduction_metadata_valid(
+            input_a, input_b, output, count, input_a_stride, input_b_stride, type_len, kind, dtype
+        )) {
+        // Keep the native CUDA capture path running, but poison the APIC byte
+        // stream so malformed metadata cannot produce a loadable graph.
+        apic_record_reduction(
+            state, -1, 0, -1, 0, -1, 0, static_cast<uint32_t>(count), input_a_stride, input_b_stride, type_len, kind,
+            dtype
+        );
+        return;
+    }
+
+    size_t scalar_size = apic_type_size(dtype);
+    size_t input_a_bytes = apic_reduction_input_bytes(count, input_a_stride, type_len, scalar_size);
+    size_t input_b_bytes
+        = kind == APIC_REDUCTION_INNER ? apic_reduction_input_bytes(count, input_b_stride, type_len, scalar_size) : 0;
+    size_t output_bytes = kind == APIC_REDUCTION_SUM ? static_cast<size_t>(type_len) * scalar_size : scalar_size;
+    if (input_a_bytes == 0 || output_bytes == 0 || (kind == APIC_REDUCTION_INNER && input_b_bytes == 0)) {
+        apic_record_reduction(
+            state, -1, 0, -1, 0, -1, 0, static_cast<uint32_t>(count), input_a_stride, input_b_stride, type_len, kind,
+            dtype
+        );
+        return;
+    }
+
+    APICAddress input_a_addr = apic_resolve_live_ptr(state, input_a, input_a_bytes);
+    APICAddress input_b_addr
+        = kind == APIC_REDUCTION_INNER ? apic_resolve_live_ptr(state, input_b, input_b_bytes) : APICAddress { -1, 0 };
+    APICAddress output_addr = apic_resolve_live_ptr(state, output, output_bytes);
+    apic_record_reduction(
+        state, input_a_addr.region_id, input_a_addr.offset, input_b_addr.region_id, input_b_addr.offset,
+        output_addr.region_id, output_addr.offset, static_cast<uint32_t>(count), input_a_stride, input_b_stride,
+        type_len, kind, dtype
+    );
+}
+
 void wp_array_inner_float_device(
     uint64_t a, uint64_t b, uint64_t out, int count, int byte_stride_a, int byte_stride_b, int type_len
 )
 {
+    apic_capture_reduction_device(
+        a, b, out, count, byte_stride_a, byte_stride_b, type_len, APIC_REDUCTION_INNER, APIC_TYPE_FLOAT32
+    );
+
     void* context = wp_cuda_context_get_current();
 
     const float* ptr_a = (const float*)(a);
@@ -291,6 +351,10 @@ void wp_array_inner_double_device(
     uint64_t a, uint64_t b, uint64_t out, int count, int byte_stride_a, int byte_stride_b, int type_len
 )
 {
+    apic_capture_reduction_device(
+        a, b, out, count, byte_stride_a, byte_stride_b, type_len, APIC_REDUCTION_INNER, APIC_TYPE_FLOAT64
+    );
+
     const double* ptr_a = (const double*)(a);
     const double* ptr_b = (const double*)(b);
     double* ptr_out = (double*)(out);
@@ -300,6 +364,8 @@ void wp_array_inner_double_device(
 
 void wp_array_sum_float_device(uint64_t a, uint64_t out, int count, int byte_stride, int type_length)
 {
+    apic_capture_reduction_device(a, 0, out, count, byte_stride, 0, type_length, APIC_REDUCTION_SUM, APIC_TYPE_FLOAT32);
+
     const float* ptr_a = (const float*)(a);
     float* ptr_out = (float*)(out);
     array_sum_device_dispatch(ptr_a, ptr_out, count, byte_stride, type_length);
@@ -307,6 +373,8 @@ void wp_array_sum_float_device(uint64_t a, uint64_t out, int count, int byte_str
 
 void wp_array_sum_double_device(uint64_t a, uint64_t out, int count, int byte_stride, int type_length)
 {
+    apic_capture_reduction_device(a, 0, out, count, byte_stride, 0, type_length, APIC_REDUCTION_SUM, APIC_TYPE_FLOAT64);
+
     const double* ptr_a = (const double*)(a);
     double* ptr_out = (double*)(out);
     array_sum_device_dispatch(ptr_a, ptr_out, count, byte_stride, type_length);

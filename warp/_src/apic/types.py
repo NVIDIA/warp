@@ -25,6 +25,7 @@ APIC_OP_RADIX_SORT = 12
 APIC_OP_RUNLENGTH_ENCODE = 13
 APIC_OP_BSR_FROM_TRIPLETS = 14
 APIC_OP_BSR_TRANSPOSE = 15
+APIC_OP_REDUCTION = 16
 
 
 # Scalar element types (must match APICType in apic_types.h).

@@ -1865,6 +1865,8 @@ The operations recorded on CPU now cover most of the CUDA path:
   (:meth:`array.zero_() <warp.array.zero_>`), plus contiguous
   :meth:`array.fill_() <warp.array.fill_>`.
 - Host library helpers including
+  :func:`wp.utils.array_sum() <warp.utils.array_sum>`,
+  :func:`wp.utils.array_inner() <warp.utils.array_inner>`,
   :func:`wp.utils.array_scan() <warp.utils.array_scan>`,
   :func:`wp.utils.radix_sort_pairs() <warp.utils.radix_sort_pairs>`,
   :func:`wp.utils.segmented_sort_pairs() <warp.utils.segmented_sort_pairs>`,
@@ -1894,6 +1896,13 @@ Current limitations of CPU graph capture:
   (non-contiguous) 1D arrays -- into the CPU APIC byte stream. Negative strides raise
   :exc:`NotImplementedError` inside a CPU :class:`ScopedCapture`; run them outside the
   captured region.
+- :func:`wp.utils.array_sum() <warp.utils.array_sum>` and
+  :func:`wp.utils.array_inner() <warp.utils.array_inner>` require an explicit
+  ``out`` array for non-empty APIC captures. Explicit counts, composite dtypes,
+  and positive-stride axis reductions are recorded; negative strides raise
+  :exc:`NotImplementedError`, and negative counts raise :exc:`RuntimeError`.
+  Counts and reduction strides must fit a signed 32-bit integer, and participating
+  addresses and layout strides must be aligned to the reduction's scalar type.
 - :func:`wp.utils.runlength_encode() <warp.utils.runlength_encode>` requires an explicit
   ``run_count`` array during CPU APIC capture; the host-return form (``run_count=None``) raises
   :exc:`NotImplementedError`, because its capture-time host integer cannot represent the
@@ -1943,7 +1952,8 @@ Saving and Loading Graphs
     :func:`wp.capture_save() <warp.capture_save>` / :func:`wp.capture_load() <warp.capture_load>`
     surface, the C ``wp_apic_*`` API, and the recorded operation set are all
     subject to change without a formal deprecation cycle. ``.wrp`` files written
-    by one version of Warp may not be loadable by another.
+    by one version of Warp may not be loadable by another. The current writer
+    emits format version 15, and the reader accepts versions 13 through 15.
 
 API Capture lets you serialize a captured graph to disk and load it back later, either
 from another Python program, or from a standalone C++ application that links only
@@ -1964,14 +1974,25 @@ mechanism), and ``apic=True`` simply unlocks
 On CUDA, ``apic=True`` records the same extended operation set as the CPU path so saved
 graphs replay it from current inputs: kernel launches (forward, adjoint, and reusable
 ``record_cmd=True`` launches), contiguous same-device memory copies and memsets, contiguous
-:meth:`array.fill_() <warp.array.fill_>`, :func:`wp.utils.array_scan() <warp.utils.array_scan>`,
+:meth:`array.fill_() <warp.array.fill_>`,
+:func:`wp.utils.array_sum() <warp.utils.array_sum>`,
+:func:`wp.utils.array_inner() <warp.utils.array_inner>`,
+:func:`wp.utils.array_scan() <warp.utils.array_scan>`,
 :func:`wp.utils.radix_sort_pairs() <warp.utils.radix_sort_pairs>`,
 :func:`wp.utils.segmented_sort_pairs() <warp.utils.segmented_sort_pairs>`,
 :func:`wp.utils.runlength_encode() <warp.utils.runlength_encode>` (with an explicit
 ``run_count``), :func:`wp.sparse.bsr_set_transpose() <warp.sparse.bsr_set_transpose>`, and
 :func:`wp.capture_if() <warp.capture_if>` / :func:`wp.capture_while() <warp.capture_while>`
-conditionals. Unlike the CPU path (which records only), these still execute during capture so
-the driver also records them into the native CUDA graph.
+conditionals. Unlike the CPU path, CUDA host code for these reductions issues CUDA operations
+while native stream capture is active so the driver records native graph nodes. No GPU
+reduction executes during capture; GPU work begins only when the graph is launched.
+
+During a matching-device CUDA ``apic=True`` capture, non-empty calls to these reductions
+require an explicit ``out`` array. Explicit counts, composite dtypes, and positive-stride axis
+reductions are recorded. A negative count raises :exc:`RuntimeError` in that capture, and any
+negative input or output stride raises :exc:`NotImplementedError`, including for a zero-count
+call. Counts and reduction strides must fit a signed 32-bit integer, and participating
+addresses and layout strides must be aligned to the reduction's scalar type.
 
 A few operations cannot be captured for save/load on CUDA and raise
 :exc:`NotImplementedError` during an ``apic=True`` capture; build these outside the captured

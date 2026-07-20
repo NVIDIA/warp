@@ -10,7 +10,7 @@
 // APIC Format Constants
 // =============================================================================
 
-#define APIC_FORMAT_VERSION 14
+#define APIC_FORMAT_VERSION 15
 #define APIC_MIN_SUPPORTED_FORMAT_VERSION 13
 #define APIC_MAGIC "WRP1"
 #define APIC_MAGIC_VALUE 0x31505257  // "WRP1" as little-endian uint32
@@ -42,6 +42,12 @@ enum APICOpType : uint32_t {
     APIC_OP_RUNLENGTH_ENCODE = 13,  // wp.utils.runlength_encode
     APIC_OP_BSR_FROM_TRIPLETS = 14,  // wp_bsr_matrix_from_triplets_host
     APIC_OP_BSR_TRANSPOSE = 15,  // wp_bsr_transpose_host
+    APIC_OP_REDUCTION = 16,
+};
+
+enum APICReductionKind : uint8_t {
+    APIC_REDUCTION_SUM = 1,
+    APIC_REDUCTION_INNER = 2,
 };
 
 // Scalar element types
@@ -303,6 +309,24 @@ struct APICScanRecord {
     uint8_t inclusive;  // 1 = inclusive, 0 = exclusive
     uint8_t _pad[2];
 };
+
+struct APICReductionRecord {
+    APICOpHeader header;  // op_type = APIC_OP_REDUCTION
+    int32_t input_a_region_id;
+    int32_t input_b_region_id;  // -1 for APIC_REDUCTION_SUM
+    int32_t output_region_id;
+    uint32_t count;
+    uint64_t input_a_offset;
+    uint64_t input_b_offset;
+    uint64_t output_offset;
+    int32_t input_a_stride;
+    int32_t input_b_stride;  // 0 for APIC_REDUCTION_SUM
+    int32_t type_len;
+    uint8_t kind;  // APICReductionKind
+    uint8_t dtype;  // APICType: FLOAT32 or FLOAT64
+    uint8_t _pad[2];
+};  // 64 bytes
+static_assert(sizeof(APICReductionRecord) == 64, "APICReductionRecord must remain 64 bytes");
 
 // Segmented-sort op (fixed size). Records a wp.utils.segmented_sort_pairs()
 // call so replay re-sorts the current (replay-time) keys/values instead of
