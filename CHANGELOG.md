@@ -92,6 +92,12 @@
 - Fix kernel launches using stale deterministic launch metadata after switching a module's `deterministic` mode,
   which could execute consumed-return counter atomics twice or crash the process
   ([GH-1637](https://github.com/NVIDIA/warp/issues/1637)).
+- Fix incorrect code generation when an unrolled `range()` loop index is re-declared (for example, `i = int(0)`)
+  and reused as the induction variable of a later `while` or dynamic `for` loop
+- Fix incorrect code generation when an unrolled `range()` loop index is reused as the induction variable of a
+  later `while` or dynamic `for` loop; mutating the index now carries across iterations whether or not it is
+  first re-declared (for example, `i = int(0)`), instead of being silently dropped
+  ([GH-1534](https://github.com/NVIDIA/warp/issues/1534)).
 
 ### Documentation
 

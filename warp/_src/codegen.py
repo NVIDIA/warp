@@ -3612,15 +3612,19 @@ class Adjoint:
         # detect symbols with conflicting definitions (assigned inside the for loop)
         for items in symbols.items():
             sym = items[0]
-            if adj.is_constant_iter_symbol(sym):
-                # ignore constant overwriting in for-loops if it is a loop iterator
-                # (it is no problem to unroll static loops multiple times in sequence)
-                continue
-
             var1 = items[1]
             var2 = adj.symbols[sym]
 
             if var1 != var2:
+                # the `var1.constant is not None` half of this guard is load-bearing: a name
+                # re-declared as an ordinary variable (e.g. `i = int(0)`) has a non-constant
+                # loop-entry value, so it fails the test and is materialized below like any
+                # other mutated local; only a genuine leftover iterator constant is skipped.
+                if adj.is_constant_iter_symbol(sym) and var1.constant is not None:
+                    # ignore constant overwriting in for-loops if it is a loop iterator
+                    # (it is no problem to unroll static loops multiple times in sequence)
+                    continue
+
                 if not adj.custom_reverse_mode:
                     lineno = adj.lineno + adj.fun_lineno
                     line = adj.source_lines[adj.lineno]
@@ -3638,7 +3642,25 @@ class Adjoint:
                 # reset the symbol to point to the original variable
                 adj.symbols[sym] = var1
 
+    def _promote_mutated_iter_constants(adj, body):
+        # Before a dynamic loop, demote any leftover static-loop iterator constant that the
+        # loop body reassigns into a mutable local, so the mutation is carried across
+        # iterations (materialized) like a normal Python variable. Iterator constants the body
+        # only reads are left untouched, so compile-time uses such as `range(i)` still unroll.
+        # Nothing to promote unless an unrolled static loop has recorded an iterator constant;
+        # this early-out keeps the scan off the common path (loops with no preceding static loop).
+        if not adj.loop_const_iter_symbols:
+            return
+        mutated = {
+            n.id for stmt in body for n in ast.walk(stmt) if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Store)
+        }
+        for name in mutated:
+            var = adj.symbols.get(name)
+            if adj.is_constant_iter_symbol(name) and isinstance(var, Var) and var.constant is not None:
+                adj.symbols[name] = adj.add_builtin_call("copy", [var])
+
     def emit_While(adj, node):
+        adj._promote_mutated_iter_constants(node.body)
         adj.begin_while(node.test)
 
         adj.loop_symbols.append(adj.symbols.copy())
@@ -3814,6 +3836,7 @@ class Adjoint:
             else:
                 iter = adj.eval(node.iter)
 
+            adj._promote_mutated_iter_constants(node.body)
             adj.symbols[node.target.id] = adj.begin_for(iter)
 
             # for loops should be side-effect free, here we store a copy

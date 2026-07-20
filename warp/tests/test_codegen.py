@@ -779,6 +779,168 @@ def test_error_mutating_constant_in_dynamic_loop(test, device):
     assert_np_equal(mats.numpy(), np.zeros((1, 3, 3)))
 
 
+@wp.kernel
+def for_iter_reused_redeclared_while(out: wp.array[wp.int32]):
+    acc = int(0)
+    for i in range(2):
+        acc = acc + i
+    i = int(0)
+    while i < 3:
+        acc = acc + 10
+        i = i + 1
+    out[0] = acc
+
+
+@wp.kernel
+def for_iter_reused_different_name(out: wp.array[wp.int32]):
+    acc = int(0)
+    for i in range(2):
+        acc = acc + i
+    j = int(0)
+    while j < 3:
+        acc = acc + 10
+        j = j + 1
+    out[0] = acc
+
+
+@wp.kernel
+def for_iter_reused_bounded_while(out: wp.array[wp.int32]):
+    s = int(0)
+    for i in range(2):
+        s = s + i
+    i = int(0)
+    k = int(0)
+    while k < 3:
+        i = i + 1
+        k = k + 1
+    out[0] = i
+
+
+@wp.kernel
+def for_iter_reused_augassign(out: wp.array[wp.int32]):
+    s = int(0)
+    for i in range(2):
+        s = s + i
+    i = int(0)
+    k = int(0)
+    while k < 3:
+        i += 1
+        k += 1
+    out[0] = i
+
+
+@wp.kernel
+def for_iter_reused_dynamic_for(n: int, out: wp.array[wp.int32]):
+    acc = int(0)
+    for i in range(2):
+        acc = acc + i
+    for i in range(n):
+        acc = acc + i
+    out[0] = acc
+
+
+@wp.kernel
+def for_iter_reused_reassign_in_dynamic_loop(n: int, out: wp.array[wp.int32]):
+    acc = int(0)
+    for i in range(3):
+        acc = acc + i
+    for d in range(n):
+        i = d * 2
+        acc = acc + i
+    out[0] = acc
+
+
+@wp.kernel
+def for_iter_mutated_reuse_self_ref(out: wp.array[wp.int32]):
+    s = int(0)
+    for i in range(2):
+        s = s + i
+    k = int(0)
+    while k < 3:
+        i = i + 1
+        k = k + 1
+    out[0] = i
+
+
+@wp.kernel
+def for_iter_mutated_reuse_augassign(out: wp.array[wp.int32]):
+    s = int(0)
+    for i in range(2):
+        s = s + i
+    k = int(0)
+    while k < 3:
+        i += 1
+        k += 1
+    out[0] = i
+
+
+@wp.kernel
+def for_iter_mutated_reuse_indirect(out: wp.array[wp.int32]):
+    s = int(0)
+    for i in range(2):
+        s = s + i
+    k = int(0)
+    while k < 3:
+        tmp = i
+        i = tmp + 1
+        k = k + 1
+    out[0] = i
+
+
+def test_for_iter_reused_in_dynamic_loop(test, device):
+    """Verify that re-declaring a static-loop index makes it a loop-carried dynamic local.
+
+    A name previously used as an unrolled ``range()`` index must behave as an ordinary local
+    after it is re-declared. These kernels cover reuse as a ``while`` induction variable,
+    augmented assignment, reuse as a dynamic ``for`` index, and reassignment to a fresh
+    per-iteration value. A fresh-name control verifies the expected result independently.
+    """
+    out = wp.zeros(1, dtype=wp.int32, device=device)
+    wp.launch(for_iter_reused_redeclared_while, dim=1, inputs=[out], device=device)
+    assert_np_equal(out.numpy(), np.array([31], dtype=np.int32))
+
+    out = wp.zeros(1, dtype=wp.int32, device=device)
+    wp.launch(for_iter_reused_different_name, dim=1, inputs=[out], device=device)
+    assert_np_equal(out.numpy(), np.array([31], dtype=np.int32))
+
+    out = wp.zeros(1, dtype=wp.int32, device=device)
+    wp.launch(for_iter_reused_bounded_while, dim=1, inputs=[out], device=device)
+    assert_np_equal(out.numpy(), np.array([3], dtype=np.int32))
+
+    out = wp.zeros(1, dtype=wp.int32, device=device)
+    wp.launch(for_iter_reused_augassign, dim=1, inputs=[out], device=device)
+    assert_np_equal(out.numpy(), np.array([3], dtype=np.int32))
+
+    out = wp.zeros(1, dtype=wp.int32, device=device)
+    wp.launch(for_iter_reused_dynamic_for, dim=1, inputs=[3, out], device=device)
+    assert_np_equal(out.numpy(), np.array([4], dtype=np.int32))
+
+    out = wp.zeros(1, dtype=wp.int32, device=device)
+    wp.launch(for_iter_reused_reassign_in_dynamic_loop, dim=1, inputs=[3, out], device=device)
+    assert_np_equal(out.numpy(), np.array([9], dtype=np.int32))
+
+
+def test_for_iter_mutated_reuse_in_dynamic_loop(test, device):
+    """Verify that mutating a leaked static-loop index carries its value across dynamic-loop iterations.
+
+    Each kernel starts with the unrolled loop's leaked value of ``i == 1`` and increments
+    it three times using a separate loop counter, so the dynamic loop always terminates.
+    The direct, augmented-assignment, and temporary-mediated forms must all produce
+    ``i == 4``; without loop-carried materialization, they produce ``i == 2``.
+    """
+    out = wp.zeros(1, dtype=wp.int32, device=device)
+    wp.launch(for_iter_mutated_reuse_self_ref, dim=1, inputs=[out], device=device)
+    assert_np_equal(out.numpy(), np.array([4], dtype=np.int32))
+
+    out = wp.zeros(1, dtype=wp.int32, device=device)
+    wp.launch(for_iter_mutated_reuse_augassign, dim=1, inputs=[out], device=device)
+    assert_np_equal(out.numpy(), np.array([4], dtype=np.int32))
+
+    out = wp.zeros(1, dtype=wp.int32, device=device)
+    wp.launch(for_iter_mutated_reuse_indirect, dim=1, inputs=[out], device=device)
+    assert_np_equal(out.numpy(), np.array([4], dtype=np.int32))
+
+
 def test_error_return_annotation_mismatch(test, device):
     @wp.func
     def foo_1(x: wp.int32) -> wp.int16:
@@ -2181,6 +2343,18 @@ add_function_test(
     TestCodeGen,
     func=test_error_mutating_constant_in_dynamic_loop,
     name="test_error_mutating_constant_in_dynamic_loop",
+    devices=devices,
+)
+add_function_test(
+    TestCodeGen,
+    func=test_for_iter_reused_in_dynamic_loop,
+    name="test_for_iter_reused_in_dynamic_loop",
+    devices=devices,
+)
+add_function_test(
+    TestCodeGen,
+    func=test_for_iter_mutated_reuse_in_dynamic_loop,
+    name="test_for_iter_mutated_reuse_in_dynamic_loop",
     devices=devices,
 )
 add_function_test(
