@@ -49,6 +49,7 @@ if TYPE_CHECKING:
     from typing import ParamSpec
 
     from warp._src.apic.capture import APICapture
+    from warp._src.deterministic import DeterministicMeta
 else:
     try:
         from typing import ParamSpec
@@ -863,7 +864,15 @@ def call_builtin_from_desc(
 
 
 class KernelHooks:
-    def __init__(self, forward, backward, forward_smem_bytes=0, backward_smem_bytes=0, cluster_dim=1):
+    def __init__(
+        self,
+        forward,
+        backward,
+        forward_smem_bytes=0,
+        backward_smem_bytes=0,
+        cluster_dim=1,
+        det_launch_meta: DeterministicMeta | None = None,
+    ):
         self.forward = forward
         self.backward = backward
 
@@ -875,6 +884,10 @@ class KernelHooks:
         # the attribute, otherwise 1. Resolved once here so the launch hot path
         # reads a single attribute instead of recomputing it per call.
         self.cluster_dim = cluster_dim
+
+        # Launch metadata for this module variant; kernel.adj.det_meta is
+        # codegen scratch and may describe a different variant.
+        self.det_launch_meta = det_launch_meta
 
 
 # Hardware upper bound for the non-portable cluster range (9-16), valid on
@@ -3063,13 +3076,23 @@ class ModuleExec:
         instance.handle = None
         return instance
 
-    def __init__(self, handle, module_hash, device, meta, block_dim: int, compile_arch: int | None = None):
+    def __init__(
+        self,
+        handle,
+        module_hash,
+        device,
+        meta,
+        block_dim: int,
+        compile_arch: int | None = None,
+        det_launch_meta_map: dict[str, DeterministicMeta] | None = None,
+    ):
         self.handle = handle
         self.module_hash = module_hash
         self.device = device
         self.kernel_hooks = {}
         self.meta = meta
         self.block_dim = block_dim
+        self.det_launch_meta_map = det_launch_meta_map if det_launch_meta_map is not None else {}
         # Compute capability the loaded binary was actually compiled for (None for
         # CPU). Cluster classification must use this frozen target, not the current
         # global config, which can change after the module is loaded.
@@ -3176,6 +3199,7 @@ class ModuleExec:
                 forward_smem_bytes,
                 backward_smem_bytes,
                 cluster_dim=effective_cluster_dim,
+                det_launch_meta=self.det_launch_meta_map.get(name),
             )
 
         else:
@@ -3193,7 +3217,7 @@ class ModuleExec:
             else:
                 backward = None
 
-            hooks = KernelHooks(forward, backward)
+            hooks = KernelHooks(forward, backward, det_launch_meta=self.det_launch_meta_map.get(name))
 
         self.kernel_hooks[name] = hooks
         return hooks
@@ -3596,19 +3620,29 @@ class Module:
 
         return self.hashers[block_dim].get_hash()
 
-    def _refresh_deterministic_metadata_for_cache_hit(self, block_dim: int, options: dict) -> None:
-        """Repopulate ``det_meta`` after a CPU or CUDA cache hit without firing tile LTO compilation."""
+    def _snapshot_deterministic_metadata(
+        self, block_dim: int, options: dict, rebuild: bool
+    ) -> dict[str, DeterministicMeta]:
+        """Capture per-kernel launch metadata for the module variant being loaded, keyed by mangled name.
+
+        ``rebuild`` is False after a fresh compile, which already built the
+        adjoints with these options; ``output_arch=None`` avoids firing tile LTO.
+        """
         if options.get("deterministic") == warp.config.DeterministicMode.NOT_GUARANTEED:
-            return
+            return {}
 
         hasher = self.hashers.get(block_dim)
         if hasher is None:
-            return
+            return {}
 
         builder_options = options | {"output_arch": None}
+        snapshot = {}
         with _codegen_lock:
             for kernel in hasher.get_unique_kernels():
-                kernel.adj.build(None, builder_options)
+                if rebuild:
+                    kernel.adj.build(None, builder_options)
+                snapshot[kernel.get_mangled_name()] = kernel.adj.det_meta
+        return snapshot
 
     def _use_ptx(self, device) -> bool:
         return device.get_cuda_output_format(self.options.get("cuda_output")) == "ptx"
@@ -4074,8 +4108,7 @@ class Module:
 
                 module_load_timer.extra_msg = " (compiled)" if compiled else " (cached)"
 
-            if not compiled:
-                self._refresh_deterministic_metadata_for_cache_hit(active_block_dim, options)
+            det_launch_meta_map = self._snapshot_deterministic_metadata(active_block_dim, options, rebuild=not compiled)
 
             # -----------------------------------------------------------
             # Load CPU or CUDA binary
@@ -4099,13 +4132,17 @@ class Module:
                     != 0
                 ):
                     raise Exception(f"Failed to load CPU module '{self.name}' ({module_load_diagnostics})")
-                module_exec = ModuleExec(module_handle, module_hash, device, meta, active_block_dim, output_arch)
+                module_exec = ModuleExec(
+                    module_handle, module_hash, device, meta, active_block_dim, output_arch, det_launch_meta_map
+                )
                 self.execs[(None, active_block_dim)] = module_exec
 
             elif device.is_cuda:
                 cuda_module = warp._src.build.load_cuda(binary_path, device)
                 if cuda_module is not None:
-                    module_exec = ModuleExec(cuda_module, module_hash, device, meta, active_block_dim, output_arch)
+                    module_exec = ModuleExec(
+                        cuda_module, module_hash, device, meta, active_block_dim, output_arch, det_launch_meta_map
+                    )
                     self.execs[(device.context, active_block_dim)] = module_exec
                 else:
                     module_load_timer.extra_msg = " (error)"
@@ -10543,7 +10580,7 @@ def launch(
         # Deterministic mode: redirect to the launcher that supplies the hidden
         # deterministic buffers. Backward kernels use the same path so generated
         # tape adjoints can reduce gradient atomics in a fixed order.
-        det_meta = getattr(kernel.adj, "det_meta", None)
+        det_meta = hooks.det_launch_meta
         counter_replay_targets = getattr(det_meta, "counter_replay_targets", ())
         if adjoint and det_meta is not None and det_meta.needs_deterministic and counter_replay_targets:
             target_names = ", ".join(target.target_label for target in counter_replay_targets)

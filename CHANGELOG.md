@@ -89,6 +89,9 @@
   and a backward-enabled kernel in the same module.
 - Fix compilation failures when calling `warp.fem.lookup()` with double-precision (`wp.float64`) geometries
   ([GH-1660](https://github.com/NVIDIA/warp/issues/1660)).
+- Fix kernel launches using stale deterministic launch metadata after switching a module's `deterministic` mode,
+  which could execute consumed-return counter atomics twice or crash the process
+  ([GH-1637](https://github.com/NVIDIA/warp/issues/1637)).
 
 ### Documentation
 

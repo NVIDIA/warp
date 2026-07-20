@@ -15,7 +15,7 @@ import numpy as np
 import warp as wp
 import warp.tests.deterministic.test_deterministic_scatter as scatter_module
 from warp._src import deterministic as wp_deterministic
-from warp.tests.deterministic.common import DeterministicTestBase, all_devices, cpu_device
+from warp.tests.deterministic.common import DeterministicTestBase, all_devices, cpu_device, cuda_devices
 from warp.tests.deterministic.test_deterministic_scatter import loop_scatter_add_kernel
 from warp.tests.unittest_utils import add_function_test
 
@@ -86,6 +86,32 @@ def test_cpu_cache_hit_refreshes_deterministic_replay_metadata(test, device):
             0,
             msg=f"Cached CPU deterministic run failed:\nstdout:\n{second.stdout}\nstderr:\n{second.stderr}",
         )
+
+
+def test_cuda_mode_switch_uses_variant_metadata(test, device):
+    """Verify launches use the loaded variant's metadata across deterministic mode switches."""
+    command = [
+        sys.executable,
+        "-m",
+        "warp.tests.deterministic.aux_test_deterministic_cache_mode_switch",
+        device.alias,
+    ]
+
+    with tempfile.TemporaryDirectory(prefix="wp_det_cuda_cache_") as cache_dir:
+        env = os.environ.copy()
+        env["WARP_CACHE_PATH"] = cache_dir
+        env["PYTHONFAULTHANDLER"] = "1"
+
+        for cache_state in ("initial", "cached"):
+            result = subprocess.run(command, check=False, capture_output=True, text=True, env=env, timeout=120)
+            test.assertEqual(
+                result.returncode,
+                0,
+                msg=(
+                    f"{cache_state.capitalize()} CUDA mode-switch run failed:\n"
+                    f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+                ),
+            )
 
 
 def test_config_deterministic_max_records_default(test, device):
@@ -343,6 +369,7 @@ def _add(name, devices=all_devices):
 
 _add("test_metadata_refresh_struct_tile_stack", devices=[cpu_device])
 _add("test_cpu_cache_hit_refreshes_deterministic_replay_metadata", devices=[cpu_device])
+_add("test_cuda_mode_switch_uses_variant_metadata", devices=cuda_devices)
 _add("test_config_deterministic_max_records_default", devices=[cpu_device])
 _add("test_module_option_override")
 _add("test_deterministic_mode_validation", devices=[cpu_device])
