@@ -10,9 +10,7 @@ from warp.tests.unittest_utils import *
 
 
 @wp.kernel
-def pnoise(
-    kernel_seed: int, W: int, px: int, py: int, noise_values: wp.array(dtype=float), pixel_values: wp.array(dtype=float)
-):
+def pnoise(kernel_seed: int, W: int, px: int, py: int, noise_values: wp.array[float], pixel_values: wp.array[float]):
     tid = wp.tid()
 
     state = wp.rand_init(kernel_seed)
@@ -29,7 +27,7 @@ def pnoise(
 
 
 @wp.kernel
-def curlnoise(kernel_seed: int, W: int, noise_coords: wp.array(dtype=wp.vec2), noise_vectors: wp.array(dtype=wp.vec2)):
+def curlnoise(kernel_seed: int, W: int, noise_coords: wp.array[wp.vec2], noise_vectors: wp.array[wp.vec2]):
     tid = wp.tid()
 
     state = wp.rand_init(kernel_seed)
@@ -138,9 +136,9 @@ def test_curlnoise(test, device):
 @wp.kernel
 def noise_loss_kernel(
     kernel_seed: int,
-    query_positions: wp.array(dtype=wp.vec2),
-    noise_values: wp.array(dtype=float),
-    noise_loss: wp.array(dtype=float),
+    query_positions: wp.array[wp.vec2],
+    noise_values: wp.array[float],
+    noise_loss: wp.array[float],
 ):
     tid = wp.tid()
     state = wp.rand_init(kernel_seed)
@@ -154,7 +152,7 @@ def noise_loss_kernel(
 
 
 @wp.kernel
-def noise_cd(kernel_seed: int, query_positions: wp.array(dtype=wp.vec2), gradients: wp.array(dtype=wp.vec2)):
+def noise_cd(kernel_seed: int, query_positions: wp.array[wp.vec2], gradients: wp.array[wp.vec2]):
     tid = wp.tid()
     state = wp.rand_init(kernel_seed)
     p = query_positions[tid]
@@ -238,12 +236,12 @@ def test_adj_noise(test, device):
 @wp.kernel
 def curlnoise_2d_loss(
     seed: int,
-    xy: wp.array(dtype=wp.vec2),
+    xy: wp.array[wp.vec2],
     octaves: int,
     lac: float,
     gain: float,
     w: wp.vec2,
-    loss: wp.array(dtype=float),
+    loss: wp.array[float],
 ):
     tid = wp.tid()
     state = wp.rand_init(seed)
@@ -254,13 +252,13 @@ def curlnoise_2d_loss(
 @wp.kernel
 def curlnoise_2d_cd(
     seed: int,
-    xy: wp.array(dtype=wp.vec2),
+    xy: wp.array[wp.vec2],
     octaves: int,
     lac: float,
     gain: float,
     w: wp.vec2,
     eps: float,
-    grad: wp.array(dtype=wp.vec2),
+    grad: wp.array[wp.vec2],
 ):
     tid = wp.tid()
     state = wp.rand_init(seed)
@@ -313,12 +311,12 @@ def test_adj_curlnoise_2d(test, device):
 @wp.kernel
 def curlnoise_3d_loss(
     seed: int,
-    xyz: wp.array(dtype=wp.vec3),
+    xyz: wp.array[wp.vec3],
     octaves: int,
     lac: float,
     gain: float,
     w: wp.vec3,
-    loss: wp.array(dtype=float),
+    loss: wp.array[float],
 ):
     tid = wp.tid()
     state = wp.rand_init(seed)
@@ -329,13 +327,13 @@ def curlnoise_3d_loss(
 @wp.kernel
 def curlnoise_3d_cd(
     seed: int,
-    xyz: wp.array(dtype=wp.vec3),
+    xyz: wp.array[wp.vec3],
     octaves: int,
     lac: float,
     gain: float,
     w: wp.vec3,
     eps: float,
-    grad: wp.array(dtype=wp.vec3),
+    grad: wp.array[wp.vec3],
 ):
     tid = wp.tid()
     state = wp.rand_init(seed)
@@ -395,12 +393,12 @@ def test_adj_curlnoise_3d(test, device):
 @wp.kernel
 def curlnoise_4d_loss(
     seed: int,
-    xyzt: wp.array(dtype=wp.vec4),
+    xyzt: wp.array[wp.vec4],
     octaves: int,
     lac: float,
     gain: float,
     w: wp.vec3,
-    loss: wp.array(dtype=float),
+    loss: wp.array[float],
 ):
     tid = wp.tid()
     state = wp.rand_init(seed)
@@ -411,13 +409,13 @@ def curlnoise_4d_loss(
 @wp.kernel
 def curlnoise_4d_cd(
     seed: int,
-    xyzt: wp.array(dtype=wp.vec4),
+    xyzt: wp.array[wp.vec4],
     octaves: int,
     lac: float,
     gain: float,
     w: wp.vec3,
     eps: float,
-    grad: wp.array(dtype=wp.vec4),
+    grad: wp.array[wp.vec4],
 ):
     tid = wp.tid()
     state = wp.rand_init(seed)
@@ -560,12 +558,12 @@ def _noise_2d_gradient_ref(state: wp.uint32, x: float, y: float) -> wp.vec2:
 @wp.kernel
 def curlnoise_2d_reimpl_loss(
     seed: int,
-    xy: wp.array(dtype=wp.vec2),
+    xy: wp.array[wp.vec2],
     octaves: int,
     lac: float,
     gain: float,
     w: wp.vec2,
-    loss: wp.array(dtype=float),
+    loss: wp.array[float],
 ):
     tid = wp.tid()
     state = wp.rand_init(seed)

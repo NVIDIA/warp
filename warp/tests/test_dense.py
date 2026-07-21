@@ -14,29 +14,27 @@ def eval_dense_gemm(
     p: int,
     t1: int,
     t2: int,
-    A: wp.array(dtype=float),
-    B: wp.array(dtype=float),
-    C: wp.array(dtype=float),
+    A: wp.array[float],
+    B: wp.array[float],
+    C: wp.array[float],
 ):
     wp.dense_gemm(m, n, p, t1, t2, A, B, C)
 
 
 @wp.kernel
-def eval_dense_cholesky(n: int, A: wp.array(dtype=float), regularization: float, L: wp.array(dtype=float)):
+def eval_dense_cholesky(n: int, A: wp.array[float], regularization: float, L: wp.array[float]):
     wp.dense_chol(n, A, regularization, L)
 
 
 @wp.kernel
-def eval_dense_subs(n: int, L: wp.array(dtype=float), b: wp.array(dtype=float), x: wp.array(dtype=float)):
+def eval_dense_subs(n: int, L: wp.array[float], b: wp.array[float], x: wp.array[float]):
     wp.dense_subs(n, L, b, x)
 
 
 # helper that propagates gradients back to A, treating L as a constant / temporary variable
 # allows us to reuse the Cholesky decomposition from the forward pass
 @wp.kernel
-def eval_dense_solve(
-    n: int, A: wp.array(dtype=float), L: wp.array(dtype=float), b: wp.array(dtype=float), x: wp.array(dtype=float)
-):
+def eval_dense_solve(n: int, A: wp.array[float], L: wp.array[float], b: wp.array[float], x: wp.array[float]):
     wp.dense_solve(n, A, L, b, x)
 
 

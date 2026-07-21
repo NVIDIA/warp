@@ -11,7 +11,7 @@ from warp.tests.unittest_utils import *
 
 
 @wp.kernel
-def objective(params: wp.array(dtype=float), score: wp.array(dtype=float)):
+def objective(params: wp.array[float], score: wp.array[float]):
     tid = wp.tid()
     U = params[tid] * params[tid]
     wp.atomic_add(score, 0, U)
@@ -48,7 +48,7 @@ def test_adam_solve_float(test, device):
 
 
 @wp.kernel
-def objective_vec3(params: wp.array(dtype=wp.vec3), score: wp.array(dtype=float)):
+def objective_vec3(params: wp.array[wp.vec3], score: wp.array[float]):
     tid = wp.tid()
     U = wp.dot(params[tid], params[tid])
     wp.atomic_add(score, 0, U)
@@ -85,9 +85,7 @@ def test_adam_solve_vec3(test, device):
 
 
 @wp.kernel
-def objective_two_inputs_vec3(
-    params1: wp.array(dtype=wp.vec3), params2: wp.array(dtype=wp.vec3), score: wp.array(dtype=float)
-):
+def objective_two_inputs_vec3(params1: wp.array[wp.vec3], params2: wp.array[wp.vec3], score: wp.array[float]):
     tid = wp.tid()
     U = wp.dot(params1[tid], params1[tid])
     V = wp.dot(params2[tid], params2[tid])

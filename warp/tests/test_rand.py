@@ -12,12 +12,12 @@ from warp.tests.unittest_utils import *
 @wp.kernel
 def test_kernel(
     kernel_seed: int,
-    int_a: wp.array(dtype=int),
-    int_ab: wp.array(dtype=int),
-    uint_a: wp.array(dtype=wp.uint32),
-    uint_ab: wp.array(dtype=wp.uint32),
-    float_01: wp.array(dtype=float),
-    float_ab: wp.array(dtype=float),
+    int_a: wp.array[int],
+    int_ab: wp.array[int],
+    uint_a: wp.array[wp.uint32],
+    uint_ab: wp.array[wp.uint32],
+    float_01: wp.array[float],
+    float_ab: wp.array[float],
 ):
     tid = wp.tid()
 
@@ -113,7 +113,7 @@ def test_rand(test, device):
 
 @wp.kernel
 def randn_kernel(
-    x: wp.array(dtype=float),
+    x: wp.array[float],
 ):
     tid = wp.tid()
     r = wp.rand_init(tid)
@@ -152,7 +152,7 @@ def test_randn(test, device):
 
 
 @wp.kernel
-def sample_cdf_kernel(kernel_seed: int, cdf: wp.array(dtype=float), samples: wp.array(dtype=int)):
+def sample_cdf_kernel(kernel_seed: int, cdf: wp.array[float], samples: wp.array[int]):
     tid = wp.tid()
     state = wp.rand_init(kernel_seed, tid)
 
@@ -177,15 +177,15 @@ def test_sample_cdf(test, device):
 @wp.kernel
 def sampling_kernel(
     kernel_seed: int,
-    triangle_samples: wp.array(dtype=wp.vec2),
-    square_samples: wp.array(dtype=wp.vec2),
-    ring_samples: wp.array(dtype=wp.vec2),
-    disk_samples: wp.array(dtype=wp.vec2),
-    sphere_surface_samples: wp.array(dtype=wp.vec3),
-    sphere_samples: wp.array(dtype=wp.vec3),
-    hemisphere_surface_samples: wp.array(dtype=wp.vec3),
-    hemisphere_samples: wp.array(dtype=wp.vec3),
-    cube_samples: wp.array(dtype=wp.vec3),
+    triangle_samples: wp.array[wp.vec2],
+    square_samples: wp.array[wp.vec2],
+    ring_samples: wp.array[wp.vec2],
+    disk_samples: wp.array[wp.vec2],
+    sphere_surface_samples: wp.array[wp.vec3],
+    sphere_samples: wp.array[wp.vec3],
+    hemisphere_surface_samples: wp.array[wp.vec3],
+    hemisphere_samples: wp.array[wp.vec3],
+    cube_samples: wp.array[wp.vec3],
 ):
     tid = wp.tid()
     state = wp.rand_init(kernel_seed, tid)
@@ -260,7 +260,7 @@ def test_sampling_methods(test, device):
 
 @wp.kernel
 def sample_poisson_kernel(
-    kernel_seed: int, poisson_samples_low: wp.array(dtype=wp.uint32), poisson_samples_high: wp.array(dtype=wp.uint32)
+    kernel_seed: int, poisson_samples_low: wp.array[wp.uint32], poisson_samples_high: wp.array[wp.uint32]
 ):
     tid = wp.tid()
     state = wp.rand_init(kernel_seed, tid)
