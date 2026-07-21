@@ -3917,26 +3917,39 @@ class Adjoint:
         return var.constant
 
     def eval_const_slice(adj, node, length) -> tuple[int, int, int]:
-        """Evaluate a slice, returning its constant components."""
+        """Evaluate a slice, returning its constant (start, stop, step) components.
+
+        When ``length`` is known the bounds follow CPython ``slice.indices``
+        semantics exactly (negative-index wrapping and per-step clamping), so
+        downstream shape math matches NumPy for both positive and negative
+        steps. Without a known ``length`` the raw components are returned with
+        the usual open-ended defaults.
+        """
         step = 1 if node.step is None else adj.eval_const_slice_component(node.step)
         if step == 0:
             raise WarpCodegenValueError("Slice step cannot be zero.")
 
-        if node.lower is None:
-            start = length - 1 if step < 0 else 0
-        else:
-            start = adj.eval_const_slice_component(node.lower)
-            if length is not None:
-                start = min(max(start, -length), length)
-                start = start + length if start < 0 else start
+        if length is None:
+            start = adj.eval_const_slice_component(node.lower) if node.lower is not None else (0 if step > 0 else None)
+            stop = (
+                adj.eval_const_slice_component(node.upper) if node.upper is not None else (length if step > 0 else -1)
+            )
+            return (start, stop, step)
 
-        if node.upper is None:
-            stop = -1 if step < 0 else length
-        else:
-            stop = adj.eval_const_slice_component(node.upper)
-            if length is not None:
-                stop = min(max(stop, -length), length)
-                stop = stop + length if stop < 0 else stop
+        # CPython slice.indices() clamp bounds: [0, length] for a positive step,
+        # [-1, length-1] for a negative step (so a reversed slice can reach index 0).
+        lower, upper = (0, length) if step > 0 else (-1, length - 1)
+
+        def resolve(component, default):
+            if component is None:
+                return default
+            value = adj.eval_const_slice_component(component)
+            if value < 0:
+                return max(value + length, lower)
+            return min(value, upper)
+
+        start = resolve(node.lower, lower if step > 0 else upper)
+        stop = resolve(node.upper, upper if step > 0 else lower)
 
         return (start, stop, step)
 
@@ -4202,6 +4215,44 @@ class Adjoint:
 
         return out
 
+    @staticmethod
+    def tile_index_kinds(indices):
+        """Classify evaluated tile subscript ``indices`` for dispatch.
+
+        Returns ``(has_slice, has_index_tile)`` so the read, assign, and
+        augmented-assign paths route tile subscripts identically.
+        """
+        index_types = [strip_reference(x.type) for x in indices]
+        has_slice = any(warp._src.types.is_slice(t) for t in index_types)
+        has_index_tile = any(is_tile(t) for t in index_types)
+        return has_slice, has_index_tile
+
+    def resolve_tile_int_index(adj, idx, shape, dim):
+        """Wrap and bounds-check a compile-time-constant integer tile index.
+
+        Integer indices into a tile collapse their dimension and contribute the
+        view origin along that axis. NumPy-style negative indices are wrapped
+        against the axis length, and out-of-range constant indices are rejected
+        at code-gen time. Runtime (non-constant) indices and index tiles pass
+        through unchanged (runtime bounds are only checked in debug builds).
+        """
+        idx_type = strip_reference(idx.type)
+        if not isinstance(idx, Var) or idx.constant is None:
+            return idx
+        if not warp._src.types.type_is_int(idx_type):
+            return idx
+        if dim >= len(shape):
+            return idx
+
+        length = shape[dim]
+        value = idx.constant
+        wrapped = value + length if value < 0 else value
+        if wrapped < 0 or wrapped >= length:
+            raise WarpCodegenValueError(f"Tile index {value} is out of bounds for axis {dim} with size {length}.")
+        if wrapped == value:
+            return idx
+        return adj.add_constant(wrapped)
+
     def eval_indices(adj, target_type, indices):
         nodes = indices
         if type_is_composite(target_type):
@@ -4217,6 +4268,23 @@ class Adjoint:
                     indices.append(slice)
                 else:
                     indices.append(adj.eval(node))
+
+            return tuple(indices)
+        elif is_tile(target_type):
+            # Tile slicing follows the same compile-time-constant rule as composite
+            # types: the resulting view shape must be known at code-gen time so the
+            # native tile type can be instantiated. Non-slice indices (integers for
+            # element/row access, or index tiles for fancy indexing) are evaluated
+            # normally.
+            indices = []
+            for dim, node in enumerate(nodes):
+                if isinstance(node, ast.Slice):
+                    length = target_type.shape[dim]
+                    bounds = adj.eval_const_slice(node, length)
+                    slice = adj.add_builtin_call("slice", bounds)
+                    indices.append(slice)
+                else:
+                    indices.append(adj.resolve_tile_int_index(adj.eval(node), target_type.shape, dim))
 
             return tuple(indices)
         else:
@@ -4274,11 +4342,22 @@ class Adjoint:
                     out.is_write = target.is_write
 
         elif is_tile(target_type):
-            if len(indices) >= len(target_type.shape):  # equality for scalars, inequality for composite types
+            has_slice, has_index_tile = adj.tile_index_kinds(indices)
+
+            if has_index_tile:
+                # fancy indexing, e.g.: t[indices, :] gathers the rows/planes selected
+                # by an integer index tile along a single axis
+                out = adj.add_builtin_call("tile_slice_indexed", [target, indices])
+            elif has_slice:
+                # slice syntax, e.g.: t[a:b, :] / t[::2, :] / t[5, :]. Integer indices
+                # that co-occur with a slice collapse their dimension (NumPy semantics)
+                # and are handled inside tile_view.
+                out = adj.add_builtin_call("tile_view", [target, indices])
+            elif len(indices) >= len(target_type.shape):  # equality for scalars, inequality for composite types
                 # handles extracting a single element from a tile
                 out = adj.add_builtin_call("tile_extract", [target, *indices])
             elif len(indices) < len(target_type.shape):
-                # handles tile views
+                # handles tile views (fewer integer indices than dimensions)
                 out = adj.add_builtin_call("tile_view", [target, indices])
             else:
                 raise RuntimeError(
@@ -4832,7 +4911,42 @@ class Adjoint:
             adj._mark_array_write(target)
 
         elif is_tile(target_type):
-            adj.add_builtin_call("assign", [target, *indices, rhs])
+            has_slice, has_index_tile = adj.tile_index_kinds(indices)
+
+            if has_index_tile:
+                # fancy-index assignment (t[indices, :] = src) is not supported: a
+                # scatter with duplicate indices is ambiguous. Users should build the
+                # result explicitly instead.
+                raise WarpCodegenError(
+                    "Fancy-index assignment on tiles (e.g. `t[indices, :] = src`) is not supported. "
+                    "Use slice assignment (`t[a:b, :] = src`) or construct the tile explicitly."
+                )
+            elif has_slice:
+                # slice assignment, e.g.: t[a:b, :] = src. Build a view over the
+                # destination sub-range (handles offsets, strides, and dimension
+                # collapse) and assign the source into it in place.
+                rhs_type = strip_reference(rhs.type)
+                if not is_tile(rhs_type):
+                    # A non-tile rhs (scalar, vector, matrix, ...) would fall through
+                    # to tile_assign with no matching overload; broadcasting into a
+                    # slice is not supported.
+                    raise WarpCodegenError(
+                        f"Tile slice assignment requires a tile of matching shape on the right-hand side "
+                        f"(e.g. `t[a:b, :] = src`), but got a value of type {rhs_type.__name__}."
+                    )
+                view = adj.add_builtin_call("tile_view", [target, indices])
+                view_type = strip_reference(view.type)
+                if tuple(view_type.shape) != tuple(rhs_type.shape):
+                    # NumPy requires the assigned value to match the destination
+                    # slice exactly; a mismatched source would otherwise write
+                    # outside the slice (silent corruption or out-of-bounds).
+                    raise WarpCodegenError(
+                        f"Tile slice assignment shape mismatch: destination slice has shape "
+                        f"{tuple(view_type.shape)} but source has shape {tuple(rhs_type.shape)}."
+                    )
+                adj.add_builtin_call("tile_assign", [view, rhs])
+            else:
+                adj.add_builtin_call("assign", [target, *indices, rhs])
 
         elif (
             type_is_vector(target_type)
@@ -5237,6 +5351,17 @@ class Adjoint:
                     return
 
             elif is_tile(target.type):
+                has_slice, has_index_tile = adj.tile_index_kinds(indices)
+                # In-place tile ops operate element-wise on whole-tile coordinates,
+                # so any subscript that produces a view — a slice, an index tile, or
+                # fewer integer indices than dimensions (e.g. a row) — has no in-place
+                # read path. Reject it with a clear message instead of an opaque
+                # overload error.
+                if has_slice or has_index_tile or len(indices) < len(target.type.shape):
+                    raise WarpCodegenError(
+                        "Compound assignment to a tile view (e.g. `t[a:b, :] += x` or `t[i] += x`) is not "
+                        "supported. Read the view, update it, and assign it back explicitly."
+                    )
                 if isinstance(node.op, ast.Add):
                     adj.add_builtin_call("tile_add_inplace", [target, *indices, rhs])
                 elif isinstance(node.op, ast.Sub):

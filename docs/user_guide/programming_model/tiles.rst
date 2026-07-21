@@ -263,6 +263,54 @@ Load/Store
 * :func:`tile_scatter_add <warp._src.lang.tile_scatter_add>`
 * :func:`tile_scatter_masked <warp._src.lang.tile_scatter_masked>`
 
+Indexing and Slicing
+^^^^^^^^^^^^^^^^^^^^^
+
+Tiles support NumPy-style indexing and slicing. Slice bounds must be compile-time
+constants so the resulting tile shape is known during code generation.
+
+.. code-block:: python
+
+    @wp.kernel
+    def process(data: wp.array2d(dtype=float)):
+        t = wp.tile_load(data, shape=(64, 64))
+
+        row = t[5, :]           # a single row, shape (64,)
+        block = t[10:20, :]     # rows 10..19, shape (10, 64)
+        cols = t[:, 0:32]       # first 32 columns, shape (64, 32)
+        strided = t[::2, ::2]   # every other element, shape (32, 32)
+        reversed = t[::-1, :]   # rows in reverse order, shape (64, 64)
+
+        # slice assignment writes a source tile into a sub-range in place
+        t[0:8, :] = wp.tile_ones(shape=(8, 64), dtype=float)
+
+Basic slicing produces a view that aliases the source tile's memory (compiling down
+to :func:`tile_view <warp._src.lang.tile_view>`), so an integer index collapses that
+dimension just as it does in NumPy. Slicing is fully differentiable.
+
+Negative indices are wrapped like NumPy (``t[-1, :]`` is the last row) only when the
+index is a compile-time constant. A runtime integer index (e.g. one computed from
+``wp.tid()``) must be non-negative and in bounds; like other tile operations, a
+runtime index is bounds-checked only in debug builds.
+
+Fancy indexing gathers elements along a single axis using a 1D integer index tile,
+returning a new (non-aliasing) register tile:
+
+.. code-block:: python
+
+    @wp.kernel
+    def gather(data: wp.array2d(dtype=float)):
+        t = wp.tile_load(data, shape=(64, 64))
+
+        indices = wp.tile_arange(0, 8, dtype=int) * 8   # [0, 8, 16, ..., 56]
+        selected_rows = t[indices, :]                   # shape (8, 64)
+
+Index values must be within bounds for the gathered axis: like other tile
+operations, the gather (and its gradient scatter) validates indices only in debug
+builds, so an out-of-range value reads or writes out of bounds in release builds.
+Duplicate indices are supported and accumulate their gradients atomically on the
+backward pass.
+
 Maps/Reductions
 ^^^^^^^^^^^^^^^
 

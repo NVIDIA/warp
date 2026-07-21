@@ -5354,6 +5354,47 @@ inline CUDA_CALLABLE auto tile_view(Tile& t, Indices... indices)
 }
 
 
+// Gather along a single axis: out[..., k, ...] = src[..., indices[k], ...].
+// `indices` is a 1D tile of integers whose length equals the output extent along
+// `axis`. The result is a register tile (a fresh copy, not an alias of `src`).
+template <unsigned... Shape, typename Tile, typename IndicesTile>
+inline CUDA_CALLABLE auto tile_slice_indexed(Tile& src, IndicesTile& indices, int axis)
+{
+    using T = typename Tile::Type;
+    auto out = tile_register_t<T, tile_layout_register_t<tile_shape_t<Shape...>>>();
+
+    out.apply([&](int reg, auto c) {
+        auto sc = c;
+        sc.indices[axis] = indices.data(c[axis]);
+        out.data[reg] = src.data(sc);
+    });
+
+    return out;
+}
+
+template <unsigned... Shape, typename Tile, typename IndicesTile, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_slice_indexed(
+    Tile& src, IndicesTile& indices, int axis, Tile& adj_src, IndicesTile& adj_indices, int adj_axis, AdjTile& adj_ret
+)
+{
+    // scatter gradients from the gathered result back onto the selected source
+    // rows; multiple output rows may map to the same source row (duplicate
+    // indices) so the accumulation must be atomic
+    if (src.grad.ptr == nullptr)
+        return;
+
+    auto adj_ret_reg = adj_ret.grad_to_register();
+
+    adj_ret_reg.apply([&](int reg, auto c) {
+        auto sc = c;
+        sc.indices[axis] = indices.data(c[axis]);
+        tile_adj_atomic_add_value(&src.grad(sc), adj_ret_reg.data[reg]);
+    });
+
+    WP_TILE_SYNC();
+}
+
+
 template <typename ReturnTile, typename Tile> inline CUDA_CALLABLE auto tile_squeeze(Tile& t)
 {
     // ReturnTile layout is set in builtins.py

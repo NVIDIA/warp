@@ -286,6 +286,301 @@ def test_tile_view_non_dense_store(test, device):
     assert_np_equal(dst.numpy(), expected)
 
 
+# ---------------------------------------------------------------------------
+# NumPy-style slicing (GH-1176)
+# ---------------------------------------------------------------------------
+
+
+@wp.kernel
+def tile_slice_rows_kernel(src: wp.array2d(dtype=float), dst: wp.array2d(dtype=float)):
+    t = wp.tile_load(src, shape=(TILE_M, TILE_N))
+    wp.tile_store(dst, t[4:12, :])
+
+
+@wp.kernel
+def tile_slice_cols_kernel(src: wp.array2d(dtype=float), dst: wp.array2d(dtype=float)):
+    t = wp.tile_load(src, shape=(TILE_M, TILE_N))
+    wp.tile_store(dst, t[:, 8:24])
+
+
+@wp.kernel
+def tile_slice_strided_kernel(src: wp.array2d(dtype=float), dst: wp.array2d(dtype=float)):
+    t = wp.tile_load(src, shape=(TILE_M, TILE_N))
+    wp.tile_store(dst, t[::2, ::2])
+
+
+@wp.kernel
+def tile_slice_reverse_kernel(src: wp.array2d(dtype=float), dst: wp.array2d(dtype=float)):
+    t = wp.tile_load(src, shape=(TILE_M, TILE_N))
+    wp.tile_store(dst, t[::-1, :])
+
+
+@wp.kernel
+def tile_slice_row_collapse_kernel(src: wp.array2d(dtype=float), dst: wp.array1d(dtype=float)):
+    t = wp.tile_load(src, shape=(TILE_M, TILE_N))
+    wp.tile_store(dst, t[5, :])
+
+
+@wp.kernel
+def tile_slice_assign_kernel(src: wp.array2d(dtype=float), dst: wp.array2d(dtype=float)):
+    t = wp.tile_load(src, shape=(TILE_M, TILE_N))
+    ones = wp.tile_ones(shape=(4, TILE_N), dtype=float)
+    t[0:4, :] = ones
+    wp.tile_store(dst, t)
+
+
+@wp.kernel
+def tile_fancy_index_kernel(src: wp.array2d(dtype=float), dst: wp.array2d(dtype=float)):
+    t = wp.tile_load(src, shape=(TILE_M, TILE_N))
+    idx = wp.tile_arange(0, 8, dtype=int) * 2  # [0, 2, 4, ..., 14]
+    wp.tile_store(dst, t[idx, :])
+
+
+@wp.kernel
+def tile_fancy_index_dup_kernel(src: wp.array2d(dtype=float), idx: wp.array1d(dtype=int), dst: wp.array2d(dtype=float)):
+    t = wp.tile_load(src, shape=(TILE_M, TILE_N))
+    i = wp.tile_load(idx, shape=8)
+    wp.tile_store(dst, t[i, :])
+
+
+@wp.kernel
+def tile_slice_assign_grad_kernel(
+    src: wp.array2d(dtype=float), val: wp.array2d(dtype=float), dst: wp.array2d(dtype=float)
+):
+    t = wp.tile_load(src, shape=(TILE_M, TILE_N))
+    v = wp.tile_load(val, shape=(4, TILE_N))
+    t[0:4, :] = v
+    wp.tile_store(dst, t)
+
+
+@wp.kernel
+def tile_slice_neg_index_kernel(src: wp.array2d(dtype=float), dst: wp.array1d(dtype=float)):
+    t = wp.tile_load(src, shape=(TILE_M, TILE_N))
+    wp.tile_store(dst, t[-1, :])  # NumPy negative index: last row
+
+
+@wp.kernel
+def tile_slice_neg_step_oob_kernel(src: wp.array2d(dtype=float), dst: wp.array2d(dtype=float)):
+    t = wp.tile_load(src, shape=(TILE_M, TILE_N))
+    wp.tile_store(dst, t[100::-1, :])  # out-of-range start clamps to the full reverse
+
+
+@wp.kernel
+def tile_slice_neg_stop_kernel(src: wp.array2d(dtype=float), dst: wp.array2d(dtype=float)):
+    t = wp.tile_load(src, shape=(TILE_M, TILE_N))
+    wp.tile_store(dst, t[7:-100:-1, :])  # out-of-range negative stop must still include row 0
+
+
+def _check_slice(test, device, kernel, np_index, out_shape, check_grad=True):
+    """Launch ``kernel`` (which slices a (TILE_M, TILE_N) tile with ``np_index``)
+    and compare against NumPy, including a gradient check by default."""
+    rng = np.random.default_rng(42)
+    src_np = rng.random((TILE_M, TILE_N), dtype=np.float32)
+
+    src = wp.array(src_np, dtype=float, requires_grad=True, device=device)
+    dst = wp.zeros(out_shape, dtype=float, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(kernel, dim=[1], inputs=[src, dst], block_dim=32, device=device)
+
+    assert_np_equal(dst.numpy(), src_np[np_index], tol=1e-6)
+
+    if not check_grad:
+        return
+
+    adj_np = rng.random(out_shape, dtype=np.float32)
+    dst.grad = wp.array(adj_np, dtype=float, device=device)
+    tape.backward()
+
+    expected_grad = np.zeros_like(src_np)
+    expected_grad[np_index] = adj_np
+    assert_np_equal(src.grad.numpy(), expected_grad, tol=1e-6)
+
+
+def test_tile_slice_rows(test, device):
+    _check_slice(test, device, tile_slice_rows_kernel, np.s_[4:12, :], (8, TILE_N))
+
+
+def test_tile_slice_cols(test, device):
+    _check_slice(test, device, tile_slice_cols_kernel, np.s_[:, 8:24], (TILE_M, 16))
+
+
+def test_tile_slice_strided(test, device):
+    _check_slice(test, device, tile_slice_strided_kernel, np.s_[::2, ::2], (TILE_M // 2, TILE_N // 2))
+
+
+def test_tile_slice_reverse(test, device):
+    _check_slice(test, device, tile_slice_reverse_kernel, np.s_[::-1, :], (TILE_M, TILE_N))
+
+
+def test_tile_slice_row_collapse(test, device):
+    _check_slice(test, device, tile_slice_row_collapse_kernel, np.s_[5, :], (TILE_N,))
+
+
+def test_tile_slice_assign(test, device):
+    rng = np.random.default_rng(42)
+    src_np = rng.random((TILE_M, TILE_N), dtype=np.float32)
+
+    src = wp.array(src_np, dtype=float, device=device)
+    dst = wp.zeros((TILE_M, TILE_N), dtype=float, device=device)
+
+    wp.launch_tiled(tile_slice_assign_kernel, dim=[1], inputs=[src, dst], block_dim=32, device=device)
+
+    expected = src_np.copy()
+    expected[0:4, :] = 1.0
+    assert_np_equal(dst.numpy(), expected, tol=1e-6)
+
+
+def test_tile_fancy_index(test, device):
+    idx = np.arange(0, 8) * 2
+    _check_slice(test, device, tile_fancy_index_kernel, np.s_[idx, :], (8, TILE_N))
+
+
+def test_tile_fancy_index_duplicate_grad(test, device):
+    # Duplicate indices must accumulate their gradients (atomic scatter). The
+    # generic _check_slice reference assigns rather than accumulates, so this
+    # case needs an np.add.at reference of its own.
+    rng = np.random.default_rng(42)
+    src_np = rng.random((TILE_M, TILE_N), dtype=np.float32)
+    idx_np = np.array([0, 0, 3, 3, 5, 5, 7, 7], dtype=np.int32)
+
+    src = wp.array(src_np, dtype=float, requires_grad=True, device=device)
+    idx = wp.array(idx_np, dtype=int, device=device)
+    dst = wp.zeros((8, TILE_N), dtype=float, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(tile_fancy_index_dup_kernel, dim=[1], inputs=[src, idx, dst], block_dim=32, device=device)
+
+    assert_np_equal(dst.numpy(), src_np[idx_np], tol=1e-6)
+
+    adj_np = rng.random((8, TILE_N), dtype=np.float32)
+    dst.grad = wp.array(adj_np, dtype=float, device=device)
+    tape.backward()
+
+    expected_grad = np.zeros_like(src_np)
+    np.add.at(expected_grad, idx_np, adj_np)  # accumulate contributions from repeated rows
+    assert_np_equal(src.grad.numpy(), expected_grad, tol=1e-6)
+
+
+def test_tile_slice_assign_grad(test, device):
+    # Slice assignment must route gradients correctly: the overwritten region flows
+    # to the assigned source, and the untouched region passes through to the base.
+    rng = np.random.default_rng(42)
+    src_np = rng.random((TILE_M, TILE_N), dtype=np.float32)
+    val_np = rng.random((4, TILE_N), dtype=np.float32)
+
+    src = wp.array(src_np, dtype=float, requires_grad=True, device=device)
+    val = wp.array(val_np, dtype=float, requires_grad=True, device=device)
+    dst = wp.zeros((TILE_M, TILE_N), dtype=float, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(tile_slice_assign_grad_kernel, dim=[1], inputs=[src, val, dst], block_dim=32, device=device)
+
+    expected = src_np.copy()
+    expected[0:4, :] = val_np
+    assert_np_equal(dst.numpy(), expected, tol=1e-6)
+
+    adj_np = rng.random((TILE_M, TILE_N), dtype=np.float32)
+    dst.grad = wp.array(adj_np, dtype=float, device=device)
+    tape.backward()
+
+    # rows 0:4 are overwritten by val, so they contribute no gradient to src
+    expected_src_grad = adj_np.copy()
+    expected_src_grad[0:4, :] = 0.0
+    assert_np_equal(src.grad.numpy(), expected_src_grad, tol=1e-6)
+    assert_np_equal(val.grad.numpy(), adj_np[0:4, :], tol=1e-6)
+
+
+def test_tile_slice_neg_index(test, device):
+    # A negative integer index must wrap like NumPy (last row), not read out of bounds.
+    _check_slice(test, device, tile_slice_neg_index_kernel, np.s_[-1, :], (TILE_N,))
+
+
+def test_tile_slice_neg_step_oob_start(test, device):
+    # An out-of-range start with a negative step clamps to length-1 (full reverse).
+    _check_slice(test, device, tile_slice_neg_step_oob_kernel, np.s_[100::-1, :], (TILE_M, TILE_N))
+
+
+def test_tile_slice_neg_stop(test, device):
+    # An out-of-range negative stop with a negative step must still reach row 0.
+    _check_slice(test, device, tile_slice_neg_stop_kernel, np.s_[7:-100:-1, :], (8, TILE_N))
+
+
+def test_tile_fancy_index_float_rejected(test, device):
+    def kernel_fn():
+        t = wp.tile_ones(shape=(TILE_M, TILE_N), dtype=float)
+        idx = wp.tile_arange(0.0, 8.0, 1.0, dtype=float)  # non-integer index tile
+        rows = t[idx, :]
+
+    kernel = wp.Kernel(func=kernel_fn)
+    with test.assertRaisesRegex((RuntimeError, ValueError), r"integer index tile"):
+        wp.launch_tiled(kernel, dim=[1], inputs=[], block_dim=32, device=device)
+
+
+def test_tile_slice_scalar_assign_rejected(test, device):
+    def kernel_fn():
+        t = wp.tile_zeros(shape=(TILE_M, TILE_N), dtype=float)
+        t[0:4, :] = 1.0  # scalar broadcast into a slice is not supported
+
+    kernel = wp.Kernel(func=kernel_fn)
+    with test.assertRaisesRegex((RuntimeError, ValueError), r"requires a tile of matching shape"):
+        wp.launch_tiled(kernel, dim=[1], inputs=[], block_dim=32, device=device)
+
+
+def test_tile_slice_augassign_rejected(test, device):
+    def kernel_fn():
+        t = wp.tile_ones(shape=(TILE_M, TILE_N), dtype=float)
+        v = wp.tile_ones(shape=(4, TILE_N), dtype=float)
+        t[0:4, :] += v  # compound assignment to a slice is not supported
+
+    kernel = wp.Kernel(func=kernel_fn)
+    with test.assertRaisesRegex((RuntimeError, ValueError), r"Compound assignment to a tile view"):
+        wp.launch_tiled(kernel, dim=[1], inputs=[], block_dim=32, device=device)
+
+
+def test_tile_row_augassign_rejected(test, device):
+    # A partial integer index (a row view) has no in-place path either.
+    def kernel_fn():
+        t = wp.tile_ones(shape=(TILE_M, TILE_N), dtype=float)
+        v = wp.tile_ones(shape=(TILE_N,), dtype=float)
+        t[0] += v  # compound assignment to a row view is not supported
+
+    kernel = wp.Kernel(func=kernel_fn)
+    with test.assertRaisesRegex((RuntimeError, ValueError), r"Compound assignment to a tile view"):
+        wp.launch_tiled(kernel, dim=[1], inputs=[], block_dim=32, device=device)
+
+
+def test_tile_slice_assign_shape_mismatch(test, device):
+    def kernel_fn():
+        t = wp.tile_zeros(shape=(TILE_M, TILE_N), dtype=float)
+        src = wp.tile_ones(shape=(5, TILE_N), dtype=float)  # 5 rows into a 4-row slice
+        t[0:4, :] = src
+
+    kernel = wp.Kernel(func=kernel_fn)
+    with test.assertRaisesRegex((RuntimeError, ValueError), r"shape mismatch|does not fit"):
+        wp.launch_tiled(kernel, dim=[1], inputs=[], block_dim=32, device=device)
+
+
+def test_tile_index_out_of_bounds(test, device):
+    def kernel_fn():
+        t = wp.tile_ones(shape=(TILE_M, TILE_N), dtype=float)
+        row = t[100, :]  # constant out-of-range integer index
+
+    kernel = wp.Kernel(func=kernel_fn)
+    with test.assertRaisesRegex((RuntimeError, ValueError), r"out of bounds"):
+        wp.launch_tiled(kernel, dim=[1], inputs=[], block_dim=32, device=device)
+
+
+def test_tile_slice_empty_rejected(test, device):
+    def kernel_fn():
+        t = wp.tile_ones(shape=(TILE_M, TILE_N), dtype=float)
+        empty = t[4:4, :]  # zero-length axis
+
+    kernel = wp.Kernel(func=kernel_fn)
+    with test.assertRaisesRegex((RuntimeError, ValueError), r"empty tile|zero-length"):
+        wp.launch_tiled(kernel, dim=[1], inputs=[], block_dim=32, device=device)
+
+
 devices = get_test_devices()
 
 
@@ -316,6 +611,37 @@ add_function_test(
     test_tile_view_non_dense_store,
     devices=devices,
 )
+add_function_test(TestTileView, "test_tile_slice_rows", test_tile_slice_rows, devices=devices)
+add_function_test(TestTileView, "test_tile_slice_cols", test_tile_slice_cols, devices=devices)
+add_function_test(TestTileView, "test_tile_slice_strided", test_tile_slice_strided, devices=devices)
+add_function_test(TestTileView, "test_tile_slice_reverse", test_tile_slice_reverse, devices=devices)
+add_function_test(TestTileView, "test_tile_slice_row_collapse", test_tile_slice_row_collapse, devices=devices)
+add_function_test(TestTileView, "test_tile_slice_assign", test_tile_slice_assign, devices=devices)
+add_function_test(TestTileView, "test_tile_fancy_index", test_tile_fancy_index, devices=devices)
+add_function_test(
+    TestTileView, "test_tile_fancy_index_duplicate_grad", test_tile_fancy_index_duplicate_grad, devices=devices
+)
+add_function_test(TestTileView, "test_tile_slice_assign_grad", test_tile_slice_assign_grad, devices=devices)
+add_function_test(TestTileView, "test_tile_slice_neg_index", test_tile_slice_neg_index, devices=devices)
+add_function_test(
+    TestTileView, "test_tile_slice_neg_step_oob_start", test_tile_slice_neg_step_oob_start, devices=devices
+)
+add_function_test(
+    TestTileView, "test_tile_slice_assign_shape_mismatch", test_tile_slice_assign_shape_mismatch, devices=devices
+)
+add_function_test(TestTileView, "test_tile_index_out_of_bounds", test_tile_index_out_of_bounds, devices=devices)
+add_function_test(TestTileView, "test_tile_slice_empty_rejected", test_tile_slice_empty_rejected, devices=devices)
+add_function_test(TestTileView, "test_tile_slice_neg_stop", test_tile_slice_neg_stop, devices=devices)
+add_function_test(
+    TestTileView, "test_tile_fancy_index_float_rejected", test_tile_fancy_index_float_rejected, devices=devices
+)
+add_function_test(
+    TestTileView, "test_tile_slice_scalar_assign_rejected", test_tile_slice_scalar_assign_rejected, devices=devices
+)
+add_function_test(
+    TestTileView, "test_tile_slice_augassign_rejected", test_tile_slice_augassign_rejected, devices=devices
+)
+add_function_test(TestTileView, "test_tile_row_augassign_rejected", test_tile_row_augassign_rejected, devices=devices)
 
 
 if __name__ == "__main__":

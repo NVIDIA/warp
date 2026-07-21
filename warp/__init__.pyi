@@ -3196,11 +3196,7 @@ def tile_atomic_add_indexed(
                 [20. 22. 24. 26.]]"""
     ...
 
-def tile_view(
-    t: Tile[Any, tuple[int, ...]],
-    offset: tuple[int, ...],
-    shape: tuple[int, ...],
-) -> Tile[Any, tuple[int, ...]]:
+def tile_view(t: Tile[Any, tuple[int, ...]], offset: tuple, shape: tuple[int, ...]) -> Tile[Any, tuple[int, ...]]:
     """Extract a slice of a given tile [offset, offset+shape], if shape is not specified it will be inferred from the unspecified offset dimensions.
 
     Args:
@@ -3210,6 +3206,20 @@ def tile_view(
 
     Returns:
         A tile with dimensions given by the specified shape or the remaining source tile dimensions."""
+    ...
+
+def tile_slice_indexed(t: Tile[Any, tuple[int, ...]], indices: tuple) -> Tile[Any, tuple[int, ...]]:
+    """Gather elements of a tile along a single axis using a 1D tile of integer indices.
+
+    This lowers the fancy-indexing syntax ``t[indices, :]``, selecting rows (or planes)
+    of ``t`` given by ``indices`` along one axis. All other axes must be selected in full.
+
+    Args:
+        t: Input tile to gather from
+        indices: A 1D tile of integer indices selecting elements along one axis
+
+    Returns:
+        A register tile whose extent along the indexed axis equals the number of indices."""
     ...
 
 def tile_squeeze(t: Tile[Any, tuple[int, ...]], axis: tuple[int, ...]) -> Tile[Any, tuple[int, ...]]:
