@@ -26,6 +26,8 @@
   ([GH-1378](https://github.com/NVIDIA/warp/issues/1378))
 - **Experimental:** Record `wp.utils.array_sum()` and `wp.utils.array_inner()` in APIC capture so saved and replayed
   graphs recompute them from current inputs on CPU and CUDA ([GH-1663](https://github.com/NVIDIA/warp/issues/1663)).
+- Add CPU support for `wp.jax_kernel()` and `wp.jax_callable()` FFI calls, with automatic dispatch between CPU and
+  CUDA based on the device selected by JAX ([GH-1661](https://github.com/NVIDIA/warp/issues/1661)).
 
 ### Removed
 

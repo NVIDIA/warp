@@ -314,15 +314,19 @@ jobs:
           - os: windows-2025
             platform: windows
             artifact-name: build-artifact-windows-cuda12
+            jax-extra: jax>=0.5
           - os: ubuntu-24.04
             platform: ubuntu-x86_64
             artifact-name: build-artifact-ubuntu-x86_64-cuda13
+            jax-extra: jax[cuda13]>=0.5
           - os: ubuntu-24.04-arm
             platform: ubuntu-aarch64
             artifact-name: build-artifact-ubuntu-aarch64-cuda13
+            jax-extra: jax[cuda13]>=0.5
           - os: macos-latest
             platform: macos
             artifact-name: build-artifact-macos
+            jax-extra: jax>=0.5
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
@@ -345,7 +349,7 @@ jobs:
           path: warp/bin/
       
       - name: Run Tests
-        run: uv run --extra dev -m warp.tests --junit-report-xml rspec.xml -s autodetect
+        run: uv run --extra dev --with "${{ matrix.jax-extra }}" -m warp.tests --junit-report-xml rspec.xml -s autodetect
       
       - name: Test Summary
         uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86  # v2.4

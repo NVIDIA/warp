@@ -46,6 +46,29 @@ Warp kernels can be used as JAX primitives, which allows calling them inside of 
 
 
 
+Device Selection
+^^^^^^^^^^^^^^^^
+
+JAX selects an FFI implementation based on the device used to lower the call.
+The same wrapper works on CPU and CUDA without a Warp device argument. Warp
+wraps XLA buffers without copying them.
+
+For example, when JAX exposes both CPU and CUDA devices and Warp includes CUDA
+support, the same jitted function can run on either device::
+
+    import numpy as np
+
+    jax_triple = wp.jax_kernel(triple_kernel)
+
+    @jax.jit
+    def f(x):
+        return jax_triple(x)[0]
+
+    x = np.arange(64, dtype=np.float32)
+    cpu_result = f(jax.device_put(x, jax.devices("cpu")[0]))
+    cuda_result = f(jax.device_put(x, jax.devices("cuda")[0]))
+
+
 Input and Output Semantics
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -664,13 +687,17 @@ just focus on the differences:
   ``JaxCallableGraphMode.JAX`` (default) lets JAX capture the graph, which may be used as a subgraph in an enclosing capture for maximal benefit.
   ``JaxCallableGraphMode.WARP`` lets Warp capture the graph. Use this mode when the callable cannot be used as a subgraph, such as when the callable uses conditional graph nodes.
   ``JaxCallableGraphMode.NONE`` disables graph capture. Use this mode if the callable performs operations that are not allowed during graph capture, such as host synchronization.
+  On CPU, ``JaxCallableGraphMode.JAX`` and ``JaxCallableGraphMode.NONE`` run
+  without graph capture. The Warp graph modes require CUDA and raise an error
+  on CPU.
   When using ``JaxCallableGraphMode.WARP``, captured graphs are cached for reuse. Use ``graph_cache_max`` to limit the
   number of cached graphs, and call :func:`clear_jax_callable_graph_cache() <warp.clear_jax_callable_graph_cache>` to
   release cached graph memory for one callable or all registered JAX callables.
 - :func:`jax_kernel() <warp.jax_kernel>` and :func:`jax_callable() <warp.jax_callable>` take an optional
-  ``module_preload_mode`` argument. ``JaxModulePreloadMode.CURRENT_DEVICE`` (default) preloads the module on the
-  current JAX device, ``JaxModulePreloadMode.ALL_DEVICES`` preloads on all local JAX devices that map to CUDA devices,
-  and ``JaxModulePreloadMode.NONE`` disables preloading.
+  ``module_preload_mode`` argument. The default, ``JaxModulePreloadMode.CURRENT_DEVICE``, preloads the module on the
+  current JAX device. ``JaxModulePreloadMode.ALL_DEVICES`` preloads it on the host CPU and every supported local CUDA
+  device. ``JaxModulePreloadMode.NONE`` disables preloading. Preloading skips JAX devices that Warp cannot map. The
+  callback loads the module for the device on which it runs. Warp still raises any module-loading errors.
 
 See `example_jax_callable.py <https://github.com/NVIDIA/warp/blob/main/warp/examples/interop/example_jax_callable.py>`_ for examples.
 

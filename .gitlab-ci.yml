@@ -418,7 +418,7 @@ linux-aarch64 test:
     - df -h
     - !reference [.snippets, move-linux-aarch64-binaries]
   script:
-    - uv run --extra dev --with rmm-cu12 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
+    - uv run --extra dev --with "jax[cuda12]>=0.5" --with rmm-cu12 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
 
 linux-aarch64 cuda 13 test:
   image: $UV_TRIXIE_SLIM_ARM_IMAGE
@@ -430,7 +430,7 @@ linux-aarch64 cuda 13 test:
     - df -h
     - !reference [.snippets, move-linux-aarch64-binaries]
   script:
-    - uv run --extra dev --with rmm-cu13 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
+    - uv run --extra dev --with "jax[cuda13]>=0.5" --with rmm-cu13 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
 
 linux-aarch64 test orin:
   needs: [linux-aarch64 build]
@@ -525,7 +525,7 @@ linux-x86_64 test:
     # HACK: disable P2P tests due to misbehaving agents
     - export WARP_DISABLE_P2P_TESTS=1
   script:
-    - uv run --extra dev --extra torch-cu12 --with "jax[cuda12]" --with rmm-cu12 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
+    - uv run --extra dev --extra torch-cu12 --with "jax[cuda12]>=0.5" --with rmm-cu12 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
 
 linux-x86_64 cuda 13 test:
   needs: [linux-x86_64 cuda 13 build]
@@ -541,7 +541,7 @@ linux-x86_64 cuda 13 test:
     # HACK: disable P2P tests due to misbehaving agents
     - export WARP_DISABLE_P2P_TESTS=1
   script:
-    - uv run --extra dev --extra torch-cu13 --with "jax[cuda13]" --with rmm-cu13 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
+    - uv run --extra dev --extra torch-cu13 --with "jax[cuda13]>=0.5" --with rmm-cu13 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
 
 # A temporary job for testing on Blackwell until more runners are available
 linux-x86_64-blackwell test:
@@ -553,7 +553,7 @@ linux-x86_64-blackwell test:
     - df -h
     - !reference [.snippets, move-linux-x86_64-binaries]
   script:
-    - uv run --extra dev --extra torch-cu13 --with "jax[cuda13]" --with rmm-cu13 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
+    - uv run --extra dev --extra torch-cu13 --with "jax[cuda13]>=0.5" --with rmm-cu13 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
   tags:
     - arch/x86_64
     - gpu/B40
@@ -620,7 +620,7 @@ windows-x86_64 test:
     # Locking usd-core to 25.5.1 to work around a frequent loading crash
     - |
       $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
-      uv run --extra dev --extra torch-cu12 --with usd-core==25.5.1 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
+      uv run --extra dev --extra torch-cu12 --with "jax>=0.5" --with usd-core==25.5.1 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
 
 windows-x86_64 cuda 13 test:
   stage: test
@@ -639,7 +639,7 @@ windows-x86_64 cuda 13 test:
     # Locking usd-core to 25.5.1 to work around a frequent loading crash
     - |
       $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
-      uv run --extra dev --extra torch-cu13 --with usd-core==25.5.1 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
+      uv run --extra dev --extra torch-cu13 --with "jax>=0.5" --with usd-core==25.5.1 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
 
 windows-x86_64-blackwell test:
   stage: test
