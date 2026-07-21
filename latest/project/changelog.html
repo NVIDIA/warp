@@ -540,6 +540,8 @@ context (<a class="reference external" href="https://github.com/NVIDIA/warp/issu
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1378">GH-1378</a>)</p></li>
 <li><p><strong>Experimental:</strong> Record <code class="docutils literal notranslate"><span class="pre">wp.utils.array_sum()</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.utils.array_inner()</span></code> in APIC capture so saved and replayed
 graphs recompute them from current inputs on CPU and CUDA (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1663">GH-1663</a>).</p></li>
+<li><p>Add CPU support for <code class="docutils literal notranslate"><span class="pre">wp.jax_kernel()</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.jax_callable()</span></code> FFI calls, with automatic dispatch between CPU and
+CUDA based on the device selected by JAX (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1661">GH-1661</a>).</p></li>
 </ul>
 </section>
 <section id="removed">

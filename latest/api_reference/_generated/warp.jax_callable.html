@@ -534,7 +534,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">has_side_effect</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/jax/ffi.py#L1542-L1639"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.jax_callable" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/jax/ffi.py#L1663-L1770"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.jax_callable" title="Link to this definition">#</a></dt>
 <dd><p>Create a JAX callback from an annotated Python function.</p>
 <p>The Python function arguments must have type annotations like Warp kernels.</p>
 <p>NOTE: This is an experimental feature under development.</p>
@@ -549,7 +549,10 @@ This must include the number of <code class="docutils literal notranslate"><span
 <code class="docutils literal notranslate"><span class="pre">JaxCallableGraphMode.WARP</span></code>: Let Warp capture the graph. Use this mode when the callable cannot be used as a subgraph,
 such as when the callable uses conditional graph nodes.
 <code class="docutils literal notranslate"><span class="pre">JaxCallableGraphMode.NONE</span></code>: Disable graph capture. Use when the callable performs operations that are not legal in a graph,
-such as host synchronization.</p></li>
+such as host synchronization.
+On CPU, <code class="docutils literal notranslate"><span class="pre">JaxCallableGraphMode.NONE</span></code> and <code class="docutils literal notranslate"><span class="pre">JaxCallableGraphMode.JAX</span></code>
+both execute without graph capture. The <code class="docutils literal notranslate"><span class="pre">WARP</span></code>, <code class="docutils literal notranslate"><span class="pre">WARP_STAGED</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">WARP_STAGED_EX</span></code> modes require CUDA.</p></li>
 <li><p><strong>vmap_method</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> | </em><em>None</em>) – String specifying how the callback transforms under <code class="docutils literal notranslate"><span class="pre">vmap()</span></code>.
 This argument can also be specified for individual calls.</p></li>
 <li><p><strong>output_dims</strong> – Specify the default dimensions of output arrays.
@@ -564,7 +567,12 @@ If <code class="docutils literal notranslate"><span class="pre">None</span></cod
 If <code class="docutils literal notranslate"><span class="pre">None</span></code>, copy all output arguments.</p></li>
 <li><p><strong>graph_cache_max</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Maximum number of cached graphs captured using <code class="docutils literal notranslate"><span class="pre">JaxCallableGraphMode.WARP</span></code>.
 If <code class="docutils literal notranslate"><span class="pre">None</span></code>, the graph cache is unlimited.</p></li>
-<li><p><strong>module_preload_mode</strong> (<a class="reference internal" href="warp.JaxModulePreloadMode.html#warp.JaxModulePreloadMode" title="warp._src.jax.ffi.JaxModulePreloadMode"><em>JaxModulePreloadMode</em></a>) – Specify the devices where the module should be preloaded.</p></li>
+<li><p><strong>module_preload_mode</strong> (<a class="reference internal" href="warp.JaxModulePreloadMode.html#warp.JaxModulePreloadMode" title="warp._src.jax.ffi.JaxModulePreloadMode"><em>JaxModulePreloadMode</em></a>) – Specify the devices where the module should be preloaded.
+<code class="docutils literal notranslate"><span class="pre">JaxModulePreloadMode.ALL_DEVICES</span></code> includes the host CPU and all
+supported local CUDA devices. Preloading is best-effort: JAX devices
+that cannot be mapped to Warp are skipped, and execution loads the
+module for the callback’s actual device. Module loading errors are
+not suppressed.</p></li>
 <li><p><strong>has_side_effect</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether the custom call has side effects. When True,
 the FFI call will be executed even when the outputs are not used.</p></li>
 </ul>
@@ -576,7 +584,8 @@ the FFI call will be executed even when the outputs are not used.</p></li>
 <li><p>Scalars must be static arguments in JAX.</p></li>
 <li><p>Input and input-output arguments must precede the output arguments in the <code class="docutils literal notranslate"><span class="pre">func</span></code> definition.</p></li>
 <li><p>There must be at least one output or input-output argument.</p></li>
-<li><p>Only the CUDA backend is supported.</p></li>
+<li><p>The CPU and CUDA backends are supported. JAX selects the backend from the
+lowered computation’s device.</p></li>
 </ul>
 </dd>
 </dl>

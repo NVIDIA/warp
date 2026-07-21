@@ -532,7 +532,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">has_side_effect</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/jax/ffi.py#L1168-L1540"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.jax_kernel" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/jax/ffi.py#L1283-L1661"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.jax_kernel" title="Link to this definition">#</a></dt>
 <dd><p>Create a JAX callback from a Warp kernel.</p>
 <p>NOTE: This is an experimental feature under development.</p>
 <dl class="field-list simple">
@@ -557,7 +557,12 @@ Not supported when <code class="docutils literal notranslate"><span class="pre">
 These must be array arguments that appear before any pure output arguments in the
 kernel signature. The number of in-out arguments is included in <code class="docutils literal notranslate"><span class="pre">num_outputs</span></code>.
 Not supported when <code class="docutils literal notranslate"><span class="pre">enable_backward=True</span></code>.</p></li>
-<li><p><strong>module_preload_mode</strong> – Specify the devices where the module should be preloaded.</p></li>
+<li><p><strong>module_preload_mode</strong> – Specify the devices where the module should be preloaded.
+<code class="docutils literal notranslate"><span class="pre">JaxModulePreloadMode.ALL_DEVICES</span></code> includes the host CPU and all
+supported local CUDA devices. Preloading is best-effort: JAX devices
+that cannot be mapped to Warp are skipped, and execution loads the
+module for the callback’s actual device. Module loading errors are
+not suppressed.</p></li>
 <li><p><strong>enable_backward</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Enable automatic differentiation for this kernel.</p></li>
 <li><p><strong>has_side_effect</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether the custom call has side effects. When True,
 the FFI call will be executed even when the outputs are not used.</p></li>
@@ -570,7 +575,8 @@ the FFI call will be executed even when the outputs are not used.</p></li>
 <li><p>Scalars must be static arguments in JAX.</p></li>
 <li><p>Input and input-output arguments must precede the output arguments in the <code class="docutils literal notranslate"><span class="pre">kernel</span></code> definition.</p></li>
 <li><p>There must be at least one output or input-output argument.</p></li>
-<li><p>Only the CUDA backend is supported.</p></li>
+<li><p>The CPU and CUDA backends are supported. JAX selects the backend from the
+lowered computation’s device.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">output_dims</span></code> and <code class="docutils literal notranslate"><span class="pre">in_out_argnames</span></code> are not supported when <code class="docutils literal notranslate"><span class="pre">enable_backward=True</span></code>.</p></li>
 </ul>
 </dd>

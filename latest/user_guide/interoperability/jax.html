@@ -552,6 +552,27 @@ Internally these use the DLPack protocol to exchange data in a zero-copy way wit
 <span class="nb">print</span><span class="p">(</span><span class="n">f</span><span class="p">())</span>
 </pre></div>
 </div>
+<section id="device-selection">
+<h3>Device Selection<a class="headerlink" href="#device-selection" title="Link to this heading">#</a></h3>
+<p>JAX selects an FFI implementation based on the device used to lower the call.
+The same wrapper works on CPU and CUDA without a Warp device argument. Warp
+wraps XLA buffers without copying them.</p>
+<p>For example, when JAX exposes both CPU and CUDA devices and Warp includes CUDA
+support, the same jitted function can run on either device:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="n">jax_triple</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">jax_kernel</span><span class="p">(</span><span class="n">triple_kernel</span><span class="p">)</span>
+
+<span class="nd">@jax</span><span class="o">.</span><span class="n">jit</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">f</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">jax_triple</span><span class="p">(</span><span class="n">x</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+<span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">64</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="n">cpu_result</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">jax</span><span class="o">.</span><span class="n">device_put</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">jax</span><span class="o">.</span><span class="n">devices</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]))</span>
+<span class="n">cuda_result</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">jax</span><span class="o">.</span><span class="n">device_put</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">jax</span><span class="o">.</span><span class="n">devices</span><span class="p">(</span><span class="s2">&quot;cuda&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]))</span>
+</pre></div>
+</div>
+</section>
 <section id="input-and-output-semantics">
 <h3>Input and Output Semantics<a class="headerlink" href="#input-and-output-semantics" title="Link to this heading">#</a></h3>
 <p>Input arguments must come before output arguments in the kernel definition.
@@ -1137,13 +1158,17 @@ Graphs are generally desirable, since they can greatly improve the application p
 <code class="docutils literal notranslate"><span class="pre">JaxCallableGraphMode.JAX</span></code> (default) lets JAX capture the graph, which may be used as a subgraph in an enclosing capture for maximal benefit.
 <code class="docutils literal notranslate"><span class="pre">JaxCallableGraphMode.WARP</span></code> lets Warp capture the graph. Use this mode when the callable cannot be used as a subgraph, such as when the callable uses conditional graph nodes.
 <code class="docutils literal notranslate"><span class="pre">JaxCallableGraphMode.NONE</span></code> disables graph capture. Use this mode if the callable performs operations that are not allowed during graph capture, such as host synchronization.
+On CPU, <code class="docutils literal notranslate"><span class="pre">JaxCallableGraphMode.JAX</span></code> and <code class="docutils literal notranslate"><span class="pre">JaxCallableGraphMode.NONE</span></code> run
+without graph capture. The Warp graph modes require CUDA and raise an error
+on CPU.
 When using <code class="docutils literal notranslate"><span class="pre">JaxCallableGraphMode.WARP</span></code>, captured graphs are cached for reuse. Use <code class="docutils literal notranslate"><span class="pre">graph_cache_max</span></code> to limit the
 number of cached graphs, and call <a class="reference internal" href="../../api_reference/_generated/warp.clear_jax_callable_graph_cache.html#warp.clear_jax_callable_graph_cache" title="warp.clear_jax_callable_graph_cache"><code class="xref py py-func docutils literal notranslate"><span class="pre">clear_jax_callable_graph_cache()</span></code></a> to
 release cached graph memory for one callable or all registered JAX callables.</p></li>
 <li><p><a class="reference internal" href="../../api_reference/_generated/warp.jax_kernel.html#warp.jax_kernel" title="warp.jax_kernel"><code class="xref py py-func docutils literal notranslate"><span class="pre">jax_kernel()</span></code></a> and <a class="reference internal" href="../../api_reference/_generated/warp.jax_callable.html#warp.jax_callable" title="warp.jax_callable"><code class="xref py py-func docutils literal notranslate"><span class="pre">jax_callable()</span></code></a> take an optional
-<code class="docutils literal notranslate"><span class="pre">module_preload_mode</span></code> argument. <code class="docutils literal notranslate"><span class="pre">JaxModulePreloadMode.CURRENT_DEVICE</span></code> (default) preloads the module on the
-current JAX device, <code class="docutils literal notranslate"><span class="pre">JaxModulePreloadMode.ALL_DEVICES</span></code> preloads on all local JAX devices that map to CUDA devices,
-and <code class="docutils literal notranslate"><span class="pre">JaxModulePreloadMode.NONE</span></code> disables preloading.</p></li>
+<code class="docutils literal notranslate"><span class="pre">module_preload_mode</span></code> argument. The default, <code class="docutils literal notranslate"><span class="pre">JaxModulePreloadMode.CURRENT_DEVICE</span></code>, preloads the module on the
+current JAX device. <code class="docutils literal notranslate"><span class="pre">JaxModulePreloadMode.ALL_DEVICES</span></code> preloads it on the host CPU and every supported local CUDA
+device. <code class="docutils literal notranslate"><span class="pre">JaxModulePreloadMode.NONE</span></code> disables preloading. Preloading skips JAX devices that Warp cannot map. The
+callback loads the module for the device on which it runs. Warp still raises any module-loading errors.</p></li>
 </ul>
 <p>See <a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/examples/interop/example_jax_callable.py">example_jax_callable.py</a> for examples.</p>
 </section>
@@ -1312,6 +1337,7 @@ Once Open MPI is installed, you can use <code class="docutils literal notranslat
     <ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#introduction">Introduction</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#using-warp-kernels-as-jax-primitives">Using Warp Kernels as JAX Primitives</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#device-selection">Device Selection</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#input-and-output-semantics">Input and Output Semantics</a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#scalar-inputs">Scalar Inputs</a></li>
 </ul>
