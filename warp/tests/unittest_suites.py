@@ -261,6 +261,10 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.tile.test_tile_fused_ops import TestTileFusedOps
     from warp.tests.tile.test_tile_large_offsets import TestTileLargeOffsets
     from warp.tests.tile.test_tile_load import TestTileLoad
+    from warp.tests.tile.test_tile_load_assign import TestTileLoadAssign
+    from warp.tests.tile.test_tile_load_extract import TestTileLoadExtract
+    from warp.tests.tile.test_tile_load_indexed import TestTileLoadIndexed
+    from warp.tests.tile.test_tile_load_vectorized import TestTileLoadVectorized
     from warp.tests.tile.test_tile_mathdx import TestTileMathDx
     from warp.tests.tile.test_tile_matmul import TestTileMatmul
     from warp.tests.tile.test_tile_matmul_no_mathdx import TestTileMatmulNoMathDx
@@ -421,6 +425,10 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestTileFusedOps,
         TestTileLargeOffsets,
         TestTileLoad,
+        TestTileLoadAssign,
+        TestTileLoadExtract,
+        TestTileLoadIndexed,
+        TestTileLoadVectorized,
         TestTileMathDx,
         TestTileMatmul,
         TestTileMatmulNoMathDx,
