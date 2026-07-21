@@ -623,6 +623,8 @@ and reused as the induction variable of a later <code class="docutils literal no
 later <code class="docutils literal notranslate"><span class="pre">while</span></code> or dynamic <code class="docutils literal notranslate"><span class="pre">for</span></code> loop; mutating the index now carries across iterations whether or not it is
 first re-declared (for example, <code class="docutils literal notranslate"><span class="pre">i</span> <span class="pre">=</span> <span class="pre">int(0)</span></code>), instead of being silently dropped
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1534">GH-1534</a>).</p></li>
+<li><p>Fix Python-scope calls to user-defined <code class="docutils literal notranslate"><span class="pre">&#64;wp.func</span></code> functions with <code class="docutils literal notranslate"><span class="pre">wp.Function</span></code> parameters, which previously rejected
+Warp function targets during argument type inference (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1648">GH-1648</a>).</p></li>
 </ul>
 </section>
 <section id="documentation">
