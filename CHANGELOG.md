@@ -102,6 +102,8 @@
   later `while` or dynamic `for` loop; mutating the index now carries across iterations whether or not it is
   first re-declared (for example, `i = int(0)`), instead of being silently dropped
   ([GH-1534](https://github.com/NVIDIA/warp/issues/1534)).
+- Fix Python-scope calls to user-defined `@wp.func` functions with `wp.Function` parameters, which previously rejected
+  Warp function targets during argument type inference ([GH-1648](https://github.com/NVIDIA/warp/issues/1648)).
 
 ### Documentation
 

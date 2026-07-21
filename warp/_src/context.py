@@ -427,8 +427,32 @@ class Function:
                 template_types = list(overload.input_types.values())
                 arg_names = list(overload.input_types.keys())
 
-                # attempt to unify argument types with function template types
-                warp._src.types.infer_argument_types(arguments, template_types, arg_names)
+                if len(arguments) != len(template_types):
+                    raise RuntimeError(
+                        f"Invalid number of arguments for function '{self.key}', "
+                        f"expected {len(template_types)}, got {len(arguments)}"
+                    )
+
+                inference_arguments = []
+                inference_template_types = []
+                inference_arg_names = []
+                for argument, template_type, arg_name in zip(arguments, template_types, arg_names, strict=True):
+                    # Function objects do not have an ordinary Warp value type. Overload
+                    # selection already validated Function-annotated slots, so exclude them
+                    # from value argument inference at Python scope.
+                    if warp._src.types.is_warp_function_annotation(template_type) and isinstance(argument, Function):
+                        continue
+
+                    inference_arguments.append(argument)
+                    inference_template_types.append(template_type)
+                    inference_arg_names.append(arg_name)
+
+                # Attempt to unify ordinary argument types with function template types.
+                warp._src.types.infer_argument_types(
+                    inference_arguments,
+                    inference_template_types,
+                    inference_arg_names,
+                )
                 return overload.func(*arguments)
 
             # We got here without ever calling an overload.func

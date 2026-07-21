@@ -12,6 +12,7 @@ parameter tests in this module so ``test_func.py`` remains focused on general
 
 import unittest
 from typing import Any
+from unittest import mock
 
 import numpy as np
 
@@ -463,6 +464,37 @@ class TestFuncParameterTargets(unittest.TestCase):
         wp.launch(function_apply_kernel, dim=1, outputs=[out], device="cpu")
 
         assert_np_equal(out.numpy(), np.array([6.0, np.sin(0.5)], dtype=np.float32))
+
+    def test_function_parameter_python_scope(self):
+        """Verify Function parameters accept Warp function targets at Python scope."""
+        actual = np.array(
+            [
+                function_apply_unary(function_square_it, 3.0),
+                function_apply_unary(g=function_triple_it, x=8.0),
+                function_apply_default(),
+                function_apply_unary(wp.sin, 0.5),
+                function_apply_nested(7.0),
+                function_apply_generic(function_double_it, 11.0),
+            ]
+        )
+        expected = np.array([9.0, 24.0, 6.0, np.sin(0.5), 14.0, 22.0])
+
+        np.testing.assert_allclose(actual, expected)
+
+        with self.assertRaisesRegex(
+            RuntimeError,
+            r"^Error calling function 'function_apply_unary', no overload found",
+        ):
+            function_apply_unary(lambda x: x, 3.0)
+
+    def test_function_parameter_python_scope_argument_count_mismatch(self):
+        """Verify Python-scope argument count errors include useful context."""
+        with mock.patch.object(function_apply_unary, "get_overload", return_value=function_apply_nested):
+            with self.assertRaisesRegex(
+                RuntimeError,
+                r"^Invalid number of arguments for function 'function_apply_unary', expected 1, got 2$",
+            ):
+                function_apply_unary(function_square_it, 3.0)
 
     def test_function_argument_target_affects_module_hash(self):
         """Verify explicit Function targets participate in module hashes."""
