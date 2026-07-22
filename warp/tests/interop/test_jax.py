@@ -27,6 +27,7 @@ os.environ["XLA_PYTHON_CLIENT_ALLOCATOR"] = "platform"
 # default array size for tests
 ARRAY_SIZE = 1024 * 1024
 TILE_STORE_SIZE = 64
+JAX_TILE_BLOCK_DIM = 64
 
 
 # basic kernel with one input and output
@@ -66,6 +67,15 @@ def inc_2d_kernel(x: wp.array2d[float], y: wp.array2d[float]):
 def shaped_tile_store_kernel(output: wp.array[float]):
     tile = wp.tile_ones(dtype=float, shape=TILE_STORE_SIZE)
     wp.tile_store(output, tile)
+
+
+@wp.kernel
+def ffi_tile_block_sum_kernel(output: wp.array[int]):
+    i = wp.tid()
+    output[i] = 0
+    values = wp.tile(i)
+    block_sum = wp.tile_sum(values)
+    wp.tile_store(output, block_sum, offset=i)
 
 
 # kernel with multiple inputs and outputs
@@ -127,11 +137,13 @@ class _RecordingFfiModule:
     def __init__(self, load_error=None, load_result=mock.sentinel.module_exec):
         self.name = "recording_module"
         self.loaded_devices = []
+        self.load_calls = []
         self.load_error = load_error
         self.load_result = load_result
 
-    def load(self, device, _block_dim=None):
+    def load(self, device, block_dim=None):
         self.loaded_devices.append(device)
+        self.load_calls.append((device, block_dim))
         if self.load_error is not None:
             raise self.load_error
         return self.load_result
@@ -601,6 +613,12 @@ def scale_sum_square_kernel(a: wp.array[float], b: wp.array[float], s: float, c:
     c[tid] = (a[tid] * s + b[tid]) ** 2.0
 
 
+@wp.kernel
+def block_dim_scale_kernel(a: wp.array[float], b: wp.array[float]):
+    tid = wp.tid()
+    b[tid] = a[tid] * float(wp.block_dim())
+
+
 # Kernels using subscript-style type hints (wp.array[dtype] syntax)
 @wp.kernel
 def add_kernel_subscript(a: wp.array[float], b: wp.array[float], output: wp.array[float]):
@@ -889,6 +907,31 @@ def test_ffi_jax_kernel_launch_dims_custom(test, device):
     test.assertEqual(result2.shape, expected2.shape)
     assert_np_equal(result1, expected1)
     assert_np_equal(result2, expected2)
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
+def test_ffi_jax_kernel_block_dim_tile(test, device):
+    jax = _import_jax()
+    test.assertTrue(device.is_cuda)
+
+    thread_count = 256
+    for block_dim in (JAX_TILE_BLOCK_DIM, 2 * JAX_TILE_BLOCK_DIM):
+        with test.subTest(block_dim=block_dim):
+            jax_block_sum = wp.jax_kernel(
+                ffi_tile_block_sum_kernel,
+                launch_dims=thread_count,
+                output_dims=thread_count,
+                block_dim=block_dim,
+            )
+
+            with jax.default_device(wp.device_to_jax(device)):
+                (result,) = jax.jit(jax_block_sum)()
+
+            jax.block_until_ready(result)
+            expected = np.zeros(thread_count, dtype=np.int32)
+            for offset in range(0, thread_count, block_dim):
+                expected[offset] = np.arange(offset, offset + block_dim, dtype=np.int32).sum()
+            assert_np_equal(np.asarray(result), expected)
 
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
@@ -1438,6 +1481,37 @@ def test_ffi_jax_kernel_autodiff_simple(test, device):
 
     assert_np_equal(np.asarray(da), ref_da)
     assert_np_equal(np.asarray(db), ref_db)
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
+def test_ffi_jax_kernel_block_dim_autodiff(test, device):
+    jax = _import_jax()
+    jnp = _import_jax_numpy()
+
+    thread_count = 256
+    input_data = np.arange(thread_count, dtype=np.float32)
+
+    with jax.default_device(wp.device_to_jax(device)):
+        for block_dim in (64, 128):
+            with test.subTest(block_dim=block_dim):
+                wrapper = wp.jax_kernel(
+                    block_dim_scale_kernel,
+                    num_outputs=1,
+                    block_dim=block_dim,
+                    enable_backward=True,
+                )
+
+                values = jnp.asarray(input_data)
+                output = wrapper(values)[0]
+                gradient = jax.grad(lambda x, wrapper=wrapper: jnp.sum(wrapper(x)[0]))(values)
+                jax.block_until_ready((output, gradient))
+
+                multiplier = 1.0 if device.is_cpu else float(block_dim)
+                np.testing.assert_allclose(np.asarray(output), input_data * multiplier)
+                np.testing.assert_allclose(
+                    np.asarray(gradient),
+                    np.full(thread_count, multiplier, dtype=np.float32),
+                )
 
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
@@ -2344,6 +2418,32 @@ class TestJax(unittest.TestCase):
             self.skipTest(f"JAX CPU backend is unavailable: {e}")
 
     @unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
+    def test_ffi_jax_kernel_block_dim_validation(self):
+        for block_dim in (0, -1):
+            with self.subTest(block_dim=block_dim), self.assertRaisesRegex(ValueError, "block_dim must be positive"):
+                wp.jax_kernel(triple_kernel, block_dim=block_dim)
+
+        for block_dim in (True, False, 1.5):
+            with (
+                self.subTest(block_dim=block_dim),
+                self.assertRaisesRegex(TypeError, "block_dim must be an integer or None"),
+            ):
+                wp.jax_kernel(triple_kernel, block_dim=block_dim)
+
+        jax_kernel_64 = wp.jax_kernel(triple_kernel, block_dim=np.int64(64))
+        jax_kernel_128 = wp.jax_kernel(triple_kernel, block_dim=128)
+        jax_kernel_default = wp.jax_kernel(triple_kernel)
+        jax_kernel_256 = wp.jax_kernel(triple_kernel, block_dim=256)
+        jax_kernel_autodiff_64 = wp.jax_kernel(triple_kernel, block_dim=64, enable_backward=True)
+        jax_kernel_autodiff_default = wp.jax_kernel(triple_kernel, enable_backward=True)
+        self.assertEqual(jax_kernel_64.block_dim, 64)
+        self.assertEqual(jax_kernel_128.block_dim, 128)
+        self.assertIsNone(jax_kernel_default.block_dim)
+        self.assertEqual(jax_kernel_256.block_dim, 256)
+        self.assertEqual(jax_kernel_autodiff_64.block_dim, 64)
+        self.assertIsNone(jax_kernel_autodiff_default.block_dim)
+
+    @unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
     def test_ffi_jax_kernel_cpu_shaped_tile_store(self):
         """Test jax_kernel on CPU with a kernel that stores a fixed-shape tile."""
         jax = _import_jax()
@@ -2523,6 +2623,41 @@ class TestJax(unittest.TestCase):
             self.assertIn("cuda", requested_backends)
 
     @unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
+    def test_ffi_module_preload_all_devices_block_dim(self):
+        """Keep CPU preloads at one thread and pass the configured block width to CUDA."""
+        from warp._src.jax import ffi as ffi_module  # noqa: PLC0415
+
+        jax_cpu = object()
+        jax_cuda = object()
+        warp_cpu = mock.Mock(is_cpu=True)
+        warp_cuda = mock.Mock(is_cpu=False)
+        jax_devices_by_backend = {"cpu": [jax_cpu], "cuda": [jax_cuda]}
+        warp_devices_by_jax_device = {jax_cpu: warp_cpu, jax_cuda: warp_cuda}
+
+        fake_jax = mock.Mock()
+        fake_jax.local_devices.side_effect = lambda *, backend: jax_devices_by_backend[backend]
+
+        module = _RecordingFfiModule()
+        with (
+            mock.patch.object(ffi_module, "_get_jax", return_value=fake_jax),
+            mock.patch.object(
+                ffi_module.wp,
+                "device_from_jax",
+                side_effect=warp_devices_by_jax_device.__getitem__,
+            ),
+        ):
+            ffi_module._preload_ffi_module(
+                module,
+                wp.JaxModulePreloadMode.ALL_DEVICES,
+                block_dim=JAX_TILE_BLOCK_DIM,
+            )
+
+        self.assertEqual(
+            module.load_calls,
+            [(warp_cpu, 1), (warp_cuda, JAX_TILE_BLOCK_DIM)],
+        )
+
+    @unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
     def test_ffi_module_preload_load_error(self):
         """Test that module preloading propagates load errors and reports previously failed builds.
 
@@ -2680,6 +2815,7 @@ else:
                 test_ffi_jax_callable_in_out,
                 # autodiff and subscript annotations
                 test_ffi_jax_kernel_autodiff_simple,
+                test_ffi_jax_kernel_block_dim_autodiff,
                 test_ffi_jax_kernel_autodiff_jit_of_grad_simple,
                 test_ffi_jax_kernel_autodiff_multi_output,
                 test_ffi_jax_kernel_autodiff_jit_of_grad_multi_output,
@@ -2774,6 +2910,7 @@ else:
                 test_ffi_jax_callable_graph_cache,
                 test_ffi_jax_callable_graph_replay_skips_module_load,
                 test_ffi_jax_cuda_requires_cuda_support,
+                test_ffi_jax_kernel_block_dim_tile,
                 test_ffi_callback,
             )
             for test_func in cuda_only_jax_tests:

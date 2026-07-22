@@ -6,6 +6,7 @@ from __future__ import annotations
 import collections
 import ctypes
 import inspect
+import operator
 import threading
 import traceback
 from collections.abc import Callable
@@ -140,12 +141,16 @@ class JaxModulePreloadMode(IntEnum):
 ModulePreloadMode = JaxModulePreloadMode
 
 
-def _get_ffi_block_dim(device):
-    return 1 if device.is_cpu else 256
+def _get_ffi_block_dim(device, block_dim=None):
+    """Resolve the FFI block dimension for ``device``."""
+    if device.is_cpu:
+        # Remove this override if CPU launches gain configurable block dimensions.
+        return 1
+    return 256 if block_dim is None else block_dim
 
 
-def _load_ffi_module(module, device):
-    module_exec = module.load(device, _get_ffi_block_dim(device))
+def _load_ffi_module(module, device, block_dim=None):
+    module_exec = module.load(device, _get_ffi_block_dim(device, block_dim))
     if module_exec is None:
         raise RuntimeError(
             f"Failed to load Warp module '{module.name}' on device '{device}' after a previous build failure"
@@ -153,7 +158,7 @@ def _load_ffi_module(module, device):
     return module_exec
 
 
-def _preload_ffi_module(module, mode):
+def _preload_ffi_module(module, mode, block_dim=None):
     if mode == JaxModulePreloadMode.NONE:
         return
 
@@ -163,7 +168,7 @@ def _preload_ffi_module(module, mode):
             device = wp.device_from_jax(jax_device)
         except (IndexError, RuntimeError):
             return
-        _load_ffi_module(module, device)
+        _load_ffi_module(module, device, block_dim)
         return
 
     if mode == JaxModulePreloadMode.ALL_DEVICES:
@@ -189,7 +194,7 @@ def _preload_ffi_module(module, mode):
                 devices.append(device)
 
         for device in devices:
-            _load_ffi_module(module, device)
+            _load_ffi_module(module, device, block_dim)
         return
 
     raise ValueError(f"Unsupported JAX module preload mode '{mode}'")
@@ -239,6 +244,7 @@ class FfiKernel:
         num_outputs,
         vmap_method,
         launch_dims,
+        block_dim,
         output_dims,
         in_out_argnames,
         module_preload_mode,
@@ -249,6 +255,7 @@ class FfiKernel:
         self.num_outputs = num_outputs
         self.vmap_method = vmap_method
         self.launch_dims = launch_dims
+        self.block_dim = block_dim
         self.output_dims = output_dims
         self.module_preload_mode = module_preload_mode
         self.has_side_effect = has_side_effect
@@ -403,7 +410,7 @@ class FfiKernel:
             has_side_effect=self.has_side_effect,
         )
 
-        _preload_ffi_module(self.kernel.module, self.module_preload_mode)
+        _preload_ffi_module(self.kernel.module, self.module_preload_mode, self.block_dim)
 
         # save launch data to be retrieved by callback
         launch_id = self.launch_id
@@ -518,7 +525,7 @@ class FfiKernel:
 
                 # Preloading is best-effort, so the callback's actual device must
                 # load the module before reading code-generation metadata.
-                module_exec = _load_ffi_module(self.kernel.module, device)
+                module_exec = _load_ffi_module(self.kernel.module, device, self.block_dim)
                 block_dim = module_exec.block_dim
 
                 # determine launch bounds
@@ -553,7 +560,7 @@ class FfiKernel:
                     raise RuntimeError("Failed to find CUDA kernel entry point")
 
                 # reject non-cluster-aligned grids with a clear Python error instead
-                # of a cryptic native CUDA error (block_dim=256, max_blocks=0 below)
+                # of a cryptic native CUDA error (configured block_dim, max_blocks=0 below)
                 _validate_cluster_launch(hooks.cluster_dim, launch_bounds.size, block_dim, 0)
 
                 # launch the kernel (cluster_dim is cached on the hooks at load time)
@@ -1290,6 +1297,7 @@ def jax_kernel(
     module_preload_mode=JaxModulePreloadMode.CURRENT_DEVICE,
     enable_backward: bool = False,
     has_side_effect: bool = False,
+    block_dim: int | None = None,
 ):
     """Create a JAX callback from a Warp kernel.
 
@@ -1324,6 +1332,11 @@ def jax_kernel(
         enable_backward: Enable automatic differentiation for this kernel.
         has_side_effect: Whether the custom call has side effects. When True,
             the FFI call will be executed even when the outputs are not used.
+        block_dim: Specify the number of threads per block for CUDA execution.
+            When ``None``, CUDA uses 256 threads per block. CPU execution always
+            uses one thread per block. The value is fixed when the wrapper is
+            constructed and is shared by forward and adjoint launches when
+            ``enable_backward=True``.
 
     Limitations:
         - All kernel arguments must be contiguous arrays or scalars.
@@ -1337,6 +1350,16 @@ def jax_kernel(
 
     check_jax_version()
     jax = _get_jax()
+
+    if block_dim is not None:
+        if isinstance(block_dim, bool):
+            raise TypeError("jax_kernel(): block_dim must be an integer or None.")
+        try:
+            block_dim = operator.index(block_dim)
+        except TypeError:
+            raise TypeError("jax_kernel(): block_dim must be an integer or None.") from None
+        if block_dim <= 0:
+            raise ValueError("jax_kernel(): block_dim must be positive.")
 
     if isinstance(output_dims, dict):
         hashable_output_dims = tuple(sorted(output_dims.items()))
@@ -1360,6 +1383,7 @@ def jax_kernel(
             hashable_output_dims,
             module_preload_mode,
             has_side_effect,
+            block_dim,
         )
 
         with _FFI_REGISTRY_LOCK:
@@ -1369,6 +1393,7 @@ def jax_kernel(
                     num_outputs,
                     vmap_method,
                     launch_dims,
+                    block_dim,
                     output_dims,
                     in_out_argnames,
                     module_preload_mode,
@@ -1414,6 +1439,7 @@ def jax_kernel(
     # Reuse `hashable_launch_dims` (computed above for the cache key path)
     # so 1-D integer and sequence forms are normalized identically.
     _user_launch_dims = hashable_launch_dims if launch_dims is not None else None
+    _launch_block_dim = 256 if block_dim is None else block_dim
 
     def _resolve_launch_dims(call_args):
         if _user_launch_dims is not None:
@@ -1434,7 +1460,13 @@ def jax_kernel(
 
     # Forward kernel wrapper: simply launches the kernel
     def fwd_kernel_wrapper(*args):
-        wp.launch(kernel, dim=_resolve_launch_dims(args), inputs=args[:num_inputs], outputs=args[num_inputs:])
+        wp.launch(
+            kernel,
+            dim=_resolve_launch_dims(args),
+            inputs=args[:num_inputs],
+            outputs=args[num_inputs:],
+            block_dim=_launch_block_dim,
+        )
 
     # update forward signature and annotations so jax_callable() sees a fully annotated function
     fwd_kernel_wrapper.__signature__ = signature
@@ -1487,6 +1519,7 @@ def jax_kernel(
             adj_inputs=grad_in,
             adj_outputs=grad_out,
             adjoint=True,
+            block_dim=_launch_block_dim,
         )
 
     # Build the backward wrapper signature expected by jax_callable
@@ -1617,6 +1650,7 @@ def jax_kernel(
         # Reusing _user_launch_dims ensures int and 1-tuple forms of the same
         # value map to the same key.
         _user_launch_dims,
+        block_dim,
     )
 
     if static_args:
@@ -1657,6 +1691,7 @@ def jax_kernel(
             )
         return cached(*args)
 
+    _checked_wrapper.block_dim = block_dim
     return _checked_wrapper
 
 

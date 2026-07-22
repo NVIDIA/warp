@@ -329,6 +329,52 @@ On the other hand, JAX dimensions are also accepted to allow passing shapes dire
 
 See `example_jax_kernel.py <https://github.com/NVIDIA/warp/blob/main/warp/examples/interop/example_jax_kernel.py>`_ for examples.
 
+CUDA Block Dimensions and Tile Kernels
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+By default, :func:`jax_kernel() <warp.jax_kernel>` uses 256 threads per
+block on CUDA. Pass ``block_dim`` when a kernel needs another CUDA execution
+width, including SIMT kernels that use block-cooperative tile operations. The
+value is fixed when the wrapper is constructed. CPU execution continues to
+use one thread per block. See :doc:`Warp's tile programming model
+<../programming_model/tiles>` for an introduction to tile operations and their
+execution model.
+
+This example uses 64 CUDA threads to reduce each of four rows containing 256
+values::
+
+    ROW_COUNT = 4
+    TILE_SIZE = 256
+    TILE_THREADS = 64
+
+    @wp.kernel
+    def row_sum(values: wp.array2d[float], output: wp.array[float]):
+        row = wp.tid()
+        tile = wp.tile_load(values[row], shape=TILE_SIZE)
+        wp.tile_store(output[row], wp.tile_sum(tile))
+
+    jax_row_sum = wp.jax_kernel(
+        row_sum,
+        launch_dims=(ROW_COUNT, TILE_THREADS),
+        output_dims=(ROW_COUNT,),
+        block_dim=TILE_THREADS,
+    )
+
+    values = jnp.arange(ROW_COUNT * TILE_SIZE, dtype=jnp.float32)
+    values = values.reshape(ROW_COUNT, TILE_SIZE)
+    (output,) = jax.jit(jax_row_sum)(values)
+
+The launch dimensions follow :func:`wp.launch() <warp.launch>` semantics. A
+regular SIMT kernel passes its logical thread dimensions directly.
+:func:`wp.launch_tiled() <warp.launch_tiled>` normally appends ``block_dim``
+to those dimensions. Because :func:`jax_kernel() <warp.jax_kernel>` has no
+tiled-launch wrapper, include that execution width as the trailing launch
+dimension, as in ``launch_dims=(ROW_COUNT, TILE_THREADS)`` above.
+
+Keep ``output_dims`` equal to the logical output shape. When it is omitted,
+:func:`jax_kernel() <warp.jax_kernel>` defaults it to ``launch_dims``, so this
+example would allocate an output with shape ``(4, 64)`` instead of ``(4,)``.
+
 .. _jax-vmap:
 
 VMAP Support

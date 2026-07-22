@@ -35,6 +35,8 @@
   called during a capture are recorded and replayed against the current bounds, instead of running once at capture
   time and leaving replay to query a stale BVH. Such captures are replay-only; `capture_save()` rejects them because
   the BVH handle cannot be serialized ([GH-1665](https://github.com/NVIDIA/warp/issues/1665)).
+- Add an optional `block_dim` argument to `wp.jax_kernel()` for selecting the CUDA thread-block size, including for
+  tile kernels and their generated adjoint launches ([GH-1436](https://github.com/NVIDIA/warp/issues/1436)).
 
 ### Removed
 
