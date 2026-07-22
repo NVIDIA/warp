@@ -4093,10 +4093,25 @@ def tile_view_value_func(arg_types, arg_values):
     index_types = [_tile_slice_index_type(v) for v in offset]
     has_slice = any(is_slice(t) for t in index_types)
 
+    for idx_type in index_types:
+        # Each offset entry must be an integer (a Warp integer Var or a plain
+        # Python constant) or a slice; the native tile_coord() would otherwise
+        # silently truncate e.g. a float offset to int.
+        if is_slice(idx_type) or isinstance(idx_type, int) or type_is_int(idx_type):
+            continue
+        raise ValueError(f"tile_view() offset entries must be integers or slices, got {type_repr(idx_type)}")
+
     # force source tile to shared memory
     tile_type.storage = "shared"
 
     if has_slice:
+        if arg_values.get("shape") is not None:
+            # The view shape is inferred from the slice bounds; accepting an
+            # explicit shape here would silently ignore it.
+            raise ValueError(
+                "tile_view() does not support specifying 'shape' together with a slice-containing "
+                "'offset'; the view shape is inferred from the slice bounds."
+            )
         # slice syntax path, e.g.: t[a:b, :], t[::2, :], t[5, :]. Slices produce a
         # (possibly strided or reversed) sub-range; integer indices collapse their
         # dimension (NumPy semantics). Unspecified trailing dimensions are kept in full.
@@ -4385,6 +4400,18 @@ def tile_reshape_value_func(arg_types, arg_values):
         return tile(dtype=Any, shape=tuple[int, ...])
 
     tile_type = arg_types["t"]
+
+    # Reshape aliases the source pointer with dense strides, so the source
+    # layout must itself be dense (in its own layout order). A strided or
+    # reversed view (e.g. t[::2, :] or t[::-1, :]) would silently reinterpret
+    # unrelated elements, or read outside the allocation entirely.
+    dense_type = tile(dtype=tile_type.dtype, shape=tile_type.shape, layout=tile_type.layout)
+    if tuple(tile_type.strides) != tuple(dense_type.strides):
+        raise ValueError(
+            f"tile_reshape() requires a contiguous tile; a tile view with shape {tuple(tile_type.shape)} and "
+            f"strides {tuple(tile_type.strides)} cannot be reshaped in place. Copy the view into a new tile "
+            f"first, e.g. with wp.tile_assign()."
+        )
 
     # calculate total size of tile_type
     size = 1

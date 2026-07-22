@@ -3930,10 +3930,16 @@ class Adjoint:
             raise WarpCodegenValueError("Slice step cannot be zero.")
 
         if length is None:
-            start = adj.eval_const_slice_component(node.lower) if node.lower is not None else (0 if step > 0 else None)
-            stop = (
-                adj.eval_const_slice_component(node.upper) if node.upper is not None else (length if step > 0 else -1)
-            )
+            if step < 0 and (node.lower is None or node.upper is None):
+                # There is no integer that can stand in for an open bound of a
+                # reverse slice without a known length, and callers treat the
+                # returned bounds as integers.
+                raise WarpCodegenValueError(
+                    "Reverse slices require explicit start and stop bounds when the sequence length "
+                    "is not known at compile time (e.g. slicing an array)."
+                )
+            start = adj.eval_const_slice_component(node.lower) if node.lower is not None else 0
+            stop = adj.eval_const_slice_component(node.upper) if node.upper is not None else None
             return (start, stop, step)
 
         # CPython slice.indices() clamp bounds: [0, length] for a positive step,
@@ -4235,13 +4241,19 @@ class Adjoint:
         against the axis length, and out-of-range constant indices are rejected
         at code-gen time. Runtime (non-constant) indices and index tiles pass
         through unchanged (runtime bounds are only checked in debug builds).
+        Non-integer scalar indices (e.g. floats) are rejected.
         """
+        if not isinstance(idx, Var):
+            return idx
         idx_type = strip_reference(idx.type)
-        if not isinstance(idx, Var) or idx.constant is None:
+        if is_tile(idx_type):
+            # index tiles (fancy indexing) are resolved by tile_slice_indexed
             return idx
         if not warp._src.types.type_is_int(idx_type):
-            return idx
-        if dim >= len(shape):
+            # The native tile_coord() would silently truncate a float index to
+            # int; reject it like NumPy does instead.
+            raise WarpCodegenTypeError(f"Tile indices must be integers or slices, got {type_repr(idx_type)}.")
+        if idx.constant is None or dim >= len(shape):
             return idx
 
         length = shape[dim]
@@ -4932,7 +4944,7 @@ class Adjoint:
                     # slice is not supported.
                     raise WarpCodegenError(
                         f"Tile slice assignment requires a tile of matching shape on the right-hand side "
-                        f"(e.g. `t[a:b, :] = src`), but got a value of type {rhs_type.__name__}."
+                        f"(e.g. `t[a:b, :] = src`), but got a value of type {type_repr(rhs_type)}."
                     )
                 view = adj.add_builtin_call("tile_view", [target, indices])
                 view_type = strip_reference(view.type)
