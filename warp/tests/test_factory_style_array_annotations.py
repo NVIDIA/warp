@@ -365,6 +365,11 @@ class TestFactoryStyleArrayAnnotations(unittest.TestCase):
         annotations = (
             (wp.indexedarray1d(dtype=wp.float64), wp.indexedarray[wp.float64], ARRAY_TYPE_INDEXED),
             (
+                wp.indexedarray(dtype=wp.float64, ndim=1),
+                wp.indexedarray[wp.float64],
+                ARRAY_TYPE_INDEXED,
+            ),
+            (
                 wp.indexedarray2d(dtype=wp.float64),
                 wp.indexedarray[wp.float64, Literal[2]],
                 ARRAY_TYPE_INDEXED,

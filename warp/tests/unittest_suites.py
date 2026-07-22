@@ -152,6 +152,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     )
     from warp.tests.test_apic import TestApic
     from warp.tests.test_apic_mesh import TestApicMesh
+    from warp.tests.test_apic_utility_algorithms import TestApicSegmentedSort, TestApicUtilityAlgorithms
     from warp.tests.test_arithmetic import TestArithmetic
     from warp.tests.test_array import TestArray
     from warp.tests.test_array_reduce import TestArrayReduce
@@ -284,6 +285,8 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestAllocatorProtocol,
         TestApic,
         TestApicMesh,
+        TestApicSegmentedSort,
+        TestApicUtilityAlgorithms,
         TestArithmetic,
         TestArray,
         TestArrayFillCapture,
