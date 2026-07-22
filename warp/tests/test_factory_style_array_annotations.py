@@ -275,6 +275,14 @@ class TestFactoryStyleArrayAnnotations(unittest.TestCase):
         self.assertEqual(array_type_id(subscript_style_1d), ARRAY_TYPE_REGULAR)
         self.assertEqual(get_type_code(factory_style_1d), get_type_code(subscript_style_1d))
 
+        factory_style_bool = wp.array(dtype=wp.bool)
+        subscript_style_bool = wp.array[wp.bool]
+        self.assertEqual(factory_style_bool.dtype, subscript_style_bool.dtype)
+        self.assertEqual(factory_style_bool.ndim, subscript_style_bool.ndim)
+        self.assertEqual(array_type_id(factory_style_bool), ARRAY_TYPE_REGULAR)
+        self.assertEqual(array_type_id(subscript_style_bool), ARRAY_TYPE_REGULAR)
+        self.assertEqual(get_type_code(factory_style_bool), get_type_code(subscript_style_bool))
+
         self.assertEqual(wp.array1d(dtype=float).ndim, 1)
         self.assertEqual(wp.array2d(dtype=float).ndim, 2)
         self.assertEqual(wp.array3d(dtype=float).ndim, 3)

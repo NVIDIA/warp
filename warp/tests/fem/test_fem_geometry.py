@@ -65,13 +65,13 @@ def _gen_hexmesh(N):
 def _test_geo_cells(
     s: fem.Sample,
     domain: fem.Domain,
-    cell_measures: wp.array(dtype=float),
+    cell_measures: wp.array[float],
 ):
     wp.atomic_add(cell_measures, s.element_index, fem.measure(domain, s) * s.qp_weight)
 
 
 @fem.integrand(kernel_options={"enable_backward": False, "max_unroll": 2})
-def _test_cell_lookup(s: fem.Sample, domain: fem.Domain, cell_filter: wp.array(dtype=int)):
+def _test_cell_lookup(s: fem.Sample, domain: fem.Domain, cell_filter: wp.array[int]):
     pos = domain(s)
 
     s_guess = fem.lookup(domain, pos, s)
@@ -114,7 +114,7 @@ def _test_geo_sides(
     s: fem.Sample,
     domain: fem.Domain,
     ref_measure: float,
-    side_measures: wp.array(dtype=float),
+    side_measures: wp.array[float],
 ):
     side_index = s.element_index
     coords = s.element_coords
@@ -369,7 +369,7 @@ def test_nanogrid(test, device):
 
 
 @wp.kernel
-def _nanogrid_volume_counts(cell_grid: wp.uint64, vertex_grid: wp.uint64, counts: wp.array(dtype=wp.int32)):
+def _nanogrid_volume_counts(cell_grid: wp.uint64, vertex_grid: wp.uint64, counts: wp.array[wp.int32]):
     counts[0] = wp.volume_voxel_count(cell_grid)
     counts[1] = wp.volume_voxel_count(vertex_grid)
 
@@ -774,9 +774,9 @@ def test_deformed_geometry_codimensional(test, device):
 def _test_closest_point_on_tri_kernel(
     e0: wp.vec2,
     e1: wp.vec2,
-    points: wp.array(dtype=wp.vec2),
-    sq_dist: wp.array(dtype=float),
-    coords: wp.array(dtype=Coords),
+    points: wp.array[wp.vec2],
+    sq_dist: wp.array[float],
+    coords: wp.array[Coords],
 ):
     i = wp.tid()
     d2, c = project_on_tri_at_origin(points[i], e0, e1)
@@ -789,9 +789,9 @@ def _test_closest_point_on_tet_kernel(
     e0: wp.vec3,
     e1: wp.vec3,
     e2: wp.vec3,
-    points: wp.array(dtype=wp.vec3),
-    sq_dist: wp.array(dtype=float),
-    coords: wp.array(dtype=Coords),
+    points: wp.array[wp.vec3],
+    sq_dist: wp.array[float],
+    coords: wp.array[Coords],
 ):
     i = wp.tid()
     d2, c = project_on_tet_at_origin(points[i], e0, e1, e2)

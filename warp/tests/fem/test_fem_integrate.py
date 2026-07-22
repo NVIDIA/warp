@@ -33,7 +33,7 @@ from warp.tests.unittest_utils import *
 
 
 @wp.kernel
-def atomic_sum(v: wp.array(dtype=float), sum: wp.array(dtype=float)):
+def atomic_sum(v: wp.array[float], sum: wp.array[float]):
     i = wp.tid()
     wp.atomic_add(sum, 0, v[i])
 
@@ -74,7 +74,7 @@ def grad_decomposition(s: Sample, u: Field, v: Field):
 
 
 @integrand
-def scaled_bilinear_form(s: Sample, u: Field, v: Field, scale: wp.array(dtype=float)):
+def scaled_bilinear_form(s: Sample, u: Field, v: Field, scale: wp.array[float]):
     return u(s) * v(s) * scale[0]
 
 

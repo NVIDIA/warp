@@ -22,7 +22,7 @@ def bilinear_form(s: Sample, u: Field, v: Field):
 
 
 @integrand
-def scaled_linear_form(s: Sample, u: Field, scale: wp.array(dtype=float)):
+def scaled_linear_form(s: Sample, u: Field, scale: wp.array[float]):
     return u(s) * scale[0]
 
 

@@ -17,8 +17,8 @@ def intersect_tri(
     u0: wp.vec3,
     u1: wp.vec3,
     u2: wp.vec3,
-    result_single_precision: wp.array(dtype=int),
-    result_double_precision: wp.array(dtype=int),
+    result_single_precision: wp.array[int],
+    result_double_precision: wp.array[int],
 ):
     tid = wp.tid()
 

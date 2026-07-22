@@ -32,10 +32,10 @@ def validate_graph_coloring(edge_indices_np, colors_np):
 
 @wp.kernel
 def construct_trimesh_graph_edges_kernel(
-    trimesh_edge_indices: wp.array(dtype=int, ndim=2),
+    trimesh_edge_indices: wp.array2d[int],
     add_bending: bool,
-    graph_edge_indices: wp.array(dtype=int, ndim=2),
-    graph_num_edges: wp.array(dtype=int),
+    graph_edge_indices: wp.array2d[int],
+    graph_num_edges: wp.array[int],
 ):
     """Build graph edges from trimesh edges, optionally including bending edges."""
     num_diagonal_edges = wp.int32(0)

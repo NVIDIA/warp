@@ -52,7 +52,7 @@ def _test_environment_sides(
 
 
 @fem.integrand(kernel_options={"enable_backward": False, "max_unroll": 1})
-def _test_sparse_environment_cells(s: fem.Sample, domain: fem.Domain, cell_env: wp.array(dtype=int)):
+def _test_sparse_environment_cells(s: fem.Sample, domain: fem.Domain, cell_env: wp.array[int]):
     env_index = fem.environment_index(domain, s)
     wp.expect_eq(env_index, cell_env[s.element_index])
 
@@ -73,7 +73,7 @@ def _test_sparse_environment_cells(s: fem.Sample, domain: fem.Domain, cell_env: 
 
 
 @fem.integrand(kernel_options={"enable_backward": False, "max_unroll": 1})
-def _test_sparse_lookup_excludes_neighbor_env(s: fem.Sample, domain: fem.Domain, cell_env: wp.array(dtype=int)):
+def _test_sparse_lookup_excludes_neighbor_env(s: fem.Sample, domain: fem.Domain, cell_env: wp.array[int]):
     env_index = fem.environment_index(domain, s)
     if env_index == 0:
         pos = domain(s)
@@ -85,7 +85,7 @@ def _test_sparse_lookup_excludes_neighbor_env(s: fem.Sample, domain: fem.Domain,
 
 
 @fem.integrand(kernel_options={"enable_backward": False, "max_unroll": 1})
-def _test_sparse_environment_sides(s: fem.Sample, domain: fem.Domain, cell_env: wp.array(dtype=int)):
+def _test_sparse_environment_sides(s: fem.Sample, domain: fem.Domain, cell_env: wp.array[int]):
     env_index = fem.environment_index(domain, s)
 
     cells = fem.cells(domain)
@@ -99,7 +99,7 @@ def _test_sparse_environment_sides(s: fem.Sample, domain: fem.Domain, cell_env: 
 
 
 @fem.integrand(kernel_options={"enable_backward": False, "max_unroll": 1})
-def _test_mesh_environment_cells(s: fem.Sample, domain: fem.Domain, cell_env: wp.array(dtype=int)):
+def _test_mesh_environment_cells(s: fem.Sample, domain: fem.Domain, cell_env: wp.array[int]):
     env_index = fem.environment_index(domain, s)
     wp.expect_eq(env_index, cell_env[s.element_index])
 
@@ -114,7 +114,7 @@ def _test_mesh_environment_cells(s: fem.Sample, domain: fem.Domain, cell_env: wp
 
 
 @fem.integrand(kernel_options={"enable_backward": False, "max_unroll": 1})
-def _test_mesh_environment_sides(s: fem.Sample, domain: fem.Domain, cell_env: wp.array(dtype=int)):
+def _test_mesh_environment_sides(s: fem.Sample, domain: fem.Domain, cell_env: wp.array[int]):
     env_index = fem.environment_index(domain, s)
 
     inner_s = fem.to_inner_cell(domain, s)
@@ -139,7 +139,7 @@ def _test_no_env_lookup_rejected(s: fem.Sample, domain: fem.Domain):
 
 
 @fem.integrand(kernel_options={"enable_backward": False, "max_unroll": 1})
-def _test_pic_environment_cells(s: fem.Sample, domain: fem.Domain, particle_env: wp.array(dtype=int)):
+def _test_pic_environment_cells(s: fem.Sample, domain: fem.Domain, particle_env: wp.array[int]):
     env_index = fem.environment_index(domain, s)
     wp.expect_eq(env_index, particle_env[s.qp_index])
 

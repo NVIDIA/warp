@@ -13,14 +13,14 @@ epsilon = 0.00001
 
 @wp.kernel
 def closest_point_edge_edge_kernel(
-    p1: wp.array(dtype=wp.vec3),
-    q1: wp.array(dtype=wp.vec3),
-    p2: wp.array(dtype=wp.vec3),
-    q2: wp.array(dtype=wp.vec3),
+    p1: wp.array[wp.vec3],
+    q1: wp.array[wp.vec3],
+    p2: wp.array[wp.vec3],
+    q2: wp.array[wp.vec3],
     epsilon: float,
-    st0: wp.array(dtype=wp.vec3),
-    c1: wp.array(dtype=wp.vec3),
-    c2: wp.array(dtype=wp.vec3),
+    st0: wp.array[wp.vec3],
+    c1: wp.array[wp.vec3],
+    c2: wp.array[wp.vec3],
 ):
     tid = wp.tid()
     st = wp.closest_point_edge_edge(p1[tid], q1[tid], p2[tid], q2[tid], epsilon)
@@ -227,10 +227,10 @@ def check_edge_closest_point_sufficient_necessary(c1: wp.vec3, c2: wp.vec3, t: f
 
 @wp.kernel
 def check_edge_closest_point_sufficient_necessary_kernel(
-    p1s: wp.array(dtype=wp.vec3),
-    q1s: wp.array(dtype=wp.vec3),
-    p2s: wp.array(dtype=wp.vec3),
-    q2s: wp.array(dtype=wp.vec3),
+    p1s: wp.array[wp.vec3],
+    q1s: wp.array[wp.vec3],
+    p2s: wp.array[wp.vec3],
+    q2s: wp.array[wp.vec3],
     epsilon: float,
 ):
     tid = wp.tid()
@@ -291,12 +291,12 @@ def check_edge_closest_point_random(test, device):
 
 @wp.kernel
 def cpee_dist_kernel(
-    p1: wp.array(dtype=wp.vec3),
-    q1: wp.array(dtype=wp.vec3),
-    p2: wp.array(dtype=wp.vec3),
-    q2: wp.array(dtype=wp.vec3),
+    p1: wp.array[wp.vec3],
+    q1: wp.array[wp.vec3],
+    p2: wp.array[wp.vec3],
+    q2: wp.array[wp.vec3],
     eps: float,
-    dist: wp.array(dtype=float),
+    dist: wp.array[float],
 ):
     tid = wp.tid()
     out = wp.closest_point_edge_edge(p1[tid], q1[tid], p2[tid], q2[tid], eps)

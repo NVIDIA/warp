@@ -37,7 +37,7 @@ def _bicubic(s: Sample, domain: Domain):
 
 
 @fem.integrand(kernel_options={"enable_backward": False})
-def _value_at_node(domain: fem.Domain, s: fem.Sample, f: fem.Field, values: wp.array(dtype=float)):
+def _value_at_node(domain: fem.Domain, s: fem.Sample, f: fem.Field, values: wp.array[float]):
     # lookup at node is ambiguous, check that partition_lookup retains sample on current partition
     s_partition = fem.partition_lookup(domain, domain(s))
     wp.expect_eq(s.element_index, s_partition.element_index)

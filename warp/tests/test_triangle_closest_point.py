@@ -98,7 +98,7 @@ def check_vertex_feasible_region(p: wp.vec3, a: wp.vec3, b: wp.vec3, c: wp.vec3,
 
 
 @wp.kernel
-def test_triangle_closest_point_kernel(tri: wp.array(dtype=wp.vec3), passed: wp.array(dtype=wp.bool)):
+def test_triangle_closest_point_kernel(tri: wp.array[wp.vec3], passed: wp.array[wp.bool]):
     state = wp.uint32(wp.rand_init(wp.int32(123), wp.int32(0)))
     eps = 1e-5
 
