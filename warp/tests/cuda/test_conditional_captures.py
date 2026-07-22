@@ -957,6 +957,84 @@ def test_graph_debug_dot_print(test, device):
 
 
 # ================================================================================================================
+# freeing parent-graph allocations during body capture
+# ================================================================================================================
+
+
+@unittest.skipUnless(wp.is_conditional_graph_supported(), "Conditional graph nodes not supported")
+def test_free_during_body_capture(test, device):
+    """Test freeing a parent-graph allocation while a conditional body graph is being captured.
+
+    Dropping the last reference to an array allocated in the parent graph while a
+    conditional body graph is being captured must not add a free node to the body
+    graph or latch a CUDA error. The allocation is retained for the lifetime of the
+    graph instead.
+    """
+    with wp.ScopedDevice(device):
+        # preload module before graph capture
+        wp.load_module(device=device)
+
+        for branch in ("on_true", "on_false", "while"):
+            array = wp.zeros(4, dtype=wp.float32)
+            condition = wp.zeros(1, dtype=wp.int32)
+            holder = {}
+
+            def if_body(holder=holder, array=array):
+                launch_multiply_by_two(array)
+                holder.pop("temp")  # drop the last reference during body capture
+
+            def while_body(holder=holder, array=array, condition=condition):
+                launch_multiply_by_two_until_limit(array, condition, 16.0)
+                holder.pop("temp")  # drop the last reference during body capture
+
+            stderr_capture = StdErrCapture()
+            stderr_capture.begin()
+            try:
+                with wp.ScopedCapture(force_module_load=False) as capture:
+                    # allocated in the parent graph, freed during body capture
+                    holder["temp"] = wp.zeros(1024, dtype=wp.float32)
+                    launch_multiply_by_one(holder["temp"])
+                    if branch == "on_true":
+                        wp.capture_if(condition, on_true=if_body)
+                    elif branch == "on_false":
+                        wp.capture_if(condition, on_false=if_body)
+                    else:
+                        wp.capture_while(condition, while_body=while_body)
+            finally:
+                output = stderr_capture.end()
+
+            test.assertEqual(output, "", f"unexpected stderr output during capture ({branch}): {output}")
+
+            # test different conditions
+            for cond in [0, 1]:
+                array.assign([1.0, 2.0, 3.0, 4.0])
+                condition.assign([cond])
+
+                wp.capture_launch(capture.graph)
+
+                if branch == "on_true":
+                    factor = 2.0 if cond else 1.0
+                    expected = np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float32) * factor
+                elif branch == "on_false":
+                    factor = 1.0 if cond else 2.0
+                    expected = np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float32) * factor
+                else:
+                    if cond:
+                        # multiplied by two until an element exceeds the limit of 16
+                        expected = np.array([8.0, 16.0, 24.0, 32.0], dtype=np.float32)
+                    else:
+                        expected = np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float32)
+
+                np.testing.assert_array_equal(array.numpy(), expected)
+
+            # a latched CUDA error would poison this non-contiguous clone
+            src = wp.zeros((8, 8), dtype=wp.float32)
+            clone = wp.clone(src[::2])
+            wp.synchronize_device()
+            test.assertEqual(clone.shape, (4, 8))
+
+
+# ================================================================================================================
 # test exceptions
 # ================================================================================================================
 
@@ -1104,6 +1182,13 @@ add_function_test(
 
 add_function_test(
     TestConditionalCaptures, "test_graph_debug_dot_print", test_graph_debug_dot_print, devices=cuda_devices
+)
+
+add_function_test(
+    TestConditionalCaptures,
+    "test_free_during_body_capture",
+    test_free_during_body_capture,
+    devices=cuda_devices_with_mempool,
 )
 
 add_function_test(

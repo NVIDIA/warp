@@ -922,9 +922,16 @@ void wp_free_device_async(void* context, void* ptr, void** dbg_node_ret)
         GraphAllocInfo& alloc_info = alloc_iter->second;
         uint64_t capture_id = alloc_info.capture_id;
 
-        // check if the capture is still active
+        // Check if the capture is still active on its stream. The second condition guards
+        // against conditional body captures (wp.capture_if()/wp.capture_while()): while a
+        // body graph is being captured, the owning capture is paused and its stream is
+        // capturing the body graph under a different capture id. The allocation's node and
+        // dependencies live in the paused parent graph, so a free node cannot be added
+        // here; fall through and let the graph retain the allocation instead.
+        // Note: the capture id is stable across pause/resume of the same graph, so this
+        // path is taken again for frees that occur after the conditional completes.
         auto capture_iter = g_captures.find(capture_id);
-        if (capture_iter != g_captures.end()) {
+        if (capture_iter != g_captures.end() && capture_id == get_capture_id(capture_iter->second->stream)) {
             CaptureInfo* capture = capture_iter->second;
             cudaGraph_t graph = get_capture_graph(capture->stream);
             if (!graph) {
@@ -1026,8 +1033,9 @@ void wp_free_device_async(void* context, void* ptr, void** dbg_node_ret)
             // we're done with this allocation, it's owned by the graph
             g_graph_allocs.erase(alloc_iter);
         } else {
-            // the capture has ended
-            // if the owning graph was already destroyed, we can free the pointer now
+            // The capture has ended, or it is paused while a conditional body graph is
+            // being captured. If the owning graph was already destroyed, we can free the
+            // pointer now.
             if (alloc_info.graph_destroyed) {
                 if (g_captures.empty()) {
                     // try to free the pointer now
@@ -1049,8 +1057,11 @@ void wp_free_device_async(void* context, void* ptr, void** dbg_node_ret)
                 // we're done with this allocation
                 g_graph_allocs.erase(alloc_iter);
             } else {
-                // graph still exists
-                // unreference the pointer so it will be deallocated once the graph instance is destroyed
+                // The graph still exists (or is still being captured).
+                // Unreference the pointer so it will be deallocated once the graph instance
+                // is destroyed. This keeps the memory alive for the lifetime of the graph,
+                // which is required when the free occurs during conditional body capture:
+                // the body may reference the allocation on any launch of the graph.
                 alloc_info.ref_exists = false;
             }
         }
@@ -3517,10 +3528,20 @@ bool wp_cuda_graph_end_capture(void* context, void* stream, void** graph_ret)
     // a lambda to clean up on exit in case of error
     auto clean_up = [cuda_stream, capture_id, external]() {
         // unreference outstanding graph allocs so that they will be released with the user reference
-        for (auto it = g_graph_allocs.begin(); it != g_graph_allocs.end(); ++it) {
+        for (auto it = g_graph_allocs.begin(); it != g_graph_allocs.end(); /*noop*/) {
             GraphAllocInfo& alloc_info = it->second;
-            if (alloc_info.capture_id == capture_id)
+            if (alloc_info.capture_id == capture_id) {
+                if (!alloc_info.ref_exists) {
+                    // The user reference was already dropped (e.g., freed during conditional
+                    // body capture). No graph instance will exist to own the allocation, so
+                    // free it once graph captures complete.
+                    deferred_free(it->first, alloc_info.context, true);
+                    it = g_graph_allocs.erase(it);
+                    continue;
+                }
                 alloc_info.graph_destroyed = true;
+            }
+            ++it;
         }
 
         // make sure we terminate the capture
