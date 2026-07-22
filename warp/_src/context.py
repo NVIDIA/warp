@@ -1412,8 +1412,8 @@ def func_grad(forward_fn):
             if not hasattr(f.adj, "return_var"):
                 # we have to temporarily build this function to figure out its return type(s);
                 # note that we do not have a ModuleBuilder instance here at this wrapping stage, hence we
-                # have to create a dummy builder
-                builder = ModuleBuilder(Module("dummy", None), f.module.options)
+                # have to create a dummy builder; inject output_arch since tile built-in dispatch reads it
+                builder = ModuleBuilder(Module("dummy", None), f.module.options | {"output_arch": None})
                 f.adj.build(builder)
             expected_args = list(f.input_types.items())
             if f.adj.return_var is not None:

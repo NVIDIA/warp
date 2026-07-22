@@ -682,6 +682,53 @@ def test_native_snippet_in_custom_grad(test, device):
     assert_np_equal(inputs.grad.numpy(), expected_grad, tol=1e-4)
 
 
+def test_custom_grad_tile_matmul(test, device):
+    """A custom func_grad on a function that uses tile_matmul."""
+    M = 4
+
+    @wp.func
+    def tile_gemm(a: wp.array2d[float], b: wp.array2d[float], c: wp.array2d[float]):
+        a_tile = wp.tile_load(a, shape=(M, M))
+        b_tile = wp.tile_load(b, shape=(M, M))
+        acc = wp.tile_zeros(shape=(M, M), dtype=float)
+        wp.tile_matmul(a_tile, b_tile, acc)
+        wp.tile_store(c, acc)
+
+    # registering the custom grad must not raise (previously KeyError: 'output_arch')
+    @wp.func_grad(tile_gemm)
+    def adj_tile_gemm(a: wp.array2d[float], b: wp.array2d[float], c: wp.array2d[float]):
+        adj_c = wp.tile_load(wp.adjoint[c], shape=(M, M))
+        a_tile = wp.tile_load(a, shape=(M, M))
+        b_tile = wp.tile_load(b, shape=(M, M))
+        adj_a = wp.tile_zeros(shape=(M, M), dtype=float)
+        adj_b = wp.tile_zeros(shape=(M, M), dtype=float)
+        wp.tile_matmul(adj_c, wp.tile_transpose(b_tile), adj_a)
+        wp.tile_matmul(wp.tile_transpose(a_tile), adj_c, adj_b)
+        wp.tile_atomic_add(wp.adjoint[a], adj_a)
+        wp.tile_atomic_add(wp.adjoint[b], adj_b)
+
+    @wp.kernel(module="unique")
+    def run(a: wp.array2d[float], b: wp.array2d[float], c: wp.array2d[float]):
+        tile_gemm(a, b, c)
+
+    rng = np.random.default_rng(42)
+    a_np = rng.standard_normal((M, M), dtype=np.float32)
+    b_np = rng.standard_normal((M, M), dtype=np.float32)
+    a = wp.array(a_np, requires_grad=True, device=device)
+    b = wp.array(b_np, requires_grad=True, device=device)
+    c = wp.zeros((M, M), dtype=float, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(run, dim=(1,), inputs=[a, b], outputs=[c], block_dim=32, device=device)
+
+    tape.backward(grads={c: wp.ones_like(c)})
+
+    ones = np.ones((M, M), dtype=np.float32)
+    assert_np_equal(c.numpy(), a_np @ b_np, tol=1e-6)
+    assert_np_equal(a.grad.numpy(), ones @ b_np.T, tol=1e-6)
+    assert_np_equal(b.grad.numpy(), a_np.T @ ones, tol=1e-6)
+
+
 devices = get_test_devices()
 
 
@@ -724,6 +771,7 @@ add_function_test(
 add_function_test(
     TestGradCustoms, "test_native_snippet_in_custom_grad", test_native_snippet_in_custom_grad, devices=devices
 )
+add_function_test(TestGradCustoms, "test_custom_grad_tile_matmul", test_custom_grad_tile_matmul, devices=devices)
 
 
 if __name__ == "__main__":
