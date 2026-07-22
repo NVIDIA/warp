@@ -5,7 +5,7 @@
 """Deprecated compatibility namespace for JAX integration.
 
 .. deprecated:: 1.14.0
-    Use top-level :mod:`warp` JAX APIs instead. This namespace will be removed in Warp 1.16.
+    Use top-level :mod:`warp` JAX APIs instead. This namespace will be removed in Warp 1.18.
 """
 
 # isort: skip_file

@@ -191,7 +191,7 @@ def test_jax_experimental_import_deprecation(test, device):
 
     expected = (
         "Warp DeprecationWarning: The `warp.jax_experimental` namespace is deprecated "
-        "and will be removed in Warp 1.16. Use top-level `warp` JAX APIs instead.\n"
+        "and will be removed in Warp 1.18. Use top-level `warp` JAX APIs instead.\n"
     )
     test.assertEqual(output, expected)
     test.assertIs(module.jax_kernel, wp.jax_kernel)
@@ -212,7 +212,7 @@ def test_jax_experimental_ffi_import_deprecation(test, device):
 
     expected = (
         "Warp DeprecationWarning: The `warp.jax_experimental.ffi` namespace is deprecated "
-        "and will be removed in Warp 1.16. Use top-level `warp` JAX APIs instead.\n"
+        "and will be removed in Warp 1.18. Use top-level `warp` JAX APIs instead.\n"
     )
     test.assertEqual(output, expected)
     test.assertIs(module.jax_kernel, ffi_module.jax_kernel)
@@ -233,7 +233,7 @@ def test_jax_experimental_custom_call_import_deprecation(test, device):
 
     expected = (
         "Warp DeprecationWarning: The `warp.jax_experimental.custom_call` namespace is deprecated "
-        "and will be removed in Warp 1.16. Use `warp.jax_kernel()` instead.\n"
+        "and will be removed in Warp 1.18. Use `warp.jax_kernel()` instead.\n"
     )
     test.assertEqual(output, expected)
     test.assertIs(module.jax_kernel, custom_call_module.jax_kernel)

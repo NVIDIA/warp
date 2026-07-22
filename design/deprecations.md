@@ -19,7 +19,7 @@ _Last reconciled against the codebase at 1.15.0.dev0 (2026-06-15)._
 - When you deprecate an API surface, add a row to **Pending Removal**.
 - The `Warn` / `Changelog` / `Docstring` columns track whether the deprecation
   has been surfaced through each channel. A `No` is an outstanding gap to close
-  before removal.
+  before removal; `N/A` means that the channel cannot apply to that deprecation.
 - When a deprecation is removed, move its row to **Removed**, fill in the
   removal version and removal commit, and drop the surfacing columns. The full
   historical detail remains in this file's git history.
@@ -31,7 +31,8 @@ _Last reconciled against the codebase at 1.15.0.dev0 (2026-06-15)._
   - **Unplanned** — no removal scheduled yet; the decision hasn't been made.
   - **Indefinite** — a deliberate decision (after internal discussion) to keep
     the surface deprecated but _not_ remove it.
-- **Warn / Changelog / Docstring** — `Yes`, `No`, or `?` (unknown / unverified).
+- **Warn / Changelog / Docstring** — `Yes`, `No`, `N/A` (the channel cannot
+  apply), or `?` (unknown / unverified).
 - **Commit / Deprecation commit / Removal commit** — short-SHA link to the
   relevant commit. Rows added or updated in the same branch usually cannot know
   the final main-branch hash because Warp squashes every branch on merge to
@@ -46,20 +47,20 @@ current version are overdue.
 
 | Feature | Deprecated in | Warn | Changelog | Docstring | Planned removal | Commit | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `warp.jax_experimental` namespace | 1.14.0 | Yes | Yes | No | 1.16 | [604a896](https://github.com/NVIDIA/warp/commit/604a8961df6d40ea64ff1e740b23581e4c72c96f) | Use the top-level `warp` JAX APIs (`wp.jax_kernel`, `wp.jax_callable`, etc.). |
-| `get_jax_callable_default_graph_cache_max()` / `set_..()` | 1.14.0 | Yes | Yes | No | 1.16 | [604a896](https://github.com/NVIDIA/warp/commit/604a8961df6d40ea64ff1e740b23581e4c72c96f) | Pass `graph_cache_max` to `wp.jax_callable()` instead. Removed with `warp.jax_experimental`. |
+| Implicit promotion of scalars to composite types | 1.12.0 | Yes | Yes | N/A | 1.16 | [a23b996](https://github.com/NVIDIA/warp/commit/a23b996271908284136dc86203cf0f882110ef04) | Warns at two behavioral conversion sites: kernel parameters and struct fields. No single API docstring applies. |
+| `Texture.copy_from_array()` | 1.13.0 | Yes | Yes | Yes | 1.17 | [5748117](https://github.com/NVIDIA/warp/commit/57481170450954e1229758254c5f77db5955ac86) | Use `Texture.copy_from()`. |
+| `Texture.copy_to_array()` | 1.13.0 | Yes | Yes | Yes | 1.17 | [5748117](https://github.com/NVIDIA/warp/commit/57481170450954e1229758254c5f77db5955ac86) | Use `Texture.copy_to()`. |
+| `warp.jax_experimental` namespace | 1.14.0 | Yes | Yes | Yes | 1.18 | [604a896](https://github.com/NVIDIA/warp/commit/604a8961df6d40ea64ff1e740b23581e4c72c96f) | Use the top-level `warp` JAX APIs (`wp.jax_kernel`, `wp.jax_callable`, etc.). |
+| `get_jax_callable_default_graph_cache_max()` / `set_..()` | 1.14.0 | Yes | Yes | No | 1.18 | [604a896](https://github.com/NVIDIA/warp/commit/604a8961df6d40ea64ff1e740b23581e4c72c96f) | Pass `graph_cache_max` to `wp.jax_callable()` instead. Removed with `warp.jax_experimental`. |
+| Legacy `jax_kernel()` (custom-call implementation) | 1.10.0 | Yes | Yes | Yes | 1.18 | [e0eeea2](https://github.com/NVIDIA/warp/commit/e0eeea2f53d460307bf34a714762544937cf9249) | Public only as `warp.jax_experimental.custom_call.jax_kernel()`; removed with `warp.jax_experimental`. Unsupported with JAX ≥ 0.8.0; the FFI implementation is the default. |
+| `warp.config.verbose` | 1.14.0 | Yes | Yes | Yes | 1.18 | [110917b](https://github.com/NVIDIA/warp/commit/110917bcfef0aead6cecc7af91345366b365c8f1) | Use `warp.config.log_level = warp.LOG_DEBUG`. |
+| `warp.config.quiet` | 1.14.0 | Yes | Yes | Yes | 1.18 | [110917b](https://github.com/NVIDIA/warp/commit/110917bcfef0aead6cecc7af91345366b365c8f1) | Use `warp.config.log_level = warp.LOG_WARNING`. |
+| `wp.HashGridQueryH` / `wp.HashGridQueryD` | 1.14.0 | Yes | Yes | N/A | 1.18 | [2717b45](https://github.com/NVIDIA/warp/commit/2717b45bad7919186e36b307c3f4ee0eeeb8c0ad) | Use `wp.HashGridQuery`; the runtime-only aliases are intentionally absent from public docs and stubs, so no API docstring applies. |
 | `wp.MarchingCubes` legacy `max_verts`, `max_tris`, and `device` arguments and compatibility attributes | 1.9.0 | Yes | Yes | Yes | 1.19 | [ced4300](https://github.com/NVIDIA/warp/commit/ced43005a6971fcef6738ba785eba056decfd38a) | The `max_verts`/`max_tris` arguments apply to `__init__` and `resize`; `device` applies only to `__init__`. The matching attributes are also deprecated. Runtime warnings were added in 1.15. |
 | `wp.MarchingCubes.id` / `wp.MarchingCubes.runtime` compatibility attributes | 1.15.0 | Yes | Yes | Yes | 1.19 | [ced4300](https://github.com/NVIDIA/warp/commit/ced43005a6971fcef6738ba785eba056decfd38a) | The attributes and their runtime warnings were added to the deprecation schedule in 1.15. `id` no longer identifies a native resource; use public Warp APIs instead of accessing `runtime`. |
-| `BsrMatrix.copy_nnz_async()` | 1.10.0 | Yes | No | Yes | Unplanned | [4d9b978](https://github.com/NVIDIA/warp/commit/4d9b978c9b84b0f0cd3a29c02e997bd7e590005d) | Prefer `notify_nnz_changed()`. |
-| Legacy `jax_kernel()` (custom-call implementation) | 1.10.0 | Yes | Yes | Yes | Unplanned | [e0eeea2](https://github.com/NVIDIA/warp/commit/e0eeea2f53d460307bf34a714762544937cf9249) | Unsupported with JAX ≥ 0.8.0; the FFI implementation is the default. Silence with `quiet=True`. |
-| Implicit promotion of scalars to composite types | 1.12.0 | Yes | Yes | No | Unplanned | [a23b996](https://github.com/NVIDIA/warp/commit/a23b996271908284136dc86203cf0f882110ef04) | Warns at two sites: kernel parameters and struct fields. |
-| `Texture.copy_from_array()` | 1.13.0 | Yes | Yes | Yes | Unplanned | [5748117](https://github.com/NVIDIA/warp/commit/57481170450954e1229758254c5f77db5955ac86) | Use `Texture.copy_from()`. |
-| `Texture.copy_to_array()` | 1.13.0 | Yes | Yes | Yes | Unplanned | [5748117](https://github.com/NVIDIA/warp/commit/57481170450954e1229758254c5f77db5955ac86) | Use `Texture.copy_to()`. |
-| `warp.config.verbose` | 1.14.0 | Yes | Yes | Yes | Unplanned | [110917b](https://github.com/NVIDIA/warp/commit/110917bcfef0aead6cecc7af91345366b365c8f1) | Use `warp.config.log_level = warp.LOG_DEBUG`. |
-| `warp.config.quiet` | 1.14.0 | Yes | Yes | Yes | Unplanned | [110917b](https://github.com/NVIDIA/warp/commit/110917bcfef0aead6cecc7af91345366b365c8f1) | Use `warp.config.log_level = warp.LOG_WARNING`. |
-| `wp.HashGridQueryH` / `wp.HashGridQueryD` | 1.14.0 | Yes | Yes | No | Unplanned | [2717b45](https://github.com/NVIDIA/warp/commit/2717b45bad7919186e36b307c3f4ee0eeeb8c0ad) | Use `wp.HashGridQuery`; runtime aliases retained during deprecation. |
-| `masked=True` in `warp.sparse` topology-changing ops | 1.15.0 | Yes | Yes | Yes | Unplanned | [8d8569e](https://github.com/NVIDIA/warp/commit/8d8569ec2860be1bde278eefbe0e4470470f32d6) | Use `topology="masked"` (`bsr_set_from_triplets`, `bsr_assign`, `bsr_set_transpose`, `bsr_axpy`, `bsr_mm`). |
-| Per-environment sequence form of `warp.fem.Nanogrid.from_environment_voxels()` and `warp.fem.AdaptiveNanogrid.from_environment_voxels()` | 1.15.0 | Yes | Yes | Yes | Unplanned | [37f9ce4](https://github.com/NVIDIA/warp/commit/37f9ce4cd9e3e01b05cfbad5d98b72bab712829b) | Pass flat `points`, `cell_levels` where applicable, `point_envs`, and `env_count` instead. |
+| `masked=True` in `warp.sparse` topology-changing ops | 1.15.0 | Yes | Yes | Yes | 1.19 | [8d8569e](https://github.com/NVIDIA/warp/commit/8d8569ec2860be1bde278eefbe0e4470470f32d6) | Use `topology="masked"` (`bsr_set_from_triplets`, `bsr_assign`, `bsr_set_transpose`, `bsr_axpy`, `bsr_mm`). |
+| Per-environment sequence form of `warp.fem.Nanogrid.from_environment_voxels()` and `warp.fem.AdaptiveNanogrid.from_environment_voxels()` | 1.15.0 | Yes | Yes | Yes | 1.19 | [ed6cd7e](https://github.com/NVIDIA/warp/commit/ed6cd7e2b4dd76ed59d75258f2e38ea86c7123e4) | Pass flat `points`, `cell_levels` where applicable, `point_envs`, and `env_count` instead. |
+| `warp.sparse.BsrMatrix.copy_nnz_async()` | 1.10.0 | Yes | Yes | Yes | 1.20 | [4d9b978](https://github.com/NVIDIA/warp/commit/4d9b978c9b84b0f0cd3a29c02e997bd7e590005d) | Prefer `warp.sparse.BsrMatrix.notify_nnz_changed()`. First changelog announcement ships in 1.16. |
 | `wp.from_ptr()` requires `length` parameter | 1.1.0 | Yes | No | Yes | Indefinite | [e5ac2d9](https://github.com/NVIDIA/warp/commit/e5ac2d9ad0d4c9d3f695c7206846c9e489c3b83e) | Intentionally retained. The legacy double-pointer form is deprecated: OmniGraph code should use `from_omni_graph_ptr()`; otherwise construct via the `wp.array` `ptr` argument. May be repurposed for regular pointers in the future. |
 
 ## Removed
@@ -88,6 +89,6 @@ Sorted by removed version.
 | `warp.fem` `Temporary.array` attribute | 1.10.0 | 1.12.0 | [3c70ba4](https://github.com/NVIDIA/warp/commit/3c70ba4df4a820b3997b4cad5c360a72e3636702) | [08080c4](https://github.com/NVIDIA/warp/commit/08080c4684fa8e2c5e0634777fddaf8157e38c29) | `Temporary` is now a direct alias for `wp.array`. |
 | Internal namespaces and symbols not intended for public use | 1.11.0 | 1.13.0 | [6fb821b](https://github.com/NVIDIA/warp/commit/6fb821b4fafa67fc03a325dd9821d3fb54c6a361) | [5cde63d](https://github.com/NVIDIA/warp/commit/5cde63dc820e99521ac98090e31bf1b5edb2efc7) | Removed the private-API forwarding layer, including the deprecated `warp.marching_cubes` namespace shim. |
 | `isfinite()`, `isnan()`, and `isinf()` should only accept float types | 1.11.0 | 1.13.0 | [6a68b5d](https://github.com/NVIDIA/warp/commit/6a68b5d13b6668e97d01c41a1843f164596dac75) | [ae53d66](https://github.com/NVIDIA/warp/commit/ae53d66de10ca2922305c0260b49e070cea0c311) | |
-| `warp.render.UsdRenderer.update_body_transforms()` | 1.11.0 | 1.15.0 | [acdb500](https://github.com/NVIDIA/warp/commit/acdb500a118b84413c91d07307e03e52191c0e92) | Pending main merge | Removed the non-functional method, which referenced `self.model` and `self.body_names` attributes that `UsdRenderer` does not define. |
+| `warp.render.UsdRenderer.update_body_transforms()` | 1.11.0 | 1.15.0 | [acdb500](https://github.com/NVIDIA/warp/commit/acdb500a118b84413c91d07307e03e52191c0e92) | [d76f3fa](https://github.com/NVIDIA/warp/commit/d76f3fa10201c71def518841b947f3fd9aaba4f7) | Removed the non-functional method, which referenced `self.model` and `self.body_names` attributes that `UsdRenderer` does not define. |
 | `warp.fem` `quadrature` and `domain` arguments of `interpolate()` | 1.12.0 | 1.15.0 | [08080c4](https://github.com/NVIDIA/warp/commit/08080c4684fa8e2c5e0634777fddaf8157e38c29) | [ad68adc](https://github.com/NVIDIA/warp/commit/ad68adc38b5a45d1b2fcfc52810639ac073914a6) | |
 | `warp.fem` `space` argument of `make_space_restriction` and `make_space_partition` | 1.12.0 | 1.15.0 | [08080c4](https://github.com/NVIDIA/warp/commit/08080c4684fa8e2c5e0634777fddaf8157e38c29) | [ad68adc](https://github.com/NVIDIA/warp/commit/ad68adc38b5a45d1b2fcfc52810639ac073914a6) | |

@@ -5,7 +5,7 @@
 """Deprecated compatibility namespace for custom-call JAX integration.
 
 .. deprecated:: 1.14.0
-    Use :func:`warp.jax_kernel` instead. This namespace will be removed in Warp 1.16.
+    Use :func:`warp.jax_kernel` instead. This namespace will be removed in Warp 1.18.
 """
 
 from ._deprecation import warn_deprecated_jax_experimental_namespace as _warn_deprecated_jax_experimental_namespace

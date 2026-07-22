@@ -33,6 +33,10 @@
 
 ### Deprecated
 
+- Defer removal of the deprecated `warp.jax_experimental` namespace, its legacy custom-call `jax_kernel()`,
+  and its graph-cache getter and setter APIs from Warp 1.16 to Warp 1.18, allowing more time to migrate.
+- Deprecate `warp.sparse.BsrMatrix.copy_nnz_async()`; use `warp.sparse.BsrMatrix.notify_nnz_changed()` instead
+  ([GH-987](https://github.com/NVIDIA/warp/issues/987)).
 - Deprecate the per-environment sequence form of `warp.fem.Nanogrid.from_environment_voxels()` and
   `warp.fem.AdaptiveNanogrid.from_environment_voxels()`; pass flat `points`, `cell_levels` where applicable,
   `point_envs`, and `env_count` instead ([GH-1606](https://github.com/NVIDIA/warp/issues/1606)).
