@@ -28,6 +28,10 @@
   graphs recompute them from current inputs on CPU and CUDA ([GH-1663](https://github.com/NVIDIA/warp/issues/1663)).
 - Add CPU support for `wp.jax_kernel()` and `wp.jax_callable()` FFI calls, with automatic dispatch between CPU and
   CUDA based on the device selected by JAX ([GH-1661](https://github.com/NVIDIA/warp/issues/1661)).
+- **Experimental:** Extend APIC graph capture and replay on CPU so that `wp.Bvh.refit()` and `wp.Bvh.rebuild()`
+  called during a capture are recorded and replayed against the current bounds, instead of running once at capture
+  time and leaving replay to query a stale BVH. Such captures are replay-only; `capture_save()` rejects them because
+  the BVH handle cannot be serialized ([GH-1665](https://github.com/NVIDIA/warp/issues/1665)).
 
 ### Removed
 

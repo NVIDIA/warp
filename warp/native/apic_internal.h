@@ -224,6 +224,14 @@ struct APICState {
     // Replay paths require it; see apic_validate_operation_stream.
     bool operations_validated = false;
 
+    // Names the recorded operation, if any, whose replay depends on a
+    // process-local handle that cannot be serialized (e.g. wp.Bvh.refit() /
+    // rebuild(), which reference a live BVH pointer). Such a stream is valid for
+    // in-process replay but not portable, so wp_apic_state_save() refuses it
+    // with this name in the error rather than emitting a .wrp that would dangle
+    // when loaded in another process. nullptr means the stream is serializable.
+    const char* nonportable_reason = nullptr;
+
     // Contiguous operation byte stream (serializable)
     std::vector<uint8_t> operation_stream;
     uint32_t operation_count = 0;
@@ -466,6 +474,14 @@ void apic_record_bsr_transpose(
     const int32_t* padded_capacity_offsets,
     int32_t padded_capacity_offset_count
 );
+
+// Records a wp_bvh_refit_host() call. ``bvh_id`` is a live BVH handle, replayed
+// in-process by re-invoking wp_bvh_refit_host().
+void apic_record_bvh_refit(APICState* state, uint64_t bvh_id);
+
+// Records a wp_bvh_rebuild_host() call. ``constructor_type`` is the rebuild
+// construction algorithm (a BVH_CONSTRUCTOR_* value).
+void apic_record_bvh_rebuild(APICState* state, uint64_t bvh_id, int32_t constructor_type);
 
 // ----- Pointer resolution (for memcpy/memset hooks that receive raw pointers) -----
 

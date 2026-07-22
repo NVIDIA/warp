@@ -51,6 +51,15 @@ def fill_reduction_inputs_kernel(a: wp.array[wp.float32], b: wp.array[wp.float32
     b[i] = float(2 * i + 1)
 
 
+@wp.kernel
+def bvh_query_aabb_hits(bvh: wp.uint64, lower: wp.vec3, upper: wp.vec3, hits: wp.array(dtype=wp.int32)):
+    # Marks hits[i] = 1 for every BVH primitive whose bounds overlap [lower, upper].
+    query = wp.bvh_query_aabb(bvh, lower, upper)
+    index = int(0)
+    while wp.bvh_query_next(query, index):
+        hits[index] = 1
+
+
 class TestApic(unittest.TestCase):
     pass
 
@@ -2638,6 +2647,124 @@ def test_capture_save_aborts_on_region_snapshot_failure(test, device):
                 wp.capture_save(capture.graph, path, outputs={"b": b})
 
 
+def test_capture_with_bvh_refit(test, device):
+    """Verify that captured BVH refits use replay-time bounds.
+
+    BVH refits dispatch through a host function rather than a kernel launch,
+    so APIC must record them explicitly. Otherwise, CPU graph replay queries
+    a tree frozen at its capture-time bounds instead of matching eager
+    execution.
+    """
+    lowers = wp.array([(0.0, 0.0, 0.0)], dtype=wp.vec3, device=device)
+    uppers = wp.array([(1.0, 1.0, 1.0)], dtype=wp.vec3, device=device)
+    src_lowers = wp.array([(10.0, 10.0, 10.0)], dtype=wp.vec3, device=device)
+    src_uppers = wp.array([(11.0, 11.0, 11.0)], dtype=wp.vec3, device=device)
+    hits = wp.zeros(1, dtype=wp.int32, device=device)
+    bvh = wp.Bvh(lowers, uppers)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        hits.zero_()
+        wp.copy(lowers, src_lowers)
+        wp.copy(uppers, src_uppers)
+        bvh.refit()
+        wp.launch(bvh_query_aabb_hits, dim=1, inputs=[bvh.id, wp.vec3(-0.25), wp.vec3(1.25), hits], device=device)
+
+    # First replay: the box is copied to (10, 10, 10) and refit, so a query at
+    # the origin must miss. A stale (unrefit) tree would still bound the origin.
+    wp.capture_launch(capture.graph)
+    np.testing.assert_array_equal(hits.numpy(), np.array([0], dtype=np.int32))
+
+    # Move the copy source back over the origin and replay the same graph. The
+    # refit must recompute from the new (replay-time) data, not a tree frozen at
+    # the first replay's bounds, so the origin query now hits.
+    src_lowers.assign(np.array([[0.0, 0.0, 0.0]], dtype=np.float32))
+    src_uppers.assign(np.array([[1.0, 1.0, 1.0]], dtype=np.float32))
+    wp.capture_launch(capture.graph)
+    np.testing.assert_array_equal(hits.numpy(), np.array([1], dtype=np.int32))
+
+
+def test_capture_with_bvh_rebuild(test, device):
+    """Verify that captured BVH rebuilds use replay-time bounds.
+
+    Like refit, rebuild dispatches through a host function rather than a
+    kernel launch, so APIC must record it explicitly for CPU graph replay to
+    rebuild the tree against the replay-time bounds.
+    """
+    lowers = wp.array([(0.0, 0.0, 0.0)], dtype=wp.vec3, device=device)
+    uppers = wp.array([(1.0, 1.0, 1.0)], dtype=wp.vec3, device=device)
+    src_lowers = wp.array([(10.0, 10.0, 10.0)], dtype=wp.vec3, device=device)
+    src_uppers = wp.array([(11.0, 11.0, 11.0)], dtype=wp.vec3, device=device)
+    hits = wp.zeros(1, dtype=wp.int32, device=device)
+    bvh = wp.Bvh(lowers, uppers)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        hits.zero_()
+        wp.copy(lowers, src_lowers)
+        wp.copy(uppers, src_uppers)
+        bvh.rebuild()
+        wp.launch(bvh_query_aabb_hits, dim=1, inputs=[bvh.id, wp.vec3(-0.25), wp.vec3(1.25), hits], device=device)
+
+    wp.capture_launch(capture.graph)
+    np.testing.assert_array_equal(hits.numpy(), np.array([0], dtype=np.int32))
+
+    src_lowers.assign(np.array([[0.0, 0.0, 0.0]], dtype=np.float32))
+    src_uppers.assign(np.array([[1.0, 1.0, 1.0]], dtype=np.float32))
+    wp.capture_launch(capture.graph)
+    np.testing.assert_array_equal(hits.numpy(), np.array([1], dtype=np.int32))
+
+
+def test_capture_with_bvh_refit_save_rejected(test, device):
+    """Verify that capture_save() rejects a graph recording a BVH refit.
+
+    The refit replays by re-invoking a host function on a process-local BVH
+    handle, so the stream is not serializable. capture_save() must reject it
+    up front rather than write a .wrp that dangles when loaded elsewhere.
+    """
+    lowers = wp.array([(0.0, 0.0, 0.0)], dtype=wp.vec3, device=device)
+    uppers = wp.array([(1.0, 1.0, 1.0)], dtype=wp.vec3, device=device)
+    bvh = wp.Bvh(lowers, uppers)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        bvh.refit()
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "bvh_refit_should_not_save")
+        # The error must name the offending op so it is actionable.
+        with test.assertRaisesRegex(RuntimeError, r"wp\.Bvh\.refit\(\)"):
+            wp.capture_save(capture.graph, path)
+        # A rejected save must not leave a .wrp behind (an empty _modules dir may
+        # remain, as on any failed capture_save).
+        test.assertFalse(os.path.exists(path + ".wrp"))
+
+
+def test_capture_with_bvh_rebuild_save_rejected(test, device):
+    """Verify that capture_save() rejects a graph recording a BVH rebuild.
+
+    Like refit, rebuild is non-portable because it replays against a
+    process-local BVH handle, so capture_save() must reject a stream that
+    records it.
+    """
+    lowers = wp.array([(0.0, 0.0, 0.0)], dtype=wp.vec3, device=device)
+    uppers = wp.array([(1.0, 1.0, 1.0)], dtype=wp.vec3, device=device)
+    bvh = wp.Bvh(lowers, uppers)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        bvh.rebuild()
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "bvh_rebuild_should_not_save")
+        # The error must name the offending op so it is actionable.
+        with test.assertRaisesRegex(RuntimeError, r"wp\.Bvh\.rebuild\(\)"):
+            wp.capture_save(capture.graph, path)
+        # A rejected save must not leave a .wrp behind (an empty _modules dir may
+        # remain, as on any failed capture_save).
+        test.assertFalse(os.path.exists(path + ".wrp"))
+
+
 devices = get_test_devices()
 devices_with_graph_capture_allocation = get_test_devices_with_graph_capture_allocation()
 devices_with_cuda_graph_module_load = get_test_devices_with_cuda_graph_module_load()
@@ -2645,6 +2772,30 @@ devices_with_graph_capture_allocation_and_cuda_graph_module_load = (
     get_test_devices_with_graph_capture_allocation_and_cuda_graph_module_load()
 )
 
+add_function_test(
+    TestApic,
+    "test_capture_with_bvh_refit",
+    test_capture_with_bvh_refit,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_capture_with_bvh_rebuild",
+    test_capture_with_bvh_rebuild,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_capture_with_bvh_refit_save_rejected",
+    test_capture_with_bvh_refit_save_rejected,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_capture_with_bvh_rebuild_save_rejected",
+    test_capture_with_bvh_rebuild_save_rejected,
+    devices=[d for d in devices if d.is_cpu],
+)
 add_function_test(
     TestApic,
     "test_save_apic_false_error",

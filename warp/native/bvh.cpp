@@ -3,6 +3,8 @@
 
 #include "warp.h"
 
+#include "apic.h"
+#include "apic_internal.h"
 #include "bvh.h"
 #include "cuda_util.h"
 #include "error.h"
@@ -851,14 +853,43 @@ uint64_t wp_bvh_create_host(vec3* lowers, vec3* uppers, int num_items, int const
     return (uint64_t)bvh;
 }
 
+// Record a host BVH update into the active APIC byte stream (CPU graph
+// capture); returns true if it was recorded (and therefore should NOT execute
+// eagerly). During capture the update is deferred so replay re-runs it against
+// the replay-time lowers/uppers; executing it now would leave the tree frozen
+// at the capture-time bounds when the graph is later replayed (GH-1665).
+static bool apic_capture_bvh_refit_host(uint64_t id)
+{
+    APICState* state = wp_apic_get_recording_state();
+    if (!state)
+        return false;
+    apic_record_bvh_refit(state, id);
+    return true;
+}
+
+static bool apic_capture_bvh_rebuild_host(uint64_t id, int constructor_type)
+{
+    APICState* state = wp_apic_get_recording_state();
+    if (!state)
+        return false;
+    apic_record_bvh_rebuild(state, id, constructor_type);
+    return true;
+}
+
 void wp_bvh_refit_host(uint64_t id)
 {
+    if (apic_capture_bvh_refit_host(id))
+        return;
+
     BVH* bvh = (BVH*)(id);
     wp::bvh_refit_host(*bvh);
 }
 
 void wp_bvh_rebuild_host(uint64_t id, int constructor_type)
 {
+    if (apic_capture_bvh_rebuild_host(id, constructor_type))
+        return;
+
     BVH* bvh = (BVH*)(id);
     wp::bvh_rebuild_host(*bvh, constructor_type);
 }

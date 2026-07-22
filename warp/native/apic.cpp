@@ -748,6 +748,45 @@ void apic_record_bsr_transpose(
     state->operation_count++;
 }
 
+static void apic_record_bvh_op(APICState* state, APICOpType op_type, uint64_t bvh_id, int32_t constructor_type)
+{
+    if (!state)
+        return;
+    APICBvhRecord rec = {};
+    rec.header.op_type = op_type;
+    rec.header.total_size = sizeof(rec);
+    rec.bvh_id = bvh_id;
+    rec.constructor_type = constructor_type;
+    state->append_bytes(&rec, sizeof(rec));
+    state->operation_count++;
+    // The record replays by re-invoking the host function on this raw,
+    // process-local BVH handle, so the stream can no longer be serialized.
+    // Mark it nonportable so wp_apic_state_save() refuses it up front; keep the
+    // first offending op's name for the error in a mixed refit/rebuild graph.
+    //
+    // KNOWN LIMITATION: this marker is set eagerly at record time and is NOT
+    // rolled back with branch capture. If a BVH op is recorded inside a
+    // capture_if/capture_while body that then raises, wp_apic_end_branch()
+    // discards the op from the operation stream but leaves this marker set -- so
+    // a caller that recovers from the exception and reuses the finalized graph
+    // gets a spurious capture_save() rejection for a graph with no BVH op left.
+    // Fail-safe (over-rejects; never writes a bad .wrp) and needs unusual error
+    // recovery, so it is left as-is; the planned fix derives nonportability
+    // from the finalized stream at save time instead of here.
+    if (!state->nonportable_reason)
+        state->nonportable_reason = (op_type == APIC_OP_BVH_REBUILD) ? "wp.Bvh.rebuild()" : "wp.Bvh.refit()";
+}
+
+void apic_record_bvh_refit(APICState* state, uint64_t bvh_id)
+{
+    apic_record_bvh_op(state, APIC_OP_BVH_REFIT, bvh_id, -1);
+}
+
+void apic_record_bvh_rebuild(APICState* state, uint64_t bvh_id, int32_t constructor_type)
+{
+    apic_record_bvh_op(state, APIC_OP_BVH_REBUILD, bvh_id, constructor_type);
+}
+
 // ============================================================================
 // Conditional / Loop branch capture (APIC_OP_IF / APIC_OP_WHILE)
 // ============================================================================
@@ -1637,6 +1676,13 @@ bool apic_validate_operation_stream(const uint8_t* data, size_t size, uint32_t o
             }
             break;
         }
+        case APIC_OP_BVH_REFIT:
+        case APIC_OP_BVH_REBUILD:
+            if (op_end < op_start + sizeof(APICBvhRecord)) {
+                fprintf(stderr, "APIC: Error - BVH record overflow at operation %u\n", i);
+                return false;
+            }
+            break;
         case APIC_OP_IF:
         case APIC_OP_WHILE: {
             if (op_end < op_start + sizeof(APICCondRecord)) {
@@ -2297,6 +2343,22 @@ static bool apic_cpu_replay_stream(
             break;
         }
 
+        case APIC_OP_BVH_REFIT: {
+            const APICBvhRecord* rec = reinterpret_cast<const APICBvhRecord*>(ptr);
+            // g_apic_state is null during replay, so this re-runs the real refit
+            // against the (replay-time) lowers/uppers the BVH points at. Same
+            // entry point wp.Bvh.refit() dispatches to. remap_handle is identity
+            // for a live in-process replay.
+            wp_bvh_refit_host(remap_handle(rec->bvh_id));
+            break;
+        }
+
+        case APIC_OP_BVH_REBUILD: {
+            const APICBvhRecord* rec = reinterpret_cast<const APICBvhRecord*>(ptr);
+            wp_bvh_rebuild_host(remap_handle(rec->bvh_id), rec->constructor_type);
+            break;
+        }
+
         case APIC_OP_IF: {
             const APICCondRecord* rec = reinterpret_cast<const APICCondRecord*>(ptr);
             const uint8_t* branch_a = ptr + sizeof(APICCondRecord);
@@ -2457,6 +2519,19 @@ bool wp_apic_state_save(APICState* state, const char* path, int target_arch, voi
 {
     if (!state || !path) {
         fprintf(stderr, "APIC: Null %s passed to wp_apic_state_save\n", !state ? "state" : "path");
+        return false;
+    }
+
+    // Refuse to serialize a stream whose replay depends on a process-local
+    // handle (e.g. wp.Bvh.refit()/rebuild()). The recorded handle would dangle
+    // when the graph is loaded in another process; fail with an actionable
+    // error instead of writing a .wrp that crashes at replay.
+    if (state->nonportable_reason) {
+        wp::set_error_string(
+            "Cannot serialize a captured graph that records %s: the BVH handle is process-local and cannot be "
+            "saved to a .wrp. Replay the captured graph in-process instead of saving it.",
+            state->nonportable_reason
+        );
         return false;
     }
 

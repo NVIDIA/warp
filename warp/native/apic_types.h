@@ -43,6 +43,8 @@ enum APICOpType : uint32_t {
     APIC_OP_BSR_FROM_TRIPLETS = 14,  // wp_bsr_matrix_from_triplets_host
     APIC_OP_BSR_TRANSPOSE = 15,  // wp_bsr_transpose_host
     APIC_OP_REDUCTION = 16,
+    APIC_OP_BVH_REFIT = 17,  // wp_bvh_refit_host
+    APIC_OP_BVH_REBUILD = 18,  // wp_bvh_rebuild_host
 };
 
 enum APICReductionKind : uint8_t {
@@ -468,6 +470,24 @@ struct APICBsrTransposeRecord {
     uint64_t block_indices_offset;
     uint64_t status_offset;
 };
+
+// Same-process host BVH update (APIC_OP_BVH_REFIT or APIC_OP_BVH_REBUILD).
+// Records a wp_bvh_refit_host() / wp_bvh_rebuild_host() call so CPU graph
+// replay re-runs the update against the (replay-time) lowers/uppers the BVH
+// points at, instead of leaving the tree frozen at its capture-time bounds.
+// Same rationale as the sorts/BSR ops: on CPU the update is a host function
+// that, unlike a kernel launch, is otherwise invisible to the byte stream.
+// ``bvh_id`` is a live, process-local handle, so a stream carrying this op is
+// not serializable: recording it marks the APIC state nonportable and
+// wp_apic_state_save() refuses it (the op never reaches a .wrp).
+// ``constructor_type`` carries the rebuild construction algorithm (a
+// BVH_CONSTRUCTOR_* value); it is unused (-1) for APIC_OP_BVH_REFIT.
+struct APICBvhRecord {
+    APICOpHeader header;  // op_type = APIC_OP_BVH_REFIT or APIC_OP_BVH_REBUILD
+    uint64_t bvh_id;
+    int32_t constructor_type;  // rebuild constructor; -1 for refit
+    uint32_t _pad;
+};  // 24 bytes
 
 // Conditional / loop op (variable: trailing per-branch op-stream blocks).
 // Used by both APIC_OP_IF (then + else branches) and APIC_OP_WHILE

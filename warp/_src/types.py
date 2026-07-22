@@ -5777,6 +5777,11 @@ class Bvh:
         """Refit the BVH.
 
         This should be called after users modify the ``lowers`` or ``uppers`` arrays.
+
+        Note:
+            Under a CPU graph capture the refit is recorded and re-run on replay against the
+            current ``lowers``/``uppers``. Such a graph is replay-only and cannot be serialized
+            with :func:`warp.capture_save`.
         """
 
         if self.device.is_cpu:
@@ -5812,6 +5817,9 @@ class Bvh:
               This guarantee does not apply to cuBQL rebuilds.
             - If you need a CPU top-down constructor (``"sah"``/``"median"``) for a GPU tree,
               create a new BVH via the class constructor instead.
+            - Under a CPU graph capture the rebuild is recorded and re-run on replay against the
+              current ``lowers``/``uppers``. Such a graph is replay-only and cannot be serialized
+              with :func:`warp.capture_save`.
 
         Raises:
             ValueError: If an unknown constructor is provided.
