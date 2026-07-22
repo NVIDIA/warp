@@ -620,6 +620,9 @@ needs more shared memory than the forward, which could cause an illegal memory a
 and a backward-enabled kernel in the same module.</p></li>
 <li><p>Fix compilation failures when calling <code class="docutils literal notranslate"><span class="pre">warp.fem.lookup()</span></code> with double-precision (<code class="docutils literal notranslate"><span class="pre">wp.float64</span></code>) geometries
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1660">GH-1660</a>).</p></li>
+<li><p>Fix <code class="docutils literal notranslate"><span class="pre">wp.tile_matmul()</span></code> silently computing incorrect results on the MathDx path for a strided tile operand,
+such as a <code class="docutils literal notranslate"><span class="pre">wp.tile_view()</span></code> into a wider tile (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1667">GH-1667</a>).</p></li>
+<li><p>Fix cuBLASDx errors being reported as cuFFTDx errors.</p></li>
 <li><p>Fix kernel launches using stale deterministic launch metadata after switching a module’s <code class="docutils literal notranslate"><span class="pre">deterministic</span></code> mode,
 which could execute consumed-return counter atomics twice or crash the process
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1637">GH-1637</a>).</p></li>
