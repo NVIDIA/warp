@@ -292,37 +292,37 @@ def test_tile_view_non_dense_store(test, device):
 
 
 @wp.kernel
-def tile_slice_rows_kernel(src: wp.array2d(dtype=float), dst: wp.array2d(dtype=float)):
+def tile_slice_rows_kernel(src: wp.array2d[float], dst: wp.array2d[float]):
     t = wp.tile_load(src, shape=(TILE_M, TILE_N))
     wp.tile_store(dst, t[4:12, :])
 
 
 @wp.kernel
-def tile_slice_cols_kernel(src: wp.array2d(dtype=float), dst: wp.array2d(dtype=float)):
+def tile_slice_cols_kernel(src: wp.array2d[float], dst: wp.array2d[float]):
     t = wp.tile_load(src, shape=(TILE_M, TILE_N))
     wp.tile_store(dst, t[:, 8:24])
 
 
 @wp.kernel
-def tile_slice_strided_kernel(src: wp.array2d(dtype=float), dst: wp.array2d(dtype=float)):
+def tile_slice_strided_kernel(src: wp.array2d[float], dst: wp.array2d[float]):
     t = wp.tile_load(src, shape=(TILE_M, TILE_N))
     wp.tile_store(dst, t[::2, ::2])
 
 
 @wp.kernel
-def tile_slice_reverse_kernel(src: wp.array2d(dtype=float), dst: wp.array2d(dtype=float)):
+def tile_slice_reverse_kernel(src: wp.array2d[float], dst: wp.array2d[float]):
     t = wp.tile_load(src, shape=(TILE_M, TILE_N))
     wp.tile_store(dst, t[::-1, :])
 
 
 @wp.kernel
-def tile_slice_row_collapse_kernel(src: wp.array2d(dtype=float), dst: wp.array1d(dtype=float)):
+def tile_slice_row_collapse_kernel(src: wp.array2d[float], dst: wp.array1d[float]):
     t = wp.tile_load(src, shape=(TILE_M, TILE_N))
     wp.tile_store(dst, t[5, :])
 
 
 @wp.kernel
-def tile_slice_assign_kernel(src: wp.array2d(dtype=float), dst: wp.array2d(dtype=float)):
+def tile_slice_assign_kernel(src: wp.array2d[float], dst: wp.array2d[float]):
     t = wp.tile_load(src, shape=(TILE_M, TILE_N))
     ones = wp.tile_ones(shape=(4, TILE_N), dtype=float)
     t[0:4, :] = ones
@@ -330,23 +330,21 @@ def tile_slice_assign_kernel(src: wp.array2d(dtype=float), dst: wp.array2d(dtype
 
 
 @wp.kernel
-def tile_fancy_index_kernel(src: wp.array2d(dtype=float), dst: wp.array2d(dtype=float)):
+def tile_fancy_index_kernel(src: wp.array2d[float], dst: wp.array2d[float]):
     t = wp.tile_load(src, shape=(TILE_M, TILE_N))
     idx = wp.tile_arange(0, 8, dtype=int) * 2  # [0, 2, 4, ..., 14]
     wp.tile_store(dst, t[idx, :])
 
 
 @wp.kernel
-def tile_fancy_index_dup_kernel(src: wp.array2d(dtype=float), idx: wp.array1d(dtype=int), dst: wp.array2d(dtype=float)):
+def tile_fancy_index_dup_kernel(src: wp.array2d[float], idx: wp.array1d[int], dst: wp.array2d[float]):
     t = wp.tile_load(src, shape=(TILE_M, TILE_N))
     i = wp.tile_load(idx, shape=8)
     wp.tile_store(dst, t[i, :])
 
 
 @wp.kernel
-def tile_slice_assign_grad_kernel(
-    src: wp.array2d(dtype=float), val: wp.array2d(dtype=float), dst: wp.array2d(dtype=float)
-):
+def tile_slice_assign_grad_kernel(src: wp.array2d[float], val: wp.array2d[float], dst: wp.array2d[float]):
     t = wp.tile_load(src, shape=(TILE_M, TILE_N))
     v = wp.tile_load(val, shape=(4, TILE_N))
     t[0:4, :] = v
@@ -354,26 +352,35 @@ def tile_slice_assign_grad_kernel(
 
 
 @wp.kernel
-def tile_slice_neg_index_kernel(src: wp.array2d(dtype=float), dst: wp.array1d(dtype=float)):
+def tile_slice_neg_index_kernel(src: wp.array2d[float], dst: wp.array1d[float]):
     t = wp.tile_load(src, shape=(TILE_M, TILE_N))
     wp.tile_store(dst, t[-1, :])  # NumPy negative index: last row
 
 
 @wp.kernel
-def tile_slice_neg_step_oob_kernel(src: wp.array2d(dtype=float), dst: wp.array2d(dtype=float)):
+def tile_slice_neg_step_oob_kernel(src: wp.array2d[float], dst: wp.array2d[float]):
     t = wp.tile_load(src, shape=(TILE_M, TILE_N))
     wp.tile_store(dst, t[100::-1, :])  # out-of-range start clamps to the full reverse
 
 
 @wp.kernel
-def tile_slice_neg_stop_kernel(src: wp.array2d(dtype=float), dst: wp.array2d(dtype=float)):
+def tile_slice_neg_stop_kernel(src: wp.array2d[float], dst: wp.array2d[float]):
     t = wp.tile_load(src, shape=(TILE_M, TILE_N))
     wp.tile_store(dst, t[7:-100:-1, :])  # out-of-range negative stop must still include row 0
 
 
 def _check_slice(test, device, kernel, np_index, out_shape, check_grad=True):
-    """Launch ``kernel`` (which slices a (TILE_M, TILE_N) tile with ``np_index``)
-    and compare against NumPy, including a gradient check by default."""
+    """Check a tile-slicing kernel against the equivalent NumPy indexing expression.
+
+    Args:
+        test: Test case instance.
+        device: Device to launch on.
+        kernel: Kernel that slices a ``(TILE_M, TILE_N)`` tile with ``np_index``.
+        np_index: NumPy index expression matching the kernel's subscript.
+        out_shape: Shape of the sliced result.
+        check_grad: Whether to also verify the backward pass scatters gradients
+            back to the sliced source elements.
+    """
     rng = np.random.default_rng(42)
     src_np = rng.random((TILE_M, TILE_N), dtype=np.float32)
 
@@ -507,78 +514,144 @@ def test_tile_slice_neg_stop(test, device):
 
 
 def test_tile_fancy_index_float_rejected(test, device):
+    @wp.kernel(module="unique", enable_backward=False)
     def kernel_fn():
         t = wp.tile_ones(shape=(TILE_M, TILE_N), dtype=float)
         idx = wp.tile_arange(0.0, 8.0, 1.0, dtype=float)  # non-integer index tile
         rows = t[idx, :]
 
-    kernel = wp.Kernel(func=kernel_fn)
     with test.assertRaisesRegex((RuntimeError, ValueError), r"integer index tile"):
-        wp.launch_tiled(kernel, dim=[1], inputs=[], block_dim=32, device=device)
+        wp.launch_tiled(kernel_fn, dim=[1], inputs=[], block_dim=32, device=device)
 
 
 def test_tile_slice_scalar_assign_rejected(test, device):
+    @wp.kernel(module="unique", enable_backward=False)
     def kernel_fn():
         t = wp.tile_zeros(shape=(TILE_M, TILE_N), dtype=float)
         t[0:4, :] = 1.0  # scalar broadcast into a slice is not supported
 
-    kernel = wp.Kernel(func=kernel_fn)
     with test.assertRaisesRegex((RuntimeError, ValueError), r"requires a tile of matching shape"):
-        wp.launch_tiled(kernel, dim=[1], inputs=[], block_dim=32, device=device)
+        wp.launch_tiled(kernel_fn, dim=[1], inputs=[], block_dim=32, device=device)
 
 
 def test_tile_slice_augassign_rejected(test, device):
+    @wp.kernel(module="unique", enable_backward=False)
     def kernel_fn():
         t = wp.tile_ones(shape=(TILE_M, TILE_N), dtype=float)
         v = wp.tile_ones(shape=(4, TILE_N), dtype=float)
         t[0:4, :] += v  # compound assignment to a slice is not supported
 
-    kernel = wp.Kernel(func=kernel_fn)
     with test.assertRaisesRegex((RuntimeError, ValueError), r"Compound assignment to a tile view"):
-        wp.launch_tiled(kernel, dim=[1], inputs=[], block_dim=32, device=device)
+        wp.launch_tiled(kernel_fn, dim=[1], inputs=[], block_dim=32, device=device)
 
 
 def test_tile_row_augassign_rejected(test, device):
     # A partial integer index (a row view) has no in-place path either.
+    @wp.kernel(module="unique", enable_backward=False)
     def kernel_fn():
         t = wp.tile_ones(shape=(TILE_M, TILE_N), dtype=float)
         v = wp.tile_ones(shape=(TILE_N,), dtype=float)
         t[0] += v  # compound assignment to a row view is not supported
 
-    kernel = wp.Kernel(func=kernel_fn)
     with test.assertRaisesRegex((RuntimeError, ValueError), r"Compound assignment to a tile view"):
-        wp.launch_tiled(kernel, dim=[1], inputs=[], block_dim=32, device=device)
+        wp.launch_tiled(kernel_fn, dim=[1], inputs=[], block_dim=32, device=device)
 
 
 def test_tile_slice_assign_shape_mismatch(test, device):
+    @wp.kernel(module="unique", enable_backward=False)
     def kernel_fn():
         t = wp.tile_zeros(shape=(TILE_M, TILE_N), dtype=float)
         src = wp.tile_ones(shape=(5, TILE_N), dtype=float)  # 5 rows into a 4-row slice
         t[0:4, :] = src
 
-    kernel = wp.Kernel(func=kernel_fn)
     with test.assertRaisesRegex((RuntimeError, ValueError), r"shape mismatch|does not fit"):
-        wp.launch_tiled(kernel, dim=[1], inputs=[], block_dim=32, device=device)
+        wp.launch_tiled(kernel_fn, dim=[1], inputs=[], block_dim=32, device=device)
 
 
 def test_tile_index_out_of_bounds(test, device):
+    @wp.kernel(module="unique", enable_backward=False)
     def kernel_fn():
         t = wp.tile_ones(shape=(TILE_M, TILE_N), dtype=float)
         row = t[100, :]  # constant out-of-range integer index
 
-    kernel = wp.Kernel(func=kernel_fn)
     with test.assertRaisesRegex((RuntimeError, ValueError), r"out of bounds"):
-        wp.launch_tiled(kernel, dim=[1], inputs=[], block_dim=32, device=device)
+        wp.launch_tiled(kernel_fn, dim=[1], inputs=[], block_dim=32, device=device)
 
 
 def test_tile_slice_empty_rejected(test, device):
+    @wp.kernel(module="unique", enable_backward=False)
     def kernel_fn():
         t = wp.tile_ones(shape=(TILE_M, TILE_N), dtype=float)
         empty = t[4:4, :]  # zero-length axis
 
-    kernel = wp.Kernel(func=kernel_fn)
     with test.assertRaisesRegex((RuntimeError, ValueError), r"empty tile|zero-length"):
-        wp.launch_tiled(kernel, dim=[1], inputs=[], block_dim=32, device=device)
+        wp.launch_tiled(kernel_fn, dim=[1], inputs=[], block_dim=32, device=device)
+
+
+@wp.kernel(enable_backward=False)
+def tile_slice_assign_overlap_kernel(src: wp.array1d[wp.int32], dst: wp.array1d[wp.int32]):
+    t = wp.tile_load(src, shape=(TILE_DIM,))
+    t[1:] = t[:-1]  # source and destination views alias the same tile
+    wp.tile_store(dst, t)
+
+
+def test_tile_slice_assign_overlap(test, device):
+    # Overlapping slice assignment must read the pre-assignment source values
+    # (NumPy semantics): the copy is staged through registers, not interleaved.
+    src_np = np.arange(TILE_DIM, dtype=np.int32)
+    src = wp.array(src_np, device=device)
+    dst = wp.zeros(TILE_DIM, dtype=wp.int32, device=device)
+
+    wp.launch_tiled(tile_slice_assign_overlap_kernel, dim=[1], inputs=[src, dst], block_dim=32, device=device)
+
+    expected = src_np.copy()
+    expected[1:] = src_np[:-1]
+    assert_np_equal(dst.numpy(), expected)
+
+
+def test_tile_slice_float_index_rejected(test, device):
+    @wp.kernel(module="unique", enable_backward=False)
+    def kernel_fn():
+        t = wp.tile_ones(shape=(TILE_M, TILE_N), dtype=float)
+        row = t[1.5, :]  # non-integer scalar index
+
+    with test.assertRaisesRegex((RuntimeError, TypeError), r"must be integers or slices"):
+        wp.launch_tiled(kernel_fn, dim=[1], inputs=[], block_dim=32, device=device)
+
+
+def test_tile_view_float_offset_rejected(test, device):
+    # The explicit tile_view() API must reject non-integer offsets as well.
+    @wp.kernel(module="unique", enable_backward=False)
+    def kernel_fn():
+        t = wp.tile_ones(shape=(TILE_M, TILE_N), dtype=float)
+        row = wp.tile_view(t, offset=(1.5,))
+
+    with test.assertRaisesRegex((RuntimeError, ValueError), r"must be integers or slices"):
+        wp.launch_tiled(kernel_fn, dim=[1], inputs=[], block_dim=32, device=device)
+
+
+def test_tile_reshape_strided_view_rejected(test, device):
+    # Reshape aliases the source pointer with dense strides, so a strided or
+    # reversed view would silently read the wrong elements (or out of bounds).
+    @wp.kernel(module="unique", enable_backward=False)
+    def kernel_fn():
+        t = wp.tile_ones(shape=(TILE_M, TILE_N), dtype=float)
+        flat = wp.tile_reshape(t[::2, ::2], shape=((TILE_M // 2) * (TILE_N // 2),))
+
+    with test.assertRaisesRegex((RuntimeError, ValueError), r"requires a contiguous tile"):
+        wp.launch_tiled(kernel_fn, dim=[1], inputs=[], block_dim=32, device=device)
+
+
+def test_tile_view_shape_with_slice_rejected(test, device):
+    # Passing an explicit shape alongside a slice-containing offset would
+    # silently drop the shape, so it must be rejected.
+    @wp.kernel(module="unique", enable_backward=False)
+    def kernel_fn():
+        t = wp.tile_ones(shape=(TILE_M, TILE_N), dtype=float)
+        v = wp.tile_view(t, offset=(slice(0, 2, 1), slice(0, 3, 1)), shape=(2, 3))
+
+    with test.assertRaisesRegex((RuntimeError, ValueError), r"'shape' together with a slice"):
+        wp.launch_tiled(kernel_fn, dim=[1], inputs=[], block_dim=32, device=device)
 
 
 devices = get_test_devices()
@@ -642,6 +715,19 @@ add_function_test(
     TestTileView, "test_tile_slice_augassign_rejected", test_tile_slice_augassign_rejected, devices=devices
 )
 add_function_test(TestTileView, "test_tile_row_augassign_rejected", test_tile_row_augassign_rejected, devices=devices)
+add_function_test(TestTileView, "test_tile_slice_assign_overlap", test_tile_slice_assign_overlap, devices=devices)
+add_function_test(
+    TestTileView, "test_tile_slice_float_index_rejected", test_tile_slice_float_index_rejected, devices=devices
+)
+add_function_test(
+    TestTileView, "test_tile_view_float_offset_rejected", test_tile_view_float_offset_rejected, devices=devices
+)
+add_function_test(
+    TestTileView, "test_tile_reshape_strided_view_rejected", test_tile_reshape_strided_view_rejected, devices=devices
+)
+add_function_test(
+    TestTileView, "test_tile_view_shape_with_slice_rejected", test_tile_view_shape_with_slice_rejected, devices=devices
+)
 
 
 if __name__ == "__main__":
