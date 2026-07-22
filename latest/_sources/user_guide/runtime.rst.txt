@@ -1872,6 +1872,10 @@ The operations recorded on CPU now cover most of the CUDA path:
   :func:`wp.utils.segmented_sort_pairs() <warp.utils.segmented_sort_pairs>`,
   :func:`wp.utils.runlength_encode() <warp.utils.runlength_encode>`, and the
   ``warp.sparse`` BSR ``from_triplets`` / ``transpose`` topology builders.
+- Bounding-volume-hierarchy updates (:meth:`wp.Bvh.refit() <warp.Bvh.refit>` and
+  :meth:`wp.Bvh.rebuild() <warp.Bvh.rebuild>`), re-run on replay against the
+  current ``lowers`` / ``uppers`` so a captured graph queries the updated tree.
+  These make the graph replay-only (see the limitations below).
 - Conditional graph nodes (:func:`wp.capture_if() <warp.capture_if>` and
   :func:`wp.capture_while() <warp.capture_while>`). The condition is re-evaluated
   on every replay, so a captured ``while`` loop can iterate a different number
@@ -1924,6 +1928,10 @@ Current limitations of CPU graph capture:
   the sparse status during a live CUDA graph capture (it requires a device-to-host
   readback) or during a CPU APIC capture (a recorded status update is applied only
   on replay). Read the status after replay instead.
+- A captured :meth:`wp.Bvh.refit() <warp.Bvh.refit>` or
+  :meth:`wp.Bvh.rebuild() <warp.Bvh.rebuild>` makes the graph replay-only: the recorded
+  BVH handle is process-local, so :func:`wp.capture_save() <warp.capture_save>` rejects a
+  graph that records either operation.
 - Recording is scoped to the capture's device: a host (CPU) helper op invoked while a CUDA
   graph capture is active executes immediately instead of being recorded into the CUDA graph,
   and vice versa.

@@ -542,6 +542,10 @@ context (<a class="reference external" href="https://github.com/NVIDIA/warp/issu
 graphs recompute them from current inputs on CPU and CUDA (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1663">GH-1663</a>).</p></li>
 <li><p>Add CPU support for <code class="docutils literal notranslate"><span class="pre">wp.jax_kernel()</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.jax_callable()</span></code> FFI calls, with automatic dispatch between CPU and
 CUDA based on the device selected by JAX (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1661">GH-1661</a>).</p></li>
+<li><p><strong>Experimental:</strong> Extend APIC graph capture and replay on CPU so that <code class="docutils literal notranslate"><span class="pre">wp.Bvh.refit()</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.Bvh.rebuild()</span></code>
+called during a capture are recorded and replayed against the current bounds, instead of running once at capture
+time and leaving replay to query a stale BVH. Such captures are replay-only; <code class="docutils literal notranslate"><span class="pre">capture_save()</span></code> rejects them because
+the BVH handle cannot be serialized (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1665">GH-1665</a>).</p></li>
 </ul>
 </section>
 <section id="removed">
