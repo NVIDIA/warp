@@ -288,10 +288,13 @@ Basic slicing produces a view that aliases the source tile's memory (compiling d
 to :func:`tile_view <warp._src.lang.tile_view>`), so an integer index collapses that
 dimension just as it does in NumPy. Slicing is fully differentiable.
 
-Negative indices are wrapped like NumPy (``t[-1, :]`` is the last row) only when the
-index is a compile-time constant. A runtime integer index (e.g. one computed from
-``wp.tid()``) must be non-negative and in bounds; like other tile operations, a
-runtime index is bounds-checked only in debug builds.
+.. caution::
+
+    Negative indices are wrapped like NumPy (``t[-1, :]`` is the last row) only when
+    the index is a compile-time constant. A runtime integer index (e.g. one computed
+    from ``wp.tid()``) must be non-negative and in bounds; like other tile
+    operations, a runtime index is bounds-checked only in debug builds, so an
+    out-of-range value reads out of bounds in release builds.
 
 Fancy indexing gathers elements along a single axis using a 1D integer index tile,
 returning a new (non-aliasing) register tile:
@@ -305,9 +308,13 @@ returning a new (non-aliasing) register tile:
         indices = wp.tile_arange(0, 8, dtype=int) * 8   # [0, 8, 16, ..., 56]
         selected_rows = t[indices, :]                   # shape (8, 64)
 
-Index values must be within bounds for the gathered axis: like other tile
-operations, the gather (and its gradient scatter) validates indices only in debug
-builds, so an out-of-range value reads or writes out of bounds in release builds.
+.. caution::
+
+    Index values must be within bounds for the gathered axis: like other tile
+    operations, the gather (and its gradient scatter) validates indices only in
+    debug builds, so an out-of-range value reads or writes out of bounds in
+    release builds.
+
 Duplicate indices are supported and accumulate their gradients atomically on the
 backward pass.
 
