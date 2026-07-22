@@ -63,7 +63,7 @@
 #define CHECK_CUBLASDX(code) \
 { \
     do { \
-        bool out = (check_cufftdx(code)); \
+        bool out = (check_cublasdx(code)); \
         if(!out) { \
             return out; \
         } \
@@ -5054,7 +5054,10 @@ bool wp_cuda_compile_dot(
     int arrangement_A,
     int arrangement_B,
     int arrangement_C,
-    int num_threads
+    int num_threads,
+    int lda,
+    int ldb,
+    int ldc
 )
 {
 
@@ -5096,6 +5099,14 @@ bool wp_cuda_compile_dot(
     CHECK_CUBLASDX(cublasdxSetOperatorInt64s(
         h, cublasdxOperatorType::CUBLASDX_OPERATOR_ARRANGEMENT, arrangement.size(), arrangement.data()
     ));
+
+    // non-positive values leave the leading dimensions at their dense defaults
+    if (lda > 0 && ldb > 0 && ldc > 0) {
+        std::array<long long int, 3> ld = { lda, ldb, ldc };
+        CHECK_CUBLASDX(cublasdxSetOperatorInt64s(
+            h, cublasdxOperatorType::CUBLASDX_OPERATOR_LEADING_DIMENSION, ld.size(), ld.data()
+        ));
+    }
 
     CHECK_CUBLASDX(cublasdxSetOptionStr(h, commondxOption::COMMONDX_OPTION_SYMBOL_NAME, symbol_name));
 

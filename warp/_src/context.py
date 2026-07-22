@@ -7254,6 +7254,9 @@ class Runtime:
                 ctypes.c_int,  # b_arrangement
                 ctypes.c_int,  # c_arrangement
                 ctypes.c_int,  # num threads
+                ctypes.c_int,  # lda
+                ctypes.c_int,  # ldb
+                ctypes.c_int,  # ldc
             ]
             self.core.wp_cuda_compile_dot.restype = ctypes.c_bool
 

@@ -852,7 +852,10 @@ WP_API bool wp_cuda_compile_dot(
     int arrangement_A,
     int arrangement_B,
     int arrangement_C,
-    int num_threads
+    int num_threads,
+    int lda,
+    int ldb,
+    int ldc
 );
 WP_API bool wp_cuda_compile_solver(
     const char* fatbin_output_path,

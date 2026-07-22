@@ -435,7 +435,9 @@ def _build_lto_base(lto_symbol, compile_func, builder, extra_files=None):
         return (result, outputs[".lto"], *[outputs[ext] for ext in extra_files.keys()])
 
 
-def build_lto_dot(M, N, K, adtype, bdtype, cdtype, alayout, blayout, clayout, arch, num_threads, builder):
+def build_lto_dot(
+    M, N, K, adtype, bdtype, cdtype, alayout, blayout, clayout, arch, num_threads, builder, lda=None, ldb=None, ldc=None
+):
     arch = 120 if arch > 121 else arch
 
     # Maps Python/Warp types to C++ types and enums
@@ -475,7 +477,28 @@ def build_lto_dot(M, N, K, adtype, bdtype, cdtype, alayout, blayout, clayout, ar
 
     element_type = a_type
 
+    # A leading dimension is the element stride between rows of a row-major operand,
+    # or between columns of a col-major one. None means dense.
+    def dense_ld(layout, rows, cols):
+        return cols if layout == "rowmajor" else rows
+
+    dense_lds = (dense_ld(alayout, M, K), dense_ld(blayout, K, N), dense_ld(clayout, M, N))
+    if lda is None:
+        lda = dense_lds[0]
+    if ldb is None:
+        ldb = dense_lds[1]
+    if ldc is None:
+        ldc = dense_lds[2]
+
+    # Pass zeros for dense strides, leaving the LeadingDimension operator unset.
+    # cuBLASDx validates an explicit LeadingDimension more strictly than the default;
+    # see the fallback in the tile_matmul dispatch.
+    native_lds = (0, 0, 0) if (lda, ldb, ldc) == dense_lds else (lda, ldb, ldc)
+
     lto_symbol = f"dot_{M}_{N}_{K}_{arch}_{num_threads}_{a_arrangement}_{b_arrangement}_{c_arrangement}_{a_prec}_{b_prec}_{c_prec}_{element_type}"
+    # dense GEMMs keep the pre-existing symbol, so their cached LTOs stay valid
+    if (lda, ldb, ldc) != dense_lds:
+        lto_symbol += f"_{lda}_{ldb}_{ldc}"
 
     def compile_lto_dot(temp_paths):
         result = warp._src.context.runtime.core.wp_cuda_compile_dot(
@@ -496,6 +519,9 @@ def build_lto_dot(M, N, K, adtype, bdtype, cdtype, alayout, blayout, clayout, ar
             b_arrangement,
             c_arrangement,
             num_threads,
+            native_lds[0],
+            native_lds[1],
+            native_lds[2],
         )
 
         if result:
