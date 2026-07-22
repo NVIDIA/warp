@@ -1,0 +1,460 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+name: Build LLVM SDK
+
+on:
+  workflow_dispatch:
+    inputs:
+      llvm_version:
+        description: LLVM version to build; empty = newest version in tools/llvm/conandata.yml
+        default: ''
+      bundle_revision:
+        description: Bundle revision (warp.N asset suffix); bump for corrected rebuilds
+        default: '1'
+      platforms:
+        description: Comma-separated full platform names (e.g. linux-x86_64), or "all"
+        default: 'all'
+
+env:
+  CONAN_VERSION: '2.30.0'
+  CMAKE_PIN: '3.31.6'
+  NINJA_PIN: '1.11.1.4'
+
+jobs:
+  validate-inputs:
+    name: Validate inputs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    outputs:
+      llvm-version: ${{ steps.resolve.outputs.llvm-version }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Validate platforms input
+        env:
+          PLATFORMS: ${{ inputs.platforms }}
+          BUNDLE_REVISION: ${{ inputs.bundle_revision }}
+        run: |
+          if [[ ! "$BUNDLE_REVISION" =~ ^[1-9][0-9]*$ ]]; then
+            echo "::error::bundle_revision must be a positive integer (got '$BUNDLE_REVISION')"
+            exit 1
+          fi
+          known="linux-x86_64 linux-aarch64 macos-arm64 windows-x86_64 windows-arm64"
+          [[ "$PLATFORMS" == "all" ]] && exit 0
+          IFS=',' read -ra tokens <<< "$PLATFORMS"
+          for t in "${tokens[@]}"; do
+            t="${t// /}"
+            if [[ -z "$t" || " $known " != *" $t "* ]]; then
+              echo "::error::Unknown platform '$t' (full names only: $known, or 'all')"
+              exit 1
+            fi
+          done
+
+      - name: Resolve LLVM version
+        id: resolve
+        env:
+          REQUESTED: ${{ inputs.llvm_version }}
+        run: |
+          python3 -c "import yaml" 2>/dev/null || python3 -m pip install --quiet pyyaml
+          resolved=$(python3 - "$REQUESTED" <<'EOF'
+          import sys
+
+          import yaml
+
+          requested = sys.argv[1].strip()
+          with open("tools/llvm/conandata.yml") as f:
+              versions = list(yaml.safe_load(f)["sources"])
+          if requested:
+              if requested not in versions:
+                  print(f"::error::llvm_version '{requested}' not in tools/llvm/conandata.yml "
+                        f"(available: {', '.join(versions)})", file=sys.stderr)
+                  sys.exit(1)
+              print(requested)
+          else:
+              print(max(versions, key=lambda v: tuple(int(p) for p in v.split("."))))
+          EOF
+          )
+          echo "llvm-version=$resolved" >> "$GITHUB_OUTPUT"
+          echo "### Building LLVM $resolved" >> "$GITHUB_STEP_SUMMARY"
+          echo "Resolved LLVM version: $resolved"
+
+  build-linux:
+    name: Build ${{ matrix.platform }}
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+    timeout-minutes: 350
+    needs: validate-inputs
+    if: ${{ success() && (inputs.platforms == 'all' || contains(inputs.platforms, 'linux')) }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Keep image digests in sync with the smoke-test matrix below.
+        include:
+          - platform: linux-x86_64
+            runner: ubuntu-latest
+            image: quay.io/pypa/manylinux_2_28_x86_64@sha256:a61875a2f84cab7df8de222ff12cabc08ff86eb4ad402ac90ba7bdaed9600cca
+          - platform: linux-aarch64
+            runner: ubuntu-24.04-arm
+            image: quay.io/pypa/manylinux_2_34_aarch64@sha256:ae032906c631ad572a91bcc9545023d327822912957ae85a57c85181836662b6
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Skip unselected platform
+        if: ${{ inputs.platforms != 'all' && !contains(inputs.platforms, matrix.platform) }}
+        run: echo "SKIP_BUILD=1" >> "$GITHUB_ENV"
+
+      - name: Free runner disk space
+        if: ${{ env.SKIP_BUILD != '1' }}
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - name: Build SDK in manylinux container
+        if: ${{ env.SKIP_BUILD != '1' }}
+        env:
+          LLVM_VERSION: ${{ needs.validate-inputs.outputs.llvm-version }}
+          BUNDLE_REVISION: ${{ inputs.bundle_revision }}
+          PROFILE: ${{ matrix.platform }}
+          IMAGE_DIGEST: ${{ matrix.image }}
+        run: |
+          docker run --rm -v "$PWD:/warp" -w /warp \
+            -e LLVM_VERSION -e BUNDLE_REVISION -e PROFILE -e IMAGE_DIGEST \
+            -e OUTPUT_DIR=/warp/_sdk_assets \
+            -e GITHUB_SHA \
+            -e CONAN_VERSION -e CMAKE_PIN -e NINJA_PIN \
+            "$IMAGE_DIGEST" bash tools/llvm/ci/build-linux.sh
+          df -h /
+
+      - name: Upload SDK artifact
+        if: ${{ env.SKIP_BUILD != '1' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: llvm-sdk-${{ matrix.platform }}
+          path: _sdk_assets/
+          if-no-files-found: error
+
+  build-native:
+    name: Build ${{ matrix.platform }}
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+    timeout-minutes: 350
+    continue-on-error: ${{ matrix.experimental }}
+    needs: validate-inputs
+    if: >-
+      ${{ success()
+          && (inputs.platforms == 'all'
+              || contains(inputs.platforms, 'macos')
+              || contains(inputs.platforms, 'windows')) }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-arm64
+            runner: macos-15
+            experimental: false
+          - platform: windows-x86_64
+            runner: windows-2022
+            experimental: false
+          - platform: windows-arm64
+            runner: windows-11-arm
+            experimental: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Skip unselected platform
+        if: ${{ inputs.platforms != 'all' && !contains(inputs.platforms, matrix.platform) }}
+        run: echo "SKIP_BUILD=1" >> "$GITHUB_ENV"
+        shell: bash
+
+      - name: Install v142 toolset (VS2019 floor)
+        if: ${{ matrix.platform == 'windows-x86_64' && env.SKIP_BUILD != '1' }}
+        shell: pwsh
+        run: |
+          $vswhere = "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vs = & $vswhere -latest -products '*' -property installationPath
+          if (-not $vs) { throw "vswhere found no Visual Studio installation" }
+          $installer = "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vs_installer.exe"
+          $p = Start-Process -Wait -PassThru -FilePath $installer -ArgumentList `
+            "modify", "--installPath", "`"$vs`"", `
+            "--add", "Microsoft.VisualStudio.Component.VC.14.29.16.11.x86.x64", `
+            "--quiet", "--norestart"
+          if ($p.ExitCode -ne 0 -and $p.ExitCode -ne 3010) { throw "vs_installer exited with $($p.ExitCode)" }
+
+      - name: Configure Windows environment
+        if: ${{ runner.os == 'Windows' && env.SKIP_BUILD != '1' }}
+        shell: pwsh
+        run: |
+          # Short Conan home + long-path support: LLVM's source tree breaks MAX_PATH.
+          New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" `
+            -Name LongPathsEnabled -Value 1 -PropertyType DWORD -Force
+          git config --system core.longpaths true
+          echo "CONAN_HOME=C:\c" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Install build tools
+        if: ${{ env.SKIP_BUILD != '1' }}
+        shell: bash
+        run: |
+          # macos-15 runners have a Homebrew-managed (PEP 668) Python that
+          # rejects bare pip installs; runners are throwaway, so bypass it.
+          # The flag is accepted and inert on the Windows runners.
+          python3 -m pip install --break-system-packages "conan==${CONAN_VERSION}" "cmake==${CMAKE_PIN}" "ninja==${NINJA_PIN}"
+
+      - name: Build SDK
+        if: ${{ env.SKIP_BUILD != '1' }}
+        shell: bash
+        env:
+          LLVM_VERSION: ${{ needs.validate-inputs.outputs.llvm-version }}
+        run: |
+          # The Windows profiles pin an MSVC toolset (v142 on x86_64), which
+          # conan maps to an older VS IDE; the runners only have VS2022 (17)
+          # with that toolset component installed, so point conan at it.
+          EXTRA_CONF=()
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            EXTRA_CONF=(-c:a "tools.microsoft.msbuild:vs_version=17")
+          fi
+          conan profile detect --force
+          conan create tools/llvm --version "$LLVM_VERSION" \
+            -pr:h "tools/llvm/profiles/${{ matrix.platform }}" \
+            -pr:b "tools/llvm/profiles/${{ matrix.platform }}" \
+            "${EXTRA_CONF[@]}"
+
+      - name: Deploy, check, and package SDK
+        if: ${{ env.SKIP_BUILD != '1' }}
+        shell: bash
+        env:
+          LLVM_VERSION: ${{ needs.validate-inputs.outputs.llvm-version }}
+          BUNDLE_REVISION: ${{ inputs.bundle_revision }}
+        run: |
+          # See the Build SDK step: point conan at the VS2022 installation.
+          EXTRA_CONF=()
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            EXTRA_CONF=(-c:a "tools.microsoft.msbuild:vs_version=17")
+          fi
+          conan install --requires "clang-warp/$LLVM_VERSION" \
+            -pr:h "tools/llvm/profiles/${{ matrix.platform }}" \
+            -pr:b "tools/llvm/profiles/${{ matrix.platform }}" \
+            --deployer tools/llvm/deployers/llvm_sdk.py --deployer-folder _sdk_deploy \
+            "${EXTRA_CONF[@]}"
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            # check_sdk.py only needs dumpbin on PATH. Locate it directly with
+            # vswhere: entering a vcvars shell via Git Bash's cmd //c mangles
+            # the embedded quotes during MSYS argv conversion. Any host/target
+            # flavor of dumpbin can read the archives, including under
+            # emulation on the arm64 runners.
+            VSWHERE="/c/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe"
+            DUMPBIN=$("$VSWHERE" -latest -products '*' -find 'VC\Tools\MSVC\**\dumpbin.exe' | head -1)
+            if [[ -z "$DUMPBIN" ]]; then
+              echo "FAIL: vswhere found no dumpbin.exe" >&2
+              exit 1
+            fi
+            PATH="$(dirname "$(cygpath -u "$DUMPBIN")"):$PATH" \
+              python tools/llvm/check_sdk.py --sdk-dir _sdk_deploy/llvm-sdk --platform "${{ matrix.platform }}"
+          else
+            python3 tools/llvm/check_sdk.py --sdk-dir _sdk_deploy/llvm-sdk --platform "${{ matrix.platform }}"
+          fi
+          python3 tools/llvm/package_sdk.py \
+            --sdk-dir _sdk_deploy/llvm-sdk \
+            --profile "tools/llvm/profiles/${{ matrix.platform }}" \
+            --llvm-version "$LLVM_VERSION" \
+            --bundle-revision "$BUNDLE_REVISION" \
+            --output-dir _sdk_assets \
+            --recipe-sha "$GITHUB_SHA" \
+            --conan-version "${CONAN_VERSION}" \
+            --toolchain-info "$(python3 -c 'import platform; print(platform.platform())')"
+
+      - name: Upload SDK artifact
+        if: ${{ env.SKIP_BUILD != '1' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: llvm-sdk-${{ matrix.platform }}
+          path: _sdk_assets/
+          if-no-files-found: error
+
+  smoke-test:
+    name: Smoke test ${{ matrix.platform }}
+    needs: [validate-inputs, build-linux, build-native]
+    if: >-
+      ${{ !cancelled()
+          && needs.validate-inputs.result == 'success'
+          && (needs.build-linux.result == 'success' || needs.build-native.result == 'success') }}
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+    timeout-minutes: 60
+    continue-on-error: ${{ matrix.experimental }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Keep image digests in sync with the build-linux matrix above.
+        include:
+          - platform: linux-x86_64
+            runner: ubuntu-latest
+            image: quay.io/pypa/manylinux_2_28_x86_64@sha256:a61875a2f84cab7df8de222ff12cabc08ff86eb4ad402ac90ba7bdaed9600cca
+            glibc_ceiling: '2.28'
+            experimental: false
+          - platform: linux-aarch64
+            runner: ubuntu-24.04-arm
+            image: quay.io/pypa/manylinux_2_34_aarch64@sha256:ae032906c631ad572a91bcc9545023d327822912957ae85a57c85181836662b6
+            glibc_ceiling: '2.34'
+            experimental: false
+          - platform: macos-arm64
+            runner: macos-15
+            glibc_ceiling: ''
+            experimental: false
+          - platform: windows-x86_64
+            runner: windows-2022
+            glibc_ceiling: ''
+            experimental: false
+          - platform: windows-arm64
+            runner: windows-11-arm
+            glibc_ceiling: ''
+            experimental: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Skip unselected platform
+        if: ${{ inputs.platforms != 'all' && !contains(inputs.platforms, matrix.platform) }}
+        run: echo "SKIP_BUILD=1" >> "$GITHUB_ENV"
+        shell: bash
+
+      - name: Download SDK artifact
+        if: ${{ env.SKIP_BUILD != '1' }}
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          name: llvm-sdk-${{ matrix.platform }}
+          path: _sdk_assets
+
+      - name: Extract SDK
+        if: ${{ env.SKIP_BUILD != '1' }}
+        shell: bash
+        run: |
+          mkdir -p _sdk
+          tar -xJf _sdk_assets/*.tar.xz -C _sdk
+          ls _sdk/lib | head -3
+
+      - name: Build and smoke test in manylinux container
+        if: ${{ env.SKIP_BUILD != '1' && startsWith(matrix.platform, 'linux') }}
+        run: |
+          # Link warp-clang and run the JIT smoke at the manylinux glibc
+          # floor; a native runner link would bind the runner's newer glibc
+          # symbol versions and invalidate the ceiling check.
+          docker run --rm -v "$PWD:/warp" -w /warp \
+            -e SDK_DIR=/warp/_sdk \
+            -e GLIBC_CEILING='${{ matrix.glibc_ceiling }}' \
+            '${{ matrix.image }}' bash tools/llvm/ci/smoke-linux.sh
+
+      - name: Install uv
+        if: ${{ env.SKIP_BUILD != '1' && !startsWith(matrix.platform, 'linux') }}
+        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57  # v8.0.0
+        with:
+          # This workflow runs once or twice a year; caching would only
+          # churn the repository's 10 GB Actions cache quota.
+          enable-cache: false
+
+      - name: Build warp-clang against the SDK
+        if: ${{ env.SKIP_BUILD != '1' && !startsWith(matrix.platform, 'linux') }}
+        shell: bash
+        run: uv run build_lib.py --llvm-path "$PWD/_sdk"
+
+      - name: Run CPU kernel smoke test
+        if: ${{ env.SKIP_BUILD != '1' && !startsWith(matrix.platform, 'linux') }}
+        shell: bash
+        run: uv run tools/llvm/ci/smoke_test.py
+
+  publish-draft:
+    name: Create draft release
+    needs: [validate-inputs, build-linux, build-native, smoke-test]
+    if: >-
+      ${{ !cancelled() && inputs.platforms == 'all'
+          && needs.validate-inputs.result == 'success'
+          && needs.build-linux.result == 'success'
+          && needs.build-native.result == 'success'
+          && needs.smoke-test.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - name: Download all SDK artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          pattern: llvm-sdk-*
+          path: _release
+          merge-multiple: true
+
+      - name: Assemble release metadata
+        env:
+          LLVM_VERSION: ${{ needs.validate-inputs.outputs.llvm-version }}
+          BUNDLE_REVISION: ${{ inputs.bundle_revision }}
+        run: |
+          cd _release
+          ls -la
+          for platform in linux-x86_64 linux-aarch64 macos-arm64 windows-x86_64; do
+            if ! ls ./*"$platform"*.tar.xz >/dev/null 2>&1; then
+              echo "::error::Required SDK archive for $platform is missing; refusing to draft an incomplete release"
+              exit 1
+            fi
+          done
+          if ! ls ./*windows-arm64*.tar.xz >/dev/null 2>&1; then
+            echo "::warning::windows-arm64 archive absent (experimental platform); drafting without it"
+          fi
+          sha256sum -- *.tar.xz > SHA256SUMS
+          # Merge the per-platform buildinfo fragments into one document.
+          jq -s --arg llvm_version "$LLVM_VERSION" --arg bundle_revision "$BUNDLE_REVISION" --arg recipe_sha "$GITHUB_SHA" \
+            '{schema_version: 1, llvm_version: $llvm_version, bundle_revision: $bundle_revision, recipe_sha: $recipe_sha, platforms: .}' \
+            ./*.buildinfo.json > llvm-source-and-build-info.json
+          cat SHA256SUMS
+
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LLVM_VERSION: ${{ needs.validate-inputs.outputs.llvm-version }}
+          BUNDLE_REVISION: ${{ inputs.bundle_revision }}
+        run: |
+          # The tag is derived, never typed, so it always matches the
+          # distribution plan's llvm-sdk-X.Y.Z-warp.N format.
+          RELEASE_TAG="llvm-sdk-${LLVM_VERSION}-warp.${BUNDLE_REVISION}"
+          # Re-runs replace their own draft: delete any existing DRAFT with
+          # the same derived tag (published releases are never touched).
+          gh api "repos/${GITHUB_REPOSITORY}/releases" \
+            --jq ".[] | select(.draft and .tag_name == \"${RELEASE_TAG}\") | .id" |
+          while read -r release_id; do
+            echo "Replacing existing draft ${release_id} for ${RELEASE_TAG}"
+            gh api -X DELETE "repos/${GITHUB_REPOSITORY}/releases/${release_id}"
+          done
+          # The git tag is only created when the draft is published; the
+          # --target SHA is recorded in the draft. SBOM generation and the
+          # post-publish packman cold-cache check are promotion-time steps
+          # owned by the distribution plan (draft assets are not
+          # anonymously downloadable).
+          # One line per paragraph: GitHub renders newlines in release notes
+          # as hard breaks, so manual wrapping shows as ragged short lines.
+          cat > _notes.md <<'EOF'
+          Build-time LLVM/Clang SDKs for Warp's CPU-JIT compiler (warp-clang). This is NOT a Warp product release. See `tools/llvm/README.md` and `design/llvm-sdk-conan-build.md`.
+
+          Draft created automatically by the build-llvm-sdk workflow from a fully green build+smoke matrix. Publish only after promotion checks.
+          EOF
+          gh release create "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --draft --latest=false \
+            --title "LLVM SDK $LLVM_VERSION ($RELEASE_TAG)" \
+            --notes-file _notes.md \
+            _release/*.tar.xz _release/SHA256SUMS _release/llvm-source-and-build-info.json

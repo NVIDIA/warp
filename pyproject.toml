@@ -88,7 +88,12 @@ indent-width = 4
 extend-exclude = [
     "warp/_src/thirdparty/appdirs.py",
     "warp/_src/thirdparty/dlpack.py",
-    "tools",
+    "tools/build",
+    "tools/ci",
+    "tools/cmake",
+    "tools/packman",
+    "tools/pre-commit-hooks",
+    "tools/repoman",
 ]
 
 [tool.ruff.lint]

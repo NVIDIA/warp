@@ -1,0 +1,9 @@
+[settings]
+os=Windows
+arch=armv8
+build_type=Release
+compiler=msvc
+compiler.version=194
+compiler.runtime=static
+compiler.runtime_type=Release
+compiler.cppstd=17

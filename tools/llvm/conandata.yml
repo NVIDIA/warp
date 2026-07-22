@@ -1,0 +1,8 @@
+# Newest version (highest version number) is the workflow's default build target.
+sources:
+  "22.1.8":
+    url: "https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.8/llvm-project-22.1.8.src.tar.xz"
+    sha256: "922f1817a0df7b1489272d18134ee0087a8b068828f87ac63b9861b1a9965888"
+  "21.1.0":
+    url: "https://github.com/llvm/llvm-project/releases/download/llvmorg-21.1.0/llvm-project-21.1.0.src.tar.xz"
+    sha256: "1672e3efb4c2affd62dbbe12ea898b28a451416c7d95c1bd0190c26cbe878825"
