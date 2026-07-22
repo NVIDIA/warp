@@ -636,6 +636,8 @@ first re-declared (for example, <code class="docutils literal notranslate"><span
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1534">GH-1534</a>).</p></li>
 <li><p>Fix Python-scope calls to user-defined <code class="docutils literal notranslate"><span class="pre">&#64;wp.func</span></code> functions with <code class="docutils literal notranslate"><span class="pre">wp.Function</span></code> parameters, which previously rejected
 Warp function targets during argument type inference (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1648">GH-1648</a>).</p></li>
+<li><p>Fix freeing arrays allocated during graph capture while a <code class="docutils literal notranslate"><span class="pre">wp.capture_if()</span></code> or <code class="docutils literal notranslate"><span class="pre">wp.capture_while()</span></code> body graph is being captured
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1641">GH-1641</a>).</p></li>
 </ul>
 </section>
 <section id="documentation">
