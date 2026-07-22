@@ -6,12 +6,13 @@
 - If `warp/bin/` is empty, build first with `build_lib.py` (or `--quick`).
 - Never use `python -c "..."` to run temporary scripts that define `@wp.kernel` functions—always write to a `.py` file because Warp's codegen calls `inspect.getsourcelines()`, which fails for code not in a file.
 - Always capitalize proper names in docstrings and error messages (NumPy, not numpy; Warp, not warp).
+- Use subscript syntax for Warp array types in annotations and overload signatures, such as `wp.array2d[float]`. Do not use factory syntax, such as `wp.array2d(dtype=float)`, unless a test specifically covers factory-style compatibility.
 - Create a feature branch before committing—never commit directly to `main`. Use `username/short-description`.
 - Always use imperative mood in commit messages ("Fix X", not "Fixed X"), ~50 char subject, reference issues as `(GH-XXX)`. Body explains *why*, not what.
 - Always use `git commit --signoff` (or `-s`) to add a `Signed-off-by` line (DCO).
 - After rebasing, diff `CHANGELOG.md` against the target branch to catch duplicate entries or other issues from clean but incorrect merges.
 - CI lives in both GitLab (`.gitlab-ci.yml`) and GitHub (`.github/workflows/`). Lightweight jobs (linting, docs, packaging) may exist in both—keep them in sync. GPU-dependent jobs differ by platform.
-- Pin GitHub Actions to commit hashes, not tags. Good: `uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86`. Bad: `uses: astral-sh/setup-uv@v4`.
+- Pin GitHub Actions to commit hashes, not tags, and add a comment with the corresponding tag. Good: `uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v4`. Bad: `uses: astral-sh/setup-uv@v4`. The internal `nv-gha-runners/setup-proxy-cache` action is exempt and may use `@main`.
 - Let uv infer Python version from `.python-version`. Use `uv python install` without arguments.
 
 Run `uvx pre-commit run --files <files>` to format changed files, or `-a` for all files. Rebuild native libraries only after changes to `warp/native/` C++/CUDA code:
@@ -66,7 +67,5 @@ Follow Google-style docstrings. Use doctest for code examples where practical.
 - Refer to `warp/examples/` for reference patterns for kernels, launches, and array usage.
 - Always import from `warp` in public-facing code, not `warp._src`. In internal code, import directly from `warp/_src/` modules. Public API is re-exported through `warp/__init__.py`.
 - `warp._src.utils` imports `warp._src.context` at module level—importing from `utils` in early-loaded modules (e.g., `texture.py`) causes circular imports. Use lazy imports (`from warp._src.utils import ... # noqa: PLC0415` inside functions) when needed.
-- Use `warp._src.utils.warn()` instead of `warnings.warn()`—it routes warnings to stdout (some applications don't want Warp writing to stderr).
-- Use `DeviceLike` type annotation (from `warp._src.context`) for `device` parameters. Import under `TYPE_CHECKING` to avoid circular imports.
+- Use the `DeviceLike` type annotation (from `warp._src.context`) for `device` parameters. In modules where importing it at runtime would create a circular import, import it under `TYPE_CHECKING`.
 - Native bindings use ctypes; function signatures are registered in `Runtime.__init__` in `warp/_src/context.py`.
-- If you modify `warp/_src/builtins.py`, run `build_docs.py` to regenerate `warp/__init__.pyi`.

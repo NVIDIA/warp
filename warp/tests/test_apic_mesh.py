@@ -106,10 +106,10 @@ def create_tetrahedron_mesh(device):
 @wp.kernel
 def mesh_query_point_kernel(
     mesh_id: wp.handle,
-    query_points: wp.array(dtype=wp.vec3),
-    closest_points: wp.array(dtype=wp.vec3),
-    distances: wp.array(dtype=float),
-    faces: wp.array(dtype=int),
+    query_points: wp.array[wp.vec3],
+    closest_points: wp.array[wp.vec3],
+    distances: wp.array[float],
+    faces: wp.array[int],
 ):
     tid = wp.tid()
     p = query_points[tid]
@@ -126,11 +126,11 @@ def mesh_query_point_kernel(
 @wp.kernel
 def mesh_query_ray_kernel(
     mesh_id: wp.handle,
-    ray_origins: wp.array(dtype=wp.vec3),
-    ray_dirs: wp.array(dtype=wp.vec3),
-    hit_distances: wp.array(dtype=float),
-    hit_faces: wp.array(dtype=int),
-    hit_flags: wp.array(dtype=int),
+    ray_origins: wp.array[wp.vec3],
+    ray_dirs: wp.array[wp.vec3],
+    hit_distances: wp.array[float],
+    hit_faces: wp.array[int],
+    hit_flags: wp.array[int],
 ):
     tid = wp.tid()
     origin = ray_origins[tid]
@@ -155,10 +155,10 @@ def mesh_query_ray_kernel(
 @wp.kernel
 def mesh_eval_position_kernel(
     mesh_id: wp.handle,
-    face_indices: wp.array(dtype=int),
-    bary_u: wp.array(dtype=float),
-    bary_v: wp.array(dtype=float),
-    positions: wp.array(dtype=wp.vec3),
+    face_indices: wp.array[int],
+    bary_u: wp.array[float],
+    bary_v: wp.array[float],
+    positions: wp.array[wp.vec3],
 ):
     tid = wp.tid()
     pos = wp.mesh_eval_position(mesh_id, face_indices[tid], bary_u[tid], bary_v[tid])
@@ -168,8 +168,8 @@ def mesh_eval_position_kernel(
 @wp.kernel
 def mesh_combined_operations_kernel(
     mesh_id: wp.handle,
-    query_points: wp.array(dtype=wp.vec3),
-    results: wp.array(dtype=float),
+    query_points: wp.array[wp.vec3],
+    results: wp.array[float],
 ):
     tid = wp.tid()
     p = query_points[tid]
@@ -425,8 +425,8 @@ def test_apic_mesh_handle_in_struct(test, device):
 
     @wp.kernel
     def query_from_struct_kernel(
-        queries: wp.array(dtype=MeshQuery),
-        distances: wp.array(dtype=float),
+        queries: wp.array[MeshQuery],
+        distances: wp.array[float],
     ):
         tid = wp.tid()
         q = queries[tid]
@@ -486,9 +486,9 @@ def test_apic_multiple_meshes(test, device):
     def query_multiple_meshes_kernel(
         mesh1_id: wp.handle,
         mesh2_id: wp.handle,
-        query_points: wp.array(dtype=wp.vec3),
-        dist1: wp.array(dtype=float),
-        dist2: wp.array(dtype=float),
+        query_points: wp.array[wp.vec3],
+        dist1: wp.array[float],
+        dist2: wp.array[float],
     ):
         tid = wp.tid()
         p = query_points[tid]

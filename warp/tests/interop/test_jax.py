@@ -338,7 +338,7 @@ def test_jax_kernel_scalar(test, device, use_ffi=False):
 
         with test.subTest(msg=T.__name__):
             # get the concrete overload
-            kernel_instance = triple_kernel_scalar.add_overload([wp.array(dtype=T), wp.array(dtype=T)])
+            kernel_instance = triple_kernel_scalar.add_overload([wp.array[T], wp.array[T]])
 
             jax_triple = jax_kernel(kernel_instance, **kwargs)
 
@@ -382,7 +382,7 @@ def test_jax_kernel_vecmat(test, device, use_ffi=False):
 
         with test.subTest(msg=T.__name__):
             # get the concrete overload
-            kernel_instance = triple_kernel_vecmat.add_overload([wp.array(dtype=T), wp.array(dtype=T)])
+            kernel_instance = triple_kernel_vecmat.add_overload([wp.array[T], wp.array[T]])
 
             jax_triple = jax_kernel(kernel_instance, **kwargs)
 

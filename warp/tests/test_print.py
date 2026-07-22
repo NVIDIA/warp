@@ -231,7 +231,7 @@ for scalar_type in wp._src.types.scalar_types:
     generic_print_types.append(wp.types.matrix((4, 4), scalar_type))
 generic_print_types.append(wp.bool)
 generic_print_types.append(SimpleStruct)
-generic_print_types.append(wp.array(dtype=float))
+generic_print_types.append(wp.array[float])
 
 for T in generic_print_types:
     wp.overload(generic_print_kernel, [T])
