@@ -550,6 +550,10 @@ CUDA based on the device selected by JAX (<a class="reference external" href="ht
 <section id="deprecated">
 <h3>Deprecated<a class="headerlink" href="#deprecated" title="Link to this heading">#</a></h3>
 <ul class="simple">
+<li><p>Defer removal of the deprecated <code class="docutils literal notranslate"><span class="pre">warp.jax_experimental</span></code> namespace, its legacy custom-call <code class="docutils literal notranslate"><span class="pre">jax_kernel()</span></code>,
+and its graph-cache getter and setter APIs from Warp 1.16 to Warp 1.18, allowing more time to migrate.</p></li>
+<li><p>Deprecate <code class="docutils literal notranslate"><span class="pre">warp.sparse.BsrMatrix.copy_nnz_async()</span></code>; use <code class="docutils literal notranslate"><span class="pre">warp.sparse.BsrMatrix.notify_nnz_changed()</span></code> instead
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/987">GH-987</a>).</p></li>
 <li><p>Deprecate the per-environment sequence form of <code class="docutils literal notranslate"><span class="pre">warp.fem.Nanogrid.from_environment_voxels()</span></code> and
 <code class="docutils literal notranslate"><span class="pre">warp.fem.AdaptiveNanogrid.from_environment_voxels()</span></code>; pass flat <code class="docutils literal notranslate"><span class="pre">points</span></code>, <code class="docutils literal notranslate"><span class="pre">cell_levels</span></code> where applicable,
 <code class="docutils literal notranslate"><span class="pre">point_envs</span></code>, and <code class="docutils literal notranslate"><span class="pre">env_count</span></code> instead (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1606">GH-1606</a>).</p></li>
