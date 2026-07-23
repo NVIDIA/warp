@@ -27,6 +27,7 @@ warp_lang.egg-info
 CLAUDE.local.md
 .claude/settings.local.json
 .claude/worktrees/
+/.worktrees/
 /docs/superpowers/
 
 # Development and testing
