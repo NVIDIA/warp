@@ -466,27 +466,40 @@ jobs:
           - runner-label: linux-amd64-gpu-h100-latest-1
             gpu-name: h100
             artifact-name: build-artifact-ubuntu-x86_64-cuda13
+            python-version: "3.12"
             torch-extra: torch-cu13
             jax-extra: jax[cuda13]
             rmm-args: ""
           - runner-label: linux-amd64-gpu-rtxpro6000-latest-1
             gpu-name: rtxpro6000
             artifact-name: build-artifact-ubuntu-x86_64-cuda13
+            python-version: "3.12"
             torch-extra: torch-cu13
             jax-extra: jax[cuda13]
             rmm-args: ""
           - runner-label: linux-amd64-gpu-l4-earliest-1
             gpu-name: l4
             artifact-name: build-artifact-ubuntu-x86_64-cuda12
+            python-version: "3.12"
             torch-extra: torch-cu12
             jax-extra: jax[cuda12]
             rmm-args: --with rmm-cu12
+          - runner-label: linux-arm64-gpu-l4-latest-1
+            gpu-name: l4-arm64
+            artifact-name: build-artifact-ubuntu-aarch64-cuda13
+            python-version: "3.14"
+            torch-extra: torch-cu13
+            jax-extra: jax[cuda13]
+            rmm-args: --with rmm-cu13
     container:
       image: ubuntu:24.04
       options: -u root --security-opt seccomp=unconfined --shm-size 16g
       env:
         NVIDIA_VISIBLE_DEVICES: ${{ env.NVIDIA_VISIBLE_DEVICES }}
     timeout-minutes: 45
+    env:
+      UV_PYTHON: ${{ matrix.python-version }}
+      WARP_CACHE_PATH: /tmp/warp-cache-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.gpu-name }}
     steps:
       - name: Display GPU information
         run: nvidia-smi
@@ -502,6 +515,10 @@ jobs:
           apt-get update
           apt-get install -y git git-lfs curl gpg
           git lfs install
+
+      - name: Install Python 3.14 build dependencies
+        if: matrix.python-version == '3.14'
+        run: apt-get install -y build-essential
 
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
@@ -522,6 +539,12 @@ jobs:
         with:
           name: ${{ matrix.artifact-name }}
           path: warp/bin/
+
+      - name: Report Warp diagnostics
+        # Warp counterpart to nvidia-smi: dump the build, CUDA, driver, and device
+        # snapshot into the log, then fail loudly if Warp enumerated no GPU (otherwise
+        # the test suite silently falls back to CPU-only and still passes green).
+        run: uv run --extra dev --extra ${{ matrix.torch-extra }} --with "${{ matrix.jax-extra }}" ${{ matrix.rmm-args }} python -c "import warp as wp; wp.print_diagnostics(); assert wp.get_cuda_devices(), 'No CUDA device visible to Warp'"
 
       - name: Run Tests
         run: uv run --extra dev --extra ${{ matrix.torch-extra }} --with "${{ matrix.jax-extra }}" ${{ matrix.rmm-args }} -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
@@ -602,6 +625,10 @@ jobs:
         with:
           name: build-artifact-ubuntu-aarch64-cuda13
           path: warp/bin/
+
+      - name: Report Warp diagnostics
+        # See the note in test-warp-gpu-linux; the Warp counterpart to nvidia-smi.
+        run: uv run --extra dev --with "jax[cuda13]" python -c "import warp as wp; wp.print_diagnostics(); assert wp.get_cuda_devices(), 'No CUDA device visible to Warp'"
 
       - name: Run Tests
         run: uv run --extra dev --with "jax[cuda13]" -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
@@ -696,6 +723,10 @@ jobs:
       - name: Install Python dependencies
         run: uv sync --python 3.14t --extra dev --no-install-package usd-core --no-install-package blosc
 
+      - name: Report Warp diagnostics
+        # See the note in test-warp-gpu-linux; the Warp counterpart to nvidia-smi.
+        run: uv run --python 3.14t --no-sync python -c "import warp as wp; wp.print_diagnostics(); assert wp.get_cuda_devices(), 'No CUDA device visible to Warp'"
+
       - name: Run Tests
         run: uv run --python 3.14t --no-sync -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
 
@@ -727,6 +758,7 @@ jobs:
         NVIDIA_VISIBLE_DEVICES: ${{ env.NVIDIA_VISIBLE_DEVICES }}
     env:
       UV_PYTHON: "3.10"
+      WARP_CACHE_PATH: /tmp/warp-cache-${{ github.run_id }}-${{ github.run_attempt }}-mgpu-python310
     timeout-minutes: 60
     steps:
       - name: Display GPU information
@@ -764,8 +796,14 @@ jobs:
           name: build-artifact-ubuntu-x86_64-cuda13
           path: warp/bin/
 
+      - name: Report Warp diagnostics
+        # See the note in test-warp-gpu-linux; the Warp counterpart to nvidia-smi.
+        run: uv run --extra dev python -c "import warp as wp; wp.print_diagnostics(); assert wp.get_cuda_devices(), 'No CUDA device visible to Warp'"
+
       - name: Run Tests
-        run: uv run --extra dev --extra torch-cu13 --with "jax[cuda13]" -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
+        # Keep this minimum-Python lane focused on core Warp multi-GPU coverage;
+        # current JAX and PyTorch interoperability is covered by the standard Python GPU jobs.
+        run: uv run --extra dev -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
 
       - name: Test Summary
         uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86  # v2.4
@@ -833,6 +871,10 @@ jobs:
         with:
           name: build-artifact-windows-cuda13
           path: warp/bin/
+
+      - name: Report Warp diagnostics
+        # See the note in test-warp-gpu-linux; the Warp counterpart to nvidia-smi.
+        run: uv run --extra dev --extra torch-cu13 --with usd-core==25.5.1 python -c "import warp as wp; wp.print_diagnostics(); assert wp.get_cuda_devices(), 'No CUDA device visible to Warp'"
 
       - name: Run Tests
         # Pin usd-core to 25.5.1 to work around a frequent loading crash on Windows.
@@ -931,6 +973,10 @@ jobs:
         with:
           name: build-artifact-ubuntu-x86_64-cuda13
           path: warp/bin/
+
+      - name: Report Warp diagnostics
+        # See the note in test-warp-gpu-linux; the Warp counterpart to nvidia-smi.
+        run: uv run --extra docs python -c "import warp as wp; wp.print_diagnostics(); assert wp.get_cuda_devices(), 'No CUDA device visible to Warp'"
 
       - name: Run doctest
         run: uv run --extra docs build_docs.py --doctest --no-html --warnings-as-errors
