@@ -126,6 +126,9 @@
   Warp function targets during argument type inference ([GH-1648](https://github.com/NVIDIA/warp/issues/1648)).
 - Fix freeing arrays allocated during graph capture while a `wp.capture_if()` or `wp.capture_while()` body graph is being captured
   ([GH-1641](https://github.com/NVIDIA/warp/issues/1641)).
+- Fix Jacobian plotting for Python functions and typed Warp kernels in `wp.autograd.jacobian()`,
+  `wp.autograd.jacobian_fd()`, and `wp.autograd.gradcheck()`
+  ([GH-1672](https://github.com/NVIDIA/warp/issues/1672)).
 
 ### Documentation
 

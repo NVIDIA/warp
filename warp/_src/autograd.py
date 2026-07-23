@@ -198,16 +198,12 @@ def gradcheck(
         jacobian_plot(
             relative_error_jacs,
             metadata,
-            inputs,
-            outputs,
             title=f"{metadata.key} kernel Jacobian relative error",
         )
     if plot_absolute_error:
         jacobian_plot(
             absolute_error_jacs,
             metadata,
-            inputs,
-            outputs,
             title=f"{metadata.key} kernel Jacobian absolute error",
         )
 
@@ -375,10 +371,10 @@ class FunctionMetadata:
         return self.key is None
 
     def input_is_array(self, i: int):
-        return self.input_strides[i] is not None
+        return self.input_dtypes[i] is not None
 
     def output_is_array(self, i: int):
-        return self.output_strides[i] is not None
+        return self.output_dtypes[i] is not None
 
     def update_from_kernel(self, kernel: wp.Kernel, inputs: Sequence):
         self.key = kernel.key
@@ -388,16 +384,16 @@ class FunctionMetadata:
         self.output_strides = []
         self.input_dtypes = []
         self.output_dtypes = []
-        for arg in kernel.adj.args[: len(inputs)]:
-            if arg.type is wp.array:
-                self.input_strides.append(arg.type.strides)
-                self.input_dtypes.append(arg.type.dtype)
+        for arg, value in zip(kernel.adj.args[: len(inputs)], inputs, strict=True):
+            if wp._src.types.matches_array_class(arg.type, wp.array):
+                self.input_strides.append(getattr(value, "strides", getattr(arg.type, "strides", None)))
+                self.input_dtypes.append(getattr(value, "dtype", arg.type.dtype))
             else:
                 self.input_strides.append(None)
                 self.input_dtypes.append(None)
         for arg in kernel.adj.args[len(inputs) :]:
-            if arg.type is wp.array:
-                self.output_strides.append(arg.type.strides)
+            if wp._src.types.matches_array_class(arg.type, wp.array):
+                self.output_strides.append(getattr(arg.type, "strides", None))
                 self.output_dtypes.append(arg.type.dtype)
             else:
                 self.output_strides.append(None)
@@ -478,52 +474,62 @@ def jacobian_plot(
     jacobians = sorted(jacobians.items(), key=lambda x: (x[0][1], x[0][0]))
     jacobians = dict(jacobians)
 
-    input_to_ax = {}
-    output_to_ax = {}
-    ax_to_input = {}
-    ax_to_output = {}
-    for i, j in jacobians.keys():
-        if i not in input_to_ax:
-            input_to_ax[i] = len(input_to_ax)
-            ax_to_input[input_to_ax[i]] = i
-        if j not in output_to_ax:
-            output_to_ax[j] = len(output_to_ax)
-            ax_to_output[output_to_ax[j]] = j
+    input_indices = sorted({input_i for input_i, _ in jacobians})
+    output_indices = sorted({output_i for _, output_i in jacobians})
+    input_to_ax = {input_i: ax_j for ax_j, input_i in enumerate(input_indices)}
+    output_to_ax = {output_i: ax_i for ax_i, output_i in enumerate(output_indices)}
+    ax_to_input = dict(enumerate(input_indices))
+    ax_to_output = dict(enumerate(output_indices))
 
     num_rows = len(output_to_ax)
     num_cols = len(input_to_ax)
     if num_rows == 0 or num_cols == 0:
         return
 
-    # determine the width and height ratios for the subplots based on the
-    # dimensions of the Jacobians
-    width_ratios = []
-    height_ratios = []
-    for i in range(len(metadata.input_labels)):
-        if not metadata.input_is_array(i):
-            continue
-        input_stride = metadata.input_strides[i][0]
-        for j in range(len(metadata.output_labels)):
-            if (i, j) not in jacobians:
-                continue
-            jac_wp = jacobians[(i, j)]
-            width_ratios.append(jac_wp.shape[1] * input_stride)
-            break
+    input_component_counts = {}
+    for input_i in input_to_ax:
+        input_count = len(metadata.input_labels or [])
+        if input_i < 0 or input_i >= input_count:
+            raise ValueError(f"Invalid Jacobian input index {input_i}: plotting metadata defines {input_count} inputs")
+        if metadata.input_labels[input_i] is None:
+            raise ValueError(f"Invalid plotting metadata for Jacobian input index {input_i}: missing label")
+        dtype_count = len(metadata.input_dtypes or [])
+        if input_i < 0 or input_i >= dtype_count or metadata.input_dtypes[input_i] is None:
+            raise ValueError(f"Invalid plotting metadata for Jacobian input index {input_i}: missing array dtype")
+        component_count = getattr(metadata.input_dtypes[input_i], "_length_", None)
+        if component_count is None:
+            raise ValueError(
+                f"Invalid plotting metadata for Jacobian input index {input_i}: array dtype has no component count"
+            )
+        input_component_counts[input_i] = component_count
 
-    for i in range(len(metadata.output_labels)):
-        if not metadata.output_is_array(i):
-            continue
-        for j in range(len(inputs)):
-            if (j, i) not in jacobians:
-                continue
-            jac_wp = jacobians[(j, i)]
-            height_ratios.append(jac_wp.shape[0])
-            break
+    for output_i in output_to_ax:
+        output_count = len(metadata.output_labels or [])
+        if output_i < 0 or output_i >= output_count:
+            raise ValueError(
+                f"Invalid Jacobian output index {output_i}: plotting metadata defines {output_count} outputs"
+            )
+        if metadata.output_labels[output_i] is None:
+            raise ValueError(f"Invalid plotting metadata for Jacobian output index {output_i}: missing label")
+
+    width_ratios = []
+    for ax_j in range(num_cols):
+        input_i = ax_to_input[ax_j]
+        jac_wp = next(jac for (jac_input_i, _), jac in jacobians.items() if jac_input_i == input_i)
+        input_component_count = input_component_counts[input_i]
+        width_ratios.append(jac_wp.shape[1] * input_component_count)
+
+    height_ratios = []
+    for ax_i in range(num_rows):
+        output_i = ax_to_output[ax_i]
+        jac_wp = next(jac for (_, jac_output_i), jac in jacobians.items() if jac_output_i == output_i)
+        height_ratios.append(jac_wp.shape[0])
 
     fig, axs = plt.subplots(
         ncols=num_cols,
         nrows=num_rows,
         figsize=(7, 7),
+        layout="constrained",
         sharex="col",
         sharey="row",
         gridspec_kw={
@@ -536,7 +542,7 @@ def jacobian_plot(
         squeeze=False,
     )
     if title is None:
-        key = kernel.key if isinstance(kernel, wp.Kernel) else kernel.get("key", "unknown")
+        key = metadata.key or "unknown"
         title = f"{key} kernel Jacobian"
     fig.suptitle(title)
     fig.canvas.manager.set_window_title(title)
@@ -570,12 +576,12 @@ def jacobian_plot(
         ax.tick_params(which="major", width=1, length=7)
         ax.tick_params(which="minor", width=1, length=4, color="gray")
 
-        input_stride = metadata.input_dtypes[input_i]._length_
+        input_component_count = input_component_counts[input_i]
         # output_stride = metadata.output_dtypes[output_i]._length_
 
         jac = jac_wp.numpy()
         # Jacobian matrix has output stride already multiplied to first dimension
-        jac = jac.reshape(jac_wp.shape[0], jac_wp.shape[1] * input_stride)
+        jac = jac.reshape(jac_wp.shape[0], jac_wp.shape[1] * input_component_count)
 
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
         ax.yaxis.set_major_locator(MaxNLocator(integer=True))
@@ -613,7 +619,6 @@ def jacobian_plot(
         m.set_clim(vmin, vmax)
         plt.colorbar(m, ax=axs, orientation="vertical", pad=0.02)
 
-    plt.tight_layout()
     if show_plot:
         plt.show()
     return fig
@@ -780,12 +785,7 @@ def jacobian(
         jacobians[input_i, output_i] = jacobian
 
     if plot_jacobians:
-        jacobian_plot(
-            jacobians,
-            metadata,
-            inputs,
-            outputs,
-        )
+        jacobian_plot(jacobians, metadata)
 
     return jacobians
 
@@ -984,12 +984,7 @@ def jacobian_fd(
         jacobians[input_i, output_i] = jacobian
 
     if plot_jacobians:
-        jacobian_plot(
-            jacobians,
-            metadata,
-            inputs,
-            outputs,
-        )
+        jacobian_plot(jacobians, metadata)
 
     return jacobians
 
