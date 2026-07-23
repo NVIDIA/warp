@@ -4477,6 +4477,25 @@ class Adjoint:
         target = adj.eval(node)
         return target, indices
 
+    def _tile_type_probe_copy_type(adj, arg_type):
+        if is_tile(arg_type) or is_tile_stack(arg_type):
+            return shallowcopy(arg_type)
+        if is_reference(arg_type):
+            copied_type = shallowcopy(arg_type)
+            copied_type.value_type = adj._tile_type_probe_copy_type(arg_type.value_type)
+            return copied_type
+        if is_tuple(arg_type):
+            return tuple_t(
+                types=tuple(adj._tile_type_probe_copy_type(t) for t in arg_type.types),
+                values=arg_type.values,
+            )
+        return arg_type
+
+    def _tile_type_probe_copy_var(adj, var):
+        probe_var = shallowcopy(var)
+        probe_var.type = adj._tile_type_probe_copy_type(var.type)
+        return probe_var
+
     def _tile_type_probe_value(adj, node):
         try:
             value = ast.literal_eval(node)
@@ -4489,12 +4508,14 @@ class Adjoint:
 
         if isinstance(node, ast.Name):
             if node.id in adj.symbols:
-                return adj.symbols[node.id]
+                return adj._tile_type_probe_copy_var(adj.symbols[node.id])
 
             expr, _ = adj.resolve_static_expression(node)
             if expr is None:
                 return None
-            if isinstance(expr, (type, Struct, Var, warp._src.context.Function, str)):
+            if isinstance(expr, Var):
+                return adj._tile_type_probe_copy_var(expr)
+            if isinstance(expr, (type, Struct, warp._src.context.Function, str)):
                 return expr
             if isinstance(expr, (enum.IntEnum, enum.IntFlag)):
                 expr = int(expr)
@@ -4504,7 +4525,9 @@ class Adjoint:
             expr, _ = adj.resolve_static_expression(node)
             if expr is None:
                 return None
-            if isinstance(expr, (type, Struct, Var, warp._src.context.Function, str)):
+            if isinstance(expr, Var):
+                return adj._tile_type_probe_copy_var(expr)
+            if isinstance(expr, (type, Struct, warp._src.context.Function, str)):
                 return expr
             if isinstance(expr, (enum.IntEnum, enum.IntFlag)):
                 expr = int(expr)

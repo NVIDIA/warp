@@ -534,6 +534,17 @@ def test_tile_advanced_index_float_rejected(test, device):
         wp.launch_tiled(kernel_fn, dim=[1], inputs=[], block_dim=32, device=device)
 
 
+def test_tile_advanced_index_non_full_slice_rejected(test, device):
+    @wp.kernel(module="unique", enable_backward=False)
+    def kernel_fn():
+        t = wp.tile_ones(shape=(TILE_M, TILE_N), dtype=float)
+        idx = wp.tile_arange(0, 4, dtype=int)
+        rows = t[idx, 1:5]
+
+    with test.assertRaisesRegex((RuntimeError, ValueError), r"requires ':' on all other axes"):
+        wp.launch_tiled(kernel_fn, dim=[1], inputs=[], block_dim=32, device=device)
+
+
 def test_tile_slice_scalar_assign_rejected(test, device):
     @wp.kernel(module="unique", enable_backward=False)
     def kernel_fn():
@@ -1102,6 +1113,12 @@ add_function_test(TestTileView, "test_tile_slice_empty_rejected", test_tile_slic
 add_function_test(TestTileView, "test_tile_slice_neg_stop", test_tile_slice_neg_stop, devices=devices)
 add_function_test(
     TestTileView, "test_tile_advanced_index_float_rejected", test_tile_advanced_index_float_rejected, devices=devices
+)
+add_function_test(
+    TestTileView,
+    "test_tile_advanced_index_non_full_slice_rejected",
+    test_tile_advanced_index_non_full_slice_rejected,
+    devices=devices,
 )
 add_function_test(
     TestTileView, "test_tile_slice_scalar_assign_rejected", test_tile_slice_scalar_assign_rejected, devices=devices

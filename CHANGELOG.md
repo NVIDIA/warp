@@ -142,9 +142,6 @@
   instead of node coordinates in Warp FEM kernels ([GH-1685](https://github.com/NVIDIA/warp/issues/1685)).
 - Reject malformed APIC `.wrp` memory sections containing duplicate region IDs
   or out-of-bounds initial data during graph loading.
-- Fix `wp.tile_reshape()` silently reading incorrect elements (or out of bounds) for non-contiguous tile views;
-  reshaping a strided or reversed tile view now raises an error instead.
-- Fix `wp.tile_view()` silently truncating non-integer offsets; a non-integer offset entry now raises an error.
 
 ### Documentation
 

@@ -5838,9 +5838,14 @@ inline CUDA_CALLABLE void adj_tile_assign(
     // Stage the incoming gradients in registers before mutating anything:
     // src may be a view overlapping dest (e.g. t[1:] = t[:-1]), so the reads,
     // the zeroing, and the accumulation must not interleave.
+    // GradLayout covers the same source-view coordinates as Layout; it just
+    // iterates them in register order so staged values match accumulation.
     using GradLayout = tile_layout_register_t<typename Layout::Shape>;
     tile_register_t<typename TileA::Type, GradLayout> staged;
 
+    // linear_from_register() is monotone, so after the first invalid
+    // register slot all later slots are invalid too. The accumulation loop
+    // uses the same guard before reading staged.data[reg].
     WP_PRAGMA_UNROLL
     for (int reg = 0; reg < GradLayout::NumRegs; ++reg) {
         int linear = GradLayout::linear_from_register(reg);
@@ -5854,6 +5859,8 @@ inline CUDA_CALLABLE void adj_tile_assign(
     WP_TILE_SYNC();
 
     // Overwritten destinations do not contribute to the pre-assignment dest value.
+    // This Layout loop zeroes the same coordinate set staged above, only in
+    // the source tile layout order instead of register order.
     WP_PRAGMA_UNROLL
     for (int t = WP_TILE_THREAD_IDX; t < Layout::Size; t += WP_TILE_BLOCK_DIM) {
         dest.grad(Layout::coord_from_linear(t) + offset) = typename TileA::Type {};
