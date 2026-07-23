@@ -3917,27 +3917,62 @@ class Adjoint:
         return var.constant
 
     def eval_const_slice(adj, node, length) -> tuple[int, int, int]:
-        """Evaluate a slice, returning its constant components."""
+        """Evaluate a slice, returning its constant (start, stop, step) components.
+
+        When ``length`` is known the bounds follow CPython ``slice.indices``
+        semantics exactly (negative-index wrapping and per-step clamping), so
+        downstream shape math matches NumPy for both positive and negative
+        steps. Without a known ``length`` the raw components are returned with
+        the usual open-ended defaults.
+        """
         step = 1 if node.step is None else adj.eval_const_slice_component(node.step)
         if step == 0:
             raise WarpCodegenValueError("Slice step cannot be zero.")
 
-        if node.lower is None:
-            start = length - 1 if step < 0 else 0
-        else:
-            start = adj.eval_const_slice_component(node.lower)
-            if length is not None:
-                start = min(max(start, -length), length)
-                start = start + length if start < 0 else start
+        if length is None:
+            if step < 0 and (node.lower is None or node.upper is None):
+                # There is no integer that can stand in for an open bound of a
+                # reverse slice without a known length, and callers treat the
+                # returned bounds as integers.
+                raise WarpCodegenValueError(
+                    "Reverse slices require explicit start and stop bounds when the sequence length "
+                    "is not known at compile time (e.g. slicing an array)."
+                )
+            start = adj.eval_const_slice_component(node.lower) if node.lower is not None else 0
+            stop = adj.eval_const_slice_component(node.upper) if node.upper is not None else None
+            return (start, stop, step)
 
-        if node.upper is None:
-            stop = -1 if step < 0 else length
-        else:
-            stop = adj.eval_const_slice_component(node.upper)
-            if length is not None:
-                stop = min(max(stop, -length), length)
-                stop = stop + length if stop < 0 else stop
+        # CPython slice.indices() clamp bounds: [0, length] for a positive step,
+        # [-1, length-1] for a negative step (so a reversed slice can reach index 0).
+        lower, upper = (0, length) if step > 0 else (-1, length - 1)
 
+        def resolve(component, default):
+            if component is None:
+                return default
+            value = adj.eval_const_slice_component(component)
+            if value < 0:
+                return max(value + length, lower)
+            return min(value, upper)
+
+        start = resolve(node.lower, lower if step > 0 else upper)
+        stop = resolve(node.upper, upper if step > 0 else lower)
+
+        return (start, stop, step)
+
+    def eval_raw_const_slice(adj, node) -> tuple[int, int, int]:
+        """Evaluate a slice to constant components without wrapping against a length.
+
+        Open bounds become ``SLICE_BEGIN``/``SLICE_END`` sentinels and provided
+        bounds are returned as-is (possibly negative or out of range). Used for tile
+        slicing so that subscript syntax and explicit ``wp.tile_view()`` slice
+        offsets share a single normalization site (``_normalize_tile_slice``) in the
+        ``tile_view`` builtin, keeping their semantics identical.
+        """
+        step = 1 if node.step is None else adj.eval_const_slice_component(node.step)
+        if step == 0:
+            raise WarpCodegenValueError("Slice step cannot be zero.")
+        start = SLICE_BEGIN if node.lower is None else adj.eval_const_slice_component(node.lower)
+        stop = SLICE_END if node.upper is None else adj.eval_const_slice_component(node.upper)
         return (start, stop, step)
 
     def unpack_starred(adj, node):
@@ -4202,6 +4237,65 @@ class Adjoint:
 
         return out
 
+    @staticmethod
+    def tile_index_kinds(indices):
+        """Classify evaluated tile subscript ``indices`` for dispatch.
+
+        Returns ``(has_slice, has_index_tile)`` so the read, assign, and
+        augmented-assign paths route tile subscripts identically.
+        """
+        index_types = [strip_reference(x.type) for x in indices]
+        has_slice = any(warp._src.types.is_slice(t) for t in index_types)
+        has_index_tile = any(is_tile(t) for t in index_types)
+        return has_slice, has_index_tile
+
+    def resolve_tile_int_index(adj, idx, shape, dim):
+        """Wrap and bounds-check an integer tile index.
+
+        Integer indices into a tile collapse their dimension and contribute the
+        view origin along that axis. NumPy-style negative indices are wrapped
+        against the axis length for both compile-time-constant and runtime
+        indices, and out-of-range constant indices are rejected at code-gen time.
+        A runtime index is wrapped once (not by modulo), so a value of ``-length``
+        maps to ``0`` while ``-length - 1`` stays negative and reaches the
+        debug-only bounds check. Index tiles pass through unchanged. Non-integer
+        scalar indices (e.g. floats) are rejected.
+        """
+        if not isinstance(idx, Var):
+            return idx
+        idx_type = strip_reference(idx.type)
+        if is_tile(idx_type):
+            # index tiles are resolved by tile_slice_indexed
+            return idx
+        if not warp._src.types.type_is_int(idx_type):
+            # The native tile_coord() would silently truncate a float index to
+            # int; reject it like NumPy does instead.
+            raise WarpCodegenTypeError(f"Tile indices must be integers or slices, got {type_repr(idx_type)}.")
+        if dim >= len(shape):
+            # No known axis length for this dimension; pass through unchanged.
+            return idx
+
+        length = shape[dim]
+
+        if idx.constant is None:
+            # Runtime scalar index: wrap negatives against the axis length so a
+            # runtime ``i == -1`` selects the last element just like the constant
+            # ``t[-1]``. Typed constants keep the arithmetic in the index's own
+            # integer type. This lowers to ``i < 0 ? i + length : i``.
+            zero = adj.add_var(type=idx_type, constant=0)
+            length_var = adj.add_var(type=idx_type, constant=length)
+            is_negative = adj.add_comp(["<"], idx, [zero])
+            wrapped_idx = adj.add_builtin_call("add", [idx, length_var])
+            return adj.add_builtin_call("where", [is_negative, wrapped_idx, idx])
+
+        value = idx.constant
+        wrapped = value + length if value < 0 else value
+        if wrapped < 0 or wrapped >= length:
+            raise WarpCodegenValueError(f"Tile index {value} is out of bounds for axis {dim} with size {length}.")
+        if wrapped == value:
+            return idx
+        return adj.add_constant(wrapped)
+
     def eval_indices(adj, target_type, indices):
         nodes = indices
         if type_is_composite(target_type):
@@ -4217,6 +4311,26 @@ class Adjoint:
                     indices.append(slice)
                 else:
                     indices.append(adj.eval(node))
+
+            return tuple(indices)
+        elif is_tile(target_type):
+            # Tile slicing follows the same compile-time-constant rule as composite
+            # types: the resulting view shape must be known at code-gen time so the
+            # native tile type can be instantiated. Non-slice indices (integers for
+            # element/row access, or index tiles for advanced indexing) are evaluated
+            # normally.
+            indices = []
+            for dim, node in enumerate(nodes):
+                if isinstance(node, ast.Slice):
+                    # Pass raw bounds through to tile_view, which normalizes them
+                    # against the axis length (shared with explicit slice offsets).
+                    bounds = adj.eval_raw_const_slice(node)
+                    slice = adj.add_builtin_call("slice", bounds)
+                    slice.type.start_omitted = node.lower is None
+                    slice.type.stop_omitted = node.upper is None
+                    indices.append(slice)
+                else:
+                    indices.append(adj.resolve_tile_int_index(adj.eval(node), target_type.shape, dim))
 
             return tuple(indices)
         else:
@@ -4274,11 +4388,22 @@ class Adjoint:
                     out.is_write = target.is_write
 
         elif is_tile(target_type):
-            if len(indices) >= len(target_type.shape):  # equality for scalars, inequality for composite types
+            has_slice, has_index_tile = adj.tile_index_kinds(indices)
+
+            if has_index_tile:
+                # advanced indexing, e.g.: t[indices, :] gathers the elements selected
+                # by an integer index tile along a single axis
+                out = adj.add_builtin_call("tile_slice_indexed", [target, indices])
+            elif has_slice:
+                # slice syntax, e.g.: t[a:b, :] / t[::2, :] / t[5, :]. Integer indices
+                # that co-occur with a slice collapse their dimension (NumPy semantics)
+                # and are handled inside tile_view.
+                out = adj.add_builtin_call("tile_view", [target, indices])
+            elif len(indices) >= len(target_type.shape):  # equality for scalars, inequality for composite types
                 # handles extracting a single element from a tile
                 out = adj.add_builtin_call("tile_extract", [target, *indices])
             elif len(indices) < len(target_type.shape):
-                # handles tile views
+                # handles tile views (fewer integer indices than dimensions)
                 out = adj.add_builtin_call("tile_view", [target, indices])
             else:
                 raise RuntimeError(
@@ -4352,9 +4477,347 @@ class Adjoint:
         target = adj.eval(node)
         return target, indices
 
+    def _tile_type_probe_copy_type(adj, arg_type):
+        if is_tile(arg_type) or is_tile_stack(arg_type):
+            return shallowcopy(arg_type)
+        if is_reference(arg_type):
+            copied_type = shallowcopy(arg_type)
+            copied_type.value_type = adj._tile_type_probe_copy_type(arg_type.value_type)
+            return copied_type
+        if is_tuple(arg_type):
+            return tuple_t(
+                types=tuple(adj._tile_type_probe_copy_type(t) for t in arg_type.types),
+                values=arg_type.values,
+            )
+        return arg_type
+
+    def _tile_type_probe_copy_var(adj, var):
+        probe_var = shallowcopy(var)
+        probe_var.type = adj._tile_type_probe_copy_type(var.type)
+        return probe_var
+
+    def _tile_type_probe_value(adj, node):
+        try:
+            value = ast.literal_eval(node)
+        except (ValueError, TypeError):
+            pass
+        else:
+            if isinstance(value, (tuple, list)):
+                return tuple(Var(None, type=get_arg_type(x), constant=x) for x in value)
+            return Var(None, type=get_arg_type(value), constant=value)
+
+        if isinstance(node, ast.Name):
+            if node.id in adj.symbols:
+                symbol = adj.symbols[node.id]
+                if isinstance(symbol, Var):
+                    return adj._tile_type_probe_copy_var(symbol)
+                return symbol
+
+            expr, _ = adj.resolve_static_expression(node)
+            if expr is None:
+                return None
+            if isinstance(expr, Var):
+                return adj._tile_type_probe_copy_var(expr)
+            if isinstance(expr, (type, Struct, warp._src.context.Function, str)):
+                return expr
+            if isinstance(expr, (enum.IntEnum, enum.IntFlag)):
+                expr = int(expr)
+            return Var(None, type=get_arg_type(expr), constant=expr)
+
+        if isinstance(node, ast.Attribute):
+            expr, _ = adj.resolve_static_expression(node)
+            if expr is None:
+                return None
+            if isinstance(expr, Var):
+                return adj._tile_type_probe_copy_var(expr)
+            if isinstance(expr, (type, Struct, warp._src.context.Function, str)):
+                return expr
+            if isinstance(expr, (enum.IntEnum, enum.IntFlag)):
+                expr = int(expr)
+            return Var(None, type=get_arg_type(expr), constant=expr)
+
+        if isinstance(node, ast.Tuple):
+            values = tuple(adj._tile_type_probe_value(x) for x in node.elts)
+            if any(x is None for x in values):
+                return None
+            return values
+
+        if isinstance(node, ast.UnaryOp | ast.BinOp | ast.Call | ast.Subscript):
+            node_type = adj._tile_type_probe(node)
+            if node_type is not None:
+                return Var(None, type=node_type)
+
+        return None
+
+    def _tile_resolve_call_for_type_probe(adj, node):
+        if hasattr(node.func, "warp_func"):
+            return node.func.warp_func, {}
+
+        func, path = adj.resolve_static_expression(node.func, eval_types=False)
+        if func is None:
+            return None, {}
+
+        type_args = {}
+
+        if len(path) > 0 and not isinstance(func, warp._src.context.Function):
+            attr = path[-1]
+            caller = func
+            func = None
+
+            if isinstance(caller, types.ModuleType):
+                if hasattr(caller, attr):
+                    func = getattr(caller, attr)
+                    if not isinstance(func, warp._src.context.Function):
+                        caller = func
+                        func = None
+                elif caller is warp and attr in warp._src.context.builtin_functions:
+                    func = warp._src.context.builtin_functions[attr]
+                else:
+                    return None, {}
+
+            if func is None and attr in warp._src.context.builtin_functions:
+                func = warp._src.context.builtin_functions[attr]
+
+            if func is None and hasattr(caller, "_wp_generic_type_str_"):
+                func = warp._src.context.builtin_functions.get(caller._wp_constructor_)
+
+            if func is None and hasattr(caller, "__name__") and caller.__name__ in warp._src.context.builtin_functions:
+                func = warp._src.context.builtin_functions.get(caller.__name__)
+
+            if func is None and isinstance(caller, Struct):
+                if node.args or node.keywords:
+                    func = caller.value_constructor
+                else:
+                    func = caller.default_constructor
+
+            if hasattr(caller, "_wp_type_args_"):
+                type_args = caller._wp_type_args_
+
+        if isinstance(func, warp._src.context.Function):
+            return func, type_args
+
+        return None, {}
+
+    def _tile_call_type_probe(adj, node):
+        func, type_args = adj._tile_resolve_call_for_type_probe(node)
+        if func is None:
+            return None
+
+        args = tuple(adj._tile_type_probe_value(x) for x in node.args)
+        if any(x is None for x in args):
+            return None
+
+        kwargs = {x.arg: adj._tile_type_probe_value(x.value) for x in node.keywords}
+        if any(x is None for x in kwargs.values()):
+            return None
+
+        try:
+            func, bound_args, _ = adj.resolve_call(func, args, kwargs, type_args)
+        except Exception:
+            return None
+
+        if not func.is_builtin() and func.value_func is None:
+            try:
+                probe_adj = Adjoint(
+                    func.func,
+                    overload_annotations=func.input_types,
+                    is_user_function=True,
+                    skip_forward_codegen=func.adj.skip_forward_codegen,
+                    skip_reverse_codegen=func.adj.skip_reverse_codegen,
+                    custom_reverse_mode=func.adj.custom_reverse_mode,
+                    custom_reverse_num_input_args=func.adj.custom_reverse_num_input_args,
+                    transformers=func.adj.transformers,
+                    source=func.adj.source,
+                )
+                probe_adj.used_by_backward_kernel = func.adj.used_by_backward_kernel
+                probe_adj.force_adjoint_codegen = func.adj.force_adjoint_codegen
+                probe_adj.build(None, adj.builder_options)
+            except Exception:
+                return None
+
+            if probe_adj.return_var is None or len(probe_adj.return_var) == 0:
+                return None
+            if len(probe_adj.return_var) == 1:
+                return_type = probe_adj.return_var[0].type
+            else:
+                return_type = [v.type for v in probe_adj.return_var]
+        else:
+            if func.value_func is None:
+                return None
+
+            bound_arg_types = {k: get_arg_type(v) for k, v in bound_args.items()}
+            bound_arg_values = {k: get_arg_value(v) for k, v in bound_args.items()}
+
+            try:
+                return_type = func.value_func(
+                    {k: strip_reference(v) for k, v in bound_arg_types.items()},
+                    bound_arg_values,
+                )
+            except Exception:
+                return None
+
+        if get_origin(return_type) is tuple:
+            types = get_args(return_type)
+            return warp._src.types.tuple_t(types=types, values=(None,) * len(types))
+
+        if isinstance(return_type, Sequence):
+            return None
+
+        return strip_reference(return_type)
+
+    def _tile_operator_type_probe(adj, op_name, args):
+        func = warp._src.context.builtin_functions[op_name]
+        try:
+            func, bound_args, _ = adj.resolve_call(func, args, {}, {})
+        except Exception:
+            return None
+
+        bound_arg_types = {k: get_arg_type(v) for k, v in bound_args.items()}
+        bound_arg_values = {k: get_arg_value(v) for k, v in bound_args.items()}
+
+        try:
+            return_type = func.value_func(
+                {k: strip_reference(v) for k, v in bound_arg_types.items()},
+                bound_arg_values,
+            )
+        except Exception:
+            return None
+
+        if isinstance(return_type, Sequence):
+            return None
+
+        return strip_reference(return_type)
+
+    def _tile_subscript_type_probe(adj, node):
+        target_type = adj._tile_type_probe(node.value)
+        if target_type is None or not is_tile(target_type):
+            return None
+
+        target_shape = target_type.shape
+        if not isinstance(target_shape, (tuple, list)):
+            return None
+
+        if isinstance(node.slice, ast.Tuple):
+            index_nodes = node.slice.elts
+        else:
+            index_nodes = [node.slice]
+
+        result_shape = []
+
+        for dim, index_node in enumerate(index_nodes):
+            if dim >= len(target_shape):
+                return None
+            if isinstance(index_node, ast.Slice):
+                result_shape.append(1)
+                continue
+
+            index_type = adj._tile_type_probe(index_node)
+            if index_type is not None and is_tile(index_type):
+                index_shape = index_type.shape if isinstance(index_type.shape, (tuple, list)) else (1,)
+                if len(index_shape) != 1:
+                    return None
+                result_shape.append(index_shape[0])
+
+        result_shape.extend(target_shape[len(index_nodes) :])
+
+        if result_shape:
+            return tile(dtype=target_type.dtype, shape=tuple(result_shape), storage=target_type.storage)
+        return target_type.dtype
+
+    def _tile_type_probe(adj, node):
+        if isinstance(node, ast.Slice):
+            return slice_t
+
+        if isinstance(node, ast.Call):
+            return adj._tile_call_type_probe(node)
+
+        if isinstance(node, ast.UnaryOp):
+            arg = adj._tile_type_probe_value(node.operand)
+            if arg is None:
+                return None
+            op_name = builtin_operators.get(type(node.op))
+            if op_name is None:
+                return None
+            return adj._tile_operator_type_probe(op_name, (arg,))
+
+        if isinstance(node, ast.BinOp):
+            left = adj._tile_type_probe_value(node.left)
+            right = adj._tile_type_probe_value(node.right)
+            if left is None or right is None:
+                return None
+            op_name = builtin_operators.get(type(node.op))
+            if op_name is None:
+                return None
+            return adj._tile_operator_type_probe(op_name, (left, right))
+
+        if isinstance(node, ast.Subscript):
+            return adj._tile_subscript_type_probe(node)
+
+        value = adj._tile_type_probe_value(node)
+        if isinstance(value, Var):
+            return strip_reference(value.type)
+        if value is not None:
+            return get_arg_type(value)
+
+        return None
+
+    def _tile_group_produces_view(adj, group):
+        """Whether a chained tile subscript group yields a tile the next bracket
+        re-indexes -- a slice or a 1D integer index tile -- rather than collapsing
+        the tile to a scalar/element.
+
+        Side-effect-free: type probing uses already-bound symbols, static
+        references, and function overload metadata only. It does not evaluate
+        index nodes or emit code, so the accepted path still evaluates each
+        index expression exactly once.
+        """
+        for n in group:
+            if isinstance(n, ast.Slice):
+                return True
+            if isinstance(n, ast.Name) and n.id in adj.symbols:
+                v = adj.symbols[n.id]
+                if isinstance(v, Var) and is_tile(strip_reference(v.type)):
+                    return True
+            n_type = adj._tile_type_probe(n)
+            if n_type is not None and is_tile(strip_reference(n_type)):
+                return True
+        return False
+
+    def _tile_later_group_produces_view(adj, groups):
+        """Whether any later chained tile subscript group is known to need a view.
+
+        Used to decide when a partial integer-only prefix such as ``t[2]`` must
+        be emitted before applying a later slice/gather, e.g. ``t[2][idx]``.
+        Pure integer chains such as ``t[2][3]`` stay flattened.
+        """
+        return any(adj._tile_group_produces_view(group) for group in groups)
+
     # returns the object being indexed, and the list of indices
     def eval_subscript(adj, node):
         target, indices = adj.recurse_subscript(node, [])
+
+        # Chained tile subscripts (a[X][Y]...) apply each bracket group to the
+        # result of the previous one, innermost group first, for arbitrary depth.
+        # A single flat index list cannot express e.g. a[::-1][::2] (two successive
+        # views), so a group that produces a view/gather is materialized here.
+        # Pure integer groups are left for the flat path so a[i][j] still lowers
+        # to one tile_extract (and a[i][k] into a tile of vectors keeps working),
+        # unless that integer group is a partial index whose resulting row/slice
+        # is then re-indexed by a later slice/gather, e.g. t[2][idx].
+        while len(indices) > 1 and is_tile(strip_reference(target.type)):
+            target_type = strip_reference(target.type)
+            group = indices[0]
+            group_produces_view = adj._tile_group_produces_view(group)
+            partial_integer_view_before_later_view = (
+                not group_produces_view
+                and len(group) < len(target_type.shape)
+                and adj._tile_later_group_produces_view(indices[1:])
+            )
+            if not (group_produces_view or partial_integer_view_before_later_view):
+                break
+            target = adj.emit_indexing(target, group)
+            indices = indices[1:]
+
         flat_indices = [i for ij in indices for i in ij]
         return target, flat_indices
 
@@ -4832,7 +5295,45 @@ class Adjoint:
             adj._mark_array_write(target)
 
         elif is_tile(target_type):
-            adj.add_builtin_call("assign", [target, *indices, rhs])
+            has_slice, has_index_tile = adj.tile_index_kinds(indices)
+
+            if has_index_tile:
+                # advanced-index assignment (t[indices, :] = src) is not supported: a
+                # scatter with duplicate indices is ambiguous. Users should build the
+                # result explicitly instead.
+                raise WarpCodegenError(
+                    "Advanced-index assignment on tiles (e.g. `t[indices, :] = src`) is not supported. "
+                    "Use slice assignment (`t[a:b, :] = src`) or construct the tile explicitly."
+                )
+            elif has_slice or len(indices) < len(target_type.shape):
+                # view assignment, e.g.: t[a:b, :] = src (slice) or t[0] = row
+                # (partial integer indexing, fewer indices than the tile rank).
+                # Both build a view over the destination sub-range (handling
+                # offsets, strides, and dimension collapse) and assign the source
+                # into it in place. A full-rank integer index (t[i, j] = x) instead
+                # falls through to scalar element assignment below.
+                rhs_type = strip_reference(rhs.type)
+                if not is_tile(rhs_type):
+                    # A non-tile rhs (scalar, vector, matrix, ...) would fall through
+                    # to tile_assign with no matching overload; broadcasting into a
+                    # view is not supported.
+                    raise WarpCodegenError(
+                        f"Tile view assignment requires a tile of matching shape on the right-hand side "
+                        f"(e.g. `t[a:b, :] = src` or `t[0] = row`), but got a value of type {type_repr(rhs_type)}."
+                    )
+                view = adj.add_builtin_call("tile_view", [target, indices])
+                view_type = strip_reference(view.type)
+                if tuple(view_type.shape) != tuple(rhs_type.shape):
+                    # NumPy requires the assigned value to match the destination
+                    # view exactly; a mismatched source would otherwise write
+                    # outside the view (silent corruption or out-of-bounds).
+                    raise WarpCodegenError(
+                        f"Tile view assignment shape mismatch: destination view has shape "
+                        f"{tuple(view_type.shape)} but source has shape {tuple(rhs_type.shape)}."
+                    )
+                adj.add_builtin_call("tile_assign", [view, rhs])
+            else:
+                adj.add_builtin_call("assign", [target, *indices, rhs])
 
         elif (
             type_is_vector(target_type)
@@ -5237,6 +5738,17 @@ class Adjoint:
                     return
 
             elif is_tile(target.type):
+                has_slice, has_index_tile = adj.tile_index_kinds(indices)
+                # In-place tile ops operate element-wise on whole-tile coordinates,
+                # so any subscript that produces a view — a slice, an index tile, or
+                # fewer integer indices than dimensions (e.g. a row) — has no in-place
+                # read path. Reject it with a clear message instead of an opaque
+                # overload error.
+                if has_slice or has_index_tile or len(indices) < len(target.type.shape):
+                    raise WarpCodegenError(
+                        "Compound assignment to a tile view (e.g. `t[a:b, :] += x` or `t[i] += x`) is not "
+                        "supported. Read the view, update it, and assign it back explicitly."
+                    )
                 if isinstance(node.op, ast.Add):
                     adj.add_builtin_call("tile_add_inplace", [target, *indices, rhs])
                 elif isinstance(node.op, ast.Sub):

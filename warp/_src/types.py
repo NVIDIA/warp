@@ -2278,6 +2278,8 @@ class slice_t:
         self.start = start
         self.stop = stop
         self.step = step
+        self.start_omitted = False
+        self.stop_omitted = False
 
     def get_length(self, parent_length, wrap=False):
         if any(isinstance(x, warp._src.codegen.Var) for x in (self.start, self.stop, self.step)):

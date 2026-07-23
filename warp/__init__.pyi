@@ -3196,20 +3196,36 @@ def tile_atomic_add_indexed(
                 [20. 22. 24. 26.]]"""
     ...
 
-def tile_view(
-    t: Tile[Any, tuple[int, ...]],
-    offset: tuple[int, ...],
-    shape: tuple[int, ...],
-) -> Tile[Any, tuple[int, ...]]:
-    """Extract a slice of a given tile [offset, offset+shape], if shape is not specified it will be inferred from the unspecified offset dimensions.
+def tile_view(t: Tile[Any, tuple[int, ...]], offset: tuple, shape: tuple[int, ...]) -> Tile[Any, tuple[int, ...]]:
+    """Extract a view of a tile.
+
+    ``offset`` may contain integer coordinates, in which case ``shape`` gives the
+    returned tile shape. ``offset`` may also contain ``slice`` objects, in which
+    case the returned shape is inferred from the slice bounds and ``shape`` must
+    not be specified.
 
     Args:
         t: Input tile to extract a subrange from
-        offset: Offset in the source tile
-        shape: Shape of the returned slice
+        offset: Integer offsets or slices in the source tile
+        shape: Shape of the returned view for integer-only offsets
 
     Returns:
-        A tile with dimensions given by the specified shape or the remaining source tile dimensions."""
+        A tile view with dimensions given by ``shape``, the remaining source tile
+        dimensions, or the inferred slice extents."""
+    ...
+
+def tile_slice_indexed(t: Tile[Any, tuple[int, ...]], indices: tuple) -> Tile[Any, tuple[int, ...]]:
+    """Gather elements of a tile along a single axis using a 1D tile of integer indices.
+
+    This lowers the advanced-indexing syntax ``t[indices, :]``, gathering elements of
+    ``t`` along one axis given by ``indices``. All other axes must be selected in full.
+
+    Args:
+        t: Input tile to gather from
+        indices: A 1D tile of integer indices selecting elements along one axis
+
+    Returns:
+        A register tile whose extent along the indexed axis equals the number of indices."""
     ...
 
 def tile_squeeze(t: Tile[Any, tuple[int, ...]], axis: tuple[int, ...]) -> Tile[Any, tuple[int, ...]]:
