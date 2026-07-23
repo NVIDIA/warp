@@ -530,9 +530,10 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">module_preload_mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">JaxModulePreloadMode.CURRENT_DEVICE</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">enable_backward</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">has_side_effect</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">block_dim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/jax/ffi.py#L1283-L1661"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.jax_kernel" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/jax/ffi.py#L1290-L1696"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.jax_kernel" title="Link to this definition">#</a></dt>
 <dd><p>Create a JAX callback from a Warp kernel.</p>
 <p>NOTE: This is an experimental feature under development.</p>
 <dl class="field-list simple">
@@ -566,6 +567,11 @@ not suppressed.</p></li>
 <li><p><strong>enable_backward</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Enable automatic differentiation for this kernel.</p></li>
 <li><p><strong>has_side_effect</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether the custom call has side effects. When True,
 the FFI call will be executed even when the outputs are not used.</p></li>
+<li><p><strong>block_dim</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Specify the number of threads per block for CUDA execution.
+When <code class="docutils literal notranslate"><span class="pre">None</span></code>, CUDA uses 256 threads per block. CPU execution always
+uses one thread per block. The value is fixed when the wrapper is
+constructed and is shared by forward and adjoint launches when
+<code class="docutils literal notranslate"><span class="pre">enable_backward=True</span></code>.</p></li>
 </ul>
 </dd>
 </dl>

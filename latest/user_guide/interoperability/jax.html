@@ -824,6 +824,48 @@ worrying about the extra vector and matrix dimensions required by JAX:</p>
 <p>See <a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/examples/interop/example_jax_kernel.py">example_jax_kernel.py</a> for examples.</p>
 </section>
 </section>
+<section id="cuda-block-dimensions-and-tile-kernels">
+<h3>CUDA Block Dimensions and Tile Kernels<a class="headerlink" href="#cuda-block-dimensions-and-tile-kernels" title="Link to this heading">#</a></h3>
+<p>By default, <a class="reference internal" href="../../api_reference/_generated/warp.jax_kernel.html#warp.jax_kernel" title="warp.jax_kernel"><code class="xref py py-func docutils literal notranslate"><span class="pre">jax_kernel()</span></code></a> uses 256 threads per
+block on CUDA. Pass <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> when a kernel needs another CUDA execution
+width, including SIMT kernels that use block-cooperative tile operations. The
+value is fixed when the wrapper is constructed. CPU execution continues to
+use one thread per block. See <a class="reference internal" href="../programming_model/tiles.html"><span class="doc">Warp’s tile programming model</span></a> for an introduction to tile operations and their
+execution model.</p>
+<p>This example uses 64 CUDA threads to reduce each of four rows containing 256
+values:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">ROW_COUNT</span> <span class="o">=</span> <span class="mi">4</span>
+<span class="n">TILE_SIZE</span> <span class="o">=</span> <span class="mi">256</span>
+<span class="n">TILE_THREADS</span> <span class="o">=</span> <span class="mi">64</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">row_sum</span><span class="p">(</span><span class="n">values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array2d</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">output</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+    <span class="n">row</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">tile</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">values</span><span class="p">[</span><span class="n">row</span><span class="p">],</span> <span class="n">shape</span><span class="o">=</span><span class="n">TILE_SIZE</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">output</span><span class="p">[</span><span class="n">row</span><span class="p">],</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_sum</span><span class="p">(</span><span class="n">tile</span><span class="p">))</span>
+
+<span class="n">jax_row_sum</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">jax_kernel</span><span class="p">(</span>
+    <span class="n">row_sum</span><span class="p">,</span>
+    <span class="n">launch_dims</span><span class="o">=</span><span class="p">(</span><span class="n">ROW_COUNT</span><span class="p">,</span> <span class="n">TILE_THREADS</span><span class="p">),</span>
+    <span class="n">output_dims</span><span class="o">=</span><span class="p">(</span><span class="n">ROW_COUNT</span><span class="p">,),</span>
+    <span class="n">block_dim</span><span class="o">=</span><span class="n">TILE_THREADS</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">values</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">ROW_COUNT</span> <span class="o">*</span> <span class="n">TILE_SIZE</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">jnp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="n">values</span> <span class="o">=</span> <span class="n">values</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">ROW_COUNT</span><span class="p">,</span> <span class="n">TILE_SIZE</span><span class="p">)</span>
+<span class="p">(</span><span class="n">output</span><span class="p">,)</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">jit</span><span class="p">(</span><span class="n">jax_row_sum</span><span class="p">)(</span><span class="n">values</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The launch dimensions follow <a class="reference internal" href="../../api_reference/_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch()</span></code></a> semantics. A
+regular SIMT kernel passes its logical thread dimensions directly.
+<a class="reference internal" href="../../api_reference/_generated/warp.launch_tiled.html#warp.launch_tiled" title="warp.launch_tiled"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch_tiled()</span></code></a> normally appends <code class="docutils literal notranslate"><span class="pre">block_dim</span></code>
+to those dimensions. Because <a class="reference internal" href="../../api_reference/_generated/warp.jax_kernel.html#warp.jax_kernel" title="warp.jax_kernel"><code class="xref py py-func docutils literal notranslate"><span class="pre">jax_kernel()</span></code></a> has no
+tiled-launch wrapper, include that execution width as the trailing launch
+dimension, as in <code class="docutils literal notranslate"><span class="pre">launch_dims=(ROW_COUNT,</span> <span class="pre">TILE_THREADS)</span></code> above.</p>
+<p>Keep <code class="docutils literal notranslate"><span class="pre">output_dims</span></code> equal to the logical output shape. When it is omitted,
+<a class="reference internal" href="../../api_reference/_generated/warp.jax_kernel.html#warp.jax_kernel" title="warp.jax_kernel"><code class="xref py py-func docutils literal notranslate"><span class="pre">jax_kernel()</span></code></a> defaults it to <code class="docutils literal notranslate"><span class="pre">launch_dims</span></code>, so this
+example would allocate an output with shape <code class="docutils literal notranslate"><span class="pre">(4,</span> <span class="pre">64)</span></code> instead of <code class="docutils literal notranslate"><span class="pre">(4,)</span></code>.</p>
+</section>
 </section>
 <section id="vmap-support">
 <span id="jax-vmap"></span><h2>VMAP Support<a class="headerlink" href="#vmap-support" title="Link to this heading">#</a></h2>
@@ -1346,6 +1388,7 @@ Once Open MPI is installed, you can use <code class="docutils literal notranslat
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#vector-and-matrix-arrays">Vector and Matrix Arrays</a></li>
 </ul>
 </li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#cuda-block-dimensions-and-tile-kernels">CUDA Block Dimensions and Tile Kernels</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#vmap-support">VMAP Support</a><ul class="nav section-nav flex-column">

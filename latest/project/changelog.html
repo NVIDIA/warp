@@ -549,6 +549,8 @@ CUDA based on the device selected by JAX (<a class="reference external" href="ht
 called during a capture are recorded and replayed against the current bounds, instead of running once at capture
 time and leaving replay to query a stale BVH. Such captures are replay-only; <code class="docutils literal notranslate"><span class="pre">capture_save()</span></code> rejects them because
 the BVH handle cannot be serialized (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1665">GH-1665</a>).</p></li>
+<li><p>Add an optional <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> argument to <code class="docutils literal notranslate"><span class="pre">wp.jax_kernel()</span></code> for selecting the CUDA thread-block size, including for
+tile kernels and their generated adjoint launches (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1436">GH-1436</a>).</p></li>
 </ul>
 </section>
 <section id="removed">
