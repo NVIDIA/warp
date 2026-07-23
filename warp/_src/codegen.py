@@ -4494,6 +4494,15 @@ class Adjoint:
                     return True
         return False
 
+    def _tile_later_group_produces_view(adj, groups):
+        """Whether any later chained tile subscript group is known to need a view.
+
+        Used to decide when a partial integer-only prefix such as ``t[2]`` must
+        be emitted before applying a later slice/gather, e.g. ``t[2][idx]``.
+        Pure integer chains such as ``t[2][3]`` stay flattened.
+        """
+        return any(adj._tile_group_produces_view(group) for group in groups)
+
     # returns the object being indexed, and the list of indices
     def eval_subscript(adj, node):
         target, indices = adj.recurse_subscript(node, [])
@@ -4501,14 +4510,23 @@ class Adjoint:
         # Chained tile subscripts (a[X][Y]...) apply each bracket group to the
         # result of the previous one, innermost group first, for arbitrary depth.
         # A single flat index list cannot express e.g. a[::-1][::2] (two successive
-        # views), so a group that produces a view/gather is materialized here. Pure
-        # integer groups are left for the flat path so a[i][j] still lowers to one
-        # tile_extract (and a[i][k] into a tile of vectors keeps working) — folding
-        # them here would instead force the source tile to shared via tile_view.
+        # views), so a group that produces a view/gather is materialized here.
+        # Pure integer groups are left for the flat path so a[i][j] still lowers
+        # to one tile_extract (and a[i][k] into a tile of vectors keeps working),
+        # unless that integer group is a partial index whose resulting row/slice
+        # is then re-indexed by a later slice/gather, e.g. t[2][idx].
         while len(indices) > 1 and is_tile(strip_reference(target.type)):
-            if not adj._tile_group_produces_view(indices[0]):
+            target_type = strip_reference(target.type)
+            group = indices[0]
+            group_produces_view = adj._tile_group_produces_view(group)
+            partial_integer_view_before_later_view = (
+                not group_produces_view
+                and len(group) < len(target_type.shape)
+                and adj._tile_later_group_produces_view(indices[1:])
+            )
+            if not (group_produces_view or partial_integer_view_before_later_view):
                 break
-            target = adj.emit_indexing(target, indices[0])
+            target = adj.emit_indexing(target, group)
             indices = indices[1:]
 
         flat_indices = [i for ij in indices for i in ij]

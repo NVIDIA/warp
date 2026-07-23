@@ -773,6 +773,19 @@ def tile_chain_gather_slice_kernel(src: wp.array1d[float], idx: wp.array1d[int],
     wp.tile_store(dst, t[i][::-1])
 
 
+@wp.kernel
+def tile_chain_row_gather_kernel(src: wp.array2d[float], idx: wp.array1d[int], dst: wp.array1d[float]):
+    t = wp.tile_load(src, shape=(TILE_M, TILE_N))
+    i = wp.tile_load(idx, shape=4)
+    wp.tile_store(dst, t[2][i])
+
+
+@wp.kernel
+def tile_chain_row_slice_kernel(src: wp.array2d[float], dst: wp.array1d[float]):
+    t = wp.tile_load(src, shape=(TILE_M, TILE_N))
+    wp.tile_store(dst, t[2][1:9:2])
+
+
 def test_tile_chained_subscript(test, device):
     # Chained tile subscripts (a[X][Y]...) apply each bracket to the previous
     # result: slice/slice, three-deep, slice/gather, and gather/slice.
@@ -802,6 +815,35 @@ def test_tile_chained_subscript(test, device):
     expected_grad = np.zeros_like(a)
     expected_grad[::-1][::2] = adj_np
     assert_np_equal(src.grad.numpy(), expected_grad, tol=1e-6)
+
+
+def test_tile_chained_partial_int_subscript(test, device):
+    # A partial integer prefix followed by a slice/gather must apply the later
+    # bracket to the row view, while pure integer chains still use tile_extract.
+    rng = np.random.default_rng(42)
+    src_np = rng.random((TILE_M, TILE_N), dtype=np.float32)
+    idx_np = np.array([1, 3, 3, -1], dtype=np.int32)
+
+    src = wp.array(src_np, dtype=float, requires_grad=True, device=device)
+    idx = wp.array(idx_np, dtype=int, device=device)
+    dst = wp.zeros(4, dtype=float, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(tile_chain_row_gather_kernel, dim=[1], inputs=[src, idx, dst], block_dim=32, device=device)
+
+    assert_np_equal(dst.numpy(), src_np[2][idx_np], tol=1e-6)
+
+    adj_np = rng.random(4, dtype=np.float32)
+    dst.grad = wp.array(adj_np, dtype=float, device=device)
+    tape.backward()
+
+    expected_grad = np.zeros_like(src_np)
+    np.add.at(expected_grad[2], idx_np % TILE_N, adj_np)
+    assert_np_equal(src.grad.numpy(), expected_grad, tol=1e-6)
+
+    dst_slice = wp.zeros(4, dtype=float, device=device)
+    wp.launch_tiled(tile_chain_row_slice_kernel, dim=[1], inputs=[src, dst_slice], block_dim=32, device=device)
+    assert_np_equal(dst_slice.numpy(), src_np[2][1:9:2], tol=1e-6)
 
 
 @wp.kernel
@@ -995,6 +1037,9 @@ add_function_test(TestTileView, "test_tile_runtime_ref_index", test_tile_runtime
 add_function_test(TestTileView, "test_tile_runtime_neg_index", test_tile_runtime_neg_index, devices=devices)
 add_function_test(TestTileView, "test_tile_gather_neg_index", test_tile_gather_neg_index, devices=devices)
 add_function_test(TestTileView, "test_tile_chained_subscript", test_tile_chained_subscript, devices=devices)
+add_function_test(
+    TestTileView, "test_tile_chained_partial_int_subscript", test_tile_chained_partial_int_subscript, devices=devices
+)
 add_function_test(TestTileView, "test_tile_view_explicit_slice", test_tile_view_explicit_slice, devices=devices)
 add_function_test(TestTileView, "test_tile_row_assign", test_tile_row_assign, devices=devices)
 add_function_test(TestTileView, "test_tile_chain_int_element", test_tile_chain_int_element, devices=devices)
