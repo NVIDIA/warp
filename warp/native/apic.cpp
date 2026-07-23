@@ -1092,33 +1092,18 @@ bool apic_init_cpu_graph_memory(APICGraph* graph, const uint8_t* memory_ptr, siz
         memset(pair.second.ptr, 0, pair.second.size);
     }
 
-    if (!memory_ptr || memory_size < 4)
-        return true;
-
-    const uint8_t* ptr = memory_ptr;
-    const uint8_t* end = memory_ptr + memory_size;
-    uint32_t region_count = 0;
-    memcpy(&region_count, ptr, sizeof(uint32_t));
-    ptr += sizeof(uint32_t);
-
-    for (uint32_t i = 0; i < region_count; i++) {
-        if (ptr + sizeof(APICMemoryRegionRecord) > end) {
-            fprintf(stderr, "APIC: Error - truncated memory region record\n");
+    for (auto& pair : graph->regions) {
+        APICMemory& region = pair.second;
+        if (!region.has_initial_data)
+            continue;
+        if (!memory_ptr || region.initial_data_offset > memory_size
+            || region.size > static_cast<uint64_t>(memory_size - region.initial_data_offset)) {
+            wp::set_error_string(
+                "Invalid APIC memory section: region %u initial data is out of bounds", region.region_id
+            );
             return false;
         }
-        const APICMemoryRegionRecord* rec = reinterpret_cast<const APICMemoryRegionRecord*>(ptr);
-        ptr += sizeof(APICMemoryRegionRecord);
-        if (rec->has_initial_data) {
-            if (ptr + rec->size > end) {
-                fprintf(stderr, "APIC: Error - truncated memory region data\n");
-                return false;
-            }
-            auto it = graph->regions.find(rec->region_id);
-            if (it != graph->regions.end() && it->second.ptr) {
-                memcpy(it->second.ptr, ptr, rec->size);
-            }
-            ptr += rec->size;
-        }
+        memcpy(region.ptr, memory_ptr + region.initial_data_offset, static_cast<size_t>(region.size));
     }
     return true;
 }
@@ -1239,29 +1224,54 @@ bool apic_parse_operations(const uint8_t* data, size_t size, APICGraph* graph)
 
 bool apic_parse_memory_regions(const uint8_t* data, size_t size, APICGraph* graph)
 {
-    if (!data || size < 4)
+    if (!data)
         return true;
-    const uint8_t* ptr = data;
-    const uint8_t* end = data + size;
-    uint32_t region_count = apic_read_value<uint32_t>(ptr);
+    if (size < sizeof(uint32_t)) {
+        wp::set_error_string("Invalid APIC memory section: missing region count");
+        return false;
+    }
+
+    size_t offset = 0;
+    uint32_t region_count = 0;
+    memcpy(&region_count, data + offset, sizeof(region_count));
+    offset += sizeof(region_count);
 
     for (uint32_t i = 0; i < region_count; i++) {
-        if (ptr + sizeof(APICMemoryRegionRecord) > end)
+        if (sizeof(APICMemoryRegionRecord) > size - offset) {
+            wp::set_error_string("Invalid APIC memory section: truncated region record %u", i);
             return false;
-        const APICMemoryRegionRecord* rec = reinterpret_cast<const APICMemoryRegionRecord*>(ptr);
-        ptr += sizeof(APICMemoryRegionRecord);
-
-        if (graph->regions.find(rec->region_id) == graph->regions.end()) {
-            APICMemory region;
-            region.region_id = rec->region_id;
-            region.size = rec->size;
-            region.element_size = rec->element_size;
-            graph->regions[rec->region_id] = region;
         }
 
-        if (rec->has_initial_data) {
-            ptr += rec->size;
+        APICMemoryRegionRecord rec;
+        memcpy(&rec, data + offset, sizeof(rec));
+        offset += sizeof(rec);
+
+        if (rec.has_initial_data > 1) {
+            wp::set_error_string(
+                "Invalid APIC memory section: region %u has invalid initial-data flag %u", rec.region_id,
+                static_cast<unsigned>(rec.has_initial_data)
+            );
+            return false;
         }
+        if (graph->regions.find(rec.region_id) != graph->regions.end()) {
+            wp::set_error_string("Invalid APIC memory section: duplicate region ID %u", rec.region_id);
+            return false;
+        }
+        if (rec.has_initial_data && rec.size > static_cast<uint64_t>(size - offset)) {
+            wp::set_error_string("Invalid APIC memory section: region %u initial data is truncated", rec.region_id);
+            return false;
+        }
+
+        APICMemory region;
+        region.region_id = rec.region_id;
+        region.size = rec.size;
+        region.element_size = rec.element_size;
+        region.has_initial_data = rec.has_initial_data != 0;
+        region.initial_data_offset = offset;
+        graph->regions.emplace(rec.region_id, std::move(region));
+
+        if (rec.has_initial_data)
+            offset += static_cast<size_t>(rec.size);
     }
     return true;
 }
@@ -3305,7 +3315,6 @@ APICGraph* wp_apic_load_graph(void* context, const char* path, int device_type)
     }
 
     if (memory_ptr && !apic_parse_memory_regions(memory_ptr, memory_size, graph)) {
-        wp::set_error_string("Failed to parse memory regions");
         delete graph;
         return nullptr;
     }

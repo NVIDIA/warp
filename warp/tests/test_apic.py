@@ -80,6 +80,9 @@ _APIC_FILE_HEADER_PREFIX = struct.Struct("<4sIIIQ")
 # APICSectionEntry: type, flags, offset, stored size, uncompressed size.
 _APIC_SECTION_ENTRY = struct.Struct("<IIQQQ")
 
+# APICMemoryRegionRecord: ID, element size, byte size, initial-data flag, padding.
+_APIC_MEMORY_REGION_RECORD = struct.Struct("<IIQB7x")
+
 # APICCondRecord: operation type/size, condition region/padding/offset, then each
 # branch's byte size and operation count.
 _APIC_COND_RECORD = struct.Struct("<IIiIQIIII")
@@ -104,6 +107,89 @@ def _find_apic_section(wrp_data, requested_section_type):
     if len(matching_sections) != 1:
         raise ValueError(f"Expected one WRP section of type {requested_section_type}")
     return matching_sections[0]
+
+
+def _read_apic_section(path, requested_section_type):
+    """Return a mutable copy of one WRP section."""
+    with open(path, "rb") as wrp_file:
+        wrp_data = wrp_file.read()
+    section_offset, section_size = _find_apic_section(wrp_data, requested_section_type)
+    return bytearray(wrp_data[section_offset : section_offset + section_size])
+
+
+def _replace_apic_section(path, requested_section_type, replacement):
+    """Append a replacement WRP section and redirect its table entry."""
+    with open(path, "r+b") as wrp_file:
+        wrp_data = bytearray(wrp_file.read())
+        magic, _, _, section_count, section_table_offset = _APIC_FILE_HEADER_PREFIX.unpack_from(wrp_data)
+        if magic != b"WRP1":
+            raise ValueError("Not a WRP file")
+
+        matching_entry_offsets = []
+        for section_index in range(section_count):
+            entry_offset = section_table_offset + _APIC_SECTION_ENTRY.size * section_index
+            section_type, _, _, _, _ = _APIC_SECTION_ENTRY.unpack_from(wrp_data, entry_offset)
+            if section_type == requested_section_type:
+                matching_entry_offsets.append(entry_offset)
+
+        if len(matching_entry_offsets) != 1:
+            raise ValueError(f"Expected one WRP section of type {requested_section_type}")
+
+        entry_offset = matching_entry_offsets[0]
+        section_type, flags, _, _, _ = _APIC_SECTION_ENTRY.unpack_from(wrp_data, entry_offset)
+        replacement_offset = len(wrp_data)
+        replacement_size = len(replacement)
+        _APIC_SECTION_ENTRY.pack_into(
+            wrp_data,
+            entry_offset,
+            section_type,
+            flags,
+            replacement_offset,
+            replacement_size,
+            replacement_size,
+        )
+        wrp_data.extend(replacement)
+
+        wrp_file.seek(0)
+        wrp_file.write(wrp_data)
+        wrp_file.truncate()
+
+
+def _append_apic_memory_record(path, record_and_payload):
+    """Append one logical memory record to a WRP memory section."""
+    memory_section = _read_apic_section(path, _APIC_SECTION_MEMORY)
+    region_count = _APIC_UINT32.unpack_from(memory_section)[0]
+    _APIC_UINT32.pack_into(memory_section, 0, region_count + 1)
+    memory_section.extend(record_and_payload)
+    _replace_apic_section(path, _APIC_SECTION_MEMORY, memory_section)
+
+
+def _first_apic_memory_record(path):
+    """Return the first packed memory-region record from a saved WRP."""
+    memory_section = _read_apic_section(path, _APIC_SECTION_MEMORY)
+    region_count = _APIC_UINT32.unpack_from(memory_section)[0]
+    if region_count == 0:
+        raise ValueError("Expected at least one APIC memory region")
+    return _APIC_MEMORY_REGION_RECORD.unpack_from(memory_section, _APIC_UINT32.size)
+
+
+def _save_apic_memory_validation_graph(path, device):
+    """Save a module-free graph with one initialized memory region."""
+    values = wp.array([1, 2, 3, 4], dtype=wp.uint8, device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        values.zero_()
+    wp.capture_save(capture.graph, path, outputs={"values": values})
+
+
+def _assert_apic_load_rejected(test, path, device, message_pattern):
+    """Assert that a malformed WRP is rejected without noisy native stderr."""
+    saved_error_output_enabled = wp_context.runtime.core.wp_is_error_output_enabled()
+    try:
+        wp_context.runtime.core.wp_set_error_output_enabled(False)
+        with test.assertRaisesRegex(RuntimeError, message_pattern):
+            wp.capture_load(path, device=device)
+    finally:
+        wp_context.runtime.core.wp_set_error_output_enabled(saved_error_output_enabled)
 
 
 def _corrupt_apic_empty_branch_count(path, branch_name):
@@ -208,6 +294,54 @@ def test_capture_load_rejects_empty_conditional_branches_with_operations(test, d
                     wp.capture_load(path, device=device)
             finally:
                 wp_context.runtime.core.wp_set_error_output_enabled(saved_error_output_enabled)
+
+
+def test_capture_load_rejects_malformed_memory_regions(test, device):
+    """Reject malformed APIC memory records before allocating regions.
+
+    Exercise duplicate IDs, truncated records and payloads, and invalid
+    initial-data flags. Duplicate IDs must be rejected because allocation
+    and initialization cannot safely use metadata from different records.
+    """
+    with tempfile.TemporaryDirectory() as tmpdir:
+        with test.subTest(case="duplicate region"):
+            path = os.path.join(tmpdir, "duplicate_region.wrp")
+            _save_apic_memory_validation_graph(path, device)
+            region_id, element_size, region_size, _ = _first_apic_memory_record(path)
+            payload = bytes(region_size + 64)
+            duplicate = _APIC_MEMORY_REGION_RECORD.pack(region_id, element_size, len(payload), 1) + payload
+            _append_apic_memory_record(path, duplicate)
+            _assert_apic_load_rejected(test, path, device, rf"duplicate region ID {region_id}")
+
+        with test.subTest(case="overflowed initial-data size"):
+            path = os.path.join(tmpdir, "overflowed_initial_data.wrp")
+            _save_apic_memory_validation_graph(path, device)
+            oversized = _APIC_MEMORY_REGION_RECORD.pack(0xFFFFFFFF, 1, 0xFFFFFFFFFFFFFFFF, 1)
+            _append_apic_memory_record(path, oversized)
+            _assert_apic_load_rejected(
+                test,
+                path,
+                device,
+                r"region 4294967295 initial data is truncated",
+            )
+
+        with test.subTest(case="truncated record"):
+            path = os.path.join(tmpdir, "truncated_record.wrp")
+            _save_apic_memory_validation_graph(path, device)
+            _append_apic_memory_record(path, bytes(_APIC_MEMORY_REGION_RECORD.size - 1))
+            _assert_apic_load_rejected(test, path, device, r"truncated region record")
+
+        with test.subTest(case="invalid initial-data flag"):
+            path = os.path.join(tmpdir, "invalid_initial_data_flag.wrp")
+            _save_apic_memory_validation_graph(path, device)
+            invalid_flag = _APIC_MEMORY_REGION_RECORD.pack(0xFFFFFFFE, 1, 0, 2)
+            _append_apic_memory_record(path, invalid_flag)
+            _assert_apic_load_rejected(
+                test,
+                path,
+                device,
+                r"region 4294967294 has invalid initial-data flag 2",
+            )
 
 
 def test_live_hashgrid_capture_does_not_snapshot_inputs(test, device):
@@ -3018,6 +3152,12 @@ add_function_test(
     TestApic,
     "test_capture_load_rejects_empty_conditional_branches_with_operations",
     test_capture_load_rejects_empty_conditional_branches_with_operations,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_capture_load_rejects_malformed_memory_regions",
+    test_capture_load_rejects_malformed_memory_regions,
     devices=[d for d in devices if d.is_cpu],
 )
 add_function_test(

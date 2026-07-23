@@ -190,6 +190,8 @@ struct APICMemory {
     uint64_t size = 0;
     uint32_t element_size = 0;
     std::vector<uint8_t> initial_data;
+    bool has_initial_data = false;
+    size_t initial_data_offset = 0;
     void* ptr = nullptr;  // Allocated pointer (device or host depending on context)
 };
 

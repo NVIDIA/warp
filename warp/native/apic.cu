@@ -181,39 +181,26 @@ APICGraph::~APICGraph()
     }
 }
 
-// apic_read_value<T> is a small inline helper used only by apic_init_memory below.
-template <typename T> static T apic_read_value(const uint8_t*& ptr)
-{
-    T value;
-    memcpy(&value, ptr, sizeof(T));
-    ptr += sizeof(T);
-    return value;
-}
-
 static bool apic_init_memory(const uint8_t* data, size_t size, APICGraph* graph)
 {
-    if (!data || size < 4)
-        return true;
-    const uint8_t* ptr = data;
-    const uint8_t* end = data + size;
-    uint32_t region_count = apic_read_value<uint32_t>(ptr);
-
-    for (uint32_t i = 0; i < region_count; i++) {
-        if (ptr + sizeof(APICMemoryRegionRecord) > end)
+    for (auto& pair : graph->regions) {
+        APICMemory& region = pair.second;
+        if (!region.has_initial_data)
+            continue;
+        if (!data || region.initial_data_offset > size
+            || region.size > static_cast<uint64_t>(size - region.initial_data_offset)) {
+            wp::set_error_string(
+                "Invalid APIC memory section: region %u initial data is out of bounds", region.region_id
+            );
             return false;
-        const APICMemoryRegionRecord* rec = reinterpret_cast<const APICMemoryRegionRecord*>(ptr);
-        ptr += sizeof(APICMemoryRegionRecord);
+        }
 
-        if (rec->has_initial_data) {
-            auto it = graph->regions.find(rec->region_id);
-            if (it != graph->regions.end() && it->second.ptr) {
-                cudaError_t err = cudaMemcpy(it->second.ptr, ptr, rec->size, cudaMemcpyHostToDevice);
-                if (err != cudaSuccess) {
-                    wp::set_error_string("Failed to initialize memory region %u", rec->region_id);
-                    return false;
-                }
-            }
-            ptr += rec->size;
+        cudaError_t err = cudaMemcpy(
+            region.ptr, data + region.initial_data_offset, static_cast<size_t>(region.size), cudaMemcpyHostToDevice
+        );
+        if (err != cudaSuccess) {
+            wp::set_error_string("Failed to initialize memory region %u", region.region_id);
+            return false;
         }
     }
     return true;

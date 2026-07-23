@@ -136,6 +136,8 @@
 - Fix `SquareNedelecFirstKindShapeFunctions.make_node_coords_in_element()` and
   `SquareRaviartThomasShapeFunctions.make_node_coords_in_element()` producing device functions that return `None`
   instead of node coordinates in Warp FEM kernels ([GH-1685](https://github.com/NVIDIA/warp/issues/1685)).
+- Reject malformed APIC `.wrp` memory sections containing duplicate region IDs
+  or out-of-bounds initial data during graph loading.
 
 ### Documentation
 
