@@ -133,6 +133,9 @@
 - Fix Jacobian plotting for Python functions and typed Warp kernels in `wp.autograd.jacobian()`,
   `wp.autograd.jacobian_fd()`, and `wp.autograd.gradcheck()`
   ([GH-1672](https://github.com/NVIDIA/warp/issues/1672)).
+- Fix `SquareNedelecFirstKindShapeFunctions.make_node_coords_in_element()` and
+  `SquareRaviartThomasShapeFunctions.make_node_coords_in_element()` producing device functions that return `None`
+  instead of node coordinates in Warp FEM kernels ([GH-1685](https://github.com/NVIDIA/warp/issues/1685)).
 
 ### Documentation
 
