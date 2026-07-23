@@ -74,10 +74,15 @@ The main security boundaries in this repository are:
   PyTorch, JAX, Paddle, DLPack, `__array_interface__`, and
   `__cuda_array_interface__`. Many conversions are zero-copy, so Warp may launch
   kernels against memory allocated and owned by another framework.
-- **Serialized-data boundary:** public APIs and examples can load local assets
-  such as NanoVDB buffers through `warp.Volume.load_from_nvdb()`, APIC graph
-  files through `warp.capture_load()`, CUBIN/AOT artifacts, USD stages in
-  examples, and image files in examples.
+- **Serialized-data and executable-artifact boundary:** public APIs and examples
+  load local assets such as NanoVDB buffers through
+  `warp.Volume.load_from_nvdb()`, APIC graph bundles through
+  `warp.capture_load()`, USD stages in examples, and image files in examples. An
+  APIC graph bundle consists of a `.wrp` file and its companion `_modules/`
+  directory, which contains compiled CPU or CUDA modules. Loading the bundle
+  reconstructs recorded operations and loads executable code, so the complete
+  bundle is treated as a trusted executable artifact rather than an untrusted
+  data-interchange format.
 - **Build and release boundary:** source builds and CI use `build_lib.py`,
   `setup.py`, `pyproject.toml`, Dockerfiles, Packman manifests, CUDA Toolkit
   paths, LLVM/Clang paths, and optional dependency extras to build Python wheels
@@ -115,13 +120,16 @@ The following scenarios represent the primary security concerns for Warp:
    bindings can cause process crashes, data corruption, GPU faults, or memory
    disclosure within the caller's process boundary.
 
-4. **Unsafe loading of serialized graph and volume data:** `warp.capture_load()`
-   reads APIC `.wrp` graph files and, for CPU replay, loads object modules from
-   the associated `_modules` directory through the `warp-clang` backend.
-   `warp.Volume.load_from_nvdb()` parses and decompresses NanoVDB buffers before
-   exposing them to native volume code. Malformed or hostile serialized inputs
-   can target parser bugs, decompression resource exhaustion, object loading, or
-   native replay paths.
+4. **Loading serialized data and executable graph artifacts:**
+   `warp.capture_load()` reads an APIC `.wrp` file and loads compiled modules
+   from its companion `_modules/` directory. APIC bundles are trusted executable
+   artifacts; Warp does not sandbox them or guarantee safe processing of
+   intentionally malicious bundles. Other serialized inputs retain their
+   existing trust assumptions; this APIC-specific classification does not
+   reclassify them. Corrupt or incompatible artifacts can still expose parser,
+   resource-exhaustion, object-loading, or replay defects. Warp therefore
+   applies defense-in-depth validation where practical, but such validation
+   does not establish an adversarial-input security boundary.
 
 5. **Toolchain and dependency substitution during source builds:** `build_lib.py`
    discovers CUDA through `WARP_CUDA_PATH`, `CUDA_HOME`, `CUDA_PATH`, and `nvcc`,
@@ -159,14 +167,20 @@ The following scenarios represent the primary security concerns for Warp:
   access configuration, and memory pool implementation correctly enforce device
   memory access rules.
 - The kernel cache directory is per-user or otherwise protected from untrusted
-  writers. Shared cache directories must be explicitly hardened by the embedding
-  application or deployment environment.
+  writers. Cached CPU object, PTX, CUBIN, and LTO files are trusted executable
+  artifacts; their metadata is trusted as well. Shared cache directories must
+  be explicitly hardened by the embedding application or deployment
+  environment.
 - External array producers correctly report pointer, dtype, shape, stride,
   device, stream, ownership, and lifetime metadata. Warp cannot fully verify
   every custom allocator or externally wrapped allocation.
-- Serialized inputs such as `.wrp`, `.nvdb`, USD, image, CUBIN, PTX, and CPU
-  object files are trusted unless the embedding application validates or
-  sandboxes them before calling Warp APIs.
+- An APIC `.wrp` file and its companion `_modules/` directory are one trusted
+  executable-artifact bundle. Callers must load bundles only from trusted
+  sources. `warp.capture_load()` is not a sandbox or security boundary for
+  attacker-controlled artifacts.
+- Warp assumes that other serialized inputs, including `.nvdb`, USD, and image
+  files, come from trusted sources. Applications accepting untrusted inputs must
+  supply the validation or sandboxing required by their threat model.
 - Services that expose Warp functionality to remote users must validate and
   constrain inputs before invoking Warp. Network transport security, rate
   limiting, authentication, authorization, request logging, and secrets handling
@@ -181,6 +195,18 @@ Security reports are in scope when they affect Warp's tracked source, packaged
 Python APIs, native libraries, JIT compilation pipeline, kernel cache behavior,
 supported interop APIs, APIC graph loading, Volume/NanoVDB loading, memory
 management, release artifacts, or build/release tooling.
+
+Reports involving APIC graph loading are evaluated against the trusted
+executable-artifact boundary. Defects are security-relevant when they occur with
+a valid bundle produced by supported Warp workflows, cross the stated trust
+boundary, or arise through a Warp-supported path that accepts
+attacker-controlled artifacts.
+
+Defects that require an intentionally malicious APIC bundle, without a trust
+boundary bypass, are generally treated as robustness or defense-in-depth issues
+rather than vulnerabilities in Warp's supported security model. Warp may still
+accept fixes for such defects, especially when they address memory safety with
+focused, low-risk validation.
 
 The following are generally out of scope unless they demonstrate a vulnerability
 inside Warp itself:
