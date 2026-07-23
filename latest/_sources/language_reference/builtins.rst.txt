@@ -223,6 +223,7 @@ Tile Primitives
    tile_scan_min_inclusive
    tile_scatter_add
    tile_scatter_masked
+   tile_slice_indexed
    tile_sort
    tile_squeeze
    tile_stack

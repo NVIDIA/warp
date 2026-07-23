@@ -752,6 +752,55 @@ See <a class="reference internal" href="#vectorized-tile-loads"><span class="std
 <li><p><a class="reference internal" href="../../language_reference/_generated/warp.tile_scatter_masked.html#warp._src.lang.tile_scatter_masked" title="warp._src.lang.tile_scatter_masked"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_scatter_masked</span></code></a></p></li>
 </ul>
 </section>
+<section id="indexing-and-slicing">
+<h3>Indexing and Slicing<a class="headerlink" href="#indexing-and-slicing" title="Link to this heading">#</a></h3>
+<p>Tiles support NumPy-style indexing and slicing. Slice bounds must be compile-time
+constants so the resulting tile shape is known during code generation.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">process</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array2d</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">64</span><span class="p">,</span> <span class="mi">64</span><span class="p">))</span>
+
+    <span class="n">row</span> <span class="o">=</span> <span class="n">t</span><span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="p">:]</span>           <span class="c1"># a single row, shape (64,)</span>
+    <span class="n">block</span> <span class="o">=</span> <span class="n">t</span><span class="p">[</span><span class="mi">10</span><span class="p">:</span><span class="mi">20</span><span class="p">,</span> <span class="p">:]</span>     <span class="c1"># rows 10..19, shape (10, 64)</span>
+    <span class="n">cols</span> <span class="o">=</span> <span class="n">t</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">:</span><span class="mi">32</span><span class="p">]</span>       <span class="c1"># first 32 columns, shape (64, 32)</span>
+    <span class="n">strided</span> <span class="o">=</span> <span class="n">t</span><span class="p">[::</span><span class="mi">2</span><span class="p">,</span> <span class="p">::</span><span class="mi">2</span><span class="p">]</span>   <span class="c1"># every other element, shape (32, 32)</span>
+    <span class="nb">reversed</span> <span class="o">=</span> <span class="n">t</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span>   <span class="c1"># rows in reverse order, shape (64, 64)</span>
+
+    <span class="c1"># slice assignment writes a source tile into a sub-range in place</span>
+    <span class="n">t</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">8</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_ones</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">64</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Basic slicing produces a view that aliases the source tile’s memory (compiling down
+to <a class="reference internal" href="../../language_reference/_generated/warp.tile_view.html#warp._src.lang.tile_view" title="warp._src.lang.tile_view"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_view</span></code></a>), so an integer index collapses that
+dimension just as it does in NumPy. Slicing is fully differentiable. Negative indices
+are wrapped like NumPy (<code class="docutils literal notranslate"><span class="pre">t[-1,</span> <span class="pre">:]</span></code> is the last row) for both compile-time-constant
+and runtime integer indices.</p>
+<p><a class="reference internal" href="../../language_reference/_generated/warp.tile_view.html#warp._src.lang.tile_view" title="warp._src.lang.tile_view"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_view</span></code></a> can also be called directly with
+<code class="docutils literal notranslate"><span class="pre">slice</span></code> objects in <code class="docutils literal notranslate"><span class="pre">offset</span></code>; for example, <code class="docutils literal notranslate"><span class="pre">wp.tile_view(t,</span> <span class="pre">offset=(slice(0,</span> <span class="pre">-1,</span>
+<span class="pre">1),))</span></code> selects the same elements as <code class="docutils literal notranslate"><span class="pre">t[0:-1]</span></code>. When any <code class="docutils literal notranslate"><span class="pre">offset</span></code> entry is a
+slice, <code class="docutils literal notranslate"><span class="pre">shape</span></code> must be omitted because the view shape is inferred from the slice
+bounds. Slice bounds must be compile-time constants, and slices that produce a
+zero-length tile dimension are rejected.</p>
+<p>Advanced indexing gathers elements along a single axis using a 1D integer index tile,
+returning a new (non-aliasing) register tile:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">gather</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array2d</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">64</span><span class="p">,</span> <span class="mi">64</span><span class="p">))</span>
+
+    <span class="n">indices</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span> <span class="o">*</span> <span class="mi">8</span>   <span class="c1"># [0, 8, 16, ..., 56]</span>
+    <span class="n">selected_rows</span> <span class="o">=</span> <span class="n">t</span><span class="p">[</span><span class="n">indices</span><span class="p">,</span> <span class="p">:]</span>                   <span class="c1"># shape (8, 64)</span>
+</pre></div>
+</div>
+<p>Negative index values wrap like NumPy, and duplicate indices are supported and
+accumulate their gradients atomically on the backward pass.</p>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>Index values must be within bounds for the indexed axis. Like other tile
+operations, both a runtime scalar index and an index-tile gather (including its
+gradient scatter) are bounds-checked only in debug builds, so an out-of-range
+value reads or writes out of bounds in release builds.</p>
+</div>
+</section>
 <section id="maps-reductions">
 <h3>Maps/Reductions<a class="headerlink" href="#maps-reductions" title="Link to this heading">#</a></h3>
 <ul class="simple">
@@ -2089,6 +2138,7 @@ values for continued SIMT work. See <a class="reference internal" href="#tiles-a
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#tile-operations">Tile Operations</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#construction">Construction</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#load-store">Load/Store</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#indexing-and-slicing">Indexing and Slicing</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#maps-reductions">Maps/Reductions</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#struct-element-types">Struct Element Types</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#arithmetic">Arithmetic</a></li>

@@ -551,6 +551,10 @@ time and leaving replay to query a stale BVH. Such captures are replay-only; <co
 the BVH handle cannot be serialized (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1665">GH-1665</a>).</p></li>
 <li><p>Add an optional <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> argument to <code class="docutils literal notranslate"><span class="pre">wp.jax_kernel()</span></code> for selecting the CUDA thread-block size, including for
 tile kernels and their generated adjoint launches (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1436">GH-1436</a>).</p></li>
+<li><p>Add NumPy-style slicing for tiles, including strided and reversed slices (<code class="docutils literal notranslate"><span class="pre">t[2:6,</span> <span class="pre">:]</span></code>, <code class="docutils literal notranslate"><span class="pre">t[:,</span> <span class="pre">::2]</span></code>, <code class="docutils literal notranslate"><span class="pre">t[::-1,</span> <span class="pre">:]</span></code>),
+dimension-collapsing integer indices with negative-index support (<code class="docutils literal notranslate"><span class="pre">t[5,</span> <span class="pre">:]</span></code>, <code class="docutils literal notranslate"><span class="pre">t[-1,</span> <span class="pre">:]</span></code>), and slice assignment
+(<code class="docutils literal notranslate"><span class="pre">t[0:4,</span> <span class="pre">:]</span> <span class="pre">=</span> <span class="pre">src</span></code>). Also add <code class="docutils literal notranslate"><span class="pre">wp.tile_slice_indexed()</span></code>, which gathers elements along a single axis using a
+1D integer index tile (<code class="docutils literal notranslate"><span class="pre">t[indices,</span> <span class="pre">:]</span></code>) (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1176">GH-1176</a>).</p></li>
 </ul>
 </section>
 <section id="removed">

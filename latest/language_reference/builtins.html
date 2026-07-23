@@ -1058,52 +1058,55 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_scatter_masked.html#warp._src.lang.tile_scatter_masked" title="warp._src.lang.tile_scatter_masked"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_scatter_masked</span></code></a></p></td>
 <td><p>Write a value into a shared-memory tile from the calling thread.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_sort.html#warp._src.lang.tile_sort" title="warp._src.lang.tile_sort"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_sort</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_slice_indexed.html#warp._src.lang.tile_slice_indexed" title="warp._src.lang.tile_slice_indexed"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_slice_indexed</span></code></a></p></td>
+<td><p>Gather elements of a tile along a single axis using a 1D tile of integer indices.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_sort.html#warp._src.lang.tile_sort" title="warp._src.lang.tile_sort"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_sort</span></code></a></p></td>
 <td><p>Cooperatively sort the elements of two tiles in ascending order based on the keys, using all threads in the block.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_squeeze.html#warp._src.lang.tile_squeeze" title="warp._src.lang.tile_squeeze"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_squeeze</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_squeeze.html#warp._src.lang.tile_squeeze" title="warp._src.lang.tile_squeeze"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_squeeze</span></code></a></p></td>
 <td><p>Create a squeezed view of a tile with the same data.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_stack.html#warp._src.lang.tile_stack" title="warp._src.lang.tile_stack"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_stack</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_stack.html#warp._src.lang.tile_stack" title="warp._src.lang.tile_stack"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_stack</span></code></a></p></td>
 <td><p>Allocate a cooperative thread-block stack in shared memory.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_stack_clear.html#warp._src.lang.tile_stack_clear" title="warp._src.lang.tile_stack_clear"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_stack_clear</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_stack_clear.html#warp._src.lang.tile_stack_clear" title="warp._src.lang.tile_stack_clear"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_stack_clear</span></code></a></p></td>
 <td><p>Clear a tile stack, resetting the count to zero (cooperative).</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_stack_count.html#warp._src.lang.tile_stack_count" title="warp._src.lang.tile_stack_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_stack_count</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_stack_count.html#warp._src.lang.tile_stack_count" title="warp._src.lang.tile_stack_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_stack_count</span></code></a></p></td>
 <td><p>Return the current number of elements in a tile stack.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_stack_pop.html#warp._src.lang.tile_stack_pop" title="warp._src.lang.tile_stack_pop"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_stack_pop</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_stack_pop.html#warp._src.lang.tile_stack_pop" title="warp._src.lang.tile_stack_pop"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_stack_pop</span></code></a></p></td>
 <td><p>Pop a value from a tile stack (cooperative).</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_stack_push.html#warp._src.lang.tile_stack_push" title="warp._src.lang.tile_stack_push"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_stack_push</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_stack_push.html#warp._src.lang.tile_stack_push" title="warp._src.lang.tile_stack_push"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_stack_push</span></code></a></p></td>
 <td><p>Push a value onto a tile stack (cooperative).</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_store.html#warp._src.lang.tile_store" title="warp._src.lang.tile_store"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_store</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_store.html#warp._src.lang.tile_store" title="warp._src.lang.tile_store"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_store</span></code></a></p></td>
 <td><p>Store a tile to a global memory array.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_store_indexed.html#warp._src.lang.tile_store_indexed" title="warp._src.lang.tile_store_indexed"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_store_indexed</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_store_indexed.html#warp._src.lang.tile_store_indexed" title="warp._src.lang.tile_store_indexed"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_store_indexed</span></code></a></p></td>
 <td><p>Store a tile to a global memory array, with storage along a specified axis mapped according to a 1D tile of indices.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_sum.html#warp._src.lang.tile_sum" title="warp._src.lang.tile_sum"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_sum</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_sum.html#warp._src.lang.tile_sum" title="warp._src.lang.tile_sum"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_sum</span></code></a></p></td>
 <td><p>Cooperatively compute the sum of the tile elements.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_transpose.html#warp._src.lang.tile_transpose" title="warp._src.lang.tile_transpose"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_transpose</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_transpose.html#warp._src.lang.tile_transpose" title="warp._src.lang.tile_transpose"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_transpose</span></code></a></p></td>
 <td><p>Transpose a tile.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_upper_solve.html#warp._src.lang.tile_upper_solve" title="warp._src.lang.tile_upper_solve"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_upper_solve</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_upper_solve.html#warp._src.lang.tile_upper_solve" title="warp._src.lang.tile_upper_solve"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_upper_solve</span></code></a></p></td>
 <td><p>Solve for <code class="docutils literal notranslate"><span class="pre">x</span></code> in <code class="docutils literal notranslate"><span class="pre">Ux</span> <span class="pre">=</span> <span class="pre">z</span></code>, where <code class="docutils literal notranslate"><span class="pre">U</span></code> is an upper triangular matrix.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_upper_solve_inplace.html#warp._src.lang.tile_upper_solve_inplace" title="warp._src.lang.tile_upper_solve_inplace"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_upper_solve_inplace</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_upper_solve_inplace.html#warp._src.lang.tile_upper_solve_inplace" title="warp._src.lang.tile_upper_solve_inplace"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_upper_solve_inplace</span></code></a></p></td>
 <td><p>Solve for <code class="docutils literal notranslate"><span class="pre">x</span></code> in <code class="docutils literal notranslate"><span class="pre">Ux</span> <span class="pre">=</span> <span class="pre">z</span></code>, where <code class="docutils literal notranslate"><span class="pre">U</span></code> is an upper triangular matrix by overwriting <code class="docutils literal notranslate"><span class="pre">z</span></code> with <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_view.html#warp._src.lang.tile_view" title="warp._src.lang.tile_view"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_view</span></code></a></p></td>
-<td><p>Extract a slice of a given tile [offset, offset+shape], if shape is not specified it will be inferred from the unspecified offset dimensions.</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_view.html#warp._src.lang.tile_view" title="warp._src.lang.tile_view"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_view</span></code></a></p></td>
+<td><p>Extract a view of a tile.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_zeros.html#warp._src.lang.tile_zeros" title="warp._src.lang.tile_zeros"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_zeros</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_zeros.html#warp._src.lang.tile_zeros" title="warp._src.lang.tile_zeros"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_zeros</span></code></a></p></td>
 <td><p>Allocate a tile of zero-initialized items.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.untile.html#warp._src.lang.untile" title="warp._src.lang.untile"><code class="xref py py-obj docutils literal notranslate"><span class="pre">untile</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.untile.html#warp._src.lang.untile" title="warp._src.lang.untile"><code class="xref py py-obj docutils literal notranslate"><span class="pre">untile</span></code></a></p></td>
 <td><p>Convert a tile back to per-thread values.</p></td>
 </tr>
 </tbody>

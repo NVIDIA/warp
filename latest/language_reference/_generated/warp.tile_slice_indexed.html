@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.array2d &#8212; Warp 1.16.0.dev0</title>
+    <title>warp.tile_slice_indexed &#8212; Warp 1.16.0.dev0</title>
   
   
   
@@ -49,7 +49,7 @@
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.array2d';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'language_reference/_generated/warp.tile_slice_indexed';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
@@ -63,8 +63,8 @@
 
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="warp.array3d" href="warp.array3d.html" />
-    <link rel="prev" title="warp.array1d" href="warp.array1d.html" />
+    <link rel="next" title="warp.tile_sort" href="warp.tile_sort.html" />
+    <link rel="prev" title="warp.tile_scatter_masked" href="warp.tile_scatter_masked.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -422,19 +422,19 @@
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Language Reference</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../../language_reference/builtins.html">Built-Ins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../builtins.html">Built-Ins</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../warp.html">warp</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../warp_autograd.html">warp.autograd</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../warp_config.html">warp.config</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../warp_fem.html">warp.fem</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../warp_optim.html">warp.optim</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../warp_render.html">warp.render</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../warp_sparse.html">warp.sparse</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../warp_types.html">warp.types</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../warp_utils.html">warp.utils</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp.html">warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_autograd.html">warp.autograd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_config.html">warp.config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_fem.html">warp.fem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_optim.html">warp.optim</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_render.html">warp.render</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_sparse.html">warp.sparse</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_types.html">warp.types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_utils.html">warp.utils</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Domain Modules</span></p>
 <ul class="nav bd-sidenav">
@@ -482,9 +482,9 @@
       </a>
     </li>
     
-    <li class="breadcrumb-item"><a href="../warp.html" class="nav-link">warp</a></li>
+    <li class="breadcrumb-item"><a href="../builtins.html" class="nav-link">Built-Ins</a></li>
     
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.array2d</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.tile_slice_indexed</span></li>
   </ul>
 </nav>
 </div>
@@ -497,7 +497,7 @@
         <div class="header-article-item">
 
 <div class="d-flex justify-content-end w-100">
-  <a href="../../_sources/api_reference/_generated/warp.array2d.rst.txt">
+  <a href="../../_sources/language_reference/_generated/warp.tile_slice_indexed.rst.txt">
     <i class="fa-solid fa-file-code"></i> View page source
   </a>
 </div>
@@ -514,12 +514,51 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="warp-array2d">
-<h1>warp.array2d<a class="headerlink" href="#warp-array2d" title="Link to this heading">#</a></h1>
-<dl class="py class">
-<dt class="sig sig-object py" id="warp.array2d">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">array2d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4752-L4765"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.array2d" title="Link to this definition">#</a></dt>
-<dd><p>Create or annotate a 2-dimensional <a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a>.</p>
+  <section id="warp-tile-slice-indexed">
+<h1>warp.tile_slice_indexed<a class="headerlink" href="#warp-tile-slice-indexed" title="Link to this heading">#</a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="warp._src.lang.tile_slice_indexed">
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">tile_slice_indexed</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">t</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tile</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">indices</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tile</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#warp._src.lang.tile_slice_indexed" title="Link to this definition">#</a></dt>
+<dd><table class="hlist"><tr><td><ul class="simple">
+<li><p>Kernel</p></li>
+</ul>
+</td><td><ul class="simple">
+<li><p>Differentiable</p></li>
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td><td><ul class="simple">
+</ul>
+</td></tr></table>
+<p>Gather elements of a tile along a single axis using a 1D tile of integer indices.</p>
+<p>This lowers the advanced-indexing syntax <code class="docutils literal notranslate"><span class="pre">t[indices,</span> <span class="pre">:]</span></code>, gathering elements of
+<code class="docutils literal notranslate"><span class="pre">t</span></code> along one axis given by <code class="docutils literal notranslate"><span class="pre">indices</span></code>. All other axes must be selected in full.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>t</strong> – Input tile to gather from</p></li>
+<li><p><strong>indices</strong> – A 1D tile of integer indices selecting elements along one axis</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A register tile whose extent along the indexed axis equals the number of indices.</p>
+</dd>
+</dl>
 </dd></dl>
 
 </section>
@@ -535,20 +574,20 @@
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.array1d.html"
+       href="warp.tile_scatter_masked.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.array1d</p>
+        <p class="prev-next-title">warp.tile_scatter_masked</p>
       </div>
     </a>
     <a class="right-next"
-       href="warp.array3d.html"
+       href="warp.tile_sort.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.array3d</p>
+        <p class="prev-next-title">warp.tile_sort</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -573,7 +612,7 @@
   </div>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.array2d"><code class="docutils literal notranslate"><span class="pre">array2d</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp._src.lang.tile_slice_indexed"><code class="docutils literal notranslate"><span class="pre">tile_slice_indexed()</span></code></a></li>
 </ul>
   </nav></div>
 
@@ -581,7 +620,7 @@
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/main/docs/api_reference/_generated/warp.array2d.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/main/docs/language_reference/_generated/warp.tile_slice_indexed.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

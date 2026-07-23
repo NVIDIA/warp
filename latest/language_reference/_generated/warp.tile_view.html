@@ -522,7 +522,7 @@
 
 <dl>
 <dd><em class="sig-param"><span class="n"><span class="pre">t</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tile</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">offset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">shape</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em>,</dd>
 </dl>
 
@@ -545,17 +545,22 @@
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Extract a slice of a given tile [offset, offset+shape], if shape is not specified it will be inferred from the unspecified offset dimensions.</p>
+<p>Extract a view of a tile.</p>
+<p><code class="docutils literal notranslate"><span class="pre">offset</span></code> may contain integer coordinates, in which case <code class="docutils literal notranslate"><span class="pre">shape</span></code> gives the
+returned tile shape. <code class="docutils literal notranslate"><span class="pre">offset</span></code> may also contain <code class="docutils literal notranslate"><span class="pre">slice</span></code> objects, in which
+case the returned shape is inferred from the slice bounds and <code class="docutils literal notranslate"><span class="pre">shape</span></code> must
+not be specified.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>t</strong> – Input tile to extract a subrange from</p></li>
-<li><p><strong>offset</strong> – Offset in the source tile</p></li>
-<li><p><strong>shape</strong> – Shape of the returned slice</p></li>
+<li><p><strong>offset</strong> – Integer offsets or slices in the source tile</p></li>
+<li><p><strong>shape</strong> – Shape of the returned view for integer-only offsets</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>A tile with dimensions given by the specified shape or the remaining source tile dimensions.</p>
+<dd class="field-even"><p>A tile view with dimensions given by <code class="docutils literal notranslate"><span class="pre">shape</span></code>, the remaining source tile
+dimensions, or the inferred slice extents.</p>
 </dd>
 </dl>
 </dd></dl>
