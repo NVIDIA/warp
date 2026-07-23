@@ -828,7 +828,7 @@ linux-x86_64 python matrix test:
     - !reference [.snippets, move-linux-x86_64-binaries]
     - !reference [.snippets, section-end-install-deps]
   script:
-    - uv run --extra dev --with "rmm-cu12 ; python_version < '3.14'" -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
+    - uv run --extra dev --with rmm-cu12 -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
 
 # Ensure cpp examples compile and run
 linux-x86_64 cpp examples test:
