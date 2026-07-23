@@ -582,6 +582,10 @@ documentation (<a class="reference external" href="https://github.com/NVIDIA/war
 Language Reference and API Reference closer to the User Guide, and consolidate memory-management guidance.</p></li>
 <li><p>Speed up redeclaring kernels created by factory functions
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1486">GH-1486</a>).</p></li>
+<li><p>Remove <code class="docutils literal notranslate"><span class="pre">vec2h</span></code>, <code class="docutils literal notranslate"><span class="pre">vec2f</span></code>, and <code class="docutils literal notranslate"><span class="pre">vec2d</span></code> (complex) from the documented <code class="docutils literal notranslate"><span class="pre">wp.tile_matmul()</span></code> dtypes. Complex tiles were
+never accepted by the builtin’s overload, so the listing advertised support that did not exist. <code class="docutils literal notranslate"><span class="pre">wp.tile_matmul()</span></code>
+now raises an actionable error for complex tiles instead of an opaque overload-resolution failure
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1682">GH-1682</a>).</p></li>
 </ul>
 </section>
 <section id="fixed">
