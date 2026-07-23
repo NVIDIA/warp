@@ -2329,6 +2329,10 @@ are replayed with <a class="reference internal" href="../api_reference/_generate
 <a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh.rebuild" title="warp.Bvh.rebuild"><code class="xref py py-meth docutils literal notranslate"><span class="pre">wp.Bvh.rebuild()</span></code></a>), re-run on replay against the
 current <code class="docutils literal notranslate"><span class="pre">lowers</span></code> / <code class="docutils literal notranslate"><span class="pre">uppers</span></code> so a captured graph queries the updated tree.
 These make the graph replay-only (see the limitations below).</p></li>
+<li><p>Live CPU graphs record <a class="reference internal" href="../api_reference/_generated/warp.HashGrid.html#warp.HashGrid.build" title="warp.HashGrid.build"><code class="xref py py-meth docutils literal notranslate"><span class="pre">HashGrid.build()</span></code></a> in
+operation order. Each replay reads the current contents of the normalized
+point and optional group arrays, and the first replay may allocate or grow
+the grid buffers.</p></li>
 <li><p>Conditional graph nodes (<a class="reference internal" href="../api_reference/_generated/warp.capture_if.html#warp.capture_if" title="warp.capture_if"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_if()</span></code></a> and
 <a class="reference internal" href="../api_reference/_generated/warp.capture_while.html#warp.capture_while" title="warp.capture_while"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_while()</span></code></a>). The condition is re-evaluated
 on every replay, so a captured <code class="docutils literal notranslate"><span class="pre">while</span></code> loop can iterate a different number
@@ -2449,6 +2453,9 @@ addresses and layout strides must be aligned to the reduction’s scalar type.</
 <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a> during an <code class="docutils literal notranslate"><span class="pre">apic=True</span></code> capture; build these outside the captured
 region:</p>
 <ul class="simple">
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.HashGrid.html#warp.HashGrid.build" title="warp.HashGrid.build"><code class="xref py py-meth docutils literal notranslate"><span class="pre">HashGrid.build()</span></code></a>, because <code class="docutils literal notranslate"><span class="pre">HashGrid</span></code>
+resources and their process-local IDs cannot yet be serialized. Use
+<code class="docutils literal notranslate"><span class="pre">apic=False</span></code> for live CUDA graph capture.</p></li>
 <li><p><a class="reference internal" href="../api_reference/_generated/warp.sparse.bsr_set_from_triplets.html#warp.sparse.bsr_set_from_triplets" title="warp.sparse.bsr_set_from_triplets"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.sparse.bsr_set_from_triplets()</span></code></a> (and the
 <code class="docutils literal notranslate"><span class="pre">warp.sparse</span></code> matrix products that build topology with it), because it reads the resulting
 <code class="docutils literal notranslate"><span class="pre">nnz</span></code> back to the host after its own kernels, which a captured graph cannot reproduce.</p></li>
@@ -2688,6 +2695,12 @@ limitations above for the supported dtype and layout ranges.</p></li>
 <li><p>Only <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Mesh</span></code></a> object handles are serialized.
 <a class="reference internal" href="../api_reference/_generated/warp.Volume.html#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Volume</span></code></a> and <a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh" title="warp.Bvh"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Bvh</span></code></a> handles are not
 yet supported.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">HashGrid.build()</span></code> is supported by live CPU graphs captured with
+<code class="docutils literal notranslate"><span class="pre">apic=False</span></code>. It is not supported by saveable captures because <code class="docutils literal notranslate"><span class="pre">HashGrid</span></code>
+resources and their process-local IDs cannot yet be serialized. Calling
+<code class="docutils literal notranslate"><span class="pre">HashGrid.build()</span></code> with <code class="docutils literal notranslate"><span class="pre">apic=True</span></code> raises <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a>.
+Call <code class="docutils literal notranslate"><span class="pre">HashGrid.reserve()</span></code> before CPU graph capture; reserve calls inside a
+capture are rejected.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">.wrp</span></code> files are not portable across CUDA compute architectures unless the
 capture was built with PTX output (set <code class="docutils literal notranslate"><span class="pre">warp.config.cuda_output</span> <span class="pre">=</span> <span class="pre">&quot;ptx&quot;</span></code>
 before capture). Multi-GPU and cross-architecture loading are not yet
@@ -3189,6 +3202,11 @@ undefined behavior when the kernel tries to access the freed memory.</p>
 <p>Always maintain references to spatial computing primitive objects
 (like <a class="reference internal" href="../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.HashGrid</span></code></a>, <a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh" title="warp.Bvh"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Bvh</span></code></a>, etc.) rather than just their ID values.
 This is especially important in loops, functions, and temporary variables where object scope might be unclear.</p>
+<p>When a graph captures a <a class="reference internal" href="../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.HashGrid</span></code></a> ID, the caller must
+keep the <code class="docutils literal notranslate"><span class="pre">HashGrid</span></code> alive until every graph that captures its ID is destroyed.
+This caller-ownership contract is the same for live CPU and CUDA graphs. The
+graph retains the array inputs captured by <code class="docutils literal notranslate"><span class="pre">HashGrid.build()</span></code>, including
+normalized views and their backing allocations.</p>
 </section>
 </section>
 <section id="marching-cubes">

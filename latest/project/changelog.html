@@ -530,6 +530,9 @@ point masks, CPU execution, CUDA graph-capturable allocation and rebuilding, and
 that restricts traversal to points sharing the requested group id. Use
 <code class="docutils literal notranslate"><span class="pre">wp.HashGrid.reserve(num_points,</span> <span class="pre">with_groups=True)</span></code> to record grouped rebuilds inside a CUDA graph without a
 warm-up build (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1579">GH-1579</a>).</p></li>
+<li><p>Add live CPU graph capture and replay support for <code class="docutils literal notranslate"><span class="pre">wp.HashGrid.build()</span></code>. Each replay rebuilds the grid from current
+point and optional group data. Saveable captures remain unsupported until <code class="docutils literal notranslate"><span class="pre">wp.HashGrid</span></code> resources can be serialized
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1664">GH-1664</a>).</p></li>
 <li><p>Add <code class="docutils literal notranslate"><span class="pre">wp.cuda_profiler_start()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.cuda_profiler_stop()</span></code>, and the <code class="docutils literal notranslate"><span class="pre">wp.ScopedCudaProfiler</span></code> context manager to
 control CUDA profiler data collection from Python (equivalent to <code class="docutils literal notranslate"><span class="pre">cuProfilerStart</span></code>/<code class="docutils literal notranslate"><span class="pre">cuProfilerStop</span></code>) for an
 external profiler’s capture range. They accept an optional <code class="docutils literal notranslate"><span class="pre">device</span></code> argument and act on that device’s current CUDA
