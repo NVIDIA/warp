@@ -657,6 +657,8 @@ Warp function targets during argument type inference (<a class="reference extern
 <li><p>Fix <code class="docutils literal notranslate"><span class="pre">SquareNedelecFirstKindShapeFunctions.make_node_coords_in_element()</span></code> and
 <code class="docutils literal notranslate"><span class="pre">SquareRaviartThomasShapeFunctions.make_node_coords_in_element()</span></code> producing device functions that return <code class="docutils literal notranslate"><span class="pre">None</span></code>
 instead of node coordinates in Warp FEM kernels (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1685">GH-1685</a>).</p></li>
+<li><p>Reject malformed APIC <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> memory sections containing duplicate region IDs
+or out-of-bounds initial data during graph loading.</p></li>
 </ul>
 </section>
 <section id="documentation">
