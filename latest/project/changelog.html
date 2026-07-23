@@ -654,6 +654,9 @@ Warp function targets during argument type inference (<a class="reference extern
 <li><p>Fix Jacobian plotting for Python functions and typed Warp kernels in <code class="docutils literal notranslate"><span class="pre">wp.autograd.jacobian()</span></code>,
 <code class="docutils literal notranslate"><span class="pre">wp.autograd.jacobian_fd()</span></code>, and <code class="docutils literal notranslate"><span class="pre">wp.autograd.gradcheck()</span></code>
 (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1672">GH-1672</a>).</p></li>
+<li><p>Fix <code class="docutils literal notranslate"><span class="pre">SquareNedelecFirstKindShapeFunctions.make_node_coords_in_element()</span></code> and
+<code class="docutils literal notranslate"><span class="pre">SquareRaviartThomasShapeFunctions.make_node_coords_in_element()</span></code> producing device functions that return <code class="docutils literal notranslate"><span class="pre">None</span></code>
+instead of node coordinates in Warp FEM kernels (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1685">GH-1685</a>).</p></li>
 </ul>
 </section>
 <section id="documentation">
