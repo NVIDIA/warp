@@ -5354,6 +5354,57 @@ inline CUDA_CALLABLE auto tile_view(Tile& t, Indices... indices)
 }
 
 
+// Gather along a single axis: out[..., k, ...] = src[..., indices[k], ...].
+// `indices` is a 1D tile of integers whose length equals the output extent along
+// `axis`. The result is a register tile (a fresh copy, not an alias of `src`).
+template <unsigned... Shape, typename Tile, typename IndicesTile>
+inline CUDA_CALLABLE auto tile_slice_indexed(Tile& src, IndicesTile& indices, int axis)
+{
+    using T = typename Tile::Type;
+    using SrcShape = typename Tile::Layout::Shape;
+    auto out = tile_register_t<T, tile_layout_register_t<tile_shape_t<Shape...>>>();
+
+    out.apply([&](int reg, auto c) {
+        auto sc = c;
+        // wrap negative indices against the source axis length (NumPy semantics)
+        int idx = indices.data(c[axis]);
+        if (idx < 0)
+            idx += SrcShape::dim(axis);
+        sc.indices[axis] = idx;
+        out.data[reg] = src.data(sc);
+    });
+
+    return out;
+}
+
+template <unsigned... Shape, typename Tile, typename IndicesTile, typename AdjTile>
+inline CUDA_CALLABLE void adj_tile_slice_indexed(
+    Tile& src, IndicesTile& indices, int axis, Tile& adj_src, IndicesTile& adj_indices, int adj_axis, AdjTile& adj_ret
+)
+{
+    // scatter gradients from the gathered result back onto the selected source
+    // rows; multiple output rows may map to the same source row (duplicate
+    // indices) so the accumulation must be atomic
+    if (src.grad.ptr == nullptr)
+        return;
+
+    using SrcShape = typename Tile::Layout::Shape;
+    auto adj_ret_reg = adj_ret.grad_to_register();
+
+    adj_ret_reg.apply([&](int reg, auto c) {
+        auto sc = c;
+        // wrap negative indices to match the forward gather
+        int idx = indices.data(c[axis]);
+        if (idx < 0)
+            idx += SrcShape::dim(axis);
+        sc.indices[axis] = idx;
+        tile_adj_atomic_add_value(&src.grad(sc), adj_ret_reg.data[reg]);
+    });
+
+    WP_TILE_SYNC();
+}
+
+
 template <typename ReturnTile, typename Tile> inline CUDA_CALLABLE auto tile_squeeze(Tile& t)
 {
     // ReturnTile layout is set in builtins.py
@@ -5735,15 +5786,16 @@ inline CUDA_CALLABLE void adj_assign(
 template <typename TileA, typename TileB, int N>
 inline CUDA_CALLABLE void tile_assign(TileA& dest, TileB& src, const tile_coord_t<N>& offset)
 {
-    using Layout = typename TileB::Layout;
+    // Snapshot the source into registers before any thread writes the
+    // destination: dest may be a view overlapping src (e.g. t[1:] = t[:-1]),
+    // and NumPy assignment semantics require every read to observe the
+    // pre-assignment source values.
+    auto staged = src.copy_to_register();
 
-    WP_PRAGMA_UNROLL
-    for (int t = WP_TILE_THREAD_IDX; t < Layout::Size; t += WP_TILE_BLOCK_DIM) {
-        auto c = Layout::coord_from_linear(t);
-        dest.data(c + offset) = src.data(c);
-    }
-
+    // ensure all reads complete before any writes to (potentially aliasing) dest
     WP_TILE_SYNC();
+
+    tile_assign(dest, staged, offset);
 }
 
 template <typename TileA, typename T, typename Layout, int N>
@@ -5783,13 +5835,47 @@ inline CUDA_CALLABLE void adj_tile_assign(
         return;
     }
 
+    // Stage the incoming gradients in registers before mutating anything:
+    // src may be a view overlapping dest (e.g. t[1:] = t[:-1]), so the reads,
+    // the zeroing, and the accumulation must not interleave.
+    // GradLayout covers the same source-view coordinates as Layout; it just
+    // iterates them in register order so staged values match accumulation.
+    using GradLayout = tile_layout_register_t<typename Layout::Shape>;
+    tile_register_t<typename TileA::Type, GradLayout> staged;
+
+    // linear_from_register() is monotone, so after the first invalid
+    // register slot all later slots are invalid too. The accumulation loop
+    // uses the same guard before reading staged.data[reg].
+    WP_PRAGMA_UNROLL
+    for (int reg = 0; reg < GradLayout::NumRegs; ++reg) {
+        int linear = GradLayout::linear_from_register(reg);
+        if (!GradLayout::valid(linear)) {
+            break;
+        }
+        staged.data[reg] = dest.grad(GradLayout::coord_from_linear(linear) + offset);
+    }
+
+    // all gradient reads must complete before the destination gradients are zeroed
+    WP_TILE_SYNC();
+
+    // Overwritten destinations do not contribute to the pre-assignment dest value.
+    // This Layout loop zeroes the same coordinate set staged above, only in
+    // the source tile layout order instead of register order.
     WP_PRAGMA_UNROLL
     for (int t = WP_TILE_THREAD_IDX; t < Layout::Size; t += WP_TILE_BLOCK_DIM) {
-        auto c = Layout::coord_from_linear(t);
-        auto dst_c = c + offset;
-        src.grad(c) += dest.grad(dst_c);
-        // Overwritten destinations do not contribute to the pre-assignment dest value.
-        dest.grad(dst_c) = typename TileA::Type {};
+        dest.grad(Layout::coord_from_linear(t) + offset) = typename TileA::Type {};
+    }
+
+    // zeroing must complete before accumulating into (potentially aliasing) src gradients
+    WP_TILE_SYNC();
+
+    WP_PRAGMA_UNROLL
+    for (int reg = 0; reg < GradLayout::NumRegs; ++reg) {
+        int linear = GradLayout::linear_from_register(reg);
+        if (!GradLayout::valid(linear)) {
+            break;
+        }
+        src.grad(GradLayout::coord_from_linear(linear)) += staged.data[reg];
     }
 
     WP_TILE_SYNC();

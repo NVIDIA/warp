@@ -4058,40 +4058,194 @@ add_builtin(
 )
 
 
+def _tile_slice_length(start, stop, step):
+    """Number of elements produced by a slice with already-resolved bounds.
+
+    ``start``/``stop`` are expected to be the concrete (non-sentinel) values
+    produced by ``_normalize_tile_slice``, so no additional index wrapping is
+    performed here. Supports negative steps (reversed views).
+    """
+    if step > 0:
+        return max(0, (stop - start + step - 1) // step)
+    return max(0, (start - stop + (-step) - 1) // (-step))
+
+
+def _tile_slice_bound(v):
+    """Resolve a slice bound to a Python int, requiring a compile-time constant.
+
+    Bounds may be plain ints (subscript lowering, ``SLICE_BEGIN``/``SLICE_END``
+    sentinels) or constant ``Var``s (an explicit ``wp.tile_view(t, offset=(slice(n
+    - 1, ...),))`` where the bound is a constant expression). A runtime (non-constant)
+    bound cannot be used because the view shape must be known at code-gen time.
+    """
+    if isinstance(v, Var):
+        if v.constant is None:
+            raise ValueError("tile_view() slice bounds must be compile-time constants.")
+        v = v.constant
+    if not isinstance(v, int):
+        raise ValueError(f"tile_view() slice bounds must be integers, got {type_repr(v)}.")
+    return v
+
+
+def _normalize_tile_slice(start, stop, step, length, start_omitted=False, stop_omitted=False):
+    """Resolve raw slice bounds against ``length`` following CPython ``slice.indices``.
+
+    ``start_omitted``/``stop_omitted`` preserve whether a subscript left the bound
+    open, so explicit bounds equal to ``SLICE_BEGIN``/``SLICE_END`` remain ordinary
+    integer bounds. Returns concrete, clamped ``(start, stop, step)`` matching NumPy
+    for both positive and negative steps, so subscript syntax (``t[0:-1]``) and
+    explicit ``wp.tile_view()`` slice offsets (``wp.tile_view(t, offset=(slice(0,
+    -1, 1),))``) normalize identically. This mirrors ``Adjoint.eval_const_slice`` in
+    the code generator.
+    """
+    start, stop, step = _tile_slice_bound(start), _tile_slice_bound(stop), _tile_slice_bound(step)
+
+    if step == 0:
+        raise ValueError("tile_view() slice step cannot be zero.")
+
+    # CPython slice.indices() clamp bounds: [0, length] for a positive step,
+    # [-1, length-1] for a negative step (so a reversed slice can reach index 0).
+    lower, upper = (0, length) if step > 0 else (-1, length - 1)
+
+    def resolve(value, default, omitted):
+        if omitted:
+            return default
+        if value < 0:
+            return max(value + length, lower)
+        return min(value, upper)
+
+    start = resolve(start, lower if step > 0 else upper, start_omitted)
+    stop = resolve(stop, upper if step > 0 else lower, stop_omitted)
+    return (start, stop, step)
+
+
+def _normalize_tile_slice_type(slice_type, length):
+    return _normalize_tile_slice(
+        slice_type.start,
+        slice_type.stop,
+        slice_type.step,
+        length,
+        getattr(slice_type, "start_omitted", False),
+        getattr(slice_type, "stop_omitted", False),
+    )
+
+
+def _tile_slice_index_type(v):
+    """Return the Warp type of a tile-view index (int or ``slice_t``).
+
+    References are stripped so a runtime index loaded from an array (e.g.
+    ``t[indices[0], :]``, represented as ``wp.ref[int32]`` during code generation)
+    validates and dispatches like a plain integer; the dispatched reference is
+    loaded to its value at the call site.
+    """
+    return strip_reference(v.type) if isinstance(v, Var) else v
+
+
 def tile_view_value_func(arg_types, arg_values):
     # return generic type (for doc builds)
     if arg_types is None:
         return tile(dtype=Any, shape=tuple[int, ...])
 
     tile_type = arg_types["t"]
+    parent_shape = tile_type.shape
+    parent_strides = tile_type.strides
+    ndim = len(parent_shape)
+
     offset = extract_tuple(arg_values["offset"])
 
-    if len(offset) > len(tile_type.shape):
-        raise ValueError(f"tile_view() specified too many offset coordinates {len(offset)} > {len(tile_type.shape)}")
+    if len(offset) > ndim:
+        raise ValueError(f"tile_view() specified too many indices {len(offset)} > {ndim}")
 
-    if "shape" in arg_values:
-        # if shape is specified take it directly, e.g.:
-        # tile_view(t, offset=(i,j), shape=(m,n))
-        shape = extract_tuple(arg_values["shape"], as_constant=True)
-        strides = tile_type.strides
+    index_types = [_tile_slice_index_type(v) for v in offset]
+    has_slice = any(is_slice(t) for t in index_types)
 
-        if len(shape) != len(tile_type.shape):
-            raise ValueError(
-                f"tile_view() if shape is specified it must have same number of dimensions as source tile, expected {len(tile_type.shape)}, got {len(shape)}"
-            )
-    else:
-        # if not specified, then take output shape from unspecified src dimensions
-        # e.g.: tile[i] will return a whole row of a 2D tile
-        shape = tile_type.shape[len(offset) :]
-        strides = tile_type.strides[len(offset) :]
-
-    assert len(shape) == len(strides)
+    for dim, (entry, idx_type) in enumerate(zip(offset, index_types, strict=True)):
+        # Each offset entry must be an integer (a Warp integer Var or a plain
+        # Python constant) or a slice; the native tile_coord() would otherwise
+        # silently truncate e.g. a float offset to int.
+        if is_slice(idx_type) or isinstance(idx_type, int) or type_is_int(idx_type):
+            # An explicit tile_view() offset is a raw source coordinate, so a
+            # constant that lands outside the parent axis would read out of bounds.
+            # Unlike subscript indexing (which wraps negatives, e.g. t[-1], and
+            # rejects out-of-range constants), the explicit offset is not wrapped,
+            # so range-check the constant case here for parity instead of silently
+            # reading out of bounds. Runtime offsets fall through to the debug-only
+            # bounds check (they cannot be validated at code-gen time).
+            const = entry.constant if isinstance(entry, Var) else entry
+            if isinstance(const, int) and not (0 <= const < parent_shape[dim]):
+                raise ValueError(
+                    f"tile_view() integer offset {const} is out of bounds for axis {dim} with size "
+                    f"{parent_shape[dim]}; negative offsets are only wrapped for subscript indexing "
+                    f"(e.g. t[-1, :]), not explicit tile_view() calls."
+                )
+            continue
+        raise ValueError(f"tile_view() offset entries must be integers or slices, got {type_repr(idx_type)}")
 
     # force source tile to shared memory
     tile_type.storage = "shared"
 
+    if has_slice:
+        if arg_values.get("shape") is not None:
+            # The view shape is inferred from the slice bounds; accepting an
+            # explicit shape here would silently ignore it.
+            raise ValueError(
+                "tile_view() does not support specifying 'shape' together with a slice-containing "
+                "'offset'; the view shape is inferred from the slice bounds."
+            )
+        # slice syntax path, e.g.: t[a:b, :], t[::2, :], t[5, :]. Slices produce a
+        # (possibly strided or reversed) sub-range; integer indices collapse their
+        # dimension (NumPy semantics). Unspecified trailing dimensions are kept in full.
+        shape = []
+        strides = []
+        for dim in range(ndim):
+            if dim < len(index_types):
+                idx_type = index_types[dim]
+                if is_slice(idx_type):
+                    n_start, n_stop, n_step = _normalize_tile_slice_type(idx_type, parent_shape[dim])
+                    length = _tile_slice_length(n_start, n_stop, n_step)
+                    shape.append(length)
+                    strides.append(parent_strides[dim] * n_step)
+                # integer index: collapse this dimension (contributes only an offset)
+            else:
+                shape.append(parent_shape[dim])
+                strides.append(parent_strides[dim])
+
+        if len(shape) == 0:
+            raise ValueError("tile_view() slice resulted in a scalar; use tile_extract() for element access")
+
+        if any(dim_len == 0 for dim_len in shape):
+            # A zero-length axis (e.g. t[4:4, :] or an out-of-range slice clamped
+            # to empty) cannot be instantiated as a native tile type; reject it
+            # here with a clear message instead of a cryptic build failure.
+            raise ValueError(
+                f"tile_view() slice produced an empty tile with shape {tuple(shape)}; "
+                f"zero-length tile dimensions are not supported."
+            )
+    elif "shape" in arg_values:
+        # if shape is specified take it directly, e.g.:
+        # tile_view(t, offset=(i,j), shape=(m,n))
+        shape = extract_tuple(arg_values["shape"], as_constant=True)
+        strides = parent_strides
+
+        if len(shape) != ndim:
+            raise ValueError(
+                f"tile_view() if shape is specified it must have same number of dimensions as source tile, expected {ndim}, got {len(shape)}"
+            )
+    else:
+        # if not specified, then take output shape from unspecified src dimensions
+        # e.g.: tile[i] will return a whole row of a 2D tile
+        shape = parent_shape[len(offset) :]
+        strides = parent_strides[len(offset) :]
+
+    assert len(shape) == len(strides)
+
     output = tile(
-        dtype=tile_type.dtype, shape=shape, strides=strides, layout=tile_type.layout, storage="shared", owner=False
+        dtype=tile_type.dtype,
+        shape=tuple(shape),
+        strides=tuple(strides),
+        layout=tile_type.layout,
+        storage="shared",
+        owner=False,
     )
     return output
 
@@ -4100,10 +4254,17 @@ def tile_view_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg
     tile = arg_values["t"]
     coord = extract_tuple(arg_values["offset"])
 
-    # zero-pad coord to match source array
+    # Build the source-space coordinate of the view origin. Slices contribute
+    # their (compile-time constant) start; integer indices contribute their value
+    # (which may be a runtime variable); unspecified dimensions default to 0.
     view_coord = [0] * len(tile.type.shape)
-    for i in range(len(coord)):
-        view_coord[i] = coord[i]
+    for i, idx in enumerate(coord):
+        idx_type = _tile_slice_index_type(idx)
+        if is_slice(idx_type):
+            n_start, _, _ = _normalize_tile_slice_type(idx_type, tile.type.shape[i])
+            view_coord[i] = Var(None, type=int, constant=n_start)
+        else:
+            view_coord[i] = idx
 
     func_args = (tile, *view_coord)
     template_args = (return_type,)
@@ -4113,22 +4274,133 @@ def tile_view_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg
 
 add_builtin(
     "tile_view",
-    input_types={"t": tile(dtype=Any, shape=tuple[int, ...]), "offset": tuple[int, ...], "shape": tuple[int, ...]},
+    # `offset` is a bare tuple so it can carry either integer offsets (explicit API)
+    # or a mix of integers and slices (subscript syntax lowered by the code generator).
+    input_types={"t": tile(dtype=Any, shape=tuple[int, ...]), "offset": tuple, "shape": tuple[int, ...]},
     value_func=tile_view_value_func,
     dispatch_func=tile_view_dispatch_func,
     defaults={"shape": None},
     variadic=False,
-    doc="""Extract a slice of a given tile [offset, offset+shape], if shape is not specified it will be inferred from the unspecified offset dimensions.
+    doc="""Extract a view of a tile.
+
+    ``offset`` may contain integer coordinates, in which case ``shape`` gives the
+    returned tile shape. ``offset`` may also contain ``slice`` objects, in which
+    case the returned shape is inferred from the slice bounds and ``shape`` must
+    not be specified.
 
     Args:
         t: Input tile to extract a subrange from
-        offset: Offset in the source tile
-        shape: Shape of the returned slice
+        offset: Integer offsets or slices in the source tile
+        shape: Shape of the returned view for integer-only offsets
 
     Returns:
-        A tile with dimensions given by the specified shape or the remaining source tile dimensions.""",
+        A tile view with dimensions given by ``shape``, the remaining source tile
+        dimensions, or the inferred slice extents.""",
     group="Tile Primitives",
     is_differentiable=False,
+    export=False,
+)
+
+
+def _tile_slice_indexed_axis(indices, parent_shape):
+    """Resolve the gather axis and index tile from an advanced-index expression.
+
+    ``indices`` is the tuple of subscript indices; exactly one must be a 1D integer
+    index tile (the gather axis) and every other entry must be a full ``:`` slice.
+    Returns ``(axis, index_tile_var)``.
+    """
+    axis = None
+    index_tile = None
+    for dim, v in enumerate(indices):
+        idx_type = _tile_slice_index_type(v)
+        if is_tile(idx_type):
+            if axis is not None:
+                raise ValueError("Tile indexing supports exactly one 1D integer index tile.")
+            if len(idx_type.shape) != 1:
+                raise ValueError(
+                    f"Tile indexing requires a 1D integer index tile, got {len(idx_type.shape)} dimensions."
+                )
+            if not type_is_int(idx_type.dtype):
+                raise ValueError(f"Tile indexing requires an integer index tile, got dtype {idx_type.dtype.__name__}.")
+            axis = dim
+            index_tile = v
+        elif is_slice(idx_type):
+            n_start, n_stop, n_step = _normalize_tile_slice_type(idx_type, parent_shape[dim])
+            length = _tile_slice_length(n_start, n_stop, n_step)
+            if not (n_start == 0 and n_step == 1 and length == parent_shape[dim]):
+                raise ValueError(
+                    "Tile indexing with an integer index tile requires ':' on all other axes, e.g. `t[indices, :]`."
+                )
+        else:
+            raise ValueError("Tile indexing entries must be a 1D integer index tile or full slices ':'.")
+
+    if axis is None:
+        raise ValueError("Tile indexing requires an integer index tile.")
+
+    return axis, index_tile
+
+
+def tile_slice_indexed_value_func(arg_types, arg_values):
+    # return generic type (for doc builds)
+    if arg_types is None:
+        return tile(dtype=Any, shape=tuple[int, ...])
+
+    tile_type = arg_types["t"]
+    parent_shape = tile_type.shape
+
+    indices = extract_tuple(arg_values["indices"])
+    if len(indices) > len(parent_shape):
+        raise ValueError(f"tile indexing specified too many indices {len(indices)} > {len(parent_shape)}")
+
+    axis, index_tile = _tile_slice_indexed_axis(indices, parent_shape)
+    index_tile_type = _tile_slice_index_type(index_tile)
+
+    # gather reads from the source tile in shared memory, and the index tile is
+    # addressed via shared linear indexing
+    tile_type.storage = "shared"
+    index_tile_type.storage = "shared"
+
+    if index_tile_type.shape[0] == 0:
+        # An empty index tile would produce a zero-length axis, which cannot be
+        # instantiated as a native tile type; reject it with a clear message
+        # instead of a cryptic build failure (mirrors tile_view()).
+        raise ValueError("tile indexing requires a non-empty index tile.")
+
+    shape = list(parent_shape)
+    shape[axis] = index_tile_type.shape[0]
+
+    return tile(dtype=tile_type.dtype, shape=tuple(shape), storage="register")
+
+
+def tile_slice_indexed_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg_values: Mapping[str, Var]):
+    src = arg_values["t"]
+    indices = extract_tuple(arg_values["indices"])
+    axis, index_tile = _tile_slice_indexed_axis(indices, src.type.shape)
+
+    func_args = (src, index_tile, Var(None, type=int, constant=axis))
+    template_args = return_type.shape
+
+    return (func_args, template_args)
+
+
+add_builtin(
+    "tile_slice_indexed",
+    input_types={"t": tile(dtype=Any, shape=tuple[int, ...]), "indices": tuple},
+    value_func=tile_slice_indexed_value_func,
+    dispatch_func=tile_slice_indexed_dispatch_func,
+    variadic=False,
+    doc="""Gather elements of a tile along a single axis using a 1D tile of integer indices.
+
+    This lowers the advanced-indexing syntax ``t[indices, :]``, gathering elements of
+    ``t`` along one axis given by ``indices``. All other axes must be selected in full.
+
+    Args:
+        t: Input tile to gather from
+        indices: A 1D tile of integer indices selecting elements along one axis
+
+    Returns:
+        A register tile whose extent along the indexed axis equals the number of indices.""",
+    group="Tile Primitives",
     export=False,
 )
 
@@ -4215,6 +4487,18 @@ def tile_reshape_value_func(arg_types, arg_values):
         return tile(dtype=Any, shape=tuple[int, ...])
 
     tile_type = arg_types["t"]
+
+    # Reshape aliases the source pointer with dense strides, so the source
+    # layout must itself be dense (in its own layout order). A strided or
+    # reversed view (e.g. t[::2, :] or t[::-1, :]) would silently reinterpret
+    # unrelated elements, or read outside the allocation entirely.
+    dense_type = tile(dtype=tile_type.dtype, shape=tile_type.shape, layout=tile_type.layout)
+    if tuple(tile_type.strides) != tuple(dense_type.strides):
+        raise ValueError(
+            f"tile_reshape() requires a contiguous tile; a tile view with shape {tuple(tile_type.shape)} and "
+            f"strides {tuple(tile_type.strides)} cannot be reshaped in place. Copy the view into a new tile "
+            f"first, e.g. with wp.tile_assign()."
+        )
 
     # calculate total size of tile_type
     size = 1
@@ -4345,6 +4629,18 @@ def tile_assign_value_func(arg_types, arg_values):
                 f"tile_assign() destination and source tiles must have the same rank, "
                 f"got {len(dst_type.shape)} and {len(src_type.shape)}"
             )
+
+        # When no offset is given the source is written at the origin, so it must
+        # fit within the destination along every axis. With an explicit (possibly
+        # runtime) offset the fit cannot be verified here and is a caller
+        # precondition (checked only in debug builds).
+        if "offset" not in arg_values or arg_values["offset"] is None:
+            for dim in range(len(dst_type.shape)):
+                if src_type.shape[dim] > dst_type.shape[dim]:
+                    raise ValueError(
+                        f"tile_assign() source tile of shape {tuple(src_type.shape)} does not fit "
+                        f"within destination tile of shape {tuple(dst_type.shape)}"
+                    )
 
     # force the destination tile to shared memory
     dst_type.storage = "shared"
