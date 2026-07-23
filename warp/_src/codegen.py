@@ -4508,7 +4508,10 @@ class Adjoint:
 
         if isinstance(node, ast.Name):
             if node.id in adj.symbols:
-                return adj._tile_type_probe_copy_var(adj.symbols[node.id])
+                symbol = adj.symbols[node.id]
+                if isinstance(symbol, Var):
+                    return adj._tile_type_probe_copy_var(symbol)
+                return symbol
 
             expr, _ = adj.resolve_static_expression(node)
             if expr is None:
