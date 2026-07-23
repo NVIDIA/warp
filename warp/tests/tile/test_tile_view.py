@@ -337,6 +337,12 @@ def tile_advanced_index_kernel(src: wp.array2d[float], dst: wp.array2d[float]):
 
 
 @wp.kernel
+def tile_advanced_inline_index_chain_kernel(src: wp.array2d[float], dst: wp.array1d[float]):
+    t = wp.tile_load(src, shape=(TILE_M, TILE_N))
+    wp.tile_store(dst, t[wp.tile_arange(0, 8, dtype=int) * 2][3])
+
+
+@wp.kernel
 def tile_advanced_index_dup_kernel(src: wp.array2d[float], idx: wp.array1d[int], dst: wp.array2d[float]):
     t = wp.tile_load(src, shape=(TILE_M, TILE_N))
     i = wp.tile_load(idx, shape=8)
@@ -441,6 +447,10 @@ def test_tile_slice_assign(test, device):
 def test_tile_advanced_index(test, device):
     idx = np.arange(0, 8) * 2
     _check_slice(test, device, tile_advanced_index_kernel, np.s_[idx, :], (8, TILE_N))
+
+
+def test_tile_advanced_inline_index_chain(test, device):
+    _check_slice(test, device, tile_advanced_inline_index_chain_kernel, np.s_[6, :], (TILE_N,))
 
 
 def test_tile_advanced_index_duplicate_grad(test, device):
@@ -996,6 +1006,9 @@ add_function_test(TestTileView, "test_tile_slice_reverse", test_tile_slice_rever
 add_function_test(TestTileView, "test_tile_slice_row_collapse", test_tile_slice_row_collapse, devices=devices)
 add_function_test(TestTileView, "test_tile_slice_assign", test_tile_slice_assign, devices=devices)
 add_function_test(TestTileView, "test_tile_advanced_index", test_tile_advanced_index, devices=devices)
+add_function_test(
+    TestTileView, "test_tile_advanced_inline_index_chain", test_tile_advanced_inline_index_chain, devices=devices
+)
 add_function_test(
     TestTileView, "test_tile_advanced_index_duplicate_grad", test_tile_advanced_index_duplicate_grad, devices=devices
 )

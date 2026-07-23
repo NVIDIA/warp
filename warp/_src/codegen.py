@@ -4475,15 +4475,237 @@ class Adjoint:
         target = adj.eval(node)
         return target, indices
 
+    def _tile_type_probe_value(adj, node):
+        try:
+            value = ast.literal_eval(node)
+        except (ValueError, TypeError):
+            pass
+        else:
+            if isinstance(value, (tuple, list)):
+                return tuple(Var(None, type=get_arg_type(x), constant=x) for x in value)
+            return Var(None, type=get_arg_type(value), constant=value)
+
+        if isinstance(node, ast.Name):
+            if node.id in adj.symbols:
+                return adj.symbols[node.id]
+
+            expr, _ = adj.resolve_static_expression(node)
+            if expr is None:
+                return None
+            if isinstance(expr, (type, Struct, Var, warp._src.context.Function, str)):
+                return expr
+            if isinstance(expr, (enum.IntEnum, enum.IntFlag)):
+                expr = int(expr)
+            return Var(None, type=get_arg_type(expr), constant=expr)
+
+        if isinstance(node, ast.Attribute):
+            expr, _ = adj.resolve_static_expression(node)
+            if expr is None:
+                return None
+            if isinstance(expr, (type, Struct, Var, warp._src.context.Function, str)):
+                return expr
+            if isinstance(expr, (enum.IntEnum, enum.IntFlag)):
+                expr = int(expr)
+            return Var(None, type=get_arg_type(expr), constant=expr)
+
+        if isinstance(node, ast.Tuple):
+            values = tuple(adj._tile_type_probe_value(x) for x in node.elts)
+            if any(x is None for x in values):
+                return None
+            return values
+
+        if isinstance(node, ast.UnaryOp | ast.BinOp | ast.Call | ast.Subscript):
+            node_type = adj._tile_type_probe(node)
+            if node_type is not None:
+                return Var(None, type=node_type)
+
+        return None
+
+    def _tile_resolve_call_for_type_probe(adj, node):
+        if hasattr(node.func, "warp_func"):
+            return node.func.warp_func, {}
+
+        func, path = adj.resolve_static_expression(node.func, eval_types=False)
+        if func is None:
+            return None, {}
+
+        type_args = {}
+
+        if len(path) > 0 and not isinstance(func, warp._src.context.Function):
+            attr = path[-1]
+            caller = func
+            func = None
+
+            if isinstance(caller, types.ModuleType):
+                if hasattr(caller, attr):
+                    func = getattr(caller, attr)
+                    if not isinstance(func, warp._src.context.Function):
+                        caller = func
+                        func = None
+                elif caller is warp and attr in warp._src.context.builtin_functions:
+                    func = warp._src.context.builtin_functions[attr]
+                else:
+                    return None, {}
+
+            if func is None and attr in warp._src.context.builtin_functions:
+                func = warp._src.context.builtin_functions[attr]
+
+            if func is None and hasattr(caller, "_wp_generic_type_str_"):
+                func = warp._src.context.builtin_functions.get(caller._wp_constructor_)
+
+            if func is None and hasattr(caller, "__name__") and caller.__name__ in warp._src.context.builtin_functions:
+                func = warp._src.context.builtin_functions.get(caller.__name__)
+
+            if func is None and isinstance(caller, Struct):
+                if node.args or node.keywords:
+                    func = caller.value_constructor
+                else:
+                    func = caller.default_constructor
+
+            if hasattr(caller, "_wp_type_args_"):
+                type_args = caller._wp_type_args_
+
+        if isinstance(func, warp._src.context.Function):
+            return func, type_args
+
+        return None, {}
+
+    def _tile_call_type_probe(adj, node):
+        func, type_args = adj._tile_resolve_call_for_type_probe(node)
+        if func is None or not func.is_builtin():
+            return None
+
+        args = tuple(adj._tile_type_probe_value(x) for x in node.args)
+        if any(x is None for x in args):
+            return None
+
+        kwargs = {x.arg: adj._tile_type_probe_value(x.value) for x in node.keywords}
+        if any(x is None for x in kwargs.values()):
+            return None
+
+        try:
+            func, bound_args, _ = adj.resolve_call(func, args, kwargs, type_args)
+        except Exception:
+            return None
+
+        bound_arg_types = {k: get_arg_type(v) for k, v in bound_args.items()}
+        bound_arg_values = {k: get_arg_value(v) for k, v in bound_args.items()}
+
+        try:
+            return_type = func.value_func(
+                {k: strip_reference(v) for k, v in bound_arg_types.items()},
+                bound_arg_values,
+            )
+        except Exception:
+            return None
+
+        if get_origin(return_type) is tuple:
+            types = get_args(return_type)
+            return warp._src.types.tuple_t(types=types, values=(None,) * len(types))
+
+        if isinstance(return_type, Sequence):
+            return None
+
+        return strip_reference(return_type)
+
+    def _tile_operator_type_probe(adj, op_name, args):
+        func = warp._src.context.builtin_functions[op_name]
+        try:
+            func, bound_args, _ = adj.resolve_call(func, args, {}, {})
+        except Exception:
+            return None
+
+        bound_arg_types = {k: get_arg_type(v) for k, v in bound_args.items()}
+        bound_arg_values = {k: get_arg_value(v) for k, v in bound_args.items()}
+
+        try:
+            return_type = func.value_func(
+                {k: strip_reference(v) for k, v in bound_arg_types.items()},
+                bound_arg_values,
+            )
+        except Exception:
+            return None
+
+        if isinstance(return_type, Sequence):
+            return None
+
+        return strip_reference(return_type)
+
+    def _tile_subscript_type_probe(adj, node):
+        target_type = adj._tile_type_probe(node.value)
+        if target_type is None or not is_tile(target_type):
+            return None
+
+        if isinstance(node.slice, ast.Tuple):
+            index_nodes = node.slice.elts
+        else:
+            index_nodes = [node.slice]
+
+        has_slice = any(isinstance(x, ast.Slice) for x in index_nodes)
+        has_index_tile = False
+        index_count = 0
+
+        for index_node in index_nodes:
+            if isinstance(index_node, ast.Slice):
+                index_count += 1
+                continue
+
+            index_type = adj._tile_type_probe(index_node)
+            if index_type is not None and is_tile(index_type):
+                has_index_tile = True
+            index_count += 1
+
+        if has_slice or has_index_tile or index_count < len(target_type.shape):
+            return tile(dtype=target_type.dtype, shape=tuple[int, ...], storage=target_type.storage)
+
+        return target_type.dtype
+
+    def _tile_type_probe(adj, node):
+        if isinstance(node, ast.Slice):
+            return slice_t
+
+        if isinstance(node, ast.Call):
+            return adj._tile_call_type_probe(node)
+
+        if isinstance(node, ast.UnaryOp):
+            arg = adj._tile_type_probe_value(node.operand)
+            if arg is None:
+                return None
+            op_name = builtin_operators.get(type(node.op))
+            if op_name is None:
+                return None
+            return adj._tile_operator_type_probe(op_name, (arg,))
+
+        if isinstance(node, ast.BinOp):
+            left = adj._tile_type_probe_value(node.left)
+            right = adj._tile_type_probe_value(node.right)
+            if left is None or right is None:
+                return None
+            op_name = builtin_operators.get(type(node.op))
+            if op_name is None:
+                return None
+            return adj._tile_operator_type_probe(op_name, (left, right))
+
+        if isinstance(node, ast.Subscript):
+            return adj._tile_subscript_type_probe(node)
+
+        value = adj._tile_type_probe_value(node)
+        if isinstance(value, Var):
+            return strip_reference(value.type)
+        if value is not None:
+            return get_arg_type(value)
+
+        return None
+
     def _tile_group_produces_view(adj, group):
         """Whether a chained tile subscript group yields a tile the next bracket
-        re-indexes — a slice or a 1D integer index tile — rather than collapsing
+        re-indexes -- a slice or a 1D integer index tile -- rather than collapsing
         the tile to a scalar/element.
 
-        Side-effect-free: only checks for ``ast.Slice`` structurally and looks up
-        already-bound names in ``adj.symbols`` (index tiles are bound to a name), so
-        nothing is emitted here and the flat path can re-evaluate the same nodes
-        without duplicating instructions.
+        Side-effect-free: type probing uses already-bound symbols, static
+        references, and function overload metadata only. It does not evaluate
+        index nodes or emit code, so the accepted path still evaluates each
+        index expression exactly once.
         """
         for n in group:
             if isinstance(n, ast.Slice):
@@ -4492,6 +4714,9 @@ class Adjoint:
                 v = adj.symbols[n.id]
                 if isinstance(v, Var) and is_tile(strip_reference(v.type)):
                     return True
+            n_type = adj._tile_type_probe(n)
+            if n_type is not None and is_tile(strip_reference(n_type)):
+                return True
         return False
 
     def _tile_later_group_produces_view(adj, groups):
