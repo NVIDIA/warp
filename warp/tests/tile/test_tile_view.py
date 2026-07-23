@@ -664,6 +664,29 @@ def test_tile_view_shape_with_slice_rejected(test, device):
         wp.launch_tiled(kernel_fn, dim=[1], inputs=[], block_dim=32, device=device)
 
 
+def test_tile_slice_sentinel_bounds_empty_rejected(test, device):
+    # Explicit bounds equal to the old omitted-bound sentinels must remain
+    # ordinary integer bounds and produce an empty tile, matching Python slices.
+    src = wp.array(np.arange(8, dtype=np.float32), dtype=float, device=device)
+    dst = wp.zeros(8, dtype=float, device=device)
+
+    @wp.kernel(module="unique", enable_backward=False)
+    def max_start_kernel(src: wp.array1d[float], dst: wp.array1d[float]):
+        t = wp.tile_load(src, shape=(8,))
+        wp.tile_store(dst, t[2147483647:])
+
+    with test.assertRaisesRegex((RuntimeError, ValueError), r"empty tile|zero-length"):
+        wp.launch_tiled(max_start_kernel, dim=[1], inputs=[src, dst], block_dim=32, device=device)
+
+    @wp.kernel(module="unique", enable_backward=False)
+    def min_stop_kernel(src: wp.array1d[float], dst: wp.array1d[float]):
+        t = wp.tile_load(src, shape=(8,))
+        wp.tile_store(dst, t[:-2147483648])
+
+    with test.assertRaisesRegex((RuntimeError, ValueError), r"empty tile|zero-length"):
+        wp.launch_tiled(min_stop_kernel, dim=[1], inputs=[src, dst], block_dim=32, device=device)
+
+
 # ---------------------------------------------------------------------------
 # Runtime and negative index handling, chained subscripts, explicit slices
 # ---------------------------------------------------------------------------
@@ -856,6 +879,60 @@ def test_tile_chained_partial_int_subscript(test, device):
     assert_np_equal(dst_slice.numpy(), src_np[2][1:9:2], tol=1e-6)
 
 
+@wp.kernel(enable_backward=False)
+def tile_inline_index_expression_kernel(src: wp.array2d[float], dst: wp.array1d[float]):
+    t = wp.tile_load(src, shape=(8, 8))
+    wp.tile_store(dst, t[wp.tile_arange(0, 8, dtype=int)[::2][0]][:])
+
+
+@wp.kernel(enable_backward=False)
+def tile_local_index_expression_kernel(src: wp.array2d[float], dst: wp.array1d[float]):
+    t = wp.tile_load(src, shape=(8, 8))
+    indices = wp.tile_arange(0, 8, dtype=int)
+    even_indices = indices[::2]
+    row_index = even_indices[0]
+    row = t[row_index]
+    wp.tile_store(dst, row[:])
+
+
+def test_tile_inline_index_expression(test, device):
+    src_np = np.arange(64, dtype=np.float32).reshape(8, 8)
+    src = wp.array(src_np, dtype=float, device=device)
+
+    for kernel in (tile_inline_index_expression_kernel, tile_local_index_expression_kernel):
+        dst = wp.zeros(8, dtype=float, device=device)
+        wp.launch_tiled(kernel, dim=[1], inputs=[src, dst], block_dim=32, device=device)
+        assert_np_equal(dst.numpy(), src_np[0], tol=1e-6)
+
+
+def test_tile_inline_user_function_index(test, device):
+    @wp.func
+    def index_passthrough(indices: wp.tile[int, 8]) -> wp.tile[int, 8]:
+        return indices[:]
+
+    @wp.kernel(module="unique", enable_backward=False)
+    def inline_kernel(src: wp.array2d[float], dst: wp.array1d[float]):
+        t = wp.tile_load(src, shape=(8, 8))
+        indices = wp.tile_arange(0, 8, dtype=int, storage="shared")
+        wp.tile_store(dst, t[index_passthrough(indices)][0])
+
+    @wp.kernel(module="unique", enable_backward=False)
+    def local_kernel(src: wp.array2d[float], dst: wp.array1d[float]):
+        t = wp.tile_load(src, shape=(8, 8))
+        indices = wp.tile_arange(0, 8, dtype=int, storage="shared")
+        resolved_indices = index_passthrough(indices)
+        gathered = t[resolved_indices]
+        wp.tile_store(dst, gathered[0])
+
+    src_np = np.arange(64, dtype=np.float32).reshape(8, 8)
+    src = wp.array(src_np, dtype=float, device=device)
+
+    for kernel in (inline_kernel, local_kernel):
+        dst = wp.zeros(8, dtype=float, device=device)
+        wp.launch_tiled(kernel, dim=[1], inputs=[src, dst], block_dim=32, device=device)
+        assert_np_equal(dst.numpy(), src_np[0], tol=1e-6)
+
+
 @wp.kernel
 def tile_view_explicit_slice_kernel(src: wp.array1d[float], dst: wp.array1d[float]):
     t = wp.tile_load(src, shape=(TILE_DIM,))
@@ -1046,12 +1123,22 @@ add_function_test(
 add_function_test(
     TestTileView, "test_tile_view_shape_with_slice_rejected", test_tile_view_shape_with_slice_rejected, devices=devices
 )
+add_function_test(
+    TestTileView,
+    "test_tile_slice_sentinel_bounds_empty_rejected",
+    test_tile_slice_sentinel_bounds_empty_rejected,
+    devices=devices,
+)
 add_function_test(TestTileView, "test_tile_runtime_ref_index", test_tile_runtime_ref_index, devices=devices)
 add_function_test(TestTileView, "test_tile_runtime_neg_index", test_tile_runtime_neg_index, devices=devices)
 add_function_test(TestTileView, "test_tile_gather_neg_index", test_tile_gather_neg_index, devices=devices)
 add_function_test(TestTileView, "test_tile_chained_subscript", test_tile_chained_subscript, devices=devices)
 add_function_test(
     TestTileView, "test_tile_chained_partial_int_subscript", test_tile_chained_partial_int_subscript, devices=devices
+)
+add_function_test(TestTileView, "test_tile_inline_index_expression", test_tile_inline_index_expression, devices=devices)
+add_function_test(
+    TestTileView, "test_tile_inline_user_function_index", test_tile_inline_user_function_index, devices=devices
 )
 add_function_test(TestTileView, "test_tile_view_explicit_slice", test_tile_view_explicit_slice, devices=devices)
 add_function_test(TestTileView, "test_tile_row_assign", test_tile_row_assign, devices=devices)

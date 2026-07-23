@@ -290,6 +290,13 @@ dimension just as it does in NumPy. Slicing is fully differentiable. Negative in
 are wrapped like NumPy (``t[-1, :]`` is the last row) for both compile-time-constant
 and runtime integer indices.
 
+:func:`tile_view <warp._src.lang.tile_view>` can also be called directly with
+``slice`` objects in ``offset``; for example, ``wp.tile_view(t, offset=(slice(0, -1,
+1),))`` selects the same elements as ``t[0:-1]``. When any ``offset`` entry is a
+slice, ``shape`` must be omitted because the view shape is inferred from the slice
+bounds. Slice bounds must be compile-time constants, and slices that produce a
+zero-length tile dimension are rejected.
+
 Advanced indexing gathers elements along a single axis using a 1D integer index tile,
 returning a new (non-aliasing) register tile:
 

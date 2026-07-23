@@ -4250,7 +4250,7 @@ class Adjoint:
         return has_slice, has_index_tile
 
     def resolve_tile_int_index(adj, idx, shape, dim):
-        """Wrap and bounds-check a compile-time-constant integer tile index.
+        """Wrap and bounds-check an integer tile index.
 
         Integer indices into a tile collapse their dimension and contribute the
         view origin along that axis. NumPy-style negative indices are wrapped
@@ -4265,7 +4265,7 @@ class Adjoint:
             return idx
         idx_type = strip_reference(idx.type)
         if is_tile(idx_type):
-            # index tiles (advanced indexing) are resolved by tile_slice_indexed
+            # index tiles are resolved by tile_slice_indexed
             return idx
         if not warp._src.types.type_is_int(idx_type):
             # The native tile_coord() would silently truncate a float index to
@@ -4326,6 +4326,8 @@ class Adjoint:
                     # against the axis length (shared with explicit slice offsets).
                     bounds = adj.eval_raw_const_slice(node)
                     slice = adj.add_builtin_call("slice", bounds)
+                    slice.type.start_omitted = node.lower is None
+                    slice.type.stop_omitted = node.upper is None
                     indices.append(slice)
                 else:
                     indices.append(adj.resolve_tile_int_index(adj.eval(node), target_type.shape, dim))
@@ -4572,7 +4574,7 @@ class Adjoint:
 
     def _tile_call_type_probe(adj, node):
         func, type_args = adj._tile_resolve_call_for_type_probe(node)
-        if func is None or not func.is_builtin():
+        if func is None:
             return None
 
         args = tuple(adj._tile_type_probe_value(x) for x in node.args)
@@ -4588,16 +4590,45 @@ class Adjoint:
         except Exception:
             return None
 
-        bound_arg_types = {k: get_arg_type(v) for k, v in bound_args.items()}
-        bound_arg_values = {k: get_arg_value(v) for k, v in bound_args.items()}
+        if not func.is_builtin() and func.value_func is None:
+            try:
+                probe_adj = Adjoint(
+                    func.func,
+                    overload_annotations=func.input_types,
+                    is_user_function=True,
+                    skip_forward_codegen=func.adj.skip_forward_codegen,
+                    skip_reverse_codegen=func.adj.skip_reverse_codegen,
+                    custom_reverse_mode=func.adj.custom_reverse_mode,
+                    custom_reverse_num_input_args=func.adj.custom_reverse_num_input_args,
+                    transformers=func.adj.transformers,
+                    source=func.adj.source,
+                )
+                probe_adj.used_by_backward_kernel = func.adj.used_by_backward_kernel
+                probe_adj.force_adjoint_codegen = func.adj.force_adjoint_codegen
+                probe_adj.build(None, adj.builder_options)
+            except Exception:
+                return None
 
-        try:
-            return_type = func.value_func(
-                {k: strip_reference(v) for k, v in bound_arg_types.items()},
-                bound_arg_values,
-            )
-        except Exception:
-            return None
+            if probe_adj.return_var is None or len(probe_adj.return_var) == 0:
+                return None
+            if len(probe_adj.return_var) == 1:
+                return_type = probe_adj.return_var[0].type
+            else:
+                return_type = [v.type for v in probe_adj.return_var]
+        else:
+            if func.value_func is None:
+                return None
+
+            bound_arg_types = {k: get_arg_type(v) for k, v in bound_args.items()}
+            bound_arg_values = {k: get_arg_value(v) for k, v in bound_args.items()}
+
+            try:
+                return_type = func.value_func(
+                    {k: strip_reference(v) for k, v in bound_arg_types.items()},
+                    bound_arg_values,
+                )
+            except Exception:
+                return None
 
         if get_origin(return_type) is tuple:
             types = get_args(return_type)
@@ -4636,28 +4667,35 @@ class Adjoint:
         if target_type is None or not is_tile(target_type):
             return None
 
+        target_shape = target_type.shape
+        if not isinstance(target_shape, (tuple, list)):
+            return None
+
         if isinstance(node.slice, ast.Tuple):
             index_nodes = node.slice.elts
         else:
             index_nodes = [node.slice]
 
-        has_slice = any(isinstance(x, ast.Slice) for x in index_nodes)
-        has_index_tile = False
-        index_count = 0
+        result_shape = []
 
-        for index_node in index_nodes:
+        for dim, index_node in enumerate(index_nodes):
+            if dim >= len(target_shape):
+                return None
             if isinstance(index_node, ast.Slice):
-                index_count += 1
+                result_shape.append(1)
                 continue
 
             index_type = adj._tile_type_probe(index_node)
             if index_type is not None and is_tile(index_type):
-                has_index_tile = True
-            index_count += 1
+                index_shape = index_type.shape if isinstance(index_type.shape, (tuple, list)) else (1,)
+                if len(index_shape) != 1:
+                    return None
+                result_shape.append(index_shape[0])
 
-        if has_slice or has_index_tile or index_count < len(target_type.shape):
-            return tile(dtype=target_type.dtype, shape=tuple[int, ...], storage=target_type.storage)
+        result_shape.extend(target_shape[len(index_nodes) :])
 
+        if result_shape:
+            return tile(dtype=target_type.dtype, shape=tuple(result_shape), storage=target_type.storage)
         return target_type.dtype
 
     def _tile_type_probe(adj, node):
@@ -5252,19 +5290,19 @@ class Adjoint:
                 if not is_tile(rhs_type):
                     # A non-tile rhs (scalar, vector, matrix, ...) would fall through
                     # to tile_assign with no matching overload; broadcasting into a
-                    # slice is not supported.
+                    # view is not supported.
                     raise WarpCodegenError(
-                        f"Tile slice assignment requires a tile of matching shape on the right-hand side "
-                        f"(e.g. `t[a:b, :] = src`), but got a value of type {type_repr(rhs_type)}."
+                        f"Tile view assignment requires a tile of matching shape on the right-hand side "
+                        f"(e.g. `t[a:b, :] = src` or `t[0] = row`), but got a value of type {type_repr(rhs_type)}."
                     )
                 view = adj.add_builtin_call("tile_view", [target, indices])
                 view_type = strip_reference(view.type)
                 if tuple(view_type.shape) != tuple(rhs_type.shape):
                     # NumPy requires the assigned value to match the destination
-                    # slice exactly; a mismatched source would otherwise write
-                    # outside the slice (silent corruption or out-of-bounds).
+                    # view exactly; a mismatched source would otherwise write
+                    # outside the view (silent corruption or out-of-bounds).
                     raise WarpCodegenError(
-                        f"Tile slice assignment shape mismatch: destination slice has shape "
+                        f"Tile view assignment shape mismatch: destination view has shape "
                         f"{tuple(view_type.shape)} but source has shape {tuple(rhs_type.shape)}."
                     )
                 adj.add_builtin_call("tile_assign", [view, rhs])

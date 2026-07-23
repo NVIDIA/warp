@@ -4087,15 +4087,16 @@ def _tile_slice_bound(v):
     return v
 
 
-def _normalize_tile_slice(start, stop, step, length):
+def _normalize_tile_slice(start, stop, step, length, start_omitted=False, stop_omitted=False):
     """Resolve raw slice bounds against ``length`` following CPython ``slice.indices``.
 
-    ``start``/``stop`` may be ``SLICE_BEGIN``/``SLICE_END`` sentinels (open bounds) or
-    raw integers (possibly negative or out of range). Returns concrete, clamped
-    ``(start, stop, step)`` matching NumPy for both positive and negative steps, so
-    subscript syntax (``t[0:-1]``) and explicit ``wp.tile_view()`` slice offsets
-    (``wp.tile_view(t, offset=(slice(0, -1, 1),))``) normalize identically. This
-    mirrors ``Adjoint.eval_const_slice`` in the code generator.
+    ``start_omitted``/``stop_omitted`` preserve whether a subscript left the bound
+    open, so explicit bounds equal to ``SLICE_BEGIN``/``SLICE_END`` remain ordinary
+    integer bounds. Returns concrete, clamped ``(start, stop, step)`` matching NumPy
+    for both positive and negative steps, so subscript syntax (``t[0:-1]``) and
+    explicit ``wp.tile_view()`` slice offsets (``wp.tile_view(t, offset=(slice(0,
+    -1, 1),))``) normalize identically. This mirrors ``Adjoint.eval_const_slice`` in
+    the code generator.
     """
     start, stop, step = _tile_slice_bound(start), _tile_slice_bound(stop), _tile_slice_bound(step)
 
@@ -4106,16 +4107,27 @@ def _normalize_tile_slice(start, stop, step, length):
     # [-1, length-1] for a negative step (so a reversed slice can reach index 0).
     lower, upper = (0, length) if step > 0 else (-1, length - 1)
 
-    def resolve(value, default):
-        if value == SLICE_BEGIN or value == SLICE_END:
+    def resolve(value, default, omitted):
+        if omitted:
             return default
         if value < 0:
             return max(value + length, lower)
         return min(value, upper)
 
-    start = resolve(start, lower if step > 0 else upper)
-    stop = resolve(stop, upper if step > 0 else lower)
+    start = resolve(start, lower if step > 0 else upper, start_omitted)
+    stop = resolve(stop, upper if step > 0 else lower, stop_omitted)
     return (start, stop, step)
+
+
+def _normalize_tile_slice_type(slice_type, length):
+    return _normalize_tile_slice(
+        slice_type.start,
+        slice_type.stop,
+        slice_type.step,
+        length,
+        getattr(slice_type, "start_omitted", False),
+        getattr(slice_type, "stop_omitted", False),
+    )
 
 
 def _tile_slice_index_type(v):
@@ -4189,9 +4201,7 @@ def tile_view_value_func(arg_types, arg_values):
             if dim < len(index_types):
                 idx_type = index_types[dim]
                 if is_slice(idx_type):
-                    n_start, n_stop, n_step = _normalize_tile_slice(
-                        idx_type.start, idx_type.stop, idx_type.step, parent_shape[dim]
-                    )
+                    n_start, n_stop, n_step = _normalize_tile_slice_type(idx_type, parent_shape[dim])
                     length = _tile_slice_length(n_start, n_stop, n_step)
                     shape.append(length)
                     strides.append(parent_strides[dim] * n_step)
@@ -4251,7 +4261,7 @@ def tile_view_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg
     for i, idx in enumerate(coord):
         idx_type = _tile_slice_index_type(idx)
         if is_slice(idx_type):
-            n_start, _, _ = _normalize_tile_slice(idx_type.start, idx_type.stop, idx_type.step, tile.type.shape[i])
+            n_start, _, _ = _normalize_tile_slice_type(idx_type, tile.type.shape[i])
             view_coord[i] = Var(None, type=int, constant=n_start)
         else:
             view_coord[i] = idx
@@ -4271,15 +4281,21 @@ add_builtin(
     dispatch_func=tile_view_dispatch_func,
     defaults={"shape": None},
     variadic=False,
-    doc="""Extract a slice of a given tile [offset, offset+shape], if shape is not specified it will be inferred from the unspecified offset dimensions.
+    doc="""Extract a view of a tile.
+
+    ``offset`` may contain integer coordinates, in which case ``shape`` gives the
+    returned tile shape. ``offset`` may also contain ``slice`` objects, in which
+    case the returned shape is inferred from the slice bounds and ``shape`` must
+    not be specified.
 
     Args:
         t: Input tile to extract a subrange from
-        offset: Offset in the source tile
-        shape: Shape of the returned slice
+        offset: Integer offsets or slices in the source tile
+        shape: Shape of the returned view for integer-only offsets
 
     Returns:
-        A tile with dimensions given by the specified shape or the remaining source tile dimensions.""",
+        A tile view with dimensions given by ``shape``, the remaining source tile
+        dimensions, or the inferred slice extents.""",
     group="Tile Primitives",
     is_differentiable=False,
     export=False,
@@ -4309,9 +4325,7 @@ def _tile_slice_indexed_axis(indices, parent_shape):
             axis = dim
             index_tile = v
         elif is_slice(idx_type):
-            n_start, n_stop, n_step = _normalize_tile_slice(
-                idx_type.start, idx_type.stop, idx_type.step, parent_shape[dim]
-            )
+            n_start, n_stop, n_step = _normalize_tile_slice_type(idx_type, parent_shape[dim])
             length = _tile_slice_length(n_start, n_stop, n_step)
             if not (n_start == 0 and n_step == 1 and length == parent_shape[dim]):
                 raise ValueError(
