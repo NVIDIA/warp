@@ -38,9 +38,9 @@
 - Add an optional `block_dim` argument to `wp.jax_kernel()` for selecting the CUDA thread-block size, including for
   tile kernels and their generated adjoint launches ([GH-1436](https://github.com/NVIDIA/warp/issues/1436)).
 - Add NumPy-style slicing for tiles, including strided and reversed slices (`t[2:6, :]`, `t[:, ::2]`, `t[::-1, :]`),
-  dimension-collapsing integer indices with negative-index support (`t[5, :]`, `t[-1, :]`), slice assignment
-  (`t[0:4, :] = src`), and fancy indexing that gathers rows selected by a 1D integer index tile (`t[indices, :]`)
-  ([GH-1176](https://github.com/NVIDIA/warp/issues/1176)).
+  dimension-collapsing integer indices with negative-index support (`t[5, :]`, `t[-1, :]`), and slice assignment
+  (`t[0:4, :] = src`). Also add `wp.tile_slice_indexed()`, which gathers elements along a single axis using a
+  1D integer index tile (`t[indices, :]`) ([GH-1176](https://github.com/NVIDIA/warp/issues/1176)).
 
 ### Removed
 

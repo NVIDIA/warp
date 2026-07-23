@@ -4062,7 +4062,7 @@ def _tile_slice_length(start, stop, step):
     """Number of elements produced by a slice with already-resolved bounds.
 
     ``start``/``stop`` are expected to be the concrete (non-sentinel) values
-    produced by ``Adjoint.eval_const_slice``, so no additional index wrapping is
+    produced by ``_normalize_tile_slice``, so no additional index wrapping is
     performed here. Supports negative steps (reversed views).
     """
     if step > 0:
@@ -4070,9 +4070,63 @@ def _tile_slice_length(start, stop, step):
     return max(0, (start - stop + (-step) - 1) // (-step))
 
 
+def _tile_slice_bound(v):
+    """Resolve a slice bound to a Python int, requiring a compile-time constant.
+
+    Bounds may be plain ints (subscript lowering, ``SLICE_BEGIN``/``SLICE_END``
+    sentinels) or constant ``Var``s (an explicit ``wp.tile_view(t, offset=(slice(n
+    - 1, ...),))`` where the bound is a constant expression). A runtime (non-constant)
+    bound cannot be used because the view shape must be known at code-gen time.
+    """
+    if isinstance(v, Var):
+        if v.constant is None:
+            raise ValueError("tile_view() slice bounds must be compile-time constants.")
+        v = v.constant
+    if not isinstance(v, int):
+        raise ValueError(f"tile_view() slice bounds must be integers, got {type_repr(v)}.")
+    return v
+
+
+def _normalize_tile_slice(start, stop, step, length):
+    """Resolve raw slice bounds against ``length`` following CPython ``slice.indices``.
+
+    ``start``/``stop`` may be ``SLICE_BEGIN``/``SLICE_END`` sentinels (open bounds) or
+    raw integers (possibly negative or out of range). Returns concrete, clamped
+    ``(start, stop, step)`` matching NumPy for both positive and negative steps, so
+    subscript syntax (``t[0:-1]``) and explicit ``wp.tile_view()`` slice offsets
+    (``wp.tile_view(t, offset=(slice(0, -1, 1),))``) normalize identically. This
+    mirrors ``Adjoint.eval_const_slice`` in the code generator.
+    """
+    start, stop, step = _tile_slice_bound(start), _tile_slice_bound(stop), _tile_slice_bound(step)
+
+    if step == 0:
+        raise ValueError("tile_view() slice step cannot be zero.")
+
+    # CPython slice.indices() clamp bounds: [0, length] for a positive step,
+    # [-1, length-1] for a negative step (so a reversed slice can reach index 0).
+    lower, upper = (0, length) if step > 0 else (-1, length - 1)
+
+    def resolve(value, default):
+        if value == SLICE_BEGIN or value == SLICE_END:
+            return default
+        if value < 0:
+            return max(value + length, lower)
+        return min(value, upper)
+
+    start = resolve(start, lower if step > 0 else upper)
+    stop = resolve(stop, upper if step > 0 else lower)
+    return (start, stop, step)
+
+
 def _tile_slice_index_type(v):
-    """Return the Warp type of a tile-view index (int or ``slice_t``)."""
-    return v.type if isinstance(v, Var) else v
+    """Return the Warp type of a tile-view index (int or ``slice_t``).
+
+    References are stripped so a runtime index loaded from an array (e.g.
+    ``t[indices[0], :]``, represented as ``wp.ref[int32]`` during code generation)
+    validates and dispatches like a plain integer; the dispatched reference is
+    loaded to its value at the call site.
+    """
+    return strip_reference(v.type) if isinstance(v, Var) else v
 
 
 def tile_view_value_func(arg_types, arg_values):
@@ -4093,11 +4147,25 @@ def tile_view_value_func(arg_types, arg_values):
     index_types = [_tile_slice_index_type(v) for v in offset]
     has_slice = any(is_slice(t) for t in index_types)
 
-    for idx_type in index_types:
+    for dim, (entry, idx_type) in enumerate(zip(offset, index_types, strict=True)):
         # Each offset entry must be an integer (a Warp integer Var or a plain
         # Python constant) or a slice; the native tile_coord() would otherwise
         # silently truncate e.g. a float offset to int.
         if is_slice(idx_type) or isinstance(idx_type, int) or type_is_int(idx_type):
+            # An explicit tile_view() offset is a raw source coordinate, so a
+            # constant that lands outside the parent axis would read out of bounds.
+            # Unlike subscript indexing (which wraps negatives, e.g. t[-1], and
+            # rejects out-of-range constants), the explicit offset is not wrapped,
+            # so range-check the constant case here for parity instead of silently
+            # reading out of bounds. Runtime offsets fall through to the debug-only
+            # bounds check (they cannot be validated at code-gen time).
+            const = entry.constant if isinstance(entry, Var) else entry
+            if isinstance(const, int) and not (0 <= const < parent_shape[dim]):
+                raise ValueError(
+                    f"tile_view() integer offset {const} is out of bounds for axis {dim} with size "
+                    f"{parent_shape[dim]}; negative offsets are only wrapped for subscript indexing "
+                    f"(e.g. t[-1, :]), not explicit tile_view() calls."
+                )
             continue
         raise ValueError(f"tile_view() offset entries must be integers or slices, got {type_repr(idx_type)}")
 
@@ -4121,9 +4189,12 @@ def tile_view_value_func(arg_types, arg_values):
             if dim < len(index_types):
                 idx_type = index_types[dim]
                 if is_slice(idx_type):
-                    length = _tile_slice_length(idx_type.start, idx_type.stop, idx_type.step)
+                    n_start, n_stop, n_step = _normalize_tile_slice(
+                        idx_type.start, idx_type.stop, idx_type.step, parent_shape[dim]
+                    )
+                    length = _tile_slice_length(n_start, n_stop, n_step)
                     shape.append(length)
-                    strides.append(parent_strides[dim] * idx_type.step)
+                    strides.append(parent_strides[dim] * n_step)
                 # integer index: collapse this dimension (contributes only an offset)
             else:
                 shape.append(parent_shape[dim])
@@ -4180,7 +4251,8 @@ def tile_view_dispatch_func(arg_types: Mapping[str, type], return_type: Any, arg
     for i, idx in enumerate(coord):
         idx_type = _tile_slice_index_type(idx)
         if is_slice(idx_type):
-            view_coord[i] = Var(None, type=int, constant=idx_type.start)
+            n_start, _, _ = _normalize_tile_slice(idx_type.start, idx_type.stop, idx_type.step, tile.type.shape[i])
+            view_coord[i] = Var(None, type=int, constant=n_start)
         else:
             view_coord[i] = idx
 
@@ -4215,7 +4287,7 @@ add_builtin(
 
 
 def _tile_slice_indexed_axis(indices, parent_shape):
-    """Resolve the gather axis and index tile from a tile fancy-index expression.
+    """Resolve the gather axis and index tile from an advanced-index expression.
 
     ``indices`` is the tuple of subscript indices; exactly one must be a 1D integer
     index tile (the gather axis) and every other entry must be a full ``:`` slice.
@@ -4227,28 +4299,29 @@ def _tile_slice_indexed_axis(indices, parent_shape):
         idx_type = _tile_slice_index_type(v)
         if is_tile(idx_type):
             if axis is not None:
-                raise ValueError("Tile fancy indexing supports only a single index tile.")
+                raise ValueError("Tile indexing supports exactly one 1D integer index tile.")
             if len(idx_type.shape) != 1:
                 raise ValueError(
-                    f"Tile fancy indexing requires a 1D integer index tile, got {len(idx_type.shape)} dimensions."
+                    f"Tile indexing requires a 1D integer index tile, got {len(idx_type.shape)} dimensions."
                 )
             if not type_is_int(idx_type.dtype):
-                raise ValueError(
-                    f"Tile fancy indexing requires an integer index tile, got dtype {idx_type.dtype.__name__}."
-                )
+                raise ValueError(f"Tile indexing requires an integer index tile, got dtype {idx_type.dtype.__name__}.")
             axis = dim
             index_tile = v
         elif is_slice(idx_type):
-            length = _tile_slice_length(idx_type.start, idx_type.stop, idx_type.step)
-            if not (idx_type.start == 0 and idx_type.step == 1 and length == parent_shape[dim]):
+            n_start, n_stop, n_step = _normalize_tile_slice(
+                idx_type.start, idx_type.stop, idx_type.step, parent_shape[dim]
+            )
+            length = _tile_slice_length(n_start, n_stop, n_step)
+            if not (n_start == 0 and n_step == 1 and length == parent_shape[dim]):
                 raise ValueError(
-                    "Tile fancy indexing only supports full slices ':' on non-indexed axes, e.g. `t[indices, :]`."
+                    "Tile indexing with an integer index tile requires ':' on all other axes, e.g. `t[indices, :]`."
                 )
         else:
-            raise ValueError("Tile fancy indexing indices must be a 1D integer index tile or full slices ':'.")
+            raise ValueError("Tile indexing entries must be a 1D integer index tile or full slices ':'.")
 
     if axis is None:
-        raise ValueError("Tile fancy indexing requires an integer index tile.")
+        raise ValueError("Tile indexing requires an integer index tile.")
 
     return axis, index_tile
 
@@ -4263,7 +4336,7 @@ def tile_slice_indexed_value_func(arg_types, arg_values):
 
     indices = extract_tuple(arg_values["indices"])
     if len(indices) > len(parent_shape):
-        raise ValueError(f"tile fancy indexing specified too many indices {len(indices)} > {len(parent_shape)}")
+        raise ValueError(f"tile indexing specified too many indices {len(indices)} > {len(parent_shape)}")
 
     axis, index_tile = _tile_slice_indexed_axis(indices, parent_shape)
     index_tile_type = _tile_slice_index_type(index_tile)
@@ -4277,7 +4350,7 @@ def tile_slice_indexed_value_func(arg_types, arg_values):
         # An empty index tile would produce a zero-length axis, which cannot be
         # instantiated as a native tile type; reject it with a clear message
         # instead of a cryptic build failure (mirrors tile_view()).
-        raise ValueError("tile fancy indexing requires a non-empty index tile.")
+        raise ValueError("tile indexing requires a non-empty index tile.")
 
     shape = list(parent_shape)
     shape[axis] = index_tile_type.shape[0]
@@ -4304,8 +4377,8 @@ add_builtin(
     variadic=False,
     doc="""Gather elements of a tile along a single axis using a 1D tile of integer indices.
 
-    This lowers the fancy-indexing syntax ``t[indices, :]``, selecting rows (or planes)
-    of ``t`` given by ``indices`` along one axis. All other axes must be selected in full.
+    This lowers the advanced-indexing syntax ``t[indices, :]``, gathering elements of
+    ``t`` along one axis given by ``indices``. All other axes must be selected in full.
 
     Args:
         t: Input tile to gather from

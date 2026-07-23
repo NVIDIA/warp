@@ -3211,8 +3211,8 @@ def tile_view(t: Tile[Any, tuple[int, ...]], offset: tuple, shape: tuple[int, ..
 def tile_slice_indexed(t: Tile[Any, tuple[int, ...]], indices: tuple) -> Tile[Any, tuple[int, ...]]:
     """Gather elements of a tile along a single axis using a 1D tile of integer indices.
 
-    This lowers the fancy-indexing syntax ``t[indices, :]``, selecting rows (or planes)
-    of ``t`` given by ``indices`` along one axis. All other axes must be selected in full.
+    This lowers the advanced-indexing syntax ``t[indices, :]``, gathering elements of
+    ``t`` along one axis given by ``indices``. All other axes must be selected in full.
 
     Args:
         t: Input tile to gather from

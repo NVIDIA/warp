@@ -5361,11 +5361,16 @@ template <unsigned... Shape, typename Tile, typename IndicesTile>
 inline CUDA_CALLABLE auto tile_slice_indexed(Tile& src, IndicesTile& indices, int axis)
 {
     using T = typename Tile::Type;
+    using SrcShape = typename Tile::Layout::Shape;
     auto out = tile_register_t<T, tile_layout_register_t<tile_shape_t<Shape...>>>();
 
     out.apply([&](int reg, auto c) {
         auto sc = c;
-        sc.indices[axis] = indices.data(c[axis]);
+        // wrap negative indices against the source axis length (NumPy semantics)
+        int idx = indices.data(c[axis]);
+        if (idx < 0)
+            idx += SrcShape::dim(axis);
+        sc.indices[axis] = idx;
         out.data[reg] = src.data(sc);
     });
 
@@ -5383,11 +5388,16 @@ inline CUDA_CALLABLE void adj_tile_slice_indexed(
     if (src.grad.ptr == nullptr)
         return;
 
+    using SrcShape = typename Tile::Layout::Shape;
     auto adj_ret_reg = adj_ret.grad_to_register();
 
     adj_ret_reg.apply([&](int reg, auto c) {
         auto sc = c;
-        sc.indices[axis] = indices.data(c[axis]);
+        // wrap negative indices to match the forward gather
+        int idx = indices.data(c[axis]);
+        if (idx < 0)
+            idx += SrcShape::dim(axis);
+        sc.indices[axis] = idx;
         tile_adj_atomic_add_value(&src.grad(sc), adj_ret_reg.data[reg]);
     });
 

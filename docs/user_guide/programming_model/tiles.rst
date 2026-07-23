@@ -272,7 +272,7 @@ constants so the resulting tile shape is known during code generation.
 .. code-block:: python
 
     @wp.kernel
-    def process(data: wp.array2d(dtype=float)):
+    def process(data: wp.array2d[float]):
         t = wp.tile_load(data, shape=(64, 64))
 
         row = t[5, :]           # a single row, shape (64,)
@@ -286,37 +286,31 @@ constants so the resulting tile shape is known during code generation.
 
 Basic slicing produces a view that aliases the source tile's memory (compiling down
 to :func:`tile_view <warp._src.lang.tile_view>`), so an integer index collapses that
-dimension just as it does in NumPy. Slicing is fully differentiable.
+dimension just as it does in NumPy. Slicing is fully differentiable. Negative indices
+are wrapped like NumPy (``t[-1, :]`` is the last row) for both compile-time-constant
+and runtime integer indices.
 
-.. caution::
-
-    Negative indices are wrapped like NumPy (``t[-1, :]`` is the last row) only when
-    the index is a compile-time constant. A runtime integer index (e.g. one computed
-    from ``wp.tid()``) must be non-negative and in bounds; like other tile
-    operations, a runtime index is bounds-checked only in debug builds, so an
-    out-of-range value reads out of bounds in release builds.
-
-Fancy indexing gathers elements along a single axis using a 1D integer index tile,
+Advanced indexing gathers elements along a single axis using a 1D integer index tile,
 returning a new (non-aliasing) register tile:
 
 .. code-block:: python
 
     @wp.kernel
-    def gather(data: wp.array2d(dtype=float)):
+    def gather(data: wp.array2d[float]):
         t = wp.tile_load(data, shape=(64, 64))
 
         indices = wp.tile_arange(0, 8, dtype=int) * 8   # [0, 8, 16, ..., 56]
         selected_rows = t[indices, :]                   # shape (8, 64)
 
+Negative index values wrap like NumPy, and duplicate indices are supported and
+accumulate their gradients atomically on the backward pass.
+
 .. caution::
 
-    Index values must be within bounds for the gathered axis: like other tile
-    operations, the gather (and its gradient scatter) validates indices only in
-    debug builds, so an out-of-range value reads or writes out of bounds in
-    release builds.
-
-Duplicate indices are supported and accumulate their gradients atomically on the
-backward pass.
+    Index values must be within bounds for the indexed axis. Like other tile
+    operations, both a runtime scalar index and an index-tile gather (including its
+    gradient scatter) are bounds-checked only in debug builds, so an out-of-range
+    value reads or writes out of bounds in release builds.
 
 Maps/Reductions
 ^^^^^^^^^^^^^^^
