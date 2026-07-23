@@ -189,12 +189,6 @@ conflicts = [
     ],
 ]
 
-[[tool.uv.index]]
-name = "testpypi"
-url = "https://test.pypi.org/simple/"
-publish-url = "https://test.pypi.org/legacy/"
-explicit = true
-
 [tool.uv.sources]
 torch = [
     { index = "pytorch-cu126", extra = "torch-cu12" },

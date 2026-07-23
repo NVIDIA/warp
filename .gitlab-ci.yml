@@ -1066,28 +1066,10 @@ create dev wheels:
 # ==============================================================================
 # Deployment Jobs
 #
-# Publishes Python wheels to PyPI (test and production), GitLab registries,
-# and GitHub releases. Also builds and deploys documentation to GitLab Pages
-# for merge requests and the main branch.
+# Publishes Python wheels to PyPI, GitLab registries, and GitHub releases.
+# Also builds and deploys documentation to GitLab Pages for merge requests
+# and the main branch.
 # ==============================================================================
-
-publish wheels to testpypi registry:
-  stage: deploy
-  image: $UV_TRIXIE_SLIM_IMAGE
-  needs: ["create pypi wheels"]
-  variables:
-    IPP_RUNNER_EXECUTION_DURATION: "3600"
-  extends:
-    - .ipp_lnx_x86_64_cpu_micro
-  rules:
-    - if: $CI_COMMIT_BRANCH =~ /release-.*/ || $CI_COMMIT_TAG
-      when: manual
-      allow_failure: true
-  environment:
-    name: staging
-    url: https://test.pypi.org/project/warp-lang/
-  script:
-    - uv publish --verbose --index testpypi -t $TESTPYPI_DEPLOY_KEY dist/*
 
 publish wheels to pypi registry:
   stage: deploy
