@@ -815,6 +815,67 @@ def test_struct_array_gc_replacement_clears_grad_keepalive(test, device):
             test.assertIsNone(old_grad_ref())
 
 
+@wp.struct
+class ScaledVecStruct:
+    v: wp.vec3
+
+
+@wp.struct
+class ScaledVecAndArrayStruct:
+    v: wp.vec3
+    arr: wp.array[wp.float32]
+
+
+@wp.func
+def make_scaled_vec_struct(x: wp.vec3) -> ScaledVecStruct:
+    s = ScaledVecStruct()
+    s.v = 2.0 * x
+    return s
+
+
+@wp.func
+def make_scaled_vec_and_array_struct(x: wp.vec3, arr: wp.array[wp.float32]) -> ScaledVecAndArrayStruct:
+    s = ScaledVecAndArrayStruct()
+    s.v = 2.0 * x
+    s.arr = arr
+    return s
+
+
+@wp.kernel
+def scaled_vec_struct_dot_kernel(x: wp.array[wp.vec3], loss: wp.array[wp.float32]):
+    s = make_scaled_vec_struct(x[0])
+    loss[0] = wp.dot(s.v, s.v)
+
+
+@wp.kernel
+def scaled_vec_and_array_struct_dot_kernel(x: wp.array[wp.vec3], arr: wp.array[wp.float32], loss: wp.array[wp.float32]):
+    s = make_scaled_vec_and_array_struct(x[0], arr)
+    loss[0] = wp.dot(s.v, s.v)
+
+
+def test_struct_returned_from_func_grad(test, device):
+    """Check that gradients propagate through a struct returned by a ``@wp.func``."""
+
+    # loss = dot(2x, 2x), so d/dx = 8x. For x = [1, 2, 3] the gradient is [8, 16, 24].
+    expected = np.array([8.0, 16.0, 24.0], dtype=np.float32)
+
+    unused_arr = wp.zeros(1, dtype=wp.float32, device=device)
+
+    for struct_name, kernel, extra_inputs in (
+        ("ScaledVecStruct", scaled_vec_struct_dot_kernel, []),
+        ("ScaledVecAndArrayStruct", scaled_vec_and_array_struct_dot_kernel, [unused_arr]),
+    ):
+        with test.subTest(struct=struct_name):
+            x = wp.array([wp.vec3(1.0, 2.0, 3.0)], dtype=wp.vec3, requires_grad=True, device=device)
+            loss = wp.zeros(1, dtype=wp.float32, requires_grad=True, device=device)
+
+            with wp.Tape() as tape:
+                wp.launch(kernel, dim=1, inputs=[x, *extra_inputs, loss], device=device)
+            tape.backward(loss=loss)
+
+            assert_np_equal(x.grad.numpy()[0], expected, tol=1e-5)
+
+
 class TestStruct(unittest.TestCase):
     # check structs default initialized in Python correctly
     def test_struct_default_attributes_python(self):
@@ -996,6 +1057,9 @@ add_function_test(
 )
 add_function_test(
     TestStruct, "test_struct_array_gc_direct_assignment", test_struct_array_gc_direct_assignment, devices=devices
+)
+add_function_test(
+    TestStruct, "test_struct_returned_from_func_grad", test_struct_returned_from_func_grad, devices=devices
 )
 
 
