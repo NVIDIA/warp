@@ -1,0 +1,21 @@
+﻿warp.tile\_slice\_indexed
+=========================
+
+.. function:: warp._src.lang.tile_slice_indexed(t: Tile[Any, tuple[int, ...]], indices: tuple) -> Tile[Any, tuple[int, ...]]
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Gather elements of a tile along a single axis using a 1D tile of integer indices.
+   
+   This lowers the advanced-indexing syntax ``t[indices, :]``, gathering elements of
+   ``t`` along one axis given by ``indices``. All other axes must be selected in full.
+   
+   :param t: Input tile to gather from
+   :param indices: A 1D tile of integer indices selecting elements along one axis
+   
+   :returns: A register tile whose extent along the indexed axis equals the number of indices.
+   

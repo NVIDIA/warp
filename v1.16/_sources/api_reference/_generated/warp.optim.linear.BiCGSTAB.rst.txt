@@ -1,0 +1,12 @@
+﻿warp.optim.linear.BiCGSTAB
+==========================
+
+.. currentmodule:: warp.optim.linear
+
+.. autoclass:: BiCGSTAB
+   
+   
+   
+   
+   
+   

@@ -1,0 +1,21 @@
+﻿warp.fem.Polynomial
+===================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: Polynomial
+   
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Polynomial.GAUSS_LEGENDRE
+      ~Polynomial.LOBATTO_GAUSS_LEGENDRE
+      ~Polynomial.EQUISPACED_CLOSED
+      ~Polynomial.EQUISPACED_OPEN
+   
+   

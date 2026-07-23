@@ -1,0 +1,16 @@
+﻿warp.sample\_unit\_sphere\_surface
+==================================
+
+.. function:: warp._src.lang.sample_unit_sphere_surface(state: uint32) -> vec3f
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   Uniformly sample a point on the surface of the unit sphere (radius 1).
+   
+   Returns a ``vec3`` of unit length. In a kernel, advances ``state`` in
+   place; called from the Python scope, it does not modify ``state``, so repeated
+   calls with the same ``state`` return the same point (see :func:`rand_init`).

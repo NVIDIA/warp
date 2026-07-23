@@ -1,0 +1,18 @@
+﻿warp.MeshQueryPoint
+===================
+
+.. currentmodule:: warp
+
+.. autoclass:: MeshQueryPoint
+   
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MeshQueryPoint.vars
+   
+   

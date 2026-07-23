@@ -1,0 +1,6 @@
+﻿warp.fem.linalg.inverse\_qr
+===========================
+
+.. currentmodule:: warp.fem.linalg
+
+.. autodata:: inverse_qr

@@ -1,0 +1,12 @@
+﻿warp.BvhQuery
+=============
+
+.. currentmodule:: warp
+
+.. autoclass:: BvhQuery
+   
+   
+   
+   
+   
+   

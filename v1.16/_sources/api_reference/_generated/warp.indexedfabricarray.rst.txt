@@ -1,0 +1,30 @@
+﻿warp.indexedfabricarray
+=======================
+
+.. currentmodule:: warp
+
+.. autoclass:: indexedfabricarray
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~indexedfabricarray.assign
+      ~indexedfabricarray.contiguous
+      ~indexedfabricarray.fill_
+      ~indexedfabricarray.list
+      ~indexedfabricarray.numpy
+      ~indexedfabricarray.to
+      ~indexedfabricarray.zero_
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~indexedfabricarray.vars
+   
+   

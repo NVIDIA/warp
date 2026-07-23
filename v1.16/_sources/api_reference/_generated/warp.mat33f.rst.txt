@@ -1,0 +1,24 @@
+﻿warp.mat33f
+===========
+
+.. currentmodule:: warp
+
+.. autoclass:: mat33f
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~mat33f.from_ptr
+      ~mat33f.get_col
+      ~mat33f.get_row
+      ~mat33f.scalar_export
+      ~mat33f.scalar_import
+      ~mat33f.set_col
+      ~mat33f.set_row
+   
+   
+   
+   
+   

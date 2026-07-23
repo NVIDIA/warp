@@ -1,0 +1,16 @@
+﻿warp.volume\_voxel\_count
+=========================
+
+.. function:: warp._src.lang.volume_voxel_count(id: uint64) -> int32
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Python
+
+   Return the number of indexable voxels in the volume given by ``id``.
+   
+   For active-voxel index grids, this is the active voxel count. For dense tile grids, this is the number of
+   allocated leaf nodes multiplied by 512. The result is a 32-bit signed integer and is capped at ``2**31 - 1``
+   because voxel-index APIs use 32-bit indices.

@@ -1,0 +1,36 @@
+﻿warp.CaptureMode
+================
+
+.. currentmodule:: warp
+
+.. autoclass:: CaptureMode
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~CaptureMode.conjugate
+      ~CaptureMode.bit_length
+      ~CaptureMode.bit_count
+      ~CaptureMode.to_bytes
+      ~CaptureMode.from_bytes
+      ~CaptureMode.as_integer_ratio
+      ~CaptureMode.is_integer
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~CaptureMode.real
+      ~CaptureMode.imag
+      ~CaptureMode.numerator
+      ~CaptureMode.denominator
+      ~CaptureMode.GLOBAL
+      ~CaptureMode.THREAD_LOCAL
+      ~CaptureMode.RELAXED
+   
+   

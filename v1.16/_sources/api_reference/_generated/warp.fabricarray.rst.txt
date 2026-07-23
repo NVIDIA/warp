@@ -1,0 +1,30 @@
+﻿warp.fabricarray
+================
+
+.. currentmodule:: warp
+
+.. autoclass:: fabricarray
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~fabricarray.assign
+      ~fabricarray.contiguous
+      ~fabricarray.fill_
+      ~fabricarray.list
+      ~fabricarray.numpy
+      ~fabricarray.to
+      ~fabricarray.zero_
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~fabricarray.vars
+   
+   

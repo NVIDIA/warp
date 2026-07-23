@@ -1,0 +1,6 @@
+﻿warp.config.default\_grid\_stride
+=================================
+
+.. currentmodule:: warp.config
+
+.. autodata:: default_grid_stride

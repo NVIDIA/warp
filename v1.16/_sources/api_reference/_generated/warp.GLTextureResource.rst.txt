@@ -1,0 +1,19 @@
+﻿warp.GLTextureResource
+======================
+
+.. currentmodule:: warp
+
+.. autoclass:: GLTextureResource
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~GLTextureResource.map
+      ~GLTextureResource.unmap
+   
+   
+   
+   
+   

@@ -1,0 +1,20 @@
+﻿warp.vec4ul
+===========
+
+.. currentmodule:: warp
+
+.. autoclass:: vec4ul
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~vec4ul.from_ptr
+      ~vec4ul.scalar_export
+      ~vec4ul.scalar_import
+   
+   
+   
+   
+   

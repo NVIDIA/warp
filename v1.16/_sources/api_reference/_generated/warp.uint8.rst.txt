@@ -1,0 +1,12 @@
+﻿warp.uint8
+==========
+
+.. currentmodule:: warp
+
+.. autoclass:: uint8
+   
+   
+   
+   
+   
+   

@@ -1,0 +1,48 @@
+﻿warp.max
+========
+
+.. function:: warp._src.lang.max(a: Scalar, b: Scalar) -> Scalar
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the maximum value.
+   
+   On float types, NaN is treated as missing (C ``fmax`` semantics): the
+   operation returns the non-NaN operand when exactly one is NaN, and NaN
+   only when both are NaN.
+
+.. function:: warp._src.lang.max(a: Vector[Scalar, Any], b: Vector[Scalar, Any]) -> Vector[Scalar, Any]
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the maximum value.
+   
+   :returns: The element-wise maximum of ``a`` and ``b``.
+   
+
+.. function:: warp._src.lang.max(a: Vector[Scalar, Any]) -> Scalar
+   :noindex:
+
+   .. hlist::
+      :columns: 8
+
+      * Kernel
+      * Differentiable
+
+   Compute the maximum value.
+   
+   On float types, NaN elements are treated as missing (C ``fmax`` semantics);
+   the reduction returns the largest non-NaN element, or NaN only if every
+   element is NaN.
+   
+   :returns: The maximum element of ``a``.
+   

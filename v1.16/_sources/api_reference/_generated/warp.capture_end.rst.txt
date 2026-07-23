@@ -1,0 +1,6 @@
+﻿warp.capture\_end
+=================
+
+.. currentmodule:: warp
+
+.. autofunction:: capture_end

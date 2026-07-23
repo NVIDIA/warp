@@ -1,0 +1,6 @@
+﻿warp.config.legacy\_scalar\_return\_types
+=========================================
+
+.. currentmodule:: warp.config
+
+.. autodata:: legacy_scalar_return_types
