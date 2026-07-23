@@ -370,6 +370,50 @@ def test_tile_matmul_bf16_b_with_backward_rejected(test, device):
         wp.launch_tiled(kernel_bf16_b, dim=(1, 1), inputs=[A, B, C], block_dim=TILE_DIM, device=device)
 
 
+def test_tile_matmul_complex_rejected(test, device):
+    """Check that ``wp.tile_matmul(a, b, out)`` rejects complex (vec2) tiles with an actionable error.
+
+    Complex GEMM is not implemented, so a clear ``TypeError`` should be raised rather than an opaque
+    overload-resolution failure. All three complex element types (vec2h, vec2f, vec2d) are exercised
+    since the error overloads match ``vector(length=2, dtype=Float)``.
+    """
+    for vec_dtype in (wp.vec2h, wp.vec2f, wp.vec2d):
+
+        @wp.kernel(module="unique")
+        def kernel_complex_out(A: wp.array2d[vec_dtype], B: wp.array2d[vec_dtype], C: wp.array2d[vec_dtype]):
+            a = wp.tile_load(A, shape=(TILE_M, TILE_K))
+            b = wp.tile_load(B, shape=(TILE_K, TILE_N))
+            c = wp.tile_zeros(shape=(TILE_M, TILE_N), dtype=vec_dtype)  # noqa: B023 (kernel is launched in the same iteration)
+            wp.tile_matmul(a, b, c)
+            wp.tile_store(C, c)
+
+        A = wp.zeros((TILE_M, TILE_K), dtype=vec_dtype, device=device)
+        B = wp.zeros((TILE_K, TILE_N), dtype=vec_dtype, device=device)
+        C = wp.zeros((TILE_M, TILE_N), dtype=vec_dtype, device=device)
+
+        with test.assertRaisesRegex(TypeError, r"does not support complex tiles"):
+            wp.launch_tiled(kernel_complex_out, dim=[1], inputs=[A, B, C], block_dim=TILE_DIM, device=device)
+
+
+def test_tile_matmul_complex_rejected_return_form(test, device):
+    """Check that the returning form ``c = wp.tile_matmul(a, b)`` rejects complex (vec2) tiles the same way."""
+    for vec_dtype in (wp.vec2h, wp.vec2f, wp.vec2d):
+
+        @wp.kernel(module="unique")
+        def kernel_complex_return(A: wp.array2d[vec_dtype], B: wp.array2d[vec_dtype], C: wp.array2d[vec_dtype]):
+            a = wp.tile_load(A, shape=(TILE_M, TILE_K))
+            b = wp.tile_load(B, shape=(TILE_K, TILE_N))
+            c = wp.tile_matmul(a, b)
+            wp.tile_store(C, c)
+
+        A = wp.zeros((TILE_M, TILE_K), dtype=vec_dtype, device=device)
+        B = wp.zeros((TILE_K, TILE_N), dtype=vec_dtype, device=device)
+        C = wp.zeros((TILE_M, TILE_N), dtype=vec_dtype, device=device)
+
+        with test.assertRaisesRegex(TypeError, r"does not support complex tiles"):
+            wp.launch_tiled(kernel_complex_return, dim=[1], inputs=[A, B, C], block_dim=TILE_DIM, device=device)
+
+
 class TestTileMatmul(unittest.TestCase):
     pass
 
@@ -413,6 +457,18 @@ add_function_test(
     test_tile_matmul_bf16_b_with_backward_rejected,
     devices=bf16_devices,
     check_output=False,
+)
+add_function_test(
+    TestTileMatmul,
+    "test_tile_matmul_complex_rejected",
+    test_tile_matmul_complex_rejected,
+    devices=devices,
+)
+add_function_test(
+    TestTileMatmul,
+    "test_tile_matmul_complex_rejected_return_form",
+    test_tile_matmul_complex_rejected_return_form,
+    devices=devices,
 )
 add_function_test(TestTileMatmul, "test_tile_gemm_fp32", test_tile_gemm(wp.float32), devices=devices)
 add_function_test(TestTileMatmul, "test_tile_gemm_fp64", test_tile_gemm(wp.float64), devices=devices)

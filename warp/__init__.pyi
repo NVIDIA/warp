@@ -7806,8 +7806,7 @@ def tile_matmul(
     Compute ``out = alpha * a*b``.
 
     Supported datatypes are:
-        * fp16, bf16, fp32, fp64 (real)
-        * vec2h, vec2f, vec2d (complex)
+        * fp16, bf16, fp32, fp64
 
     Both input tiles must have the same datatype. Tile data will automatically be migrated
     to shared memory if necessary and will use TensorCore operations when available.
@@ -7836,8 +7835,7 @@ def tile_matmul(
     Compute ``out = alpha * a*b + beta * out``.
 
     Supported datatypes are:
-        * fp16, bf16, fp32, fp64 (real)
-        * vec2h, vec2f, vec2d (complex)
+        * fp16, bf16, fp32, fp64
 
     All input and output tiles must have the same datatype. Tile data will automatically be migrated
     to shared memory if necessary and will use TensorCore operations when available.

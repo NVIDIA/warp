@@ -14595,10 +14595,8 @@ def tile_matmul_lto_dispatch_func(
     if not is_tile(out.type):
         raise TypeError(f"tile_matmul() 'out' argument must be a tile, got {out!r}")
 
-    if any(arg.type.dtype not in [float16, bfloat16, float32, float64, vec2h, vec2f, vec2d] for arg in [a, b, out]):
-        raise TypeError(
-            "tile_matmul() arguments must be tiles of float16, bfloat16, float32 or float64, vec2h, vec2f, vec2d entries"
-        )
+    if any(arg.type.dtype not in [float16, bfloat16, float32, float64] for arg in [a, b, out]):
+        raise TypeError("tile_matmul() arguments must be tiles of float16, bfloat16, float32, or float64 entries")
 
     # Reject bfloat16 as the accumulator precision uniformly across all backends. cuBLASDx
     # disallows bf16 accumulators (a static_assert since cuBLASDx 0.6.0), and the scalar
@@ -14823,8 +14821,7 @@ add_builtin(
     Compute ``out = alpha * a*b + beta * out``.
 
     Supported datatypes are:
-        * fp16, bf16, fp32, fp64 (real)
-        * vec2h, vec2f, vec2d (complex)
+        * fp16, bf16, fp32, fp64
 
     All input and output tiles must have the same datatype. Tile data will automatically be migrated
     to shared memory if necessary and will use TensorCore operations when available.
@@ -14858,8 +14855,7 @@ add_builtin(
     Compute ``out = alpha * a*b``.
 
     Supported datatypes are:
-        * fp16, bf16, fp32, fp64 (real)
-        * vec2h, vec2f, vec2d (complex)
+        * fp16, bf16, fp32, fp64
 
     Both input tiles must have the same datatype. Tile data will automatically be migrated
     to shared memory if necessary and will use TensorCore operations when available.
@@ -14876,6 +14872,71 @@ add_builtin(
 """,
     group="Tile Primitives",
     export=False,
+)
+
+
+def _tile_matmul_complex_unsupported():
+    """Raise a ``TypeError`` explaining that complex tiles are unsupported by ``tile_matmul()``."""
+    raise TypeError(
+        "tile_matmul() does not support complex tiles (vec2h, vec2f, vec2d). Complex matrix "
+        "multiplication is not implemented; use real float tiles (float16, bfloat16, float32, or float64)."
+    )
+
+
+def _tile_matmul_out_complex_value_func(arg_types, arg_values):
+    """Reject complex tiles for the ``tile_matmul(a, b, out)`` form.
+
+    Only returns during the argument-free documentation probe; any real call raises.
+    """
+    if arg_types is None:
+        return None
+    _tile_matmul_complex_unsupported()
+
+
+def _tile_matmul_complex_value_func(arg_types, arg_values):
+    """Reject complex tiles for the returning form ``c = tile_matmul(a, b)``.
+
+    Only returns during the argument-free documentation probe; any real call raises.
+    """
+    if arg_types is None:
+        return tile(dtype=vec2f, shape=tuple[int, int])
+    _tile_matmul_complex_unsupported()
+
+
+# Error-only overloads. A complex (vec2) tile does not match the real-float overloads above, so a
+# call like wp.tile_matmul(complex_a, complex_b) would otherwise fail with an opaque "couldn't find
+# function overload" error. These hidden overloads match vec2 tiles solely so the value func can
+# raise an actionable message. They are never dispatched -- the value func raises first.
+add_builtin(
+    "tile_matmul",
+    input_types={
+        "a": tile(dtype=vector(length=2, dtype=Float), shape=tuple[int, int]),
+        "b": tile(dtype=vector(length=2, dtype=Float), shape=tuple[int, int]),
+        "out": tile(dtype=vector(length=2, dtype=Float), shape=tuple[int, int]),
+        "alpha": Float,
+        "beta": Float,
+    },
+    defaults={"alpha": 1.0, "beta": 1.0},
+    value_func=_tile_matmul_out_complex_value_func,
+    variadic=False,
+    group="Tile Primitives",
+    export=False,
+    hidden=True,
+)
+
+add_builtin(
+    "tile_matmul",
+    input_types={
+        "a": tile(dtype=vector(length=2, dtype=Float), shape=tuple[int, int]),
+        "b": tile(dtype=vector(length=2, dtype=Float), shape=tuple[int, int]),
+        "alpha": Float,
+    },
+    defaults={"alpha": 1.0},
+    value_func=_tile_matmul_complex_value_func,
+    variadic=False,
+    group="Tile Primitives",
+    export=False,
+    hidden=True,
 )
 
 

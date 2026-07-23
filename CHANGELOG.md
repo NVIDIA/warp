@@ -63,6 +63,10 @@
   Language Reference and API Reference closer to the User Guide, and consolidate memory-management guidance.
 - Speed up redeclaring kernels created by factory functions
   ([GH-1486](https://github.com/NVIDIA/warp/issues/1486)).
+- Remove `vec2h`, `vec2f`, and `vec2d` (complex) from the documented `wp.tile_matmul()` dtypes. Complex tiles were
+  never accepted by the builtin's overload, so the listing advertised support that did not exist. `wp.tile_matmul()`
+  now raises an actionable error for complex tiles instead of an opaque overload-resolution failure
+  ([GH-1682](https://github.com/NVIDIA/warp/issues/1682)).
 
 ### Fixed
 
