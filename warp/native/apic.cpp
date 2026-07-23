@@ -19,17 +19,49 @@
 #include "apic.h"
 #include "apic_internal.h"
 #include "error.h"
+#include "hashgrid.h"
 #include "mesh.h"
 
 #include <algorithm>
 #include <cassert>
 #include <climits>
+#include <cmath>
 #include <cstddef>  // offsetof
 #include <cstdint>  // SIZE_MAX
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <string>
+
+// Convert a strided view into its lowest touched byte and full backing span,
+// including negative strides whose logical first element is not the base.
+static bool apic_compute_strided_span(
+    int32_t count,
+    int32_t stride,
+    uint64_t element_size,
+    uint64_t logical_offset,
+    uint64_t* low_offset,
+    uint64_t* span_size
+)
+{
+    if (count < 0 || element_size == 0)
+        return false;
+    if (count == 0) {
+        *low_offset = logical_offset;
+        *span_size = 0;
+        return true;
+    }
+
+    const int64_t last_delta = static_cast<int64_t>(count - 1) * static_cast<int64_t>(stride);
+    const uint64_t before = last_delta < 0 ? static_cast<uint64_t>(-last_delta) : 0;
+    const uint64_t after = last_delta > 0 ? static_cast<uint64_t>(last_delta) : 0;
+    if (logical_offset < before || after > UINT64_MAX - element_size || before > UINT64_MAX - after - element_size)
+        return false;
+
+    *low_offset = logical_offset - before;
+    *span_size = before + after + element_size;
+    return true;
+}
 
 // ============================================================================
 // Thread-local Recording State
@@ -760,21 +792,10 @@ static void apic_record_bvh_op(APICState* state, APICOpType op_type, uint64_t bv
     state->append_bytes(&rec, sizeof(rec));
     state->operation_count++;
     // The record replays by re-invoking the host function on this raw,
-    // process-local BVH handle, so the stream can no longer be serialized.
-    // Mark it nonportable so wp_apic_state_save() refuses it up front; keep the
-    // first offending op's name for the error in a mixed refit/rebuild graph.
-    //
-    // KNOWN LIMITATION: this marker is set eagerly at record time and is NOT
-    // rolled back with branch capture. If a BVH op is recorded inside a
-    // capture_if/capture_while body that then raises, wp_apic_end_branch()
-    // discards the op from the operation stream but leaves this marker set -- so
-    // a caller that recovers from the exception and reuses the finalized graph
-    // gets a spurious capture_save() rejection for a graph with no BVH op left.
-    // Fail-safe (over-rejects; never writes a bad .wrp) and needs unusual error
-    // recovery, so it is left as-is; the planned fix derives nonportability
-    // from the finalized stream at save time instead of here.
-    if (!state->nonportable_reason)
-        state->nonportable_reason = (op_type == APIC_OP_BVH_REBUILD) ? "wp.Bvh.rebuild()" : "wp.Bvh.refit()";
+    // process-local BVH handle, so the stream cannot be serialized. That is
+    // enforced at save time by scanning the finalized operation stream (see
+    // apic_stream_first_nonserializable_op), which correctly ignores ops that a
+    // branch body discards when it unwinds -- rather than by a flag set here.
 }
 
 void apic_record_bvh_refit(APICState* state, uint64_t bvh_id)
@@ -785,6 +806,80 @@ void apic_record_bvh_refit(APICState* state, uint64_t bvh_id)
 void apic_record_bvh_rebuild(APICState* state, uint64_t bvh_id, int32_t constructor_type)
 {
     apic_record_bvh_op(state, APIC_OP_BVH_REBUILD, bvh_id, constructor_type);
+}
+
+void apic_record_hash_grid_update(
+    APICState* state,
+    uint64_t grid_id,
+    uint8_t grid_type,
+    double cell_width,
+    const void* points_data,
+    int32_t point_count,
+    int32_t points_stride,
+    const void* groups_data,
+    int32_t groups_stride,
+    uint8_t has_groups
+)
+{
+    if (!state)
+        return;
+
+    uint64_t point_element_size = 0;
+    switch (grid_type) {
+    case wp::HASH_GRID_TYPE_FLOAT16:
+        point_element_size = sizeof(wp::vec3h);
+        break;
+    case wp::HASH_GRID_TYPE_FLOAT32:
+        point_element_size = sizeof(wp::vec3f);
+        break;
+    case wp::HASH_GRID_TYPE_FLOAT64:
+        point_element_size = sizeof(wp::vec3d);
+        break;
+    }
+
+    // HashGrid updates are live-only, so retain region IDs without snapshotting
+    // potentially large backing allocations into the serialized memory table.
+    APICAddress points_address;
+    APICAddress groups_address;
+    if (point_count > 0 && points_data && point_element_size > 0) {
+        const uint64_t logical_address = reinterpret_cast<uint64_t>(points_data);
+        uint64_t low_address;
+        uint64_t span_size;
+        if (apic_compute_strided_span(
+                point_count, points_stride, point_element_size, logical_address, &low_address, &span_size
+            )) {
+            points_address = apic_resolve_live_ptr(state, low_address, span_size);
+            points_address.offset += logical_address - low_address;
+        }
+    }
+    if (has_groups && point_count > 0 && groups_data) {
+        const uint64_t logical_address = reinterpret_cast<uint64_t>(groups_data);
+        uint64_t low_address;
+        uint64_t span_size;
+        if (apic_compute_strided_span(
+                point_count, groups_stride, sizeof(int32_t), logical_address, &low_address, &span_size
+            )) {
+            groups_address = apic_resolve_live_ptr(state, low_address, span_size);
+            groups_address.offset += logical_address - low_address;
+        }
+    }
+
+    APICHashGridUpdateRecord rec = {};
+    rec.header.op_type = APIC_OP_HASH_GRID_UPDATE;
+    rec.header.total_size = sizeof(rec);
+    rec.grid_id = grid_id;
+    rec.cell_width = cell_width;
+    rec.points_region_id = points_address.region_id;
+    rec.groups_region_id = has_groups ? groups_address.region_id : -1;
+    rec.points_offset = points_address.offset;
+    rec.groups_offset = has_groups ? groups_address.offset : 0;
+    rec.point_count = point_count;
+    rec.points_stride = points_stride;
+    rec.groups_stride = has_groups ? groups_stride : 0;
+    rec.grid_type = grid_type;
+    rec.has_groups = has_groups;
+    state->append_bytes(&rec, sizeof(rec));
+    state->operation_count++;
 }
 
 // ============================================================================
@@ -1683,6 +1778,66 @@ bool apic_validate_operation_stream(const uint8_t* data, size_t size, uint32_t o
                 return false;
             }
             break;
+        case APIC_OP_HASH_GRID_UPDATE: {
+            if (header->total_size != sizeof(APICHashGridUpdateRecord)) {
+                fprintf(stderr, "APIC: Error - invalid HashGrid update record size at operation %u\n", i);
+                return false;
+            }
+            const auto* rec = reinterpret_cast<const APICHashGridUpdateRecord*>(ptr);
+            if (rec->grid_id == 0 || !std::isfinite(rec->cell_width) || rec->cell_width <= 0.0 || rec->point_count < 0
+                || rec->has_groups > 1 || rec->grid_type > wp::HASH_GRID_TYPE_FLOAT64) {
+                fprintf(stderr, "APIC: Error - invalid HashGrid update metadata at operation %u\n", i);
+                return false;
+            }
+
+            uint64_t point_element_size;
+            switch (rec->grid_type) {
+            case wp::HASH_GRID_TYPE_FLOAT16:
+                point_element_size = sizeof(wp::vec3h);
+                break;
+            case wp::HASH_GRID_TYPE_FLOAT32:
+                point_element_size = sizeof(wp::vec3f);
+                break;
+            default:
+                point_element_size = sizeof(wp::vec3d);
+                break;
+            }
+
+            if (rec->points_region_id == 0 || rec->points_region_id < -1 || rec->groups_region_id == 0
+                || rec->groups_region_id < -1) {
+                fprintf(stderr, "APIC: Error - invalid HashGrid update region id at operation %u\n", i);
+                return false;
+            }
+
+            uint64_t low_offset;
+            uint64_t span_size;
+            if ((rec->point_count > 0 && rec->points_region_id < 1)
+                || (rec->points_region_id == -1 && rec->points_offset != 0)
+                || !apic_compute_strided_span(
+                    rec->point_count, rec->points_stride, point_element_size, rec->points_offset, &low_offset,
+                    &span_size
+                )) {
+                fprintf(stderr, "APIC: Error - invalid HashGrid update points span at operation %u\n", i);
+                return false;
+            }
+
+            if (!rec->has_groups) {
+                if (rec->groups_region_id != -1 || rec->groups_offset != 0 || rec->groups_stride != 0) {
+                    fprintf(stderr, "APIC: Error - invalid HashGrid update groups sentinel at operation %u\n", i);
+                    return false;
+                }
+            } else if (
+                (rec->point_count > 0 && rec->groups_region_id < 1)
+                || (rec->groups_region_id == -1 && rec->groups_offset != 0)
+                || !apic_compute_strided_span(
+                    rec->point_count, rec->groups_stride, sizeof(int32_t), rec->groups_offset, &low_offset, &span_size
+                )
+            ) {
+                fprintf(stderr, "APIC: Error - invalid HashGrid update groups span at operation %u\n", i);
+                return false;
+            }
+            break;
+        }
         case APIC_OP_IF:
         case APIC_OP_WHILE: {
             if (op_end < op_start + sizeof(APICCondRecord)) {
@@ -1693,6 +1848,13 @@ bool apic_validate_operation_stream(const uint8_t* data, size_t size, uint32_t o
             if (sizeof(APICCondRecord) + (uint64_t)rec->branch_a_size + (uint64_t)rec->branch_b_size
                 > header->total_size) {
                 fprintf(stderr, "APIC: Error - cond branch sizes overflow at operation %u\n", i);
+                return false;
+            }
+            // Nested stream scans trust these counts, so an empty byte range
+            // must also declare zero operations.
+            if ((rec->branch_a_size == 0) != (rec->branch_a_op_count == 0)
+                || (rec->branch_b_size == 0) != (rec->branch_b_op_count == 0)) {
+                fprintf(stderr, "APIC: Error - cond branch size/count mismatch at operation %u\n", i);
                 return false;
             }
             const uint8_t* branch_a = op_start + sizeof(APICCondRecord);
@@ -1727,6 +1889,59 @@ bool apic_validate_operation_stream(const uint8_t* data, size_t size, uint32_t o
     }
 
     return true;
+}
+
+// Human-facing name for a BVH op type (nullptr for any non-BVH op). BVH refit /
+// rebuild replay by re-invoking a host function on a process-local BVH handle,
+// so a stream that records one cannot cross a save/load boundary; naming the op
+// makes the rejection actionable.
+static const char* apic_bvh_op_name(uint32_t op_type)
+{
+    switch (op_type) {
+    case APIC_OP_BVH_REFIT:
+        return "wp.Bvh.refit()";
+    case APIC_OP_BVH_REBUILD:
+        return "wp.Bvh.rebuild()";
+    default:
+        return nullptr;
+    }
+}
+
+// Returns the op_type of the first operation in `data` whose replay depends on a
+// process-local handle -- BVH refit/rebuild (a live BVH pointer) or a HashGrid
+// update (a live grid_id) -- or 0 if the stream is fully serializable. Recurses
+// into capture_if / capture_while branch bodies. Deriving non-serializability
+// from the finalized stream, rather than from a flag set eagerly when an op is
+// recorded, means an op that a branch body discards when it unwinds no longer
+// blocks a later save. Callers validate the stream first, so record sizes and
+// nested operation counts are trusted here.
+static uint32_t apic_stream_first_nonserializable_op(const uint8_t* data, uint32_t operation_count)
+{
+    const uint8_t* ptr = data;
+    for (uint32_t i = 0; i < operation_count; ++i) {
+        const auto* header = reinterpret_cast<const APICOpHeader*>(ptr);
+        switch (header->op_type) {
+        case APIC_OP_BVH_REFIT:
+        case APIC_OP_BVH_REBUILD:
+        case APIC_OP_HASH_GRID_UPDATE:
+            return header->op_type;
+        case APIC_OP_IF:
+        case APIC_OP_WHILE: {
+            const auto* rec = reinterpret_cast<const APICCondRecord*>(ptr);
+            const uint8_t* branch_a = ptr + sizeof(APICCondRecord);
+            const uint8_t* branch_b = branch_a + rec->branch_a_size;
+            if (uint32_t op = apic_stream_first_nonserializable_op(branch_a, rec->branch_a_op_count))
+                return op;
+            if (uint32_t op = apic_stream_first_nonserializable_op(branch_b, rec->branch_b_op_count))
+                return op;
+            break;
+        }
+        default:
+            break;
+        }
+        ptr += header->total_size;
+    }
+    return 0;
 }
 
 // ============================================================================
@@ -1823,6 +2038,28 @@ static size_t apic_args_buf_size(const APICLaunchParamRecord* bindings, uint16_t
         total += binding->value_size;
     }
     return total;
+}
+
+template <typename VecType>
+static void apic_execute_hash_grid_update(const APICHashGridUpdateRecord* rec, void* points_data, void* groups_data)
+{
+    // Recreate transient descriptors around replay-resolved data because the
+    // captured array descriptors contain process-local pointers.
+    wp::array_t<VecType> points = {};
+    points.data = static_cast<VecType*>(points_data);
+    points.ndim = 1;
+    points.shape[0] = rec->point_count;
+    points.strides[0] = rec->points_stride;
+
+    wp::array_t<int> groups = {};
+    groups.data = static_cast<int*>(groups_data);
+    groups.ndim = 1;
+    groups.shape[0] = rec->point_count;
+    groups.strides[0] = rec->groups_stride;
+
+    wp_hash_grid_update_host(
+        rec->grid_id, rec->grid_type, rec->cell_width, &points, rec->has_groups ? &groups : nullptr
+    );
 }
 
 // Walk an APIC byte stream and execute CPU operations. Assumes the stream
@@ -2359,6 +2596,76 @@ static bool apic_cpu_replay_stream(
             break;
         }
 
+        case APIC_OP_HASH_GRID_UPDATE: {
+            const auto* rec = reinterpret_cast<const APICHashGridUpdateRecord*>(ptr);
+            uint64_t point_element_size;
+            switch (rec->grid_type) {
+            case wp::HASH_GRID_TYPE_FLOAT16:
+                point_element_size = sizeof(wp::vec3h);
+                break;
+            case wp::HASH_GRID_TYPE_FLOAT32:
+                point_element_size = sizeof(wp::vec3f);
+                break;
+            default:
+                point_element_size = sizeof(wp::vec3d);
+                break;
+            }
+
+            void* points_data = nullptr;
+            if (rec->point_count > 0) {
+                uint64_t low_offset;
+                uint64_t span_size;
+                if (!apic_compute_strided_span(
+                        rec->point_count, rec->points_stride, point_element_size, rec->points_offset, &low_offset,
+                        &span_size
+                    )) {
+                    fprintf(stderr, "APIC: Error - HashGrid points span invalid at operation %u\n", i);
+                    return false;
+                }
+                void* low_data = resolve_ptr(rec->points_region_id, low_offset, span_size);
+                if (!low_data) {
+                    fprintf(stderr, "APIC: Error - HashGrid points resolution failed at operation %u\n", i);
+                    return false;
+                }
+                points_data = static_cast<uint8_t*>(low_data) + (rec->points_offset - low_offset);
+            }
+
+            void* groups_data = nullptr;
+            if (rec->has_groups && rec->point_count > 0) {
+                uint64_t low_offset;
+                uint64_t span_size;
+                if (!apic_compute_strided_span(
+                        rec->point_count, rec->groups_stride, sizeof(int32_t), rec->groups_offset, &low_offset,
+                        &span_size
+                    )) {
+                    fprintf(stderr, "APIC: Error - HashGrid groups span invalid at operation %u\n", i);
+                    return false;
+                }
+                void* low_data = resolve_ptr(rec->groups_region_id, low_offset, span_size);
+                if (!low_data) {
+                    fprintf(stderr, "APIC: Error - HashGrid groups resolution failed at operation %u\n", i);
+                    return false;
+                }
+                groups_data = static_cast<uint8_t*>(low_data) + (rec->groups_offset - low_offset);
+            }
+
+            switch (rec->grid_type) {
+            case wp::HASH_GRID_TYPE_FLOAT16:
+                apic_execute_hash_grid_update<wp::vec3h>(rec, points_data, groups_data);
+                break;
+            case wp::HASH_GRID_TYPE_FLOAT32:
+                apic_execute_hash_grid_update<wp::vec3f>(rec, points_data, groups_data);
+                break;
+            case wp::HASH_GRID_TYPE_FLOAT64:
+                apic_execute_hash_grid_update<wp::vec3d>(rec, points_data, groups_data);
+                break;
+            default:
+                fprintf(stderr, "APIC: Error - unsupported HashGrid type at operation %u\n", i);
+                return false;
+            }
+            break;
+        }
+
         case APIC_OP_IF: {
             const APICCondRecord* rec = reinterpret_cast<const APICCondRecord*>(ptr);
             const uint8_t* branch_a = ptr + sizeof(APICCondRecord);
@@ -2522,16 +2829,31 @@ bool wp_apic_state_save(APICState* state, const char* path, int target_arch, voi
         return false;
     }
 
+    if (!apic_validate_operation_stream(
+            state->operation_stream.data(), state->operation_stream.size(), state->operation_count
+        )) {
+        wp::set_error_string("APIC operation stream failed validation");
+        return false;
+    }
+
     // Refuse to serialize a stream whose replay depends on a process-local
-    // handle (e.g. wp.Bvh.refit()/rebuild()). The recorded handle would dangle
-    // when the graph is loaded in another process; fail with an actionable
-    // error instead of writing a .wrp that crashes at replay.
-    if (state->nonportable_reason) {
+    // handle (a live BVH pointer or HashGrid grid_id). Such a handle would
+    // dangle when the graph is loaded in another process, so fail with an
+    // actionable error instead of writing a .wrp that crashes at replay. The
+    // check scans the finalized stream, so ops discarded by branch-capture
+    // unwinding do not count.
+    const uint32_t nonserializable_op
+        = apic_stream_first_nonserializable_op(state->operation_stream.data(), state->operation_count);
+    if (const char* bvh_op = apic_bvh_op_name(nonserializable_op)) {
         wp::set_error_string(
             "Cannot serialize a captured graph that records %s: the BVH handle is process-local and cannot be "
             "saved to a .wrp. Replay the captured graph in-process instead of saving it.",
-            state->nonportable_reason
+            bvh_op
         );
+        return false;
+    }
+    if (nonserializable_op == APIC_OP_HASH_GRID_UPDATE) {
+        wp::set_error_string("HashGrid serialization is not yet supported in APIC graphs");
         return false;
     }
 
@@ -2910,12 +3232,6 @@ APICGraph* wp_apic_load_graph(void* context, const char* path, int device_type)
         return nullptr;
     }
 
-    APICGraph* graph = new APICGraph();
-    graph->cuda_context = context;
-    graph->target_arch = header->target_arch;
-    graph->device_type = static_cast<APICDeviceType>(device_type);
-    graph->base_path = base_name;
-
     const APICSectionEntry* sections
         = reinterpret_cast<const APICSectionEntry*>(file_data.data() + header->section_table_offset);
 
@@ -2938,6 +3254,47 @@ APICGraph* wp_apic_load_graph(void* context, const char* path, int device_type)
             operations_size = sections[i].size;
         }
     }
+
+    // Validate operations before allocating or reconstructing graph resources.
+    // The later recursive scan relies on validation for safe traversal.
+    uint32_t operation_count = 0;
+    const uint8_t* operation_stream = nullptr;
+    size_t operation_stream_size = 0;
+    if (operations_ptr) {
+        if (operations_size < sizeof(operation_count)) {
+            wp::set_error_string("Failed to parse operations");
+            return nullptr;
+        }
+        memcpy(&operation_count, operations_ptr, sizeof(operation_count));
+        operation_stream = operations_ptr + sizeof(operation_count);
+        operation_stream_size = operations_size - sizeof(operation_count);
+        if (!apic_validate_operation_stream(operation_stream, operation_stream_size, operation_count)) {
+            wp::set_error_string("APIC operation stream failed validation");
+            return nullptr;
+        }
+        // A well-formed .wrp never records a process-local handle (wp_apic_state_save
+        // refuses one); reject defensively in case of a hand-crafted or corrupt file,
+        // since a loaded graph cannot reconstruct the live BVH pointer or grid_id.
+        const uint32_t nonserializable_op = apic_stream_first_nonserializable_op(operation_stream, operation_count);
+        if (const char* bvh_op = apic_bvh_op_name(nonserializable_op)) {
+            wp::set_error_string(
+                "Cannot load a captured graph that records %s: the BVH handle is process-local and cannot be "
+                "reconstructed from a .wrp.",
+                bvh_op
+            );
+            return nullptr;
+        }
+        if (nonserializable_op == APIC_OP_HASH_GRID_UPDATE) {
+            wp::set_error_string("HashGrid serialization is not yet supported in APIC graphs");
+            return nullptr;
+        }
+    }
+
+    APICGraph* graph = new APICGraph();
+    graph->cuda_context = context;
+    graph->target_arch = header->target_arch;
+    graph->device_type = static_cast<APICDeviceType>(device_type);
+    graph->base_path = base_name;
 
     if (metadata_ptr && metadata_size > 0) {
         if (!apic_parse_metadata(metadata_ptr, metadata_size, graph)) {
@@ -2985,17 +3342,8 @@ APICGraph* wp_apic_load_graph(void* context, const char* path, int device_type)
         return nullptr;
     }
 
-    // Validate the operation byte stream once, before any replay/rebuild consumes it.
-    // Downstream paths (apic_rebuild_cuda_graph, wp_apic_cpu_replay_graph) gate on
-    // graph->operations_validated and skip per-op bounds checks.
-    graph->operations_validated = apic_validate_operation_stream(
-        graph->operation_stream.data(), graph->operation_stream.size(), graph->operation_count
-    );
-    if (!graph->operations_validated) {
-        wp::set_error_string("APIC operation stream failed validation");
-        delete graph;
-        return nullptr;
-    }
+    // The raw operation section was validated before graph resources were built.
+    graph->operations_validated = true;
 
     return graph;
 }

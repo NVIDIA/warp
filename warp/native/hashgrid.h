@@ -5,6 +5,12 @@
 
 namespace wp {
 
+enum HashGridTypeId {
+    HASH_GRID_TYPE_FLOAT16 = 0,
+    HASH_GRID_TYPE_FLOAT32 = 1,
+    HASH_GRID_TYPE_FLOAT64 = 2,
+};
+
 // Note: Field order is important! Type-independent fields come first so that
 // point_ids is at a consistent offset regardless of Type. This allows
 // hash_grid_point_id to work without knowing the grid's scalar type.
