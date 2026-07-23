@@ -351,7 +351,7 @@ values::
     def row_sum(values: wp.array2d[float], output: wp.array[float]):
         row = wp.tid()
         tile = wp.tile_load(values[row], shape=TILE_SIZE)
-        wp.tile_store(output[row], wp.tile_sum(tile))
+        wp.tile_store(output, wp.tile_sum(tile), offset=row)
 
     jax_row_sum = wp.jax_kernel(
         row_sum,
