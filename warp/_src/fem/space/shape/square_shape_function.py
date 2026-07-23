@@ -823,6 +823,7 @@ class SquareNedelecFirstKindShapeFunctions(SquareShapeFunction):
             coords = CoordsType()
             coords[axis] = scalar(0.5)
             coords[1 - axis] = scalar(type_instance)
+            return coords
 
         return node_coords_in_element
 
@@ -941,6 +942,7 @@ class SquareRaviartThomasShapeFunctions(SquareShapeFunction):
             coords = CoordsType()
             coords[axis] = scalar(0.5)
             coords[1 - axis] = scalar(type_instance)
+            return coords
 
         return node_coords_in_element
 
