@@ -261,7 +261,7 @@ def test_unified_memory_relaxed_allows_cpu_launch_with_gpu_array(test, device):
 
 
 def test_unified_memory_strict_rejects_cuda_launch_with_pinned_cpu_array(test, device):
-    """Strict mode restores the original same-device rule."""
+    """Strict mode explains that it enforces the same-device rule."""
 
     if not device.is_uva:
         test.skipTest(f"{device} does not support unified virtual addressing")
@@ -269,9 +269,23 @@ def test_unified_memory_strict_rejects_cuda_launch_with_pinned_cpu_array(test, d
     src = wp.array(np.arange(4, dtype=np.float32), dtype=wp.float32, device="cpu", pinned=True)
     dst = wp.empty(4, dtype=wp.float32, device=device)
 
+    test.assertTrue(wp.can_access(device, src))
+
     with launch_array_access_mode(wp.config.LaunchArrayAccessMode.STRICT):
-        with test.assertRaisesRegex(RuntimeError, "is on device=cpu"):
+        with test.assertRaises(RuntimeError) as exception_context:
             wp.launch(read_cpu_write_gpu, dim=src.size, inputs=[src], outputs=[dst], device=device, record_cmd=True)
+
+    message = str(exception_context.exception)
+    test.assertIn(
+        "warp.config.LaunchArrayAccessMode.STRICT requires every Warp array argument "
+        "to be allocated on the launch device",
+        message,
+    )
+    test.assertIn(f"argument 'src' is on device={src.device}", message)
+    test.assertIn(f"on device='{device}'", message)
+    test.assertIn("memory_kind=PINNED", message)
+    test.assertIn("use warp.config.LaunchArrayAccessMode.CHECKED", message)
+    test.assertNotIn("not accessible or cannot be verified", message)
 
 
 def test_unified_memory_cuda_launch_reads_cpu_array_when_supported(test, device):
