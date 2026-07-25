@@ -1,0 +1,96 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+# Inspired by NVIDIA/cuda-python's fetch_ctk action:
+# https://github.com/NVIDIA/cuda-python/blob/0d22cb4444134f9c1d2ce168257722c029920294/.github/actions/fetch_ctk/action.yml
+# Warp uses a checked-in lock and caches assembled CUDA Toolkits.
+# See tools/ci/cuda_toolkit.py for lock refresh and maintenance instructions.
+
+name: Set up CUDA Toolkit for Warp
+description: Install Warp's locked CUDA build toolkit
+
+inputs:
+  version:
+    description: >-
+      CUDA Toolkit release defined in
+      tools/ci/cuda_toolkit_requirements.json; currently 12.9.2 or 13.0.3.
+    required: true
+  platform:
+    description: >-
+      NVIDIA redistributable platform key for the selected release.
+      12.9.2 supports windows-x86_64, linux-x86_64, and linux-aarch64;
+      13.0.3 supports windows-x86_64, linux-x86_64, and linux-sbsa.
+    required: true
+  cache-read:
+    description: >-
+      Set to "true" to restore an assembled Toolkit from GitHub cache.
+    default: "false"
+  cache-write:
+    description: >-
+      Set to "true" to save an assembled Toolkit to GitHub cache.
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Resolve locked CUDA Toolkit bundle
+      id: resolve
+      shell: bash
+      env:
+        WARP_CUDA_VERSION: ${{ inputs.version }}
+        WARP_CUDA_PLATFORM: ${{ inputs.platform }}
+        WARP_CUDA_CACHE_READ: ${{ inputs.cache-read }}
+        WARP_CUDA_CACHE_WRITE: ${{ inputs.cache-write }}
+      run: |
+        echo "CUDA Toolkit cache policy: read=$WARP_CUDA_CACHE_READ write=$WARP_CUDA_CACHE_WRITE"
+        uv run --no-project python \
+          "$GITHUB_WORKSPACE/tools/ci/cuda_toolkit.py" resolve \
+          --version "$WARP_CUDA_VERSION" \
+          --platform "$WARP_CUDA_PLATFORM" \
+          --github-output "$GITHUB_OUTPUT" \
+          --runner-temp "$RUNNER_TEMP"
+
+    - name: Restore assembled CUDA Toolkit
+      id: cache
+      if: inputs.cache-read == 'true'
+      continue-on-error: true
+      uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
+      with:
+        key: ${{ steps.resolve.outputs.cache-key }}
+        path: ${{ steps.resolve.outputs.cuda-path }}
+        fail-on-cache-miss: false
+
+    - name: Install assembled CUDA Toolkit
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        WARP_CUDA_VERSION: ${{ inputs.version }}
+        WARP_CUDA_PLATFORM: ${{ inputs.platform }}
+        WARP_CUDA_INSTALL_PATH: ${{ steps.resolve.outputs.cuda-path }}
+      run: |
+        uv run --no-project python \
+          "$GITHUB_WORKSPACE/tools/ci/cuda_toolkit.py" install \
+          --version "$WARP_CUDA_VERSION" \
+          --platform "$WARP_CUDA_PLATFORM" \
+          --cuda-path "$WARP_CUDA_INSTALL_PATH"
+
+    - name: Activate assembled CUDA Toolkit
+      shell: bash
+      env:
+        WARP_CUDA_PLATFORM: ${{ inputs.platform }}
+        WARP_CUDA_INSTALL_PATH: ${{ steps.resolve.outputs.cuda-path }}
+      run: |
+        uv run --no-project python \
+          "$GITHUB_WORKSPACE/tools/ci/cuda_toolkit.py" activate \
+          --platform "$WARP_CUDA_PLATFORM" \
+          --cuda-path "$WARP_CUDA_INSTALL_PATH" \
+          --github-env "$GITHUB_ENV" \
+          --github-path "$GITHUB_PATH"
+
+    - name: Save assembled CUDA Toolkit
+      if: inputs.cache-write == 'true' && steps.cache.outputs.cache-hit != 'true'
+      continue-on-error: true
+      uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
+      with:
+        key: ${{ steps.resolve.outputs.cache-key }}
+        path: ${{ steps.resolve.outputs.cuda-path }}

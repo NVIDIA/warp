@@ -5,6 +5,12 @@ name: CI
 
 on:
   workflow_call:
+    inputs:
+      allow-ctk-cache-save:
+        description: Permit a trusted caller to save branch-scoped CTK caches
+        required: false
+        type: boolean
+        default: false
     secrets:
       CODECOV_TOKEN:
         required: false
@@ -34,46 +40,39 @@ jobs:
           # CUDA 12.x and CUDA 13.0 reject the VS 2026 image.
           - os: windows-2022
             platform: windows
-            cuda-version: "12.9.1"
+            cuda-version: "12.9.2"
+            cuda-platform: windows-x86_64
             artifact-name: build-artifact-windows-cuda12
-            cuda-sub-packages: '["cudart", "nvcc", "nvrtc_dev", "nvjitlink"]'
-            cuda-non-cuda-packages: ''
           - os: windows-2022
             platform: windows
-            cuda-version: "13.0.2"
+            cuda-version: "13.0.3"
+            cuda-platform: windows-x86_64
             artifact-name: build-artifact-windows-cuda13
-            cuda-sub-packages: '["cudart", "crt", "nvcc", "nvrtc_dev", "nvjitlink", "nvvm", "nvptxcompiler"]'
-            cuda-non-cuda-packages: ''
           - os: ubuntu-24.04
             platform: ubuntu-x86_64
-            cuda-version: "12.9.1"
+            cuda-version: "12.9.2"
+            cuda-platform: linux-x86_64
             artifact-name: build-artifact-ubuntu-x86_64-cuda12
-            cuda-sub-packages: '["cudart-dev", "nvcc", "nvrtc-dev"]'
-            cuda-non-cuda-packages: '["libnvjitlink-dev"]'
           - os: ubuntu-24.04
             platform: ubuntu-x86_64
-            cuda-version: "13.0.2"
+            cuda-version: "13.0.3"
+            cuda-platform: linux-x86_64
             artifact-name: build-artifact-ubuntu-x86_64-cuda13
-            cuda-sub-packages: '["cudart-dev", "nvcc", "nvrtc-dev"]'
-            cuda-non-cuda-packages: '["libnvjitlink-dev"]'
           - os: ubuntu-24.04-arm
             platform: ubuntu-aarch64
-            cuda-version: "12.9.1"
+            cuda-version: "12.9.2"
+            cuda-platform: linux-aarch64
             artifact-name: build-artifact-ubuntu-aarch64-cuda12
-            cuda-sub-packages: '["cudart-dev", "nvcc", "nvrtc-dev"]'
-            cuda-non-cuda-packages: '["libnvjitlink-dev"]'
           - os: ubuntu-24.04-arm
             platform: ubuntu-aarch64
-            cuda-version: "13.0.2"
+            cuda-version: "13.0.3"
+            cuda-platform: linux-sbsa
             artifact-name: build-artifact-ubuntu-aarch64-cuda13
-            cuda-sub-packages: '["cudart-dev", "nvcc", "nvrtc-dev"]'
-            cuda-non-cuda-packages: '["libnvjitlink-dev"]'
           - os: macos-latest
             platform: macos
             cuda-version: ''
+            cuda-platform: ''
             artifact-name: build-artifact-macos
-            cuda-sub-packages: ''
-            cuda-non-cuda-packages: ''
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
@@ -90,31 +89,23 @@ jobs:
         run: uv python install
       
       - name: Cache build artifacts
-        if: matrix.platform != 'macos'
+        if: matrix.platform != 'macos' && github.repository == 'NVIDIA/warp'
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
         id: cache-build
         with:
           path: warp/bin/
           # Hash only native-binary inputs. VERSION.md changes flow through
           # generated warp/native/version.h, which is covered by native headers.
-          key: build-${{ matrix.artifact-name }}-${{ matrix.cuda-version }}-${{ hashFiles('build_lib.py', 'build_llvm.py', 'warp/_src/build_dll.py', 'warp/native/**/*.cpp', 'warp/native/**/*.cu', 'warp/native/**/*.cuh', 'warp/native/**/*.h', 'warp/native/libdevice/*.bc', 'warp/native/warp.map', 'deps/libmathdx-deps.packman.xml') }}
+          key: build-${{ matrix.artifact-name }}-${{ matrix.cuda-version }}-${{ hashFiles('build_lib.py', 'build_llvm.py', 'warp/_src/build_dll.py', 'warp/native/**/*.cpp', 'warp/native/**/*.cu', 'warp/native/**/*.cuh', 'warp/native/**/*.h', 'warp/native/libdevice/*.bc', 'warp/native/warp.map', 'deps/libmathdx-deps.packman.xml', '.github/actions/setup-warp-cuda/action.yml', 'tools/ci/cuda_toolkit.py', 'tools/ci/cuda_toolkit_requirements.json', 'tools/ci/cuda_toolkit_lock.json') }}
       
-      - name: Install CTK (with non-CUDA packages)
-        if: steps.cache-build.outputs.cache-hit != 'true' && matrix.cuda-sub-packages != '' && matrix.cuda-non-cuda-packages != ''
-        uses: Jimver/cuda-toolkit@3d45d157f327c09c04b50ee6ccdea2d9d017ec76  # v0.2.35
+      - name: Set up CUDA Toolkit for Warp
+        if: steps.cache-build.outputs.cache-hit != 'true' && matrix.cuda-version != ''
+        uses: ./.github/actions/setup-warp-cuda
         with:
-          cuda: ${{ matrix.cuda-version }}
-          sub-packages: ${{ matrix.cuda-sub-packages }}
-          non-cuda-sub-packages: ${{ matrix.cuda-non-cuda-packages }}
-          method: 'network'
-      
-      - name: Install CTK (without non-CUDA packages)
-        if: steps.cache-build.outputs.cache-hit != 'true' && matrix.cuda-sub-packages != '' && matrix.cuda-non-cuda-packages == ''
-        uses: Jimver/cuda-toolkit@3d45d157f327c09c04b50ee6ccdea2d9d017ec76  # v0.2.35
-        with:
-          cuda: ${{ matrix.cuda-version }}
-          sub-packages: ${{ matrix.cuda-sub-packages }}
-          method: 'network'
+          version: ${{ matrix.cuda-version }}
+          platform: ${{ matrix.cuda-platform }}
+          cache-read: ${{ github.repository == 'NVIDIA/warp' }}
+          cache-write: ${{ github.repository == 'NVIDIA/warp' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-') || inputs.allow-ctk-cache-save) }}
       
       - name: Build Warp
         if: steps.cache-build.outputs.cache-hit != 'true'
@@ -149,22 +140,23 @@ jobs:
         run: uv python install 3.14t
 
       - name: Cache build artifacts
+        if: github.repository == 'NVIDIA/warp'
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
         id: cache-build
         with:
           path: warp/bin/
           # Hash only native-binary inputs. VERSION.md changes flow through
           # generated warp/native/version.h, which is covered by native headers.
-          key: build-ubuntu-x86_64-cuda13-python314t-13.0.2-${{ hashFiles('build_lib.py', 'build_llvm.py', 'warp/_src/build_dll.py', 'warp/native/**/*.cpp', 'warp/native/**/*.cu', 'warp/native/**/*.cuh', 'warp/native/**/*.h', 'warp/native/libdevice/*.bc', 'warp/native/warp.map', 'deps/libmathdx-deps.packman.xml') }}
+          key: build-ubuntu-x86_64-cuda13-python314t-13.0.3-${{ hashFiles('build_lib.py', 'build_llvm.py', 'warp/_src/build_dll.py', 'warp/native/**/*.cpp', 'warp/native/**/*.cu', 'warp/native/**/*.cuh', 'warp/native/**/*.h', 'warp/native/libdevice/*.bc', 'warp/native/warp.map', 'deps/libmathdx-deps.packman.xml', '.github/actions/setup-warp-cuda/action.yml', 'tools/ci/cuda_toolkit.py', 'tools/ci/cuda_toolkit_requirements.json', 'tools/ci/cuda_toolkit_lock.json') }}
 
-      - name: Install CTK
+      - name: Set up CUDA Toolkit for Warp
         if: steps.cache-build.outputs.cache-hit != 'true'
-        uses: Jimver/cuda-toolkit@3d45d157f327c09c04b50ee6ccdea2d9d017ec76  # v0.2.35
+        uses: ./.github/actions/setup-warp-cuda
         with:
-          cuda: "13.0.2"
-          sub-packages: '["cudart-dev", "nvcc", "nvrtc-dev"]'
-          non-cuda-sub-packages: '["libnvjitlink-dev"]'
-          method: 'network'
+          version: "13.0.3"
+          platform: linux-x86_64
+          cache-read: ${{ github.repository == 'NVIDIA/warp' }}
+          cache-write: ${{ github.repository == 'NVIDIA/warp' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-') || inputs.allow-ctk-cache-save) }}
 
       - name: Build Warp
         if: steps.cache-build.outputs.cache-hit != 'true'
@@ -190,21 +182,18 @@ jobs:
           # CUDA 12.x and CUDA 13.0 reject the VS 2026 image.
           - os: windows-2022
             platform: windows
-            cuda-version: "13.0.2"
-            cuda-sub-packages: '["cudart", "crt", "nvcc", "nvrtc_dev", "nvjitlink", "nvvm", "nvptxcompiler"]'
-            cuda-non-cuda-packages: ''
+            cuda-version: "13.0.3"
+            cuda-platform: windows-x86_64
             warp-cache-path-suffix: '\warp-cache-cmake'
           - os: ubuntu-24.04
             platform: ubuntu-x86_64
-            cuda-version: "13.0.2"
-            cuda-sub-packages: '["cudart-dev", "nvcc", "nvrtc-dev"]'
-            cuda-non-cuda-packages: '["libnvjitlink-dev"]'
+            cuda-version: "13.0.3"
+            cuda-platform: linux-x86_64
             warp-cache-path-suffix: /warp-cache-cmake
           - os: ubuntu-24.04-arm
             platform: ubuntu-aarch64
-            cuda-version: "13.0.2"
-            cuda-sub-packages: '["cudart-dev", "nvcc", "nvrtc-dev"]'
-            cuda-non-cuda-packages: '["libnvjitlink-dev"]'
+            cuda-version: "13.0.3"
+            cuda-platform: linux-sbsa
             warp-cache-path-suffix: /warp-cache-cmake
     steps:
       - name: Checkout repository
@@ -221,22 +210,13 @@ jobs:
       - name: Set up Python
         run: uv python install
 
-      - name: Install CTK (with non-CUDA packages)
-        if: matrix.cuda-sub-packages != '' && matrix.cuda-non-cuda-packages != ''
-        uses: Jimver/cuda-toolkit@3d45d157f327c09c04b50ee6ccdea2d9d017ec76  # v0.2.35
+      - name: Set up CUDA Toolkit for Warp
+        uses: ./.github/actions/setup-warp-cuda
         with:
-          cuda: ${{ matrix.cuda-version }}
-          sub-packages: ${{ matrix.cuda-sub-packages }}
-          non-cuda-sub-packages: ${{ matrix.cuda-non-cuda-packages }}
-          method: 'network'
-
-      - name: Install CTK (without non-CUDA packages)
-        if: matrix.cuda-sub-packages != '' && matrix.cuda-non-cuda-packages == ''
-        uses: Jimver/cuda-toolkit@3d45d157f327c09c04b50ee6ccdea2d9d017ec76  # v0.2.35
-        with:
-          cuda: ${{ matrix.cuda-version }}
-          sub-packages: ${{ matrix.cuda-sub-packages }}
-          method: 'network'
+          version: ${{ matrix.cuda-version }}
+          platform: ${{ matrix.cuda-platform }}
+          cache-read: ${{ github.repository == 'NVIDIA/warp' }}
+          cache-write: ${{ github.repository == 'NVIDIA/warp' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-') || inputs.allow-ctk-cache-save) }}
 
       - name: Print build tool versions
         run: |
@@ -299,6 +279,31 @@ jobs:
           WARP_CACHE_PATH: ${{ runner.temp }}${{ matrix.warp-cache-path-suffix }}
         run: |
           uv run python -c "import warp; info = warp.print_diagnostics(); assert not info['warp_native'].startswith('unknown'); assert not info['warp_clang'].startswith('unknown')"
+
+
+  check-cuda-toolkit:
+    if: github.event_name != 'schedule' || github.repository == 'NVIDIA/warp'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57  # v8.0.0
+        with:
+          version: "0.11.16"
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Validate CUDA Toolkit tooling
+        run: |
+          uv run --no-project python tools/ci/cuda_toolkit.py validate-lock
+          uv run --no-project python tools/ci/test_cuda_toolkit.py
 
 
   test-warp-cpu:
@@ -428,6 +433,7 @@ jobs:
         with:
           base_sha: origin/main
           files: |
+            .github/actions/setup-warp-cuda/**
             .github/workflows/ci.yml
             .python-version
             warp/**
