@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "component_sets": {
+    "cuda12-warp-build": [
+      "cuda_cccl",
+      "cuda_cudart",
+      "cuda_nvcc",
+      "cuda_nvrtc",
+      "libnvjitlink"
+    ],
+    "cuda13-warp-build": [
+      "cuda_cccl",
+      "cuda_crt",
+      "cuda_cudart",
+      "cuda_nvcc",
+      "cuda_nvrtc",
+      "libnvvm",
+      "libnvptxcompiler",
+      "libnvjitlink"
+    ]
+  },
+  "releases": {
+    "12.9.2": {
+      "component_set": "cuda12-warp-build",
+      "platforms": [
+        "windows-x86_64",
+        "linux-x86_64",
+        "linux-aarch64"
+      ]
+    },
+    "13.0.3": {
+      "component_set": "cuda13-warp-build",
+      "platforms": [
+        "windows-x86_64",
+        "linux-x86_64",
+        "linux-sbsa"
+      ]
+    }
+  }
+}
