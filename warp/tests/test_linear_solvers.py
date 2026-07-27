@@ -126,6 +126,228 @@ def test_cg(test, device):
     _check_linear_solve(test, A, b, cg, maxiter=30)
 
 
+def test_cg_residual_refresh(test, device):
+    rng = np.random.default_rng(2027)
+    C = rng.standard_normal((12, 12))
+    A_np = C.T @ C + 4.0 * np.eye(12)
+    b_np = rng.standard_normal(12)
+
+    def make_callback(iterations):
+        def callback(iteration, _residual, _tolerance):
+            iterations.append(iteration)
+
+        return callback
+
+    with wp.ScopedDevice(device):
+        A = wp.array(A_np, dtype=wp.float64, device=device)
+        b = wp.array(b_np, dtype=wp.float64, device=device)
+        M = preconditioner(A, "diag")
+
+        for preconditioner_op in (None, M):
+            callback_iterations = []
+
+            x = wp.zeros_like(b)
+            niter, err, atol = cg(
+                A,
+                b,
+                x,
+                tol=1.0e-10,
+                maxiter=120,
+                M=preconditioner_op,
+                callback=make_callback(callback_iterations),
+                check_every=1,
+                use_cuda_graph=True,
+                residual_refresh=3,
+            )
+
+            test.assertLessEqual(err, atol)
+            test.assertEqual(niter % 3, 0)
+            test.assertEqual(callback_iterations[0], 0)
+            test.assertEqual(callback_iterations[-1], niter)
+            test.assertTrue(all(iteration % 3 == 0 for iteration in callback_iterations))
+
+            true_residual = A_np @ x.numpy() - b_np
+            test.assertLessEqual(np.linalg.norm(true_residual), atol)
+
+
+def _make_cg_residual_drift_system(batch_count):
+    dof_count = 130
+    chain_count = dof_count - 1
+    edge_count = chain_count - 1
+    mass = 3.0 / chain_count
+    edge_weight = 0.18**2 / (3.0 / edge_count)
+
+    A_single = mass * np.eye(dof_count)
+    for edge in range(edge_count):
+        A_single[edge, edge] += edge_weight
+        A_single[edge + 1, edge + 1] += edge_weight
+        A_single[edge, edge + 1] -= edge_weight
+        A_single[edge + 1, edge] -= edge_weight
+
+    fixed = np.arange(0, chain_count, 17)
+    A_single[fixed, :] = 0.0
+    A_single[:, fixed] = 0.0
+    A_single[fixed, fixed] = 1.0
+
+    A = np.kron(np.eye(batch_count), A_single).astype(np.float32)
+    rng = np.random.default_rng(7301)
+    initial = (0.1 * rng.standard_normal((batch_count, dof_count))).astype(np.float32)
+    b = (mass * initial).astype(np.float32)
+    initial[:, fixed] = 0.0
+    b[:, fixed] = 0.0
+
+    return A, b.reshape(-1), initial.reshape(-1)
+
+
+def test_cg_residual_refresh_float32_drift(test, device):
+    interval = 32
+    tolerance = 1.0e-6
+
+    for batch_count in (1, 3):
+        A_np, b_np, initial_np = _make_cg_residual_drift_system(batch_count)
+        dof_count = b_np.shape[0] // batch_count
+
+        with wp.ScopedDevice(device):
+            A = wp.array(A_np, dtype=wp.float32, device=device)
+            b = wp.array(b_np, dtype=wp.float32, device=device)
+            M = preconditioner(A, "diag")
+            offsets = None if batch_count == 1 else _batch_offsets([dof_count] * batch_count, device)
+            A_op = aslinearoperator(A, batch_offsets=offsets)
+
+            for preconditioner_name, preconditioner_op in (("none", None), ("Jacobi", M)):
+                x = wp.array(initial_np, dtype=wp.float32, device=device)
+                niter, err, atol = cg(
+                    A_op,
+                    b,
+                    x,
+                    tol=tolerance,
+                    atol=0.0,
+                    maxiter=512,
+                    M=preconditioner_op,
+                    check_every=interval,
+                    use_cuda_graph=True,
+                    residual_refresh=interval,
+                )
+
+                test.assertLessEqual(err, atol)
+                test.assertEqual(niter % interval, 0)
+                test.assertLessEqual(niter, 512)
+
+                x_np = x.numpy().astype(np.float64)
+                for batch_index in range(batch_count):
+                    start = batch_index * dof_count
+                    end = start + dof_count
+                    A_batch = A_np[start:end, start:end].astype(np.float64)
+                    b_batch = b_np[start:end].astype(np.float64)
+                    residual = A_batch @ x_np[start:end] - b_batch
+                    target = tolerance * np.linalg.norm(b_batch)
+                    test.assertLessEqual(
+                        np.linalg.norm(residual),
+                        target,
+                        msg=(
+                            f"{preconditioner_name} batch {batch_index} did not reach "
+                            "the requested true-residual tolerance"
+                        ),
+                    )
+
+
+def test_cg_residual_refresh_validation(test, device):
+    A, b = _make_identity_system(n=3, seed=123, dtype=wp.float64, device=device)
+    x = wp.zeros_like(b)
+
+    for value in (True, 1.5):
+        with test.assertRaises(TypeError):
+            cg(A, b, x, run=False, residual_refresh=value)
+
+    for value in (0, -1):
+        with test.assertRaises(ValueError):
+            cg(A, b, x, run=False, residual_refresh=value)
+
+    state = cg(A, b, x, run=False, residual_refresh=np.int64(2))
+    test.assertIsInstance(state, CG)
+
+    x.zero_()
+    niter, err, atol = cg(A, b, x, maxiter=0.5, check_every=1, residual_refresh=1)
+    test.assertEqual(niter, 1)
+    test.assertLessEqual(err, atol)
+
+
+def test_cg_residual_refresh_conditional_graph(test, device):
+    if not wp.is_conditional_graph_supported():
+        test.skipTest("conditional CUDA graphs are not supported")
+
+    with wp.ScopedDevice(device):
+        A = wp.array((2.0, 3.0, 4.0), dtype=wp.float32, device=device)
+        b = wp.array((2.0, 6.0, 12.0), dtype=wp.float32, device=device)
+        x = wp.zeros_like(b)
+        state = cg(
+            A,
+            b,
+            x,
+            tol=1.0e-6,
+            maxiter=6,
+            check_every=0,
+            use_cuda_graph=True,
+            run=False,
+            residual_refresh=3,
+        )
+
+        state()
+        x.zero_()
+
+        with wp.ScopedCapture() as capture:
+            niter, residual_sq, tolerance_sq = state()
+
+        x.zero_()
+        wp.capture_launch(capture.graph)
+
+        test.assertEqual(niter.numpy()[0], 3)
+        test.assertLessEqual(residual_sq.numpy()[0], tolerance_sq.numpy()[0])
+        np.testing.assert_allclose(x.numpy(), (1.0, 2.0, 3.0), rtol=1.0e-5, atol=1.0e-5)
+
+        wp.capture_launch(capture.graph)
+        test.assertEqual(niter.numpy()[0], 0)
+        test.assertLessEqual(residual_sq.numpy()[0], tolerance_sq.numpy()[0])
+
+
+def test_gmres_conditional_graph_cycle_iterations(test, device):
+    if not wp.is_conditional_graph_supported():
+        test.skipTest("conditional CUDA graphs are not supported")
+
+    with wp.ScopedDevice(device):
+        A = wp.array((2.0, 3.0, 4.0), dtype=wp.float32, device=device)
+        b = wp.array((2.0, 6.0, 12.0), dtype=wp.float32, device=device)
+        x = wp.zeros_like(b)
+        state = gmres(
+            A,
+            b,
+            x,
+            tol=1.0e-6,
+            restart=3,
+            maxiter=6,
+            check_every=0,
+            use_cuda_graph=True,
+            run=False,
+        )
+
+        state()
+        x.zero_()
+
+        with wp.ScopedCapture() as capture:
+            niter, residual_sq, tolerance_sq = state()
+
+        x.zero_()
+        wp.capture_launch(capture.graph)
+
+        test.assertEqual(niter.numpy()[0], 3)
+        test.assertLessEqual(residual_sq.numpy()[0], tolerance_sq.numpy()[0])
+        np.testing.assert_allclose(x.numpy(), (1.0, 2.0, 3.0), rtol=1.0e-5, atol=1.0e-5)
+
+        wp.capture_launch(capture.graph)
+        test.assertEqual(niter.numpy()[0], 0)
+        test.assertLessEqual(residual_sq.numpy()[0], tolerance_sq.numpy()[0])
+
+
 def test_cr(test, device):
     A, b = _make_spd_system(n=64, seed=123, device=device, dtype=wp.float64)
     M = preconditioner(A, "diag")
@@ -563,7 +785,7 @@ def test_functor_reuse(test, device):
     # For each solver, construct a pre-allocated functor, then re-run on a different
     # (but compatible) system without re-allocating temporary buffers.
     cases = [
-        (cg, CG, _make_spd_system, 32, {"maxiter": 500}),
+        (cg, CG, _make_spd_system, 32, {"maxiter": 500, "residual_refresh": 32}),
         (cr, CR, _make_spd_system, 32, {"maxiter": 500}),
         (bicgstab, BiCGSTAB, _make_nonsymmetric_system, 32, {"maxiter": 500}),
         (gmres, GMRES, _make_nonsymmetric_system, 16, {"tol": 1.0e-3, "restart": 16, "maxiter": 256}),
@@ -598,7 +820,8 @@ def test_functor_preconditioner(test, device):
 
         for func in (cg, cr):
             x = wp.zeros_like(b)
-            state = func(A, b, x, maxiter=500, run=False)
+            kwargs = {"residual_refresh": 32} if func is cg else {}
+            state = func(A, b, x, maxiter=500, run=False, **kwargs)
 
             # No preconditioner on first call
             _, err, atol = state()
@@ -660,6 +883,31 @@ devices = get_test_devices()
 devices_with_graph_capture_allocation = get_test_devices_with_graph_capture_allocation()
 
 add_function_test(TestLinearSolvers, "test_cg", test_cg, devices=devices_with_graph_capture_allocation)
+add_function_test(TestLinearSolvers, "test_cg_residual_refresh", test_cg_residual_refresh, devices=devices)
+add_function_test(
+    TestLinearSolvers,
+    "test_cg_residual_refresh_float32_drift",
+    test_cg_residual_refresh_float32_drift,
+    devices=devices,
+)
+add_function_test(
+    TestLinearSolvers,
+    "test_cg_residual_refresh_validation",
+    test_cg_residual_refresh_validation,
+    devices=[wp.get_device("cpu")],
+)
+add_function_test(
+    TestLinearSolvers,
+    "test_cg_residual_refresh_conditional_graph",
+    test_cg_residual_refresh_conditional_graph,
+    devices=get_cuda_test_devices_with_mempool(),
+)
+add_function_test(
+    TestLinearSolvers,
+    "test_gmres_conditional_graph_cycle_iterations",
+    test_gmres_conditional_graph_cycle_iterations,
+    devices=get_cuda_test_devices_with_mempool(),
+)
 add_function_test(TestLinearSolvers, "test_cr", test_cr, devices=devices_with_graph_capture_allocation)
 add_function_test(TestLinearSolvers, "test_bicgstab", test_bicgstab, devices=devices_with_graph_capture_allocation)
 add_function_test(TestLinearSolvers, "test_gmres", test_gmres, devices=devices_with_graph_capture_allocation)

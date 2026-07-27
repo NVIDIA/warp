@@ -41,6 +41,8 @@
   dimension-collapsing integer indices with negative-index support (`t[5, :]`, `t[-1, :]`), and slice assignment
   (`t[0:4, :] = src`). Also add `wp.tile_slice_indexed()`, which gathers elements along a single axis using a
   1D integer index tile (`t[indices, :]`) ([GH-1176](https://github.com/NVIDIA/warp/issues/1176)).
+- Add an optional `residual_refresh` interval to `warp.optim.linear.cg()` for recomputing
+  the true residual and restarting the search direction during finite-precision solves.
 
 ### Removed
 
@@ -145,6 +147,7 @@
   instead of node coordinates in Warp FEM kernels ([GH-1685](https://github.com/NVIDIA/warp/issues/1685)).
 - Reject malformed APIC `.wrp` memory sections containing duplicate region IDs
   or out-of-bounds initial data during graph loading.
+- Fix device-side iteration counts for graph-captured solver cycles that perform more than one iteration.
 
 ### Documentation
 
