@@ -18,4 +18,10 @@
    
    
    
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Kernel.hash
+   
    
