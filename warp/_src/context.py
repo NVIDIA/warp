@@ -1075,8 +1075,9 @@ class Kernel:
         # argument indices by name
         self.arg_indices = {a.label: i for i, a in enumerate(self.adj.args)}
 
-        # hash will be computed when the module is built
-        self.hash = None
+        # hash and mangled name will be computed when the module is built
+        self._hash: bytes | None = None
+        self._mangled_name: str | None = None
 
         # effective grid_stride, resolved with the hash when the module is built and read at launch
         self.grid_stride: bool | None = None
@@ -1149,9 +1150,22 @@ class Kernel:
         sig = warp._src.types.get_signature(arg_types, func_name=self.key)
         return self.overloads.get(sig)
 
+    @property
+    def hash(self) -> bytes | None:
+        return self._hash
+
+    @hash.setter
+    def hash(self, value: bytes | None) -> None:
+        self._hash = value
+        # The mangled name includes the hash, so invalidate the derived cache.
+        self._mangled_name = None
+
     def get_mangled_name(self) -> str:
+        if self._mangled_name is not None:
+            return self._mangled_name
+
         if self.module.options["strip_hash"]:
-            return self.key
+            name = self.key
         else:
             if self.hash is None:
                 raise RuntimeError(f"Missing hash for kernel {self.key} in module {self.module.name}")
@@ -1159,7 +1173,10 @@ class Kernel:
             # TODO: allow customizing the number of hash characters used
             hash_suffix = self.hash.hex()[:8]
 
-            return f"{self.key}_{hash_suffix}"
+            name = f"{self.key}_{hash_suffix}"
+
+        self._mangled_name = name
+        return name
 
     def __call__(self, *args, **kwargs):
         # we implement this function only to ensure Kernel is a callable object
@@ -3140,7 +3157,10 @@ class ModuleExec:
     def get_kernel_hooks(self, kernel) -> KernelHooks:
         # Key by the mangled name (compiled-symbol identity), not kernel.adj, which pinned one
         # Adjoint per closure-recreated kernel -- a leak the live-kernel WeakSet can't reclaim.
-        name = kernel.get_mangled_name()
+        # Read the cached name directly to avoid Python method-call overhead on every launch.
+        name = kernel._mangled_name
+        if name is None:
+            name = kernel.get_mangled_name()
 
         hooks = self.kernel_hooks.get(name)
         if hooks is not None:
@@ -4180,6 +4200,18 @@ class Module:
 
         # clear loaded modules
         self.execs = {}
+
+    def _set_strip_hash(self, value: bool) -> None:
+        if self.options["strip_hash"] == value:
+            return
+
+        # Loaded kernel symbols depend on this option, so discard stale executables.
+        self.options["strip_hash"] = value
+        for kernel in self._get_live_kernels():
+            kernel._mangled_name = None
+            for overload in kernel.overloads.values():
+                overload._mangled_name = None
+        self.unload()
 
     def mark_modified(self):
         # clear hash data
@@ -11451,7 +11483,7 @@ def compile_aot_module(
     module_object = _resolve_module(module)
 
     if strip_hash is not None:
-        module_object.options["strip_hash"] = strip_hash
+        module_object._set_strip_hash(strip_hash)
 
     # Validate generic kernels for AOT compilation
     strip_hash_enabled = module_object.options.get("strip_hash", False)
@@ -11603,7 +11635,7 @@ def load_aot_module(
     module_object = _resolve_module(module)
 
     if strip_hash is not None:
-        module_object.options["strip_hash"] = strip_hash
+        module_object._set_strip_hash(strip_hash)
 
     if module_dir is None:
         module_dir = os.path.join(warp.config.kernel_cache_dir, module_object.get_module_identifier())
@@ -11687,8 +11719,11 @@ def set_module_options(options: dict[str, Any], module: Any = None):
     else:
         module_name = module.__name__
 
-    get_module(module_name).options.update(options)
-    get_module(module_name).mark_modified()
+    module_object = get_module(module_name)
+    if "strip_hash" in options:
+        module_object._set_strip_hash(options["strip_hash"])
+    module_object.options.update(options)
+    module_object.mark_modified()
 
 
 def get_module_options(module: Any = None) -> dict[str, Any]:
