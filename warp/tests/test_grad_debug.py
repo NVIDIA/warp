@@ -6,6 +6,18 @@ import warnings
 from typing import Any
 from unittest.mock import patch
 
+try:
+    import matplotlib
+
+    # select a headless backend before pyplot is imported anywhere
+    matplotlib.use("Agg", force=True)
+    import matplotlib.pyplot as plt
+
+    MATPLOTLIB_AVAILABLE = True
+except ImportError:
+    plt = None
+    MATPLOTLIB_AVAILABLE = False
+
 import warp as wp
 from warp._src.autograd import FunctionMetadata
 from warp.autograd import (
@@ -108,7 +120,7 @@ def jacobian_plot_scale_kernel(a: wp.array[float], out: wp.array[float]):
     out[tid] = 2.0 * a[tid]
 
 
-def jacobian_plot_pipeline(a):
+def function_pipeline(a):
     out = wp.zeros_like(a, requires_grad=True)
     wp.launch(
         jacobian_plot_scale_kernel,
@@ -120,13 +132,21 @@ def jacobian_plot_pipeline(a):
     return out
 
 
-def _get_test_pyplot():
-    import matplotlib  # noqa: PLC0415
+def test_jacobian_function_pipeline(test, device):
+    """Verify Jacobians can be computed for Python function pipelines."""
+    for jacobian_function in (jacobian, jacobian_fd):
+        a = wp.array([1.0, 2.0], dtype=wp.float32, requires_grad=True, device=device)
 
-    matplotlib.use("Agg", force=True)
-    import matplotlib.pyplot as plt  # noqa: PLC0415
+        jacobians = jacobian_function(function_pipeline, inputs=[a])
 
-    return plt
+        test.assertEqual(sorted(jacobians), [(0, 0)])
+        np.testing.assert_allclose(
+            jacobians[(0, 0)].numpy(),
+            np.eye(2, dtype=np.float32) * 2.0,
+            atol=1.0e-3,
+            rtol=1.0e-3,
+            err_msg=f"{jacobian_function.__name__} returned an incorrect Jacobian for function_pipeline",
+        )
 
 
 def test_gradcheck_3d(test, device, dtype):
@@ -270,9 +290,9 @@ devices = get_test_devices()
 
 
 class TestGradDebug(unittest.TestCase):
+    @unittest.skipUnless(MATPLOTLIB_AVAILABLE, "Requires Matplotlib")
     def test_jacobian_plot_function(self):
         """Verify Jacobian plotting supports Python function pipelines."""
-        plt = _get_test_pyplot()
         self.addCleanup(plt.close, "all")
 
         for jacobian_function in (jacobian, jacobian_fd):
@@ -282,26 +302,21 @@ class TestGradDebug(unittest.TestCase):
 
                 with patch.object(plt, "show") as show:
                     jacobians = jacobian_function(
-                        jacobian_plot_pipeline,
+                        function_pipeline,
                         inputs=[a],
                         plot_jacobians=True,
                     )
 
-                np.testing.assert_allclose(
-                    jacobians[(0, 0)].numpy(),
-                    np.eye(2, dtype=np.float32) * 2.0,
-                    atol=1.0e-3,
-                    rtol=1.0e-3,
-                )
+                self.assertEqual(sorted(jacobians), [(0, 0)])
                 figure = plt.gcf()
-                self.assertEqual(figure.get_suptitle(), "jacobian_plot_pipeline kernel Jacobian")
+                self.assertEqual(figure.get_suptitle(), "function_pipeline kernel Jacobian")
                 self.assertEqual(figure.axes[0].get_xlabel(), "a")
                 self.assertEqual(figure.axes[0].get_ylabel(), "output_0")
                 show.assert_called_once_with()
 
+    @unittest.skipUnless(MATPLOTLIB_AVAILABLE, "Requires Matplotlib")
     def test_jacobian_plot_kernel(self):
         """Verify Jacobian plotting uses typed kernel metadata."""
-        plt = _get_test_pyplot()
         self.addCleanup(plt.close, "all")
 
         for jacobian_function in (jacobian, jacobian_fd):
@@ -344,9 +359,9 @@ class TestGradDebug(unittest.TestCase):
                 self.assertEqual(axes[0].get_gridspec().get_height_ratios(), [4, 8])
                 show.assert_called_once_with()
 
+    @unittest.skipUnless(MATPLOTLIB_AVAILABLE, "Requires Matplotlib")
     def test_gradcheck_plotting(self):
         """Verify gradient checks render both error matrices without layout warnings."""
-        plt = _get_test_pyplot()
         self.addCleanup(plt.close, "all")
 
         a = wp.array([1.0, 2.0], dtype=wp.float32, requires_grad=True, device="cpu")
@@ -378,9 +393,9 @@ class TestGradDebug(unittest.TestCase):
         )
         self.assertEqual(show.call_count, 2)
 
+    @unittest.skipUnless(MATPLOTLIB_AVAILABLE, "Requires Matplotlib")
     def test_jacobian_plot_direct_kernel(self):
         """Verify direct kernel plotting preserves its public contract."""
-        plt = _get_test_pyplot()
         self.addCleanup(plt.close, "all")
 
         inputs = [wp.zeros((1, 1, 1), dtype=wp.float32, requires_grad=True, device="cpu") for _ in range(3)]
@@ -401,13 +416,13 @@ class TestGradDebug(unittest.TestCase):
         self.assertEqual(figure.axes[0].get_gridspec().get_width_ratios(), [1])
         show.assert_not_called()
 
+    @unittest.skipUnless(MATPLOTLIB_AVAILABLE, "Requires Matplotlib")
     def test_jacobian_plot_validation(self):
         """Reject incomplete metadata before constructing Jacobian figures.
 
         A displayed Jacobian key must resolve to an input label, input array
         dtype, and output label in the normalized metadata.
         """
-        plt = _get_test_pyplot()
         self.addCleanup(plt.close, "all")
 
         with self.assertRaisesRegex(ValueError, "inputs must be provided"):
@@ -538,6 +553,7 @@ for dtype in [wp.float32, wp.float64]:
         devices=devices,
         dtype=dtype,
     )
+add_function_test(TestGradDebug, "test_jacobian_function_pipeline", test_jacobian_function_pipeline, devices=devices)
 add_function_test(TestGradDebug, "test_gradcheck_mixed", test_gradcheck_mixed, devices=devices)
 add_function_test(TestGradDebug, "test_gradcheck_nan", test_gradcheck_nan, devices=devices)
 add_function_test(TestGradDebug, "test_gradcheck_incorrect", test_gradcheck_incorrect, devices=devices)
