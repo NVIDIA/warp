@@ -18,6 +18,7 @@
       ~LinearOperator.device
       ~LinearOperator.dtype
       ~LinearOperator.matvec
+      ~LinearOperator.max_batch_length
       ~LinearOperator.scalar_type
       ~LinearOperator.shape
    

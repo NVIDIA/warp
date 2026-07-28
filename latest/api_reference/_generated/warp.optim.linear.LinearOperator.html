@@ -521,7 +521,18 @@
 <h1>warp.optim.linear.LinearOperator<a class="headerlink" href="#warp-optim-linear-linearoperator" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.optim.linear.LinearOperator">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.optim.linear.</span></span><span class="sig-name descname"><span class="pre">LinearOperator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shape</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">matvec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_offsets</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/linear.py#L32-L112"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.LinearOperator" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.optim.linear.</span></span><span class="sig-name descname"><span class="pre">LinearOperator</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">shape</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">dtype</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">device</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">matvec</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">batch_offsets</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_batch_length</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/linear.py#L32-L129"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.LinearOperator" title="Link to this definition">#</a></dt>
 <dd><p>Linear operator to be used as left-hand-side of linear iterative solvers.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -536,6 +547,10 @@ subproblem <code class="docutils literal notranslate"><span class="pre">i</span>
 Scalar degrees of freedom at or beyond <code class="docutils literal notranslate"><span class="pre">batch_offsets[-1]</span></code> are inactive and ignored by batched
 iterative solvers.
 When <code class="docutils literal notranslate"><span class="pre">None</span></code> (default) the operator represents a single subproblem.</p></li>
+<li><p><strong>max_batch_length</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Optional upper bound on the number of scalar degrees of freedom in any subproblem.
+Providing this value with <code class="docutils literal notranslate"><span class="pre">batch_offsets</span></code> allows CUDA reductions to avoid redundant tree levels
+without accessing the offsets on the host. It must not be smaller than the largest difference between
+consecutive offsets. Stateful solvers require this value to remain fixed between calls.</p></li>
 </ul>
 </dd>
 </dl>
@@ -570,10 +585,13 @@ cannot be graph-captured, the <code class="docutils literal notranslate"><span c
 <tr class="row-odd"><td><p><a class="reference internal" href="#warp.optim.linear.LinearOperator.matvec" title="warp.optim.linear.LinearOperator.matvec"><code class="xref py py-obj docutils literal notranslate"><span class="pre">matvec</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.optim.linear.LinearOperator.scalar_type" title="warp.optim.linear.LinearOperator.scalar_type"><code class="xref py py-obj docutils literal notranslate"><span class="pre">scalar_type</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.optim.linear.LinearOperator.max_batch_length" title="warp.optim.linear.LinearOperator.max_batch_length"><code class="xref py py-obj docutils literal notranslate"><span class="pre">max_batch_length</span></code></a></p></td>
+<td><p>Upper bound on the number of scalar degrees of freedom in any subproblem, or <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.optim.linear.LinearOperator.scalar_type" title="warp.optim.linear.LinearOperator.scalar_type"><code class="xref py py-obj docutils literal notranslate"><span class="pre">scalar_type</span></code></a></p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.optim.linear.LinearOperator.shape" title="warp.optim.linear.LinearOperator.shape"><code class="xref py py-obj docutils literal notranslate"><span class="pre">shape</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.optim.linear.LinearOperator.shape" title="warp.optim.linear.LinearOperator.shape"><code class="xref py py-obj docutils literal notranslate"><span class="pre">shape</span></code></a></p></td>
 <td><p></p></td>
 </tr>
 </tbody>
@@ -581,32 +599,32 @@ cannot be graph-captured, the <code class="docutils literal notranslate"><span c
 </div>
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.optim.linear.LinearOperator.shape">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">shape</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/linear.py#L79-L82"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.LinearOperator.shape" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">shape</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/linear.py#L91-L94"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.LinearOperator.shape" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.optim.linear.LinearOperator.dtype">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">dtype</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/linear.py#L83-L86"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.LinearOperator.dtype" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">dtype</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><span class="pre">type</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/linear.py#L95-L98"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.LinearOperator.dtype" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.optim.linear.LinearOperator.device">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">device</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Device.html#warp.Device" title="warp._src.context.Device"><span class="pre">Device</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/linear.py#L87-L90"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.LinearOperator.device" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">device</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Device.html#warp.Device" title="warp._src.context.Device"><span class="pre">Device</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/linear.py#L99-L102"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.LinearOperator.device" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.optim.linear.LinearOperator.matvec">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">matvec</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Callable" title="(in Python v3.14)"><span class="pre">Callable</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/linear.py#L91-L94"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.LinearOperator.matvec" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">matvec</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Callable" title="(in Python v3.14)"><span class="pre">Callable</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/linear.py#L103-L106"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.LinearOperator.matvec" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.optim.linear.LinearOperator.scalar_type">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">scalar_type</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/linear.py#L95-L98"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.LinearOperator.scalar_type" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">scalar_type</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/linear.py#L107-L110"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.LinearOperator.scalar_type" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.optim.linear.LinearOperator.batch_offsets">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">batch_offsets</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><span class="pre">array</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/linear.py#L99-L107"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.LinearOperator.batch_offsets" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">batch_offsets</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><span class="pre">array</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/linear.py#L111-L119"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.LinearOperator.batch_offsets" title="Link to this definition">#</a></dt>
 <dd><p>Array partitioning the active scalar degrees of freedom, or <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
 <p>Scalar degrees of freedom at or beyond the final offset are inactive and ignored by batched iterative
 solvers.</p>
@@ -614,8 +632,14 @@ solvers.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.optim.linear.LinearOperator.batch_count">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">batch_count</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/linear.py#L108-L112"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.LinearOperator.batch_count" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">batch_count</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/linear.py#L120-L124"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.LinearOperator.batch_count" title="Link to this definition">#</a></dt>
 <dd><p>Number of independent subproblems. <code class="docutils literal notranslate"><span class="pre">1</span></code> when <a class="reference internal" href="#warp.optim.linear.LinearOperator.batch_offsets" title="warp.optim.linear.LinearOperator.batch_offsets"><code class="xref py py-attr docutils literal notranslate"><span class="pre">batch_offsets</span></code></a> is <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="warp.optim.linear.LinearOperator.max_batch_length">
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">max_batch_length</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/linear.py#L125-L129"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.LinearOperator.max_batch_length" title="Link to this definition">#</a></dt>
+<dd><p>Upper bound on the number of scalar degrees of freedom in any subproblem, or <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
 </dd></dl>
 
 </dd></dl>
@@ -679,6 +703,7 @@ solvers.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.optim.linear.LinearOperator.scalar_type"><code class="docutils literal notranslate"><span class="pre">scalar_type</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.optim.linear.LinearOperator.batch_offsets"><code class="docutils literal notranslate"><span class="pre">batch_offsets</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.optim.linear.LinearOperator.batch_count"><code class="docutils literal notranslate"><span class="pre">batch_count</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.optim.linear.LinearOperator.max_batch_length"><code class="docutils literal notranslate"><span class="pre">max_batch_length</span></code></a></li>
 </ul>
 </li>
 </ul>

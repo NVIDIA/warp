@@ -536,15 +536,16 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">use_cuda_graph</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/linear.py#L511-L628"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.LinearSolverState" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/linear.py#L720-L840"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.LinearSolverState" title="Link to this definition">#</a></dt>
 <dd><p>Pre-allocated state for a linear iterative solver.</p>
 <p>Holds all temporary buffers required by the solver plus a reference to the original
 problem (<code class="docutils literal notranslate"><span class="pre">A</span></code>, <code class="docutils literal notranslate"><span class="pre">b</span></code>, <code class="docutils literal notranslate"><span class="pre">x</span></code>, optional <code class="docutils literal notranslate"><span class="pre">M</span></code>). Calling the state runs the solver,
 optionally substituting a new matrix, right-hand side, solution vector, or
 preconditioner. Replacement operands must match the construction-time shape, dtype,
 device, and batch layout. For batched <a class="reference internal" href="warp.optim.linear.LinearOperator.html#warp.optim.linear.LinearOperator" title="warp.optim.linear.LinearOperator"><code class="xref py py-class docutils literal notranslate"><span class="pre">LinearOperator</span></code></a> inputs, the
-<code class="docutils literal notranslate"><span class="pre">batch_offsets</span></code> array is part of that layout. This avoids repeated buffer
-allocation when the same solver is applied many times.</p>
+<code class="docutils literal notranslate"><span class="pre">batch_offsets</span></code> array and <code class="docutils literal notranslate"><span class="pre">max_batch_length</span></code> value are part of that layout and
+must remain fixed. This avoids repeated buffer allocation when the same solver is
+applied many times.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
