@@ -28,6 +28,8 @@ class TestKernelCache(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             warp._src.build.init_kernel_cache(path=tmp)
             expected = os.path.join(os.path.realpath(tmp), warp.config.version)
+            if os.name == "nt":
+                expected = "\\\\?\\" + expected
             self.assertEqual(warp.config.kernel_cache_dir, expected)
             self.assertTrue(os.path.isdir(expected))
 
@@ -37,8 +39,18 @@ class TestKernelCache(unittest.TestCase):
             os.environ["WARP_CACHE_PATH"] = tmp
             warp._src.build.init_kernel_cache()
             expected = os.path.join(os.path.realpath(tmp), warp.config.version)
+            if os.name == "nt":
+                expected = "\\\\?\\" + expected
             self.assertEqual(warp.config.kernel_cache_dir, expected)
             self.assertTrue(os.path.isdir(expected))
+
+    def test_long_path_prefix(self):
+        """Verify that the long-path prefix helper handles drive-letter, UNC, prefixed, and relative paths."""
+        add_prefix = warp._src.build._add_long_path_prefix
+        self.assertEqual(add_prefix("C:\\Users\\foo\\cache"), "\\\\?\\C:\\Users\\foo\\cache")
+        self.assertEqual(add_prefix("\\\\server\\share\\cache"), "\\\\?\\UNC\\server\\share\\cache")
+        self.assertEqual(add_prefix("\\\\?\\C:\\Users\\foo\\cache"), "\\\\?\\C:\\Users\\foo\\cache")
+        self.assertEqual(add_prefix("cache\\subdir"), "cache\\subdir")
 
     def test_stale_artifacts_warning(self):
         """Warn when the unversioned base directory contains stale wp_ artifacts."""
