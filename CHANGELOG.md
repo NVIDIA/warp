@@ -88,6 +88,9 @@
   accumulated state ([GH-1615](https://github.com/NVIDIA/warp/issues/1615)).
 - Fix batched iterative linear solvers to ignore inactive trailing degrees of freedom beyond the final batch offset
   ([GH-1608](https://github.com/NVIDIA/warp/issues/1608)).
+- Use segmented tree reductions for CUDA batched iterative-solver dot products, preventing accumulation error from
+  growing with subproblem length, with optional maximum batch-length metadata to avoid redundant reduction levels
+  ([GH-1700](https://github.com/NVIDIA/warp/issues/1700)).
 - Fix `wp.from_dlpack()` support for standards-conformant 8-bit Boolean tensors
   ([GH-1619](https://github.com/NVIDIA/warp/issues/1619)).
 - Fix CUDA graph capture of multi-environment

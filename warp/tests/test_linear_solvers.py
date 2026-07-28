@@ -7,7 +7,7 @@ import unittest
 import numpy as np
 
 import warp as wp
-from warp._src.optim.linear import TiledDot, _run_solver_loop
+from warp._src.optim.linear import TiledDot, _create_segmented_tiled_dot_kernels, _run_solver_loop
 from warp.optim.linear import CG, CR, GMRES, BiCGSTAB, aslinearoperator, bicgstab, cg, cr, gmres, preconditioner
 from warp.tests.unittest_utils import *
 
@@ -254,8 +254,9 @@ def _run_batched_spd_solver(test, device, solver, seed_base, dtype=wp.float32, b
     x_full = wp.zeros_like(b_full)
 
     offsets = _batch_offsets(batch_sizes, device)
-    A_op = aslinearoperator(A_full, batch_offsets=offsets)
+    A_op = aslinearoperator(A_full, batch_offsets=offsets, max_batch_length=max(batch_sizes))
     test.assertEqual(A_op.batch_count, len(batch_sizes))
+    test.assertEqual(A_op.max_batch_length, max(batch_sizes))
 
     solver(A_op, b_full, x_full, tol=tol, maxiter=1000)
 
@@ -284,7 +285,7 @@ def test_batched_vector_offsets(test, device):
     expected = np.array(((1.0, 2.0), (2.0, 3.0)), dtype=np.float32)
 
     offsets = _batch_offsets([2, 2], device)
-    A = aslinearoperator(diag, batch_offsets=offsets)
+    A = aslinearoperator(diag, batch_offsets=offsets, max_batch_length=2)
 
     for solver, kwargs in (
         (cg, {}),
@@ -303,10 +304,10 @@ def test_batched_inactive_tail(test, device):
     initial = np.array([0.0, 0.0, 0.0, 7.0, 8.0], dtype=np.float64)
     expected = np.array([1.0, 2.0, 3.0, 7.0, 8.0], dtype=np.float64)
 
-    # Keep an explicit one-batch layout: the optimized unbatched reduction must not
-    # include the inactive tail when only one subproblem is present.
+    # Keep an explicit one-batch layout: the batched reduction must not include
+    # the inactive tail when only one subproblem is present.
     offsets = _batch_offsets([3], device)
-    A = aslinearoperator(diag, batch_offsets=offsets)
+    A = aslinearoperator(diag, batch_offsets=offsets, max_batch_length=3)
 
     for solver, kwargs in (
         (cg, {}),
@@ -329,7 +330,7 @@ def test_batched_vector_inactive_tail(test, device):
     expected = np.array(((1.0, 2.0), (3.0, 4.0), (7.0, 8.0)), dtype=np.float64)
 
     offsets = _batch_offsets([2, 2], device)
-    A = aslinearoperator(diag, batch_offsets=offsets)
+    A = aslinearoperator(diag, batch_offsets=offsets, max_batch_length=2)
 
     for solver, kwargs in (
         (cg, {}),
@@ -351,6 +352,7 @@ def test_batched_gmres_right_preconditioned_inactive_tail(test, device):
             device=device,
         ),
         batch_offsets=_batch_offsets([2], device),
+        max_batch_length=2,
     )
     M = aslinearoperator(wp.array((1.0, 1.0, 1.0), dtype=wp.float64, device=device))
     b = wp.array((2.0, 6.0, 7.0), dtype=wp.float64, device=device)
@@ -394,6 +396,110 @@ def test_tiled_dot_large_single_batch(test, device):
     test.assertEqual(tiled_dot.col().numpy()[0], 4 * active_length)
 
 
+def test_tiled_dot_batched_tree(test, device):
+    batch_sizes = [0, 1, 511, 512, 513, 65_537, 262_145]
+    active_length = sum(batch_sizes)
+    length = active_length + 17
+    rng = np.random.default_rng(123)
+    a_np = rng.standard_normal(length).astype(np.float32)
+    b_np = rng.standard_normal(length).astype(np.float32)
+
+    a = wp.array(a_np, device=device)
+    b = wp.array(b_np, device=device)
+    offsets = _batch_offsets(batch_sizes, device)
+    batched_dot = TiledDot(
+        length,
+        wp.float32,
+        device=device,
+        batch_offsets=offsets,
+        max_batch_length=max(batch_sizes),
+    )
+    level_batch_sizes = batch_sizes
+    for level_offsets in batched_dot.segmented_offsets[1:]:
+        level_batch_sizes = [
+            max(1, (size + batched_dot.tile_size - 1) // batched_dot.tile_size) for size in level_batch_sizes
+        ]
+        expected_offsets = np.concatenate([[0], np.cumsum(level_batch_sizes)]).astype(np.int32)
+        np.testing.assert_array_equal(level_offsets.numpy(), expected_offsets)
+
+    batched_dot.compute(a, b)
+
+    expected = np.empty(len(batch_sizes), dtype=np.float32)
+    batch_offsets = np.concatenate([[0], np.cumsum(batch_sizes)])
+    for batch, (start, end) in enumerate(itertools.pairwise(batch_offsets)):
+        if start == end:
+            expected[batch] = 0.0
+            continue
+
+        single_dot = TiledDot(end - start, wp.float32, device=device)
+        single_dot.compute(a[start:end], b[start:end])
+        expected[batch] = single_dot.col().numpy()[0]
+
+    np.testing.assert_array_equal(batched_dot.col().numpy(), expected)
+
+    with wp.ScopedDevice(device):
+        with wp.ScopedCapture(force_module_load=False) as capture:
+            batched_dot.compute(a, b)
+
+        a.fill_(2.0)
+        b.fill_(3.0)
+        wp.capture_launch(capture.graph)
+
+    np.testing.assert_array_equal(
+        batched_dot.col().numpy(),
+        6.0 * np.array(batch_sizes, dtype=np.float32),
+    )
+
+
+def test_tiled_dot_max_batch_length(test, device):
+    batch_sizes = [20] * 64
+    length = sum(batch_sizes)
+    offsets = _batch_offsets(batch_sizes, device)
+    a = wp.ones(length, dtype=wp.float32, device=device)
+
+    bounded_dot = TiledDot(
+        length,
+        wp.float32,
+        device=device,
+        batch_offsets=offsets,
+        max_batch_length=max(batch_sizes),
+    )
+    fallback_dot = TiledDot(length, wp.float32, device=device, batch_offsets=offsets)
+
+    test.assertEqual(bounded_dot.rounds, 0)
+    test.assertEqual(fallback_dot.rounds, 1)
+    test.assertIsNotNone(bounded_dot.batch_dot_launch)
+    test.assertIsNone(bounded_dot.segmented_dot_launch)
+    np.testing.assert_array_equal(
+        fallback_dot.segmented_offsets[1].numpy(),
+        np.arange(len(batch_sizes) + 1, dtype=np.int32),
+    )
+
+    bounded_dot.compute(a, a)
+    fallback_dot.compute(a, a)
+    expected = np.full(len(batch_sizes), 20.0, dtype=np.float32)
+    np.testing.assert_array_equal(bounded_dot.col().numpy(), expected)
+    np.testing.assert_array_equal(fallback_dot.col().numpy(), expected)
+
+
+def test_tiled_dot_plan_offsets_int_max(test, device):
+    tile_size = 512
+    input_offsets = wp.array([0, np.iinfo(np.int32).max], dtype=int, device=device)
+    output_offsets = wp.empty_like(input_offsets)
+    plan_offsets_kernel, _, _ = _create_segmented_tiled_dot_kernels(tile_size)
+
+    wp.launch(
+        plan_offsets_kernel,
+        dim=tile_size,
+        inputs=[input_offsets],
+        outputs=[output_offsets],
+        block_dim=tile_size,
+        device=device,
+    )
+
+    np.testing.assert_array_equal(output_offsets.numpy(), (0, 4_194_304))
+
+
 def _run_batched_gmres(test, device, dtype, batch_sizes, seed_base, tol, restart):
     rows = sum(batch_sizes)
     A_np_full = np.zeros((rows, rows), dtype=np.float64 if dtype == wp.float64 else np.float32)
@@ -410,8 +516,9 @@ def _run_batched_gmres(test, device, dtype, batch_sizes, seed_base, tol, restart
     b_full = wp.array(b_np_full, dtype=dtype, device=device)
 
     offsets = _batch_offsets(batch_sizes, device)
-    A_op = aslinearoperator(A_full, batch_offsets=offsets)
+    A_op = aslinearoperator(A_full, batch_offsets=offsets, max_batch_length=max(batch_sizes))
     test.assertEqual(A_op.batch_count, len(batch_sizes))
+    test.assertEqual(A_op.max_batch_length, max(batch_sizes))
 
     # Diagonal preconditioner (block-diagonal across the full system, so implicitly per-batch).
     M = preconditioner(A_full, "diag")
@@ -520,6 +627,22 @@ def test_functor_compat_errors(test, device):
         with test.assertRaises(ValueError):
             state(A=A_bad, b=b_bad, x=x_bad)
 
+        # An explicit one-batch layout is not compatible with unbatched scratch.
+        A_one_batch = aslinearoperator(A, batch_offsets=_batch_offsets([32], device))
+        with test.assertRaisesRegex(ValueError, "batch_offsets"):
+            state(A=A_one_batch)
+
+        # Stateful batched solvers require fixed reduction-planning metadata.
+        offsets = _batch_offsets([16, 16], device)
+        A_batched = aslinearoperator(A, batch_offsets=offsets, max_batch_length=16)
+        A_batched_bad = aslinearoperator(A, batch_offsets=offsets, max_batch_length=32)
+        batched_state = cg(A_batched, b, x, maxiter=100, run=False)
+        with test.assertRaisesRegex(ValueError, "max_batch_length"):
+            batched_state(A=A_batched_bad)
+
+        with test.assertRaisesRegex(ValueError, "requires batch_offsets"):
+            aslinearoperator(A, max_batch_length=32)
+
         # BiCGSTAB requires M presence to match
         A2, b2 = _make_nonsymmetric_system(n=16, seed=45, dtype=wp.float64, device=device)
         x2 = wp.zeros_like(b2)
@@ -572,6 +695,24 @@ add_function_test(
     TestLinearSolvers,
     "test_tiled_dot_large_single_batch",
     test_tiled_dot_large_single_batch,
+    devices=get_cuda_test_devices(),
+)
+add_function_test(
+    TestLinearSolvers,
+    "test_tiled_dot_batched_tree",
+    test_tiled_dot_batched_tree,
+    devices=get_cuda_test_devices(),
+)
+add_function_test(
+    TestLinearSolvers,
+    "test_tiled_dot_max_batch_length",
+    test_tiled_dot_max_batch_length,
+    devices=get_cuda_test_devices(),
+)
+add_function_test(
+    TestLinearSolvers,
+    "test_tiled_dot_plan_offsets_int_max",
+    test_tiled_dot_plan_offsets_int_max,
     devices=get_cuda_test_devices(),
 )
 add_function_test(TestLinearSolvers, "test_functor_reuse", test_functor_reuse, devices=devices)

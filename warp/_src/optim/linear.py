@@ -43,6 +43,10 @@ class LinearOperator:
             Scalar degrees of freedom at or beyond ``batch_offsets[-1]`` are inactive and ignored by batched
             iterative solvers.
             When ``None`` (default) the operator represents a single subproblem.
+        max_batch_length: Optional upper bound on the number of scalar degrees of freedom in any subproblem.
+            Providing this value with ``batch_offsets`` allows CUDA reductions to avoid redundant tree levels
+            without accessing the offsets on the host. It must not be smaller than the largest difference between
+            consecutive offsets. Stateful solvers require this value to remain fixed between calls.
 
     The matrix-vector multiplication routine should have the following signature:
 
@@ -69,12 +73,20 @@ class LinearOperator:
         device: wp._src.context.Device,
         matvec: Callable,
         batch_offsets: wp.array | None = None,
+        max_batch_length: int | None = None,
     ):
+        if max_batch_length is not None:
+            if batch_offsets is None:
+                raise ValueError("max_batch_length requires batch_offsets")
+            if max_batch_length < 0:
+                raise ValueError("max_batch_length must be non-negative")
+
         self._shape = shape
         self._dtype = dtype
         self._device = device
         self._matvec = matvec
         self._batch_offsets = batch_offsets
+        self._max_batch_length = max_batch_length
 
     @property
     def shape(self) -> tuple[int, int]:
@@ -110,11 +122,20 @@ class LinearOperator:
         """Number of independent subproblems. ``1`` when :attr:`batch_offsets` is ``None``."""
         return 1 if self._batch_offsets is None else self._batch_offsets.shape[0] - 1
 
+    @property
+    def max_batch_length(self) -> int | None:
+        """Upper bound on the number of scalar degrees of freedom in any subproblem, or ``None``."""
+        return self._max_batch_length
+
 
 _Matrix = wp.array | sparse.BsrMatrix | LinearOperator
 
 
-def aslinearoperator(A: _Matrix, batch_offsets: wp.array | None = None) -> LinearOperator:
+def aslinearoperator(
+    A: _Matrix,
+    batch_offsets: wp.array | None = None,
+    max_batch_length: int | None = None,
+) -> LinearOperator:
     """Cast the dense or sparse matrix ``A`` as a :class:`LinearOperator`.
 
     ``A`` must be of one of the following types:
@@ -122,12 +143,15 @@ def aslinearoperator(A: _Matrix, batch_offsets: wp.array | None = None) -> Linea
         - :class:`warp.sparse.BsrMatrix`
         - two-dimensional ``warp.array``; then ``A`` is assumed to be a dense matrix
         - one-dimensional ``warp.array``; then ``A`` is assumed to be a diagonal matrix
-        - :class:`warp.optim.linear.LinearOperator`; no casting necessary, ``batch_offsets`` is ignored
+        - :class:`warp.optim.linear.LinearOperator`; no casting necessary, ``batch_offsets`` and
+          ``max_batch_length`` are ignored
 
     Args:
         A: The matrix to wrap.
         batch_offsets: Optional array of shape ``(B+1,)`` partitioning scalar degrees of freedom into
             ``B`` independent subproblems (see :class:`LinearOperator`).
+        max_batch_length: Optional upper bound on the number of scalar degrees of freedom in any subproblem.
+            Requires ``batch_offsets`` (see :class:`LinearOperator`).
     """
 
     if A is None or isinstance(A, LinearOperator):
@@ -169,13 +193,41 @@ def aslinearoperator(A: _Matrix, batch_offsets: wp.array | None = None) -> Linea
 
     if isinstance(A, wp.array):
         if A.ndim == 2:
-            return LinearOperator(A.shape, A.dtype, A.device, matvec=dense_mv, batch_offsets=batch_offsets)
+            return LinearOperator(
+                A.shape,
+                A.dtype,
+                A.device,
+                matvec=dense_mv,
+                batch_offsets=batch_offsets,
+                max_batch_length=max_batch_length,
+            )
         if A.ndim == 1:
             if type_is_vector(A.dtype):
-                return LinearOperator(A.shape, A.dtype, A.device, matvec=diag_mv_vec, batch_offsets=batch_offsets)
-            return LinearOperator(A.shape, A.dtype, A.device, matvec=diag_mv, batch_offsets=batch_offsets)
+                return LinearOperator(
+                    A.shape,
+                    A.dtype,
+                    A.device,
+                    matvec=diag_mv_vec,
+                    batch_offsets=batch_offsets,
+                    max_batch_length=max_batch_length,
+                )
+            return LinearOperator(
+                A.shape,
+                A.dtype,
+                A.device,
+                matvec=diag_mv,
+                batch_offsets=batch_offsets,
+                max_batch_length=max_batch_length,
+            )
     if isinstance(A, sparse.BsrMatrix):
-        return LinearOperator(A.shape, A.dtype, A.device, matvec=bsr_mv, batch_offsets=batch_offsets)
+        return LinearOperator(
+            A.shape,
+            A.dtype,
+            A.device,
+            matvec=bsr_mv,
+            batch_offsets=batch_offsets,
+            max_batch_length=max_batch_length,
+        )
 
     raise ValueError(f"Unable to create LinearOperator from {A}")
 
@@ -265,6 +317,9 @@ class TiledDot:
         batch_offsets: Optional array of shape ``(B+1,)`` partitioning scalar degrees of freedom into
             ``B`` independent subproblems. When provided, :meth:`compute` returns ``B`` independent
             dot products rather than a single global one.
+        max_batch_length: Optional upper bound on the length of any subproblem. Providing it avoids
+            redundant CUDA tree-reduction levels. It must not be smaller than the largest difference
+            between consecutive ``batch_offsets``.
     """
 
     def __init__(
@@ -275,38 +330,39 @@ class TiledDot:
         device=None,
         max_column_count: int = 1,
         batch_offsets: wp.array | None = None,
+        max_batch_length: int | None = None,
     ):
+        if max_batch_length is not None:
+            if batch_offsets is None:
+                raise ValueError("max_batch_length requires batch_offsets")
+            if max_batch_length < 0:
+                raise ValueError("max_batch_length must be non-negative")
+
         self.tile_size = tile_size
         self.device = device
         self.max_column_count = max_column_count
         self.batch_offsets = batch_offsets
+        self.max_batch_length = max_batch_length
         self.batch_count = 1 if batch_offsets is None else batch_offsets.shape[0] - 1
 
-        # The direct batched kernel avoids launch overhead for small subproblems, but a
-        # single block scales poorly once every lane must process many entries serially.
-        use_bounded_tree = (
+        use_segmented_tree = (
             batch_offsets is not None
-            and self.batch_count == 1
             and self.device.is_cuda
-            and max_length > 128 * self.tile_size
+            and self.tile_size > 1
+            and (max_batch_length is None or max_batch_length > self.tile_size)
         )
 
-        if batch_offsets is None or use_bounded_tree:
+        if batch_offsets is None:
             num_blocks = (max_length + self.tile_size - 1) // self.tile_size
-            # Scratch must hold at least batch_count result slots per column (one per subproblem)
-            scratch_size = max(num_blocks, self.batch_count)
             scratch = wp.zeros(
-                shape=(2, max_column_count, scratch_size),
+                shape=(2, max_column_count, num_blocks),
                 dtype=scalar_type,
                 device=self.device,
             )
             self.partial_sums_a = scratch[0]
             self.partial_sums_b = scratch[1]
 
-            # Unbatched or bounded single-batch tiled tree reduction
             self.dot_kernel, self.sum_kernel = _create_tiled_dot_kernels(self.tile_size)
-            if use_bounded_tree:
-                self.dot_kernel = _create_bounded_tiled_dot_kernel(self.tile_size)
 
             rounds = 0
             length = (max_length + self.tile_size - 1) // self.tile_size
@@ -317,18 +373,11 @@ class TiledDot:
             self.rounds = rounds
             self._output = self.partial_sums_a if rounds % 2 == 0 else self.partial_sums_b
 
-            if use_bounded_tree:
-                dot_inputs = (self.partial_sums_a, self.partial_sums_b, self.partial_sums_a, batch_offsets)
-                dot_outputs = ()
-            else:
-                dot_inputs = (self.partial_sums_a, self.partial_sums_b)
-                dot_outputs = (self.partial_sums_a,)
-
             self.dot_launch: wp.Launch = wp.launch(
                 self.dot_kernel,
                 dim=(max_column_count, num_blocks, self.tile_size),
-                inputs=dot_inputs,
-                outputs=dot_outputs,
+                inputs=(self.partial_sums_a, self.partial_sums_b),
+                outputs=(self.partial_sums_a,),
                 block_dim=self.tile_size,
                 device=self.device,
                 record_cmd=True,
@@ -343,11 +392,91 @@ class TiledDot:
                 record_cmd=True,
             )
             self.batch_dot_launch = None
-        else:
-            # Batched: direct per-subproblem reduction in one kernel
-            # Each subproblem's threads loop over their DOF range and reduce cooperatively.
-            # (Assumes all subproblems are small compared to total length)
+            self.segmented_dot_launch = None
+        elif use_segmented_tree:
+            (
+                plan_offsets_kernel,
+                segmented_dot_kernel,
+                segmented_sum_kernel,
+            ) = _create_segmented_tiled_dot_kernels(self.tile_size)
 
+            # Plan compact, batch-aligned chunks entirely on the device. Each level stores
+            # prefix offsets into that level's flattened partial-sum array.
+            self.segmented_offsets = [batch_offsets]
+            self.segmented_block_counts = []
+            batch_length_bound = max_length if max_batch_length is None else min(max_length, max_batch_length)
+            level_scale = 1
+            while True:
+                level_scale *= self.tile_size
+                batch_length_bound = max(1, (batch_length_bound + self.tile_size - 1) // self.tile_size)
+                total_length_bound = max(
+                    self.batch_count,
+                    (max_length + level_scale - 1) // level_scale + self.batch_count - 1,
+                )
+                max_block_count = min(total_length_bound, self.batch_count * batch_length_bound)
+
+                input_offsets = self.segmented_offsets[-1]
+                output_offsets = wp.empty(self.batch_count + 1, dtype=int, device=self.device)
+                # The batch layout is fixed for the lifetime of this TiledDot, so plan
+                # each level once on the current stream and keep the offsets device-side.
+                wp.launch(
+                    plan_offsets_kernel,
+                    dim=self.tile_size,
+                    inputs=[input_offsets],
+                    outputs=[output_offsets],
+                    block_dim=self.tile_size,
+                    device=self.device,
+                )
+                self.segmented_offsets.append(output_offsets)
+                self.segmented_block_counts.append(max_block_count)
+
+                if batch_length_bound == 1:
+                    break
+
+            scratch = wp.zeros(
+                shape=(2, max_column_count, self.segmented_block_counts[0]),
+                dtype=scalar_type,
+                device=self.device,
+            )
+            self.partial_sums_a = scratch[0]
+            self.partial_sums_b = scratch[1]
+
+            self.rounds = len(self.segmented_block_counts) - 1
+            self._output = self.partial_sums_a if self.rounds % 2 == 0 else self.partial_sums_b
+
+            self.segmented_dot_launch: wp.Launch = wp.launch(
+                segmented_dot_kernel,
+                dim=(max_column_count, self.segmented_block_counts[0], self.tile_size),
+                inputs=(
+                    self.partial_sums_a,
+                    self.partial_sums_b,
+                    self.partial_sums_a,
+                    self.segmented_offsets[0],
+                    self.segmented_offsets[1],
+                ),
+                block_dim=self.tile_size,
+                device=self.device,
+                record_cmd=True,
+            )
+            self.sum_launch: wp.Launch = wp.launch(
+                segmented_sum_kernel,
+                dim=(max_column_count, self.segmented_block_counts[-1], self.tile_size),
+                inputs=(
+                    self.partial_sums_a,
+                    self.partial_sums_b,
+                    self.segmented_offsets[-2],
+                    self.segmented_offsets[-1],
+                ),
+                block_dim=self.tile_size,
+                device=self.device,
+                record_cmd=True,
+            )
+            self.dot_launch = None
+            self.batch_dot_launch = None
+        else:
+            # CPU reductions remain direct because CPU tiles contain one thread. CUDA
+            # reductions use this path when every batch fits in one tile, avoiding the
+            # segmented offset plan and per-block binary search.
             if not self.device.is_cuda:
                 self.tile_size = 1
 
@@ -362,6 +491,7 @@ class TiledDot:
             self._output = self.partial_sums_a  # rounds=0 -> always written to partial_sums_a
             self.dot_launch = None
             self.sum_launch = None
+            self.segmented_dot_launch = None
 
             self.batch_dot_launch: wp.Launch = wp.launch(
                 batch_dot_kernel,
@@ -398,6 +528,22 @@ class TiledDot:
             self.batch_dot_launch.set_param_at_index(2, data_out)
             self.batch_dot_launch.set_dim((column_count, self.batch_count, self.tile_size))
             self.batch_dot_launch.launch()
+        elif self.segmented_dot_launch is not None:
+            self.segmented_dot_launch.set_param_at_index(0, a)
+            self.segmented_dot_launch.set_param_at_index(1, b)
+            self.segmented_dot_launch.set_param_at_index(2, data_out)
+            self.segmented_dot_launch.set_dim((column_count, self.segmented_block_counts[0], self.tile_size))
+            self.segmented_dot_launch.launch()
+
+            for round_index in range(self.rounds):
+                data_in, data_out = data_out, data_in
+
+                self.sum_launch.set_param_at_index(0, data_in)
+                self.sum_launch.set_param_at_index(1, data_out)
+                self.sum_launch.set_param_at_index(2, self.segmented_offsets[round_index + 1])
+                self.sum_launch.set_param_at_index(3, self.segmented_offsets[round_index + 2])
+                self.sum_launch.set_dim((column_count, self.segmented_block_counts[round_index + 1], self.tile_size))
+                self.sum_launch.launch()
         else:
             # Non-batched path: tiled tree reduction
             num_blocks = (a.shape[1] + self.tile_size - 1) // self.tile_size
@@ -465,25 +611,88 @@ def _create_tiled_dot_kernels(tile_size):
 
 
 @functools.cache
-def _create_bounded_tiled_dot_kernel(tile_size):
+def _create_segmented_tiled_dot_kernels(tile_size):
     @wp.kernel(module="unique")
-    def bounded_block_dot_kernel(
-        a: wp.array2d(dtype=Any),
-        b: wp.array2d(dtype=Any),
-        partial_sums: wp.array2d(dtype=Any),
-        batch_offsets: wp.array1d(dtype=int),
+    def plan_offsets_kernel(
+        input_offsets: wp.array1d[int],
+        output_offsets: wp.array1d[int],
+    ):
+        lane = wp.tid()
+        batch_count = input_offsets.shape[0] - 1
+        batches_per_lane = (batch_count + wp.block_dim() - 1) // wp.block_dim()
+        batch_begin = lane * batches_per_lane
+        batch_end = wp.min(batch_begin + batches_per_lane, batch_count)
+
+        lane_total = int(0)
+        for batch in range(batch_begin, batch_end):
+            input_count = input_offsets[batch + 1] - input_offsets[batch]
+            output_count = input_count // tile_size
+            if input_count % tile_size != 0:
+                output_count += 1
+            output_count = wp.max(1, output_count)
+            lane_total += output_count
+
+        lane_offsets = wp.tile_scan_exclusive(wp.tile(lane_total))
+        output_offset = wp.tile_extract(lane_offsets, lane)
+        for batch in range(batch_begin, batch_end):
+            output_offsets[batch] = output_offset
+            input_count = input_offsets[batch + 1] - input_offsets[batch]
+            output_count = input_count // tile_size
+            if input_count % tile_size != 0:
+                output_count += 1
+            output_offset += wp.max(1, output_count)
+
+        if batch_begin < batch_count and batch_end == batch_count:
+            output_offsets[batch_count] = output_offset
+
+    @wp.kernel(module="unique")
+    def segmented_block_dot_kernel(
+        a: wp.array2d[Any],
+        b: wp.array2d[Any],
+        partial_sums: wp.array2d[Any],
+        input_offsets: wp.array1d[int],
+        output_offsets: wp.array1d[int],
     ):
         column, block_id, lane = wp.tid()
-        i = block_id * tile_size + lane
+        batch_count = output_offsets.shape[0] - 1
+        if block_id >= output_offsets[batch_count]:
+            return
 
+        batch = wp.lower_bound(output_offsets, 0, batch_count + 1, block_id + 1) - 1
+        local_block = block_id - output_offsets[batch]
+        i = input_offsets[batch] + local_block * tile_size + lane
+        input_end = input_offsets[batch + 1]
         acc = a.dtype(0.0)
-        if i >= batch_offsets[0] and i < batch_offsets[1]:
+        if i < input_end:
             acc = a[column, i] * b[column, i]
 
         tile_sum = wp.tile_sum(wp.tile(acc))
         wp.tile_store(partial_sums[column], tile_sum, offset=block_id)
 
-    return bounded_block_dot_kernel
+    @wp.kernel(module="unique")
+    def segmented_block_sum_kernel(
+        data: wp.array2d[Any],
+        partial_sums: wp.array2d[Any],
+        input_offsets: wp.array1d[int],
+        output_offsets: wp.array1d[int],
+    ):
+        column, block_id, lane = wp.tid()
+        batch_count = output_offsets.shape[0] - 1
+        if block_id >= output_offsets[batch_count]:
+            return
+
+        batch = wp.lower_bound(output_offsets, 0, batch_count + 1, block_id + 1) - 1
+        local_block = block_id - output_offsets[batch]
+        i = input_offsets[batch] + local_block * tile_size + lane
+        input_end = input_offsets[batch + 1]
+        acc = data.dtype(0.0)
+        if i < input_end:
+            acc = data[column, i]
+
+        tile_sum = wp.tile_sum(wp.tile(acc))
+        wp.tile_store(partial_sums[column], tile_sum, offset=block_id)
+
+    return plan_offsets_kernel, segmented_block_dot_kernel, segmented_block_sum_kernel
 
 
 @wp.kernel(module="unique")
@@ -516,8 +725,9 @@ class LinearSolverState:
     optionally substituting a new matrix, right-hand side, solution vector, or
     preconditioner. Replacement operands must match the construction-time shape, dtype,
     device, and batch layout. For batched :class:`LinearOperator` inputs, the
-    ``batch_offsets`` array is part of that layout. This avoids repeated buffer
-    allocation when the same solver is applied many times.
+    ``batch_offsets`` array and ``max_batch_length`` value are part of that layout and
+    must remain fixed. This avoids repeated buffer allocation when the same solver is
+    applied many times.
 
     Args:
         A: the linear system's left-hand-side
@@ -590,8 +800,10 @@ class LinearSolverState:
                 raise ValueError(f"Incompatible A.device: expected {self._A.device}, got {A.device}")
             if A.batch_count != self._A.batch_count:
                 raise ValueError(f"Incompatible A.batch_count: expected {self._A.batch_count}, got {A.batch_count}")
-            if self._A.batch_offsets is not None and A.batch_offsets is not self._A.batch_offsets:
-                raise ValueError("For batched systems, A.batch_offsets must be the same array as at construction")
+            if A.batch_offsets is not self._A.batch_offsets:
+                raise ValueError("A.batch_offsets must be the same array as at construction")
+            if A.max_batch_length != self._A.max_batch_length:
+                raise ValueError("For batched systems, A.max_batch_length must match the value used at construction")
         if b is not self._b:
             if b.shape != self._b.shape:
                 raise ValueError(f"Incompatible b.shape: expected {self._b.shape}, got {b.shape}")
@@ -654,6 +866,7 @@ class CG(LinearSolverState):
             scalar_type=scalar_type,
             max_column_count=2,
             batch_offsets=A.batch_offsets,
+            max_batch_length=A.max_batch_length,
         )
 
         # (r, r) view — so we can compute r.z and r.r at once
@@ -776,7 +989,7 @@ def cg(
             residual norm, and absolute tolerance. If ``False``, return a pre-allocated :class:`~warp.optim.linear.CG` functor.
             The functor can be called repeatedly without reallocating temporary buffers when replacement operands match the
             construction-time shape, dtype, device, and batch layout. For batched :class:`LinearOperator` inputs, replacement
-            operators must use the same ``batch_offsets`` array.
+            operators must use the same ``batch_offsets`` array and ``max_batch_length`` value.
 
     Returns:
         If ``run`` is ``True`` and ``check_every`` > 0: Tuple (final_iteration, residual_norm, absolute_tolerance)
@@ -840,6 +1053,7 @@ class CR(LinearSolverState):
             scalar_type=scalar_type,
             max_column_count=2,
             batch_offsets=A.batch_offsets,
+            max_batch_length=A.max_batch_length,
         )
 
         self._r_and_z_repeated = _repeat_first(self._r_and_z_buf)
@@ -978,7 +1192,7 @@ def cr(
             pre-allocated :class:`~warp.optim.linear.CR` functor. The functor can be called repeatedly without
             reallocating temporary buffers when replacement operands match the construction-time shape, dtype, device,
             and batch layout. For batched :class:`LinearOperator` inputs, replacement operators must use the same
-            ``batch_offsets`` array.
+            ``batch_offsets`` array and ``max_batch_length`` value.
 
     Returns:
         If ``run`` is ``True`` and ``check_every`` > 0: Tuple (final_iteration, residual_norm, absolute_tolerance)
@@ -1087,6 +1301,7 @@ class BiCGSTAB(LinearSolverState):
             scalar_type=scalar_type,
             max_column_count=5,
             batch_offsets=A.batch_offsets,
+            max_batch_length=A.max_batch_length,
         )
 
         self._atol_sq = wp.empty(batch_count, dtype=scalar_type, device=device)
@@ -1250,7 +1465,8 @@ def bicgstab(
             pre-allocated :class:`~warp.optim.linear.BiCGSTAB` functor. The functor can be called repeatedly without
             reallocating temporary buffers when replacement operands match the construction-time shape, dtype, device,
             and batch layout. For batched :class:`LinearOperator` inputs, replacement operators must use the same
-            ``batch_offsets`` array. Whether ``M`` was provided at construction must match subsequent calls.
+            ``batch_offsets`` array and ``max_batch_length`` value. Whether ``M`` was provided at construction
+            must match subsequent calls.
 
     Returns:
         If ``run`` is ``True`` and ``check_every`` > 0: Tuple (final_iteration, residual_norm, absolute_tolerance)
@@ -1365,6 +1581,7 @@ class GMRES(LinearSolverState):
             scalar_type=scalar_dtype,
             max_column_count=restart + 1,
             batch_offsets=A.batch_offsets,
+            max_batch_length=A.max_batch_length,
         )
 
         w = self._w
@@ -1591,7 +1808,7 @@ def gmres(
             pre-allocated :class:`~warp.optim.linear.GMRES` functor. The functor can be called repeatedly without
             reallocating temporary buffers when replacement operands match the construction-time shape, dtype, device,
             and batch layout. For batched :class:`LinearOperator` inputs, replacement operators must use the same
-            ``batch_offsets`` array.
+            ``batch_offsets`` array and ``max_batch_length`` value.
 
     Returns:
         If ``run`` is ``True`` and ``check_every`` > 0: Tuple (final_iteration, residual_norm, absolute_tolerance)
