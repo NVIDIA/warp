@@ -41,8 +41,8 @@
   dimension-collapsing integer indices with negative-index support (`t[5, :]`, `t[-1, :]`), and slice assignment
   (`t[0:4, :] = src`). Also add `wp.tile_slice_indexed()`, which gathers elements along a single axis using a
   1D integer index tile (`t[indices, :]`) ([GH-1176](https://github.com/NVIDIA/warp/issues/1176)).
-- Add an optional `residual_refresh` interval to `warp.optim.linear.cg()` for recomputing
-  the true residual and restarting the search direction during finite-precision solves
+- Add optional `restart` support to `warp.optim.linear.cg()` and `warp.optim.linear.cr()` for
+  recomputing the true residual and resetting the search direction during finite-precision solves
   ([GH-1708](https://github.com/NVIDIA/warp/issues/1708)).
 
 ### Removed

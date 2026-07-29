@@ -840,20 +840,8 @@ class LinearSolverState:
         return self._run(A_op, b_arr, x_arr, M_op)
 
 
-class CG(LinearSolverState):
-    """Pre-allocated state for the Conjugate Gradient solver.
-
-    See :class:`LinearSolverState` for the shared constructor parameters, plus:
-
-    Args:
-        residual_refresh: Optional positive number of iterations between explicit
-            residual computations. Each refresh recomputes ``b - A x`` and restarts
-            the search direction to limit finite-precision drift.
-
-    The preconditioner ``M`` may be freely changed (or toggled between ``None`` and
-    a valid operator) between calls as long as the replacement operands match the
-    construction-time shape, dtype, device, and batch layout.
-    """
+class _RestartableLinearSolverState(LinearSolverState):
+    """Shared optional restart configuration for CG and CR."""
 
     def __init__(
         self,
@@ -868,19 +856,19 @@ class CG(LinearSolverState):
         check_every: int = 10,
         use_cuda_graph: bool = True,
         *,
-        residual_refresh: int | None = None,
+        restart: int | None = None,
     ):
-        if residual_refresh is not None:
-            if isinstance(residual_refresh, bool):
-                raise TypeError("residual_refresh must be an integer or None")
+        if restart is not None:
+            if isinstance(restart, bool):
+                raise TypeError("restart must be an integer or None")
             try:
-                residual_refresh = operator.index(residual_refresh)
+                restart = operator.index(restart)
             except TypeError as error:
-                raise TypeError("residual_refresh must be an integer or None") from error
-            if residual_refresh < 1:
-                raise ValueError("residual_refresh must be positive")
+                raise TypeError("restart must be an integer or None") from error
+            if restart < 1:
+                raise ValueError("restart must be positive")
 
-        self._residual_refresh = residual_refresh
+        self._restart = restart
         super().__init__(
             A,
             b,
@@ -894,6 +882,28 @@ class CG(LinearSolverState):
             use_cuda_graph=use_cuda_graph,
         )
 
+    def _configure_restart(self):
+        if self._restart is not None:
+            self._restart = max(1, min(self._restart, self._maxiter))
+            if self._check_every > 0:
+                self._check_every = max(self._check_every, self._restart)
+
+
+class CG(_RestartableLinearSolverState):
+    """Pre-allocated state for the Conjugate Gradient solver.
+
+    See :class:`LinearSolverState` for the shared constructor parameters, plus:
+
+    Args:
+        restart: Optional positive number of iterations between restarts. Each restart
+            recomputes ``b - A x`` and resets the search direction to limit
+            finite-precision drift.
+
+    The preconditioner ``M`` may be freely changed (or toggled between ``None`` and
+    a valid operator) between calls as long as the replacement operands match the
+    construction-time shape, dtype, device, and batch layout.
+    """
+
     def _allocate(self):
         A = self._A
         b = self._b
@@ -901,10 +911,7 @@ class CG(LinearSolverState):
         scalar_type = self._scalar_type
         batch_count = self._batch_count
 
-        if self._residual_refresh is not None:
-            self._residual_refresh = max(1, min(self._residual_refresh, self._maxiter))
-            if self._check_every > 0:
-                self._check_every = max(self._check_every, self._residual_refresh)
+        self._configure_restart()
 
         # Temp storage, with residuals stored per subproblem
         self._r_and_z_buf = wp.empty((2, b.shape[0]), dtype=b.dtype, device=device)
@@ -991,14 +998,14 @@ class CG(LinearSolverState):
                     inputs=[atol_sq, r_norm_sq, rz_old, rz_new, z, p, batch_offsets, dofs_per_entry],
                 )
 
-        residual_refresh = self._residual_refresh
-        if residual_refresh is None:
+        restart = self._restart
+        if restart is None:
             do_cycle = do_iteration
             cycle_size = 1
         else:
 
-            def do_refresh_cycle():
-                for _ in range(residual_refresh - 1):
+            def do_restart_cycle():
+                for _ in range(restart - 1):
                     do_iteration()
 
                 # The explicit residual replaces the recursive update from the final
@@ -1008,8 +1015,8 @@ class CG(LinearSolverState):
                 update_rr_rz()
                 p.assign(z)
 
-            do_cycle = do_refresh_cycle
-            cycle_size = residual_refresh
+            do_cycle = do_restart_cycle
+            cycle_size = restart
 
         return _run_capturable_loop(
             do_cycle,
@@ -1036,7 +1043,7 @@ def cg(
     use_cuda_graph=True,
     run: bool = True,
     *,
-    residual_refresh: int | None = None,
+    restart: int | None = None,
 ) -> tuple[int, float, float] | tuple[wp.array, wp.array, wp.array] | CG:
     """Compute an approximate solution to a symmetric, positive-definite linear system
     using the Conjugate Gradient algorithm.
@@ -1051,8 +1058,8 @@ def cg(
         tol: relative tolerance for the residual, as a ratio of the right-hand-side norm
         atol: absolute tolerance for the residual
         maxiter: maximum number of iterations to perform before aborting. Defaults to the system size.
-            When ``residual_refresh`` is enabled, CG performs complete refresh cycles and may exceed
-            ``maxiter`` by up to ``residual_refresh - 1`` iterations.
+            When ``restart`` is enabled, CG performs complete restart cycles and may exceed
+            ``maxiter`` by up to ``restart - 1`` iterations.
         M: optional left-preconditioner, ideally chosen such that ``M A`` is close to identity.
         callback: function to be called every `check_every` iteration with the current iteration number, residual and tolerance.
             If `check_every` is 0, the callback should be a Warp kernel.
@@ -1067,30 +1074,30 @@ def cg(
             The functor can be called repeatedly without reallocating temporary buffers when replacement operands match the
             construction-time shape, dtype, device, and batch layout. For batched :class:`LinearOperator` inputs, replacement
             operators must use the same ``batch_offsets`` array and ``max_batch_length`` value.
-        residual_refresh: Optional positive number of iterations between explicit residual computations.
-            Each refresh recomputes ``b - A x`` and restarts the search direction, limiting drift between
-            the recursively updated residual and the true residual. Convergence checks and callbacks occur
-            only at refresh-cycle boundaries. The default ``None`` preserves standard recursive CG.
+        restart: Optional positive number of iterations between restarts. Each restart recomputes
+            ``b - A x`` and resets the search direction, limiting drift between the recursively updated
+            residual and the true residual. Convergence checks and callbacks occur only at restart-cycle
+            boundaries. The default ``None`` preserves standard recursive CG.
 
     Returns:
         If ``run`` is ``True`` and ``check_every`` > 0: Tuple (final_iteration, residual_norm, absolute_tolerance)
             - final_iteration: The number of iterations performed before convergence or reaching maxiter
-            - residual_norm: The recursively updated residual norm. When ``residual_refresh`` is enabled,
-              this is the true residual norm ||b - Ax|| at the final refresh-cycle boundary.
+            - residual_norm: The recursively updated residual norm. When ``restart`` is enabled,
+              this is the true residual norm ||b - Ax|| at the final restart-cycle boundary.
             - absolute_tolerance: The absolute tolerance used for convergence checking
 
         If ``run`` is ``True`` and ``check_every`` is 0: Tuple (final_iteration_array, residual_norm_squared_array, absolute_tolerance_squared_array)
             - final_iteration_array: Device array containing the number of iterations performed
             - residual_norm_squared_array: Device array containing the squared recursively updated residual norm.
-              When ``residual_refresh`` is enabled, this is the squared true residual norm ||b - Ax||² at the
-              final refresh-cycle boundary.
+              When ``restart`` is enabled, this is the squared true residual norm ||b - Ax||² at the
+              final restart-cycle boundary.
             - absolute_tolerance_squared_array: Device array containing the squared absolute tolerance
 
         If ``run`` is ``False``: a :class:`~warp.optim.linear.CG` functor with all temporary buffers pre-allocated.
 
     Raises:
-        TypeError: If ``residual_refresh`` is not an integer or ``None``.
-        ValueError: If a specified ``residual_refresh`` is not positive.
+        TypeError: If ``restart`` is not an integer or ``None``.
+        ValueError: If a specified ``restart`` is not positive.
 
     If both `tol` and `atol` are provided, the absolute tolerance used as the termination criterion for the residual norm is ``max(atol, tol * norm(b))``.
     """
@@ -1105,20 +1112,26 @@ def cg(
         callback=callback,
         check_every=check_every,
         use_cuda_graph=use_cuda_graph,
-        residual_refresh=residual_refresh,
+        restart=restart,
     )
     if run:
         return state()
     return state
 
 
-class CR(LinearSolverState):
+class CR(_RestartableLinearSolverState):
     """Pre-allocated state for the Conjugate Residual solver.
 
-    See :class:`LinearSolverState` for the constructor parameters. The preconditioner
-    ``M`` may be freely changed (or toggled between ``None`` and a valid operator)
-    between calls as long as the replacement operands match the construction-time
-    shape, dtype, device, and batch layout.
+    See :class:`LinearSolverState` for the shared constructor parameters, plus:
+
+    Args:
+        restart: Optional positive number of iterations between restarts. Each restart
+            recomputes ``b - A x`` and resets the search direction to limit
+            finite-precision drift.
+
+    The preconditioner ``M`` may be freely changed (or toggled between ``None`` and
+    a valid operator) between calls as long as the replacement operands match the
+    construction-time shape, dtype, device, and batch layout.
     """
 
     def _allocate(self):
@@ -1127,6 +1140,8 @@ class CR(LinearSolverState):
         device = self._device
         scalar_type = self._scalar_type
         batch_count = self._batch_count
+
+        self._configure_restart()
 
         # Notations follow pseudo-code from https://en.wikipedia.org/wiki/Conjugate_residual_method
         # with z := M^-1 r and y := M^-1 Ap
@@ -1181,22 +1196,25 @@ class CR(LinearSolverState):
         # Not strictly necessary, but makes it more robust to user-provided LinearOperators
         y_and_Ap_buf.zero_()
 
-        # z = M r
-        if M is not None:
-            z.zero_()
-            M.matvec(r, z, z, alpha=1.0, beta=0.0)
+        def update_z():
+            # z = M r
+            if M is not None:
+                M.matvec(r, z, z, alpha=1.0, beta=0.0)
 
         def update_rr_zAz():
             A.matvec(z, Az, Az, alpha=1, beta=0)
             r_copy.assign(r)
             tiled_dot.compute(r_and_z, r_and_Az)
 
+        if M is not None:
+            z.zero_()
+        update_z()
         update_rr_zAz()
 
         p.assign(z)
         Ap.assign(Az)
 
-        def do_iteration():
+        def do_iteration(update_direction=True):
             zAz_old.assign(zAz_new)
 
             if M is not None:
@@ -1221,17 +1239,40 @@ class CR(LinearSolverState):
                     inputs=[atol_sq, r_norm_sq, zAz_old, y_Ap, x, r, z, p, Ap, y, batch_offsets, dofs_per_entry],
                 )
 
-            update_rr_zAz()
-            wp.launch(
-                kernel=_cr_kernel_2,
-                dim=z.shape[0],
-                device=device,
-                inputs=[atol_sq, r_norm_sq, zAz_old, zAz_new, z, p, Az, Ap, batch_offsets, dofs_per_entry],
-            )
+            if update_direction:
+                update_rr_zAz()
+                wp.launch(
+                    kernel=_cr_kernel_2,
+                    dim=z.shape[0],
+                    device=device,
+                    inputs=[atol_sq, r_norm_sq, zAz_old, zAz_new, z, p, Az, Ap, batch_offsets, dofs_per_entry],
+                )
+
+        restart = self._restart
+        if restart is None:
+            do_cycle = do_iteration
+            cycle_size = 1
+        else:
+
+            def do_restart_cycle():
+                for _ in range(restart - 1):
+                    do_iteration()
+
+                # Replace the final recursive residual with the true residual, then
+                # rebuild the preconditioned residual and restart both p and A p.
+                do_iteration(update_direction=False)
+                A.matvec(x, b, r, alpha=-1.0, beta=1.0)
+                update_z()
+                update_rr_zAz()
+                p.assign(z)
+                Ap.assign(Az)
+
+            do_cycle = do_restart_cycle
+            cycle_size = restart
 
         return _run_capturable_loop(
-            do_iteration,
-            cycle_size=1,
+            do_cycle,
+            cycle_size=cycle_size,
             r_norm_sq=r_norm_sq,
             maxiter=self._maxiter,
             atol_sq=atol_sq,
@@ -1253,6 +1294,8 @@ def cr(
     check_every=10,
     use_cuda_graph=True,
     run: bool = True,
+    *,
+    restart: int | None = None,
 ) -> tuple[int, float, float] | tuple[wp.array, wp.array, wp.array] | CR:
     """Compute an approximate solution to a symmetric, positive-definite linear system
     using the Conjugate Residual algorithm.
@@ -1267,7 +1310,8 @@ def cr(
         tol: relative tolerance for the residual, as a ratio of the right-hand-side norm
         atol: absolute tolerance for the residual
         maxiter: maximum number of iterations to perform before aborting. Defaults to the system size.
-            Note that the current implementation always performs iterations in pairs, and as a result may exceed the specified maximum number of iterations by one.
+            When ``restart`` is enabled, CR performs complete restart cycles and may exceed
+            ``maxiter`` by up to ``restart - 1`` iterations.
         M: optional left-preconditioner, ideally chosen such that ``M A`` is close to identity.
         callback: function to be called every `check_every` iteration with the current iteration number, residual and tolerance.
             If `check_every` is 0, the callback should be a Warp kernel.
@@ -1282,19 +1326,30 @@ def cr(
             reallocating temporary buffers when replacement operands match the construction-time shape, dtype, device,
             and batch layout. For batched :class:`LinearOperator` inputs, replacement operators must use the same
             ``batch_offsets`` array and ``max_batch_length`` value.
+        restart: Optional positive number of iterations between restarts. Each restart recomputes
+            ``b - A x`` and resets the search direction, limiting drift between the recursively updated
+            residual and the true residual. Convergence checks and callbacks occur only at restart-cycle
+            boundaries. The default ``None`` preserves standard recursive CR.
 
     Returns:
         If ``run`` is ``True`` and ``check_every`` > 0: Tuple (final_iteration, residual_norm, absolute_tolerance)
             - final_iteration: The number of iterations performed before convergence or reaching maxiter
-            - residual_norm: The final residual norm ||b - Ax||
+            - residual_norm: The recursively updated residual norm. When ``restart`` is enabled,
+              this is the true residual norm ||b - Ax|| at the final restart-cycle boundary.
             - absolute_tolerance: The absolute tolerance used for convergence checking
 
         If ``run`` is ``True`` and ``check_every`` is 0: Tuple (final_iteration_array, residual_norm_squared_array, absolute_tolerance_squared_array)
             - final_iteration_array: Device array containing the number of iterations performed
-            - residual_norm_squared_array: Device array containing the squared residual norm ||b - Ax||²
+            - residual_norm_squared_array: Device array containing the squared recursively updated residual norm.
+              When ``restart`` is enabled, this is the squared true residual norm ||b - Ax||² at the
+              final restart-cycle boundary.
             - absolute_tolerance_squared_array: Device array containing the squared absolute tolerance
 
         If ``run`` is ``False``: a :class:`~warp.optim.linear.CR` functor with all temporary buffers pre-allocated.
+
+    Raises:
+        TypeError: If ``restart`` is not an integer or ``None``.
+        ValueError: If a specified ``restart`` is not positive.
 
     If both `tol` and `atol` are provided, the absolute tolerance used as the termination criterion for the residual norm is ``max(atol, tol * norm(b))``.
     """
@@ -1309,6 +1364,7 @@ def cr(
         callback=callback,
         check_every=check_every,
         use_cuda_graph=use_cuda_graph,
+        restart=restart,
     )
     if run:
         return state()
