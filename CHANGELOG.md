@@ -145,6 +145,9 @@
   instead of node coordinates in Warp FEM kernels ([GH-1685](https://github.com/NVIDIA/warp/issues/1685)).
 - Reject malformed APIC `.wrp` memory sections containing duplicate region IDs
   or out-of-bounds initial data during graph loading.
+- Fix kernel compilation failing on Windows systems without long-path support enabled when a custom kernel cache
+  location is set through `wp.config.kernel_cache_dir` or the `WARP_CACHE_PATH` environment variable. Custom cache
+  locations now receive the same `\\?\` long-path treatment as the default location.
 
 ### Documentation
 

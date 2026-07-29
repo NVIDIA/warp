@@ -5,6 +5,7 @@
 
 import glob
 import os
+import shutil
 import tempfile
 import unittest
 from unittest import mock
@@ -34,15 +35,34 @@ def _use_temp_cache():
 
 
 class _TempCacheContext:
+    @staticmethod
+    def _rmtree(tmp_dir):
+        if os.name == "nt":
+            # Warp writes cache artifacts through the \\?\ long-path prefix,
+            # so module paths in the cache can exceed MAX_PATH on systems
+            # without long-path support enabled. Deleting through the
+            # unprefixed path (as TemporaryDirectory.cleanup() would) silently
+            # leaves such files behind and then fails to remove the directory.
+            tmp_dir = warp._src.build._add_long_path_prefix(tmp_dir)
+        shutil.rmtree(tmp_dir)
+
     def __enter__(self):
         self._original_cache_dir = wp.config.kernel_cache_dir
-        self._tmp = tempfile.TemporaryDirectory(prefix="wp_pch_test_")
-        warp._src.build.init_kernel_cache(path=self._tmp.name)
+        self._tmp_dir = tempfile.mkdtemp(prefix="wp_pch_test_")
+        try:
+            warp._src.build.init_kernel_cache(path=self._tmp_dir)
+        except BaseException:
+            # init_kernel_cache() assigns wp.config.kernel_cache_dir before it
+            # can fail, and mkdtemp() registers no finalizer, so undo both here:
+            # __exit__ never runs when __enter__ raises.
+            wp.config.kernel_cache_dir = self._original_cache_dir
+            self._rmtree(self._tmp_dir)
+            raise
         return self
 
     def __exit__(self, *args):
         wp.config.kernel_cache_dir = self._original_cache_dir
-        self._tmp.cleanup()
+        self._rmtree(self._tmp_dir)
 
 
 class TestCpuPrecompiledHeaders(unittest.TestCase):

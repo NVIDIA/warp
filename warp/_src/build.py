@@ -6,6 +6,7 @@ import ctypes
 import errno
 import hashlib
 import json
+import ntpath
 import os
 import shutil
 import threading
@@ -157,6 +158,22 @@ def build_cpu(
         raise Exception(f"CPU kernel build failed with error code {err}")
 
 
+def _add_long_path_prefix(path):
+    """Add the Windows long-path prefix to an absolute path, accounting for UNC shares.
+
+    Prefixed paths bypass the legacy 260-character MAX_PATH limit without requiring
+    system-wide long-path support. Relative paths and paths that already carry the
+    prefix are returned unchanged.
+    """
+    if not ntpath.isabs(path) or path.startswith("\\\\?\\"):
+        return path
+    if path.startswith("\\\\"):
+        # UNC path  \\server\share\…  →  \\?\UNC\server\share\…
+        return "\\\\?\\UNC\\" + path.removeprefix("\\\\")
+    # Drive-letter path  C:\…  →  \\?\C:\…
+    return "\\\\?\\" + path
+
+
 def init_kernel_cache(path=None):
     """Initialize kernel cache directory.
 
@@ -176,14 +193,10 @@ def init_kernel_cache(path=None):
         base_dir = None
         cache_root_dir = appdirs.user_cache_dir(appname="warp", appauthor="NVIDIA", version=warp.config.version)
 
-        if os.name == "nt" and os.path.isabs(cache_root_dir) and not cache_root_dir.startswith("\\\\?\\"):
-            # Add Windows long-path prefix, accounting for UNC shares.
-            if cache_root_dir.startswith("\\\\"):
-                # UNC path  \\server\share\…  →  \\?\UNC\server\share\…
-                cache_root_dir = "\\\\?\\UNC\\" + cache_root_dir.removeprefix("\\\\")
-            else:
-                # Drive-letter path  C:\…  →  \\?\C:\…
-                cache_root_dir = "\\\\?\\" + cache_root_dir
+    if os.name == "nt":
+        # Module paths under the cache can exceed MAX_PATH on systems without
+        # long-path support enabled, so custom locations need the prefix too.
+        cache_root_dir = _add_long_path_prefix(cache_root_dir)
 
     warp.config.kernel_cache_dir = cache_root_dir
 
