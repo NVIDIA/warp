@@ -1,0 +1,218 @@
+{
+  "skill_name": "warp-adopt",
+  "notes": "Trigger evaluation for an offered-not-requested skill. Positives deliberately NEVER mention Warp: the skill must fire on the problem shape (irregular/spatial/simulation hot path, iterative per-element loops, or many small kernels on NVIDIA hardware) because Warp is offered as a solution rather than named by the user. Negatives are gated cases the description must suppress: CPU-only or no-GPU deployment, required non-NVIDIA portability, dense tensor/NN work already served by vendor libraries, plain Warp API or packaging questions, and requests where the user has already chosen a Warp kernel and only wants it written. Query 23 is deliberately a positive even though the project already ships a GPU backend: an existing accelerator path is a codebase-level judgement for stage 1 and the baselines ladder, not something the description can screen on, and treating it as a description-level negative would suppress the skill on exactly the assessments it should run. No query names the skill or states a desired verdict. Split is fixed at 60/40 with a proportional positive/negative mix in each half. Queries 27-30 come from a full assessment of a library that ships hand-written CUDA for nearly every operation. 27 and 28 are positives that look like negatives: an operation that ALREADY has a maintained CUDA kernel is not a description-level negative (that kernel can still be the wrong algorithm - a mature implementation gate is a codebase judgement, and firing it from the description would suppress the assessment that discovers it), and neither is a project that supports a second vendor, so long as an optional NVIDIA path is acceptable - portability is a cost to price into the verdict, not a disqualifier, and query 15 stays a negative only because it REQUIRES parity across all three targets. 29 and 30 are negatives that look like positives: both describe irregular geometry work on real hardware, but neither states a latency, throughput, memory or capacity objective - one asks whether a tie-breaking difference is a bug and the other asks for cross-release determinism. Correctness and reproducibility are gates on a migration, never reasons for one, so the skill must not load to answer them. Queries 31-34 come from an assessment of a library of GPU operations whose packaging policy forbids runtime code generation. 31 and 32 are positives that are easy to mistake for negatives: 31 describes a deployment that cannot accept a runtime-compiled dependency, but that is a codebase/policy fact the description cannot see - suppressing the skill there would skip the stage-1 gate that is supposed to fire and produce the ABORT. 32 is a library maintainer with no application of their own, which is a normal target for this skill even though the user frames the ranking question around their own microbenchmark. 33 is a negative because it asks about Warp's release policy rather than about making code faster, and 34 is a negative because the operation is already on a vendor library and near the bandwidth roofline.",
+  "threshold": 0.5,
+  "runs_per_query": 3,
+  "split": {
+    "train": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      21,
+      22,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      24,
+      25,
+      27,
+      29,
+      31,
+      33
+    ],
+    "validation": [
+      7,
+      8,
+      9,
+      10,
+      23,
+      17,
+      18,
+      19,
+      20,
+      26,
+      28,
+      30,
+      32,
+      34
+    ]
+  },
+  "queries": [
+    {
+      "id": 1,
+      "query": "our particle neighbour search is eating most of the frame budget in the sim. positions are already on the gpu as torch tensors. what are our options here?",
+      "should_trigger": true
+    },
+    {
+      "id": 2,
+      "query": "The asset bake does about 2M closest-point queries against a static mesh. We're calling Open3D on the CPU for it, but the geometry is already sitting on an A100. Can we do better?",
+      "should_trigger": true
+    },
+    {
+      "id": 3,
+      "query": "broad-phase collision in our cloth solver is a python loop over grid cells and it's clearly the bottleneck. ideas for speeding it up?",
+      "should_trigger": true
+    },
+    {
+      "id": 4,
+      "query": "We're standing up a signed-distance-field query service on H100s and scipy's KDTree falls over at 10M points. What should we be building this on?",
+      "should_trigger": true
+    },
+    {
+      "id": 5,
+      "query": "Our contact solver is about forty small hand-written CUDA kernels and launch overhead is dominating on the RTX 6000. Two of the three people who understand it are leaving.",
+      "should_trigger": true
+    },
+    {
+      "id": 6,
+      "query": "TSDF integration over 10 cameras OOMs on the intermediate tensors at 256^3. Everything's GPU-resident already. How do we get the memory down?",
+      "should_trigger": true
+    },
+    {
+      "id": 7,
+      "query": "connected components over batched binary masks on the gpu — our torch version does a fixed 100 propagation passes and it's both slow and sometimes wrong on big blobs",
+      "should_trigger": true
+    },
+    {
+      "id": 8,
+      "query": "We raycast 500k rays against a deforming mesh every frame and currently rebuild the BVH on the CPU each time. It's a CUDA box. This is killing our frame time.",
+      "should_trigger": true
+    },
+    {
+      "id": 9,
+      "query": "got irregular per-element work with early exits over ~5M elements on an L40. vectorising it in torch materialises enormous mask tensors and we run out of memory",
+      "should_trigger": true
+    },
+    {
+      "id": 10,
+      "query": "Our MD code rebuilds neighbour lists every step in JAX and allocates multi-gigabyte candidate tensors on the A100s. We want to run bigger systems.",
+      "should_trigger": true
+    },
+    {
+      "id": 11,
+      "query": "our CLI ships to field engineers on laptops, no GPU anywhere in the fleet. the point-classification step is the slowest part of a run — can you speed it up?",
+      "should_trigger": false
+    },
+    {
+      "id": 12,
+      "query": "score_batch is 71% of our p99 — four nn.Linear layers, a LayerNorm and a softmax, fp16 on A100s. We need that latency down.",
+      "should_trigger": false
+    },
+    {
+      "id": 13,
+      "query": "I've already decided to use Warp for the SDF evaluation. Just write the kernel and wire it into sdf_utils.py please.",
+      "should_trigger": false
+    },
+    {
+      "id": 14,
+      "query": "how do i pass a torch cuda tensor into a wp.kernel without copying? wp.from_torch keeps complaining about strides",
+      "should_trigger": false
+    },
+    {
+      "id": 15,
+      "query": "We ship on AMD cards and Apple silicon as well as NVIDIA, and our geometry kernels need to get faster on all three. Single codebase if possible.",
+      "should_trigger": false
+    },
+    {
+      "id": 16,
+      "query": "This training loop is way too slow. Can you profile it and make it faster?",
+      "should_trigger": false
+    },
+    {
+      "id": 17,
+      "query": "Our JAX model's gradients are coming out as zeros through a custom op. Any idea what's going on with the autodiff?",
+      "should_trigger": false
+    },
+    {
+      "id": 18,
+      "query": "what's the difference between wp.HashGrid and wp.Mesh for nearest-neighbour lookups? just trying to pick the right one",
+      "should_trigger": false
+    },
+    {
+      "id": 19,
+      "query": "nightly invoice validation takes 42 minutes on a c6i.4xlarge and JSON decoding dominates the profile. no GPU budget approved. how do we get it under 10?",
+      "should_trigger": false
+    },
+    {
+      "id": 20,
+      "query": "our fp16 matmuls are slower than we expected on H100 — is that a BLAS choice, a layout problem, or are we just at the roofline?",
+      "should_trigger": false
+    },
+    {
+      "id": 21,
+      "query": "panning our scatter dashboard over ~100M rows takes about 40 s a frame. the binning step is a per-row scatter with atomics and the dataframe already lives on the gpu. what are our options?",
+      "should_trigger": true
+    },
+    {
+      "id": 22,
+      "query": "graph edge bundling takes 12 minutes on a 20k-edge graph. it's an iterative loop that nudges every point along a gradient field, 50 steps per round, and it's pure host code. anything better than waiting?",
+      "should_trigger": true
+    },
+    {
+      "id": 23,
+      "query": "we already have numba.cuda kernels for the aggregation, but a post-processing pass in the same pipeline still runs on the host and now dominates the frame. where should we take this?",
+      "should_trigger": true
+    },
+    {
+      "id": 24,
+      "query": "how do I get Warp's kernel cache working on a read-only container filesystem? it recompiles every start and I just need the cache path story.",
+      "should_trigger": false
+    },
+    {
+      "id": 25,
+      "query": "our nightly pandas groupby over 50M rows takes 90 s on the managed Spark cluster. that cloud region has no GPU instance types available to us and procurement is closed.",
+      "should_trigger": false
+    },
+    {
+      "id": 26,
+      "query": "we need bit-exact float64 geometry results reproducible across CPU, NVIDIA and AMD for a regulatory audit trail. currently the CPU path is the slow one.",
+      "should_trigger": false
+    },
+    {
+      "id": 27,
+      "query": "the closest-point call in our geometry lib is already a hand-written CUDA kernel we've maintained for four releases, and it's still the top of every profile at scale. is there anything left in it or have we hit the hardware?",
+      "should_trigger": true
+    },
+    {
+      "id": 28,
+      "query": "we build the same kernel source for NVIDIA and AMD today. the neighbourhood gather is 80% of a batch and an optional fast path on the NVIDIA half of the fleet would be acceptable if the portable one stays the default. what would you look at?",
+      "should_trigger": true
+    },
+    {
+      "id": 29,
+      "query": "our CPU and GPU paths return different closest-face indices for about half the query points, though the distances match exactly. is that a bug we need to fix?",
+      "should_trigger": false
+    },
+    {
+      "id": 30,
+      "query": "we need our mesh loss to produce identical optimisation trajectories across releases for a reproducibility guarantee. right now it drifts between versions. how do we lock that down?",
+      "should_trigger": false
+    },
+    {
+      "id": 31,
+      "query": "neighbourhood_features is basically all of our per-sweep time on the survey appliance and it looks like a textbook GPU workload. every unit has an A4000 in it that sits idle between classifier calls. what are our options?",
+      "should_trigger": true
+    },
+    {
+      "id": 32,
+      "query": "we maintain a library of point-cloud and graph ops and we're deciding what to optimise next. our own per-op benchmark ranks them for us. putting a spatial index over the point positions is the obvious idea - is it worth it?",
+      "should_trigger": true
+    },
+    {
+      "id": 33,
+      "query": "we're deciding whether to take warp-lang as an optional dependency in our library. what's its release cadence, how long do APIs stay supported, and does it follow semver?",
+      "should_trigger": false
+    },
+    {
+      "id": 34,
+      "query": "our segmented reduction over 2M edges is the hot spot. it's already a single cusparse call and nsight says we're at about 85% of achievable bandwidth on the card. anything left here?",
+      "should_trigger": false
+    }
+  ]
+}

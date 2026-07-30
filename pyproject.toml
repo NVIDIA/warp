@@ -86,6 +86,11 @@ cache-dir = ".cache/ruff"
 line-length = 120
 indent-width = 4
 extend-exclude = [
+    # Skill eval fixtures stand in for third-party codebases under assessment.
+    # Their shape is what the evals grade, so they are neither linted nor
+    # formatted.
+    ".claude/skills/*/evals/files",
+    ".codex/skills/*/evals/files",
     "warp/_src/thirdparty/appdirs.py",
     "warp/_src/thirdparty/dlpack.py",
     "tools/build",
@@ -207,7 +212,9 @@ url = "https://download.pytorch.org/whl/cu130"
 explicit = true
 
 [tool.typos]
-files.extend-exclude = ["/tools/packman", "/tools/repoman", "/PUBLICATIONS.md", "/licenses", "/warp/native/nanovdb", "/warp/native/cuBQL", "*.svg", "*.usda"]
+# Skill eval fixtures stand in for third-party codebases under assessment, so
+# their prose and identifiers are deliberately not held to Warp's conventions.
+files.extend-exclude = ["/tools/packman", "/tools/repoman", "/PUBLICATIONS.md", "/licenses", "/warp/native/nanovdb", "/warp/native/cuBQL", "*.svg", "*.usda", "/.claude/skills/*/evals/files", "/.codex/skills/*/evals/files"]
 
 [tool.typos.default]
 extend-ignore-re = [

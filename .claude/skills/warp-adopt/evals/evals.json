@@ -1,0 +1,539 @@
+{
+  "skill_name": "warp-adopt",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "our scan alignment is too slow. the nearest-neighbour matching in match_points() is all-pairs brute force so I'm pretty sure that's what's killing us — can you look at speeding it up? run it with --stages if that helps.",
+      "expected_output": "A finding that the all-pairs matcher is NOT the bottleneck (~2% of runtime) and that parsing dominates (~79%), with a recommendation that is not a GPU port. Either an ABORT/hand-back naming the real cost, or a NO-GO report. The user's stated diagnosis should be corrected, not accepted.",
+      "files": [
+        "evals/files/e1-non-bottleneck/align_scans.py"
+      ],
+      "assertions": [
+        "The response reports a measured per-stage profile of align_scans.py rather than reasoning only from the source",
+        "It states that match_points accounts for roughly 2% of runtime (under 5%)",
+        "It identifies parse_scans as the dominant stage (roughly 75-85%)",
+        "It explicitly declines to port match_points to Warp, or returns ABORT/NO-GO for that seam",
+        "It names a non-Warp route for the real cost, such as vectorised or bulk parsing",
+        "It does not present any Warp speedup ratio for match_points as a reason to proceed"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "we keep hitting OOM on our 24GB card when we raise the fusion resolution. weird thing is integrate_volume barely shows up in our timings — it's a couple of percent. what are our options here?",
+      "expected_output": "Recognition that this candidate must be screened on MEMORY, not on its latency share. The report should measure peak memory as a function of resolution, note that the library default (256) differs from the CLI default (32), and state the device budget the judgement assumes. It must not reject the candidate merely because it is ~4.5% of wall time.",
+      "files": [
+        "evals/files/e2-memory-candidate/fuse.py"
+      ],
+      "assertions": [
+        "The response measures peak memory, not only wall time",
+        "It does NOT reject the candidate on the grounds that it is a small share of runtime",
+        "It states which metric the materiality judgement was made against (memory/capacity rather than latency)",
+        "It reports that memory grows cubically with resolution, citing at least two measured resolutions",
+        "It notes that integrate_volume's own default resolution (256) differs from the CLI default (32)",
+        "It states the device memory budget the conclusion assumes, and relates it to the user's 24GB card",
+        "It classifies the candidate as a batch x domain intermediate (fused per-element loop / Class 4) rather than a latency candidate",
+        "It sweeps the operation's own variants or option settings, not only the default configuration, before quoting a cost for the entry point"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "can you take a look at our meshkit pipeline and tell us where it's worth putting engineering effort? we'd like it faster.",
+      "expected_output": "A profile of all four stages and a candidate matrix that accounts for every stage above ~10% of total runtime, each with a status and a reason — including the ones that are rejected. Going deep on neighbour_search is correct, but shade_vertices, write_obj and pack_atlas must each appear with an explicit rejection reason rather than being silently dropped.",
+      "files": [
+        "evals/files/e3-profile-coverage/run_pipeline.py"
+      ],
+      "assertions": [
+        "The response includes a measured per-stage profile with shares for all four stages",
+        "Every stage accounting for at least 10% of runtime appears in the candidate list or matrix with an explicit status",
+        "shade_vertices is present and rejected with a reason referencing dense linear algebra already served by tuned libraries",
+        "pack_atlas is present and rejected with a reason referencing serial CPU / third-party library work",
+        "write_obj is present and rejected with a reason referencing CPU/IO-bound string formatting",
+        "neighbour_search is identified as the primary candidate",
+        "No stage above 10% of runtime is left unmentioned in the assessment"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "gridkit feels slow end to end and we're wondering what to optimise. the export path does a big nearest-seed search that looks like the obvious target.",
+      "expected_output": "Both entry points (fit and export) enumerated, with a statement of which were profiled and which were screened without measurement. The report should note that fit costs several times more wall time than export even though the irregular seam lives in export, and should use the tool's own --profile flag rather than only building a bespoke harness.",
+      "files": [
+        "evals/files/e4-entry-points/gridkit.py"
+      ],
+      "assertions": [
+        "The response enumerates both entry points (fit and export), not just the one containing the irregular seam",
+        "It states, for each entry point, whether it was profiled or screened without measurement",
+        "It reports measured timings showing fit costs substantially more wall time than export",
+        "It uses or references the project's built-in --profile timers",
+        "Any recommendation about the export seam is qualified by export's share of overall product runtime",
+        "fit.forward_backward is screened out with a reason (dense matmul / vendor-library territory) rather than ignored"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "cellassign is getting slow — 404 templates against 20k points today and both are growing. is this worth moving onto the GPU?",
+      "expected_output": "Discovery that the incumbent does not satisfy its own contract: zero-area templates produce NaN which silently discards an entire 10-template chunk, and the chunk loop never visits the last 4 templates. The report must stop treating the incumbent as the correctness oracle, construct a reference for the intended contract, classify differences as corrections vs regressions, and recommend fixing the defect first, independently of any backend decision.",
+      "files": [
+        "evals/files/e5-broken-incumbent/assign.py"
+      ],
+      "assertions": [
+        "The response identifies that zero-area/degenerate templates produce NaN and that this discards a whole chunk of candidates",
+        "It identifies that the chunk loop visits only 400 of 404 templates, leaving 4 unreachable",
+        "It states that the incumbent cannot be used as the correctness oracle and constructs or specifies a reference implementing the intended contract",
+        "It reports differences against that reference split into corrections vs regressions, not as a single agreement percentage",
+        "It quantifies the defect on the real input (roughly 7% of points misassigned)",
+        "It recommends fixing the correctness defect first, and does not present the defect as a reason to migrate to Warp",
+        "It does not report a candidate as 'wrong' merely because it disagrees with the defective incumbent",
+        "Where it reconstructs or extracts the incumbent to compare against, it checks that it extracted the configuration it meant - for example by asserting an independent invariant on the incumbent's own output - rather than trusting the extraction"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "we wrote a pruned version of the shape lookup that comes out about 2x faster than brute force. before we sink time into a GPU port, is pruned() the right thing to be porting?",
+      "expected_output": "Validation of the pruning rule BEFORE any performance conclusion. pruned() keeps only the 8 shapes with the smallest lower bound, which is not sound even though the bound itself is admissible; it returns a strictly worse shape for roughly 3% of queries. The 2x speedup must be withdrawn as inadmissible rather than reported as a result.",
+      "files": [
+        "evals/files/e6-pruning-bound/nearest.py"
+      ],
+      "assertions": [
+        "The response brute-force validates pruned() against the reference before reporting any timing conclusion",
+        "It finds that pruned() returns a strictly worse shape for a measurable fraction of queries (roughly 2-4%)",
+        "It explains why the top-K-by-lower-bound step is unsound even though the bound is a valid lower bound",
+        "It declines to quote pruned()'s 2x speedup as an achieved result, or explicitly marks it inadmissible",
+        "It does not recommend porting pruned() as written",
+        "The correctness check is performed at full scale rather than on a small sample only"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "select() in cageform is our hot loop — 3000 cells against 40k points. would a GPU port pay off?",
+      "expected_output": "If the assessment finds the obvious optimisation (precomputing each cell's affine blend coefficients once instead of recomputing per block), it must apply that optimisation to the numpy baseline too before crediting any speedup to Warp. The reformulation is worth about 1.5x on the baseline alone. Any Warp comparison must be against the improved baseline, and the reformulation's effect on selection must be re-audited.",
+      "files": [
+        "evals/files/e7-transferable-opt/deform.py"
+      ],
+      "assertions": [
+        "If a reformulation or precomputation optimisation is identified, it is implemented and measured on the incumbent baseline as well",
+        "Any speedup attributed to Warp is measured against the improved baseline, not against the original select()",
+        "The report states the measured speedup of the reformulation on the baseline alone (roughly 1.4-1.6x)",
+        "The correctness impact of the reformulation is re-checked rather than assumed to be zero",
+        "The report distinguishes formulation gains from backend gains explicitly"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "tilecut runs once per input file, driven by a batch script over a few thousand files a night. the tile assignment is all-pairs over every pixel — can we make it faster?",
+      "expected_output": "The execution regime must be identified as one-shot: a fresh process per input, so import, runtime init and any JIT compilation are paid on every invocation and cannot be amortised. Any ranking of alternatives must be based on measured per-process cost, not on warm-loop timings obtained via --repeat.",
+      "files": [
+        "evals/files/e8-oneshot-regime/thumbnail.py"
+      ],
+      "assertions": [
+        "The report explicitly states the execution regime as one-shot / per-invocation rather than a long-lived service",
+        "Cold costs (process import, runtime init, any JIT compile) are measured in a fresh process and charged per call",
+        "Any comparison between alternatives is made on per-process cost, not only on warm --repeat timings",
+        "The report does not present a warm steady-state ratio as the headline result for this workload",
+        "Total cost for a realistic number of invocations is derived from measured per-process figures, or is explicitly marked as not measured",
+        "Break-even is expressed as a number of invocations, derived from the incumbent's own per-process cost and not from the alternative's cold start in isolation"
+      ]
+    },
+    {
+      "id": 9,
+      "prompt": "imagekit renders fine on CPU but our GPU box is barely faster. we already feed it device arrays end to end - can a GPU kernel language help here?",
+      "expected_output": "Discovery that the stage which dominates the call never runs on the device at all: spread() converts its input to host arrays and runs a serial loop, so it costs the same for device-resident and host-resident input and allocates zero device bytes. The report must confirm where each timed stage actually ran before quoting it, name the silent quality='high' downgrade as a second unsupported path, and recommend implementing spread on the backend the other stages already use rather than adopting a new one.",
+      "files": [
+        "evals/files/e9-silent-host-fallback/imagekit.py"
+      ],
+      "assertions": [
+        "The response identifies that spread() is the dominant stage (roughly 97% of the call at the CLI default)",
+        "It identifies that spread() converts device input to host arrays and therefore never executes on the device",
+        "It uses evidence that the stage did not run on the device - zero device allocation, or identical host and device timings - and does not infer residency from the input type",
+        "It notes that quality='high' is silently downgraded for device input, so that option is not actually available on the advertised path",
+        "It recommends giving spread a device implementation on the existing backend, and does not present the CPU-versus-device gap as evidence for adopting Warp",
+        "It does not quote the spread timing as the cost of a GPU path"
+      ]
+    },
+    {
+      "id": 10,
+      "prompt": "relaxkit's relaxation loop is the slow part and it's pure python-level looping. worth writing that loop as a GPU kernel?",
+      "expected_output": "Confirmation that relax() is the bottleneck (>99% of the call), plus the observation that the project already ships a device backend used by normalise() and histogram(). The strongest baseline for any new-backend proposal is that existing backend running the same loop, not the host loop it replaces. The report should recommend porting relax onto the backend already present and treat a new dependency as unjustified unless it beats that, not merely the host loop.",
+      "files": [
+        "evals/files/e10-existing-gpu-backend/relaxkit.py"
+      ],
+      "assertions": [
+        "The response identifies relax() as the bottleneck, at roughly 99% of the call, with zero device allocations and zero device launches",
+        "It identifies that the project already has a device backend, used by normalise() and histogram()",
+        "It states that the baseline to beat is that existing backend running the same loop, not the host loop",
+        "It does not present a host-loop-versus-GPU ratio as evidence for adopting a new backend",
+        "It recommends porting the loop onto the backend already in the project, and scopes any new-backend recommendation to a measured advantage over it",
+        "Any performance claim for a new backend is marked as untested or INCONCLUSIVE if that comparison was not run",
+        "It does not treat the mere existence of a GPU backend as a disqualifier: the assessment continues, with that backend as the baseline, rather than aborting",
+        "The report separates the algorithmic gain from the backend gain, rather than attributing the whole ratio to the change of backend"
+      ]
+    },
+    {
+      "id": 11,
+      "prompt": "zonecount batches take 40-90 s and assign_zones is most of it - point-in-polygon per event against hundreds of zones, totally irregular. feels like the kind of thing a GPU would eat for breakfast. what would it take?",
+      "expected_output": "An immediate ABORT on the environment gates, with no report directory and no prototype: the appliance has no GPU in any SKU and the support policy forbids runtime compilation, so no GPU kernel language applies regardless of how well the workload's shape fits. The reply should be a sentence or two naming the gate, plus the better route for the real problem (vectorised or compiled CPU implementation, and a spatial index instead of the linear zone scan), then get on with that.",
+      "files": [
+        "evals/files/e11-abort-cpu-only/README.md",
+        "evals/files/e11-abort-cpu-only/zonecount/assign.py"
+      ],
+      "assertions": [
+        "The response declines to run a Warp assessment and says so within the first few sentences",
+        "It names the disqualifier explicitly: no NVIDIA GPU on the deployment target, and/or the ban on runtime compilation and compiled dependencies",
+        "It does not produce a warp-adoption-report directory, report file, verdict table, or per-seam verdict",
+        "It does not build, propose or benchmark a Warp prototype",
+        "It names a concrete better route on the CPU - vectorising or compiling the loop, and replacing the linear scan over zones with a spatial index",
+        "It does not justify the abort by claiming the workload shape is unsuitable, since the shape is a good fit and the environment is what rules it out"
+      ]
+    },
+    {
+      "id": 12,
+      "prompt": "tally spends nearly all its time in classify - a per-element branchy pass over 100M rows. that's exactly the sort of loop a GPU kernel should crush, right? how much could we get?",
+      "expected_output": "A ceiling argument rather than a speedup estimate. classify is ~86% of the pipeline but already runs at roughly two thirds of the read-only floor for its own input, so no implementation of that stage can recover more than the remaining share (~35-40% of the stage, ~30% of the pipeline). calibrate has almost all of its time available (~96% headroom) but is only ~14% of the pipeline, so fixing it entirely is worth at most that. The report should state both bounds and refuse to quote an unbounded speedup.",
+      "files": [
+        "evals/files/e12-roofline-ceiling/tally.py"
+      ],
+      "assertions": [
+        "The response uses the read-only probe (or an equivalent floor) to compute how much of the dominant stage is not the cost of reading its input",
+        "It states a numeric ceiling for classify - roughly 35-40% of that stage, roughly 30% of the pipeline - rather than an open-ended speedup",
+        "It identifies that classify is memory-bound at close to the achievable read rate, and that this bounds every backend equally",
+        "It identifies calibrate as the stage with most of its time available (about 96%) while noting it is only about 14% of the pipeline",
+        "It computes the Amdahl bound for the whole pipeline rather than quoting a per-stage ratio as an end-to-end gain",
+        "It does not present a GPU port of classify as a large end-to-end win"
+      ]
+    },
+    {
+      "id": 13,
+      "prompt": "we call kdlite.query once per frame with a couple of thousand queries and it's too slow. the search loop looks like a textbook GPU kernel - worth porting it?",
+      "expected_output": "Attribution of the per-call cost before any backend comparison. query() pays a flat ~100 ms of wrapper work per call - a bounds recompute over the whole index plus a validation pass - independent of how many queries are in the call. That is 99% of a single-query call and still ~25% at the documented 2,000-query frame. The report should hoist or eliminate that first, compare any candidate against query_prepared rather than query, and note that a kernel-only speedup is bounded by the wrapper that remains.",
+      "files": [
+        "evals/files/e13-wrapper-overhead/kdlite.py"
+      ],
+      "assertions": [
+        "The response separates the per-call wrapper cost from the search cost, using query_prepared or an equivalent measurement",
+        "It identifies that the wrapper cost is flat in the number of queries and traces it to work that does not depend on the payload (the index-wide bounds recompute and/or the validation pass)",
+        "It quantifies the wrapper share at the production call size (roughly a quarter of a 2,000-query call) and at small calls (nearly all of it)",
+        "It recommends removing or hoisting that per-call work before any backend change",
+        "It states that a candidate backend must be compared against the prepared path, not against the public call, or that doing otherwise would credit the backend with the incumbent's wrapper",
+        "It does not quote a speedup computed against the unhoisted public call as the value of a port"
+      ]
+    },
+    {
+      "id": 14,
+      "prompt": "rasterise is our bottleneck - accumulate is basically 100% of it on our benchmark. can a GPU kernel language help, and by how much?",
+      "expected_output": "Detection that the default benchmark workload is not representative before any conclusion is drawn. The built-in synthetic generator makes triangles with random vertices, averaging 150x canvas coverage each, so it measures fill rate; the shipped mesh has 1.0x total coverage and the same 2,000 triangles produce the same ~115k covered pixels 12x faster. The report should check the measurement against the cost model (work scales with total covered area, not triangle count), re-measure on the representative workload, and scope any conclusion to it.",
+      "files": [
+        "evals/files/e14-degenerate-workload/rasterise.py"
+      ],
+      "assertions": [
+        "The response notices that the default synthetic workload is unrepresentative and does not report its timings as the operation's cost",
+        "It checks the measurement against the operation's cost model - work scales with total covered pixel area, not with triangle count",
+        "It quantifies the discrepancy: same triangle count and nearly identical covered pixels, but about 12x the runtime, with mean coverage of about 150x the canvas versus about 1x",
+        "It re-measures on the shipped mesh and bases its conclusions on that workload",
+        "It states which workload every quoted number came from",
+        "It does not conclude that accumulate is or is not worth porting on the strength of the synthetic run alone",
+        "The cost driver is identified as a property of the data rather than its nominal size, and that property is swept rather than sampled at one value",
+        "The result is reported as a range or envelope over that sweep, with the point at which the conclusion changes sign stated as a measured bracket"
+      ]
+    },
+    {
+      "id": 15,
+      "prompt": "patch_distance is our hot loop and it's all-pairs over every triangle. there's a stock nearest-triangle primitive we could call instead - on our 8x8 test mesh it gives byte-identical answers, so we'd like to build on it. our shipped assets are the 32x32 ones. is that the right foundation?",
+      "expected_output": "A finding that the stock primitive does NOT implement patch_distance's contract. `min_patch_area` is an absolute area threshold, so on the shipped 32x32 asset 100% of faces fall below it and the documented boundary-segment rule is taken universally, while on the 8x8 toy asset 0% do and the two agree exactly. The disagreement on the shipped asset is frequent (~69% of points) but small in absolute terms (~8e-5) and reaches 1.0 in relative terms, so an absolute tolerance hides it. The rule is documented and covered by tests, so it binds. Any contract-faithful accelerated path must be measured, not assumed free.",
+      "files": [
+        "evals/files/e15-unexpressible-contract/patchdist.py"
+      ],
+      "assertions": [
+        "The response measures on the shipped 32x32 asset and does not conclude from the 8x8 toy asset alone",
+        "It reports that essentially all faces of the shipped asset (about 100%) fall below min_patch_area, versus none of the toy asset's",
+        "It quantifies the disagreement between the stock primitive and patch_distance on the shipped asset at roughly 65-75% of points",
+        "It notes that the absolute disagreement is small (order 1e-4 or less) while the relative disagreement reaches about 1.0, so a tolerance set on absolute error alone would hide it",
+        "It treats min_patch_area as part of the contract - documented and covered by tests - rather than as a defect or a detail to be normalised away",
+        "It explicitly declines to treat the stock nearest-triangle primitive as a drop-in replacement",
+        "Any contract-faithful accelerated path it proposes is costed or measured rather than assumed to be free",
+        "It explains why the toy asset could not have exposed this, rather than only reporting that it did not",
+        "The report directory passes scripts/validate_report_schema.py (warp-adoption/v2 structure and linked artifacts)"
+      ]
+    },
+    {
+      "id": 16,
+      "prompt": "we want to swap in a faster nearest_segment backend. distances come out bitwise identical to what we have, but the returned index differs on about 4% of points, and that index is what drives our node update. can we ship it?",
+      "expected_output": "A judgement that identical distances are not sufficient, reached by comparing at the level the caller actually observes. The per-segment array (which the index has the shape of) exaggerates the difference; the per-node accumulator is the observable. Ties must be classified: those between segments sharing a node are provably harmless (isolating them leaves ~1e-14), those between segments sharing no node are not. A downstream/trajectory check is required, and it must be both non-vacuous AND still contain the ties - the perturbed run breaks the positional ties, so its agreement is not evidence. The conclusion should be a stated product decision, not a bare pass.",
+      "files": [
+        "evals/files/e16-tie-dominated-index/weldpath.py"
+      ],
+      "assertions": [
+        "The response confirms the distances are identical and states that this alone does not settle the question",
+        "It compares at the observable level (the per-node accumulator), not only at the index-shaped per-segment array",
+        "It notes that the index-shaped comparison overstates the difference relative to the observable one",
+        "It classifies the ties by whether the two tied segments share a node, and reports the counts or proportions",
+        "It demonstrates that shared-node ties are harmless by isolating them, rather than asserting it",
+        "It runs a downstream or trajectory check and explicitly verifies that the check is not vacuous",
+        "It notices that the perturbed-start trajectory no longer contains the exact ties, so its agreement is not evidence about tie behaviour",
+        "It does not declare the swap safe on the strength of bitwise-identical distances",
+        "The report directory passes scripts/validate_report_schema.py (warp-adoption/v2 structure and linked artifacts)"
+      ]
+    },
+    {
+      "id": 17,
+      "prompt": "shape_score is our bottleneck. we can put a grid index over B and make the forward sweep about 5x faster - how much does that actually buy us end to end?",
+      "expected_output": "Recognition that shape_score is two independent brute-force sweeps of roughly equal cost, and that a structure built over B accelerates only the forward one. The headline must be the public speedup (about 1.6x), not the seam speedup (about 5x), with the Amdahl ceiling (about 2.03x) stated from the measured split. Accelerating the reverse sweep needs a separate structure over A.",
+      "files": [
+        "evals/files/e17-half-entry-point/bidist.py"
+      ],
+      "assertions": [
+        "The response identifies that shape_score is composed of two independent sweeps",
+        "It reports the measured split between forward and reverse, which is close to 50/50",
+        "It reports the end-to-end speedup of the public entry point (roughly 1.5-1.8x) as the headline rather than the forward-sweep speedup",
+        "It states the ceiling implied by the split (about 2x) if only one direction is accelerated",
+        "It notes that the reverse sweep needs an acceleration structure over A, which the structure over B does not provide",
+        "It does not present the ~5x forward-sweep ratio as the gain the caller would see",
+        "The report directory passes scripts/validate_report_schema.py (warp-adoption/v2 structure and linked artifacts)"
+      ]
+    },
+    {
+      "id": 18,
+      "prompt": "we built an accel cache for this hot query and it looks like a big win. all our correctness checks pass, and the refit loop produces a nice smooth curve, but the numbers drift further than we expected. we'd like to benchmark it properly - is the harness sound?",
+      "expected_output": "Identification of a zero-copy aliasing defect in the harness: Bridge wraps the caller's array without copying and refit writes through it, so the caller's own vertices are mutated. Every single-shot check passes, so the static suite cannot catch it; the damage only appears across a refit loop, where the aliased run diverges from the corrected one by orders of magnitude and the caller's array drifts. The anomaly must be attributed to the harness, not reported as a property of the backend, and no performance number should be quoted from the aliased harness.",
+      "files": [
+        "evals/files/e18-zero-copy-aliasing/bridge.py"
+      ],
+      "assertions": [
+        "The response identifies that the bridge aliases the caller's array (zero-copy) and that refit writes through into it",
+        "It notes that every static single-shot check passes, so those checks cannot detect the defect",
+        "It adds or proposes an explicit check that refit leaves the caller's array unchanged, and shows that check failing",
+        "It quantifies the consequence across the refit loop, for example the divergence between the aliased and corrected runs or the drift in the caller's array",
+        "It attributes the anomalous loop behaviour to the harness rather than to the backend or to the algorithm",
+        "It does not quote any speedup or performance conclusion produced by the aliased harness",
+        "It recommends fixing the ownership of the structure's storage before any benchmarking proceeds",
+        "The report directory passes scripts/validate_report_schema.py (warp-adoption/v2 structure and linked artifacts)"
+      ]
+    },
+    {
+      "id": 19,
+      "prompt": "resample_field eats our batches. most of the fleet is NVIDIA these days - worth writing that stage as a dedicated GPU kernel?",
+      "expected_output": "Confirmation by measurement that resample_field dominates (about 80% of the batch), and then the finding that matters: the incumbent is a single kernel source built for NVIDIA, AMD and CPU, all three covered by CI, with roughly a third of deployments on AMD. A vendor-specific kernel would be an additional implementation rather than a replacement, and a breaking change for the other two targets. This is NOT an abort - NVIDIA is a supported target - but the portability loss, the third implementation and its ownership must be counted as costs in the verdict. The smooth stage (about 13%) also needs a row.",
+      "files": [
+        "evals/files/e19-portable-incumbent/README.md",
+        "evals/files/e19-portable-incumbent/pipeline.py",
+        "evals/files/e19-portable-incumbent/build_backends.py",
+        "evals/files/e19-portable-incumbent/kernels/resample_field.cu"
+      ],
+      "assertions": [
+        "The response confirms by measurement that resample_field is the dominant stage, at roughly 80% of the batch",
+        "It discovers from the repository that the incumbent kernel is a single source compiled for NVIDIA, AMD and CPU, not an NVIDIA-only kernel",
+        "It states that an NVIDIA-only kernel would be an additional implementation alongside the existing one, not a replacement for it",
+        "It counts the loss of AMD coverage and the extra implementation as costs in the verdict rather than mentioning them only as caveats",
+        "It does NOT abort, since NVIDIA is a supported deployment target - the assessment continues with portability priced in",
+        "It raises ownership of the extra implementation and its testing on hardware absent from CI as an open question",
+        "It accounts for the smooth stage, which is also above 10% of the batch",
+        "It does not present the port as a straightforward win",
+        "The report directory passes scripts/validate_report_schema.py (warp-adoption/v2 structure and linked artifacts)"
+      ]
+    },
+    {
+      "id": 20,
+      "prompt": "count_within is our hot spot. it's already our tuned backend, it's been solid for four releases and it's the fastest thing we have - is there anything left in it, or is a GPU port the only way up?",
+      "expected_output": "A refusal to stop at 'a mature maintained implementation already exists'. The backend is correct and maintained but is O(N*M), which the measured scaling confirms (about 4x the time for 4x the pairs). A plain uniform-grid implementation in the same language on the same hardware, with no new dependency, produces identical results and is several times faster, widening with N (about 2.6x at N=2000 to about 21x at N=20000). The recommendation is to fix the algorithm first; any later backend proposal must be measured against that improved baseline, not against the O(N*M) one.",
+      "files": [
+        "evals/files/e20-mature-but-wrong-algorithm/nnkit.py"
+      ],
+      "assertions": [
+        "The response does not abort or reject the assessment on the grounds that a mature, maintained implementation already exists",
+        "It identifies that the maintained backend is O(N*M) and confirms this by measured scaling rather than by reading alone",
+        "It measures a better-algorithm baseline that needs no new dependency, language or hardware",
+        "It reports the measured ratio between the two, and that it widens with N",
+        "It confirms the better algorithm reproduces the incumbent's results exactly",
+        "It recommends fixing the algorithm before considering a new backend",
+        "It separates the algorithmic contribution from the backend contribution - for example by running the same better algorithm on the incumbent's own backend - rather than reporting a single ratio that bundles both",
+        "It states that a backend change alone, holding the algorithm fixed, is worth far less than the algorithmic change, and does not let the two be quoted as one number",
+        "It states that any GPU or Warp comparison must be made against the improved baseline, not against the O(N*M) implementation",
+        "It does not present a ratio measured against the O(N*M) implementation as evidence for a port",
+        "The report directory passes scripts/validate_report_schema.py (warp-adoption/v2 structure and linked artifacts)"
+      ]
+    },
+    {
+      "id": 21,
+      "prompt": "shapefit's inner loop is a nearest-neighbour lookup from the moving cloud into the target, and it's all-pairs. we have a cell-list version we'd like to use instead. we benchmarked it by pointing it at another one of our shipped scan assets and it came out about 6x SLOWER than brute force, which killed our enthusiasm. is there anything here or should we drop it?",
+      "expected_output": "A finding that the benchmark, not the candidate, is wrong. Both inputs are real shipped assets, but the pairing is one the application never performs: shapefit always queries the *converging* moving cloud against the target, and the cell list's cost depends on the query-to-target distance relative to the target's point spacing. The unrelated asset sits further from the target (~49x spacing) than any point in a real run. Captured from an actual fit(), the ratio moves from ~39x spacing at iteration 0 to ~1x at convergence, and the cell list goes from ~0.18x to ~8.8x versus brute force. The result must be reported across that range, not as one number, and the candidate is exact at every point.",
+      "files": [
+        "evals/files/e21-assembled-workload/registration.py"
+      ],
+      "assertions": [
+        "The response does not accept the user's assembled benchmark as evidence and does not recommend dropping the candidate on the strength of it",
+        "It captures the workload from an actual fit() run rather than pairing the target with the unrelated shipped asset",
+        "It identifies that the cost depends on a property of the input PAIR - query-to-target distance relative to target point spacing - not on the size of either input",
+        "It reports that ratio's production range, roughly 39x spacing early to roughly 1x at convergence",
+        "It notes that the unrelated asset sits further out (roughly 49x spacing) than any state the real loop passes through",
+        "It reports the speedup across the convergence range rather than a single figure, showing the candidate losing early and winning later",
+        "It confirms the cell-list results are exact, so the comparison is about cost and not correctness",
+        "It relates the verdict to where the loop actually spends its iterations"
+      ]
+    },
+    {
+      "id": 22,
+      "prompt": "we need deposit runs to be reproducible - right now two runs of the same input give different answers and it's breaking our regression tests. we have a sorted-accumulation variant that's deterministic. problem is our diff check says it doesn't match the current kernel at all, so we're worried it's computing something different. can we trust it?",
+      "expected_output": "A finding that 'does not match the incumbent' is not evidence of a defect here, because the incumbent does not match itself. Repeated calls on identical inputs differ by ~9.1e-07 relative, which is LARGER than the ~6.1e-07 relative difference between the candidate and the incumbent, so a bitwise-equality contract is unsatisfiable by the incumbent and cannot be used to grade anything. Scored against a float64 reference, the candidate is the more accurate of the two (~1.0e-07 versus ~4.4e-07 relative). Determinism is a legitimate objective here because the user stated it. The runtime cost of the deterministic variant must also be reported.",
+      "files": [
+        "evals/files/e22-nondeterministic-baseline/deposit.py"
+      ],
+      "assertions": [
+        "The response measures the incumbent against ITSELF on identical inputs across repeated calls",
+        "It reports that the incumbent is not bitwise reproducible, with the measured spread",
+        "It states that a bitwise-equality contract against this incumbent is unsatisfiable and therefore not a usable grading criterion",
+        "It compares the candidate-vs-incumbent difference against the incumbent's own self-spread and finds it is no larger",
+        "It scores BOTH implementations against an independent float64 reference and reports both errors separately",
+        "It concludes the candidate is not defective, rather than reporting the diff as a correctness failure",
+        "It reports the runtime cost of the deterministic variant rather than recommending it on correctness grounds alone",
+        "It treats reproducibility as a valid objective because the user named it, not as an inferred benefit"
+      ]
+    },
+    {
+      "id": 23,
+      "prompt": "we're validating a faster nearest-seed backend. on our randomised test set the returned indices match the current implementation 100%. on our shipped lattice layout about 16% of them differ. same code both times. which measurement do we believe, and is 16% a blocker?",
+      "expected_output": "Both measurements are correct and neither settles it alone: the mismatch rate is a property of the input topology, not of the implementation. On the lattice roughly 31% of samples are exactly equidistant between two or more seeds, so the index is genuinely ambiguous for them; on the randomised set 0% are, so no tie can be observed. Every one of the ~9,615 differing indices is exactly equidistant in float64 with zero excess distance, so the candidate never selects a farther seed and neither implementation is wrong. The open question is whether index stability is contractual for downstream lookups - a product decision - not whether the backend is correct.",
+      "files": [
+        "evals/files/e23-topology-dependent-ties/label.py"
+      ],
+      "assertions": [
+        "The response measures both layouts and reports both mismatch rates (roughly 16% on the lattice, 0% on the randomised set)",
+        "It measures how often the nearest seed is not unique in each layout, reporting roughly 31% ambiguous on the lattice and 0% on the randomised set",
+        "It states that the mismatch rate is driven by input topology rather than by a difference in implementation quality",
+        "It verifies that the differing selections are exactly equidistant, with zero excess distance, rather than asserting they are ties",
+        "It scores both implementations against an independent reference rather than only the candidate",
+        "It does not treat the 16% figure as a correctness defect in the candidate",
+        "It does not generalise the 0% randomised result to the shipped lattice geometry",
+        "It frames index stability as a decision about what the public contract guarantees, and identifies the downstream consumer that depends on it"
+      ]
+    },
+    {
+      "id": 24,
+      "prompt": "surfkit's knn is our hot spot. we prototyped a cell list and it only gets us about 12x over brute force, which is less than we hoped for something this simple. feels like we've hit the limit of what a CPU index can do - is a GPU port the next step?",
+      "expected_output": "A finding that the candidate has not been tuned, so the 12x figure is not a measurement of what a cell index can do. auto_cell() estimates spacing from bounding-box VOLUME, but the data is a surface, and a handful of stray far returns inflate the bounding box further - the default lands about 59x the measured point spacing. Because the search radius starts at the cell size, that makes every query scan roughly 7,300 candidates instead of roughly 130. Sweeping the single documented knob takes the candidate from about 12x to about 44x versus brute force - roughly 3.7x on time and about 55x on scanned work - with identical results at every setting. Any GPU or Warp comparison must be made against the tuned cell list, not the default one.",
+      "files": [
+        "evals/files/e24-untuned-candidate/neighbours.py"
+      ],
+      "assertions": [
+        "The response identifies that auto_cell() derives point spacing from bounding-box volume while the data lies on a surface",
+        "It measures the actual point spacing and reports the ratio to the shipped default (roughly 59x)",
+        "It notices that a small number of stray far points inflate the bounding box and therefore the default cell size",
+        "It sweeps the cell size rather than accepting the default, and reports the tuned result (roughly 44x versus roughly 12x at the default)",
+        "It reports candidates scanned per query alongside wall time, rather than time alone",
+        "It confirms the results are identical at every cell size, so the sweep is a cost question and not a correctness one",
+        "It does not compare a GPU or Warp port against the untuned cell list",
+        "It recommends tuning the existing candidate before considering a port, and states that any later backend comparison must use the tuned baseline",
+        "If a tuned setting is carried over from a procedural or synthetic workload, it is re-validated on the real asset before being quoted (transfer costs about 1.75x here, because the two workloads differ in intrinsic dimension)"
+      ]
+    },
+    {
+      "id": 25,
+      "prompt": "we tried a cell index for our batched knn and it came out slower than the brute-force scan we already ship - about 1.46 s against 1.13 s on our usual 16 x 2048 batch. is the indexing idea just wrong at our sizes, or is a GPU port the only way to make something like this pay?",
+      "expected_output": "A finding that the loss belongs to the adapter, not to the algorithm or the backend. knn_cells_perexample issues one host call per example and each call pays a flat ~35 ms setup; knn_cells_fused runs the identical index and returns identical results in one call. Holding the total point count constant and varying only the number of examples isolates it: the gap is flat per call and independent of problem size. The verdict inverts once the loop is fused (0.77x becomes 1.21x), so the reported 1.46 s measures the wrapper. Any later backend comparison must use the fused adapter.",
+      "files": [
+        "evals/files/e25-adapter-launch-loop/batchknn.py"
+      ],
+      "assertions": [
+        "The response identifies that the candidate issues one host call per example and that each call pays a fixed setup cost",
+        "It measures that per-call cost separately and reports it as flat in the size of the call (roughly 35 ms per call)",
+        "It holds the total point count constant while varying the number of examples, and reports that the per-example-to-fused gap scales with the number of calls rather than with the problem size",
+        "It reports the fused adapter's result at the shipped batch shape (roughly 1.2x versus the shipped scan) alongside the per-example adapter's (roughly 0.8x), and states that the two differ only in where the loop lives",
+        "It confirms all three paths return identical results, so the comparison is a cost question and not a correctness one",
+        "It does not conclude that the cell index is the wrong approach, and does not attribute the loss to the backend or to the problem size",
+        "It states that any later backend or Warp comparison must be made against the fused adapter rather than the per-example one",
+        "The report passes scripts/validate_report_schema.py (warp-adoption/v1 structure)"
+      ]
+    },
+    {
+      "id": 26,
+      "prompt": "knnkit's fast path is the hot spot in our survey pipeline. some of our tiles come in normalised, others are in local grid coordinates in metres so the values run to about 1e5. worth accelerating this further?",
+      "expected_output": "Discovery, from the extreme-scale case of the adversarial checklist, that the accelerated path silently returns a short edge list once squared distances exceed its 1e10 sentinel: 219 of 256 expected edges at scale 1e5 and only the 64 self-pairs at 1e6 and above, while the portable path returns 256 at every scale. This is a contract defect in the incumbent and must be reported as a finding in its own right, with fixing it recommended first and independently of any backend decision. It must not be counted as upside for a port. The shipped selftest passes 5/5 with the defect live, so it does not constrain this behaviour.",
+      "files": [
+        "evals/files/e26-scale-sentinel-defect/knnkit.py"
+      ],
+      "assertions": [
+        "The response sweeps input coordinate scale rather than testing at one scale, and reports the edge counts it observed",
+        "It identifies that the accelerated path returns fewer than n*k edges above a coordinate scale of roughly 1e5, quoting at least two scales (for example 219 edges at 1e5 and 64 at 1e6)",
+        "It traces the cause to the fixed sentinel used to initialise the running best distance, and states the trigger in terms of squared distance exceeding it",
+        "It reports that the portable path returns the full n*k at every scale, so the two shipped backends disagree",
+        "It recommends fixing the defect first, independently of the backend question, and does not present it as a reason to port or as a benefit of porting",
+        "It notes that the library's own selftest passes while the defect is live, so the existing tests do not cover this behaviour",
+        "It does not treat the accelerated path's shortened output as an acceptable or documented behaviour without flagging it",
+        "The report passes scripts/validate_report_schema.py (warp-adoption/v1 structure)"
+      ]
+    },
+    {
+      "id": 27,
+      "prompt": "we're looking at a replacement for radiusgraph's neighbour lists. the candidate returns exactly the same number of edges as what we ship, but a good chunk of the individual edges are different. how much should that worry us, and is the replacement worth doing?",
+      "expected_output": "A finding that the retained subset is not part of the contract: at the shipped radius, 80.4% of queries have more true neighbours than max_neighbors, and the two backends that ALREADY ship disagree about which ones to keep for all but 8 of those 2413 queries (43.7% edge overlap). The candidate is no further from backend A than backend B is. Every edge all three return is genuinely within r. The report should classify the difference as an artifact rather than a defect, and should separately flag that the API returns no count or overflow flag, so a caller cannot distinguish an exactly-full query from a truncated one.",
+      "files": [
+        "evals/files/e27-capacity-truncation/radiusgraph.py"
+      ],
+      "assertions": [
+        "The response measures how often the cap actually binds at the shipped radius, and reports it (roughly 80% of queries at or over capacity)",
+        "It compares the two ALREADY SHIPPED backends against each other, not only the candidate against one of them",
+        "It reports that the two shipped backends disagree about the retained subset for nearly every truncated query, with a figure (for example 8 of 2413, or roughly 44% edge overlap)",
+        "It concludes that the retained subset is an implementation artifact rather than a contract, on the evidence that the incumbent backends already disagree",
+        "It verifies that every edge the candidate returns is genuinely within the radius, and reports that check",
+        "It does not report the candidate as incorrect merely because its edges differ from one shipped backend",
+        "It flags that the API returns no true count and no overflow flag, so exactly-full and truncated queries are indistinguishable, and recommends surfacing one",
+        "It reports the regime where the difference disappears or becomes severe by sweeping the radius, rather than quoting a single disagreement figure",
+        "The report passes scripts/validate_report_schema.py (warp-adoption/v1 structure)"
+      ]
+    },
+    {
+      "id": 28,
+      "prompt": "neighbourhood_features is basically all of our per-sweep time on the SV-40 and it looks like a textbook GPU workload to me. every unit has an A4000 in it that sits idle between classifier calls. what are our options?",
+      "expected_output": "An immediate ABORT with no report. The hardware is present and the workload shape genuinely fits, so the gate is not the device - it is the obligations: a signed read-only root filesystem, no toolchain in the image, a W^X policy that prohibits runtime code generation of any kind, an air-gapped unit, and a rule that third-party runtime dependencies be vendored as prebuilt binaries with no compiler and no writable cache. A runtime-compiled kernel framework cannot be adopted under those constraints. The better route is named: add the kernel to libsurvey_cuda.so, the prebuilt CUDA extension the project already builds in CI and vendors into the image.",
+      "files": [
+        "evals/files/e28-gate-e-no-jit/README.md",
+        "evals/files/e28-gate-e-no-jit/voxelise.py"
+      ],
+      "assertions": [
+        "The response ends in an ABORT / hand-back and does NOT produce a warp-adoption report",
+        "It names the disqualifier as the project's inability to accept the obligations (runtime compilation, a writable kernel cache, an unvendored runtime dependency), not as a lack of GPU hardware",
+        "It cites at least two of the specific constraints: read-only root filesystem, no toolchain in the image, W^X / no runtime code generation, air-gapped, or vendored-prebuilt-only dependencies",
+        "It explicitly does not reject on the grounds that there is no NVIDIA GPU, since the README states every unit has one",
+        "It names the better route: adding the kernel to the existing prebuilt CUDA extension the project already ships",
+        "It reaches the abort without first running a full profile or building a prototype",
+        "It does not recommend adopting a runtime-compiled kernel framework behind an optional flag as a way around the policy"
+      ]
+    },
+    {
+      "id": 29,
+      "prompt": "before we decide what to accelerate in profkit, can you profile it and tell us where the time actually goes? there's a --profile flag that reports accelerator time per stage.",
+      "expected_output": "Recognition that the bundled tracer is not trustworthy in absolute terms: it records each stage twice (once as the dispatching op, once as the retiring kernel) and sums both, so its total is exactly 2.00x the summed stage wall time and exceeds the whole-run wall time, which is impossible for device time on a single stream. The report must not quote the tracer's absolute figures. Because the double count is uniform, the per-stage SHARES remain usable and agree with wall-derived shares, so the ranking stands: classify is about 49% of the run, load about 32%, aggregate about 19%.",
+      "files": [
+        "evals/files/e29-instrument-double-count/profkit.py"
+      ],
+      "assertions": [
+        "The response checks the profiler's output against an independent measurement of wall time rather than quoting it directly",
+        "It identifies that the tracer's reported total is about twice the summed stage wall time, or that it exceeds the whole-run wall time",
+        "It traces the cause to each stage being recorded twice by the tracer (an op event and a kernel event) and both being summed",
+        "It declines to quote the tracer's absolute per-stage millisecond figures as measurements, or explicitly marks them as unusable",
+        "It uses synchronized wall time for every duration it does report",
+        "It notes that the per-stage shares are still usable because the double count is uniform, or independently derives the shares from wall time",
+        "It identifies classify as the dominant stage (roughly half the run) using the trustworthy measurement",
+        "The report passes scripts/validate_report_schema.py (warp-adoption/v1 structure)"
+      ]
+    },
+    {
+      "id": 30,
+      "prompt": "we maintain opskit and we're deciding what to optimise next. our own benchmark ranks the operations for us. putting a spatial index over the point positions is the obvious idea - is it worth it?",
+      "expected_output": "A refusal to rank from the per-operation benchmark. opskit is a library with no application of its own, so the ranking must come from its shipped consumer, examples/train_step.py. The benchmark's top operation, op_spline at 75.5%, is never called by that model at all, while op_knn is 6.4% of the benchmark and 53.3% of a real step. The seam must then be decomposed per call site: of op_knn's three calls only one is over 3-D positions (32.4% of op_knn, 17.3% of the step), the other two run in a 128-D feature space where a spatial index does not apply. The ceiling for a positional index is therefore about 1.21x, not the 2.14x implied by op_knn's total share.",
+      "files": [
+        "evals/files/e30-library-no-application/opskit.py",
+        "evals/files/e30-library-no-application/bench_ops.py",
+        "evals/files/e30-library-no-application/examples/train_step.py"
+      ],
+      "assertions": [
+        "The response profiles the shipped consumer (examples/train_step.py) rather than ranking from the per-operation benchmark alone",
+        "It reports that the benchmark's top operation, op_spline, is never called by the shipped model, and gives it a row in the candidate matrix marked as such rather than silently dropping it",
+        "It reports both rankings and notes they disagree, quoting op_knn's share in each (roughly 6% of the benchmark versus roughly 53% of a step)",
+        "It decomposes op_knn by call site rather than treating the symbol as one seam, and reports the dimensionality of each call",
+        "It states that a spatial index applies only to the 3-D positional call, and quantifies that call's share (roughly a third of op_knn, roughly a sixth of the step)",
+        "It computes the end-to-end ceiling from the addressable share (roughly 1.2x) rather than from op_knn's total share",
+        "It does not quote op_knn's full share as the gain a positional index would deliver",
+        "It notes that the two feature-space calls are high-dimensional and that a low-dimensional spatial structure is an anti-signal there",
+        "The report passes scripts/validate_report_schema.py (warp-adoption/v1 structure)"
+      ]
+    }
+  ]
+}
