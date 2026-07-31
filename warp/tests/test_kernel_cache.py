@@ -14,10 +14,12 @@ import warp.config
 class TestKernelCache(unittest.TestCase):
     def setUp(self):
         self._original_cache_dir = warp.config.kernel_cache_dir
+        self._original_resolved_cache_dir = warp._src.build._resolved_kernel_cache_dir
         self._original_env = os.environ.pop("WARP_CACHE_PATH", None)
 
     def tearDown(self):
         warp.config.kernel_cache_dir = self._original_cache_dir
+        warp._src.build._resolved_kernel_cache_dir = self._original_resolved_cache_dir
         if self._original_env is None:
             os.environ.pop("WARP_CACHE_PATH", None)
         else:
@@ -43,6 +45,57 @@ class TestKernelCache(unittest.TestCase):
                 expected = "\\\\?\\" + expected
             self.assertEqual(warp.config.kernel_cache_dir, expected)
             self.assertTrue(os.path.isdir(expected))
+
+    def test_cache_env_var_named_version_includes_version(self):
+        """A cache base named after the Warp version still gets a version subdirectory."""
+        with tempfile.TemporaryDirectory() as tmp:
+            base_dir = os.path.join(tmp, warp.config.version)
+            os.makedirs(base_dir)
+            os.environ["WARP_CACHE_PATH"] = base_dir
+
+            warp._src.build.init_kernel_cache()
+
+            expected = os.path.join(os.path.realpath(base_dir), warp.config.version)
+            if os.name == "nt":
+                expected = "\\\\?\\" + expected
+            self.assertEqual(warp.config.kernel_cache_dir, expected)
+            self.assertTrue(os.path.isdir(expected))
+
+    def test_resolved_cache_path_does_not_duplicate_version(self):
+        """A cache path previously resolved by Warp is not versioned again."""
+        with tempfile.TemporaryDirectory() as tmp:
+            warp._src.build.init_kernel_cache(path=tmp)
+            expected = warp.config.kernel_cache_dir
+
+            warp._src.build.init_kernel_cache(path=expected)
+
+            self.assertEqual(warp.config.kernel_cache_dir, expected)
+            self.assertFalse(os.path.isdir(os.path.join(expected, warp.config.version)))
+
+    def test_resolved_cache_env_var_does_not_duplicate_version(self):
+        """WARP_CACHE_PATH is not versioned again when it contains Warp's resolved path."""
+        with tempfile.TemporaryDirectory() as tmp:
+            os.environ["WARP_CACHE_PATH"] = tmp
+            warp._src.build.init_kernel_cache()
+            expected = warp.config.kernel_cache_dir
+
+            os.environ["WARP_CACHE_PATH"] = expected
+            warp._src.build.init_kernel_cache()
+
+            self.assertEqual(warp.config.kernel_cache_dir, expected)
+            self.assertFalse(os.path.isdir(os.path.join(expected, warp.config.version)))
+
+    @unittest.skipUnless(os.name == "nt", "Long-path prefixes only apply on Windows")
+    def test_resolved_cache_path_matches_unprefixed_spelling_on_windows(self):
+        """On Windows, a resolved cache path is recognized without its long-path prefix."""
+        with tempfile.TemporaryDirectory() as tmp:
+            warp._src.build.init_kernel_cache(path=tmp)
+            resolved = warp.config.kernel_cache_dir
+            self.assertTrue(resolved.startswith("\\\\?\\"))
+
+            warp._src.build.init_kernel_cache(path=resolved.removeprefix("\\\\?\\"))
+
+            self.assertEqual(warp.config.kernel_cache_dir, resolved)
 
     def test_long_path_prefix(self):
         """Verify that the long-path prefix helper handles drive-letter, UNC, prefixed, and relative paths."""

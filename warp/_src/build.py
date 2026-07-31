@@ -28,6 +28,11 @@ warp_home = os.path.realpath(os.path.join(os.path.dirname(__file__), ".."))
 # 5.1 billion unique symbols while keeping filenames compact.
 LTO_CACHE_KEY_LENGTH = 16
 
+# Remember the cache directory produced by the most recent initialization so
+# Warp can feed it back into this function without treating arbitrary
+# version-named base directories as already resolved.
+_resolved_kernel_cache_dir: str | None = None
+
 
 # builds cuda source to PTX or CUBIN using NVRTC (output type determined by output_path extension)
 def build_cuda(
@@ -183,15 +188,27 @@ def init_kernel_cache(path=None):
     To change the default cache location, set warp.config.kernel_cache_dir before calling warp.init().
     """
 
+    global _resolved_kernel_cache_dir
+
     if path is not None:
         base_dir = os.path.realpath(path)
-        cache_root_dir = os.path.join(base_dir, warp.config.version)
     elif "WARP_CACHE_PATH" in os.environ:
         base_dir = os.path.realpath(os.environ.get("WARP_CACHE_PATH"))
-        cache_root_dir = os.path.join(base_dir, warp.config.version)
     else:
         base_dir = None
         cache_root_dir = appdirs.user_cache_dir(appname="warp", appauthor="NVIDIA", version=warp.config.version)
+
+    if base_dir is not None:
+        # The remembered path carries the Windows long-path prefix, so compare against the
+        # prefixed spelling. os.path.realpath() keeps a prefix that is already there but never
+        # adds one, so an unprefixed path naming the same directory would otherwise miss.
+        resolved_candidate = _add_long_path_prefix(base_dir) if os.name == "nt" else base_dir
+
+        if resolved_candidate == _resolved_kernel_cache_dir:
+            cache_root_dir = resolved_candidate
+            base_dir = os.path.dirname(base_dir)
+        else:
+            cache_root_dir = os.path.join(base_dir, warp.config.version)
 
     if os.name == "nt":
         # Module paths under the cache can exceed MAX_PATH on systems without
@@ -201,6 +218,7 @@ def init_kernel_cache(path=None):
     warp.config.kernel_cache_dir = cache_root_dir
 
     os.makedirs(warp.config.kernel_cache_dir, exist_ok=True)
+    _resolved_kernel_cache_dir = cache_root_dir
 
     # Warn about stale kernel artifacts in the unversioned base directory.
     # Prior to Warp 1.13, custom cache paths were used without a version
