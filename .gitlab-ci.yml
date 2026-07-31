@@ -641,6 +641,9 @@ windows-x86_64 cuda 13 test:
       $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
       uv run --extra dev --extra torch-cu13 --with "jax>=0.5" --with usd-core==25.5.1 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
 
+# Only one Windows Blackwell runner currently serves the whole organization, so
+# this job is opt-in on merge requests to avoid saturating it. It still runs
+# automatically on the default branch, schedules, tags, and release branches.
 windows-x86_64-blackwell test:
   stage: test
   needs: [windows-x86_64 build]
@@ -648,6 +651,13 @@ windows-x86_64-blackwell test:
     IPP_RUNNER_EXECUTION_DURATION: "4500"
   extends:
     - .test_common_with_coverage
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH =~ /^release-.*/
+    - if: $CI_PIPELINE_SOURCE == "web"
+    - when: manual # Merge request pipelines: run only on demand
+      allow_failure: true
   before_script:
     - !reference [.snippets, define-powershell-GetTime]
     - !reference [.snippets, powershell-section-start-install-deps]
