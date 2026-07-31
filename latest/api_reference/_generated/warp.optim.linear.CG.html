@@ -534,17 +534,19 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">callback</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">check_every</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">use_cuda_graph</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">restart</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/linear.py#L842-L951"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.CG" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/linear.py#L892-L1031"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.CG" title="Link to this definition">#</a></dt>
 <dd><p>Pre-allocated state for the Conjugate Gradient solver.</p>
-<p>See <a class="reference internal" href="warp.optim.linear.LinearSolverState.html#warp.optim.linear.LinearSolverState" title="warp.optim.linear.LinearSolverState"><code class="xref py py-class docutils literal notranslate"><span class="pre">LinearSolverState</span></code></a> for the constructor parameters. The preconditioner
-<code class="docutils literal notranslate"><span class="pre">M</span></code> may be freely changed (or toggled between <code class="docutils literal notranslate"><span class="pre">None</span></code> and a valid operator)
-between calls as long as the replacement operands match the construction-time
-shape, dtype, device, and batch layout.</p>
+<p>See <a class="reference internal" href="warp.optim.linear.LinearSolverState.html#warp.optim.linear.LinearSolverState" title="warp.optim.linear.LinearSolverState"><code class="xref py py-class docutils literal notranslate"><span class="pre">LinearSolverState</span></code></a> for the shared constructor parameters, plus:</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
+<li><p><strong>restart</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Optional positive number of iterations between restarts. Each restart
+recomputes <code class="docutils literal notranslate"><span class="pre">b</span> <span class="pre">-</span> <span class="pre">A</span> <span class="pre">x</span></code> and resets the search direction to limit
+finite-precision drift.</p></li>
 <li><p><strong>A</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><a class="reference internal" href="warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a><em> | </em><a class="reference internal" href="warp.optim.linear.LinearOperator.html#warp.optim.linear.LinearOperator" title="warp._src.optim.linear.LinearOperator"><em>LinearOperator</em></a>)</p></li>
 <li><p><strong>b</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>)</p></li>
 <li><p><strong>x</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>)</p></li>
@@ -558,6 +560,9 @@ shape, dtype, device, and batch layout.</p>
 </ul>
 </dd>
 </dl>
+<p>The preconditioner <code class="docutils literal notranslate"><span class="pre">M</span></code> may be freely changed (or toggled between <code class="docutils literal notranslate"><span class="pre">None</span></code> and
+a valid operator) between calls as long as the replacement operands match the
+construction-time shape, dtype, device, and batch layout.</p>
 </dd></dl>
 
 </section>

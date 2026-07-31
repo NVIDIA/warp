@@ -555,6 +555,9 @@ tile kernels and their generated adjoint launches (<a class="reference external"
 dimension-collapsing integer indices with negative-index support (<code class="docutils literal notranslate"><span class="pre">t[5,</span> <span class="pre">:]</span></code>, <code class="docutils literal notranslate"><span class="pre">t[-1,</span> <span class="pre">:]</span></code>), and slice assignment
 (<code class="docutils literal notranslate"><span class="pre">t[0:4,</span> <span class="pre">:]</span> <span class="pre">=</span> <span class="pre">src</span></code>). Also add <code class="docutils literal notranslate"><span class="pre">wp.tile_slice_indexed()</span></code>, which gathers elements along a single axis using a
 1D integer index tile (<code class="docutils literal notranslate"><span class="pre">t[indices,</span> <span class="pre">:]</span></code>) (<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1176">GH-1176</a>).</p></li>
+<li><p>Add optional <code class="docutils literal notranslate"><span class="pre">restart</span></code> support to <code class="docutils literal notranslate"><span class="pre">warp.optim.linear.cg()</span></code> and <code class="docutils literal notranslate"><span class="pre">warp.optim.linear.cr()</span></code> for
+recomputing the true residual and resetting the search direction during finite-precision solves
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1708">GH-1708</a>).</p></li>
 </ul>
 </section>
 <section id="removed">
@@ -669,6 +672,9 @@ or out-of-bounds initial data during graph loading.</p></li>
 <li><p>Fix kernel compilation failing on Windows systems without long-path support enabled when a custom kernel cache
 location is set through <code class="docutils literal notranslate"><span class="pre">wp.config.kernel_cache_dir</span></code> or the <code class="docutils literal notranslate"><span class="pre">WARP_CACHE_PATH</span></code> environment variable. Custom cache
 locations now receive the same <code class="docutils literal notranslate"><span class="pre">\\?\</span></code> long-path treatment as the default location.</p></li>
+<li><p>Fix device-side iteration counts for graph-captured solver cycles that perform more than one iteration.</p></li>
+<li><p>Fix device-side iteration counts for graph-captured solver cycles that perform more than one iteration
+(<a class="reference external" href="https://github.com/NVIDIA/warp/issues/1707">GH-1707</a>).</p></li>
 </ul>
 </section>
 <section id="documentation">

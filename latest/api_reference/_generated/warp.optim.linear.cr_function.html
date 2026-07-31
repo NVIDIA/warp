@@ -535,9 +535,11 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">check_every</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">use_cuda_graph</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">run</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">restart</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/linear.py#L1155-L1227"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.cr" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/linear.py#L1285-L1372"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.cr" title="Link to this definition">#</a></dt>
 <dd><p>Compute an approximate solution to a symmetric, positive-definite linear system
 using the Conjugate Residual algorithm.</p>
 <p>Supports batched systems when <code class="docutils literal notranslate"><span class="pre">A</span></code> is a <a class="reference internal" href="warp.optim.linear.LinearOperator.html#warp.optim.linear.LinearOperator" title="warp.optim.linear.LinearOperator"><code class="xref py py-class docutils literal notranslate"><span class="pre">LinearOperator</span></code></a> with <code class="docutils literal notranslate"><span class="pre">batch_offsets</span></code> set;
@@ -551,7 +553,8 @@ all subproblems iterate together and convergence uses the worst-case residual.</
 <li><p><strong>tol</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em> | </em><em>None</em>) – relative tolerance for the residual, as a ratio of the right-hand-side norm</p></li>
 <li><p><strong>atol</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em> | </em><em>None</em>) – absolute tolerance for the residual</p></li>
 <li><p><strong>maxiter</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em> | </em><em>None</em>) – maximum number of iterations to perform before aborting. Defaults to the system size.
-Note that the current implementation always performs iterations in pairs, and as a result may exceed the specified maximum number of iterations by one.</p></li>
+When <code class="docutils literal notranslate"><span class="pre">restart</span></code> is enabled, CR performs complete restart cycles and may exceed
+<code class="docutils literal notranslate"><span class="pre">maxiter</span></code> by up to <code class="docutils literal notranslate"><span class="pre">restart</span> <span class="pre">-</span> <span class="pre">1</span></code> iterations.</p></li>
 <li><p><strong>M</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><a class="reference internal" href="warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a><em> | </em><a class="reference internal" href="warp.optim.linear.LinearOperator.html#warp.optim.linear.LinearOperator" title="warp._src.optim.linear.LinearOperator"><em>LinearOperator</em></a><em> | </em><em>None</em>) – optional left-preconditioner, ideally chosen such that <code class="docutils literal notranslate"><span class="pre">M</span> <span class="pre">A</span></code> is close to identity.</p></li>
 <li><p><strong>callback</strong> (<a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Callable" title="(in Python v3.14)"><em>Callable</em></a><em> | </em><em>None</em>) – function to be called every <cite>check_every</cite> iteration with the current iteration number, residual and tolerance.
 If <cite>check_every</cite> is 0, the callback should be a Warp kernel.</p></li>
@@ -566,19 +569,26 @@ pre-allocated <a class="reference internal" href="warp.optim.linear.CR.html#warp
 reallocating temporary buffers when replacement operands match the construction-time shape, dtype, device,
 and batch layout. For batched <a class="reference internal" href="warp.optim.linear.LinearOperator.html#warp.optim.linear.LinearOperator" title="warp.optim.linear.LinearOperator"><code class="xref py py-class docutils literal notranslate"><span class="pre">LinearOperator</span></code></a> inputs, replacement operators must use the same
 <code class="docutils literal notranslate"><span class="pre">batch_offsets</span></code> array and <code class="docutils literal notranslate"><span class="pre">max_batch_length</span></code> value.</p></li>
+<li><p><strong>restart</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Optional positive number of iterations between restarts. Each restart recomputes
+<code class="docutils literal notranslate"><span class="pre">b</span> <span class="pre">-</span> <span class="pre">A</span> <span class="pre">x</span></code> and resets the search direction, limiting drift between the recursively updated
+residual and the true residual. Convergence checks and callbacks occur only at restart-cycle
+boundaries. The default <code class="docutils literal notranslate"><span class="pre">None</span></code> preserves standard recursive CR.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p><dl class="simple">
 <dt>Tuple (final_iteration, residual_norm, absolute_tolerance)</dt><dd><ul class="simple">
 <li><p>final_iteration: The number of iterations performed before convergence or reaching maxiter</p></li>
-<li><p>residual_norm: The final residual norm ||b - Ax||</p></li>
+<li><p>residual_norm: The recursively updated residual norm. When <code class="docutils literal notranslate"><span class="pre">restart</span></code> is enabled,
+this is the true residual norm ||b - Ax|| at the final restart-cycle boundary.</p></li>
 <li><p>absolute_tolerance: The absolute tolerance used for convergence checking</p></li>
 </ul>
 </dd>
 <dt>If <code class="docutils literal notranslate"><span class="pre">run</span></code> is <code class="docutils literal notranslate"><span class="pre">True</span></code> and <code class="docutils literal notranslate"><span class="pre">check_every</span></code> is 0: Tuple (final_iteration_array, residual_norm_squared_array, absolute_tolerance_squared_array)</dt><dd><ul class="simple">
 <li><p>final_iteration_array: Device array containing the number of iterations performed</p></li>
-<li><p>residual_norm_squared_array: Device array containing the squared residual norm ||b - Ax||²</p></li>
+<li><p>residual_norm_squared_array: Device array containing the squared recursively updated residual norm.
+When <code class="docutils literal notranslate"><span class="pre">restart</span></code> is enabled, this is the squared true residual norm ||b - Ax||² at the
+final restart-cycle boundary.</p></li>
 <li><p>absolute_tolerance_squared_array: Device array containing the squared absolute tolerance</p></li>
 </ul>
 </dd>
@@ -588,6 +598,12 @@ and batch layout. For batched <a class="reference internal" href="warp.optim.lin
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>If <code class="docutils literal notranslate"><span class="pre">run</span></code> is <code class="docutils literal notranslate"><span class="pre">True</span></code> and <code class="docutils literal notranslate"><span class="pre">check_every</span></code> &gt; 0</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.14)"><strong>TypeError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">restart</span></code> is not an integer or <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.14)"><strong>ValueError</strong></a> – If a specified <code class="docutils literal notranslate"><span class="pre">restart</span></code> is not positive.</p></li>
+</ul>
 </dd>
 </dl>
 <p>If both <cite>tol</cite> and <cite>atol</cite> are provided, the absolute tolerance used as the termination criterion for the residual norm is <code class="docutils literal notranslate"><span class="pre">max(atol,</span> <span class="pre">tol</span> <span class="pre">*</span> <span class="pre">norm(b))</span></code>.</p>
