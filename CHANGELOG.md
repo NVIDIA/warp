@@ -41,6 +41,9 @@
   dimension-collapsing integer indices with negative-index support (`t[5, :]`, `t[-1, :]`), and slice assignment
   (`t[0:4, :] = src`). Also add `wp.tile_slice_indexed()`, which gathers elements along a single axis using a
   1D integer index tile (`t[indices, :]`) ([GH-1176](https://github.com/NVIDIA/warp/issues/1176)).
+- Add optional `restart` support to `warp.optim.linear.cg()` and `warp.optim.linear.cr()` for
+  recomputing the true residual and resetting the search direction during finite-precision solves
+  ([GH-1708](https://github.com/NVIDIA/warp/issues/1708)).
 
 ### Removed
 
@@ -148,6 +151,9 @@
 - Fix kernel compilation failing on Windows systems without long-path support enabled when a custom kernel cache
   location is set through `wp.config.kernel_cache_dir` or the `WARP_CACHE_PATH` environment variable. Custom cache
   locations now receive the same `\\?\` long-path treatment as the default location.
+- Fix device-side iteration counts for graph-captured solver cycles that perform more than one iteration.
+- Fix device-side iteration counts for graph-captured solver cycles that perform more than one iteration
+  ([GH-1707](https://github.com/NVIDIA/warp/issues/1707)).
 
 ### Documentation
 
