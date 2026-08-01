@@ -4,10 +4,6 @@
 
 ### Added
 
-- Add `wp.exec_source()` for executing trusted Python source containing Warp
-  kernels, functions, and structs with deterministic module identity and useful
-  generated-source diagnostics. The supported contract currently covers CPU
-  execution ([GH-1640](https://github.com/NVIDIA/warp/issues/1640)).
 - Add rebuildable NanoVDB volumes through `wp.Volume.allocate_by_tiles(..., rebuildable=True)`,
   `wp.Volume.allocate_by_voxels(..., rebuildable=True)`, and `wp.Volume.rebuild()`. Support fixed capacities, optional
   point masks, CPU execution, CUDA graph-capturable allocation and rebuilding, and in-place refreshes of rebuildable
@@ -48,6 +44,10 @@
 - Add optional `restart` support to `warp.optim.linear.cg()` and `warp.optim.linear.cr()` for
   recomputing the true residual and resetting the search direction during finite-precision solves
   ([GH-1708](https://github.com/NVIDIA/warp/issues/1708)).
+- Add `wp.exec_source()` for executing trusted Python source containing Warp
+  kernels, functions, and structs with deterministic module identity and useful
+  generated-source diagnostics. The supported contract currently covers CPU
+  execution ([GH-1640](https://github.com/NVIDIA/warp/issues/1640)).
 
 ### Removed
 

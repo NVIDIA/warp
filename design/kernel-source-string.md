@@ -199,9 +199,9 @@ Python adds `__builtins__` during execution. The alias `warp` is not injected;
 source that needs that spelling imports it normally.
 
 The returned read-only mapping contains public names created by the submitted
-source. The reserved names `wp`, `__name__`, `__file__`, `__package__`, and
-`__builtins__` are excluded. Imports and ordinary Python values are retained
-because they can be useful results or dependencies.
+source. The reserved names `wp`, `__name__`, `__file__`, `__package__`,
+`__builtins__`, and `__doc__` are excluded. Imports and ordinary Python values
+are retained because they can be useful results or dependencies.
 
 The private namespace remains alive with the generated-source record because
 Python functions refer to their globals dictionary. Reusing identical source
@@ -258,6 +258,13 @@ The registry is separate from `user_modules`: the former tracks source identity
 and namespace lifetime, while the latter remains Warp's authority for kernels,
 functions, structs, dependencies, hashes, and executables.
 
+Generated-source transactions and normal Warp module lookup share a
+re-entrant registry lock. The lock covers collision checking, source
+execution, publication, and rollback, so another thread calling
+`get_module()` cannot observe or retain a partially populated generated
+module. Re-entrancy allows decorators executed by the source to resolve the
+generated module on the transaction's thread.
+
 #### Reuse and Collisions
 
 | Existing state | Request | Behavior |
@@ -302,6 +309,9 @@ construct. A failed call removes all state owned by the generated name:
 
 Generated names cannot refer to pre-existing modules, so rollback does not
 modify state owned by file-defined or previously generated modules.
+Concurrent lookup or creation of the same name cannot interleave with the
+transaction, so rollback removes only the partial module created by that
+transaction.
 
 #### CPU Scope
 
@@ -358,6 +368,8 @@ All launch tests explicitly use `device="cpu"`.
 - Clean up a failure after one decorated definition succeeds.
 - Remove generated registry, Warp module, dependency, executable, and
   `linecache` state after failure.
+- Prevent a concurrent module lookup from retaining a partial module when
+  source execution fails.
 - Compile on CPU after successful `linecache` cleanup.
 - Create generic overloads after successful `linecache` cleanup.
 - Leave ordinary file-defined CPU kernels unaffected.

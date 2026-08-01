@@ -2298,8 +2298,11 @@ class _GeneratedSourceRecord(NamedTuple):
 
 
 _generated_source_modules: dict[str, _GeneratedSourceRecord] = {}
-_generated_source_lock = threading.RLock()
-_generated_source_reserved_names = frozenset({"__builtins__", "__file__", "__name__", "__package__", "wp"})
+# Serializes Warp module lookup/creation with generated-source transactions.
+# Re-entrancy lets decorators executed by exec_source() resolve their module
+# while the outer source transaction holds the lock.
+_module_registry_lock = threading.RLock()
+_generated_source_reserved_names = frozenset({"__builtins__", "__doc__", "__file__", "__name__", "__package__", "wp"})
 
 
 def _validate_generated_module_name(module_name: str) -> None:
@@ -2338,8 +2341,8 @@ def exec_source(source: str, *, module_name: str | None = None) -> Mapping[str, 
 
     Returns:
         A read-only mapping containing names created by ``source``. The
-        execution-environment names ``wp``, ``__builtins__``, ``__file__``,
-        ``__name__``, and ``__package__`` are excluded.
+        execution-environment names ``wp``, ``__builtins__``, ``__doc__``,
+        ``__file__``, ``__name__``, and ``__package__`` are excluded.
 
     Raises:
         TypeError: If ``source`` is not a string or ``module_name`` is neither
@@ -2367,7 +2370,7 @@ def exec_source(source: str, *, module_name: str | None = None) -> Mapping[str, 
     # compiler flags from this implementation module.
     code = compile(source, synthetic_filename, "exec", dont_inherit=True)
 
-    with _generated_source_lock:
+    with _module_registry_lock:
         existing_record = _generated_source_modules.get(module_name)
         if existing_record is not None:
             if existing_record.source_digest == source_digest:
@@ -2436,6 +2439,7 @@ def get_module(name: str) -> Module:
     return _get_module(name)
 
 
+@synchronized(_module_registry_lock)
 def _get_module(name: str, qualname: str | None = None) -> Module:
     """Return or create the Warp module a construct should be registered into.
 

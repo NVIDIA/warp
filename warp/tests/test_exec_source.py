@@ -5,6 +5,7 @@ import gc
 import linecache
 import subprocess
 import sys
+import threading
 import types
 import unittest
 
@@ -204,6 +205,72 @@ raise RuntimeError("failure after registration")
         self.assertNotIn(module_name, context._generated_source_modules)
         self.assertFalse(any(name.startswith(f"<warp-source:{module_name}:") for name in linecache.cache))
 
+    def test_failed_source_does_not_remove_concurrent_module_lookup(self):
+        module_name = "warp.tests.exec_source.concurrent_failure"
+        source_entered = threading.Event()
+        source_release = threading.Event()
+        lookup_started = threading.Event()
+        lookup_finished = threading.Event()
+        source_errors = []
+        looked_up_modules = []
+
+        test_module = sys.modules[__name__]
+        test_module.source_entered = source_entered
+        test_module.source_release = source_release
+        source = f"""
+import importlib
+
+test_module = importlib.import_module({__name__!r})
+
+@wp.kernel
+def partial(values: wp.array(dtype=wp.float32)):
+    i = wp.tid()
+    values[i] = values[i]
+
+test_module.source_entered.set()
+if not test_module.source_release.wait(10.0):
+    raise RuntimeError("timed out waiting to fail")
+raise RuntimeError("concurrent failure")
+"""
+
+        def execute_source():
+            try:
+                wp.exec_source(source, module_name=module_name)
+            except BaseException as error:
+                source_errors.append(error)
+
+        def lookup_module():
+            lookup_started.set()
+            looked_up_modules.append(wp.get_module(module_name))
+            lookup_finished.set()
+
+        source_thread = threading.Thread(target=execute_source)
+        lookup_thread = threading.Thread(target=lookup_module)
+        try:
+            source_thread.start()
+            self.assertTrue(source_entered.wait(5.0))
+
+            lookup_thread.start()
+            self.assertTrue(lookup_started.wait(5.0))
+            self.assertFalse(lookup_finished.wait(0.1))
+        finally:
+            source_release.set()
+            source_thread.join(5.0)
+            lookup_thread.join(5.0)
+            del test_module.source_entered
+            del test_module.source_release
+
+        self.assertFalse(source_thread.is_alive())
+        self.assertFalse(lookup_thread.is_alive())
+        self.assertEqual(len(source_errors), 1)
+        self.assertIsInstance(source_errors[0], RuntimeError)
+        self.assertEqual(str(source_errors[0]), "concurrent failure")
+        self.assertEqual(len(looked_up_modules), 1)
+        self.assertIs(looked_up_modules[0], context.user_modules[module_name])
+        self.assertNotIn("partial", looked_up_modules[0].kernels)
+
+        context.user_modules.pop(module_name)
+
     def test_failed_source_does_not_retain_its_namespace(self):
         global failed_payload_ref
 
@@ -270,10 +337,13 @@ def identity(values: wp.array(dtype=wp.float32)):
         self.assertNotIn(synthetic_filename, linecache.cache)
 
     def test_result_is_read_only_and_excludes_reserved_names(self):
-        generated = wp.exec_source("value = 42", module_name="warp.tests.exec_source.result_mapping")
+        generated = wp.exec_source(
+            '"""Generated module documentation."""\nvalue = 42',
+            module_name="warp.tests.exec_source.result_mapping",
+        )
         self.assertIsInstance(generated, types.MappingProxyType)
         self.assertEqual(generated["value"], 42)
-        for reserved_name in ("__builtins__", "__file__", "__name__", "__package__", "wp"):
+        for reserved_name in ("__builtins__", "__doc__", "__file__", "__name__", "__package__", "wp"):
             self.assertNotIn(reserved_name, generated)
         with self.assertRaises(TypeError):
             generated["value"] = 0  # type: ignore[index]
