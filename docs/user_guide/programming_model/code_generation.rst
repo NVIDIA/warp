@@ -180,17 +180,27 @@ code generators that do not have a backing ``.py`` file:
     values = wp.array([1.0, 2.0, 3.0], dtype=wp.float32, device="cpu")
     wp.launch(generated["scale"], dim=3, inputs=[values, 2.0], device="cpu")
 
+Source passed to ``wp.exec_source()`` is ordinary Python with top-level Warp
+definitions. It may contain ``@wp.kernel``, ``@wp.func``, and ``@wp.struct``
+decorators, imports, constants, and other top-level Python statements. Plain
+functions are not automatically converted to Warp kernels. Absolute imports
+work normally; relative imports are unsupported because generated source does
+not belong to a Python package.
+
 The return value is a read-only mapping containing the names created by the
 source. A mapping is a dictionary-like object; definitions are retrieved with
-expressions such as ``generated["scale"]``. Infrastructure names supplied by
-Warp, including ``wp`` and ``__name__``, are not returned.
+expressions such as ``generated["scale"]`` and
+``generated["scale_value"]``. Infrastructure names supplied by Warp,
+including ``wp`` and ``__name__``, are not returned.
 
 The optional ``module_name`` is a dotted Python identifier. If it is omitted,
 Warp derives a deterministic name from the exact source text. Repeating the
 same source and resolved name returns the existing mapping without executing
 the source again. To execute changed source, choose a new module name; Warp
 rejects changed source under an existing name to prevent stale definitions and
-compiled executables.
+compiled executables. Generated modules are immutable after registration;
+``wp.exec_source()`` does not provide hot reload. Use a new module name when
+the source changes.
 
 Syntax errors and Warp code-generation errors use a synthetic filename that
 identifies the generated module and source. A synthetic filename is a virtual
