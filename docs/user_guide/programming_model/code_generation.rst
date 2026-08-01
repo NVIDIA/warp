@@ -152,6 +152,70 @@ if a :ref:`custom replay function <custom-gradient-functions>` is provided, the 
 
 Warp passes the generated source code to native compilers (e.g., LLVM for CPU and NVRTC for CUDA) to produce executable code that is invoked when launching kernels.
 
+Executing Warp definitions from a source string
+-----------------------------------------------
+
+:func:`wp.exec_source() <warp.exec_source>` executes trusted Python source that
+contains normal Warp decorators. This is useful for command-line programs and
+code generators that do not have a backing ``.py`` file:
+
+.. code:: python
+
+    import warp as wp
+
+    generated = wp.exec_source(
+        """
+    @wp.func
+    def scale_value(value: float, factor: float):
+        return value * factor
+
+    @wp.kernel
+    def scale(values: wp.array(dtype=wp.float32), factor: float):
+        i = wp.tid()
+        values[i] = scale_value(values[i], factor)
+    """,
+        module_name="generated_scale",
+    )
+
+    values = wp.array([1.0, 2.0, 3.0], dtype=wp.float32, device="cpu")
+    wp.launch(generated["scale"], dim=3, inputs=[values, 2.0], device="cpu")
+
+Source passed to ``wp.exec_source()`` is ordinary Python with top-level Warp
+definitions. It may contain ``@wp.kernel``, ``@wp.func``, and ``@wp.struct``
+decorators, imports, constants, and other top-level Python statements. Plain
+functions are not automatically converted to Warp kernels. Absolute imports
+work normally; relative imports are unsupported because generated source does
+not belong to a Python package.
+
+The return value is a read-only mapping containing the names created by the
+source. A mapping is a dictionary-like object; definitions are retrieved with
+expressions such as ``generated["scale"]`` and
+``generated["scale_value"]``. Infrastructure names supplied by Warp,
+including ``wp`` and ``__name__``, are not returned.
+
+The optional ``module_name`` is a dotted Python identifier. If it is omitted,
+Warp derives a deterministic name from the exact source text. Repeating the
+same source and resolved name returns the existing mapping without executing
+the source again. To execute changed source, choose a new module name; Warp
+rejects changed source under an existing name to prevent stale definitions and
+compiled executables. Generated modules are immutable after registration;
+``wp.exec_source()`` does not provide hot reload. Use a new module name when
+the source changes.
+
+Syntax errors and Warp code-generation errors use a synthetic filename that
+identifies the generated module and source. A synthetic filename is a virtual
+name used for diagnostics when source does not exist as a file.
+
+.. warning::
+
+    Only execute source you trust. ``wp.exec_source()`` executes ordinary
+    Python with the permissions of the current process and does not provide a
+    sandbox.
+
+The supported contract currently covers CPU kernel creation, compilation,
+execution, diagnostics, and module lifecycle. CUDA behavior is not yet part of
+this API's compatibility guarantee.
+
 .. _external_references:
 
 External References and Constants

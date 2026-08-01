@@ -15,6 +15,8 @@ import inspect
 import io
 import itertools
 import json
+import keyword
+import linecache
 import operator
 import os
 import platform
@@ -2286,6 +2288,139 @@ def register_api_function(
 user_modules: dict[str, Module] = {}
 
 
+class _GeneratedSourceRecord(NamedTuple):
+    """State retained for source executed by :func:`exec_source`."""
+
+    source_digest: str
+    synthetic_filename: str
+    namespace: dict[str, Any]
+    result: Mapping[str, Any]
+
+
+_generated_source_modules: dict[str, _GeneratedSourceRecord] = {}
+# Serializes Warp module lookup/creation with generated-source transactions.
+# Re-entrancy lets decorators executed by exec_source() resolve their module
+# while the outer source transaction holds the lock.
+_module_registry_lock = threading.RLock()
+_generated_source_reserved_names = frozenset({"__builtins__", "__doc__", "__file__", "__name__", "__package__", "wp"})
+
+
+def _validate_generated_module_name(module_name: str) -> None:
+    """Validate a module name used for generated Warp source.
+
+    Args:
+        module_name: Dotted Python module name to validate.
+
+    Raises:
+        ValueError: If the name is empty or contains an invalid or reserved
+            Python identifier.
+    """
+    components = module_name.split(".")
+    if not module_name or any(not component.isidentifier() or keyword.iskeyword(component) for component in components):
+        raise ValueError(f"Generated Warp module name must be a valid dotted Python identifier, got {module_name!r}")
+
+
+def exec_source(source: str, *, module_name: str | None = None) -> Mapping[str, Any]:
+    """Execute trusted Python source containing decorated Warp definitions.
+
+    The source can contain normal ``@wp.kernel``, ``@wp.func``, and
+    ``@wp.struct`` definitions without a backing Python file. Definitions are
+    registered in one generated Warp module and can be retrieved from the
+    returned mapping.
+
+    When ``module_name`` is omitted, the name is derived from the exact source
+    text. Repeating a call with the same resolved name and source returns the
+    existing mapping without executing the source again. A resolved name cannot
+    be reused for changed source or collide with an existing Python or Warp
+    module.
+
+    Args:
+        source: Trusted Python source to execute.
+        module_name: Logical Warp module name. When omitted, a deterministic
+            name is derived from the exact UTF-8 source bytes.
+
+    Returns:
+        A read-only mapping containing names created by ``source``. The
+        execution-environment names ``wp``, ``__builtins__``, ``__doc__``,
+        ``__file__``, ``__name__``, and ``__package__`` are excluded.
+
+    Raises:
+        TypeError: If ``source`` is not a string or ``module_name`` is neither
+            a string nor ``None``.
+        ValueError: If ``module_name`` is invalid, collides with an existing
+            module, or refers to different generated source.
+
+    Warning:
+        Only execute source you trust. This function does not sandbox Python
+        code.
+    """
+    if not isinstance(source, str):
+        raise TypeError(f"Generated Warp source must be a string, got {type(source).__name__}")
+    if module_name is not None and not isinstance(module_name, str):
+        raise TypeError(f"Generated Warp module name must be a string or None, got {type(module_name).__name__}")
+
+    source_digest = hashlib.sha256(source.encode("utf-8")).hexdigest()
+    if module_name is None:
+        module_name = f"__warp_source_{source_digest[:16]}"
+    else:
+        _validate_generated_module_name(module_name)
+
+    synthetic_filename = f"<warp-source:{module_name}:{source_digest[:12]}>"
+    # Generated source controls its own future statements and must not inherit
+    # compiler flags from this implementation module.
+    code = compile(source, synthetic_filename, "exec", dont_inherit=True)
+
+    with _module_registry_lock:
+        existing_record = _generated_source_modules.get(module_name)
+        if existing_record is not None:
+            if existing_record.source_digest == source_digest:
+                return existing_record.result
+            raise ValueError(f"Generated Warp module {module_name!r} already exists with different source")
+
+        if module_name in user_modules or module_name in sys.modules:
+            raise ValueError(f"Generated Warp module name {module_name!r} collides with an existing module")
+
+        namespace = {
+            "__file__": synthetic_filename,
+            "__name__": module_name,
+            "__package__": None,
+            "wp": warp,
+        }
+        source_lines = source.splitlines(keepends=True)
+        cache_entry = (len(source), None, source_lines, synthetic_filename)
+        missing_cache_entry = object()
+        previous_cache_entry = linecache.cache.get(synthetic_filename, missing_cache_entry)
+        linecache.cache[synthetic_filename] = cache_entry
+
+        try:
+            exec(code, namespace)
+
+            result_values = {
+                name: value for name, value in namespace.items() if name not in _generated_source_reserved_names
+            }
+            result = types.MappingProxyType(result_values)
+            _generated_source_modules[module_name] = _GeneratedSourceRecord(
+                source_digest=source_digest,
+                synthetic_filename=synthetic_filename,
+                namespace=namespace,
+                result=result,
+            )
+            return result
+        except BaseException:
+            partial_module = user_modules.pop(module_name, None)
+            if partial_module is not None:
+                partial_module._detach_references()
+                partial_module.unload()
+            _generated_source_modules.pop(module_name, None)
+            raise
+        finally:
+            if linecache.cache.get(synthetic_filename) is cache_entry:
+                if previous_cache_entry is missing_cache_entry:
+                    linecache.cache.pop(synthetic_filename, None)
+                else:
+                    linecache.cache[synthetic_filename] = previous_cache_entry
+
+
 def get_module(name: str) -> Module:
     """Return or create the Warp module associated with a given name.
 
@@ -2304,6 +2439,7 @@ def get_module(name: str) -> Module:
     return _get_module(name)
 
 
+@synchronized(_module_registry_lock)
 def _get_module(name: str, qualname: str | None = None) -> Module:
     """Return or create the Warp module a construct should be registered into.
 
