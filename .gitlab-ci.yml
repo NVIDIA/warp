@@ -10,6 +10,10 @@ include:
   - project: "omniverse/warp-gitlab-ci"
     ref: "main"
     file: "/.gitlab-ci.yml"
+  # Validates and signs outbound NVCARPS content under skills/ (see NVCARPS onboarding)
+  - project: "nvcarps/ci-group/nvcarps-ci"
+    ref: "main"
+    file: "/.gitlab/nvcarps-upstream-ci.yml"
 
 workflow:
   rules:
@@ -53,6 +57,11 @@ variables:
       - "3.10"
     description: "The default UV Python version used in the main testing jobs."
 
+  # NVCARPS skill validation and signing
+  NVCARPS_CI_TRIGGER_BRANCH: "main"
+  NVCARPS_CI_UPSTREAM_PROFILE: "external"
+  NVCARPS_CI_AUTO_SIGN: "true"
+
 stages:
   - build
   - quality
@@ -60,6 +69,7 @@ stages:
   - child pipelines
   - package
   - deploy
+  - nvskills-pipeline
 
 # ==============================================================================
 # Build Jobs
@@ -1264,3 +1274,31 @@ pages:
     name: GitLab Pages
     deployment_tier: staging
     url: $CI_PAGES_URL
+
+# ==============================================================================
+# NVCARPS/NVSkills Content Validation
+#
+# The bridge jobs are defined by the nvcarps/ci-group/nvcarps-ci include, which
+# places them in the final "nvskills-pipeline" stage. They only inspect
+# repository content under skills/, so `needs: []` lets them start at pipeline
+# creation instead of queueing behind the entire build and test matrix.
+#
+# Their rules are inherited from the include rather than restated here, so
+# upstream stays the single definition of when content validation runs.
+# ==============================================================================
+
+content-ci:validate:
+  needs: []
+
+content-ci:verify-signatures:
+  needs: []
+
+# Warp uses the external ("content-ci") profile, so the include's internal
+# counterparts are always excluded by their own rules. GitLab still validates
+# their stage before evaluating rules, so re-home them here to keep the unused
+# "nvcarps" stage out of the stage list.
+nvcarps-ci:internal:
+  stage: nvskills-pipeline
+
+nvcarps-ci:internal:verify-signatures:
+  stage: nvskills-pipeline
