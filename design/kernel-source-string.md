@@ -143,6 +143,26 @@ wp.launch(generated["scale_array"], dim=3, inputs=[values], device="cpu")
 produce several kernels, functions, structs, constants, or imported names. A
 single-kernel API would be too narrow for a module-sized source block.
 
+The name also makes the security boundary visible: unlike an API named
+``compile_source``, it does not imply that the operation only translates code.
+It executes top-level Python statements before any generated kernel is
+launched.
+
+Maintainers may prefer one of these alternatives before the API is released:
+
+- ``load_source`` follows the vocabulary of ``load_module``, but understates
+  that arbitrary top-level Python executes and suggests that a module object is
+  returned.
+- ``module_from_source`` emphasizes module identity, but the return value is a
+  mapping rather than ``wp.Module``.
+- ``kernel_from_source`` is clear for the smallest example, but cannot describe
+  source containing multiple kernels, functions, and structs.
+- ``compile_source`` sounds non-executing and would obscure the trusted-source
+  warning.
+
+No aliases are proposed. One final name keeps the public surface small and
+avoids supporting redundant spellings after release.
+
 The function is defined in `warp/_src/context.py` near the existing kernel and
 module APIs and re-exported from `warp/__init__.py` under Kernel Programming.
 

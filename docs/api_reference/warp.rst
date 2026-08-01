@@ -276,6 +276,7 @@ Kernel Programming
    WarpCodegenTypeError
    WarpCodegenValueError
    address_of
+   exec_source
    func
    func_grad
    func_native

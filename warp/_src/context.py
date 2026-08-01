@@ -2289,7 +2289,7 @@ user_modules: dict[str, Module] = {}
 
 
 class _GeneratedSourceRecord(NamedTuple):
-    """State retained for source executed by :func:`_exec_source`."""
+    """State retained for source executed by :func:`exec_source`."""
 
     source_digest: str
     synthetic_filename: str
@@ -2317,13 +2317,19 @@ def _validate_generated_module_name(module_name: str) -> None:
         raise ValueError(f"Generated Warp module name must be a valid dotted Python identifier, got {module_name!r}")
 
 
-def _exec_source(source: str, *, module_name: str | None = None) -> Mapping[str, Any]:
+def exec_source(source: str, *, module_name: str | None = None) -> Mapping[str, Any]:
     """Execute trusted Python source containing decorated Warp definitions.
 
-    This is a private prototype for evaluating normal ``@wp.kernel``,
-    ``@wp.func``, and ``@wp.struct`` definitions without a backing Python file.
-    The source executes with the privileges of the current process and is not
-    sandboxed.
+    The source can contain normal ``@wp.kernel``, ``@wp.func``, and
+    ``@wp.struct`` definitions without a backing Python file. Definitions are
+    registered in one generated Warp module and can be retrieved from the
+    returned mapping.
+
+    When ``module_name`` is omitted, the name is derived from the exact source
+    text. Repeating a call with the same resolved name and source returns the
+    existing mapping without executing the source again. A resolved name cannot
+    be reused for changed source or collide with an existing Python or Warp
+    module.
 
     Args:
         source: Trusted Python source to execute.
@@ -2331,8 +2337,9 @@ def _exec_source(source: str, *, module_name: str | None = None) -> Mapping[str,
             name is derived from the exact UTF-8 source bytes.
 
     Returns:
-        A read-only mapping containing names created by ``source``. Names
-        reserved for the execution environment are excluded.
+        A read-only mapping containing names created by ``source``. The
+        execution-environment names ``wp``, ``__builtins__``, ``__file__``,
+        ``__name__``, and ``__package__`` are excluded.
 
     Raises:
         TypeError: If ``source`` is not a string or ``module_name`` is neither

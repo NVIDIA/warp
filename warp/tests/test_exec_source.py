@@ -26,8 +26,11 @@ def file_defined_increment(values: wp.array(dtype=wp.float32)):
 class TestExecSource(unittest.TestCase):
     """Test execution of trusted source containing Warp definitions."""
 
+    def test_public_export(self):
+        self.assertIs(wp.exec_source, context.exec_source)
+
     def test_kernel_with_array_and_scalar_arguments(self):
-        generated = context._exec_source(
+        generated = wp.exec_source(
             """
 @wp.kernel
 def scale(values: wp.array(dtype=wp.float32), factor: float):
@@ -46,7 +49,7 @@ import numpy as np
 import warp as wp
 from warp._src import context
 
-generated = context._exec_source('''
+generated = wp.exec_source('''
 @wp.kernel
 def double(values: wp.array(dtype=wp.float32)):
     i = wp.tid()
@@ -62,7 +65,7 @@ print('OK')
         self.assertIn("OK", result.stdout)
 
     def test_multiple_kernels(self):
-        generated = context._exec_source(
+        generated = wp.exec_source(
             """
 @wp.kernel
 def add_one(values: wp.array(dtype=wp.float32)):
@@ -82,7 +85,7 @@ def multiply_two(values: wp.array(dtype=wp.float32)):
         np.testing.assert_allclose(values.numpy(), np.array([4.0, 6.0], dtype=np.float32))
 
     def test_function_struct_import_and_annotations(self):
-        generated = context._exec_source(
+        generated = wp.exec_source(
             """
 import math
 
@@ -113,13 +116,13 @@ rounded = math.ceil(1.25)
 
     def test_input_validation(self):
         with self.assertRaisesRegex(TypeError, "source must be a string"):
-            context._exec_source(None)  # type: ignore[arg-type]
+            wp.exec_source(None)  # type: ignore[arg-type]
         with self.assertRaisesRegex(TypeError, "module name must be a string or None"):
-            context._exec_source("", module_name=1)  # type: ignore[arg-type]
+            wp.exec_source("", module_name=1)  # type: ignore[arg-type]
         for module_name in ("", "invalid-name", "valid.invalid-name", "valid.class"):
             with self.subTest(module_name=module_name):
                 with self.assertRaisesRegex(ValueError, "valid dotted Python identifier"):
-                    context._exec_source("", module_name=module_name)
+                    wp.exec_source("", module_name=module_name)
 
     def test_syntax_error_location(self):
         module_name = "warp.tests.exec_source.syntax_error"
@@ -129,7 +132,7 @@ def broken(values: wp.array(dtype=wp.float32)):
     values[0] =
 """
         with self.assertRaises(SyntaxError) as raised:
-            context._exec_source(source, module_name=module_name)
+            wp.exec_source(source, module_name=module_name)
         self.assertTrue(raised.exception.filename.startswith(f"<warp-source:{module_name}:"))
         self.assertEqual(raised.exception.lineno, 4)
         self.assertNotIn(module_name, context.user_modules)
@@ -137,7 +140,7 @@ def broken(values: wp.array(dtype=wp.float32)):
 
     def test_codegen_error_location(self):
         module_name = "warp.tests.exec_source.codegen_error"
-        generated = context._exec_source(
+        generated = wp.exec_source(
             """
 @wp.kernel
 def broken(values: wp.array(dtype=wp.float32)):
@@ -157,7 +160,7 @@ def broken(values: wp.array(dtype=wp.float32)):
     def test_runtime_error_before_registration(self):
         module_name = "warp.tests.exec_source.early_failure"
         with self.assertRaisesRegex(RuntimeError, "early failure"):
-            context._exec_source('raise RuntimeError("early failure")', module_name=module_name)
+            wp.exec_source('raise RuntimeError("early failure")', module_name=module_name)
         self.assertNotIn(module_name, context.user_modules)
         self.assertNotIn(module_name, context._generated_source_modules)
 
@@ -172,7 +175,7 @@ def partial(values: wp.array(dtype=wp.float32)):
 raise SystemExit(7)
 """
         with self.assertRaises(SystemExit):
-            context._exec_source(source, module_name=module_name)
+            wp.exec_source(source, module_name=module_name)
         self.assertNotIn(module_name, context.user_modules)
         self.assertNotIn(module_name, context._generated_source_modules)
 
@@ -187,7 +190,7 @@ def partial(values: wp.array(dtype=wp.float32)):
 raise RuntimeError("failure after registration")
 """
         try:
-            context._exec_source(source, module_name=module_name)
+            wp.exec_source(source, module_name=module_name)
         except RuntimeError as error:
             self.assertIn("failure after registration", str(error))
             traceback = error.__traceback__
@@ -225,7 +228,7 @@ def partial(values: wp.array(dtype=wp.float32)):
 raise RuntimeError("discard namespace")
 """
         with self.assertRaisesRegex(RuntimeError, "discard namespace"):
-            context._exec_source(source, module_name=module_name)
+            wp.exec_source(source, module_name=module_name)
 
         gc.collect()
         self.assertIsNotNone(failed_payload_ref)
@@ -234,7 +237,7 @@ raise RuntimeError("discard namespace")
 
     def test_collision_with_file_backed_module(self):
         with self.assertRaisesRegex(ValueError, "collides with an existing module"):
-            context._exec_source("value = 1", module_name=__name__)
+            wp.exec_source("value = 1", module_name=__name__)
         self.assertIs(wp.get_module(__name__), file_defined_increment.module)
 
     def test_default_name_reuse(self):
@@ -245,15 +248,15 @@ def default_identity(values: wp.array(dtype=wp.float32)):
     values[i] = values[i]
 """
         count_before = len(context._generated_source_modules)
-        first = context._exec_source(source)
-        second = context._exec_source(source)
+        first = wp.exec_source(source)
+        second = wp.exec_source(source)
         self.assertIs(first, second)
         self.assertTrue(first["default_identity"].module.name.startswith("__warp_source_"))
         self.assertEqual(len(context._generated_source_modules), count_before + 1)
 
     def test_success_removes_linecache_entry(self):
         module_name = "warp.tests.exec_source.linecache_success"
-        generated = context._exec_source(
+        generated = wp.exec_source(
             """
 @wp.kernel
 def identity(values: wp.array(dtype=wp.float32)):
@@ -267,7 +270,7 @@ def identity(values: wp.array(dtype=wp.float32)):
         self.assertNotIn(synthetic_filename, linecache.cache)
 
     def test_result_is_read_only_and_excludes_reserved_names(self):
-        generated = context._exec_source("value = 42", module_name="warp.tests.exec_source.result_mapping")
+        generated = wp.exec_source("value = 42", module_name="warp.tests.exec_source.result_mapping")
         self.assertIsInstance(generated, types.MappingProxyType)
         self.assertEqual(generated["value"], 42)
         for reserved_name in ("__builtins__", "__file__", "__name__", "__package__", "wp"):
@@ -278,21 +281,21 @@ def identity(values: wp.array(dtype=wp.float32)):
     def test_explicit_name_reuse(self):
         source = "value = object()"
         module_name = "warp.tests.exec_source.explicit_reuse"
-        first = context._exec_source(source, module_name=module_name)
-        second = context._exec_source(source, module_name=module_name)
+        first = wp.exec_source(source, module_name=module_name)
+        second = wp.exec_source(source, module_name=module_name)
         self.assertIs(first, second)
         self.assertIs(first["value"], second["value"])
 
     def test_changed_source_is_rejected_without_mutation(self):
         module_name = "warp.tests.exec_source.changed_rejected"
-        first = context._exec_source("value = 1", module_name=module_name)
+        first = wp.exec_source("value = 1", module_name=module_name)
         with self.assertRaisesRegex(ValueError, "different source"):
-            context._exec_source("value = 2", module_name=module_name)
+            wp.exec_source("value = 2", module_name=module_name)
         self.assertIs(context._generated_source_modules[module_name].result, first)
         self.assertEqual(first["value"], 1)
 
     def test_same_symbol_in_different_modules(self):
-        first = context._exec_source(
+        first = wp.exec_source(
             """
 @wp.kernel
 def shared(values: wp.array(dtype=wp.float32)):
@@ -301,7 +304,7 @@ def shared(values: wp.array(dtype=wp.float32)):
 """,
             module_name="warp.tests.exec_source.shared_a",
         )
-        second = context._exec_source(
+        second = wp.exec_source(
             """
 @wp.kernel
 def shared(values: wp.array(dtype=wp.float32)):
@@ -325,8 +328,8 @@ def operation(values: wp.array(dtype=wp.float32)):
     i = wp.tid()
     values[i] = values[i] * {factor}.0
 """
-        first = context._exec_source(template.format(factor=2), module_name="warp.tests.exec_source.body_a")
-        second = context._exec_source(template.format(factor=5), module_name="warp.tests.exec_source.body_b")
+        first = wp.exec_source(template.format(factor=2), module_name="warp.tests.exec_source.body_a")
+        second = wp.exec_source(template.format(factor=5), module_name="warp.tests.exec_source.body_b")
         first_values = wp.array([3.0], dtype=wp.float32, device="cpu")
         second_values = wp.array([3.0], dtype=wp.float32, device="cpu")
         wp.launch(first["operation"], dim=1, inputs=[first_values], device="cpu")
@@ -350,17 +353,17 @@ def operation(values: wp.array(dtype=wp.float32), parameters: Parameters):
     i = wp.tid()
     values[i] = helper(values[i], parameters)
 """
-        unchanged_a = context._exec_source(
+        unchanged_a = wp.exec_source(
             template.format(extra_field="", helper_suffix=""), module_name="warp.tests.exec_source.hash_base_a"
         )
-        unchanged_b = context._exec_source(
+        unchanged_b = wp.exec_source(
             template.format(extra_field="", helper_suffix=""), module_name="warp.tests.exec_source.hash_base_b"
         )
-        helper_changed = context._exec_source(
+        helper_changed = wp.exec_source(
             template.format(extra_field="", helper_suffix="+ 1.0"),
             module_name="warp.tests.exec_source.hash_helper",
         )
-        struct_changed = context._exec_source(
+        struct_changed = wp.exec_source(
             template.format(extra_field="offset: wp.float32", helper_suffix=""),
             module_name="warp.tests.exec_source.hash_struct",
         )
@@ -371,7 +374,7 @@ def operation(values: wp.array(dtype=wp.float32), parameters: Parameters):
 
     def test_file_defined_kernel_and_lookup_are_unaffected(self):
         original_module = wp.get_module(__name__)
-        context._exec_source(
+        wp.exec_source(
             """
 @wp.kernel
 def generated_identity(values: wp.array(dtype=wp.float32)):
