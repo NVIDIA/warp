@@ -817,6 +817,67 @@ def test_functor_reuse(test, device):
             test.assertLessEqual(np.linalg.norm(residual), 2.0 * atol2)
 
 
+def test_functor_iteration_buffer_reuse(test, device):
+    A, b = _make_identity_system(n=5, seed=23, dtype=wp.float32, device=device)
+    solver_cases = (
+        (cg, {}),
+        (cr, {}),
+        (bicgstab, {}),
+        (gmres, {"restart": 2}),
+    )
+
+    with wp.ScopedDevice(device):
+        for func, kwargs in solver_cases:
+            x = wp.zeros_like(b)
+            state = func(
+                A,
+                b,
+                x,
+                maxiter=2,
+                check_every=0,
+                use_cuda_graph=False,
+                run=False,
+                **kwargs,
+            )
+            iteration_buffer = state._cur_iter_and_condition
+
+            final_iteration, err, atol = state()
+            test.assertEqual(final_iteration.ptr, iteration_buffer.ptr)
+            expected_final_iteration = final_iteration.numpy()[0]
+            test.assertLessEqual(err.numpy()[0], atol.numpy()[0])
+
+            iteration_buffer.fill_(123)
+            x.zero_()
+            final_iteration, err, atol = state()
+            test.assertEqual(final_iteration.ptr, iteration_buffer.ptr)
+            test.assertEqual(final_iteration.numpy()[0], expected_final_iteration)
+            test.assertLessEqual(err.numpy()[0], atol.numpy()[0])
+
+            if A.device.is_cuda and wp.is_conditional_graph_supported():
+                x.zero_()
+                capture_state = func(
+                    A,
+                    b,
+                    x,
+                    maxiter=2,
+                    check_every=0,
+                    use_cuda_graph=True,
+                    run=False,
+                    **kwargs,
+                )
+
+                # Warm up the solver modules before the outer capture.
+                capture_state()
+                x.zero_()
+
+                with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+                    final_iteration, err, atol = capture_state()
+
+                wp.capture_launch(capture.graph)
+                test.assertEqual(final_iteration.ptr, capture_state._cur_iter_and_condition.ptr)
+                test.assertLessEqual(err.numpy()[0], atol.numpy()[0])
+
+
 def test_functor_preconditioner(test, device):
     # CG and CR allow toggling M between None and a valid preconditioner between calls.
     with wp.ScopedDevice(device):
@@ -969,6 +1030,12 @@ add_function_test(
     devices=get_cuda_test_devices(),
 )
 add_function_test(TestLinearSolvers, "test_functor_reuse", test_functor_reuse, devices=devices)
+add_function_test(
+    TestLinearSolvers,
+    "test_functor_iteration_buffer_reuse",
+    test_functor_iteration_buffer_reuse,
+    devices=devices,
+)
 add_function_test(TestLinearSolvers, "test_functor_preconditioner", test_functor_preconditioner, devices=devices)
 add_function_test(TestLinearSolvers, "test_functor_compat_errors", test_functor_compat_errors, devices=devices)
 

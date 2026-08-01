@@ -154,6 +154,7 @@
 - Fix device-side iteration counts for graph-captured solver cycles that perform more than one iteration.
 - Fix device-side iteration counts for graph-captured solver cycles that perform more than one iteration
   ([GH-1707](https://github.com/NVIDIA/warp/issues/1707)).
+- Fix pre-allocated iterative linear solver states allocating an iteration-condition buffer on every solve.
 
 ### Documentation
 

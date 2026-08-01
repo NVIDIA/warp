@@ -780,6 +780,7 @@ class LinearSolverState:
             maxiter = _scalar_dof_count(b) // self._batch_count
         self._maxiter = int(maxiter)
 
+        self._cur_iter_and_condition = wp.empty((2,), dtype=int, device=self._device)
         self._allocate()
 
     def _allocate(self):
@@ -1020,12 +1021,13 @@ class CG(_RestartableLinearSolverState):
 
         return _run_capturable_loop(
             do_cycle,
-            r_norm_sq,
-            self._maxiter,
-            atol_sq,
-            self._callback,
-            self._check_every,
-            self._use_cuda_graph,
+            cur_iter_and_condition=self._cur_iter_and_condition,
+            r_norm_sq=r_norm_sq,
+            maxiter=self._maxiter,
+            atol_sq=atol_sq,
+            callback=self._callback,
+            check_every=self._check_every,
+            use_cuda_graph=self._use_cuda_graph,
             cycle_size=cycle_size,
         )
 
@@ -1272,6 +1274,7 @@ class CR(_RestartableLinearSolverState):
 
         return _run_capturable_loop(
             do_cycle,
+            cur_iter_and_condition=self._cur_iter_and_condition,
             cycle_size=cycle_size,
             r_norm_sq=r_norm_sq,
             maxiter=self._maxiter,
@@ -1561,6 +1564,7 @@ class BiCGSTAB(LinearSolverState):
 
         return _run_capturable_loop(
             do_iteration,
+            cur_iter_and_condition=self._cur_iter_and_condition,
             r_norm_sq=r_norm_sq,
             maxiter=self._maxiter,
             atol_sq=atol_sq,
@@ -1900,6 +1904,7 @@ class GMRES(LinearSolverState):
 
         return _run_capturable_loop(
             do_restart_cycle,
+            cur_iter_and_condition=self._cur_iter_and_condition,
             cycle_size=restart,
             r_norm_sq=r_norm_sq,
             maxiter=self._maxiter,
@@ -2112,6 +2117,7 @@ def _create_update_condition_kernel(batch_count: int):
 
 def _run_capturable_loop(
     do_cycle: Callable,
+    cur_iter_and_condition: wp.array,
     r_norm_sq: wp.array,
     maxiter: int,
     atol_sq: wp.array,
@@ -2128,7 +2134,7 @@ def _run_capturable_loop(
             do_cycle, cycle_size, r_norm_sq, maxiter, atol_sq, callback, check_every, use_cuda_graph, device
         )
 
-    cur_iter_and_condition = wp.full((2,), value=-cycle_size, dtype=int, device=device)
+    cur_iter_and_condition.fill_(-cycle_size)
     cur_iter = cur_iter_and_condition[0:1]
     condition = cur_iter_and_condition[1:2]
 
