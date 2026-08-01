@@ -8,9 +8,16 @@ import numpy as np
 import warp as wp
 from warp.tests.unittest_utils import *
 
+# Compilation hygiene
+#
+# Tile sort generates substantial code for every length and block dim. These tests do not exercise autodiff, so
+# compiling backward kernels would substantially increase the module size without adding coverage. The bfloat16
+# kernel only runs at one block dim and uses a unique module so it is not included in all five regular sort module
+# variants.
+
 
 def create_sort_kernel(KEY_TYPE, MAX_SORT_LENGTH):
-    @wp.kernel
+    @wp.kernel(enable_backward=False)
     def tile_sort_kernel(
         input_keys: wp.array[KEY_TYPE],
         input_values: wp.array[wp.int32],
@@ -75,37 +82,37 @@ def test_tile_sort(test, device):
                 block_dim=TILE_DIM,
                 device=device,
             )
-            wp.synchronize()
 
             # Sort using NumPy for validation
             sorted_indices = np.argsort(np_keys)
             np_sorted_keys = np_keys[sorted_indices]
             np_sorted_values = np_values[sorted_indices]
 
+            context = f"dtype={dtype}, TILE_DIM={TILE_DIM}, length={length}"
             if dtype == wp.float32:
-                keys_match = np.allclose(output_keys.numpy(), np_sorted_keys, atol=1e-6)  # Use tolerance for floats
+                np.testing.assert_allclose(
+                    output_keys.numpy(),
+                    np_sorted_keys,
+                    rtol=1e-5,
+                    atol=1e-6,
+                    err_msg=f"Key sorting mismatch for {context}",
+                )
             else:  # Integer types
-                keys_match = np.array_equal(output_keys.numpy(), np_sorted_keys)
+                np.testing.assert_array_equal(
+                    output_keys.numpy(),
+                    np_sorted_keys,
+                    err_msg=f"Key sorting mismatch for {context}",
+                )
 
-            values_match = np.array_equal(output_values.numpy(), np_sorted_values)
-
-            if not keys_match or not values_match:
-                print(f"Test failed for dtype={dtype}, TILE_DIM={TILE_DIM}, length={length}")
-                print("")
-                print(output_keys.numpy())
-                print(np_sorted_keys)
-                print("")
-                print(output_values.numpy())
-                print(np_sorted_values)
-                print("")
-
-            # Validate results
-            test.assertTrue(keys_match, f"Key sorting mismatch for dtype={dtype}!")
-            test.assertTrue(values_match, f"Value sorting mismatch for dtype={dtype}!")
+            np.testing.assert_array_equal(
+                output_values.numpy(),
+                np_sorted_values,
+                err_msg=f"Value sorting mismatch for {context}",
+            )
 
 
 def create_bfloat16_payload_sort_kernel(length):
-    @wp.kernel
+    @wp.kernel(enable_backward=False, module="unique")
     def tile_sort_bfloat16_kernel(
         input_keys: wp.array[wp.float32],
         input_values: wp.array[wp.bfloat16],
