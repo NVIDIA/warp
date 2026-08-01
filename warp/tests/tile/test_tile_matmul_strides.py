@@ -73,7 +73,9 @@ def test_tile_matmul_strided_view_backward(test, device):
     assert_np_equal(B_wp.grad.numpy(), A[:, :TILE_K].T @ adj_C, tol=1e-5)
 
 
-@wp.kernel
+# this kernel launches at block_dim=64 while the rest of the file uses TILE_DIM, so sharing a module would compile
+# every kernel here (and its MathDx routines) at both block dims; no test differentiates it, hence forward-only
+@wp.kernel(module="unique", module_options={"enable_backward": False})
 def tile_matmul_strided_view_fp16_kernel(
     A: wp.array2d[wp.float16], B: wp.array2d[wp.float16], C: wp.array2d[wp.float16]
 ):
@@ -114,7 +116,8 @@ def test_tile_matmul_strided_view_fp16(test, device):
     assert_np_equal(C_wp.numpy().astype(np.float32), ref, tol=5e-2)
 
 
-@wp.kernel
+# forward-only: no test differentiates this kernel, so skip building its adjoint
+@wp.kernel(enable_backward=False)
 def tile_matmul_broadcast_kernel(A: wp.array2d[float], B: wp.array2d[float], C: wp.array2d[float]):
     # a zero-stride broadcast operand makes tile_matmul fall back to the scalar path
     a = wp.tile_load(A, shape=(TILE_M, TILE_K))
