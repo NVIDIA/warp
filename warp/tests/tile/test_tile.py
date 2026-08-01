@@ -16,6 +16,21 @@ TILE_K = wp.constant(8)
 # num threads per-tile
 TILE_DIM = 64
 
+# Compilation hygiene
+#
+# Warp rebuilds a module whenever its kernel set or its block dim changes, and the module holding these tests is
+# large, so anything that perturbs it after it has loaded costs a full rebuild of every kernel in the file. Two
+# conventions keep it building exactly once per device:
+#
+#   1. Kernels that launch at a block dim other than TILE_DIM, and kernels defined inside a test body, are declared
+#      with module="unique" so they compile on their own. Without it, the first group forces a rebuild of the whole
+#      file at each extra block dim, and the second forces one on the next launch after the test runs.
+#   2. Overloads of generic kernels are registered at module scope, before any launch, so that the first launch does
+#      not add a new instance to the module.
+#
+# Adopting these cut this file's cold-cache runtime from ~120 s to ~16 s. Please keep them in place when adding or
+# refactoring tests here.
+
 
 @wp.kernel
 def tile_copy_1d_kernel(A: wp.array[float], B: wp.array[float]):
@@ -128,6 +143,12 @@ def tile_unary_map_builtin_func(input: wp.array2d[Any], output: wp.array2d[Any])
     sa = wp.tile_map(wp.sin, a)
 
     wp.tile_store(output, sa, offset=(i * TILE_M, j * TILE_N))
+
+
+# Register the instantiations these tests use up front (see "Compilation hygiene" at the top of the file).
+for _kernel in (tile_unary_map_user_func, tile_unary_map_builtin_func):
+    for _dtype in (wp.float32, wp.float64):
+        wp.overload(_kernel, [wp.array2d[_dtype], wp.array2d[_dtype]])
 
 
 def test_tile_unary_map(test, device):
@@ -257,6 +278,12 @@ def tile_binary_map_builtin_func(input_a: wp.array2d[Any], input_b: wp.array2d[A
     sa = wp.tile_map(wp.add, a, b)
 
     wp.tile_store(output, sa, offset=(i * TILE_M, j * TILE_N))
+
+
+# Register the instantiations these tests use up front (see "Compilation hygiene" at the top of the file).
+for _kernel in (tile_binary_map_user_func, tile_binary_map_builtin_func):
+    for _dtype in (wp.float32, wp.float64):
+        wp.overload(_kernel, [wp.array2d[_dtype], wp.array2d[_dtype], wp.array2d[_dtype]])
 
 
 def test_tile_binary_map(test, device):
@@ -1187,6 +1214,7 @@ def test_tile_sum_launch(test, device):
     assert_np_equal(input_wp.grad.numpy(), np.ones_like(input) * 0.5)
 
 
+# Launched at a block dim other than TILE_DIM, so it gets its own module (see "Compilation hygiene" above).
 @wp.kernel(module="unique")
 def test_tile_extract_kernel(a: wp.array2d[float], b: wp.array2d[float]):
     i, j, x, y = wp.tid()
@@ -1197,7 +1225,8 @@ def test_tile_extract_kernel(a: wp.array2d[float], b: wp.array2d[float]):
     wp.atomic_add(b, i, j, wp.tile_extract(tile, x, y))
 
 
-@wp.kernel
+# Launched at a block dim other than TILE_DIM, so it gets its own module (see "Compilation hygiene" above).
+@wp.kernel(module="unique")
 def test_tile_extract_vec_kernel(x: wp.array[wp.vec3], y: wp.array[float]):
     i = wp.tid()
 
@@ -1208,7 +1237,8 @@ def test_tile_extract_vec_kernel(x: wp.array[wp.vec3], y: wp.array[float]):
     y[i] = a
 
 
-@wp.kernel
+# Launched at a block dim other than TILE_DIM, so it gets its own module (see "Compilation hygiene" above).
+@wp.kernel(module="unique")
 def test_tile_extract_mat_kernel(x: wp.array[wp.mat33], y: wp.array[float]):
     i = wp.tid()
 
@@ -1281,6 +1311,7 @@ def test_tile_extract(test, device):
     assert_np_equal(x.grad.numpy(), x_grad_np)
 
 
+# Launched at a block dim other than TILE_DIM, so it gets its own module (see "Compilation hygiene" above).
 @wp.kernel(module="unique")
 def test_tile_extract_repeated_kernel(a: wp.array2d[float], b: wp.array2d[float]):
     i, j, _x, _y = wp.tid()
@@ -1410,7 +1441,8 @@ def test_tile_assign(test, device):
     assert_np_equal(x.grad.numpy(), np.full(TILE_M, 1.0, dtype=np.float32))
 
 
-@wp.kernel
+# Launched at a block dim other than TILE_DIM, so it gets its own module (see "Compilation hygiene" above).
+@wp.kernel(module="unique")
 def test_tile_where_kernel(select: int, x: wp.array[float], y: wp.array[float], z: wp.array[float]):
     x_reg = wp.tile_load(x, shape=(TILE_M,), storage="register")
     y_reg = wp.tile_load(y, shape=(TILE_M,), storage="register")
@@ -2072,7 +2104,8 @@ def test_tile_inplace(test, device):
     assert_np_equal(b.grad.numpy(), -4.0 * np.ones((M, N)))
 
 
-@wp.kernel
+# Launched at a block dim other than TILE_DIM, so it gets its own module (see "Compilation hygiene" above).
+@wp.kernel(module="unique")
 def tile_from_thread_shared_last_kernel(output: wp.array[int]):
     idx = wp.tid()
 
@@ -2089,7 +2122,8 @@ def tile_from_thread_shared_last_kernel(output: wp.array[int]):
     output[idx] = broadcast_value + idx
 
 
-@wp.kernel
+# Launched at a block dim other than TILE_DIM, so it gets its own module (see "Compilation hygiene" above).
+@wp.kernel(module="unique")
 def tile_from_thread_register_middle_kernel(output: wp.array[float]):
     idx = wp.tid()
 
@@ -2107,7 +2141,8 @@ def tile_from_thread_register_middle_kernel(output: wp.array[float]):
 TILE_FROM_THREAD_SIZE = wp.constant(8)
 
 
-@wp.kernel
+# Launched at a block dim other than TILE_DIM, so it gets its own module (see "Compilation hygiene" above).
+@wp.kernel(module="unique")
 def tile_from_thread_shared_scalar_shape_kernel(output: wp.array[float]):
     i, j = wp.tid()
 
@@ -2817,7 +2852,8 @@ def test_scalar_div_tile_mat(test, device):
 def test_tile_div_tile_vec_by_vec_error(test, device):
     """Test that dividing tile<vec3> by vec3 raises TypeError (both operands non-scalar)."""
 
-    @wp.kernel
+    # Defined in a test body, so it gets its own module (see "Compilation hygiene" at the top of the file).
+    @wp.kernel(module="unique")
     def invalid_tile_vec_div_vec_kernel(a: wp.array[wp.vec3], out: wp.array[wp.vec3]):
         ta = wp.tile_load(a, shape=TILE_M)
         # tile<vec3> / vec3 is invalid - can't divide vec by vec
@@ -2840,7 +2876,8 @@ def test_tile_div_tile_vec_by_vec_error(test, device):
 def test_tile_div_vec_by_tile_vec_error(test, device):
     """Test that dividing vec3 by tile<vec3> raises TypeError (both operands non-scalar)."""
 
-    @wp.kernel
+    # Defined in a test body, so it gets its own module (see "Compilation hygiene" at the top of the file).
+    @wp.kernel(module="unique")
     def invalid_vec_div_tile_vec_kernel(a: wp.array[wp.vec3], out: wp.array[wp.vec3]):
         ta = wp.tile_load(a, shape=TILE_M)
         # vec3 / tile<vec3> is invalid - can't divide vec by vec
@@ -2868,7 +2905,8 @@ def test_tile_div_vec_by_tile_vec_error(test, device):
 def test_tile_mul_tile_vec_by_vec_error(test, device):
     """Test that multiplying tile<vec3> by vec3 raises TypeError (both operands non-scalar)."""
 
-    @wp.kernel
+    # Defined in a test body, so it gets its own module (see "Compilation hygiene" at the top of the file).
+    @wp.kernel(module="unique")
     def invalid_tile_vec_mul_vec_kernel(a: wp.array[wp.vec3], out: wp.array[wp.vec3]):
         ta = wp.tile_load(a, shape=TILE_M)
         # tile<vec3> * vec3 is invalid - can't multiply vec by vec
@@ -2893,7 +2931,8 @@ def test_tile_mul_tile_vec_by_vec_error(test, device):
 def test_tile_mul_vec_by_tile_vec_error(test, device):
     """Test that multiplying vec3 by tile<vec3> raises TypeError (both operands non-scalar)."""
 
-    @wp.kernel
+    # Defined in a test body, so it gets its own module (see "Compilation hygiene" at the top of the file).
+    @wp.kernel(module="unique")
     def invalid_vec_mul_tile_vec_kernel(a: wp.array[wp.vec3], out: wp.array[wp.vec3]):
         ta = wp.tile_load(a, shape=TILE_M)
         # vec3 * tile<vec3> is invalid - can't multiply vec by vec
@@ -2923,7 +2962,8 @@ def test_tile_mul_vec_by_tile_vec_error(test, device):
 def test_tile_mul_tile_vec_by_tile_vec_error(test, device):
     """Test that tile<vec3> * tile<vec3> raises TypeError (non-scalar element types)."""
 
-    @wp.kernel
+    # Defined in a test body, so it gets its own module (see "Compilation hygiene" at the top of the file).
+    @wp.kernel(module="unique")
     def invalid_kernel(a: wp.array[wp.vec3], out: wp.array[wp.vec3]):
         ta = wp.tile_load(a, shape=TILE_M)
         wp.tile_store(out, ta * ta)
@@ -2945,7 +2985,8 @@ def test_tile_mul_tile_vec_by_tile_vec_error(test, device):
 def test_tile_div_tile_vec_by_tile_vec_error(test, device):
     """Test that tile<vec3> / tile<vec3> raises TypeError (non-scalar element types)."""
 
-    @wp.kernel
+    # Defined in a test body, so it gets its own module (see "Compilation hygiene" at the top of the file).
+    @wp.kernel(module="unique")
     def invalid_kernel(a: wp.array[wp.vec3], out: wp.array[wp.vec3]):
         ta = wp.tile_load(a, shape=TILE_M)
         wp.tile_store(out, ta / ta)
