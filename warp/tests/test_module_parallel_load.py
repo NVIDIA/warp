@@ -6,12 +6,19 @@ wp.force_load() and wp.load_module().
 """
 
 import os
+import subprocess
+import sys
 import tempfile
+import threading
 import unittest
 import uuid
 from importlib import util
+from unittest import mock
+
+import numpy as np
 
 import warp as wp
+import warp._src.context as context
 
 # Chain of shared ``@wp.func`` helpers used by
 # ``TestParallelLoadSharedHelper`` below. Multiple helpers calling each
@@ -113,6 +120,62 @@ def _assert_modules_loaded_on_cpu(test, modules):
         test.assertTrue(has_cpu_exec, f"Module {m.name} was not loaded on CPU")
 
 
+def _make_parallel_cpu_kernel():
+    """Create a kernel in its own module for the parallel CPU load regression."""
+
+    module_name = f"parallel_cpu_load_{uuid.uuid4().hex}"
+
+    @wp.kernel(module=module_name)
+    def transform(values: wp.array[wp.int32]):
+        tid = wp.tid()
+        values[tid] = values[tid] * 2 + 1
+
+    return transform
+
+
+def _run_parallel_cpu_cold_start():
+    """Load and launch four CPU modules concurrently in a fresh subprocess."""
+    wp.init()
+
+    kernels = [_make_parallel_cpu_kernel() for _ in range(4)]
+    modules = [kernel.module for kernel in kernels]
+
+    # This is a fresh process, so none of the calls below should find an
+    # existing CPU JIT instance. Hold each worker at the native loading
+    # boundary until all four are ready, maximizing concurrent first entry
+    # into wp_load_obj() without changing production code.
+    load_barrier = threading.Barrier(len(modules))
+    original_load_obj = context.runtime.llvm.wp_load_obj
+
+    def synchronized_load_obj(*args):
+        load_barrier.wait(timeout=120)
+        return original_load_obj(*args)
+
+    with mock.patch.object(
+        context.runtime.llvm,
+        "wp_load_obj",
+        side_effect=synchronized_load_obj,
+    ):
+        wp.force_load(device="cpu", modules=modules, block_dim=1, max_workers=len(modules))
+
+    # Checking Module.execs is insufficient for this regression: the Python
+    # bookkeeping can contain a module whose native JIT instance is no longer
+    # reachable. Launch every kernel to force native lookup.
+    values = wp.array([0, 1, 2, 3], dtype=wp.int32, device="cpu")
+    for kernel in kernels:
+        wp.launch(
+            kernel,
+            dim=values.shape,
+            inputs=[values],
+            device="cpu",
+            block_dim=1,
+        )
+
+    actual = values.numpy()
+    expected = [15, 31, 47, 63]
+    np.testing.assert_array_equal(actual, expected)
+
+
 class TestModuleParallelLoad(unittest.TestCase):
     def test_force_load_serial(self):
         """Verify that serial compilation (max_workers=0) loads modules correctly."""
@@ -157,6 +220,39 @@ class TestModuleParallelLoad(unittest.TestCase):
         modules = _generate_modules(1)
         wp.force_load(device="cpu", modules=modules, max_workers=2)
         _assert_modules_loaded_on_cpu(self, modules)
+
+    def test_force_load_parallel_cpu_cold_start_kernel_lookup(self):
+        """Verify that modules loaded in parallel remain launchable on the CPU.
+
+        Run in a subprocess because the CPU JIT is process-global and the
+        initialization race can only occur on the first native module loads.
+        Give the subprocess a fresh filesystem cache without clearing Warp's
+        shared test cache, which is unsafe under the parallel test runner.
+        """
+        with tempfile.TemporaryDirectory() as cache_path:
+            env = os.environ.copy()
+            env["WARP_CACHE_PATH"] = cache_path
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-c",
+                    (
+                        "from warp.tests.test_module_parallel_load import _run_parallel_cpu_cold_start; "
+                        "_run_parallel_cpu_cold_start()"
+                    ),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                env=env,
+                timeout=180,
+            )
+
+        self.assertEqual(
+            result.returncode,
+            0,
+            f"Parallel CPU cold-start subprocess failed.\nstdout:\n{result.stdout}\nstderr:\n{result.stderr}",
+        )
 
 
 def _assert_modules_loaded_on_cuda(test, modules, device):

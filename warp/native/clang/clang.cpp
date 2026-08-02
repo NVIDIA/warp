@@ -18,6 +18,7 @@
 #include <cstdint>
 #include <cstring>
 #include <iostream>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -711,10 +712,15 @@ WP_API int wp_compile_cuda(
 static llvm::orc::LLJIT* jit_default = nullptr;
 static llvm::orc::LLJIT* jit_legacy = nullptr;
 
+// Protect lazy JIT creation and all access to their JITDylib registries.
+// ctypes releases the GIL around native calls, so parallel Module.load()
+// operations can enter wp_load_obj() concurrently. Serializing only these
+// native registry operations keeps module compilation parallel while ensuring
+// every successfully loaded module remains reachable for lookup and unloading.
+static std::mutex jit_mutex;
+
 // Return the JIT instance for the given linker mode, creating it if needed.
-// Note: not thread-safe.  The caller (wp_load_obj) is serialized by Python's
-// Module._compile / Module.load, but if parallel loading is ever introduced at
-// the C++ level a mutex would be needed here.
+// The caller must hold jit_mutex.
 static llvm::orc::LLJIT* get_or_create_jit(bool use_legacy_linker)
 {
     if (use_legacy_linker && jit_legacy)
@@ -865,6 +871,8 @@ static bool warp_clang_is_asan_build()
 // builds (WP_ENABLE_DEBUG=1).
 WP_API int wp_load_obj(const char* object_file, const char* module_name, bool use_legacy_linker)
 {
+    std::lock_guard<std::mutex> lock(jit_mutex);
+
     auto* jit = get_or_create_jit(use_legacy_linker);
     if (!jit)
         return -1;
@@ -997,6 +1005,8 @@ WP_API int wp_load_obj(const char* object_file, const char* module_name, bool us
 
 WP_API int wp_unload_obj(const char* module_name)
 {
+    std::lock_guard<std::mutex> lock(jit_mutex);
+
     auto* jit = find_jit_for_module(module_name);
     if (!jit)
         return 0;
@@ -1014,6 +1024,8 @@ WP_API int wp_unload_obj(const char* module_name)
 
 WP_API uint64_t wp_lookup(const char* dll_name, const char* function_name)
 {
+    std::lock_guard<std::mutex> lock(jit_mutex);
+
     auto* jit = find_jit_for_module(dll_name);
     if (!jit) {
         std::cerr << "Failed to find module: " << dll_name << std::endl;
