@@ -1,0 +1,13 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tile-projection"
+version = "0.1.0"
+description = "Tiled feature projection and reconstruction on CUDA."
+requires-python = ">=3.10"
+dependencies = ["numpy", "warp-lang"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tile_projection"]

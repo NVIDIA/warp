@@ -1,0 +1,13 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mixed-precision"
+version = "0.1.0"
+description = "Calibrated half-precision serving with tiled matrix stages."
+requires-python = ">=3.10"
+dependencies = ["numpy", "warp-lang"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mixed_precision"]

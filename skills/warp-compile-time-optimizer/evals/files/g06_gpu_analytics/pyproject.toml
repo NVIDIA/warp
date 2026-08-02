@@ -1,0 +1,13 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "gpu-analytics"
+version = "0.1.0"
+description = "Deterministic GPU analytics for paired floating-point series."
+requires-python = ">=3.10"
+dependencies = ["numpy", "warp-lang"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/gpu_analytics"]

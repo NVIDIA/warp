@@ -1,0 +1,13 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "batch-signals"
+version = "0.1.0"
+description = "Per-batch signal conditioning for recorded sensor traces."
+requires-python = ">=3.10"
+dependencies = ["numpy", "warp-lang"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/batch_signals"]
