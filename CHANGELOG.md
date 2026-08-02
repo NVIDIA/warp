@@ -148,7 +148,8 @@
   instead of node coordinates in Warp FEM kernels ([GH-1685](https://github.com/NVIDIA/warp/issues/1685)).
 - Reject malformed APIC `.wrp` memory sections containing duplicate region IDs
   or out-of-bounds initial data during graph loading.
-- Fix intermittent missing CPU modules after parallel loading with `wp.force_load(max_workers > 1)`
+- Fix kernel launches on the CPU intermittently failing to find the kernel after several modules were loaded
+  concurrently using the `max_workers` option of `wp.force_load()` or `wp.load_module()`
   ([GH-1705](https://github.com/NVIDIA/warp/issues/1705)).
 - Fix kernel compilation failing on Windows systems without long-path support enabled when a custom kernel cache
   location is set through `wp.config.kernel_cache_dir` or the `WARP_CACHE_PATH` environment variable. Custom cache
