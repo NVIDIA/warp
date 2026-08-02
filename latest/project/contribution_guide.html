@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Contribution Guide &#8212; Warp 1.17.0.dev0</title>
+    <title>Contributing to Warp &#8212; Warp 1.17.0.dev0</title>
   
   
   
@@ -444,7 +444,7 @@
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul class="current nav bd-sidenav">
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Contribution Guide</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Contributing to Warp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="publications.html">Publications using Warp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
 </ul>
@@ -481,7 +481,7 @@
         <i class="fa-solid fa-home"></i>
       </a>
     </li>
-    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Contribution Guide</span></li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Contributing to Warp</span></li>
   </ul>
 </nav>
 </div>
@@ -494,7 +494,7 @@
         <div class="header-article-item">
 
 <div class="d-flex justify-content-end w-100">
-  <a href="../_sources/project/contribution_guide.rst.txt">
+  <a href="../_sources/project/contribution_guide.md.txt">
     <i class="fa-solid fa-file-code"></i> View page source
   </a>
 </div>
@@ -511,8 +511,10 @@
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="contribution-guide">
-<h1>Contribution Guide<a class="headerlink" href="#contribution-guide" title="Link to this heading">#</a></h1>
+  <!--- This file simply includes the top-level contribution guide --->
+<section id="contributing-to-warp">
+<h1>Contributing to Warp<a class="headerlink" href="#contributing-to-warp" title="Link to this heading">#</a></h1>
+<p>Contributions and PRs from the community are welcome.</p>
 <p>Some ways to contribute to the development of Warp include:</p>
 <ul class="simple">
 <li><p>Reporting bugs and requesting new features on <a class="reference external" href="https://github.com/NVIDIA/warp/issues">GitHub</a>.</p></li>
@@ -521,10 +523,24 @@
 <li><p>Adding new examples to the Warp repository.</p></li>
 <li><p>Documentation improvements.</p></li>
 <li><p>Contributing bug fixes or new features.</p></li>
-<li><p>Adding your work to the <a class="reference internal" href="publications.html"><span class="doc">publications list</span></a>.</p></li>
+<li><p>Adding your work to the <a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/PUBLICATIONS.md">publications list</a>.</p></li>
 </ul>
+<section id="contents">
+<h2>Contents<a class="headerlink" href="#contents" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="#before-you-start">Before You Start</a></p></li>
+<li><p><a class="reference internal" href="#code-contributions">Code Contributions</a></p></li>
+<li><p><a class="reference internal" href="#quality-expectations">Quality Expectations</a></p></li>
+<li><p><a class="reference internal" href="#coding-guidelines">Coding Guidelines</a></p></li>
+<li><p><a class="reference internal" href="#linting-and-formatting">Linting and Formatting</a></p></li>
+<li><p><a class="reference internal" href="#building-docs">Building Docs</a></p></li>
+<li><p><a class="reference internal" href="#pull-requests">Pull Requests</a></p></li>
+<li><p><a class="reference internal" href="#testing-warp">Testing Warp</a></p></li>
+<li><p><a class="reference internal" href="#benchmarks">Benchmarks</a></p></li>
+</ul>
+</section>
 <section id="before-you-start">
-<span id="id1"></span><h2>Before You Start<a class="headerlink" href="#before-you-start" title="Link to this heading">#</a></h2>
+<h2>Before You Start<a class="headerlink" href="#before-you-start" title="Link to this heading">#</a></h2>
 <p>For small fixes such as typos, broken links, or minor documentation improvements,
 feel free to open a pull request directly.</p>
 <p>For bug fixes, feature contributions, or any non-trivial change:</p>
@@ -545,7 +561,7 @@ before investing time in a pull request.</p></li>
 </ul>
 </section>
 <section id="code-contributions">
-<span id="id2"></span><h2>Code Contributions<a class="headerlink" href="#code-contributions" title="Link to this heading">#</a></h2>
+<h2>Code Contributions<a class="headerlink" href="#code-contributions" title="Link to this heading">#</a></h2>
 <p>Code contributions from the community are welcome.
 Rather than requiring a formal Contributor License Agreement (CLA), we use the
 <a class="reference external" href="https://developercertificate.org/">Developer Certificate of Origin</a> to
@@ -554,7 +570,8 @@ Please ensure that all commits have a
 <a class="reference external" href="https://git-scm.com/docs/git-commit#Documentation/git-commit.txt--s">sign-off</a>
 added with an email address that matches the commit author
 to agree to the DCO terms for each particular contribution.</p>
-<p>The full text of the DCO is as follows:</p>
+<section id="developer-certificate-of-origin">
+<h3>Developer Certificate of Origin<a class="headerlink" href="#developer-certificate-of-origin" title="Link to this heading">#</a></h3>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Version 1.1
 
 Copyright (C) 2004, 2006 The Linux Foundation and its contributors.
@@ -590,18 +607,19 @@ By making a contribution to this project, I certify that:
     this project or the open source license(s) involved.
 </pre></div>
 </div>
-<section id="overview">
-<h3>Overview<a class="headerlink" href="#overview" title="Link to this heading">#</a></h3>
+</section>
+<section id="contribution-workflow">
+<h3>Contribution Workflow<a class="headerlink" href="#contribution-workflow" title="Link to this heading">#</a></h3>
 <ol class="arabic">
-<li><p>Create a fork of the Warp GitHub repository by visiting <a class="github reference external" href="https://github.com/NVIDIA/warp/fork">NVIDIA/warp</a></p></li>
+<li><p>Create a fork of the <a class="reference external" href="https://github.com/NVIDIA/warp/fork">Warp GitHub repository</a>.</p></li>
 <li><p>Clone your fork on your local machine, e.g. <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">clone</span> <span class="pre">git&#64;github.com:username/warp.git</span></code>.</p></li>
 <li><p>Create a <code class="docutils literal notranslate"><span class="pre">username/short-description</span></code> branch for your contribution.</p></li>
 <li><p>Make your desired changes.</p>
 <ul class="simple">
-<li><p>Please familiarize yourself with the <a class="reference internal" href="#coding-guidelines"><span class="std std-ref">Coding Guidelines</span></a>.</p></li>
-<li><p>Ensure that code changes pass <a class="reference internal" href="#linting-and-formatting"><span class="std std-ref">linting and formatting checks</span></a>.</p></li>
-<li><p>Test cases should be written to verify correctness (<a class="reference internal" href="#testing-warp"><span class="std std-ref">Testing Warp</span></a>).</p></li>
-<li><p>Documentation should be added for new features (<a class="reference internal" href="#building-docs"><span class="std std-ref">Building the Documentation</span></a>).</p></li>
+<li><p>Please familiarize yourself with the <a class="reference internal" href="#coding-guidelines">Coding Guidelines</a>.</p></li>
+<li><p>Ensure that code changes pass <a class="reference internal" href="#linting-and-formatting">linting and formatting checks</a>.</p></li>
+<li><p>Test cases should be written to verify correctness (<a class="reference internal" href="#testing-warp">Testing Warp</a>).</p></li>
+<li><p>Documentation should be added for new features (<a class="reference internal" href="#building-docs">Building Docs</a>).</p></li>
 <li><p>Add an entry to the unreleased section at the top of the
 <a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/CHANGELOG.md">CHANGELOG.md</a> describing the changes.</p></li>
 </ul>
@@ -613,7 +631,7 @@ By making a contribution to this project, I certify that:
 was made, not <em>what</em> changed (the diff shows that).</p></li>
 <li><p>Reference related GitHub issues in the commit message, e.g. <code class="docutils literal notranslate"><span class="pre">(GH-1234)</span></code>.</p></li>
 <li><p>Sign off every commit with <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">commit</span> <span class="pre">--signoff</span></code> (or <code class="docutils literal notranslate"><span class="pre">-s</span></code>) to certify the
-<a class="reference internal" href="#code-contributions"><span class="std std-ref">Developer Certificate of Origin</span></a>.</p></li>
+Developer Certificate of Origin.</p></li>
 <li><p><strong>Clean up your commit history</strong> before the pull request can be merged.
 Pull requests naturally accumulate merge commits, review fixups, and
 work-in-progress saves. These clutter <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">log</span></code> and make
@@ -635,12 +653,13 @@ git<span class="w"> </span>commit<span class="w"> </span>-s
 </ul>
 </li>
 <li><p>Push your branch to your GitHub fork, e.g. <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">push</span> <span class="pre">origin</span> <span class="pre">username/feature-name</span></code>.</p></li>
-<li><p>Submit a pull request on GitHub to the <code class="docutils literal notranslate"><span class="pre">main</span></code> branch (<a class="reference internal" href="#pull-requests"><span class="std std-ref">Pull Request Guidelines</span></a>).
+<li><p>Submit a pull request on GitHub to the <code class="docutils literal notranslate"><span class="pre">main</span></code> branch (<a class="reference internal" href="#pull-requests">Pull Requests</a>).
 Work with reviewers to ensure the pull request is in a state suitable for merging.</p></li>
 </ol>
 </section>
-<section id="contribution-quality-expectations">
-<span id="quality-expectations"></span><h3>Contribution Quality Expectations<a class="headerlink" href="#contribution-quality-expectations" title="Link to this heading">#</a></h3>
+</section>
+<section id="quality-expectations">
+<h2>Quality Expectations<a class="headerlink" href="#quality-expectations" title="Link to this heading">#</a></h2>
 <p>To keep the review process efficient and the codebase healthy, please ensure your
 contribution meets these expectations:</p>
 <ul class="simple">
@@ -649,10 +668,10 @@ the fix and pass with it. New features need tests that cover the core functional
 and important edge cases. Pull requests that modify core library code without
 adequate test coverage will not be merged. That said, every test adds to the suite
 runtime, so focus on meaningful tests that verify real behavior rather than
-exhaustively testing trivial variations. See <a class="reference internal" href="#testing-warp"><span class="std std-ref">Testing Warp</span></a> for guidance.</p></li>
+exhaustively testing trivial variations. See <a class="reference internal" href="#testing-warp">Testing Warp</a> for guidance.</p></li>
 <li><p><strong>Follow the pull request template.</strong> Fill out all relevant sections, including
 a test plan that explains how you verified the changes. This also helps reviewers
-reproduce and confirm your results. See <a class="reference internal" href="#pull-requests"><span class="std std-ref">Pull Request Guidelines</span></a>.</p></li>
+reproduce and confirm your results. See <a class="reference internal" href="#pull-requests">Pull Requests</a>.</p></li>
 <li><p><strong>Keep changes focused.</strong> A pull request should address a single bug fix, feature, or
 improvement. Do not bundle unrelated changes; split them into separate PRs.</p></li>
 <li><p><strong>Minimize review cost.</strong> Well-tested, clearly described contributions with clean
@@ -661,14 +680,14 @@ effort to verify correctness may be deprioritized or declined.</p></li>
 </ul>
 </section>
 <section id="coding-guidelines">
-<span id="id3"></span><h3>Coding Guidelines<a class="headerlink" href="#coding-guidelines" title="Link to this heading">#</a></h3>
+<h2>Coding Guidelines<a class="headerlink" href="#coding-guidelines" title="Link to this heading">#</a></h2>
 <section id="general-guidelines">
-<h4>General Guidelines<a class="headerlink" href="#general-guidelines" title="Link to this heading">#</a></h4>
+<h3>General Guidelines<a class="headerlink" href="#general-guidelines" title="Link to this heading">#</a></h3>
 <ul>
 <li><p>Include the NVIDIA SPDX copyright header on all newly created files, updating the year to the current year at the
 time of initial file creation. Use the two-line form:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># SPDX-FileCopyrightText: Copyright (c) &lt;YEAR&gt; NVIDIA CORPORATION &amp; AFFILIATES. All rights reserved.</span>
-<span class="c1"># SPDX-License-Identifier: Apache-2.0</span>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span># SPDX-FileCopyrightText: Copyright (c) &lt;YEAR&gt; NVIDIA CORPORATION &amp; AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
 </pre></div>
 </div>
 <p>(Use <code class="docutils literal notranslate"><span class="pre">//</span></code> instead of <code class="docutils literal notranslate"><span class="pre">#</span></code> for C/C++/CUDA files.)</p>
@@ -690,17 +709,17 @@ the issue or PR before adding one.</p></li>
 </ul>
 </section>
 <section id="python-guidelines">
-<h4>Python Guidelines<a class="headerlink" href="#python-guidelines" title="Link to this heading">#</a></h4>
+<h3>Python Guidelines<a class="headerlink" href="#python-guidelines" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Follow <a class="reference external" href="https://peps.python.org/pep-0008/">PEP 8</a> as the baseline for coding style.</p></li>
 <li><p>Use <a class="reference external" href="https://en.wikipedia.org/wiki/Snake_case">snake case</a> for all function names.</p></li>
 <li><p>Use <a class="reference external" href="https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings">Google-style docstrings</a>.</p></li>
-<li><p>Use both <code class="docutils literal notranslate"><span class="pre">inputs</span></code> and <code class="docutils literal notranslate"><span class="pre">outputs</span></code> parameters in <a class="reference internal" href="../api_reference/_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch()</span></code></a> in functions that are expected to be used in
+<li><p>Use both <code class="docutils literal notranslate"><span class="pre">inputs</span></code> and <code class="docutils literal notranslate"><span class="pre">outputs</span></code> parameters in <code class="docutils literal notranslate"><span class="pre">wp.launch()</span></code> in functions that are expected to be used in
 differentiable programming applications to aid in visualization and debugging tools.</p></li>
 </ul>
 </section>
 <section id="c-guidelines">
-<h4>C++ Guidelines<a class="headerlink" href="#c-guidelines" title="Link to this heading">#</a></h4>
+<h3>C++ Guidelines<a class="headerlink" href="#c-guidelines" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Follow the clang-format style configuration in <code class="docutils literal notranslate"><span class="pre">.clang-format</span></code> (WebKit-based style with 120-character line limit).</p>
 <ul>
@@ -723,7 +742,7 @@ functions exported from implementation files must use the <code class="docutils 
 </section>
 </section>
 <section id="linting-and-formatting">
-<span id="id4"></span><h3>Linting and Formatting<a class="headerlink" href="#linting-and-formatting" title="Link to this heading">#</a></h3>
+<h2>Linting and Formatting<a class="headerlink" href="#linting-and-formatting" title="Link to this heading">#</a></h2>
 <p><a class="reference external" href="https://docs.astral.sh/ruff/">Ruff</a> is used as the linter and code formatter for Python code in the Warp repository.
 The contents of pull requests will automatically be checked to ensure adherence to our formatting and linting standards.</p>
 <p>We recommend running the linters and formatters locally on your branch before opening a pull request.
@@ -739,7 +758,6 @@ pre-commit hooks:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uvx<span class="w"> </span>pre-commit<span class="w"> </span>install
 </pre></div>
 </div>
-</section>
 <section id="c-code-formatting">
 <h3>C++ Code Formatting<a class="headerlink" href="#c-code-formatting" title="Link to this heading">#</a></h3>
 <p>C++ code in the Warp repository must adhere to the clang-format style defined in <code class="docutils literal notranslate"><span class="pre">.clang-format</span></code>.
@@ -789,8 +807,9 @@ carefully aligned matrices), you can disable clang-format for a specific section
 <p><strong>Note:</strong> The NanoVDB (<code class="docutils literal notranslate"><span class="pre">warp/native/nanovdb/</span></code>) and cuBQL (<code class="docutils literal notranslate"><span class="pre">warp/native/cuBQL/</span></code>) directories are third-party code and
 are automatically excluded via their own <code class="docutils literal notranslate"><span class="pre">.clang-format</span></code> configurations.</p>
 </section>
-<section id="building-the-documentation">
-<span id="building-docs"></span><h3>Building the Documentation<a class="headerlink" href="#building-the-documentation" title="Link to this heading">#</a></h3>
+</section>
+<section id="building-docs">
+<h2>Building Docs<a class="headerlink" href="#building-docs" title="Link to this heading">#</a></h2>
 <p>The Warp library should first be built locally by running <code class="docutils literal notranslate"><span class="pre">build_lib.py</span></code> before building the Sphinx documentation.
 The documentation can then be built by running the following from the project root:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uv<span class="w"> </span>run<span class="w"> </span>--extra<span class="w"> </span>docs<span class="w"> </span>build_docs.py
@@ -823,8 +842,8 @@ opening a pull request:</p>
 reference pages. After building the documentation, it is recommended to run a <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">status</span></code> to
 check if your changes have modified these files. If so, please commit the modified files to your branch.</p>
 </section>
-<section id="pull-request-guidelines">
-<span id="pull-requests"></span><h3>Pull Request Guidelines<a class="headerlink" href="#pull-request-guidelines" title="Link to this heading">#</a></h3>
+<section id="pull-requests">
+<h2>Pull Requests<a class="headerlink" href="#pull-requests" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Use the pull request template provided by the repository. Fill out all
 applicable sections and delete the ones that do not apply.</p></li>
@@ -839,7 +858,6 @@ applicable sections and delete the ones that do not apply.</p></li>
 </ul>
 </li>
 </ul>
-</section>
 <section id="design-documents">
 <h3>Design Documents<a class="headerlink" href="#design-documents" title="Link to this heading">#</a></h3>
 <p>For complex features (new user-facing APIs, architectural changes, or features with
@@ -851,7 +869,7 @@ would benefit from one.</p>
 </section>
 </section>
 <section id="testing-warp">
-<span id="id5"></span><h2>Testing Warp<a class="headerlink" href="#testing-warp" title="Link to this heading">#</a></h2>
+<h2>Testing Warp<a class="headerlink" href="#testing-warp" title="Link to this heading">#</a></h2>
 <section id="running-the-test-suite">
 <h3>Running the Test Suite<a class="headerlink" href="#running-the-test-suite" title="Link to this heading">#</a></h3>
 <p>Warp’s test suite uses the <a class="reference external" href="https://docs.python.org/3/library/unittest.html">unittest</a> unit testing framework,
@@ -866,7 +884,7 @@ using <a class="reference external" href="https://docs.python.org/3/library/unit
 <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">run</span> <span class="pre">--extra</span> <span class="pre">dev</span> <span class="pre">-m</span> <span class="pre">warp.tests</span> <span class="pre">-s</span> <span class="pre">autodetect</span></code>, which will discover tests in modules matching the path
 <code class="docutils literal notranslate"><span class="pre">warp/tests/test*.py</span></code>.</p>
 <section id="running-a-subset-of-tests">
-<h4>Running a subset of tests<a class="headerlink" href="#running-a-subset-of-tests" title="Link to this heading">#</a></h4>
+<h4>Running a Subset of Tests<a class="headerlink" href="#running-a-subset-of-tests" title="Link to this heading">#</a></h4>
 <p>Instead of running the full test suite, there are two main ways to select a subset of tests to run.
 These options must be used with the <code class="docutils literal notranslate"><span class="pre">-s</span> <span class="pre">autodetect</span></code> option.</p>
 <p>Use <code class="docutils literal notranslate"><span class="pre">-p</span> <span class="pre">PATTERN</span></code> to define a pattern to match test files.
@@ -889,13 +907,12 @@ first defining a test function at the module scope and then using <code class="d
 test methods (a separate method for each device) to a test class.</p>
 <p>Always add new test modules to <code class="docutils literal notranslate"><span class="pre">default_suite()</span></code> in <code class="docutils literal notranslate"><span class="pre">warp/tests/unittest_suites.py</span></code>
 so they are included in the default test run.</p>
-<div class="admonition important">
-<p class="admonition-title">Important</p>
-<p>Never call <code class="docutils literal notranslate"><span class="pre">wp.clear_kernel_cache()</span></code> or <code class="docutils literal notranslate"><span class="pre">wp.clear_lto_cache()</span></code> in test files —
+<blockquote>
+<div><p><strong>Important:</strong> Never call <code class="docutils literal notranslate"><span class="pre">wp.clear_kernel_cache()</span></code> or <code class="docutils literal notranslate"><span class="pre">wp.clear_lto_cache()</span></code> in test files —
 not in <code class="docutils literal notranslate"><span class="pre">__main__</span></code> blocks, test methods, or at module scope. Cache clearing is not
 multi-process-safe; concurrent clears cause LLVM crashes. The test suite runner and
 <code class="docutils literal notranslate"><span class="pre">build_lib.py</span></code> already handle cache management.</p>
-</div>
+</div></blockquote>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION &amp; AFFILIATES. All rights reserved.</span>
 <span class="c1"># SPDX-License-Identifier: Apache-2.0</span>
 
@@ -946,10 +963,10 @@ OK
 <p>Note that the output indicated that three tests were run, despite us only writing a single test function called
 <code class="docutils literal notranslate"><span class="pre">test_amazing_code_test_one()</span></code>.
 A closer inspection reveals that the test function was run on three separate devices: <code class="docutils literal notranslate"><span class="pre">&quot;cpu&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;cuda:0&quot;</span></code>, and
-<code class="docutils literal notranslate"><span class="pre">cuda:1</span></code>. This is a result of calling <code class="docutils literal notranslate"><span class="pre">add_function_test()</span></code> in our test script with the <cite>devices=devices</cite> argument.
+<code class="docutils literal notranslate"><span class="pre">cuda:1</span></code>. This is a result of calling <code class="docutils literal notranslate"><span class="pre">add_function_test()</span></code> in our test script with the <code class="docutils literal notranslate"><span class="pre">devices=devices</span></code> argument.
 <code class="docutils literal notranslate"><span class="pre">add_function_test()</span></code> is defined in <code class="docutils literal notranslate"><span class="pre">warp/tests/unittest_utils.py</span></code>.</p>
 <p>A caveat of using <code class="docutils literal notranslate"><span class="pre">add_function_test()</span></code> is that this by itself is not sufficient to ensure that the registered test
-function (e.g. <cite>test_amazing_code_test_one()</cite>) is run on different devices. It is up to the body of the test to make use
+function (e.g. <code class="docutils literal notranslate"><span class="pre">test_amazing_code_test_one()</span></code>) is run on different devices. It is up to the body of the test to make use
 of the <code class="docutils literal notranslate"><span class="pre">device</span></code> argument in ensuring that data is allocated on and kernels are run on the intended <code class="docutils literal notranslate"><span class="pre">device</span></code> for the
 test, e.g.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">test_amazing_code_test_one</span><span class="p">(</span><span class="n">test</span><span class="p">,</span> <span class="n">device</span><span class="p">):</span>
@@ -968,8 +985,8 @@ test, e.g.</p>
 <p>Due to the use of the test-registration function <code class="docutils literal notranslate"><span class="pre">add_function_test()</span></code>, the <code class="docutils literal notranslate"><span class="pre">test</span></code> parameter actually refers to the
 instance of the test class, which always subclasses <code class="docutils literal notranslate"><span class="pre">unittest.TestCase</span></code>.</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">unittest</span></code> library also provides methods to check that assertions are raised, as it is also important to test code
-paths that trigger errors. The <a class="reference external" href="https://docs.python.org/3/library/unittest.html#unittest.TestCase.assertRaises">assertRaises()</a>
-and <a class="reference external" href="https://docs.python.org/3/library/unittest.html#unittest.TestCase.assertRaisesRegex">assertRaisesRegex()</a>
+paths that trigger errors. The <a class="reference external" href="https://docs.python.org/3/library/unittest.html#unittest.TestCase.assertRaises"><code class="docutils literal notranslate"><span class="pre">assertRaises()</span></code></a>
+and <a class="reference external" href="https://docs.python.org/3/library/unittest.html#unittest.TestCase.assertRaisesRegex"><code class="docutils literal notranslate"><span class="pre">assertRaisesRegex()</span></code></a>
 methods can be used to test that a block of code correctly raises an exception.</p>
 <p>Sometimes we need to compare the contents of a Warp array with an expected result.
 Some functions that are helpful include:</p>
@@ -1032,7 +1049,7 @@ instead of having to define a separate function for each device.</p>
 </section>
 </section>
 <section id="benchmarks">
-<span id="id6"></span><h2>Benchmarks<a class="headerlink" href="#benchmarks" title="Link to this heading">#</a></h2>
+<h2>Benchmarks<a class="headerlink" href="#benchmarks" title="Link to this heading">#</a></h2>
 <p>Warp uses <a class="reference external" href="https://asv.readthedocs.io/">airspeed velocity (ASV)</a> for performance benchmarking.
 Benchmark scripts live in the <code class="docutils literal notranslate"><span class="pre">asv/benchmarks/</span></code> directory, and the ASV configuration is in
 <code class="docutils literal notranslate"><span class="pre">asv.conf.json</span></code>.</p>
@@ -1111,38 +1128,16 @@ reboot, so this is mainly a concern on long-running systems. Pass
   </div>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#contents">Contents</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#before-you-start">Before You Start</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#code-contributions">Code Contributions</a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#overview">Overview</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#contribution-quality-expectations">Contribution Quality Expectations</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#coding-guidelines">Coding Guidelines</a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#general-guidelines">General Guidelines</a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#python-guidelines">Python Guidelines</a></li>
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#c-guidelines">C++ Guidelines</a></li>
-</ul>
-</li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#linting-and-formatting">Linting and Formatting</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#c-code-formatting">C++ Code Formatting</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#building-the-documentation">Building the Documentation</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pull-request-guidelines">Pull Request Guidelines</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#design-documents">Design Documents</a></li>
-</ul>
-</li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#testing-warp">Testing Warp</a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#running-the-test-suite">Running the Test Suite</a><ul class="nav section-nav flex-column">
-<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#running-a-subset-of-tests">Running a subset of tests</a></li>
-</ul>
-</li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#adding-new-tests">Adding New Tests</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#checking-for-expected-behaviors">Checking for Expected Behaviors</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#skipping-tests">Skipping Tests</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#tests-without-a-device">Tests Without a Device</a></li>
-</ul>
-</li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#benchmarks">Benchmarks</a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#running-benchmarks">Running Benchmarks</a></li>
-</ul>
-</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#code-contributions">Code Contributions</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#quality-expectations">Quality Expectations</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#coding-guidelines">Coding Guidelines</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#linting-and-formatting">Linting and Formatting</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#building-docs">Building Docs</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#pull-requests">Pull Requests</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#testing-warp">Testing Warp</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#benchmarks">Benchmarks</a></li>
 </ul>
   </nav></div>
 
@@ -1150,7 +1145,7 @@ reboot, so this is mainly a concern on long-running systems. Pass
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/main/docs/project/contribution_guide.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/main/docs/project/contribution_guide.md">
       <i class="fa-solid fa-pencil"></i>
       
       
