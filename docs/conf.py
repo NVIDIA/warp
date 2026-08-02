@@ -76,6 +76,10 @@ extensions = [
     "sphinx_copybutton",  # Adds a copy button to code blocks.
 ]
 
+# Generate targets for Markdown headings through level 2 so standard fragment
+# links in included GitHub-flavored Markdown resolve as Sphinx references.
+myst_heading_anchors = 2
+
 # Enable nitpicky mode to warn about unresolved references.
 nitpicky = True
 
