@@ -46,7 +46,7 @@ def cuda_kernel_source(kernel) -> str:
     Builds the module's adjoints via ModuleBuilder so codegen state (e.g.
     ``fun_def_lineno``) is populated, then invokes codegen directly.
     """
-    options = kernel.module.resolve_options(wp.config) | kernel.options
+    options = kernel.module.resolve_options(wp.config)
     ModuleBuilder(kernel.module, options)
     return codegen.codegen_kernel(kernel, device="cuda", options=options)
 

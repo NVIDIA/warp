@@ -1951,7 +1951,7 @@ class Adjoint:
 
     # generate function ssa form and adjoint
     @synchronized(_codegen_lock)
-    def build(adj, builder, default_builder_options=None, callable_arg_values=None):
+    def build(adj, builder, default_builder_options=None, callable_arg_values=None, builder_options=None):
         # arg Var read/write flags are held during module rebuilds, so we reset here even when skipping a build
         for arg in adj.args:
             arg.is_read = False
@@ -1968,7 +1968,12 @@ class Adjoint:
         if default_builder_options is None:
             default_builder_options = {}
 
-        if adj.builder:
+        # ``builder_options`` lets a caller supply options the builder itself does not hold, notably a kernel's
+        # options merged over the module's. ``default_builder_options`` is different: it applies only when there
+        # is no builder at all.
+        if builder_options is not None:
+            adj.builder_options = builder_options
+        elif adj.builder:
             adj.builder_options = adj.builder.options
         else:
             adj.builder_options = default_builder_options
@@ -2006,6 +2011,9 @@ class Adjoint:
 
         # recorded at call sites for ModuleBuilder's post-build propagation passes
         adj.called_user_functions = set()
+        # wp.grad() invokes a user function's adjoint from forward code, so its backward shared-memory roofline
+        # contributes to this function's forward shared-memory requirement.
+        adj.called_grad_functions = set()
 
         # wp.ref[T] callees lacking a manual adjoint; rejected post-build, once used_by_backward_kernel is final
         adj.unvalidated_ref_calls = []
@@ -2874,6 +2882,8 @@ class Adjoint:
 
         # Ensure the function is built so its adjoint code exists.
         if not func.is_builtin():
+            adj.called_grad_functions.add(func)
+
             # Force adjoint code generation for the function.
             func.adj.force_adjoint_codegen = True
 
@@ -7264,7 +7274,7 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None, forward_only
             if should_generate_adjoint:
                 reverse_body = codegen_func_reverse(adj, func_type="function", device=device)
             else:
-                reverse_body = '\t// reverse mode disabled (module option "enable_backward" is False or no dependent kernel found with "enable_backward")\n'
+                reverse_body = '\t// reverse mode disabled (the "enable_backward" kernel or module option is False, or no dependent kernel found with "enable_backward")\n'
         s += template_prefix + reverse_template.format(
             name=c_func_name,
             return_type=return_type,

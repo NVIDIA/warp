@@ -15499,9 +15499,9 @@ def tile_matmul_lto_dispatch_func(
         raise TypeError(
             "tile_matmul() does not support bfloat16 'a' or 'b' tiles when the backward pass is enabled. "
             "Allowed accumulator dtypes are float16, float32, and float64 (the backward pass uses 'a' "
-            "and 'b' as accumulators for adjA and adjB). If gradients are not needed, set "
-            "`enable_backward=False` on the kernel's module, e.g. "
-            "`wp.set_module_options({'enable_backward': False})`."
+            "and 'b' as accumulators for adjA and adjB). If gradients are not needed, disable the backward "
+            "pass with `@wp.kernel(enable_backward=False)` on the kernel, or "
+            "`wp.set_module_options({'enable_backward': False})` for the whole module."
         )
 
     if (

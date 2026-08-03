@@ -2822,12 +2822,25 @@ class ModuleBuilder:
 
         # build all unique kernels
         self.kernels = hasher.get_unique_kernels()
+
+        # ``@wp.func`` bodies are memoized once per module and are built with these options, so a shared helper
+        # must assume its most permissive caller. Only drop backward codegen and backward LTOs when no kernel in
+        # the module can reach a backward pass at all. A builder with no kernels keeps the module's own setting,
+        # since an empty kernel set says nothing about what backward codegen is needed.
+        if self.kernels and not any(k.options.get("enable_backward", True) for k in self.kernels):
+            self.options = self.options | {"enable_backward": False}
+
         for kernel in self.kernels:
             self.build_kernel(kernel)
 
         # build deferred functions
         for func in self.deferred_functions:
             self.build_function(func)
+
+        # wp.grad() forces function adjoints even in modules where every kernel disables its automatic backward
+        # pass. Those functions were initially built from the builder-wide forward-only options, so rebuild them
+        # with backward LTO dispatch enabled after the initial call graph has been built.
+        self._prepare_forced_adjoint_functions()
 
         # propagate used_by_backward_kernel now that the full call graph is known
         self._propagate_used_by_backward_kernel()
@@ -2925,7 +2938,9 @@ class ModuleBuilder:
         if self._kernel_has_invalid_return_annotation(kernel) or self._kernel_has_value_return(kernel):
             raise WarpCodegenTypeError(f"'{kernel.key}': {_KERNEL_RETURN_ERROR}")
 
-        kernel.adj.build(self)
+        # Kernel options must reach the tile LTO dispatch, which reads ``adj.builder_options``. Every other
+        # consumer of ``enable_backward`` already merges them, e.g. ``build_meta`` below.
+        kernel.adj.build(self, builder_options=self.options | kernel.options)
 
         if kernel.adj.return_var is not None:
             raise WarpCodegenTypeError(f"'{kernel.key}': {_KERNEL_RETURN_ERROR}")
@@ -2938,6 +2953,38 @@ class ModuleBuilder:
 
             # use dict to preserve import order
             self.functions[func] = None
+
+    def _prepare_forced_adjoint_functions(self):
+        """Prepare ``wp.grad()`` targets and their transitive callees for backward code generation."""
+
+        # wp.grad() marks its direct target after that function may already have been memoized. Propagate the flag
+        # through the finished call graph so every adjoint called by the target's reverse body is emitted.
+        worklist = [func.adj for func in self.functions if func.adj.force_adjoint_codegen]
+        while worklist:
+            adj = worklist.pop()
+            for callee in adj.called_user_functions:
+                if not callee.adj.force_adjoint_codegen:
+                    callee.adj.force_adjoint_codegen = True
+                    worklist.append(callee.adj)
+
+        # Rebuilding can discover new callees, so rescan to a fixpoint. Track attempts separately from options so a
+        # build that returns without updating its options cannot be selected forever; failed builds are skipped.
+        rebuilt = set()
+        while True:
+            rebuild = [
+                func
+                for func in self.functions
+                if func.adj.force_adjoint_codegen
+                and not func.adj.skip_build
+                and func not in rebuilt
+                and not func.adj.builder_options.get("enable_backward", True)
+            ]
+            if not rebuild:
+                break
+            for func in rebuild:
+                adj = func.adj
+                rebuilt.add(func)
+                adj.build(self, builder_options=adj.builder_options | {"enable_backward": True})
 
     def _propagate_used_by_backward_kernel(self):
         # build_function() memoizes, so a helper built from a forward-only path before a backward
@@ -2995,6 +3042,18 @@ class ModuleBuilder:
             if adj.skip_build:
                 folded.add(adj)
                 continue
+
+            forward_required = adj.max_required_extra_shared_memory
+            for grad_func in adj.called_grad_functions:
+                if grad_func.adj not in folded:
+                    raise RuntimeError(
+                        f"Cannot size forward shared memory for '{adj.fun_name}': wp.grad() target "
+                        f"'{grad_func.key}' was not sized first; the call graph should be acyclic and functions "
+                        "registered callees-first"
+                    )
+                forward_required = max(forward_required, grad_func.adj.get_total_required_shared_backward())
+            adj.max_required_extra_shared_memory = forward_required
+
             required = adj.max_required_extra_shared_memory_backward
             for callee in adj.called_user_functions:
                 if callee.custom_replay_func is not None:
@@ -3744,7 +3803,9 @@ class Module:
         with _codegen_lock:
             for kernel in hasher.get_unique_kernels():
                 if rebuild:
-                    kernel.adj.build(None, builder_options)
+                    # Match ModuleBuilder.build_kernel: determinism metadata must be captured under the same
+                    # merged options the real build uses.
+                    kernel.adj.build(None, builder_options=builder_options | kernel.options)
                 snapshot[kernel.get_mangled_name()] = kernel.adj.det_meta
         return snapshot
 
