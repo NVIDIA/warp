@@ -1,33 +1,6 @@
 # Changelog
 
-## [Unreleased] - 2026-??
-
-### Added
-
-- Add optional `restart` support to `warp.optim.linear.cg()` and `warp.optim.linear.cr()` for
-  recomputing the true residual and resetting the search direction during finite-precision solves
-  ([GH-1708](https://github.com/NVIDIA/warp/issues/1708)).
-
-### Removed
-
-### Deprecated
-
-### Changed
-
-### Fixed
-
-- Use segmented tree reductions for CUDA batched iterative-solver dot products, preventing accumulation error from
-  growing with subproblem length, with optional maximum batch-length metadata to avoid redundant reduction levels
-  ([GH-1700](https://github.com/NVIDIA/warp/issues/1700)).
-- Fix kernel launches on the CPU intermittently failing to find the kernel after several modules were loaded
-  concurrently using the `max_workers` option of `wp.force_load()` or `wp.load_module()`
-  ([GH-1705](https://github.com/NVIDIA/warp/issues/1705)).
-- Fix device-side iteration counts for graph-captured solver cycles that perform more than one iteration
-  ([GH-1707](https://github.com/NVIDIA/warp/issues/1707)).
-- Fix pre-allocated iterative linear solver states to avoid device-memory allocations on every solve, including during
-  CUDA graph capture.
-
-### Documentation
+<!-- towncrier release notes start -->
 
 ## [1.16.0] - 2026-08-03
 
