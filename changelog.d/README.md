@@ -73,25 +73,3 @@ Render the pending fragments without modifying the changelog:
 uvx --from towncrier==25.8.0 towncrier build --draft \
   --version X.Y.Z --date YYYY-MM-DD
 ```
-
-## Build a release
-
-Build release notes on `release-X.Y` after the release audit has selected every
-change that will ship. Preview with the real version and date, edit the fragments
-until the result reads well, then build:
-
-```console
-uvx --from towncrier==25.8.0 towncrier build --draft \
-  --version X.Y.Z --date YYYY-MM-DD
-uvx --from towncrier==25.8.0 towncrier build --yes \
-  --version X.Y.Z --date YYYY-MM-DD
-```
-
-Update the comparison links at the bottom of `CHANGELOG.md`. Commit the generated
-release section, consumed fragment deletions, and link updates together in one
-dedicated changelog build commit.
-
-After the release, create a branch from the current `main` and cherry-pick that
-exact build commit. Open a small changelog-only pull request or merge request.
-The cherry-pick removes the fragments that shipped while leaving newer fragments
-on `main` pending for the next release.

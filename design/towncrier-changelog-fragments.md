@@ -1,6 +1,6 @@
 # Towncrier changelog fragments
 
-**Status**: Proposed
+**Status**: Implemented
 
 ## Motivation
 
@@ -29,7 +29,7 @@ checks that the fragments people add can be rendered.
 | R4 | Support readable entries when there is no GitHub issue | Must | Use Towncrier's native orphan identifiers |
 | R5 | Validate added fragments in both GitHub and GitLab CI | Must | Run only when changelog-related paths change |
 | R6 | Preserve fragments merged to `main` after a release branch is cut | Must | Synchronize the release build commit back to `main` |
-| R7 | Adopt the process after the 1.16 changelog is synchronized to `main` and before 1.17 work starts | Must | Avoid a mixed transition |
+| R7 | Adopt the process after the 1.16 changelog is synchronized to `main` and migrate retained 1.17 entries | Must | Avoid a mixed transition |
 
 Non-goals:
 
@@ -169,9 +169,10 @@ top-level changelog. Warp has no CODEOWNERS rule to adjust for the new guide.
 ### Transition and release flow
 
 The initial Towncrier change lands after the 1.16 changelog has been synchronized
-to `main` and before user-facing 1.17 work begins. At that point the `Unreleased`
-section is empty. The change adds Towncrier's insertion marker beneath that
-heading and leaves all released history alone.
+to `main`. Because user-facing 1.17 work already exists at that point, the change
+migrates the five retained `Unreleased` entries into fragments before replacing
+that section's contents with Towncrier's insertion marker. It leaves all released
+history alone.
 
 For each release, the maintainer works on `release-X.Y`:
 

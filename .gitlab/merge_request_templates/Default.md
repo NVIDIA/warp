@@ -23,7 +23,7 @@ This section helps reviewers navigate the diff efficiently. -->
 
 - [ ] New or existing tests cover these changes.
 - [ ] The documentation is up to date with these changes.
-- [ ] [CHANGELOG.md](CHANGELOG.md) is updated for any user-facing changes under the `Unreleased` section.
+- [ ] I added a changelog fragment if this change affects users.
 
 ## Validation summary
 
