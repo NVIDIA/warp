@@ -255,15 +255,31 @@ def test_cholesky_lower_backward_n32(test, device):
     assert_np_equal(np.triu(grad_A, k=1), np.zeros((N32, N32)), tol=0.0)
 
 
-# block_dim == 1 GPU smoke: thread-strided loops collapse to sequential, but
-# the GPU codegen path must still compile and run correctly.
+# This kernel lives in its own module so that the block_dim == 1 launch
+# specializes only it instead of recompiling every kernel in this module,
+# including the unrelated N=32 Cholesky adjoint. The module-scope
+# enable_mathdx_solver option does not carry over to a unique module, so it is
+# repeated here. The launch is always a single block, so the grid-stride
+# wrapper is not needed either.
+@wp.kernel(enable_backward=False, grid_stride=False, module="unique", module_options={"enable_mathdx_solver": False})
+def tile_cholesky_lower_isolated_kernel(gA: wp.array2d[wp.float64], gL: wp.array2d[wp.float64]):
+    A = wp.tile_load(gA, shape=(N, N))
+    L = wp.tile_cholesky(A)
+    wp.tile_store(gL, L)
+
+
 def test_cholesky_lower_block_dim_1(test, device):
+    """Check the lower Cholesky factorization with a single-thread block.
+
+    At ``block_dim == 1`` the thread-strided loops collapse to sequential, but
+    the codegen path must still compile and run correctly on every device.
+    """
     A_np, L_ref = _spd(N, seed=42)
 
     A = wp.array(A_np, dtype=wp.float64, device=device)
     L = wp.zeros((N, N), dtype=wp.float64, device=device)
 
-    wp.launch_tiled(tile_cholesky_lower_kernel, dim=[1], inputs=[A, L], block_dim=1, device=device)
+    wp.launch_tiled(tile_cholesky_lower_isolated_kernel, dim=[1], inputs=[A, L], block_dim=1, device=device)
     assert_np_equal(L.numpy(), L_ref, tol=1e-10)
 
 
