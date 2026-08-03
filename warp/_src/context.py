@@ -473,6 +473,11 @@ class Function:
     def is_builtin(self) -> bool:
         return self.func is None
 
+    @property
+    def uses_generated_adjoint(self) -> bool:
+        """Whether reverse calls use the adjoint generated from this function's primal body."""
+        return self.custom_grad_func is None
+
     def is_simple(self) -> bool:
         if self.variadic:
             return False
@@ -668,8 +673,8 @@ class Function:
         bound_args = tuple(bound_args.arguments.values())
         return call_builtin_from_desc(desc, bound_args)
 
-    def build(self, builder: ModuleBuilder | None, default_builder_options=None):
-        self.adj.build(builder, default_builder_options)
+    def build(self, builder: ModuleBuilder | None, default_builder_options=None, builder_options=None):
+        self.adj.build(builder, default_builder_options, builder_options=builder_options)
 
         # complete the function return type after we have analyzed it (inferred from return statement in ast)
         if not self.value_func:
@@ -2847,9 +2852,12 @@ class ModuleBuilder:
     def __init__(self, module, options, hasher=None):
         self.functions = {}
         self.structs = {}
+        # Keep the resolved module options as the immutable base for per-kernel option merges.
+        self.default_kernel_options = options
         self.options = options
         self.module = module
         self.deferred_functions = []
+        self.deferred_function_index = 0
         self.fatbins = {}  # map from <some identifier> to fatbins, to add at link time
         self.ltoirs = {}  # map from lto symbol to lto binary
         self.ltoirs_decl = {}  # map from lto symbol to lto forward declaration
@@ -2860,18 +2868,27 @@ class ModuleBuilder:
 
         # build all unique kernels
         self.kernels = hasher.get_unique_kernels()
+
         for kernel in self.kernels:
             self.build_kernel(kernel)
 
         # build deferred functions
-        for func in self.deferred_functions:
-            self.build_function(func)
+        self._build_deferred_functions()
 
-        # propagate used_by_backward_kernel now that the full call graph is known
-        self._propagate_used_by_backward_kernel()
+        # wp.grad() can target a function with a custom gradient that is otherwise unreachable. Build those custom
+        # bodies, including nested wp.grad() dependencies, before forced-adjoint preparation and code generation.
+        self._build_grad_custom_functions()
+
+        # Functions are initially built forward-only so their bodies can reveal whether an adjoint is meaningful.
+        # Promote functions that are reachable from a backward-enabled kernel, or forced by wp.grad(), until
+        # rebuilding no longer changes the call graph or its effective backward requirements.
+        self._prepare_adjoint_functions()
 
         # propagate callee replay/reverse shared-memory needs into backward-kernel sizing
         self._propagate_backward_shared_memory()
+
+    def _get_effective_kernel_options(self, kernel):
+        return self.default_kernel_options | kernel.options
 
     def build_struct_recursive(self, struct: warp._src.codegen.Struct):
         structs = []
@@ -2957,35 +2974,153 @@ class ModuleBuilder:
         return struct_hashes
 
     def build_kernel(self, kernel):
-        if kernel.options.get("enable_backward", True):
-            kernel.adj.used_by_backward_kernel = True
+        options = self._get_effective_kernel_options(kernel)
+        kernel.adj.used_by_backward_kernel = options["enable_backward"]
 
         if self._kernel_has_invalid_return_annotation(kernel) or self._kernel_has_value_return(kernel):
             raise WarpCodegenTypeError(f"'{kernel.key}': {_KERNEL_RETURN_ERROR}")
 
-        kernel.adj.build(self)
+        # Kernel options must reach the tile LTO dispatch, which reads ``adj.builder_options``.
+        kernel.adj.build(self, builder_options=options)
 
         if kernel.adj.return_var is not None:
             raise WarpCodegenTypeError(f"'{kernel.key}': {_KERNEL_RETURN_ERROR}")
 
-    def build_function(self, func):
+    def build_function(self, func, enable_backward=None, used_by_backward_kernel=None):
         if func in self.functions:
             return
         else:
-            func.build(self)
+            builder_options = self.options
+            if enable_backward is not None:
+                builder_options = builder_options | {"enable_backward": enable_backward}
+            if used_by_backward_kernel is not None:
+                # Adjoint state is shared across builders, so overwrite rather than only setting True.
+                func.adj.used_by_backward_kernel = used_by_backward_kernel
+
+            func.build(self, builder_options=builder_options)
 
             # use dict to preserve import order
             self.functions[func] = None
 
+    def _build_deferred_functions(self):
+        """Build custom gradient and replay bodies as forward-only functions."""
+
+        while self.deferred_function_index < len(self.deferred_functions):
+            func = self.deferred_functions[self.deferred_function_index]
+            self.deferred_function_index += 1
+            self.build_function(func, enable_backward=False, used_by_backward_kernel=False)
+
+    def _build_grad_custom_functions(self):
+        """Build custom gradients reached through ``wp.grad()`` until no new ones are found."""
+
+        processed = set()
+        while True:
+            pending = [
+                obj.adj
+                for obj in (*self.functions, *self.kernels)
+                if obj.adj not in processed and not obj.adj.skip_build
+            ]
+            if not pending:
+                break
+            for adj in pending:
+                processed.add(adj)
+                for grad_func in adj.called_grad_functions:
+                    if grad_func.custom_grad_func is not None:
+                        self.build_function(
+                            grad_func.custom_grad_func,
+                            enable_backward=False,
+                            used_by_backward_kernel=False,
+                        )
+
+    def _prepare_adjoint_functions(self) -> None:
+        """Prepare functions that require Warp-generated backward code.
+
+        Each pass recomputes which functions are needed by backward-enabled
+        kernels and ``wp.grad()`` calls, including functions they call indirectly.
+        Functions that need generated backward code are rebuilt with backward code
+        generation enabled. A rebuild can reveal more functions to build, so the
+        method repeats until there is nothing else to rebuild.
+
+        Each function is rebuilt at most once. A function with a custom gradient
+        already provides its backward implementation, and a function that calls
+        ``wp.grad()`` does not get generated backward code. Failed builds are also
+        skipped because their recorded calls may be stale.
+        """
+
+        # Track rebuild attempts separately from options so a build that returns without updating its options
+        # cannot be selected forever.
+        rebuilt = set()
+        while True:
+            self._propagate_used_by_backward_kernel()
+            self._propagate_force_adjoint_codegen()
+
+            rebuild = [
+                func
+                for func in self.functions
+                if (func.adj.used_by_backward_kernel or func.adj.force_adjoint_codegen)
+                and func.uses_generated_adjoint
+                and not func.adj.skip_build
+                and not func.adj.uses_grad_call
+                and func not in rebuilt
+                and not func.adj.builder_options.get("enable_backward", True)
+            ]
+            if not rebuild:
+                break
+            for func in rebuild:
+                adj = func.adj
+                rebuilt.add(func)
+                adj.build(self, builder_options=adj.builder_options | {"enable_backward": True})
+
+            self._build_deferred_functions()
+            self._build_grad_custom_functions()
+
+    def _propagate_force_adjoint_codegen(self):
+        # Recompute from wp.grad() calls in this builder because Adjoint state is shared across module builds.
+        for func in self.functions:
+            func.adj.force_adjoint_codegen = False
+
+        worklist = []
+        for obj in (*self.kernels, *self.functions):
+            adj = obj.adj
+            if adj.skip_build:
+                continue
+            for grad_func in adj.called_grad_functions:
+                if grad_func.uses_generated_adjoint and not grad_func.adj.force_adjoint_codegen:
+                    grad_func.adj.force_adjoint_codegen = True
+                    worklist.append(grad_func.adj)
+
+        while worklist:
+            adj = worklist.pop()
+            if adj.skip_build:
+                continue
+            if adj.is_user_function and adj.uses_grad_call:
+                continue
+            for callee in adj.called_user_functions:
+                if callee.uses_generated_adjoint and not callee.adj.force_adjoint_codegen:
+                    callee.adj.force_adjoint_codegen = True
+                    worklist.append(callee.adj)
+
     def _propagate_used_by_backward_kernel(self):
-        # build_function() memoizes, so a helper built from a forward-only path before a backward
-        # kernel reaches it keeps its callees stubbed; re-propagate across the graph to a fixpoint.
-        worklist = [obj.adj for obj in (*self.kernels, *self.functions) if obj.adj.used_by_backward_kernel]
+        # Recompute from this builder's kernel roots because Adjoint state is shared across module builds.
+        for func in self.functions:
+            func.adj.used_by_backward_kernel = False
+
+        worklist = []
+        for kernel in self.kernels:
+            kernel.adj.used_by_backward_kernel = self._get_effective_kernel_options(kernel)["enable_backward"]
+            if kernel.adj.used_by_backward_kernel:
+                worklist.append(kernel.adj)
+
         # worklist algorithm: an adj is enqueued only on a False->True flip, so the loop exits even on cycles
         while worklist:
             adj = worklist.pop()
+            if adj.skip_build:
+                continue
+            # Calls to this function omit its reverse call, so its ordinary callees are replay-only on this path.
+            if adj.is_user_function and adj.uses_grad_call:
+                continue
             for callee in adj.called_user_functions:
-                if not callee.adj.used_by_backward_kernel:
+                if callee.uses_generated_adjoint and not callee.adj.used_by_backward_kernel:
                     callee.adj.used_by_backward_kernel = True
                     worklist.append(callee.adj)
         # backward use is final only now, so this is where wp.ref[T] calls recorded by
@@ -3021,18 +3156,82 @@ class ModuleBuilder:
             for callee in adj.called_user_functions:
                 for extra_fn in (callee.custom_grad_func, callee.custom_replay_func):
                     if extra_fn is not None:
-                        self.build_function(extra_fn)
+                        self.build_function(
+                            extra_fn,
+                            enable_backward=False,
+                            used_by_backward_kernel=False,
+                        )
 
-        # one pass in callees-before-callers order reaches the fixpoint: build_function()
-        # registers a function only after its callees finished building, so self.functions
-        # insertion order is topological, and kernels are roots
-        folded = set()
-        for adj in adjs:
+        # Custom gradient bodies can discover wp.grad() targets after their callers were registered, so insertion
+        # order is not necessarily topological. Fold forward and backward rooflines separately: a custom gradient
+        # calling its primal is a valid forward dependency, not a recursive request for its own gradient.
+        adjs = [obj.adj for obj in (*self.functions, *self.kernels)]
+        forward_folded = set()
+        forward_folding = set()
+        backward_folded = set()
+        backward_folding = set()
+
+        def fold_grad_requirement(grad_func):
+            """Fold and return the shared-memory frame executed by ``wp.grad()``."""
+
+            if grad_func.custom_grad_func is not None:
+                grad_adj = grad_func.custom_grad_func.adj
+                fold_forward(grad_adj)
+                return grad_adj.get_total_required_shared()
+
+            grad_adj = grad_func.adj
+            fold_backward(grad_adj)
+            return grad_adj.get_total_required_shared_backward()
+
+        def fold_forward(adj):
+            if adj in forward_folded:
+                return
+            if adj in forward_folding:
+                raise RuntimeError(f"Cannot size shared memory for '{adj.fun_name}': the call graph contains a cycle")
+
             # an errored adj (skip_build) has stale edges and can never launch; keep its value
-            # as-is, marked folded so live callers of such a function don't trip the guard below
+            # as-is, marked folded so live callers of such a function can still be inspected
             if adj.skip_build:
-                folded.add(adj)
-                continue
+                forward_folded.add(adj)
+                return
+
+            forward_folding.add(adj)
+            for callee in adj.called_user_functions:
+                fold_forward(callee.adj)
+
+            forward_required = adj.max_required_extra_shared_memory
+            for callee in adj.called_user_functions:
+                forward_required = max(forward_required, callee.adj.get_total_required_shared())
+            for grad_func in adj.called_grad_functions:
+                forward_required = max(forward_required, fold_grad_requirement(grad_func))
+            adj.max_required_extra_shared_memory = forward_required
+            forward_folding.remove(adj)
+            forward_folded.add(adj)
+
+        def fold_backward(adj):
+            """Fold replay and reverse shared-memory dependencies before this adjoint."""
+
+            if adj in backward_folded:
+                return
+            if adj in backward_folding:
+                raise RuntimeError(f"Cannot size shared memory for '{adj.fun_name}': the call graph contains a cycle")
+
+            fold_forward(adj)
+            if adj.skip_build:
+                backward_folded.add(adj)
+                return
+
+            backward_folding.add(adj)
+            for callee in adj.called_user_functions:
+                if callee.custom_replay_func is not None:
+                    fold_forward(callee.custom_replay_func.adj)
+                else:
+                    fold_forward(callee.adj)
+                if callee.custom_grad_func is not None:
+                    fold_forward(callee.custom_grad_func.adj)
+                else:
+                    fold_backward(callee.adj)
+
             required = adj.max_required_extra_shared_memory_backward
             for callee in adj.called_user_functions:
                 if callee.custom_replay_func is not None:
@@ -3041,25 +3240,30 @@ class ModuleBuilder:
                     replay = callee.adj.get_total_required_shared()
                 if callee.custom_grad_func is not None:
                     reverse = callee.custom_grad_func.adj.get_total_required_shared()
-                elif callee.adj not in folded:
-                    # fail loudly instead of silently under-reserving
-                    raise RuntimeError(
-                        f"Cannot size backward shared memory for '{adj.fun_name}': callee '{callee.key}' was not "
-                        "sized first; the call graph should be acyclic and functions registered callees-first"
-                    )
                 else:
                     reverse = callee.adj.get_total_required_shared_backward()
                 # max: the replay frame pops before the reverse frame pushes, so the two never coexist
                 required = max(required, replay, reverse)
+            for grad_func in adj.called_grad_functions:
+                # wp.grad() is forward-only, but the forward body is replayed by this backward function.
+                required = max(required, fold_grad_requirement(grad_func))
             adj.max_required_extra_shared_memory_backward = required
-            folded.add(adj)
+            backward_folding.remove(adj)
+            backward_folded.add(adj)
+
+        for adj in adjs:
+            fold_forward(adj)
+        for adj in adjs:
+            suppresses_user_adjoint = adj.is_user_function and adj.uses_grad_call
+            if not adj.custom_reverse_mode and not adj.skip_reverse_codegen and not suppresses_user_adjoint:
+                fold_backward(adj)
 
     def build_meta(self):
         meta = {}
 
         for kernel in self.kernels:
             name = kernel.get_mangled_name()
-            options = self.options | kernel.options
+            options = self._get_effective_kernel_options(kernel)
 
             meta[name + "_cuda_kernel_forward_smem_bytes"] = kernel.adj.get_total_required_shared()
             if options["enable_backward"]:
@@ -3090,7 +3294,7 @@ class ModuleBuilder:
                     func.adj,
                     c_func_name=func.native_func,
                     device=device,
-                    options=self.options,
+                    options=func.adj.builder_options,
                     forward_only=forward_only,
                     reverse_only=reverse_only,
                 )
@@ -3105,6 +3309,39 @@ class ModuleBuilder:
                     reverse_only=reverse_only,
                 )
         return source
+
+    @staticmethod
+    def _order_reverse_functions(functions):
+        """Return functions with every emitted reverse dependency before its callers."""
+
+        function_set = set(functions)
+        ordered = []
+        visited = set()
+        visiting = set()
+
+        def reverse_implementation(func):
+            return func.custom_grad_func or func
+
+        def visit(func):
+            if func in visited or func in visiting:
+                return
+            visiting.add(func)
+            if func.adj.custom_reverse_mode:
+                callees = func.adj.called_grad_functions
+            else:
+                callees = func.adj.called_user_functions
+            for callee in callees:
+                dependency = reverse_implementation(callee)
+                if dependency in function_set:
+                    visit(dependency)
+            visiting.remove(func)
+            visited.add(func)
+            ordered.append(func)
+
+        for func in functions:
+            visit(func)
+
+        return ordered
 
     def codegen(self, device):
         source = ""
@@ -3130,7 +3367,7 @@ class ModuleBuilder:
 
         # Three-pass code generation:
         # Pass 1: Forward functions that don't use wp.grad()
-        # Pass 2: All adjoint functions (custom grads before auto-adjoints)
+        # Pass 2: All adjoint functions in reverse-dependency order
         # Pass 3: Forward functions that use wp.grad() (these call adjoints, so must come after pass 2)
         #         Note: Functions using wp.grad() don't have adjoints generated.
 
@@ -3141,29 +3378,18 @@ class ModuleBuilder:
         # Pass 1: Forward functions that don't use grad()
         source += self._codegen_functions(non_grad_functions, device, forward_only=True)
 
-        # Pass 2: Reverse/adjoint functions with custom grads sorted before auto-adjoints
-        # Build set of functions that ARE custom gradients (decorated with @wp.func_grad)
-        # Note: f.custom_grad_func tells us if f HAS a custom gradient, but we need to know
-        # which functions ARE custom gradients themselves (i.e., appear as someone's custom_grad_func)
-        # Note: Functions that use wp.grad() don't have adjoints generated (their reverse calls
-        # are skipped in add_call since the gradient of a gradient call is not supported)
-        custom_grad_set = {f.custom_grad_func for f in non_grad_functions if f.custom_grad_func is not None}
-
-        # Separate functions that ARE custom grads from all others, preserving original order
-        custom_grad_functions = [f for f in non_grad_functions if f in custom_grad_set]
-        other_functions = [f for f in non_grad_functions if f not in custom_grad_set]
-
-        # Generate adjoints: custom grads first, then other functions
-        # This ensures custom grads are defined before any auto-adjoints that call them
-        source += self._codegen_functions(custom_grad_functions + other_functions, device, reverse_only=True)
+        # Pass 2: Reverse/adjoint functions. Ordinary adjoints depend on their callees' reverse implementations,
+        # while custom gradients can depend on wp.grad() targets from their forward-emitted bodies.
+        reverse_functions = self._order_reverse_functions(non_grad_functions)
+        source += self._codegen_functions(reverse_functions, device, reverse_only=True)
 
         # Pass 3: Forward functions that use wp.grad()
         # These must come after pass 2 because they call adjoint functions
         source += self._codegen_functions(grad_functions, device, forward_only=True)
 
         for kernel in self.kernels:
-            source += warp._src.codegen.codegen_kernel(kernel, device=device, options=self.options)
-            source += warp._src.codegen.codegen_module(kernel, device=device, options=self.options)
+            source += warp._src.codegen.codegen_kernel(kernel, device=device, options=self.default_kernel_options)
+            source += warp._src.codegen.codegen_module(kernel, device=device, options=self.default_kernel_options)
 
         # Detect whether this module uses bfloat16; if not, define WP_NO_BFLOAT16
         # to skip compiling bfloat16 overloads in builtin.h (significant LLVM speedup).
@@ -3782,7 +4008,9 @@ class Module:
         with _codegen_lock:
             for kernel in hasher.get_unique_kernels():
                 if rebuild:
-                    kernel.adj.build(None, builder_options)
+                    # Match ModuleBuilder.build_kernel: determinism metadata must be captured under the same
+                    # merged options the real build uses.
+                    kernel.adj.build(None, builder_options=builder_options | kernel.options)
                 snapshot[kernel.get_mangled_name()] = kernel.adj.det_meta
         return snapshot
 

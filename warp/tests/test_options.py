@@ -24,12 +24,17 @@ def scale(
     y[0] = x[0] ** 2.0
 
 
+@wp.func
+def square(x: float):
+    return x * x
+
+
 @wp.kernel(enable_backward=True)
 def scale_1(
     x: wp.array[float],
     y: wp.array[float],
 ):
-    y[0] = x[0] ** 2.0
+    y[0] = square(x[0])
 
 
 @wp.kernel(enable_backward=False)

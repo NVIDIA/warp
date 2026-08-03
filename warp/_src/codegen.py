@@ -1961,7 +1961,7 @@ class Adjoint:
 
     # generate function ssa form and adjoint
     @synchronized(_codegen_lock)
-    def build(adj, builder, default_builder_options=None, callable_arg_values=None):
+    def build(adj, builder, default_builder_options=None, callable_arg_values=None, builder_options=None):
         # arg Var read/write flags are held during module rebuilds, so we reset here even when skipping a build
         for arg in adj.args:
             arg.is_read = False
@@ -1978,7 +1978,12 @@ class Adjoint:
         if default_builder_options is None:
             default_builder_options = {}
 
-        if adj.builder:
+        # ``builder_options`` lets a caller supply options the builder itself does not hold, notably a kernel's
+        # options merged over the module's. ``default_builder_options`` is different: it applies only when there
+        # is no builder at all.
+        if builder_options is not None:
+            adj.builder_options = builder_options
+        elif adj.builder:
             adj.builder_options = adj.builder.options
         else:
             adj.builder_options = default_builder_options
@@ -2016,6 +2021,9 @@ class Adjoint:
 
         # recorded at call sites for ModuleBuilder's post-build propagation passes
         adj.called_user_functions = set()
+        # wp.grad() invokes a user function's adjoint from forward code, so its backward shared-memory roofline
+        # contributes to this function's forward shared-memory requirement.
+        adj.called_grad_functions = set()
 
         # wp.ref[T] callees lacking a manual adjoint; rejected post-build, once used_by_backward_kernel is final
         adj.unvalidated_ref_calls = []
@@ -2398,6 +2406,41 @@ class Adjoint:
 
         return func.native_snippet is not None and func.adj_native_snippet is not None
 
+    def add_user_function_dependency(adj, func):
+        """Record and build a user function reached through a forward call edge."""
+        adj.called_user_functions.add(func)
+        uses_generated_adjoint = func.uses_generated_adjoint
+        used_by_backward_kernel = adj.used_by_backward_kernel and uses_generated_adjoint
+
+        if adj.builder is None:
+            # Builder-less analysis has no graph-finalization pass, so propagate requirements directly.
+            if used_by_backward_kernel:
+                func.adj.used_by_backward_kernel = True
+            if adj.force_adjoint_codegen and uses_generated_adjoint:
+                func.adj.force_adjoint_codegen = True
+
+            builder_options = adj.builder_options
+            if not uses_generated_adjoint:
+                builder_options = builder_options | {"enable_backward": False}
+            func.build(None, builder_options)
+            return
+
+        # Custom gradient and replay bodies must be built before forced-adjoint preparation so any wp.grad()
+        # dependencies they contain can promote and rebuild their own primal call graphs.
+        for deferred_func in (func.custom_grad_func, func.custom_replay_func):
+            if deferred_func is not None and deferred_func not in adj.builder.deferred_functions:
+                adj.builder.deferred_functions.append(deferred_func)
+
+        if func in adj.builder.functions:
+            return
+
+        adj.builder.build_function(
+            func,
+            # Discover the complete body before deciding whether its adjoint can and must be emitted.
+            enable_backward=False,
+            used_by_backward_kernel=used_by_backward_kernel,
+        )
+
     def emit_ref_adjoint_pointer(adj, var, prelude: list[str] | None = None):
         if var.ref_origin is None:
             raise WarpCodegenError(
@@ -2611,28 +2654,7 @@ class Adjoint:
 
         # if it is a user-function then build it recursively
         if not func.is_builtin():
-            # record the call-graph edge for the post-build propagation passes
-            adj.called_user_functions.add(func)
-            # If the function called is a user function,
-            # we need to ensure its adjoint is also being generated.
-            if adj.used_by_backward_kernel:
-                func.adj.used_by_backward_kernel = True
-            if adj.force_adjoint_codegen:
-                func.adj.force_adjoint_codegen = True
-
-            if adj.builder is None:
-                func.build(None, adj.builder_options)
-
-            elif func not in adj.builder.functions:
-                adj.builder.build_function(func)
-                # add custom grad, replay functions to the list of functions
-                # to be built later (invalid code could be generated if we built them now)
-                # so that they are not missed when only the forward function is imported
-                # from another module
-                if func.custom_grad_func:
-                    adj.builder.deferred_functions.append(func.custom_grad_func)
-                if func.custom_replay_func:
-                    adj.builder.deferred_functions.append(func.custom_replay_func)
+            adj.add_user_function_dependency(func)
 
             adj.deterministic.include_function_call(func, bound_args)
 
@@ -2744,17 +2766,7 @@ class Adjoint:
 
             # if the argument is a function (and not a builtin), then build it recursively
             if isinstance(func_arg_var, warp._src.context.Function) and not func_arg_var.is_builtin():
-                # a function-valued argument is a call-graph edge too
-                adj.called_user_functions.add(func_arg_var)
-                if adj.used_by_backward_kernel:
-                    func_arg_var.adj.used_by_backward_kernel = True
-                if adj.force_adjoint_codegen:
-                    func_arg_var.adj.force_adjoint_codegen = True
-
-                if adj.builder is None:
-                    func_arg_var.build(None, adj.builder_options)
-                else:
-                    adj.builder.build_function(func_arg_var)
+                adj.add_user_function_dependency(func_arg_var)
 
             if parameter_is_ref:
                 fwd_args.append(func_arg_var)
@@ -2884,14 +2896,25 @@ class Adjoint:
 
         # Ensure the function is built so its adjoint code exists.
         if not func.is_builtin():
-            # Force adjoint code generation for the function.
-            func.adj.force_adjoint_codegen = True
+            adj.called_grad_functions.add(func)
+
+            # Builder-backed calls are promoted from the completed graph. Builder-less analysis has no
+            # finalization pass, so it must propagate the requirement directly.
+            if func.uses_generated_adjoint and adj.builder is None:
+                func.adj.force_adjoint_codegen = True
 
             # Build the function if not already built
             if adj.builder is None:
-                func.build(None, adj.builder_options)
+                builder_options = adj.builder_options
+                if not func.uses_generated_adjoint:
+                    builder_options = builder_options | {"enable_backward": False}
+                func.build(None, builder_options)
             elif func not in adj.builder.functions:
-                adj.builder.build_function(func)
+                adj.builder.build_function(
+                    func,
+                    enable_backward=False,
+                    used_by_backward_kernel=False,
+                )
 
         # Get return type
         bound_arg_types = {k: get_arg_type(v) for k, v in bound_args.items()}
@@ -7262,7 +7285,7 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None, forward_only
             if should_generate_adjoint:
                 reverse_body = codegen_func_reverse(adj, func_type="function", device=device)
             else:
-                reverse_body = '\t// reverse mode disabled (module option "enable_backward" is False or no dependent kernel found with "enable_backward")\n'
+                reverse_body = '\t// reverse mode disabled (the "enable_backward" kernel or module option is False, or no dependent kernel found with "enable_backward")\n'
         s += template_prefix + reverse_template.format(
             name=c_func_name,
             return_type=return_type,
