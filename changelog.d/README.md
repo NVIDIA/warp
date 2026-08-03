@@ -13,6 +13,12 @@ Add a fragment when a change affects Warp users. Internal maintenance does not
 need one. Reviewers decide whether a fragment is needed and whether it explains
 the user impact clearly.
 
+Examples of internal maintenance include CI runner upkeep, test-only changes,
+formatting or lint cleanup, repository automation, and refactoring that does not
+change user-visible behavior, performance, compatibility, or diagnostics. If
+users can observe a change in the API, runtime, packaging, documentation, or a
+supported workflow, add a fragment.
+
 ## Choose an identifier
 
 Use the GitHub issue number when the work has an issue:
