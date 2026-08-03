@@ -827,8 +827,8 @@ API <code class="docutils literal notranslate"><span class="pre">cuProfilerStart
 with the two calls.</p></li>
 </ul>
 <p>These calls act on the selected <code class="docutils literal notranslate"><span class="pre">device</span></code>’s CUDA context (the current device by default), and a CUDA context must be
-active for the profiler to intercept them; they have no effect on CPU-only builds.  Note that the external profiler’s
-<em>capture range</em> is process-wide—the first start opens it and the stop closes it for the whole process.</p>
+active for the profiler to intercept them; they have no effect on CPU-only builds.  External profilers may use these
+calls as capture-session markers, but the profiler and its configuration determine the scope of activity collected.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedCudaProfiler</span><span class="p">():</span>
     <span class="n">run_workload</span><span class="p">()</span>
 </pre></div>
