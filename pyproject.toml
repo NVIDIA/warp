@@ -134,6 +134,10 @@ ignore = [
 "warp/__init__.py" = ["E402"]
 "warp/*.py" = ["PLC0414"]
 "warp/tests/*.py" = ["F841"]
+# Skill evaluation fixtures intentionally contain the defects agents must
+# find (e.g. a computed-but-never-consumed adjoint), so unused-variable
+# lints are expected there.
+"skills/warp-debug-gradients/evals/files/**/*.py" = ["F841", "RUF059"]
 "asv/benchmarks/**.py" = ["RUF012"]
 
 [tool.ruff.lint.pydocstyle]

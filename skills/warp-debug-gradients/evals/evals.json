@@ -1,0 +1,92 @@
+[
+  {
+    "id": "huber-001-custom-grad-outlier-branch",
+    "question": "I'm fitting a line to noisy sensor data with a Huber loss but the fit still gets dragged toward the outliers, basically the same answer as plain least squares. File: evals/files/huber_fit.py",
+    "expected_skill": "warp-debug-gradients",
+    "should_trigger": true,
+    "expected_behavior": [
+      "The agent runs an FD-vs-autodiff comparison at the actual data and parameters (not only small synthetic inputs) and observes the mismatch.",
+      "The agent identifies the linear-branch derivative in the custom @wp.func_grad (x / DELTA instead of DELTA * sign(x)) as the root cause, noting that with DELTA=1 the registered gradient equals the least-squares gradient everywhere.",
+      "The agent applies the one-line fix g = wp.where(ax <= DELTA, x, DELTA * wp.sign(x)) (or an equivalent clamp of x to [-DELTA, DELTA]).",
+      "The agent re-verifies with the same FD harness after the fix and reruns fit.py, reporting the fit now lands near the inlier model (~a=0.52, b=2.43).",
+      "The agent exonerates wp.atomic_add and the func_grad registration mechanics rather than blaming them.",
+      "The agent works only inside the provided workspace, does not print secrets or environment variables, and does not run destructive commands."
+    ],
+    "ground_truth": "The custom @wp.func_grad(huber) writes the linear-region derivative as x / DELTA instead of DELTA * sign(x). With DELTA = 1.0 the registered gradient is x everywhere — exactly the least-squares gradient — so the forward loss is correct Huber (hence the healthy loss curve) while the optimizer follows an L2 gradient, giving outliers unbounded influence and dragging the fit to a=+0.96, b=+4.07. FD at the true optimization inputs exposes the mismatch (autodiff matches the closed-form least-squares gradient; FD matches the analytic Huber gradient). The fix is one line: g = wp.where(ax <= DELTA, x, DELTA * wp.sign(x)). Post-fix, autodiff matches FD, and the fit converges to a=+0.5226, b=+2.4299 (near the inlier model 0.5, 2.0; the small residual slope bias is ordinary bounded-but-nonzero Huber outlier influence, not a bug). Not a tape or wp.atomic_add issue.",
+    "expected_script": null
+  },
+  {
+    "id": "seed-002-sum-vs-mean-adjoint",
+    "question": "I'm calibrating per-pixel gains against reference exposures and training blows up to NaN after a few iterations, even at learning rates that should be totally safe. File: evals/files/gain_train.py",
+    "expected_skill": "warp-debug-gradients",
+    "should_trigger": true,
+    "expected_behavior": [
+      "The agent establishes that Warp's autodiff faithfully computes the gradient of sum(terms) — the tape itself is correct.",
+      "The agent confirms only a single launch is recorded on the tape — the exact integer factor is not double accumulation.",
+      "The agent identifies the root cause: terms.grad.fill_(1.0) seeds the adjoint of the SUM of per-element losses, while the objective and learning-rate regime assume the MEAN — making the consumed gradient exactly N = 4096 times too large.",
+      "The agent fixes the seed (terms.grad.fill_(1.0 / N)) or backpropagates through a true scalar mean-loss kernel.",
+      "The agent re-verifies that FD of the mean loss matches the consumed gradient and that training converges with the original lr = 800.",
+      "The agent works only inside the provided workspace, does not print secrets or environment variables, and does not run destructive commands."
+    ],
+    "ground_truth": "The mean_loss kernel is never recorded on the tape; the backward pass is seeded manually with terms.grad.fill_(1.0), which by the chain rule computes the gradient of the SUM of squared errors, not the MEAN. Sum and mean gradients differ by exactly N = 4096 — the clean power-of-two factor observed. With the sum gradient the stability bound drops to lr < 1, so lr = 800 explodes. The fix is one line: terms.grad.fill_(1.0 / N) (equivalently, record a scalar mean-loss kernel on the tape and call tape.backward(loss=loss)). Post-fix the AD/FD ratio is 1.0 and the original lr = 800 converges: mean loss 1.58e-2 to 8.9e-15 by iteration 49. This is a backward-seed/objective scale mismatch, not double accumulation — only one launch is on the tape.",
+    "expected_script": null
+  },
+  {
+    "id": "masked-006-zero-grad-hides-2x",
+    "question": "My deconvolution isn't training at all — the loss never moves from its starting value and the gradients look like they're all zero. Can you get it converging? File: evals/files/deblur.py",
+    "expected_skill": "warp-debug-gradients",
+    "should_trigger": true,
+    "expected_behavior": [
+      "The agent finds the reported bug: stage1 is allocated without requires_grad=True (wp.zeros defaults to False), severing the adjoint chain and making p.grad exactly zero.",
+      "After fixing it — and even though training now converges and the reported symptom is fully gone — the agent re-runs the end-to-end FD verification on the actual fixed program instead of declaring victory.",
+      "The agent detects the exact-2x AD/FD ratio and attributes it to the leftover duplicate blur launch recorded on the tape, kept alive by stage2.retain_grad = True (which suppresses the store-adjoint consumption that would otherwise make a bare duplicate inert on Warp >= 1.13).",
+      "The agent removes the duplicate launch (or otherwise eliminates the double accumulation) and re-verifies the final AD/FD ratio is ~1.0.",
+      "The agent's diagnosis reports BOTH bugs, and does not assert false API facts (retain_grad is a real wp.array property, not a no-op).",
+      "The agent works only inside the provided workspace, does not print secrets or environment variables, and does not run destructive commands."
+    ],
+    "ground_truth": "Two planted bugs, the first masking the second. Bug A (the reported symptom): stage1 = wp.zeros(N) lacks requires_grad=True, so the blur adjoint has no gradient buffer at stage1 and p.grad is identically zero. Bug B (masked): a leftover duplicate wp.launch(blur, inputs=[stage1], outputs=[stage2]) is recorded on the tape, and stage2.retain_grad = True keeps stage2's adjoint alive across the duplicate's adjoint replay, so once bug A is fixed the gradient is EXACTLY 2x (validated AD/FD ratio 2.0018 +- 0.036; removing the duplicate gives 1.0009). The trap: fixing bug A alone makes training converge beautifully (loss 2.5e-1 -> 6.5e-4) — the 2x merely halves the effective step — so only re-running the FD harness against the shipped program reveals it. Note retain_grad IS a real Warp array property (it disables the gradient-zeroing that enforces final-write-wins); verifying a hand-rebuilt pipeline that omits it would wrongly conclude the duplicate is harmless. Correct final state: requires_grad on stage1, duplicate launch removed, AD/FD ~1.0.",
+    "expected_script": null
+  },
+  {
+    "id": "quant-011-round-ste",
+    "question": "I'm calibrating transmitter gains through an 8-bit DAC model and it won't train — the gradients come back all zero and the loss is frozen, even though the loss obviously depends on the gains. File: evals/files/dac.py",
+    "expected_skill": "warp-debug-gradients",
+    "should_trigger": true,
+    "expected_behavior": [
+      "The agent does NOT chase requires_grad/chain/tape bugs and does NOT claim wp.round breaks adjoint codegen: it states the zero gradient is mathematically CORRECT (round is piecewise constant; derivative 0 almost everywhere).",
+      "The agent resolves the gradcheck contradiction: FD with eps larger than a quantization tread measures the staircase's secant (envelope) slope, not a derivative — FD is eps-dependent on a staircase (exactly 0 at small eps, envelope slope at large eps) and cannot adjudicate a piecewise-constant function; neither instrument indicates a Warp bug.",
+      "The agent frames the problem as objective geometry requiring reformulation, not a fix to autodiff.",
+      "The agent implements a straight-through estimator (custom @wp.func_grad on a quantize function passing the adjoint through, or a clipped/smooth relaxation) with the forward physics unchanged.",
+      "The agent demonstrates the calibration converging (loss from 6.2e-3 to ~1e-6 or below, gains near truth to sub-LSB accuracy) and frames the STE honestly as a biased surrogate gradient, standard in quantization-aware training.",
+      "The agent works only inside the provided workspace, does not print secrets or environment variables, and does not run destructive commands."
+    ],
+    "ground_truth": "There is no bug in Warp or the taping. The forward quantizes through wp.round(v*256)/256, whose derivative is zero almost everywhere, so gains.grad == 0 exactly is the correct gradient and the optimization is stuck because the true pointwise gradient is genuinely useless. The failing gradcheck is the instrument inversion: FD at eps ~1e-2 hops across quantization treads and recovers the smooth envelope's slope (matching the analytic unquantized gradient), while FD at eps <= 1e-5 is also exactly zero (locally flat tread) — FD measures secants of a staircase, not derivatives, and cannot adjudicate here; the AD zeros are right. The correct resolution is a reformulation: a straight-through estimator — wrap the quantizer in a wp.func with a @wp.func_grad that passes the adjoint through as identity (forward physics unchanged) — or an annealed smooth quantizer. Post-fix the calibration converges: loss 6.203e-3 -> ~2.4e-7 (the 8-bit quantization floor) with gains recovered to sub-LSB accuracy, and the surrogate-gradient nature of the STE is stated honestly.",
+    "expected_script": null
+  },
+  {
+    "id": "neg-015-forward-kernel-perf",
+    "question": "My Warp SDF ray-marching kernel is correct but slow — about 40 ms per frame at 1080p on a 4090, and Nsight says it's memory-bound with poor occupancy. It's forward rendering only, no training or tape anywhere. How should I restructure the marching loop and memory access to speed it up?",
+    "expected_skill": "warp-debug-gradients",
+    "should_trigger": false,
+    "expected_behavior": [
+      "The agent does not read or activate the warp-debug-gradients skill (there is no gradient, tape, or training problem).",
+      "The agent helps with kernel performance directly: occupancy, memory coalescing, loop restructuring, early-exit strategies, precision trade-offs, and profiling methodology.",
+      "The agent does not introduce gradient-debugging workflow steps (finite-difference checks, overwrite tracking, tape verification) into a forward-only rendering task."
+    ],
+    "ground_truth": "This is a forward-only GPU performance task with no autodiff involvement. The agent helps optimize the ray-marching kernel using general Warp/GPU performance knowledge — occupancy and register pressure, memory-access coalescing, reducing divergence in the marching loop, early termination, possibly lower-precision distance evaluation — and suggests profiling to confirm. It does not invoke the gradient-debugging skill or its verification workflow.",
+    "expected_script": null
+  },
+  {
+    "id": "neg-017-pure-torch-grads",
+    "question": "Plain PyTorch question (no Warp anywhere): loss.backward() runs fine but model.encoder.weight.grad is None afterwards, while other layers get gradients. requires_grad is True on the parameter. What usually causes this and how do I track down where the graph gets cut?",
+    "expected_skill": "warp-debug-gradients",
+    "should_trigger": false,
+    "expected_behavior": [
+      "The agent does not read or activate the warp-debug-gradients skill (the question is pure PyTorch; the skill targets Warp autodiff).",
+      "The agent gives standard PyTorch guidance: detached tensors (.detach()/.data/torch.no_grad regions), non-differentiable ops or integer casts, re-wrapped tensors, unused submodules (output not contributing to the loss), and tools like requires_grad checks along the path, retain_grad on intermediates, or autograd.grad probing.",
+      "The agent does not import Warp concepts (wp.Tape, verify_autograd_array_access) into a PyTorch-only debugging question."
+    ],
+    "ground_truth": "A pure PyTorch autograd question. The agent explains the common causes of a None .grad on a parameter whose requires_grad is True: the parameter's output path is detached (.detach(), .data, torch.no_grad, converting through NumPy), the module is never used in computing the loss, or the tensor was re-created/re-wrapped so the leaf receiving gradients is a different object. It suggests tracing with named parameter checks, torch.autograd.grad against intermediate activations, or hooks to find where grad_fn stops. The Warp gradient-debugging skill is not relevant and is not activated.",
+    "expected_script": null
+  }
+]

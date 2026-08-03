@@ -52,6 +52,9 @@ outputs/
 .coverage
 .cache
 
+# skillevaluator results
+/skills/**/evals/results/
+
 # Benchmarking (ASV)
 asv/env
 asv/results
