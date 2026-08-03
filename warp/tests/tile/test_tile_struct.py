@@ -13,6 +13,12 @@ TILE_DIM = 64
 TILE_ROWS = wp.constant(2)
 TILE_COLS = wp.constant(4)
 
+# Compilation hygiene
+#
+# Warp compiles the full module once for every CUDA block dimension it uses. Keep forward-only kernels marked with
+# enable_backward=False, and launch ordinary kernels at an existing tile block dimension when their coverage does not
+# depend on the default 256-thread block. This avoids compiling unused adjoints and an otherwise redundant module.
+
 
 @wp.struct
 class TileMapStruct:
@@ -101,7 +107,7 @@ def tile_map_nested_struct_sum(s: TileMapNestedStruct) -> float:
     return tile_map_struct_sum(s.payload) + s.weight
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def tile_map_custom_struct_kernel(input: wp.array[TileMapStruct], output: wp.array[TileMapStruct]):
     i = wp.tid()
     a = wp.tile_load(input, shape=TILE_M, offset=i * TILE_M)
@@ -131,7 +137,7 @@ def tile_map_custom_struct_grad_kernel(input: wp.array[TileMapStruct], loss: wp.
     wp.tile_store(loss, total, offset=i)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def tile_nested_struct_ops_kernel(
     input: wp.array[TileMapNestedStruct],
     sort_keys: wp.array[int],
@@ -181,7 +187,7 @@ def tile_nested_field_store_grad_kernel(input: wp.array[TileMapNestedStruct], lo
     wp.tile_store(loss, wp.tile_sum(values))
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def tile_struct_array_payload_sort_kernel(
     input: wp.array[TileMapArrayPayload],
     sort_keys: wp.array[int],
@@ -193,7 +199,7 @@ def tile_struct_array_payload_sort_kernel(
     wp.tile_store(sorted_payloads, values)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def tile_struct_array_payload_read_kernel(
     payloads: wp.array[TileMapArrayPayload],
     values_out: wp.array[float],
@@ -205,7 +211,7 @@ def tile_struct_array_payload_read_kernel(
     tags_out[i] = value.tag
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def tile_struct_indexed_array_payload_sort_kernel(
     input: wp.array[TileMapIndexedArrayPayload],
     sort_keys: wp.array[int],
@@ -217,7 +223,7 @@ def tile_struct_indexed_array_payload_sort_kernel(
     wp.tile_store(sorted_payloads, values)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def tile_struct_indexed_array_payload_read_kernel(
     payloads: wp.array[TileMapIndexedArrayPayload],
     values_out: wp.array[float],
@@ -229,7 +235,7 @@ def tile_struct_indexed_array_payload_read_kernel(
     tags_out[i] = value.tag
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def tile_struct_value_ops_kernel(
     input: wp.array[TileMapStruct],
     load_indices: wp.array[int],
@@ -304,7 +310,7 @@ def tile_struct_value_ops_kernel(
         element_sub_inplace_out[0] = element_sub_total
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def tile_struct_half_fields_kernel(
     input: wp.array[HalfFieldStruct],
     sort_keys: wp.array[int],
@@ -327,7 +333,7 @@ def tile_struct_half_fields_kernel(
     wp.tile_store(sort_out, values)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def tile_struct_quat_transform_fields_kernel(
     input: wp.array[QuatTransformFieldStruct],
     sort_keys: wp.array[int],
@@ -352,7 +358,7 @@ def tile_struct_quat_transform_fields_kernel(
     wp.tile_store(sort_out, values)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def tile_struct_float64_fields_kernel(
     input: wp.array[Float64FieldStruct],
     sort_keys: wp.array[int],
@@ -377,14 +383,14 @@ def tile_struct_float64_fields_kernel(
     wp.tile_store(sort_out, values)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def tile_half_scalar_kernel(input: wp.array[wp.float16], output: wp.array[wp.float16]):
     # Control: non-struct half tile load/store, which already compiled and ran.
     t = wp.tile_load(input, shape=TILE_M)
     wp.tile_store(output, t)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def tile_struct_non_atomic_fields_kernel(
     input: wp.array[NonAtomicFieldStruct],
     store_out: wp.array[NonAtomicFieldStruct],
@@ -401,7 +407,7 @@ def tile_struct_non_atomic_fields_kernel(
     wp.tile_atomic_add(atomic_out, t)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def tile_struct_non_atomic_accumulate_kernel(
     input: wp.array[NonAtomicFieldStruct],
     sum_out: wp.array[NonAtomicFieldStruct],
@@ -414,7 +420,7 @@ def tile_struct_non_atomic_accumulate_kernel(
     wp.tile_store(add_out, t + t)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def tile_struct_scatter_stack_kernel(
     input: wp.array[TileMapStruct],
     scatter_atomic_out: wp.array[TileMapStruct],
@@ -441,7 +447,7 @@ def tile_struct_scatter_stack_kernel(
         stack_out[0] = popped
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def tile_struct_constructor_assign_stack_kernel(
     input: wp.array[TileMapStruct],
     from_thread_out: wp.array[TileMapStruct],
@@ -850,11 +856,14 @@ def test_tile_struct_array_payload_sort(test, device):
         block_dim=32,
         device=device,
     )
+    # Reuse the sort kernel's block dimension to avoid compiling the full module
+    # again for wp.launch()'s default block_dim=256.
     wp.launch(
         tile_struct_array_payload_read_kernel,
         dim=TILE_M,
         inputs=[sorted_payloads],
         outputs=[values_out, tags_out],
+        block_dim=32,
         device=device,
     )
 
@@ -892,11 +901,14 @@ def test_tile_struct_indexed_array_payload_sort(test, device):
         block_dim=32,
         device=device,
     )
+    # Reuse the sort kernel's block dimension to avoid compiling the full module
+    # again for wp.launch()'s default block_dim=256.
     wp.launch(
         tile_struct_indexed_array_payload_read_kernel,
         dim=TILE_M,
         inputs=[sorted_payloads],
         outputs=[values_out, tags_out],
+        block_dim=32,
         device=device,
     )
 
@@ -1053,6 +1065,7 @@ def test_tile_struct_constructor_assign_stack(test, device):
 
 def test_tile_struct_ones_rejected(test, device):
     # contract: tile_ones rejects struct dtypes (no canonical "one" value)
+    # Keep the expected codegen failure from invalidating the shared test module.
     @wp.kernel(module="unique")
     def kernel_fn(output: wp.array[TileMapStruct]):
         t = wp.tile_ones(TILE_M, dtype=TileMapStruct)
@@ -1073,6 +1086,7 @@ def test_tile_struct_ones_rejected(test, device):
 
 def test_tile_struct_bitwise_inplace_rejected(test, device):
     # contract: bitwise in-place ops (&=, |=, ^=) reject struct dtypes at tile and element scope
+    # Keep each expected codegen failure from invalidating the shared test module.
     @wp.kernel(module="unique")
     def tile_bit_and_kernel(input: wp.array[TileMapStruct], output: wp.array[TileMapStruct]):
         t = wp.tile_load(input, shape=TILE_M, storage="shared")
@@ -1136,6 +1150,7 @@ def test_tile_struct_reduction_ops_rejected(test, device):
     element type.
     """
 
+    # Keep each expected codegen failure from invalidating the shared test module.
     @wp.kernel(module="unique")
     def tile_min_kernel(input: wp.array[TileMapStruct], output: wp.array[TileMapStruct]):
         t = wp.tile_load(input, shape=TILE_M, storage="shared")
@@ -1532,11 +1547,14 @@ def test_tile_struct_scatter_add_grad_ops(test, device):
             block_dim=8,
             device=device,
         )
+        # Reuse the tile kernel's block dimension to avoid compiling the full
+        # module again for wp.launch()'s default block_dim=256.
         wp.launch(
             tile_struct_single_sum_grad_kernel,
             dim=1,
             inputs=[output_wp],
             outputs=[loss],
+            block_dim=8,
             device=device,
         )
 
