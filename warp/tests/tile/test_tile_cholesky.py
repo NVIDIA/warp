@@ -413,7 +413,12 @@ def test_tile_cholesky_upper_backward(dtype):
 def test_tile_cholesky_block_cholesky(test, device):
     BLOCK_SIZE = wp.constant(TILE_M // 2)
 
-    @wp.kernel(enable_backward=False, module="unique")
+    # enable_backward belongs in module_options, not as a kernel kwarg: the LTO
+    # dispatch for tile_matmul/tile_cholesky/tile_lower_solve reads the module
+    # builder's options, which kernel kwargs are not merged into. As a kwarg it
+    # still suppresses the C++ backward, but libmathdx builds the unused
+    # backward GEMM/TRSM LTOs anyway.
+    @wp.kernel(module="unique", module_options={"enable_backward": False})
     def block_cholesky_kernel(
         A: wp.array2d[float],
         L: wp.array2d[float],
@@ -457,7 +462,7 @@ def test_tile_cholesky_block_cholesky(test, device):
 
                 wp.tile_store(L, sol_tile, offset=(i, k))
 
-    @wp.kernel(enable_backward=False, module="unique")
+    @wp.kernel(module="unique", module_options={"enable_backward": False})
     def block_cholesky_solve_kernel(
         L: wp.array2d[float],
         b: wp.array2d[float],
