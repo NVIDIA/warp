@@ -236,6 +236,23 @@ pre-commit checks:
   script:
     - uvx pre-commit run --all-files --show-diff-on-failure
 
+validate fragments:
+  stage: quality
+  image: $UV_TRIXIE_IMAGE
+  needs: []
+  variables:
+    IPP_RUNNER_EXECUTION_DURATION: "900"
+  extends:
+    - .ipp_lnx_x86_64_cpu_micro
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+      changes:
+        - CHANGELOG.md
+        - changelog.d/**/*
+        - pyproject.toml
+  script:
+    - uvx --from towncrier==25.8.0 towncrier build --draft --version Unreleased
+
 type-check stubs:
   stage: quality
   image: $UV_TRIXIE_IMAGE
