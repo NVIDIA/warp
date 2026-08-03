@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Profiling &#8212; Warp 1.16.0rc5</title>
+    <title>Profiling &#8212; Warp 1.16.0</title>
   
   
   
@@ -69,7 +69,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.16.0rc5" />
+  <meta name="docsearch:version" content="1.16.0" />
   
     
     <script src="../../_static/searchtools.js"></script>
@@ -146,11 +146,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.16.0rc5 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.16.0rc5 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.16.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.16.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.16.0rc5</p>
+    <p class="title logo__title">Warp 1.16.0</p>
   
 </a></div>
     
@@ -290,11 +290,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.16.0rc5 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.16.0rc5 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.16.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.16.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.16.0rc5</p>
+    <p class="title logo__title">Warp 1.16.0</p>
   
 </a>
 
@@ -827,8 +827,8 @@ API <code class="docutils literal notranslate"><span class="pre">cuProfilerStart
 with the two calls.</p></li>
 </ul>
 <p>These calls act on the selected <code class="docutils literal notranslate"><span class="pre">device</span></code>’s CUDA context (the current device by default), and a CUDA context must be
-active for the profiler to intercept them; they have no effect on CPU-only builds.  Note that the external profiler’s
-<em>capture range</em> is process-wide—the first start opens it and the stop closes it for the whole process.</p>
+active for the profiler to intercept them; they have no effect on CPU-only builds.  External profilers may use these
+calls as capture-session markers, but the profiler and its configuration determine the scope of activity collected.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedCudaProfiler</span><span class="p">():</span>
     <span class="n">run_workload</span><span class="p">()</span>
 </pre></div>
