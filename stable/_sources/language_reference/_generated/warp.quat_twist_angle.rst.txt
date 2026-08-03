@@ -9,15 +9,20 @@
       * Kernel
       * Differentiable
 
-   Return the twist magnitude of ``q`` around ``axis``.
+   Return the unsigned twist magnitude of ``q`` around ``axis``.
    
-   This returns an unsigned twist magnitude. For canonicalized quaternions
-   (for example from :func:`quat_from_axis_angle` with angles in ``(-pi, pi)``),
-   both ``+theta`` and ``-theta`` map to ``|theta|``.
+   This discards the sign of the twist, so rotations by ``+theta`` and
+   ``-theta`` around ``axis`` return the same value. Use
+   :func:`quat_twist_angle_signed` when the direction of rotation around
+   ``axis`` matters.
    
-   :param axis: Twist axis (expected to be normalized).
+   The result follows the quaternion branch supplied by ``q``. For
+   canonicalized quaternions, the result is in ``[0, pi]``. Noncanonicalized
+   inputs may return values in ``[0, 2*pi]``.
+   
+   :param axis: Twist axis. Expected to be normalized by the caller.
    :param q: Input quaternion.
    
-   :returns: Twist angle in radians in ``[0, pi]`` for canonicalized inputs.
+   :returns: Unsigned twist angle in radians.
    :rtype: float
    

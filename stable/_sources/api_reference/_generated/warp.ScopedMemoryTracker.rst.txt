@@ -4,21 +4,16 @@
 .. currentmodule:: warp
 
 .. autoclass:: ScopedMemoryTracker
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~ScopedMemoryTracker.__init__
       ~ScopedMemoryTracker.clear
       ~ScopedMemoryTracker.report
    
    
-
    
    
    

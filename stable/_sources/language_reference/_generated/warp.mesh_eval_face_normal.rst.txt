@@ -8,4 +8,35 @@
 
       * Kernel
 
-   Evaluate the face normal the mesh given a face index.
+   Evaluate the unit normal of a face of the :class:`warp.Mesh`.
+   
+   Returns the face's geometric normal, ``normalize(cross(v1 - v0, v2 - v0))`` for the face's
+   vertices ``v0``, ``v1``, ``v2``, in the mesh's local space. Orientation follows the face's
+   winding order.
+   
+   :param id: The mesh identifier
+   :param face: The face (triangle) index
+   
+   :returns: The unit-length face normal, in the mesh's local space.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def face0_normal(mesh_id: wp.uint64, out: wp.array[wp.vec3]):
+           out[0] = wp.mesh_eval_face_normal(mesh_id, 0)
+   
+       points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
+       indices = wp.array([0,3,2, 0,2,1,  4,5,6, 4,6,7,  0,1,5, 0,5,4,
+                           2,3,7, 2,7,6,  0,4,7, 0,7,3,  1,2,6, 1,6,5], dtype=wp.int32)
+       mesh = wp.Mesh(points=points, indices=indices)
+   
+       out = wp.zeros(1, dtype=wp.vec3)
+       wp.launch(face0_normal, dim=1, inputs=[mesh.id], outputs=[out])
+       print(out.numpy()[0])
+   
+   .. testoutput::
+   
+       [ 0.  0. -1.]
+   

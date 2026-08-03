@@ -18,3 +18,27 @@
              The root node index for the specified group. If the group does not exist, returns ``-1``
                  (sentinel for the mesh's global root). Pass ``-1`` to mesh queries to traverse from the global root.
    
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def group1_only(mesh_id: wp.uint64, origin: wp.vec3, dir: wp.vec3, out_face: wp.array[wp.int32]):
+           root = wp.mesh_get_group_root(mesh_id, 1)
+           hit = wp.mesh_query_ray(mesh_id, origin, dir, 1.0e6, root)
+           if hit.result:
+               out_face[0] = hit.face
+   
+       points = wp.array([[0,0,0],[1,0,0],[0,1,0],  [0,0,5],[1,0,5],[0,1,5]], dtype=wp.vec3)
+       indices = wp.array([0,1,2, 3,4,5], dtype=wp.int32)
+       groups = wp.array([0, 1], dtype=wp.int32)
+       mesh = wp.Mesh(points=points, indices=indices, groups=groups)
+   
+       out_face = wp.full(1, -1, dtype=wp.int32)
+       wp.launch(group1_only, dim=1, inputs=[mesh.id, wp.vec3(0.1, 0.1, -1.0), wp.vec3(0.0, 0.0, 1.0)], outputs=[out_face])
+       print("hit face:", out_face.numpy()[0])
+   
+   .. testoutput::
+   
+       hit face: 1
+   

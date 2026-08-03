@@ -4,16 +4,12 @@
 .. currentmodule:: warp.fem
 
 .. autoclass:: ElementIndex
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~ElementIndex.__init__
       ~ElementIndex.as_integer_ratio
       ~ElementIndex.bit_count
       ~ElementIndex.bit_length
@@ -23,7 +19,6 @@
       ~ElementIndex.to_bytes
    
    
-
    
    
    .. rubric:: Attributes

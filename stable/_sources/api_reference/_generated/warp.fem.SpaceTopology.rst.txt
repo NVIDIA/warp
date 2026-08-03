@@ -4,16 +4,12 @@
 .. currentmodule:: warp.fem
 
 .. autoclass:: SpaceTopology
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~SpaceTopology.__init__
       ~SpaceTopology.element_node_count
       ~SpaceTopology.element_node_index
       ~SpaceTopology.element_node_indices
@@ -27,7 +23,6 @@
       ~SpaceTopology.trace
    
    
-
    
    
    .. rubric:: Attributes
@@ -40,5 +35,6 @@
       ~SpaceTopology.name
       ~SpaceTopology.dimension
       ~SpaceTopology.MAX_NODES_PER_ELEMENT
+      ~SpaceTopology.ElementArg
    
    

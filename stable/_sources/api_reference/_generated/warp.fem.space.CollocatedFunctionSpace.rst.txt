@@ -4,16 +4,12 @@
 .. currentmodule:: warp.fem.space
 
 .. autoclass:: CollocatedFunctionSpace
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~CollocatedFunctionSpace.__init__
       ~CollocatedFunctionSpace.divergence_valid
       ~CollocatedFunctionSpace.dof_value
       ~CollocatedFunctionSpace.gradient_valid
@@ -30,7 +26,6 @@
       ~CollocatedFunctionSpace.value_basis_element
    
    
-
    
    
    .. rubric:: Attributes

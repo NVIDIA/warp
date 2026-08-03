@@ -4,21 +4,16 @@
 .. currentmodule:: warp
 
 .. autoclass:: Allocator
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~Allocator.__init__
       ~Allocator.allocate
       ~Allocator.deallocate
    
    
-
    
    
    

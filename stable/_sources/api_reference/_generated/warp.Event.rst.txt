@@ -4,20 +4,15 @@
 .. currentmodule:: warp
 
 .. autoclass:: Event
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~Event.__init__
       ~Event.ipc_handle
    
    
-
    
    
    .. rubric:: Attributes

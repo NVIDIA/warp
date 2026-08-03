@@ -8,4 +8,36 @@
 
       * Kernel
 
-   Query the point-index of the mesh given a face-vertex index.
+   Look up the vertex index stored at a face-vertex position in the :class:`warp.Mesh`'s index buffer.
+   
+   ``index`` is a *face-vertex index* in ``[0, 3 * number_of_faces)``; returns the vertex index it
+   stores (``indices[index]``), which in turn indexes the mesh's points array.
+   
+   :param id: The mesh identifier
+   :param index: A face-vertex index, in ``[0, 3 * number_of_faces)``
+   
+   :returns: The vertex index stored at that position, or -1 if the mesh has no index buffer.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def face0_verts(mesh_id: wp.uint64, out: wp.array[wp.int32]):
+           out[0] = wp.mesh_get_index(mesh_id, 0)
+           out[1] = wp.mesh_get_index(mesh_id, 1)
+           out[2] = wp.mesh_get_index(mesh_id, 2)
+   
+       points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
+       indices = wp.array([0,3,2, 0,2,1,  4,5,6, 4,6,7,  0,1,5, 0,5,4,
+                           2,3,7, 2,7,6,  0,4,7, 0,7,3,  1,2,6, 1,6,5], dtype=wp.int32)
+       mesh = wp.Mesh(points=points, indices=indices)
+   
+       out = wp.zeros(3, dtype=wp.int32)
+       wp.launch(face0_verts, dim=1, inputs=[mesh.id], outputs=[out])
+       print(out.numpy())
+   
+   .. testoutput::
+   
+       [0 3 2]
+   

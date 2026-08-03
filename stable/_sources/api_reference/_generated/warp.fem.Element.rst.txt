@@ -4,10 +4,7 @@
 .. currentmodule:: warp.fem
 
 .. autoclass:: Element
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
@@ -20,10 +17,8 @@
       ~Element.from_bytes
       ~Element.as_integer_ratio
       ~Element.is_integer
-      ~Element.__init__
    
    
-
    
    
    .. rubric:: Attributes

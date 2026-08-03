@@ -4,16 +4,12 @@
 .. currentmodule:: warp.fem
 
 .. autoclass:: NonconformingField
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~NonconformingField.__init__
       ~NonconformingField.divergence_valid
       ~NonconformingField.eval_arg_value
       ~NonconformingField.eval_degree
@@ -32,7 +28,6 @@
       ~NonconformingField.trace
    
    
-
    
    
    .. rubric:: Attributes

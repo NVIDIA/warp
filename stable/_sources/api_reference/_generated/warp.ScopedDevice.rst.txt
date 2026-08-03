@@ -4,19 +4,9 @@
 .. currentmodule:: warp
 
 .. autoclass:: ScopedDevice
-
-   
-   .. automethod:: __init__
-
-   
-   .. rubric:: Methods
-
-   .. autosummary::
-   
-      ~ScopedDevice.__init__
    
    
-
+   
    
    
    

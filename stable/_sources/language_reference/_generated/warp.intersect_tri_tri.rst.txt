@@ -8,11 +8,32 @@
 
       * Kernel
 
-   Test for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Möller's method.
+   Test whether two triangles ``(v0, v1, v2)`` and ``(u0, u1, u2)`` intersect, using Möller's method.
    
-   This function works with single precision, may return incorrect results in some case.
+   All six vertices must be in the same coordinate space. Coplanar triangles are handled (an
+   overlap within their common plane counts as an intersection). This single-precision overload
+   may return incorrect results in near-degenerate cases; use the double-precision overload
+   (``vec3d`` inputs) for greater robustness.
    
-   :returns: > 0 if triangles intersect.
+   :returns: ``1`` if the triangles intersect, ``0`` otherwise.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def tri_tri(out: wp.array[wp.int32]):
+           a0, a1, a2 = wp.vec3(0.0, 0.0, 0.0), wp.vec3(2.0, 0.0, 0.0), wp.vec3(0.0, 2.0, 0.0)
+           b0, b1, b2 = wp.vec3(1.0, 1.0, -1.0), wp.vec3(1.0, 1.0, 1.0), wp.vec3(1.0, -1.0, 0.0)
+           out[0] = wp.intersect_tri_tri(a0, a1, a2, b0, b1, b2)
+   
+       out = wp.zeros(1, dtype=wp.int32)
+       wp.launch(tri_tri, dim=1, inputs=[out])
+       print("intersect:", out.numpy()[0])
+   
+   .. testoutput::
+   
+       intersect: 1
    
 
 .. function:: warp._src.lang.intersect_tri_tri(v0: vec3d, v1: vec3d, v2: vec3d, u0: vec3d, u1: vec3d, u2: vec3d) -> int
@@ -23,9 +44,29 @@
 
       * Kernel
 
-   Test for intersection between two triangles (v0, v1, v2) and (u0, u1, u2) using Möller's method.
+   Test whether two triangles ``(v0, v1, v2)`` and ``(u0, u1, u2)`` intersect, using Möller's method.
    
-   This function works with double precision, results are more accurate than the single precision version.
+   All six vertices must be in the same coordinate space. Coplanar triangles are handled (an
+   overlap within their common plane counts as an intersection). This double-precision overload is
+   more accurate than the single-precision (``vec3`` inputs) overload.
    
-   :returns: > 0 if triangles intersect.
+   :returns: ``1`` if the triangles intersect, ``0`` otherwise.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def tri_tri(out: wp.array[wp.int32]):
+           a0, a1, a2 = wp.vec3d(0.0, 0.0, 0.0), wp.vec3d(2.0, 0.0, 0.0), wp.vec3d(0.0, 2.0, 0.0)
+           b0, b1, b2 = wp.vec3d(1.0, 1.0, -1.0), wp.vec3d(1.0, 1.0, 1.0), wp.vec3d(1.0, -1.0, 0.0)
+           out[0] = wp.intersect_tri_tri(a0, a1, a2, b0, b1, b2)
+   
+       out = wp.zeros(1, dtype=wp.int32)
+       wp.launch(tri_tri, dim=1, inputs=[out])
+       print("intersect:", out.numpy()[0])
+   
+   .. testoutput::
+   
+       intersect: 1
    

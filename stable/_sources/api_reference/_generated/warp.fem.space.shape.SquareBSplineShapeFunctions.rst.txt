@@ -4,16 +4,12 @@
 .. currentmodule:: warp.fem.space.shape
 
 .. autoclass:: SquareBSplineShapeFunctions
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~SquareBSplineShapeFunctions.__init__
       ~SquareBSplineShapeFunctions.element_node_quads
       ~SquareBSplineShapeFunctions.element_node_triangulation
       ~SquareBSplineShapeFunctions.element_vtk_cells
@@ -24,7 +20,6 @@
       ~SquareBSplineShapeFunctions.make_trace_node_quadrature_weight
    
    
-
    
    
    .. rubric:: Attributes

@@ -4,16 +4,12 @@
 .. currentmodule:: warp.fem
 
 .. autoclass:: Hexmesh
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~Hexmesh.__init__
       ~Hexmesh.boundary_side_count
       ~Hexmesh.build_bvh
       ~Hexmesh.bvh_id
@@ -48,7 +44,6 @@
       ~Hexmesh.vertex_count
    
    
-
    
    
    .. rubric:: Attributes

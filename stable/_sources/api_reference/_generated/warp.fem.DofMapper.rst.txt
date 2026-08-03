@@ -4,19 +4,9 @@
 .. currentmodule:: warp.fem
 
 .. autoclass:: DofMapper
-
-   
-   .. automethod:: __init__
-
-   
-   .. rubric:: Methods
-
-   .. autosummary::
-   
-      ~DofMapper.__init__
    
    
-
+   
    
    
    .. rubric:: Attributes

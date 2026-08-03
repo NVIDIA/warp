@@ -8,17 +8,49 @@
 
       * Kernel
 
-   Construct a ray query against a BVH object.
+   Construct a ray query against a BVH.
    
-   This query can be used to iterate over all bounds that intersect the ray.
-   To start a query from a specific node, set ``root`` to the index of the node. The root
-   can be obtained using the :func:`bvh_get_group_root` function when creating a grouped BVH.
-   When ``root`` is a valid (>=0) value, the traversal will be confined to the subtree starting from the root.
-   If ``root`` is -1 (default), traversal starts at the BVH's global root.
-   The query will only traverse down from that node, limiting traversal to that subtree.
+   Returns a query that iterates over every item in the BVH whose stored bounding box is
+   intersected by the ray. Advance the query and read each result with :func:`bvh_query_next`.
+   ``start`` and ``dir`` are given in BVH space, i.e. the same coordinate space as
+   the ``lowers``/``uppers`` arrays passed to :class:`warp.Bvh`. ``dir`` need not be normalized,
+   but the ``max_dist`` cutoff of :func:`bvh_query_next` is measured in multiples of its length,
+   so normalize it for ``max_dist`` to be a distance in BVH-space units.
+   
+   To restrict traversal to a subtree, set ``root`` to that node's index (for a grouped BVH the
+   group root is obtained from :func:`bvh_get_group_root`). If ``root`` is -1 (default),
+   traversal starts at the BVH's global root.
    
    :param id: The BVH identifier
-   :param start: The start of the ray in BVH space
-   :param dir: The direction of the ray in BVH space (should be normalized)
-   :param root: The root to begin the query from (optional, default: -1)
+   :param start: The ray origin, in BVH space
+   :param dir: The ray direction, in BVH space (see above on normalization)
+   :param root: The node to begin the query from, or -1 (default) for the BVH's global root
+   
+   :returns: A :class:`warp.BvhQuery`. It is opaque; pass it to :func:`bvh_query_next`, which writes
+             the index of each intersected item (an index into the arrays passed to :class:`warp.Bvh`)
+             to its ``index`` argument.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def cast_ray(bvh_id: wp.uint64, lowers: wp.array[wp.vec3], uppers: wp.array[wp.vec3],
+                    origin: wp.vec3, dir: wp.vec3, centers: wp.array[wp.vec3]):
+           query = wp.bvh_query_ray(bvh_id, origin, dir)
+           item = int(0)
+           while wp.bvh_query_next(query, item):
+               centers[item] = 0.5 * (lowers[item] + uppers[item])
+   
+       lowers = wp.array([[0, 0, 0], [2, 0, 0], [4, 0, 0]], dtype=wp.vec3)
+       uppers = wp.array([[1, 1, 1], [3, 1, 1], [5, 1, 1]], dtype=wp.vec3)
+       bvh = wp.Bvh(lowers=lowers, uppers=uppers)
+   
+       centers = wp.zeros(3, dtype=wp.vec3)
+       wp.launch(cast_ray, dim=1, inputs=[bvh.id, lowers, uppers, wp.vec3(-1.0, 0.5, 0.5), wp.vec3(1.0, 0.0, 0.0)], outputs=[centers])
+       print(centers.numpy().tolist())
+   
+   .. testoutput::
+   
+       [[0.5, 0.5, 0.5], [2.5, 0.5, 0.5], [4.5, 0.5, 0.5]]
    

@@ -4,13 +4,9 @@
 .. currentmodule:: warp.fem
 
 .. autoclass:: Polynomial
-
-   
-   .. automethod:: __init__
-
    
    
-
+   
    
    
    .. rubric:: Attributes

@@ -9,14 +9,39 @@
       * Kernel
       * Differentiable
 
-   Find the closest points between two edges.
+   Find the closest points between two edges (line segments) ``[p1, q1]`` and ``[p2, q2]``.
    
-   :param p1: First point of first edge
-   :param q1: Second point of first edge
-   :param p2: First point of second edge
-   :param q2: Second point of second edge
-   :param epsilon: Zero tolerance for determining if points in an edge are degenerate.
-   :param out: vec3 output containing (s,t,d), where ``s`` in [0,1] is the barycentric weight for the first edge, ``t`` is the barycentric weight for the second edge, and ``d`` is the distance between the two edges at these two closest points.
+   All four endpoints must be in the same coordinate space.
    
-   :returns: Barycentric weights to the points on each edge, as well as the closest distance between the edges.
+   :param p1: Start point of the first edge
+   :param q1: End point of the first edge
+   :param p2: Start point of the second edge
+   :param q2: End point of the second edge
+   :param epsilon: An edge whose squared length is ``<= epsilon`` is treated as a single point
+                   (degenerate); its barycentric weight is then returned as 0.
+   
+   :returns: ``s`` in [0, 1] is the barycentric weight of the closest point on
+             the first edge (the point is ``p1 + s * (q1 - p1)``), ``t`` in [0, 1] is the barycentric
+             weight on the second edge (``p2 + t * (q2 - p2)``), and ``d`` is the distance between those
+             two closest points.
+   :rtype: A ``vec3`` ``(s, t, d)``
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def edge_edge(out: wp.array[wp.vec3]):
+           p1, q1 = wp.vec3(0.0, 0.0, 0.0), wp.vec3(1.0, 0.0, 0.0)
+           p2, q2 = wp.vec3(0.5, 1.0, 1.0), wp.vec3(0.5, 1.0, -1.0)
+           out[0] = wp.closest_point_edge_edge(p1, q1, p2, q2, 1.0e-6)
+   
+       out = wp.zeros(1, dtype=wp.vec3)
+       wp.launch(edge_edge, dim=1, inputs=[out])
+       s, t, d = out.numpy()[0]
+       print(f"s={s:.1f} t={t:.1f} d={d:.1f}")
+   
+   .. testoutput::
+   
+       s=0.5 t=0.5 d=1.0
    

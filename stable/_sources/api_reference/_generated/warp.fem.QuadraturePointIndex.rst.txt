@@ -4,16 +4,12 @@
 .. currentmodule:: warp.fem
 
 .. autoclass:: QuadraturePointIndex
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~QuadraturePointIndex.__init__
       ~QuadraturePointIndex.as_integer_ratio
       ~QuadraturePointIndex.bit_count
       ~QuadraturePointIndex.bit_length
@@ -23,7 +19,6 @@
       ~QuadraturePointIndex.to_bytes
    
    
-
    
    
    .. rubric:: Attributes

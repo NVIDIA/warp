@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Runtime &#8212; Warp 1.15.0</title>
+    <title>Runtime &#8212; Warp 1.16.0</title>
   
   
   
@@ -28,8 +28,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
-<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+  <link href="../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
@@ -37,57 +37,64 @@
     <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=3d681599" />
   
   <!-- So that users can add custom icons -->
-  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <script defer src="../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
-<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
 
 
 
-    <script src="../_static/documentation_options.js?v=e6db31ea"></script>
-    <script src="../_static/doctools.js?v=9bcbadda"></script>
-    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/documentation_options.js?v=d123bb80"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../_static/copybutton.js?v=fd10adb8"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'user_guide/runtime';</script>
     <script>
-        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.15';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.16';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
 
     <link rel="icon" href="../_static/favicon.png"/>
 
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Devices" href="devices.html" />
+    <link rel="next" title="Differentiability" href="differentiability.html" />
     <link rel="prev" title="Basics" href="basics.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.15.0" />
+  <meta name="docsearch:version" content="1.16.0" />
+  
+    
+    <script src="../_static/searchtools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script src="../searchindex.js"></script>
+  
 
 
   </head>
 
-  
-  
-  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+  <body data-default-mode="">
+
 
   
   
   <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
-
 
   
   <div id="pst-scroll-pixel-helper"></div>
   
   <button type="button" class="btn rounded-pill" id="pst-back-to-top">
     <i class="fa-solid fa-arrow-up"></i>Back to top</button>
-
+  
+  
+  
   
   <dialog id="pst-search-dialog">
     
@@ -113,7 +120,7 @@
 </div>
 
   
-    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
 <div class="bd-header__inner bd-page-width">
   <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
     <span class="fa-solid fa-bars"></span>
@@ -139,11 +146,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.16.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.16.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.15.0</p>
+    <p class="title logo__title">Warp 1.16.0</p>
   
 </a></div>
     
@@ -193,11 +200,18 @@
       
         <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
       
         <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -210,8 +224,7 @@
           
           
           
-          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -222,8 +235,7 @@
           
           
           
-          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
       
@@ -278,11 +290,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.16.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.16.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.15.0</p>
+    <p class="title logo__title">Warp 1.16.0</p>
   
 </a>
 
@@ -326,11 +338,18 @@
         
           <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
         
           <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -343,8 +362,7 @@
           
           
           
-          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -355,8 +373,7 @@
           
           
           
-          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
         
@@ -375,41 +392,37 @@
   <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="compatibility.html">Compatibility &amp; Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="basics.html">Basics</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Runtime</a></li>
-<li class="toctree-l1"><a class="reference internal" href="devices.html">Devices</a></li>
 <li class="toctree-l1"><a class="reference internal" href="differentiability.html">Differentiability</a></li>
-<li class="toctree-l1"><a class="reference internal" href="generics.html">Generics</a></li>
-<li class="toctree-l1"><a class="reference internal" href="tiles.html">Tiles</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="programming_model.html">Programming Model</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="programming_model/generics.html">Generics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="programming_model/tiles.html">Tiles</a></li>
+<li class="toctree-l2"><a class="reference internal" href="programming_model/code_generation.html">Code Generation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="programming_model/cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="interoperability.html">Interoperability</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l2"><a class="reference internal" href="interoperability_pytorch.html">PyTorch Interoperability</a></li>
-<li class="toctree-l2"><a class="reference internal" href="interoperability_jax.html">JAX Interoperability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="interoperability/pytorch.html">PyTorch Interoperability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="interoperability/jax.html">JAX Interoperability</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="execution_and_performance.html">Execution and Performance</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="execution_and_performance/concurrency.html">Concurrency</a></li>
+<li class="toctree-l2"><a class="reference internal" href="execution_and_performance/memory_management.html">Memory Allocation and Access</a></li>
+<li class="toctree-l2"><a class="reference internal" href="execution_and_performance/profiling.html">Profiling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="execution_and_performance/deterministic_execution.html">Deterministic Execution</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration</a></li>
-<li class="toctree-l1"><a class="reference internal" href="cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
 <li class="toctree-l1"><a class="reference internal" href="debugging.html">Debugging</a></li>
-<li class="toctree-l1"><a class="reference internal" href="deterministic_execution.html">Deterministic Execution</a></li>
 <li class="toctree-l1"><a class="reference internal" href="limitations.html">Limitations</a></li>
-<li class="toctree-l1"><a class="reference internal" href="contribution_guide.html">Contribution Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="publications.html">Publications using Warp</a></li>
-<li class="toctree-l1"><a class="reference internal" href="compatibility.html">Compatibility &amp; Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="faq.html">FAQ</a></li>
-<li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
 </ul>
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Deep Dive</span></p>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Language Reference</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../deep_dive/codegen.html">Code Generation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../deep_dive/allocators.html">Allocators</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../deep_dive/memory_access.html">CPU/GPU cross-device memory access</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../deep_dive/concurrency.html">Concurrency</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../deep_dive/profiling.html">Profiling</a></li>
-</ul>
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Domain Modules</span></p>
-<ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../domain_modules/sparse.html">Sparse Matrices</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../domain_modules/fem.html">FEM Toolkit</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../domain_modules/render.html">Rendering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../language_reference/builtins.html">Built-Ins</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="nav bd-sidenav">
@@ -423,9 +436,17 @@
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_types.html">warp.types</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_utils.html">warp.utils</a></li>
 </ul>
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Language Reference</span></p>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Domain Modules</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../language_reference/builtins.html">Built-Ins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../domain_modules/sparse.html">Sparse Matrices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../domain_modules/fem.html">FEM Toolkit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../domain_modules/render.html">Rendering</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../project/contribution_guide.html">Contribution Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../project/publications.html">Publications using Warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../project/changelog.html">Changelog</a></li>
 </ul>
 </div>
 </nav></div>
@@ -534,7 +555,7 @@ In this case, threads are not assigned a single index, but a coordinate in an n-
 <p>Currently, kernels launched on CPU devices will be executed in serial.
 Kernels launched on CUDA devices will be launched in parallel with a fixed block-size.</p>
 </div>
-<p>In the Warp <a class="reference internal" href="basics.html#compilation-model"><span class="std std-ref">Compilation Model</span></a>, kernels are just-in-time compiled into dynamic libraries and PTX using
+<p>In the Warp <a class="reference internal" href="programming_model.html#compilation-model"><span class="std std-ref">Compilation Model</span></a>, kernels are just-in-time compiled into dynamic libraries and PTX using
 C++/CUDA as an intermediate representation.
 To avoid excessive runtime recompilation of kernel code, these files are stored in a cache directory
 named with a module-dependent hash to allow for the reuse of previously compiled modules.
@@ -543,11 +564,11 @@ The location of the kernel cache is printed when Warp is initialized.
 generated compilation artifacts as Warp does not automatically try to keep the cache below a certain size.</p>
 <p>Note that these functions only clear Warp’s own cache. The NVIDIA CUDA driver
 maintains a separate compute cache that is not affected by Warp’s cache-clearing
-functions (see <a class="reference internal" href="../deep_dive/profiling.html#benchmarking-cold-start-compilation"><span class="std std-ref">Benchmarking Cold-Start Compilation</span></a>).</p>
+functions (see <a class="reference internal" href="execution_and_performance/profiling.html#benchmarking-cold-start-compilation"><span class="std std-ref">Benchmarking Cold-Start Compilation</span></a>).</p>
 <section id="runtime-kernel-creation">
 <span id="id1"></span><h3>Runtime Kernel Creation<a class="headerlink" href="#runtime-kernel-creation" title="Link to this heading">#</a></h3>
 <p>Warp allows generating kernels on-the-fly with various customizations, including closure support.
-Refer to the <a class="reference internal" href="../deep_dive/codegen.html#code-generation"><span class="std std-ref">Code Generation</span></a> section for the latest features.</p>
+Refer to the <a class="reference internal" href="programming_model/code_generation.html#code-generation"><span class="std std-ref">Code Generation</span></a> section for the latest features.</p>
 </section>
 <section id="launch-objects">
 <h3>Launch Objects<a class="headerlink" href="#launch-objects" title="Link to this heading">#</a></h3>
@@ -999,7 +1020,7 @@ using <code class="docutils literal notranslate"><span class="pre">wp.zeros(shap
 <a class="reference internal" href="../api_reference/_generated/warp.bfloat16.html#warp.bfloat16" title="warp.bfloat16"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.bfloat16</span></code></a> data as <code class="docutils literal notranslate"><span class="pre">uint16</span></code> internally. This affects
 how array contents are displayed when calling <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.numpy" title="warp.array.numpy"><code class="xref py py-meth docutils literal notranslate"><span class="pre">numpy()</span></code></a> or
 printing an array.</p>
-<p>Without <a class="reference external" href="https://github.com/jax-ml/ml-dtypes">ml-dtypes</a>,
+<p>Without <a class="reference external" href="https://github.com/jax-ml/ml_dtypes">ml-dtypes</a>,
 <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.numpy" title="warp.array.numpy"><code class="xref py py-meth docutils literal notranslate"><span class="pre">numpy()</span></code></a> and <a class="reference external" href="https://docs.python.org/3/library/functions.html#print" title="(in Python v3.14)"><code class="xref py py-func docutils literal notranslate"><span class="pre">print()</span></code></a> show raw <code class="docutils literal notranslate"><span class="pre">uint16</span></code> values:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">,</span> <span class="mf">3.14</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">bfloat16</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
@@ -1615,7 +1636,7 @@ supported by the target data type.</p>
 </pre></div>
 </div>
 <p>Note that using <a class="reference internal" href="../api_reference/_generated/warp.constant.html#warp.constant" title="warp.constant"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.constant()</span></code></a> is no longer required, but it performs some type checking and can serve as a reminder that the variables are meant to be used as Warp constants.</p>
-<p>The behavior is simple and intuitive when the referenced Python variables never change. For details and more complex scenarios, refer to <a class="reference internal" href="../deep_dive/codegen.html#external-references"><span class="std std-ref">External References and Constants</span></a>. The <a class="reference internal" href="../deep_dive/codegen.html#code-generation"><span class="std std-ref">Code Generation</span></a> section contains additional information and tips for advanced usage.</p>
+<p>The behavior is simple and intuitive when the referenced Python variables never change. For details and more complex scenarios, refer to <a class="reference internal" href="programming_model/code_generation.html#external-references"><span class="std std-ref">External References and Constants</span></a>. The <a class="reference internal" href="programming_model/code_generation.html#code-generation"><span class="std std-ref">Code Generation</span></a> section contains additional information and tips for advanced usage.</p>
 <section id="predefined-constants">
 <h3>Predefined Constants<a class="headerlink" href="#predefined-constants" title="Link to this heading">#</a></h3>
 <p>For convenience, Warp has a number of predefined mathematical constants that
@@ -1774,22 +1795,214 @@ between <a class="reference external" href="Matrices">matrix types</a>.</p>
 <p>The <a class="reference internal" href="../api_reference/_generated/warp.map.html#warp.map" title="warp.map"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.map()</span></code></a> function can be used to apply a function to each element of an array.</p>
 </section>
 </section>
+<section id="devices">
+<span id="id6"></span><h2>Devices<a class="headerlink" href="#devices" title="Link to this heading">#</a></h2>
+<p>Warp assigns unique string aliases to all supported compute devices in the system.  There is currently a single CPU device exposed as <code class="docutils literal notranslate"><span class="pre">&quot;cpu&quot;</span></code>.  Each CUDA-capable GPU gets an alias of the form <code class="docutils literal notranslate"><span class="pre">&quot;cuda:i&quot;</span></code>, where <code class="docutils literal notranslate"><span class="pre">i</span></code> is the CUDA device ordinal.  This convention should be familiar to users of other popular frameworks like PyTorch.</p>
+<p>It is possible to explicitly target a specific device with each Warp API call using the <code class="docutils literal notranslate"><span class="pre">device</span></code> argument:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+
+<span class="n">b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">b</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">b</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+
+<span class="n">c</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:1&quot;</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">c</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">c</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:1&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>A Warp CUDA device (<code class="docutils literal notranslate"><span class="pre">&quot;cuda:i&quot;</span></code>) corresponds to the primary CUDA context of device <code class="docutils literal notranslate"><span class="pre">i</span></code>.
+This is compatible with frameworks like PyTorch and other software that uses the CUDA Runtime API.
+It makes interoperability easy because GPU resources like memory can be shared with Warp.</p>
+</div>
+<p>Warp also provides functions that can be used to query the available devices on the system:</p>
+<section id="default-device">
+<h3>Default Device<a class="headerlink" href="#default-device" title="Link to this heading">#</a></h3>
+<p>To simplify writing code, Warp has the concept of <strong>default device</strong>.  When the <code class="docutils literal notranslate"><span class="pre">device</span></code> argument is omitted from a Warp API call, the default device will be used.</p>
+<p>Calling <a class="reference internal" href="../api_reference/_generated/warp.get_device.html#warp.get_device" title="warp.get_device"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.get_device()</span></code></a> without an argument
+will return an instance of <a class="reference internal" href="../api_reference/_generated/warp.Device.html#warp.Device" title="warp.Device"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Device</span></code></a> for the default device.</p>
+<p>During Warp initialization, the default device is set to <code class="docutils literal notranslate"><span class="pre">&quot;cuda:0&quot;</span></code> if CUDA is available.  Otherwise, the default device is <code class="docutils literal notranslate"><span class="pre">&quot;cpu&quot;</span></code>.
+If the default device is changed, <a class="reference internal" href="../api_reference/_generated/warp.get_preferred_device.html#warp.get_preferred_device" title="warp.get_preferred_device"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.get_preferred_device()</span></code></a> can be used to get
+the <em>original</em> default device.</p>
+<p><a class="reference internal" href="../api_reference/_generated/warp.set_device.html#warp.set_device" title="warp.set_device"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.set_device()</span></code></a> can be used to change the default device:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">set_device</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+<span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">set_device</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">b</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">set_device</span><span class="p">(</span><span class="s2">&quot;cuda:1&quot;</span><span class="p">)</span>
+<span class="n">c</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">c</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">c</span><span class="p">])</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>For CUDA devices, <a class="reference internal" href="../api_reference/_generated/warp.set_device.html#warp.set_device" title="warp.set_device"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.set_device()</span></code></a> does two things: It sets the Warp default device and it makes the device’s CUDA context current.  This helps to minimize the number of CUDA context switches in blocks of code targeting a single device.</p>
+</div>
+<p>For PyTorch users, this function is similar to <a class="reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.cuda.set_device.html#torch.cuda.set_device" title="(in PyTorch v2.13)"><code class="xref py py-func docutils literal notranslate"><span class="pre">torch.cuda.set_device()</span></code></a>.
+It is still possible to specify a different device in individual API calls, like in this snippet:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># set default device</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">set_device</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+
+<span class="c1"># use default device</span>
+<span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+
+<span class="c1"># use explicit devices</span>
+<span class="n">b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
+<span class="n">c</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:1&quot;</span><span class="p">)</span>
+
+<span class="c1"># use default device</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+
+<span class="n">wp</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="scoped-devices">
+<h3>Scoped Devices<a class="headerlink" href="#scoped-devices" title="Link to this heading">#</a></h3>
+<p>Another way to manage the default device is using <a class="reference internal" href="../api_reference/_generated/warp.ScopedDevice.html#warp.ScopedDevice" title="warp.ScopedDevice"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedDevice</span></code></a> objects.
+They can be arbitrarily nested and restore the previous default device on exit:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedDevice</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">):</span>
+    <span class="c1"># alloc and launch on &quot;cpu&quot;</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+
+<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedDevice</span><span class="p">(</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">):</span>
+    <span class="c1"># alloc on &quot;cuda:0&quot;</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedDevice</span><span class="p">(</span><span class="s2">&quot;cuda:1&quot;</span><span class="p">):</span>
+        <span class="c1"># alloc and launch on &quot;cuda:1&quot;</span>
+        <span class="n">c</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+        <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">c</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">c</span><span class="p">])</span>
+
+    <span class="c1"># launch on &quot;cuda:0&quot;</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">b</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">b</span><span class="p">])</span>
+</pre></div>
+</div>
+<section id="example-using-wp-scopeddevice-with-multiple-gpus">
+<h4>Example: Using <a class="reference internal" href="../api_reference/_generated/warp.ScopedDevice.html#warp.ScopedDevice" title="warp.ScopedDevice"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedDevice</span></code></a> with multiple GPUs<a class="headerlink" href="#example-using-wp-scopeddevice-with-multiple-gpus" title="Link to this heading">#</a></h4>
+<p>The following example shows how to allocate arrays and launch kernels on all available CUDA devices.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">inc</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">a</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">a</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">+</span> <span class="mf">1.0</span>
+
+
+<span class="c1"># get all CUDA devices</span>
+<span class="n">devices</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_cuda_devices</span><span class="p">()</span>
+<span class="n">device_count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">devices</span><span class="p">)</span>
+
+<span class="c1"># number of launches</span>
+<span class="n">iters</span> <span class="o">=</span> <span class="mi">1000</span>
+
+<span class="c1"># list of arrays, one per device</span>
+<span class="n">arrs</span> <span class="o">=</span> <span class="p">[]</span>
+
+<span class="c1"># loop over all devices</span>
+<span class="k">for</span> <span class="n">device</span> <span class="ow">in</span> <span class="n">devices</span><span class="p">:</span>
+    <span class="c1"># use a ScopedDevice to set the target device</span>
+    <span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedDevice</span><span class="p">(</span><span class="n">device</span><span class="p">):</span>
+        <span class="c1"># allocate array</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">250</span> <span class="o">*</span> <span class="mi">1024</span> <span class="o">*</span> <span class="mi">1024</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+        <span class="n">arrs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+
+        <span class="c1"># launch kernels</span>
+        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">iters</span><span class="p">):</span>
+            <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">inc</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+
+<span class="c1"># synchronize all devices</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">synchronize</span><span class="p">()</span>
+
+<span class="c1"># print results</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">device_count</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">arrs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">device</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">arrs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="current-cuda-device">
+<h3>Current CUDA Device<a class="headerlink" href="#current-cuda-device" title="Link to this heading">#</a></h3>
+<p>Warp uses the device alias <code class="docutils literal notranslate"><span class="pre">&quot;cuda&quot;</span></code> to target the current CUDA device.  This allows external code to manage the CUDA device on which to execute Warp scripts.  It is analogous to the PyTorch <code class="docutils literal notranslate"><span class="pre">&quot;cuda&quot;</span></code> device, which should be familiar to Torch users and simplify interoperation.</p>
+<p>In this snippet, we use PyTorch to manage the current CUDA device and invoke a Warp kernel on that device:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">example_function</span><span class="p">():</span>
+    <span class="c1"># create a Torch tensor on the current CUDA device</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
+
+    <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+
+    <span class="c1"># launch a Warp kernel on the current CUDA device</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
+
+<span class="c1"># use Torch to set the current CUDA device and run example_function() on that device</span>
+<span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">set_device</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">example_function</span><span class="p">()</span>
+
+<span class="c1"># use Torch to change the current CUDA device and re-run example_function() on that device</span>
+<span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">set_device</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">example_function</span><span class="p">()</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Using the device alias <code class="docutils literal notranslate"><span class="pre">&quot;cuda&quot;</span></code> can be problematic if the code runs in an environment where another part of the code can unpredictably change the CUDA context.  Using an explicit CUDA device like <code class="docutils literal notranslate"><span class="pre">&quot;cuda:i&quot;</span></code> is recommended to avoid such issues.</p>
+</div>
+</section>
+<section id="device-synchronization">
+<h3>Device Synchronization<a class="headerlink" href="#device-synchronization" title="Link to this heading">#</a></h3>
+<p>CUDA kernel launches and memory operations can execute asynchronously. For the
+choice between device, stream, and event synchronization—and the performance
+cost of each—see <a class="reference internal" href="execution_and_performance/concurrency.html#synchronization-guidance"><span class="std std-ref">Synchronization Guidance</span></a>.</p>
+</section>
+<section id="custom-cuda-contexts">
+<h3>Custom CUDA Contexts<a class="headerlink" href="#custom-cuda-contexts" title="Link to this heading">#</a></h3>
+<p>Warp is designed to work with arbitrary CUDA contexts so it can easily integrate into different workflows.</p>
+<p>Applications built on the CUDA Runtime API target the <em>primary context</em> of each device.  The Runtime API hides CUDA context management under the hood.  In Warp, device <code class="docutils literal notranslate"><span class="pre">&quot;cuda:i&quot;</span></code> represents the primary context of device <code class="docutils literal notranslate"><span class="pre">i</span></code>, which aligns with the CUDA Runtime API.</p>
+<p>Applications built on the CUDA Driver API work with CUDA contexts directly and can create custom CUDA contexts on any device.  Custom CUDA contexts can be created with specific affinity or interop features that benefit the application.  Warp can work with these CUDA contexts as well.</p>
+<p>The special device alias <code class="docutils literal notranslate"><span class="pre">&quot;cuda&quot;</span></code> can be used to target the current CUDA context, whether this is a primary or custom context.</p>
+<p>In addition, Warp allows registering new device aliases for custom CUDA contexts using
+<a class="reference internal" href="../api_reference/_generated/warp.map_cuda_device.html#warp.map_cuda_device" title="warp.map_cuda_device"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.map_cuda_device()</span></code></a> so that they can be explicitly targeted by name.
+If the <code class="docutils literal notranslate"><span class="pre">CUcontext</span></code> pointer is available, it can be used to create a new device alias like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">map_cuda_device</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">,</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_void_p</span><span class="p">(</span><span class="n">context_ptr</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>Alternatively, if the custom CUDA context was made current by the application, the pointer can be omitted:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">map_cuda_device</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>In either case, mapping the custom CUDA context allows us to target the context directly using the assigned alias:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedDevice</span><span class="p">(</span><span class="s2">&quot;foo&quot;</span><span class="p">):</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">size</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>For allocation choices and direct access across CPU and CUDA devices, including
+CUDA peer access, see <a class="reference internal" href="execution_and_performance/memory_management.html"><span class="doc">Memory Allocation and Access</span></a>.</p>
+</section>
+</section>
 <section id="streams">
 <h2>Streams<a class="headerlink" href="#streams" title="Link to this heading">#</a></h2>
 <p>A CUDA stream is a sequence of operations that execute in order on the GPU.
 Operations from different streams may run concurrently and may be interleaved by the device scheduler.
-See the <a class="reference internal" href="../deep_dive/concurrency.html#streams"><span class="std std-ref">Streams documentation</span></a> for more information on using streams.</p>
+See the <a class="reference internal" href="execution_and_performance/concurrency.html#streams"><span class="std std-ref">Streams documentation</span></a> for more information on using streams.</p>
 </section>
 <section id="events">
 <h2>Events<a class="headerlink" href="#events" title="Link to this heading">#</a></h2>
 <p>Events can be inserted into streams and used to synchronize a stream
-with a different one. See the <a class="reference internal" href="../deep_dive/concurrency.html#cuda-events"><span class="std std-ref">Events documentation</span></a> for
+with a different one. See the <a class="reference internal" href="execution_and_performance/concurrency.html#cuda-events"><span class="std std-ref">Events documentation</span></a> for
 information on how to use events for cross-stream synchronization
-or the <a class="reference internal" href="../deep_dive/profiling.html#cuda-events-profiling"><span class="std std-ref">CUDA Events Timing documentation</span></a> for
+or the <a class="reference internal" href="execution_and_performance/profiling.html#cuda-events-profiling"><span class="std std-ref">CUDA Events Timing documentation</span></a> for
 information on how to use events for measuring GPU performance.</p>
 </section>
 <section id="graphs">
-<span id="id6"></span><h2>Graphs<a class="headerlink" href="#graphs" title="Link to this heading">#</a></h2>
+<span id="id7"></span><h2>Graphs<a class="headerlink" href="#graphs" title="Link to this heading">#</a></h2>
 <p>Launching kernels from Python introduces significant additional overhead compared to C++ or native programs.
 To address this, Warp exposes the concept of <a class="reference external" href="https://developer.nvidia.com/blog/cuda-graphs/">CUDA graphs</a>
 to allow recording large batches of kernels and replaying them with very little CPU overhead.
@@ -2060,7 +2273,7 @@ also requires Python callback functions for <code class="docutils literal notran
 </div>
 </section>
 <section id="cpu-graphs">
-<span id="id7"></span><h3>CPU Graphs<a class="headerlink" href="#cpu-graphs" title="Link to this heading">#</a></h3>
+<span id="id8"></span><h3>CPU Graphs<a class="headerlink" href="#cpu-graphs" title="Link to this heading">#</a></h3>
 <div class="admonition-experimental admonition">
 <p class="admonition-title">Experimental</p>
 <p>CPU graph capture is experimental. The recorded operation set, file format, and
@@ -2105,11 +2318,21 @@ are replayed with <a class="reference internal" href="../api_reference/_generate
 (<a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.zero_" title="warp.array.zero_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.zero_()</span></code></a>), plus contiguous
 <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.fill_" title="warp.array.fill_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.fill_()</span></code></a>.</p></li>
 <li><p>Host library helpers including
+<a class="reference internal" href="../api_reference/_generated/warp.utils.array_sum.html#warp.utils.array_sum" title="warp.utils.array_sum"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_sum()</span></code></a>,
+<a class="reference internal" href="../api_reference/_generated/warp.utils.array_inner.html#warp.utils.array_inner" title="warp.utils.array_inner"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_inner()</span></code></a>,
 <a class="reference internal" href="../api_reference/_generated/warp.utils.array_scan.html#warp.utils.array_scan" title="warp.utils.array_scan"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_scan()</span></code></a>,
 <a class="reference internal" href="../api_reference/_generated/warp.utils.radix_sort_pairs.html#warp.utils.radix_sort_pairs" title="warp.utils.radix_sort_pairs"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.radix_sort_pairs()</span></code></a>,
 <a class="reference internal" href="../api_reference/_generated/warp.utils.segmented_sort_pairs.html#warp.utils.segmented_sort_pairs" title="warp.utils.segmented_sort_pairs"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.segmented_sort_pairs()</span></code></a>,
 <a class="reference internal" href="../api_reference/_generated/warp.utils.runlength_encode.html#warp.utils.runlength_encode" title="warp.utils.runlength_encode"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.runlength_encode()</span></code></a>, and the
 <code class="docutils literal notranslate"><span class="pre">warp.sparse</span></code> BSR <code class="docutils literal notranslate"><span class="pre">from_triplets</span></code> / <code class="docutils literal notranslate"><span class="pre">transpose</span></code> topology builders.</p></li>
+<li><p>Bounding-volume-hierarchy updates (<a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh.refit" title="warp.Bvh.refit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">wp.Bvh.refit()</span></code></a> and
+<a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh.rebuild" title="warp.Bvh.rebuild"><code class="xref py py-meth docutils literal notranslate"><span class="pre">wp.Bvh.rebuild()</span></code></a>), re-run on replay against the
+current <code class="docutils literal notranslate"><span class="pre">lowers</span></code> / <code class="docutils literal notranslate"><span class="pre">uppers</span></code> so a captured graph queries the updated tree.
+These make the graph replay-only (see the limitations below).</p></li>
+<li><p>Live CPU graphs record <a class="reference internal" href="../api_reference/_generated/warp.HashGrid.html#warp.HashGrid.build" title="warp.HashGrid.build"><code class="xref py py-meth docutils literal notranslate"><span class="pre">HashGrid.build()</span></code></a> in
+operation order. Each replay reads the current contents of the normalized
+point and optional group arrays, and the first replay may allocate or grow
+the grid buffers.</p></li>
 <li><p>Conditional graph nodes (<a class="reference internal" href="../api_reference/_generated/warp.capture_if.html#warp.capture_if" title="warp.capture_if"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_if()</span></code></a> and
 <a class="reference internal" href="../api_reference/_generated/warp.capture_while.html#warp.capture_while" title="warp.capture_while"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_while()</span></code></a>). The condition is re-evaluated
 on every replay, so a captured <code class="docutils literal notranslate"><span class="pre">while</span></code> loop can iterate a different number
@@ -2132,6 +2355,13 @@ setup work that should not enter the replay stream.</p>
 (non-contiguous) 1D arrays – into the CPU APIC byte stream. Negative strides raise
 <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a> inside a CPU <a class="reference internal" href="../api_reference/_generated/warp.ScopedCapture.html#warp.ScopedCapture" title="warp.ScopedCapture"><code class="xref py py-class docutils literal notranslate"><span class="pre">ScopedCapture</span></code></a>; run them outside the
 captured region.</p></li>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.utils.array_sum.html#warp.utils.array_sum" title="warp.utils.array_sum"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_sum()</span></code></a> and
+<a class="reference internal" href="../api_reference/_generated/warp.utils.array_inner.html#warp.utils.array_inner" title="warp.utils.array_inner"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_inner()</span></code></a> require an explicit
+<code class="docutils literal notranslate"><span class="pre">out</span></code> array for non-empty APIC captures. Explicit counts, composite dtypes,
+and positive-stride axis reductions are recorded; negative strides raise
+<a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a>, and negative counts raise <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">RuntimeError</span></code></a>.
+Counts and reduction strides must fit a signed 32-bit integer, and participating
+addresses and layout strides must be aligned to the reduction’s scalar type.</p></li>
 <li><p><a class="reference internal" href="../api_reference/_generated/warp.utils.runlength_encode.html#warp.utils.runlength_encode" title="warp.utils.runlength_encode"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.runlength_encode()</span></code></a> requires an explicit
 <code class="docutils literal notranslate"><span class="pre">run_count</span></code> array during CPU APIC capture; the host-return form (<code class="docutils literal notranslate"><span class="pre">run_count=None</span></code>) raises
 <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a>, because its capture-time host integer cannot represent the
@@ -2153,15 +2383,25 @@ count after replay, or avoid the readback inside the captured region.</p></li>
 the sparse status during a live CUDA graph capture (it requires a device-to-host
 readback) or during a CPU APIC capture (a recorded status update is applied only
 on replay). Read the status after replay instead.</p></li>
+<li><p>A captured <a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh.refit" title="warp.Bvh.refit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">wp.Bvh.refit()</span></code></a> or
+<a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh.rebuild" title="warp.Bvh.rebuild"><code class="xref py py-meth docutils literal notranslate"><span class="pre">wp.Bvh.rebuild()</span></code></a> makes the graph replay-only: the recorded
+BVH handle is process-local, so <a class="reference internal" href="../api_reference/_generated/warp.capture_save.html#warp.capture_save" title="warp.capture_save"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_save()</span></code></a> rejects a
+graph that records either operation.</p></li>
 <li><p>Recording is scoped to the capture’s device: a host (CPU) helper op invoked while a CUDA
 graph capture is active executes immediately instead of being recorded into the CUDA graph,
 and vice versa.</p></li>
 <li><p>Nested captures are rejected on both CPU and CUDA. Only one capture may be
 active at a time on a given thread.</p></li>
-<li><p>Arrays used during capture must remain alive for the lifetime of the captured
-graph. Reusing a freed CPU pointer during capture leads to undefined behavior;
-CUDA capture defers frees automatically while a capture is in progress, but
-the CPU path does not.</p></li>
+<li><p>A captured CPU graph replays correctly even after the caller releases its
+own references to the Warp arrays used during capture. You do not need to
+keep arrays passed to captured kernel launches or
+<a class="reference internal" href="../api_reference/_generated/warp.copy.html#warp.copy" title="warp.copy"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.copy()</span></code></a> operations alive for the graph to run, and an
+array view used as a kernel argument may be released once capture ends.</p></li>
+<li><p>This guarantee covers only memory Warp owns. It does not extend the lifetime
+of an external allocation passed to <code class="docutils literal notranslate"><span class="pre">wp.array(ptr=...)</span></code> without a
+<code class="docutils literal notranslate"><span class="pre">deleter</span></code>: the caller still owns that memory and must keep it alive, at the
+same address, until the graph is destroyed. Freeing or reusing it sooner is
+undefined behavior.</p></li>
 </ul>
 </section>
 <section id="saving-and-loading-graphs">
@@ -2172,7 +2412,8 @@ the CPU path does not.</p></li>
 <a class="reference internal" href="../api_reference/_generated/warp.capture_save.html#warp.capture_save" title="warp.capture_save"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_save()</span></code></a> / <a class="reference internal" href="../api_reference/_generated/warp.capture_load.html#warp.capture_load" title="warp.capture_load"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_load()</span></code></a>
 surface, the C <code class="docutils literal notranslate"><span class="pre">wp_apic_*</span></code> API, and the recorded operation set are all
 subject to change without a formal deprecation cycle. <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> files written
-by one version of Warp may not be loadable by another.</p>
+by one version of Warp may not be loadable by another. The current writer
+emits format version 15, and the reader accepts versions 13 through 15.</p>
 </div>
 <p>API Capture lets you serialize a captured graph to disk and load it back later, either
 from another Python program, or from a standalone C++ application that links only
@@ -2190,18 +2431,31 @@ mechanism), and <code class="docutils literal notranslate"><span class="pre">api
 <p>On CUDA, <code class="docutils literal notranslate"><span class="pre">apic=True</span></code> records the same extended operation set as the CPU path so saved
 graphs replay it from current inputs: kernel launches (forward, adjoint, and reusable
 <code class="docutils literal notranslate"><span class="pre">record_cmd=True</span></code> launches), contiguous same-device memory copies and memsets, contiguous
-<a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.fill_" title="warp.array.fill_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.fill_()</span></code></a>, <a class="reference internal" href="../api_reference/_generated/warp.utils.array_scan.html#warp.utils.array_scan" title="warp.utils.array_scan"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_scan()</span></code></a>,
+<a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.fill_" title="warp.array.fill_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.fill_()</span></code></a>,
+<a class="reference internal" href="../api_reference/_generated/warp.utils.array_sum.html#warp.utils.array_sum" title="warp.utils.array_sum"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_sum()</span></code></a>,
+<a class="reference internal" href="../api_reference/_generated/warp.utils.array_inner.html#warp.utils.array_inner" title="warp.utils.array_inner"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_inner()</span></code></a>,
+<a class="reference internal" href="../api_reference/_generated/warp.utils.array_scan.html#warp.utils.array_scan" title="warp.utils.array_scan"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_scan()</span></code></a>,
 <a class="reference internal" href="../api_reference/_generated/warp.utils.radix_sort_pairs.html#warp.utils.radix_sort_pairs" title="warp.utils.radix_sort_pairs"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.radix_sort_pairs()</span></code></a>,
 <a class="reference internal" href="../api_reference/_generated/warp.utils.segmented_sort_pairs.html#warp.utils.segmented_sort_pairs" title="warp.utils.segmented_sort_pairs"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.segmented_sort_pairs()</span></code></a>,
 <a class="reference internal" href="../api_reference/_generated/warp.utils.runlength_encode.html#warp.utils.runlength_encode" title="warp.utils.runlength_encode"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.runlength_encode()</span></code></a> (with an explicit
 <code class="docutils literal notranslate"><span class="pre">run_count</span></code>), <a class="reference internal" href="../api_reference/_generated/warp.sparse.bsr_set_transpose.html#warp.sparse.bsr_set_transpose" title="warp.sparse.bsr_set_transpose"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.sparse.bsr_set_transpose()</span></code></a>, and
 <a class="reference internal" href="../api_reference/_generated/warp.capture_if.html#warp.capture_if" title="warp.capture_if"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_if()</span></code></a> / <a class="reference internal" href="../api_reference/_generated/warp.capture_while.html#warp.capture_while" title="warp.capture_while"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_while()</span></code></a>
-conditionals. Unlike the CPU path (which records only), these still execute during capture so
-the driver also records them into the native CUDA graph.</p>
+conditionals. Unlike the CPU path, CUDA host code for these reductions issues CUDA operations
+while native stream capture is active so the driver records native graph nodes. No GPU
+reduction executes during capture; GPU work begins only when the graph is launched.</p>
+<p>During a matching-device CUDA <code class="docutils literal notranslate"><span class="pre">apic=True</span></code> capture, non-empty calls to these reductions
+require an explicit <code class="docutils literal notranslate"><span class="pre">out</span></code> array. Explicit counts, composite dtypes, and positive-stride axis
+reductions are recorded. A negative count raises <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">RuntimeError</span></code></a> in that capture, and any
+negative input or output stride raises <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a>, including for a zero-count
+call. Counts and reduction strides must fit a signed 32-bit integer, and participating
+addresses and layout strides must be aligned to the reduction’s scalar type.</p>
 <p>A few operations cannot be captured for save/load on CUDA and raise
 <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a> during an <code class="docutils literal notranslate"><span class="pre">apic=True</span></code> capture; build these outside the captured
 region:</p>
 <ul class="simple">
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.HashGrid.html#warp.HashGrid.build" title="warp.HashGrid.build"><code class="xref py py-meth docutils literal notranslate"><span class="pre">HashGrid.build()</span></code></a>, because <code class="docutils literal notranslate"><span class="pre">HashGrid</span></code>
+resources and their process-local IDs cannot yet be serialized. Use
+<code class="docutils literal notranslate"><span class="pre">apic=False</span></code> for live CUDA graph capture.</p></li>
 <li><p><a class="reference internal" href="../api_reference/_generated/warp.sparse.bsr_set_from_triplets.html#warp.sparse.bsr_set_from_triplets" title="warp.sparse.bsr_set_from_triplets"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.sparse.bsr_set_from_triplets()</span></code></a> (and the
 <code class="docutils literal notranslate"><span class="pre">warp.sparse</span></code> matrix products that build topology with it), because it reads the resulting
 <code class="docutils literal notranslate"><span class="pre">nnz</span></code> back to the host after its own kernels, which a captured graph cannot reproduce.</p></li>
@@ -2441,6 +2695,12 @@ limitations above for the supported dtype and layout ranges.</p></li>
 <li><p>Only <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Mesh</span></code></a> object handles are serialized.
 <a class="reference internal" href="../api_reference/_generated/warp.Volume.html#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Volume</span></code></a> and <a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh" title="warp.Bvh"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Bvh</span></code></a> handles are not
 yet supported.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">HashGrid.build()</span></code> is supported by live CPU graphs captured with
+<code class="docutils literal notranslate"><span class="pre">apic=False</span></code>. It is not supported by saveable captures because <code class="docutils literal notranslate"><span class="pre">HashGrid</span></code>
+resources and their process-local IDs cannot yet be serialized. Calling
+<code class="docutils literal notranslate"><span class="pre">HashGrid.build()</span></code> with <code class="docutils literal notranslate"><span class="pre">apic=True</span></code> raises <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a>.
+Call <code class="docutils literal notranslate"><span class="pre">HashGrid.reserve()</span></code> before CPU graph capture; reserve calls inside a
+capture are rejected.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">.wrp</span></code> files are not portable across CUDA compute architectures unless the
 capture was built with PTX output (set <code class="docutils literal notranslate"><span class="pre">warp.config.cuda_output</span> <span class="pre">=</span> <span class="pre">&quot;ptx&quot;</span></code>
 before capture). Multi-GPU and cross-architecture loading are not yet
@@ -2619,6 +2879,60 @@ check the distance themselves inside their kernels. The reason the query doesn�
 returned point is because it’s common for kernels to compute the distance themselves, so it would redundant to
 check/compute the distance twice.</p>
 </div>
+<section id="grouped-hash-grids">
+<h4>Grouped Hash Grids<a class="headerlink" href="#grouped-hash-grids" title="Link to this heading">#</a></h4>
+<p>Hash grids can also be built with point groups. Grouping is useful when a single grid stores particles from multiple
+independent environments, worlds, or batches. Points from different groups may occupy identical coordinates, but grouped
+queries only traverse the buckets for the requested group, avoiding cross-group candidate iteration and user-side
+filtering.</p>
+<p>Pass a contiguous <code class="docutils literal notranslate"><span class="pre">wp.int32</span></code> array with one group id per point to <a class="reference internal" href="../api_reference/_generated/warp.HashGrid.html#warp.HashGrid.build" title="warp.HashGrid.build"><code class="xref py py-meth docutils literal notranslate"><span class="pre">HashGrid.build()</span></code></a>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">points</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+    <span class="p">[</span>
+        <span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+        <span class="p">(</span><span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+        <span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+        <span class="p">(</span><span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span>
+    <span class="p">],</span>
+    <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span>
+    <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">groups</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+
+<span class="n">grid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">HashGrid</span><span class="p">(</span><span class="n">dim_x</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">dim_y</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">dim_z</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">)</span>
+<span class="n">grid</span><span class="o">.</span><span class="n">build</span><span class="p">(</span><span class="n">points</span><span class="o">=</span><span class="n">points</span><span class="p">,</span> <span class="n">radius</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">groups</span><span class="o">=</span><span class="n">groups</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Inside kernels, pass the desired group id directly to <a class="reference internal" href="../language_reference/_generated/warp.hash_grid_query.html#warp._src.lang.hash_grid_query" title="warp._src.lang.hash_grid_query"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.hash_grid_query()</span></code></a>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">count_group_neighbors</span><span class="p">(</span>
+    <span class="n">grid</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">uint64</span><span class="p">,</span>
+    <span class="n">points</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span>
+    <span class="n">groups</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">],</span>
+    <span class="n">radius</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+    <span class="n">neighbor_count</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
+<span class="p">):</span>
+    <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">point</span> <span class="o">=</span> <span class="n">points</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span>
+    <span class="n">group</span> <span class="o">=</span> <span class="n">groups</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span>
+    <span class="n">count</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="n">wp</span><span class="o">.</span><span class="n">hash_grid_query</span><span class="p">(</span><span class="n">grid</span><span class="p">,</span> <span class="n">point</span><span class="p">,</span> <span class="n">radius</span><span class="p">,</span> <span class="n">group</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">index</span> <span class="o">!=</span> <span class="n">tid</span> <span class="ow">and</span> <span class="n">wp</span><span class="o">.</span><span class="n">length</span><span class="p">(</span><span class="n">points</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">-</span> <span class="n">point</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">radius</span><span class="p">:</span>
+            <span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="n">neighbor_count</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span> <span class="o">=</span> <span class="n">count</span>
+</pre></div>
+</div>
+<p>If the group argument is omitted, the query visits all groups. Unlike grouped BVH queries, grouped hash-grid queries do
+not use a group-root helper such as <a class="reference internal" href="../language_reference/_generated/warp.bvh_get_group_root.html#warp._src.lang.bvh_get_group_root" title="warp._src.lang.bvh_get_group_root"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.bvh_get_group_root()</span></code></a>; the group id is
+the query selector.</p>
+<p>Group ids may be arbitrary <code class="docutils literal notranslate"><span class="pre">int32</span></code> values. Rebuilds read the <code class="docutils literal notranslate"><span class="pre">groups</span></code> array directly on the device and never copy
+group data back to the host, so grouped rebuilds are asynchronous like ungrouped ones, and group assignments may
+change between rebuilds, including inside replayed CUDA graphs. The grid does not keep any host-side record of the
+group ids in use, so no warm-up rebuild is needed after changing them.</p>
+<p>To record a grouped rebuild inside a CUDA graph without a prior warm-up build, reserve the grouped buffers up front
+with <a class="reference internal" href="../api_reference/_generated/warp.HashGrid.html#warp.HashGrid.reserve" title="warp.HashGrid.reserve"><code class="xref py py-meth docutils literal notranslate"><span class="pre">grid.reserve(num_points,</span> <span class="pre">with_groups=True)</span></code></a>.</p>
+</section>
 </section>
 <section id="volumes">
 <h3>Volumes<a class="headerlink" href="#volumes" title="Link to this heading">#</a></h3>
@@ -2635,7 +2949,12 @@ or from a dense 3D NumPy array using <a class="reference internal" href="../api_
 The values for a Volume object can be modified in a Warp kernel using <a class="reference internal" href="../language_reference/_generated/warp.volume_store.html#warp._src.lang.volume_store" title="warp._src.lang.volume_store"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.volume_store()</span></code></a>.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Warp does not currently support modifying the topology of sparse volumes at runtime.</p>
+<p>Volumes created with <code class="docutils literal notranslate"><span class="pre">rebuildable=True</span></code> or explicit capacity arguments reserve persistent storage and can update
+their sparse topology in place with <a class="reference internal" href="../api_reference/_generated/warp.Volume.html#warp.Volume.rebuild" title="warp.Volume.rebuild"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Volume.rebuild()</span></code></a>. Allocation and rebuild of these
+volumes can be captured in CUDA graphs when CUDA memory-pool allocation is supported and enabled. Exact,
+non-rebuildable volume allocation and active-topology queries such as
+<a class="reference internal" href="../api_reference/_generated/warp.Volume.html#warp.Volume.get_active_stats" title="warp.Volume.get_active_stats"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Volume.get_active_stats()</span></code></a> require device synchronization and must occur
+outside CUDA graph capture.</p>
 </div>
 <p>Below we give an example of creating a Volume object from an existing NanoVDB file:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># open NanoVDB file on disk</span>
@@ -2846,7 +3165,7 @@ a specified bounding box.</p>
 </section>
 </section>
 <section id="object-lifetime-pitfall">
-<span id="id8"></span><h3>Object Lifetime Pitfall<a class="headerlink" href="#object-lifetime-pitfall" title="Link to this heading">#</a></h3>
+<span id="id9"></span><h3>Object Lifetime Pitfall<a class="headerlink" href="#object-lifetime-pitfall" title="Link to this heading">#</a></h3>
 <p>When working with spatial computing primitives like <a class="reference internal" href="../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.HashGrid</span></code></a> and <a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh" title="warp.Bvh"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Bvh</span></code></a>,
 it’s crucial to understand how Python’s garbage collection interacts with these objects.
 The following example demonstrate a common mistake and how to avoid it.</p>
@@ -2883,6 +3202,11 @@ undefined behavior when the kernel tries to access the freed memory.</p>
 <p>Always maintain references to spatial computing primitive objects
 (like <a class="reference internal" href="../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.HashGrid</span></code></a>, <a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh" title="warp.Bvh"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Bvh</span></code></a>, etc.) rather than just their ID values.
 This is especially important in loops, functions, and temporary variables where object scope might be unclear.</p>
+<p>When a graph captures a <a class="reference internal" href="../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.HashGrid</span></code></a> ID, the caller must
+keep the <code class="docutils literal notranslate"><span class="pre">HashGrid</span></code> alive until every graph that captures its ID is destroyed.
+This caller-ownership contract is the same for live CPU and CUDA graphs. The
+graph retains the array inputs captured by <code class="docutils literal notranslate"><span class="pre">HashGrid.build()</span></code>, including
+normalized views and their backing allocations.</p>
 </section>
 </section>
 <section id="marching-cubes">
@@ -2911,7 +3235,7 @@ True
 </div>
 <p>The resulting mesh is stored in <code class="docutils literal notranslate"><span class="pre">mc.verts</span></code> as a <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.array</span></code></a> of
 <a class="reference internal" href="../api_reference/_generated/warp.vec3.html#warp.vec3" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.vec3</span></code></a> vertices and in <code class="docutils literal notranslate"><span class="pre">mc.indices</span></code> as a flat <a class="reference internal" href="../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.int32</span></code></a> index array.</p>
-<p>See <a class="extlink-github reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/examples/core/example_marching_cubes.py">warp/examples/core/example_marching_cubes.py</a> for a complete usage example.</p>
+<p>See <a class="extlink-github reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/examples/core/example_marching_cubes.py">warp/examples/core/example_marching_cubes.py</a> for a complete usage example.</p>
 <section id="custom-marching-cubes-implementations">
 <h3>Custom Marching Cubes Implementations<a class="headerlink" href="#custom-marching-cubes-implementations" title="Link to this heading">#</a></h3>
 <p>For advanced use cases requiring custom extraction logic (e.g., working with
@@ -2966,7 +3290,7 @@ bit <em>i</em> is set if corner <em>i</em> is inside the surface:</p>
 <div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">grid build took 0.06 ms</span>
 </pre></div>
 </div>
-<p>See <a class="reference internal" href="../deep_dive/profiling.html"><span class="doc">Profiling</span></a> documentation for more information.</p>
+<p>See <a class="reference internal" href="execution_and_performance/profiling.html"><span class="doc">Profiling</span></a> documentation for more information.</p>
 </section>
 <section id="allocation-tracking">
 <h2>Allocation Tracking<a class="headerlink" href="#allocation-tracking" title="Link to this heading">#</a></h2>
@@ -3052,7 +3376,7 @@ processes without creating copies of the underlying data.</p>
 <ul>
 <li><p>Linux operating system (note however that integrated devices like NVIDIA
 Jetson do not support CUDA IPC)</p></li>
-<li><p>The array must be allocated on a GPU device using the default memory allocator (see <a class="reference internal" href="../deep_dive/allocators.html"><span class="doc">Allocators</span></a>)</p>
+<li><p>The array must be allocated on a GPU device using the default memory allocator (see <a class="reference internal" href="execution_and_performance/memory_management.html"><span class="doc">Memory Allocation and Access</span></a>)</p>
 <p>The <a class="reference internal" href="../api_reference/_generated/warp.ScopedMempool.html#warp.ScopedMempool" title="warp.ScopedMempool"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedMempool</span></code></a> context manager is useful for temporarily disabling
 memory pools for the purpose of allocating arrays that can be shared using IPC.</p>
 </li>
@@ -3077,7 +3401,7 @@ process can use this information to import the original event by calling
 </section>
 <section id="lto-cache">
 <h2>LTO Cache<a class="headerlink" href="#lto-cache" title="Link to this heading">#</a></h2>
-<p><a class="reference internal" href="tiles.html#mathdx"><span class="std std-ref">MathDx</span></a> generates Link-Time Optimization (LTO) files for GEMM, Cholesky, and FFT tile operations.
+<p><a class="reference internal" href="programming_model/tiles.html#mathdx"><span class="std std-ref">MathDx</span></a> generates Link-Time Optimization (LTO) files for GEMM, Cholesky, and FFT tile operations.
 Warp caches these to speed up kernel compilation. Each LTO file maps to a specific Linear Algebra
 solver configuration, and is otherwise independent of the kernel in which its corresponding routine
 is called. Therefore, LTOs are stored in a cache that is independent of a given module’s kernel cache,
@@ -3085,7 +3409,7 @@ and will remain cached even if <a class="reference internal" href="../api_refere
 <a class="reference internal" href="../api_reference/_generated/warp.clear_lto_cache.html#warp.clear_lto_cache" title="warp.clear_lto_cache"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.clear_lto_cache()</span></code></a> can be used to clear the LTO cache.</p>
 </section>
 <section id="random-number-generation">
-<span id="id9"></span><h2>Random Number Generation<a class="headerlink" href="#random-number-generation" title="Link to this heading">#</a></h2>
+<span id="id10"></span><h2>Random Number Generation<a class="headerlink" href="#random-number-generation" title="Link to this heading">#</a></h2>
 <p>To generate random numbers in a Warp kernel, use the <a class="reference internal" href="../language_reference/_generated/warp.rand_init.html#warp._src.lang.rand_init" title="warp._src.lang.rand_init"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.rand_init()</span></code></a> built-in
 inside the kernel to initialize a random number generator, followed by a call to any of Warp’s random number
 built-ins. For example:</p>
@@ -3107,7 +3431,7 @@ built-ins. For example:</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[0.1415146 0.9632247 0.6449367]
 </pre></div>
 </div>
-<p>Warp uses a PCG (Permuted Congruential Generator) for pseudo-random number generation <a class="footnote-reference brackets" href="#id12" id="id10" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a>.
+<p>Warp uses a PCG (Permuted Congruential Generator) for pseudo-random number generation <a class="footnote-reference brackets" href="#id13" id="id11" role="doc-noteref"><span class="fn-bracket">[</span>1<span class="fn-bracket">]</span></a>.
 <a class="reference internal" href="../language_reference/_generated/warp.rand_init.html#warp._src.lang.rand_init" title="warp._src.lang.rand_init"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.rand_init()</span></code></a> hashes the seed and offset with two nested calls
 to a PCG routine to produce a 32-bit unsigned integer representing the RNG state. The offset
 in a kernel is necessary to ensure that each thread generates a unique sequence of numbers. Were it
@@ -3133,7 +3457,7 @@ numbers, e.g.:</p>
 </pre></div>
 </div>
 <section id="avoiding-correlated-sequences">
-<span id="id11"></span><h3>Avoiding Correlated Sequences<a class="headerlink" href="#avoiding-correlated-sequences" title="Link to this heading">#</a></h3>
+<span id="id12"></span><h3>Avoiding Correlated Sequences<a class="headerlink" href="#avoiding-correlated-sequences" title="Link to this heading">#</a></h3>
 <p>Care must be taken when two different kernels generate random numbers. If the same seed is used for both,
 any quantities computed from the generated random numbers will be correlated. Similarly, if the same seed
 is passed to a kernel that is launched multiple times, the same random numbers will be generated for each launch.
@@ -3164,8 +3488,8 @@ To generate different sequences across launches, use a different seed for each l
 </pre></div>
 </div>
 <aside class="footnote-list brackets">
-<aside class="footnote brackets" id="id12" role="doc-footnote">
-<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id10">1</a><span class="fn-bracket">]</span></span>
+<aside class="footnote brackets" id="id13" role="doc-footnote">
+<span class="label"><span class="fn-bracket">[</span><a role="doc-backlink" href="#id11">1</a><span class="fn-bracket">]</span></span>
 <p>Mark Jarzynski and Marc Olano, <a class="reference external" href="https://jcgt.org/published/0009/03/02/">Hash Functions for GPU Rendering</a>,
 Journal of Computer Graphics Techniques (JCGT), vol. 9, no. 3, 20–38, 2020.</p>
 </aside>
@@ -3194,11 +3518,11 @@ Journal of Computer Graphics Techniques (JCGT), vol. 9, no. 3, 20–38, 2020.</p
       </div>
     </a>
     <a class="right-next"
-       href="devices.html"
+       href="differentiability.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Devices</p>
+        <p class="prev-next-title">Differentiability</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -3221,8 +3545,8 @@ Journal of Computer Graphics Techniques (JCGT), vol. 9, no. 3, 20–38, 2020.</p
     class="page-toc tocsection onthispage">
     <i class="fa-solid fa-list"></i> On this page
   </div>
-  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
-    <ul class="visible nav section-nav flex-column">
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#kernels">Kernels</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#runtime-kernel-creation">Runtime Kernel Creation</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#launch-objects">Launch Objects</a></li>
@@ -3274,6 +3598,17 @@ Journal of Computer Graphics Techniques (JCGT), vol. 9, no. 3, 20–38, 2020.</p
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#mapping-functions">Mapping Functions</a></li>
 </ul>
 </li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#devices">Devices</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#default-device">Default Device</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#scoped-devices">Scoped Devices</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#example-using-wp-scopeddevice-with-multiple-gpus">Example: Using <code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedDevice</span></code> with multiple GPUs</a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#current-cuda-device">Current CUDA Device</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#device-synchronization">Device Synchronization</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#custom-cuda-contexts">Custom CUDA Contexts</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#streams">Streams</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#events">Events</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#graphs">Graphs</a><ul class="nav section-nav flex-column">
@@ -3294,7 +3629,10 @@ Journal of Computer Graphics Techniques (JCGT), vol. 9, no. 3, 20–38, 2020.</p
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#spatial-computing-primitives">Spatial Computing Primitives</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#meshes">Meshes</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#hash-grids">Hash Grids</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#hash-grids">Hash Grids</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#grouped-hash-grids">Grouped Hash Grids</a></li>
+</ul>
+</li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#volumes">Volumes</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#textures">Textures</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#bounding-volume-hierarchies-bvh">Bounding Volume Hierarchies (BVH)</a><ul class="nav section-nav flex-column">
@@ -3324,7 +3662,7 @@ Journal of Computer Graphics Techniques (JCGT), vol. 9, no. 3, 20–38, 2020.</p
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/release-1.15/docs/user_guide/runtime.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/release-1.16/docs/user_guide/runtime.rst">
       <i class="fa-solid fa-pencil"></i>
       
       
@@ -3351,8 +3689,8 @@ Journal of Computer Graphics Techniques (JCGT), vol. 9, no. 3, 20–38, 2020.</p
   
 
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
-<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+  <script defer src="../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
 
 
   <footer class="bd-footer">

@@ -4,19 +4,9 @@
 .. currentmodule:: warp.fem
 
 .. autoclass:: SymmetricTensorMapper
-
-   
-   .. automethod:: __init__
-
-   
-   .. rubric:: Methods
-
-   .. autosummary::
-   
-      ~SymmetricTensorMapper.__init__
    
    
-
+   
    
    
    .. rubric:: Attributes

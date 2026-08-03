@@ -4,16 +4,12 @@
 .. currentmodule:: warp.fem
 
 .. autoclass:: BasisSpace
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~BasisSpace.__init__
       ~BasisSpace.basis_arg_value
       ~BasisSpace.fill_basis_arg
       ~BasisSpace.make_element_inner_weight
@@ -27,7 +23,6 @@
       ~BasisSpace.trace
    
    
-
    
    
    .. rubric:: Attributes

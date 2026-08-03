@@ -4,16 +4,12 @@
 .. currentmodule:: warp
 
 .. autoclass:: spatial_matrixd
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~spatial_matrixd.__init__
       ~spatial_matrixd.from_ptr
       ~spatial_matrixd.get_col
       ~spatial_matrixd.get_row
@@ -23,7 +19,6 @@
       ~spatial_matrixd.set_row
    
    
-
    
    
    

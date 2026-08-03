@@ -4,19 +4,9 @@
 .. currentmodule:: warp
 
 .. autoclass:: TimingResult
-
-   
-   .. automethod:: __init__
-
-   
-   .. rubric:: Methods
-
-   .. autosummary::
-   
-      ~TimingResult.__init__
    
    
-
+   
    
    
    .. rubric:: Attributes

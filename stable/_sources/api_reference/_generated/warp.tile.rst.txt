@@ -4,16 +4,12 @@
 .. currentmodule:: warp
 
 .. autoclass:: tile
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~tile.__init__
       ~tile.align
       ~tile.cinit
       ~tile.ctype
@@ -21,7 +17,6 @@
       ~tile.size_in_bytes
    
    
-
    
    
    .. rubric:: Attributes

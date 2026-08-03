@@ -6,6 +6,11 @@ Code Generation
 Overview
 --------
 
+This guide covers module specialization, generated source, cache behavior,
+compile-time expressions, dynamic kernel construction, and ahead-of-time
+workflows. See :doc:`../programming_model` for the shared host/kernel execution
+boundary and compilation pipeline.
+
 Warp kernels are grouped together by Python module.  Before they can run on a device, they must be translated and compiled for the device architecture.  All kernels in a module are compiled together, which is faster than compiling each one individually.  When a kernel is launched, Warp checks if the module is up-to-date and will compile it if needed.  Adding new kernels to a module at runtime modifies the module, which means that it will need to be reloaded on next launch.
 
 .. code:: python
@@ -405,6 +410,17 @@ The generated code will not contain the for-loop but instead the loop body will 
     printf(var_3, var_2);
     printf(var_6, var_5);
     printf(var_9, var_8);
+
+.. note::
+
+    When a static ``range()`` loop is unrolled, its index leaks into the enclosing scope as a
+    compile-time constant holding the loop's final value, matching Python's scoping. Reusing that
+    name afterwards is supported: only reading it (for example, ``range(i)``) keeps it constant so
+    further static loops still unroll, while re-declaring it (``i = int(0)``) or mutating it inside a
+    later ``while`` or dynamic ``for`` loop demotes it to an ordinary runtime variable, so the
+    mutation is carried across iterations. Mutating a genuine (non-iterator) constant inside a
+    dynamic loop still raises an error asking you to declare a dynamic variable first (for example,
+    ``x = float(0.0)``).
 
 Example: Function Pointers
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1284,7 +1300,7 @@ in the file ``wp___main__/wp___main__.cu``. Therefore, ``strip_hash=True`` can a
 .. important::
 
     Not all modules can be compiled successfully with hashing disabled. Name collisions can occur when
-    hashes are removed from the function names, particularly when using :doc:`Generics <../user_guide/generics>`, which can
+    hashes are removed from the function names, particularly when using :doc:`Generics <generics>`, which can
     result in multiple versions of the same function or kernel.
 
 Only use ``strip_hash=True`` when your module has a single version of each function and kernel.

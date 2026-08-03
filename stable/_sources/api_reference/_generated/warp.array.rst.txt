@@ -4,16 +4,12 @@
 .. currentmodule:: warp
 
 .. autoclass:: array
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~array.__init__
       ~array.assign
       ~array.contiguous
       ~array.cptr
@@ -32,7 +28,6 @@
       ~array.zero_
    
    
-
    
    
    .. rubric:: Attributes

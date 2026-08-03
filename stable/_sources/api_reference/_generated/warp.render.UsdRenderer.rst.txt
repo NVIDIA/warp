@@ -4,16 +4,12 @@
 .. currentmodule:: warp.render
 
 .. autoclass:: UsdRenderer
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~UsdRenderer.__init__
       ~UsdRenderer.add_shape_instance
       ~UsdRenderer.begin_frame
       ~UsdRenderer.end_frame
@@ -34,7 +30,6 @@
       ~UsdRenderer.save
    
    
-
    
    
    

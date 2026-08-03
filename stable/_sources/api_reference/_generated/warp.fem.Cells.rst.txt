@@ -4,16 +4,12 @@
 .. currentmodule:: warp.fem
 
 .. autoclass:: Cells
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~Cells.__init__
       ~Cells.cell_domain
       ~Cells.element_arg_value
       ~Cells.element_count
@@ -26,7 +22,6 @@
       ~Cells.supports_lookup
    
    
-
    
    
    .. rubric:: Attributes

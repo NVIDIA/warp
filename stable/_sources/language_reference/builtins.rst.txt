@@ -121,6 +121,7 @@ Quaternion Math
    quat_to_rpy
    quat_twist
    quat_twist_angle
+   quat_twist_angle_signed
    quaternion
 
 Transformations
@@ -222,6 +223,7 @@ Tile Primitives
    tile_scan_min_inclusive
    tile_scatter_add
    tile_scatter_masked
+   tile_slice_indexed
    tile_sort
    tile_squeeze
    tile_stack
@@ -308,6 +310,7 @@ Volumes
    volume_store_f
    volume_store_i
    volume_store_v
+   volume_voxel_count
    volume_world_to_index
    volume_world_to_index_dir
 

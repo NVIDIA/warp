@@ -4,16 +4,12 @@
 .. currentmodule:: warp.fem
 
 .. autoclass:: UniformField
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~UniformField.__init__
       ~UniformField.divergence_valid
       ~UniformField.eval_arg_value
       ~UniformField.eval_degree
@@ -32,7 +28,6 @@
       ~UniformField.trace
    
    
-
    
    
    .. rubric:: Attributes

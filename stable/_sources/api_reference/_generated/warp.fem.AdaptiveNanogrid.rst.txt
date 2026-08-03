@@ -4,16 +4,12 @@
 .. currentmodule:: warp.fem
 
 .. autoclass:: AdaptiveNanogrid
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~AdaptiveNanogrid.__init__
       ~AdaptiveNanogrid.boundary_side_count
       ~AdaptiveNanogrid.build_bvh
       ~AdaptiveNanogrid.bvh_id
@@ -41,7 +37,6 @@
       ~AdaptiveNanogrid.vertex_count
    
    
-
    
    
    .. rubric:: Attributes

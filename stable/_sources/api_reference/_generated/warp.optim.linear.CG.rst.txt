@@ -4,19 +4,9 @@
 .. currentmodule:: warp.optim.linear
 
 .. autoclass:: CG
-
-   
-   .. automethod:: __init__
-
-   
-   .. rubric:: Methods
-
-   .. autosummary::
-   
-      ~CG.__init__
    
    
-
+   
    
    
    

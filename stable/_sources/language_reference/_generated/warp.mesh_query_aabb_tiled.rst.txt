@@ -8,11 +8,42 @@
 
       * Kernel
 
-   Construct an axis-aligned bounding box query against a :class:`warp.Mesh` for thread-block parallel traversal.
+   Construct an axis-aligned bounding box (AABB) query against a :class:`warp.Mesh` for thread-block parallel traversal.
    
-   This query can be used in tiled kernels to cooperatively traverse a mesh's BVH across a thread block.
+   For use in tiled kernels: all threads in the block cooperatively traverse the mesh's BVH.
+   Advance the query with :func:`mesh_query_aabb_next_tiled` (one face index per thread per step)
+   in a loop guarded by :func:`tile_query_valid`. ``low`` and ``high`` must be identical across all
+   threads in the block and are given in the mesh's local space.
    
    :param id: The mesh identifier
-   :param low: The lower bound of the bounding box in mesh space (must be the same for all threads in the block)
-   :param high: The upper bound of the bounding box in mesh space (must be the same for all threads in the block)
+   :param low: The lower bound of the query box, in the mesh's local space (must be the same for all threads in the block)
+   :param high: The upper bound of the query box, in the mesh's local space (must be the same for all threads in the block)
+   
+   :returns: A :class:`warp.MeshQueryAABBTiled` to advance with :func:`mesh_query_aabb_next_tiled`.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def tiled_faces(mesh_id: wp.uint64, lo: wp.vec3, hi: wp.vec3, out_count: wp.array[wp.int32]):
+           query = wp.mesh_query_aabb_tiled(mesh_id, lo, hi)
+           while wp.tile_query_valid(query):
+               result = wp.mesh_query_aabb_next_tiled(query)
+               face = wp.untile(result)
+               if face >= 0:
+                   wp.atomic_add(out_count, 0, 1)
+   
+       points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
+       indices = wp.array([0,3,2, 0,2,1,  4,5,6, 4,6,7,  0,1,5, 0,5,4,
+                           2,3,7, 2,7,6,  0,4,7, 0,7,3,  1,2,6, 1,6,5], dtype=wp.int32)
+       mesh = wp.Mesh(points=points, indices=indices)
+   
+       out_count = wp.zeros(1, dtype=wp.int32)
+       wp.launch_tiled(tiled_faces, dim=[1], inputs=[mesh.id, wp.vec3(-1.0, -1.0, -1.0), wp.vec3(2.0, 2.0, 2.0)], outputs=[out_count], block_dim=32)
+       print("overlapping faces:", out_count.numpy()[0])
+   
+   .. testoutput::
+   
+       overlapping faces: 12
    

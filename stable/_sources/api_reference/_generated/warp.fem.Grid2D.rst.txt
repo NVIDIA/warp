@@ -4,16 +4,12 @@
 .. currentmodule:: warp.fem
 
 .. autoclass:: Grid2D
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~Grid2D.__init__
       ~Grid2D.boundary_side_count
       ~Grid2D.build_bvh
       ~Grid2D.bvh_id
@@ -36,7 +32,6 @@
       ~Grid2D.vertex_count
    
    
-
    
    
    .. rubric:: Attributes

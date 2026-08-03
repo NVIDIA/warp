@@ -4,10 +4,7 @@
 .. currentmodule:: warp
 
 .. autoclass:: TextureResourceFlags
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
@@ -20,10 +17,8 @@
       ~TextureResourceFlags.from_bytes
       ~TextureResourceFlags.as_integer_ratio
       ~TextureResourceFlags.is_integer
-      ~TextureResourceFlags.__init__
    
    
-
    
    
    .. rubric:: Attributes

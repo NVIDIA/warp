@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.fem.Nanogrid &#8212; Warp 1.15.0</title>
+    <title>warp.fem.Nanogrid &#8212; Warp 1.16.0</title>
   
   
   
@@ -28,8 +28,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
-<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+  <link href="../../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
@@ -37,26 +37,27 @@
     <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=3d681599" />
   
   <!-- So that users can add custom icons -->
-  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <script defer src="../../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
-<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
 
 
 
-    <script src="../../_static/documentation_options.js?v=e6db31ea"></script>
-    <script src="../../_static/doctools.js?v=9bcbadda"></script>
-    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/documentation_options.js?v=d123bb80"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=fd10adb8"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.fem.Nanogrid';</script>
     <script>
-        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_version = '0.20.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.15';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.16';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
 
     <link rel="icon" href="../../_static/favicon.png"/>
 
@@ -68,26 +69,32 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.15.0" />
+  <meta name="docsearch:version" content="1.16.0" />
+  
+    
+    <script src="../../_static/searchtools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script src="../../searchindex.js"></script>
+  
 
 
   </head>
 
-  
-  
-  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+  <body data-default-mode="">
+
 
   
   
   <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
-
 
   
   <div id="pst-scroll-pixel-helper"></div>
   
   <button type="button" class="btn rounded-pill" id="pst-back-to-top">
     <i class="fa-solid fa-arrow-up"></i>Back to top</button>
-
+  
+  
+  
   
   <dialog id="pst-search-dialog">
     
@@ -113,7 +120,7 @@
 </div>
 
   
-    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
 <div class="bd-header__inner bd-page-width">
   <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
     <span class="fa-solid fa-bars"></span>
@@ -139,11 +146,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.16.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.16.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.15.0</p>
+    <p class="title logo__title">Warp 1.16.0</p>
   
 </a></div>
     
@@ -193,11 +200,18 @@
       
         <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
       
         <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -210,8 +224,7 @@
           
           
           
-          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -222,8 +235,7 @@
           
           
           
-          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
       
@@ -278,11 +290,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.16.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.16.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.15.0</p>
+    <p class="title logo__title">Warp 1.16.0</p>
   
 </a>
 
@@ -326,11 +338,18 @@
         
           <div class="navbar-item">
 
-<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
-  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
-  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
-  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
-</button></div>
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
         
           <div class="navbar-item"><ul class="navbar-icon-links"
     aria-label="Icon Links">
@@ -343,8 +362,7 @@
           
           
           
-          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">GitHub</span></a>
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
         </li>
         <li class="nav-item">
           
@@ -355,8 +373,7 @@
           
           
           
-          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i>
-            <span class="sr-only">PyPI</span></a>
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
         </li>
 </ul></div>
         
@@ -375,41 +392,37 @@
   <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/compatibility.html">Compatibility &amp; Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/basics.html">Basics</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/runtime.html">Runtime</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../user_guide/devices.html">Devices</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/differentiability.html">Differentiability</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../user_guide/generics.html">Generics</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../user_guide/tiles.html">Tiles</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../user_guide/programming_model.html">Programming Model</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/programming_model/generics.html">Generics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/programming_model/tiles.html">Tiles</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/programming_model/code_generation.html">Code Generation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/programming_model/cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../user_guide/interoperability.html">Interoperability</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
-<li class="toctree-l2"><a class="reference internal" href="../../user_guide/interoperability_pytorch.html">PyTorch Interoperability</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../user_guide/interoperability_jax.html">JAX Interoperability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/interoperability/pytorch.html">PyTorch Interoperability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/interoperability/jax.html">JAX Interoperability</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../user_guide/execution_and_performance.html">Execution and Performance</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/concurrency.html">Concurrency</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/memory_management.html">Memory Allocation and Access</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/profiling.html">Profiling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/deterministic_execution.html">Deterministic Execution</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/configuration.html">Configuration</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../user_guide/cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/debugging.html">Debugging</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../user_guide/deterministic_execution.html">Deterministic Execution</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/limitations.html">Limitations</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../user_guide/contribution_guide.html">Contribution Guide</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../user_guide/publications.html">Publications using Warp</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../user_guide/compatibility.html">Compatibility &amp; Support</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../user_guide/faq.html">FAQ</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../user_guide/changelog.html">Changelog</a></li>
 </ul>
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Deep Dive</span></p>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Language Reference</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../../deep_dive/codegen.html">Code Generation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../deep_dive/allocators.html">Allocators</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../deep_dive/memory_access.html">CPU/GPU cross-device memory access</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../deep_dive/concurrency.html">Concurrency</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../deep_dive/profiling.html">Profiling</a></li>
-</ul>
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Domain Modules</span></p>
-<ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../../domain_modules/sparse.html">Sparse Matrices</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../domain_modules/fem.html">FEM Toolkit</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../domain_modules/render.html">Rendering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../language_reference/builtins.html">Built-Ins</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="nav bd-sidenav">
@@ -423,9 +436,17 @@
 <li class="toctree-l1"><a class="reference internal" href="../warp_types.html">warp.types</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../warp_utils.html">warp.utils</a></li>
 </ul>
-<p aria-level="2" class="caption" role="heading"><span class="caption-text">Language Reference</span></p>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Domain Modules</span></p>
 <ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="../../language_reference/builtins.html">Built-Ins</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../domain_modules/sparse.html">Sparse Matrices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../domain_modules/fem.html">FEM Toolkit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../domain_modules/render.html">Rendering</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../project/contribution_guide.html">Contribution Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../project/publications.html">Publications using Warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../project/changelog.html">Changelog</a></li>
 </ul>
 </div>
 </nav></div>
@@ -497,7 +518,7 @@
 <h1>warp.fem.Nanogrid<a class="headerlink" href="#warp-fem-nanogrid" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.fem.Nanogrid">
-<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">Nanogrid</span></span><span class="sig-paren">(</span>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">Nanogrid</span></span><span class="sig-paren">(</span>
 
 <dl>
 <dd><em class="sig-param"><span class="n"><span class="pre">grid</span></span></em>,</dd>
@@ -505,35 +526,12 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">scalar_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">warp.float32</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">cell_env</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">env_offsets</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">rebuildable</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/fem/geometry/nanogrid.py#L545-L922"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/nanogrid.py#L544-L1150"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid" title="Link to this definition">#</a></dt>
 <dd><p>Sparse grid geometry.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>grid</strong> (<a class="reference internal" href="warp.Volume.html#warp.Volume" title="warp._src.types.Volume"><em>Volume</em></a>)</p></li>
-<li><p><strong>temporary_store</strong> (<a class="reference internal" href="warp.fem.TemporaryStore.html#warp.fem.TemporaryStore" title="warp._src.fem.cache.TemporaryStore"><em>TemporaryStore</em></a><em> | </em><em>None</em>)</p></li>
-<li><p><strong>scalar_type</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><em>type</em></a>)</p></li>
-<li><p><strong>cell_env</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>)</p></li>
-<li><p><strong>env_offsets</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>)</p></li>
-</ul>
-</dd>
-</dl>
-<dl class="py method">
-<dt class="sig sig-object py" id="warp.fem.Nanogrid.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span>
-
-<dl>
-<dd><em class="sig-param"><span class="n"><span class="pre">grid</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">temporary_store</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">scalar_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">warp.float32</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">cell_env</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">env_offsets</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
-</dl>
-
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/fem/geometry/nanogrid.py#L613-L661"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.__init__" title="Link to this definition">#</a></dt>
-<dd><p>Construct a sparse grid geometry from an in-memory NanoVDB volume.</p>
+<p>Construct a sparse grid geometry from an in-memory NanoVDB volume.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -542,89 +540,92 @@ If <code class="docutils literal notranslate"><span class="pre">grid</span></cod
 be created for all leaf voxels.</p></li>
 <li><p><strong>temporary_store</strong> (<a class="reference internal" href="warp.fem.TemporaryStore.html#warp.fem.TemporaryStore" title="warp._src.fem.cache.TemporaryStore"><em>TemporaryStore</em></a><em> | </em><em>None</em>) – shared pool from which to allocate temporary arrays</p></li>
 <li><p><strong>scalar_type</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><em>type</em></a>) – Scalar type for grid coordinates (<code class="docutils literal notranslate"><span class="pre">warp.float32</span></code> or <code class="docutils literal notranslate"><span class="pre">warp.float64</span></code>)</p></li>
+<li><p><strong>rebuildable</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether to retain capacity-sized topology buffers that can be refreshed with
+<a class="reference internal" href="#warp.fem.Nanogrid.rebuild_topology_from_cells" title="warp.fem.Nanogrid.rebuild_topology_from_cells"><code class="xref py py-meth docutils literal notranslate"><span class="pre">rebuild_topology_from_cells()</span></code></a>.</p></li>
 <li><p><strong>cell_env</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>)</p></li>
 <li><p><strong>env_offsets</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>)</p></li>
 </ul>
 </dd>
 </dl>
-</dd></dl>
-
 <p class="rubric">Methods</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Nanogrid.__init__" title="warp.fem.Nanogrid.__init__"><code class="xref py py-obj docutils literal notranslate"><span class="pre">__init__</span></code></a>(grid[, temporary_store, ...])</p></td>
-<td><p>Construct a sparse grid geometry from an in-memory NanoVDB volume.</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">boundary_side_count</span></code>()</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">boundary_side_count</span></code>()</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_bvh</span></code>([device])</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">build_bvh</span></code>([device])</p></td>
 <td><p>Rebuild the geometry's Bounding Volume Hierarchy (BVH) for <code class="docutils literal notranslate"><span class="pre">device</span></code> from scratch.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">bvh_id</span></code>(device)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">bvh_id</span></code>(device)</p></td>
 <td><p>Return the BVH identifier for the given device, or <code class="docutils literal notranslate"><span class="pre">0</span></code> if unavailable.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_arg_value</span></code>(device)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_arg_value</span></code>(device)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_bvh_groups</span></code>(device)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_bvh_groups</span></code>(device)</p></td>
 <td><p>Return optional per-cell BVH group indices on <code class="docutils literal notranslate"><span class="pre">device</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_count</span></code>()</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_count</span></code>()</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_env_arg_value</span></code>(device)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">cell_env_arg_value</span></code>(device)</p></td>
 <td><p>Return per-cell environment indices for geometry argument structs.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Nanogrid.edge_count" title="warp.fem.Nanogrid.edge_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">edge_count</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Nanogrid.edge_count" title="warp.fem.Nanogrid.edge_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">edge_count</span></code></a>()</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">environment_count</span></code>()</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">environment_count</span></code>()</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Nanogrid.fill_cell_arg" title="warp.fem.Nanogrid.fill_cell_arg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_cell_arg</span></code></a>(arg, device)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Nanogrid.fill_cell_arg" title="warp.fem.Nanogrid.fill_cell_arg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_cell_arg</span></code></a>(arg, device)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Nanogrid.fill_side_arg" title="warp.fem.Nanogrid.fill_side_arg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_side_arg</span></code></a>(arg, device)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Nanogrid.fill_side_arg" title="warp.fem.Nanogrid.fill_side_arg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_side_arg</span></code></a>(arg, device)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_side_index_arg</span></code>(arg, device)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_side_index_arg</span></code>(arg, device)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Nanogrid.from_environment_voxels" title="warp.fem.Nanogrid.from_environment_voxels"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_environment_voxels</span></code></a>(cell_ijks[, ...])</p></td>
-<td><p>Construct a sparse grid geometry from per-environment active cell coordinates.</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Nanogrid.from_environment_voxels" title="warp.fem.Nanogrid.from_environment_voxels"><code class="xref py py-obj docutils literal notranslate"><span class="pre">from_environment_voxels</span></code></a>([points, ...])</p></td>
+<td><p>Construct a sparse grid geometry from environment-tagged active voxel points.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_filtered_cell_lookup</span></code>([filter_func])</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_filtered_cell_lookup</span></code>([filter_func])</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">reference_cell</span></code>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Nanogrid.rebuild" title="warp.fem.Nanogrid.rebuild"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rebuild</span></code></a>(points[, point_envs, status, point_mask])</p></td>
+<td><p>Rebuild the cell grid and refresh Nanogrid topology buffers.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Nanogrid.rebuild_topology_from_cells" title="warp.fem.Nanogrid.rebuild_topology_from_cells"><code class="xref py py-obj docutils literal notranslate"><span class="pre">rebuild_topology_from_cells</span></code></a>()</p></td>
+<td><p>Refresh Nanogrid topology buffers from the current cell grid.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">reference_cell</span></code>()</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">reference_side</span></code>()</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">reference_side</span></code>()</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_arg_value</span></code>(device)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_arg_value</span></code>(device)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_count</span></code>()</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_count</span></code>()</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_deformation_gradient</span></code>(args, s)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_deformation_gradient</span></code>(args, s)</p></td>
 <td><p>Device function returning the gradient of world position with respect to reference side</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_index_arg_value</span></code>(device)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_index_arg_value</span></code>(device)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_normal</span></code>(args, s)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_normal</span></code>(args, s)</p></td>
 <td><p>Device function returning the element normal at a sample point</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Nanogrid.supports_cell_lookup" title="warp.fem.Nanogrid.supports_cell_lookup"><code class="xref py py-obj docutils literal notranslate"><span class="pre">supports_cell_lookup</span></code></a>(device)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Nanogrid.supports_cell_lookup" title="warp.fem.Nanogrid.supports_cell_lookup"><code class="xref py py-obj docutils literal notranslate"><span class="pre">supports_cell_lookup</span></code></a>(device)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_bvh</span></code>([device])</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_bvh</span></code>([device])</p></td>
 <td><p>Refit the geometry's BVH if it exists on <code class="docutils literal notranslate"><span class="pre">device</span></code>, or build it from scratch otherwise.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">vertex_count</span></code>()</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">vertex_count</span></code>()</p></td>
 <td><p></p></td>
 </tr>
 </tbody>
@@ -779,12 +780,15 @@ be created for all leaf voxels.</p></li>
 </div>
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Nanogrid.from_environment_voxels">
-<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_environment_voxels</span></span><span class="sig-paren">(</span>
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">from_environment_voxels</span></span><span class="sig-paren">(</span>
 
 <dl>
-<dd><em class="sig-param"><span class="n"><span class="pre">cell_ijks</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">points</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">point_envs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">env_count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">env_offsets</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">point_mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">guard_cells</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">voxel_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1.0</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">translation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0.0,</span> <span class="pre">0.0,</span> <span class="pre">0.0)</span></span></em>,</dd>
@@ -792,25 +796,38 @@ be created for all leaf voxels.</p></li>
 <dd><em class="sig-param"><span class="n"><span class="pre">temporary_store</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">scalar_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">warp.float32</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">rebuildable</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_active_voxels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_leaf_nodes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_lower_nodes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">max_upper_nodes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">status</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">cell_ijks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/fem/geometry/nanogrid.py#L555-L612"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.from_environment_voxels" title="Link to this definition">#</a></dt>
-<dd><p>Construct a sparse grid geometry from per-environment active cell coordinates.</p>
-<p>The per-environment coordinates are interpreted in local FEM index space.
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/nanogrid.py#L554-L661"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.from_environment_voxels" title="Link to this definition">#</a></dt>
+<dd><p>Construct a sparse grid geometry from environment-tagged active voxel points.</p>
+<p>The active voxel points are interpreted in local FEM space.
 They are packed into a single NanoVDB index grid by adding an environment
 offset, while FEM positions subtract the offset so environments may remain
 colocated in world space.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>cell_ijks</strong> (<a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Sequence" title="(in Python v3.14)"><em>Sequence</em></a><em>[</em><a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em>]</em>) – Sequence of <code class="docutils literal notranslate"><span class="pre">warp.vec3i</span></code> arrays, one array per environment.</p></li>
+<li><p><strong>points</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Sequence" title="(in Python v3.14)"><em>Sequence</em></a><em>[</em><a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em>] </em><em>| </em><em>None</em>) – Flat <code class="docutils literal notranslate"><span class="pre">warp.vec3i</span></code> or <code class="docutils literal notranslate"><span class="pre">warp.vec3f</span></code> array of active voxel points.
+Deprecated: a sequence of per-environment <code class="docutils literal notranslate"><span class="pre">warp.vec3i</span></code> arrays is also accepted for compatibility.</p></li>
+<li><p><strong>point_envs</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Sequence" title="(in Python v3.14)"><em>Sequence</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Sequence" title="(in Python v3.14)"><em>Sequence</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>]</em><em>] </em><em>| </em><em>None</em>) – Flat <code class="docutils literal notranslate"><span class="pre">int32</span></code> array with one environment index per point. Entries for unmasked points must
+satisfy <code class="docutils literal notranslate"><span class="pre">0</span> <span class="pre">&lt;=</span> <span class="pre">env</span> <span class="pre">&lt;</span> <span class="pre">env_count</span></code>.</p></li>
+<li><p><strong>env_count</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Number of environments represented by <code class="docutils literal notranslate"><span class="pre">point_envs</span></code>.</p></li>
 <li><p><strong>env_offsets</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Sequence" title="(in Python v3.14)"><em>Sequence</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Sequence" title="(in Python v3.14)"><em>Sequence</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>]</em><em>] </em><em>| </em><em>None</em>) – Optional packed-grid offsets, one <code class="docutils literal notranslate"><span class="pre">warp.vec3i</span></code> per environment.
 If omitted, offsets are generated along the x axis with at least one
-guard region between consecutive environments. Custom offsets are an
-advanced override for callers that need deterministic packed NanoVDB
-coordinates, for example to match an externally built volume. They
-must still keep active cells from different environments from sharing
-packed-grid faces.</p></li>
+guard region between consecutive environments. Generated offsets are
+recomputed from the active point ranges during multi-environment
+rebuilds. Custom offsets are an advanced override for callers that need
+deterministic packed NanoVDB coordinates, for example to match an
+externally built volume. They must still keep active cells from
+different environments from sharing packed-grid faces.</p></li>
+<li><p><strong>point_mask</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>) – Optional <code class="docutils literal notranslate"><span class="pre">int32</span></code> array with one entry per point. Points with a zero mask value are ignored.</p></li>
 <li><p><strong>guard_cells</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Number of empty packed cells between generated environment
 tiles. The default isolates padded B-spline node grids up to degree 3.</p></li>
 <li><p><strong>voxel_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Sequence" title="(in Python v3.14)"><em>Sequence</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>] </em><em>| </em><em>None</em>) – Voxel size for the packed NanoVDB volume. Ignored if <code class="docutils literal notranslate"><span class="pre">transform</span></code> is provided.</p></li>
@@ -819,39 +836,91 @@ tiles. The default isolates padded B-spline node grids up to degree 3.</p></li>
 <li><p><strong>temporary_store</strong> (<a class="reference internal" href="warp.fem.TemporaryStore.html#warp.fem.TemporaryStore" title="warp._src.fem.cache.TemporaryStore"><em>TemporaryStore</em></a><em> | </em><em>None</em>) – Shared pool from which to allocate temporary arrays.</p></li>
 <li><p><strong>scalar_type</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><em>type</em></a>) – Scalar type for grid coordinates (<code class="docutils literal notranslate"><span class="pre">warp.float32</span></code> or <code class="docutils literal notranslate"><span class="pre">warp.float64</span></code>).</p></li>
 <li><p><strong>device</strong> – CUDA device on which to build the packed volume.</p></li>
+<li><p><strong>rebuildable</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether to allocate persistent capacity for rebuilds.</p></li>
+<li><p><strong>max_active_voxels</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Maximum number of active voxels for rebuilds. Defaults to the packed cell count.</p></li>
+<li><p><strong>max_leaf_nodes</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Maximum number of NanoVDB leaf nodes for rebuilds. Defaults to <code class="docutils literal notranslate"><span class="pre">max_active_voxels</span></code>.</p></li>
+<li><p><strong>max_lower_nodes</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Maximum number of lower internal nodes for rebuilds. Defaults to <code class="docutils literal notranslate"><span class="pre">max_leaf_nodes</span></code>.</p></li>
+<li><p><strong>max_upper_nodes</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Maximum number of upper internal nodes for rebuilds. Defaults to <code class="docutils literal notranslate"><span class="pre">max_lower_nodes</span></code>.</p></li>
+<li><p><strong>status</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>) – Optional one-element <code class="docutils literal notranslate"><span class="pre">uint32</span></code> array receiving rebuild status flags.</p></li>
+<li><p><strong>cell_ijks</strong> (<a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Sequence" title="(in Python v3.14)"><em>Sequence</em></a><em>[</em><a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em>] </em><em>| </em><em>None</em>) – Deprecated keyword alias for the old per-environment <code class="docutils literal notranslate"><span class="pre">points</span></code> sequence form.</p></li>
 </ul>
 </dd>
 </dl>
 </dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.Nanogrid.rebuild">
+<span class="sig-name descname"><span class="pre">rebuild</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">points</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">point_envs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">status</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">point_mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/nanogrid.py#L739-L813"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.rebuild" title="Link to this definition">#</a></dt>
+<dd><p>Rebuild the cell grid and refresh Nanogrid topology buffers.</p>
+<p>Space topologies built from this Nanogrid are not refreshed automatically. Reusing a topology after
+rebuilding the grid is unsupported unless that topology provides and has had its own rebuild method called.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>points</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>) – Active voxel points. When <code class="docutils literal notranslate"><span class="pre">point_envs</span></code> is provided, points are interpreted in local
+environment space and packed through <code class="docutils literal notranslate"><span class="pre">env_offsets</span></code> before rebuilding the cell grid.</p></li>
+<li><p><strong>point_envs</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>) – Optional <code class="docutils literal notranslate"><span class="pre">int32</span></code> array with one environment index per point. Required for
+multi-environment Nanogrids. Entries for unmasked points must satisfy
+<code class="docutils literal notranslate"><span class="pre">0</span> <span class="pre">&lt;=</span> <span class="pre">env</span> <span class="pre">&lt;</span> <span class="pre">environment_count</span></code>.</p></li>
+<li><p><strong>status</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>) – Optional one-element <code class="docutils literal notranslate"><span class="pre">uint32</span></code> array receiving rebuild status flags.</p></li>
+<li><p><strong>point_mask</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>) – Optional <code class="docutils literal notranslate"><span class="pre">int32</span></code> array with one entry per point. Points with a zero mask value are ignored.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The status array passed to <code class="docutils literal notranslate"><span class="pre">status</span></code>, or <code class="docutils literal notranslate"><span class="pre">None</span></code> if no status array was provided.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a> | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.Nanogrid.rebuild_topology_from_cells">
+<span class="sig-name descname"><span class="pre">rebuild_topology_from_cells</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/nanogrid.py#L814-L825"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.rebuild_topology_from_cells" title="Link to this definition">#</a></dt>
+<dd><p>Refresh Nanogrid topology buffers from the current cell grid.</p>
+<p>Space topologies built from this Nanogrid are not refreshed automatically. Reusing a topology after
+rebuilding the grid is unsupported unless that topology provides and has had its own rebuild method called.</p>
+</dd></dl>
+
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.Nanogrid.edge_grid">
-<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">edge_grid</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Volume.html#warp.Volume" title="warp._src.types.Volume"><span class="pre">Volume</span></a></em><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/fem/geometry/nanogrid.py#L662-L666"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.edge_grid" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">edge_grid</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.Volume.html#warp.Volume" title="warp._src.types.Volume"><span class="pre">Volume</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/nanogrid.py#L826-L830"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.edge_grid" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Nanogrid.edge_count">
-<span class="sig-name descname"><span class="pre">edge_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/fem/geometry/nanogrid.py#L667-L670"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.edge_count" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">edge_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/nanogrid.py#L831-L834"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.edge_count" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Nanogrid.fill_cell_arg">
-<span class="sig-name descname"><span class="pre">fill_cell_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/fem/geometry/nanogrid.py#L671-L678"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.fill_cell_arg" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">fill_cell_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/nanogrid.py#L835-L842"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.fill_cell_arg" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Nanogrid.fill_side_arg">
-<span class="sig-name descname"><span class="pre">fill_side_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/fem/geometry/nanogrid.py#L679-L686"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.fill_side_arg" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">fill_side_arg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arg</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/nanogrid.py#L843-L850"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.fill_side_arg" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Nanogrid.supports_cell_lookup">
-<span class="sig-name descname"><span class="pre">supports_cell_lookup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.15/warp/_src/fem/geometry/nanogrid.py#L687-L689"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.supports_cell_lookup" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">supports_cell_lookup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.16/warp/_src/fem/geometry/nanogrid.py#L851-L853"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Nanogrid.supports_cell_lookup" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.Nanogrid.cell_position">
-<span class="sig-name descname"><span class="pre">cell_position</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Nanogrid__cell_position(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">Any)&gt;</span></em><a class="headerlink" href="#warp.fem.Nanogrid.cell_position" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">cell_position</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Nanogrid__cell_position(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">Any)&gt;</span></span><a class="headerlink" href="#warp.fem.Nanogrid.cell_position" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -864,7 +933,7 @@ tiles. The default isolates padded B-spline node grids up to degree 3.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.Nanogrid.cell_deformation_gradient">
-<span class="sig-name descname"><span class="pre">cell_deformation_gradient</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Nanogrid__cell_deformation_gradient(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">Any)&gt;</span></em><a class="headerlink" href="#warp.fem.Nanogrid.cell_deformation_gradient" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">cell_deformation_gradient</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Nanogrid__cell_deformation_gradient(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">Any)&gt;</span></span><a class="headerlink" href="#warp.fem.Nanogrid.cell_deformation_gradient" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -877,7 +946,7 @@ tiles. The default isolates padded B-spline node grids up to degree 3.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.Nanogrid.cell_inverse_deformation_gradient">
-<span class="sig-name descname"><span class="pre">cell_inverse_deformation_gradient</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Nanogrid__cell_inverse_deformation_gradient(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">Any)&gt;</span></em><a class="headerlink" href="#warp.fem.Nanogrid.cell_inverse_deformation_gradient" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">cell_inverse_deformation_gradient</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Nanogrid__cell_inverse_deformation_gradient(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">Any)&gt;</span></span><a class="headerlink" href="#warp.fem.Nanogrid.cell_inverse_deformation_gradient" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -890,7 +959,7 @@ tiles. The default isolates padded B-spline node grids up to degree 3.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.Nanogrid.cell_measure">
-<span class="sig-name descname"><span class="pre">cell_measure</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Nanogrid__cell_measure(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">Any)&gt;</span></em><a class="headerlink" href="#warp.fem.Nanogrid.cell_measure" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">cell_measure</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Nanogrid__cell_measure(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">Any)&gt;</span></span><a class="headerlink" href="#warp.fem.Nanogrid.cell_measure" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -903,7 +972,7 @@ tiles. The default isolates padded B-spline node grids up to degree 3.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.Nanogrid.cell_normal">
-<span class="sig-name descname"><span class="pre">cell_normal</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Nanogrid__cell_normal(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">Any)&gt;</span></em><a class="headerlink" href="#warp.fem.Nanogrid.cell_normal" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">cell_normal</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Nanogrid__cell_normal(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">Any)&gt;</span></span><a class="headerlink" href="#warp.fem.Nanogrid.cell_normal" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -916,7 +985,7 @@ tiles. The default isolates padded B-spline node grids up to degree 3.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.Nanogrid.cell_coordinates">
-<span class="sig-name descname"><span class="pre">cell_coordinates</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Nanogrid__cell_coordinates(args:</span> <span class="pre">Any,</span> <span class="pre">cell_index:</span> <span class="pre">int,</span> <span class="pre">pos:</span> <span class="pre">Any)&gt;</span></em><a class="headerlink" href="#warp.fem.Nanogrid.cell_coordinates" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">cell_coordinates</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Nanogrid__cell_coordinates(args:</span> <span class="pre">Any,</span> <span class="pre">cell_index:</span> <span class="pre">int,</span> <span class="pre">pos:</span> <span class="pre">Any)&gt;</span></span><a class="headerlink" href="#warp.fem.Nanogrid.cell_coordinates" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -930,7 +999,7 @@ tiles. The default isolates padded B-spline node grids up to degree 3.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.Nanogrid.cell_closest_point">
-<span class="sig-name descname"><span class="pre">cell_closest_point</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Nanogrid__cell_closest_point(args:</span> <span class="pre">Any,</span> <span class="pre">cell_index:</span> <span class="pre">int,</span> <span class="pre">pos:</span> <span class="pre">Any)&gt;</span></em><a class="headerlink" href="#warp.fem.Nanogrid.cell_closest_point" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">cell_closest_point</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Nanogrid__cell_closest_point(args:</span> <span class="pre">Any,</span> <span class="pre">cell_index:</span> <span class="pre">int,</span> <span class="pre">pos:</span> <span class="pre">Any)&gt;</span></span><a class="headerlink" href="#warp.fem.Nanogrid.cell_closest_point" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -944,7 +1013,7 @@ tiles. The default isolates padded B-spline node grids up to degree 3.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.Nanogrid.side_position">
-<span class="sig-name descname"><span class="pre">side_position</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Nanogrid__side_position(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">Any)&gt;</span></em><a class="headerlink" href="#warp.fem.Nanogrid.side_position" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">side_position</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Nanogrid__side_position(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">Any)&gt;</span></span><a class="headerlink" href="#warp.fem.Nanogrid.side_position" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -957,7 +1026,7 @@ tiles. The default isolates padded B-spline node grids up to degree 3.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.Nanogrid.side_inner_inverse_deformation_gradient">
-<span class="sig-name descname"><span class="pre">side_inner_inverse_deformation_gradient</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Nanogrid__side_inner_inverse_deformation_gradient(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">Any)&gt;</span></em><a class="headerlink" href="#warp.fem.Nanogrid.side_inner_inverse_deformation_gradient" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">side_inner_inverse_deformation_gradient</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Nanogrid__side_inner_inverse_deformation_gradient(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">Any)&gt;</span></span><a class="headerlink" href="#warp.fem.Nanogrid.side_inner_inverse_deformation_gradient" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -970,7 +1039,7 @@ tiles. The default isolates padded B-spline node grids up to degree 3.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.Nanogrid.side_outer_inverse_deformation_gradient">
-<span class="sig-name descname"><span class="pre">side_outer_inverse_deformation_gradient</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Nanogrid__side_outer_inverse_deformation_gradient(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">Any)&gt;</span></em><a class="headerlink" href="#warp.fem.Nanogrid.side_outer_inverse_deformation_gradient" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">side_outer_inverse_deformation_gradient</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Nanogrid__side_outer_inverse_deformation_gradient(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">Any)&gt;</span></span><a class="headerlink" href="#warp.fem.Nanogrid.side_outer_inverse_deformation_gradient" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -983,7 +1052,7 @@ tiles. The default isolates padded B-spline node grids up to degree 3.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.Nanogrid.side_measure">
-<span class="sig-name descname"><span class="pre">side_measure</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Nanogrid__side_measure(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">Any)&gt;</span></em><a class="headerlink" href="#warp.fem.Nanogrid.side_measure" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">side_measure</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Nanogrid__side_measure(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">Any)&gt;</span></span><a class="headerlink" href="#warp.fem.Nanogrid.side_measure" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -996,7 +1065,7 @@ tiles. The default isolates padded B-spline node grids up to degree 3.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.Nanogrid.side_measure_ratio">
-<span class="sig-name descname"><span class="pre">side_measure_ratio</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Nanogrid__side_measure_ratio(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">Any)&gt;</span></em><a class="headerlink" href="#warp.fem.Nanogrid.side_measure_ratio" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">side_measure_ratio</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Nanogrid__side_measure_ratio(args:</span> <span class="pre">Any,</span> <span class="pre">s:</span> <span class="pre">Any)&gt;</span></span><a class="headerlink" href="#warp.fem.Nanogrid.side_measure_ratio" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -1009,7 +1078,7 @@ tiles. The default isolates padded B-spline node grids up to degree 3.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.Nanogrid.side_inner_cell_index">
-<span class="sig-name descname"><span class="pre">side_inner_cell_index</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Nanogrid__side_inner_cell_index(args:</span> <span class="pre">Any,</span> <span class="pre">side_index:</span> <span class="pre">int)&gt;</span></em><a class="headerlink" href="#warp.fem.Nanogrid.side_inner_cell_index" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">side_inner_cell_index</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Nanogrid__side_inner_cell_index(args:</span> <span class="pre">Any,</span> <span class="pre">side_index:</span> <span class="pre">int)&gt;</span></span><a class="headerlink" href="#warp.fem.Nanogrid.side_inner_cell_index" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -1022,7 +1091,7 @@ tiles. The default isolates padded B-spline node grids up to degree 3.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.Nanogrid.side_outer_cell_index">
-<span class="sig-name descname"><span class="pre">side_outer_cell_index</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Nanogrid__side_outer_cell_index(args:</span> <span class="pre">Any,</span> <span class="pre">side_index:</span> <span class="pre">int)&gt;</span></em><a class="headerlink" href="#warp.fem.Nanogrid.side_outer_cell_index" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">side_outer_cell_index</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Nanogrid__side_outer_cell_index(args:</span> <span class="pre">Any,</span> <span class="pre">side_index:</span> <span class="pre">int)&gt;</span></span><a class="headerlink" href="#warp.fem.Nanogrid.side_outer_cell_index" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -1035,7 +1104,7 @@ tiles. The default isolates padded B-spline node grids up to degree 3.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.Nanogrid.side_inner_cell_coords">
-<span class="sig-name descname"><span class="pre">side_inner_cell_coords</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Nanogrid__side_inner_cell_coords(args:</span> <span class="pre">Any,</span> <span class="pre">side_index:</span> <span class="pre">int,</span> <span class="pre">side_coords:</span> <span class="pre">Any)&gt;</span></em><a class="headerlink" href="#warp.fem.Nanogrid.side_inner_cell_coords" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">side_inner_cell_coords</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Nanogrid__side_inner_cell_coords(args:</span> <span class="pre">Any,</span> <span class="pre">side_index:</span> <span class="pre">int,</span> <span class="pre">side_coords:</span> <span class="pre">Any)&gt;</span></span><a class="headerlink" href="#warp.fem.Nanogrid.side_inner_cell_coords" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -1049,7 +1118,7 @@ tiles. The default isolates padded B-spline node grids up to degree 3.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.Nanogrid.side_outer_cell_coords">
-<span class="sig-name descname"><span class="pre">side_outer_cell_coords</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Nanogrid__side_outer_cell_coords(args:</span> <span class="pre">Any,</span> <span class="pre">side_index:</span> <span class="pre">int,</span> <span class="pre">side_coords:</span> <span class="pre">Any)&gt;</span></em><a class="headerlink" href="#warp.fem.Nanogrid.side_outer_cell_coords" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">side_outer_cell_coords</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Nanogrid__side_outer_cell_coords(args:</span> <span class="pre">Any,</span> <span class="pre">side_index:</span> <span class="pre">int,</span> <span class="pre">side_coords:</span> <span class="pre">Any)&gt;</span></span><a class="headerlink" href="#warp.fem.Nanogrid.side_outer_cell_coords" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -1063,7 +1132,7 @@ tiles. The default isolates padded B-spline node grids up to degree 3.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.Nanogrid.side_from_cell_coords">
-<span class="sig-name descname"><span class="pre">side_from_cell_coords</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Nanogrid__side_from_cell_coords(args:</span> <span class="pre">Any,</span> <span class="pre">side_index:</span> <span class="pre">int,</span> <span class="pre">element_index:</span> <span class="pre">int,</span> <span class="pre">element_coords:</span> <span class="pre">Any)&gt;</span></em><a class="headerlink" href="#warp.fem.Nanogrid.side_from_cell_coords" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">side_from_cell_coords</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Nanogrid__side_from_cell_coords(args:</span> <span class="pre">Any,</span> <span class="pre">side_index:</span> <span class="pre">int,</span> <span class="pre">element_index:</span> <span class="pre">int,</span> <span class="pre">element_coords:</span> <span class="pre">Any)&gt;</span></span><a class="headerlink" href="#warp.fem.Nanogrid.side_from_cell_coords" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -1078,7 +1147,7 @@ tiles. The default isolates padded B-spline node grids up to degree 3.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.Nanogrid.side_to_cell_arg">
-<span class="sig-name descname"><span class="pre">side_to_cell_arg</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Nanogrid__side_to_cell_arg(side_arg:</span> <span class="pre">Any)&gt;</span></em><a class="headerlink" href="#warp.fem.Nanogrid.side_to_cell_arg" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">side_to_cell_arg</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Nanogrid__side_to_cell_arg(side_arg:</span> <span class="pre">Any)&gt;</span></span><a class="headerlink" href="#warp.fem.Nanogrid.side_to_cell_arg" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>side_arg</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.14)"><em>Any</em></a>)</p>
@@ -1088,7 +1157,7 @@ tiles. The default isolates padded B-spline node grids up to degree 3.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.Nanogrid.side_coordinates">
-<span class="sig-name descname"><span class="pre">side_coordinates</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Nanogrid__side_coordinates(args:</span> <span class="pre">Any,</span> <span class="pre">side_index:</span> <span class="pre">int,</span> <span class="pre">pos:</span> <span class="pre">Any)&gt;</span></em><a class="headerlink" href="#warp.fem.Nanogrid.side_coordinates" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">side_coordinates</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Nanogrid__side_coordinates(args:</span> <span class="pre">Any,</span> <span class="pre">side_index:</span> <span class="pre">int,</span> <span class="pre">pos:</span> <span class="pre">Any)&gt;</span></span><a class="headerlink" href="#warp.fem.Nanogrid.side_coordinates" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -1102,7 +1171,7 @@ tiles. The default isolates padded B-spline node grids up to degree 3.</p></li>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.Nanogrid.side_closest_point">
-<span class="sig-name descname"><span class="pre">side_closest_point</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Nanogrid__side_closest_point(args:</span> <span class="pre">Any,</span> <span class="pre">side_index:</span> <span class="pre">int,</span> <span class="pre">pos:</span> <span class="pre">Any)&gt;</span></em><a class="headerlink" href="#warp.fem.Nanogrid.side_closest_point" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">side_closest_point</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;Function</span> <span class="pre">Nanogrid__side_closest_point(args:</span> <span class="pre">Any,</span> <span class="pre">side_index:</span> <span class="pre">int,</span> <span class="pre">pos:</span> <span class="pre">Any)&gt;</span></span><a class="headerlink" href="#warp.fem.Nanogrid.side_closest_point" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -1165,11 +1234,12 @@ tiles. The default isolates padded B-spline node grids up to degree 3.</p></li>
     class="page-toc tocsection onthispage">
     <i class="fa-solid fa-list"></i> On this page
   </div>
-  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
-    <ul class="visible nav section-nav flex-column">
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Nanogrid"><code class="docutils literal notranslate"><span class="pre">Nanogrid</span></code></a><ul class="nav section-nav flex-column">
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Nanogrid.__init__"><code class="docutils literal notranslate"><span class="pre">__init__()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Nanogrid.from_environment_voxels"><code class="docutils literal notranslate"><span class="pre">from_environment_voxels()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Nanogrid.rebuild"><code class="docutils literal notranslate"><span class="pre">rebuild()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Nanogrid.rebuild_topology_from_cells"><code class="docutils literal notranslate"><span class="pre">rebuild_topology_from_cells()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Nanogrid.edge_grid"><code class="docutils literal notranslate"><span class="pre">edge_grid</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Nanogrid.edge_count"><code class="docutils literal notranslate"><span class="pre">edge_count()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Nanogrid.fill_cell_arg"><code class="docutils literal notranslate"><span class="pre">fill_cell_arg()</span></code></a></li>
@@ -1204,7 +1274,7 @@ tiles. The default isolates padded B-spline node grids up to degree 3.</p></li>
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/release-1.15/docs/api_reference/_generated/warp.fem.Nanogrid.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/release-1.16/docs/api_reference/_generated/warp.fem.Nanogrid.rst">
       <i class="fa-solid fa-pencil"></i>
       
       
@@ -1231,8 +1301,8 @@ tiles. The default isolates padded B-spline node grids up to degree 3.</p></li>
   
 
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
-<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+  <script defer src="../../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
 
 
   <footer class="bd-footer">

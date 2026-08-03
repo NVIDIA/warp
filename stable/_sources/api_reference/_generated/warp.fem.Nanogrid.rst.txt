@@ -4,16 +4,12 @@
 .. currentmodule:: warp.fem
 
 .. autoclass:: Nanogrid
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~Nanogrid.__init__
       ~Nanogrid.boundary_side_count
       ~Nanogrid.build_bvh
       ~Nanogrid.bvh_id
@@ -28,6 +24,8 @@
       ~Nanogrid.fill_side_index_arg
       ~Nanogrid.from_environment_voxels
       ~Nanogrid.make_filtered_cell_lookup
+      ~Nanogrid.rebuild
+      ~Nanogrid.rebuild_topology_from_cells
       ~Nanogrid.reference_cell
       ~Nanogrid.reference_side
       ~Nanogrid.side_arg_value
@@ -40,7 +38,6 @@
       ~Nanogrid.vertex_count
    
    
-
    
    
    .. rubric:: Attributes

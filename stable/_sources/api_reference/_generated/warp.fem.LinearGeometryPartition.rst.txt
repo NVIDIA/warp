@@ -4,16 +4,12 @@
 .. currentmodule:: warp.fem
 
 .. autoclass:: LinearGeometryPartition
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~LinearGeometryPartition.__init__
       ~LinearGeometryPartition.boundary_side_count
       ~LinearGeometryPartition.cell_arg_value
       ~LinearGeometryPartition.cell_count
@@ -25,7 +21,6 @@
       ~LinearGeometryPartition.side_count
    
    
-
    
    
    .. rubric:: Attributes

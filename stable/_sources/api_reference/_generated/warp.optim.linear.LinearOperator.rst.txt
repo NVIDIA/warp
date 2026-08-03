@@ -4,19 +4,9 @@
 .. currentmodule:: warp.optim.linear
 
 .. autoclass:: LinearOperator
-
-   
-   .. automethod:: __init__
-
-   
-   .. rubric:: Methods
-
-   .. autosummary::
-   
-      ~LinearOperator.__init__
    
    
-
+   
    
    
    .. rubric:: Attributes

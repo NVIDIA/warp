@@ -4,16 +4,12 @@
 .. currentmodule:: warp.fem
 
 .. autoclass:: Subdomain
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~Subdomain.__init__
       ~Subdomain.cell_domain
       ~Subdomain.element_arg_value
       ~Subdomain.element_count
@@ -26,7 +22,6 @@
       ~Subdomain.supports_lookup
    
    
-
    
    
    .. rubric:: Attributes

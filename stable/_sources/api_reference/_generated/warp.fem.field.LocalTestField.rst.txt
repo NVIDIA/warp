@@ -4,16 +4,12 @@
 .. currentmodule:: warp.fem.field
 
 .. autoclass:: LocalTestField
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~LocalTestField.__init__
       ~LocalTestField.divergence_valid
       ~LocalTestField.eval_arg_value
       ~LocalTestField.eval_degree
@@ -32,7 +28,6 @@
       ~LocalTestField.trace
    
    
-
    
    
    .. rubric:: Attributes

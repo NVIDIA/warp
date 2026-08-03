@@ -4,16 +4,12 @@
 .. currentmodule:: warp.fem
 
 .. autoclass:: ImplicitField
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~ImplicitField.__init__
       ~ImplicitField.divergence_valid
       ~ImplicitField.eval_arg_value
       ~ImplicitField.eval_degree
@@ -32,7 +28,6 @@
       ~ImplicitField.trace
    
    
-
    
    
    .. rubric:: Attributes

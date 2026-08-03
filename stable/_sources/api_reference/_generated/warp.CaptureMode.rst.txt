@@ -4,10 +4,7 @@
 .. currentmodule:: warp
 
 .. autoclass:: CaptureMode
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
@@ -20,10 +17,8 @@
       ~CaptureMode.from_bytes
       ~CaptureMode.as_integer_ratio
       ~CaptureMode.is_integer
-      ~CaptureMode.__init__
    
    
-
    
    
    .. rubric:: Attributes

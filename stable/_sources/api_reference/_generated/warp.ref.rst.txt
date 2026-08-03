@@ -4,19 +4,9 @@
 .. currentmodule:: warp
 
 .. autoclass:: ref
-
-   
-   .. automethod:: __init__
-
-   
-   .. rubric:: Methods
-
-   .. autosummary::
-   
-      ~ref.__init__
    
    
-
+   
    
    
    

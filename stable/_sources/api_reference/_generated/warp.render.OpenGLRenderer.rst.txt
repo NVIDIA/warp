@@ -4,16 +4,12 @@
 .. currentmodule:: warp.render
 
 .. autoclass:: OpenGLRenderer
-
    
-   .. automethod:: __init__
-
    
    .. rubric:: Methods
 
    .. autosummary::
    
-      ~OpenGLRenderer.__init__
       ~OpenGLRenderer.add_shape_instance
       ~OpenGLRenderer.allocate_shape_instances
       ~OpenGLRenderer.begin_frame
@@ -59,7 +55,6 @@
       ~OpenGLRenderer.update_view_matrix
    
    
-
    
    
    .. rubric:: Attributes

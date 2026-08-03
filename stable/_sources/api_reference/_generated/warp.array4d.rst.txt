@@ -4,19 +4,9 @@
 .. currentmodule:: warp
 
 .. autoclass:: array4d
-
-   
-   .. automethod:: __init__
-
-   
-   .. rubric:: Methods
-
-   .. autosummary::
-   
-      ~array4d.__init__
    
    
-
+   
    
    
    
