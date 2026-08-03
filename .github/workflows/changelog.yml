@@ -9,7 +9,7 @@ on:
       - "pull-request/[0-9]+"
     paths:
       - CHANGELOG.md
-      - "changelog.d/**"
+      - "changelog/**"
       - pyproject.toml
 
 concurrency:

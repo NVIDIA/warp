@@ -105,7 +105,7 @@ By making a contribution to this project, I certify that:
    * Ensure that code changes pass [linting and formatting checks](#linting-and-formatting).
    * Test cases should be written to verify correctness ([Testing Warp](#testing-warp)).
    * Documentation should be added for new features ([Building Docs](#building-docs)).
-   * Add a [changelog fragment](https://github.com/NVIDIA/warp/blob/main/changelog.d/README.md)
+   * Add a [changelog fragment](https://github.com/NVIDIA/warp/blob/main/changelog/README.md)
      when the change affects users.
 
 5. Prepare your commits.

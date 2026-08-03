@@ -248,7 +248,7 @@ validate fragments:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
       changes:
         - CHANGELOG.md
-        - changelog.d/**/*
+        - changelog/**/*
         - pyproject.toml
   script:
     - uvx --from towncrier==25.8.0 towncrier build --draft --version Unreleased

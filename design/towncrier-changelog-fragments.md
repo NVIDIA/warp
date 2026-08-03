@@ -11,7 +11,7 @@ It is particularly awkward once a release branch has split from `main`: both
 branches continue editing the same section, and the release notes must be
 reconciled by hand.
 
-Towncrier moves those edits into small files under `changelog.d/`. Contributors
+Towncrier moves those edits into small files under `changelog/`. Contributors
 write the entry next to the change that needs it. A maintainer reviews the
 combined draft and builds the final section on the release branch.
 
@@ -46,7 +46,7 @@ Non-goals:
 ### Towncrier configuration
 
 Towncrier configuration lives in `pyproject.toml`. The project uses
-`changelog.d/` for fragments and writes releases into `CHANGELOG.md` beneath a
+`changelog/` for fragments and writes releases into `CHANGELOG.md` beneath a
 Markdown insertion marker. The title format remains
 `## [{version}] - {project_date}`.
 
@@ -137,7 +137,7 @@ uvx --from towncrier==25.8.0 towncrier build --draft \
 They run only when one of these paths changes:
 
 - `CHANGELOG.md`
-- `changelog.d/**`
+- `changelog/**`
 - `pyproject.toml`
 
 The draft catches invalid filenames, unknown types, invalid numeric issue
@@ -153,7 +153,7 @@ check.
 
 ### Contributor and maintainer documentation
 
-`changelog.d/README.md` is the source of truth for fragment names, categories,
+`changelog/README.md` is the source of truth for fragment names, categories,
 writing guidance, local preview commands, and the release procedure.
 `CONTRIBUTING.md` and `AGENTS.md` link to that guide instead of telling people to
 edit `CHANGELOG.md` directly.

@@ -28,7 +28,7 @@ Build docs (~1 min) with `uv run --extra docs build_docs.py 2>&1 | tee /tmp/buil
 
 - If opening a pull request on GitHub, use the template in `.github/PULL_REQUEST_TEMPLATE.md`.
 - If opening a merge request on GitLab, use the template in `.gitlab/merge_request_templates/Default.md`. If a GitHub issue exists for the change, end the MR title with a reference (e.g., `[GH-123]`).
-- Follow `changelog.d/README.md`: add a fragment when a change affects users,
+- Follow `changelog/README.md`: add a fragment when a change affects users,
   and do not edit `CHANGELOG.md` directly.
 - For complex features, consider adding a design doc in `design/`. See `design/README.md` for guidelines.
 
