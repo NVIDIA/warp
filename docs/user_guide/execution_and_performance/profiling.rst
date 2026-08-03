@@ -361,8 +361,8 @@ the entire run.  Warp exposes the CUDA profiler control API for this purpose:
   with the two calls.
 
 These calls act on the selected ``device``'s CUDA context (the current device by default), and a CUDA context must be
-active for the profiler to intercept them; they have no effect on CPU-only builds.  Note that the external profiler's
-*capture range* is process-wide—the first start opens it and the stop closes it for the whole process.
+active for the profiler to intercept them; they have no effect on CPU-only builds.  External profilers may use these
+calls as capture-session markers, but the profiler and its configuration determine the scope of activity collected.
 
 .. code:: python
 
