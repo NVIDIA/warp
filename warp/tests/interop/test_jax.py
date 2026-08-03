@@ -30,6 +30,11 @@ TILE_STORE_SIZE = 64
 JAX_TILE_BLOCK_DIM = 64
 
 
+# Keep test kernels at module scope. Function-local @wp.kernel definitions mark
+# the shared module modified during the run and trigger expensive recompilation.
+# Use module="unique" when a test intentionally requires different module options.
+
+
 # basic kernel with one input and output
 @wp.kernel
 def triple_kernel(inp: wp.array[float], output: wp.array[float]):
@@ -38,17 +43,29 @@ def triple_kernel(inp: wp.array[float], output: wp.array[float]):
 
 
 # generic kernel with one scalar input and output
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def triple_kernel_scalar(inp: wp.array[Any], output: wp.array[Any]):
     tid = wp.tid()
     output[tid] = inp.dtype(3) * inp[tid]
 
 
 # generic kernel with one vector/matrix input and output
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def triple_kernel_vecmat(inp: wp.array[Any], output: wp.array[Any]):
     tid = wp.tid()
     output[tid] = inp.dtype.dtype(3) * inp[tid]
+
+
+@wp.kernel
+def scale_mat_kernel(a: wp.array[wp.mat22], s: float, out: wp.array[wp.mat22]):
+    tid = wp.tid()
+    out[tid] = a[tid] * s
+
+
+@wp.kernel
+def noop_kernel(a: wp.array1d[wp.float32], b: wp.array1d[wp.float32]):
+    i = wp.tid()
+    b[i] = a[i]
 
 
 @wp.kernel
@@ -69,7 +86,7 @@ def shaped_tile_store_kernel(output: wp.array[float]):
     wp.tile_store(output, tile)
 
 
-@wp.kernel
+@wp.kernel(module="unique")
 def ffi_tile_block_sum_kernel(output: wp.array[int]):
     i = wp.tid()
     output[i] = 0
@@ -344,28 +361,28 @@ def test_jax_kernel_scalar(test, device, use_ffi=False):
     # use a smallish size to ensure arange * 3 doesn't overflow
     n = 64
 
+    cases = []
     for T in scalar_types:
         jp_dtype = wp.dtype_to_jax(T)
         np_dtype = wp.dtype_to_numpy(T)
 
+        kernel_instance = triple_kernel_scalar.add_overload([wp.array[T], wp.array[T]])
+        jax_triple = jax_kernel(kernel_instance, **kwargs)
+        cases.append((T, jp_dtype, np_dtype, jax_triple))
+
+    # Compile the complete type matrix together instead of once per type.
+    @jax.jit
+    def run_cases():
+        return tuple(jax_triple(jp.arange(n, dtype=jp_dtype)) for _, jp_dtype, _, jax_triple in cases)
+
+    with jax.default_device(wp.device_to_jax(device)):
+        results = run_cases()
+
+    jax.block_until_ready(results)
+
+    for (T, _, np_dtype, _), jax_result in zip(cases, results, strict=True):
         with test.subTest(msg=T.__name__):
-            # get the concrete overload
-            kernel_instance = triple_kernel_scalar.add_overload([wp.array[T], wp.array[T]])
-
-            jax_triple = jax_kernel(kernel_instance, **kwargs)
-
-            @jax.jit
-            def f(jax_triple=jax_triple, jp_dtype=jp_dtype):
-                x = jp.arange(n, dtype=jp_dtype)
-                return jax_triple(x)
-
-            # run on the given device
-            with jax.default_device(wp.device_to_jax(device)):
-                y = f()
-
-            jax.block_until_ready(y)
-
-            result = np.asarray(y).reshape((n,))
+            result = np.asarray(jax_result).reshape((n,))
             expected = 3 * np.arange(n, dtype=np_dtype)
 
             assert_np_equal(result, expected)
@@ -383,6 +400,7 @@ def test_jax_kernel_vecmat(test, device, use_ffi=False):
 
         kwargs = {"quiet": True}
 
+    cases = []
     for T in [*vector_types, *matrix_types]:
         jp_dtype = wp.dtype_to_jax(T._wp_scalar_type_)
         np_dtype = wp.dtype_to_numpy(T._wp_scalar_type_)
@@ -392,24 +410,26 @@ def test_jax_kernel_vecmat(test, device, use_ffi=False):
         scalar_shape = (n, *T._shape_)
         scalar_len = n * T._length_
 
+        kernel_instance = triple_kernel_vecmat.add_overload([wp.array[T], wp.array[T]])
+        jax_triple = jax_kernel(kernel_instance, **kwargs)
+        cases.append((T, jp_dtype, np_dtype, scalar_len, scalar_shape, jax_triple))
+
+    # Compile the complete type matrix together instead of once per type.
+    @jax.jit
+    def run_cases():
+        return tuple(
+            jax_triple(jp.arange(scalar_len, dtype=jp_dtype).reshape(scalar_shape))
+            for _, jp_dtype, _, scalar_len, scalar_shape, jax_triple in cases
+        )
+
+    with jax.default_device(wp.device_to_jax(device)):
+        results = run_cases()
+
+    jax.block_until_ready(results)
+
+    for (T, _, np_dtype, scalar_len, scalar_shape, _), jax_result in zip(cases, results, strict=True):
         with test.subTest(msg=T.__name__):
-            # get the concrete overload
-            kernel_instance = triple_kernel_vecmat.add_overload([wp.array[T], wp.array[T]])
-
-            jax_triple = jax_kernel(kernel_instance, **kwargs)
-
-            @jax.jit
-            def f(jax_triple=jax_triple, jp_dtype=jp_dtype, scalar_len=scalar_len, scalar_shape=scalar_shape):
-                x = jp.arange(scalar_len, dtype=jp_dtype).reshape(scalar_shape)
-                return jax_triple(x)
-
-            # run on the given device
-            with jax.default_device(wp.device_to_jax(device)):
-                y = f()
-
-            jax.block_until_ready(y)
-
-            result = np.asarray(y).reshape(scalar_shape)
+            result = np.asarray(jax_result).reshape(scalar_shape)
             expected = 3 * np.arange(scalar_len, dtype=np_dtype).reshape(scalar_shape)
 
             assert_np_equal(result, expected)
@@ -613,7 +633,7 @@ def scale_sum_square_kernel(a: wp.array[float], b: wp.array[float], s: float, c:
     c[tid] = (a[tid] * s + b[tid]) ** 2.0
 
 
-@wp.kernel
+@wp.kernel(module="unique")
 def block_dim_scale_kernel(a: wp.array[float], b: wp.array[float]):
     tid = wp.tid()
     b[tid] = a[tid] * float(wp.block_dim())
@@ -1698,11 +1718,6 @@ def test_ffi_jax_kernel_autodiff_mat22(test, device):
 
     jax_kernel = wp.jax_kernel
 
-    @wp.kernel
-    def scale_mat_kernel(a: wp.array[wp.mat22], s: float, out: wp.array[wp.mat22]):
-        tid = wp.tid()
-        out[tid] = a[tid] * s
-
     jax_func = jax_kernel(scale_mat_kernel, num_outputs=1, enable_backward=True)
 
     @partial(jax.jit, static_argnames=("s",))
@@ -1994,13 +2009,8 @@ def test_ffi_jax_kernel_autodiff_per_call_override_rejected(test, device):
 
     jax_kernel = wp.jax_kernel
 
-    @wp.kernel
-    def noop(a: wp.array1d[wp.float32], b: wp.array1d[wp.float32]):
-        i = wp.tid()
-        b[i] = a[i]
-
     N = 8
-    jax_func = jax_kernel(noop, num_outputs=1, launch_dims=(N,), enable_backward=True)
+    jax_func = jax_kernel(noop_kernel, num_outputs=1, launch_dims=(N,), enable_backward=True)
     a = jnp.ones((N,), dtype=jnp.float32)
 
     with test.assertRaisesRegex(TypeError, "launch_dims cannot be overridden per-call"):
@@ -2018,15 +2028,9 @@ def test_ffi_jax_kernel_output_dims_autodiff_still_blocked(test, device):
     """output_dims with enable_backward=True remains a follow-up (still blocked)."""
     jax_kernel = wp.jax_kernel
 
-    @wp.kernel
-    def noop(a: wp.array1d[wp.float32], b: wp.array1d[wp.float32]):
-        """Identity copy; used only to trigger the output_dims guard path."""
-        i = wp.tid()
-        b[i] = a[i]
-
     with test.assertRaises(NotImplementedError):
         jax_kernel(
-            noop,
+            noop_kernel,
             num_outputs=1,
             output_dims={"b": (8,)},
             enable_backward=True,
@@ -2104,40 +2108,42 @@ def test_ffi_vmap_add(test, device, vmap_method):
     jc_add1d = jax_callable(warp_add1d, vmap_method=vmap_method)
     jc_add2d = jax_callable(warp_add2d, vmap_method=vmap_method)
 
+    def check_vmap_cases(a, b, jax_kernel_add, jax_callable_add):
+        axis_pairs = tuple((in_axis, out_axis) for in_axis in range(a.ndim) for out_axis in range(a.ndim))
+
+        # Compile all axis combinations together instead of once per case.
+        @jax.jit
+        def run_cases(a, b):
+            return tuple(
+                (
+                    jax.vmap(jax_add, in_axes=in_axis, out_axes=out_axis)(a, b),
+                    jax.vmap(jax_kernel_add, in_axes=in_axis, out_axes=out_axis)(a, b),
+                    jax.vmap(jax_callable_add, in_axes=in_axis, out_axes=out_axis)(a, b),
+                )
+                for in_axis, out_axis in axis_pairs
+            )
+
+        results = run_cases(a, b)
+        for (in_axis, out_axis), (expected, kernel_result, callable_result) in zip(axis_pairs, results, strict=True):
+            with test.subTest(ndim=a.ndim, in_axis=in_axis, out_axis=out_axis):
+                (output,) = kernel_result
+                test.assertEqual(output.shape, expected.shape)
+                assert_np_equal(np.asarray(output), np.asarray(expected))
+
+                (output,) = callable_result
+                test.assertEqual(output.shape, expected.shape)
+                assert_np_equal(np.asarray(output), np.asarray(expected))
+
     with jax.default_device(wp.device_to_jax(device)):
         # test 1d batching
         a = jp.arange(3 * 4, dtype=jp.float32).reshape((3, 4))
         b = jp.ones(3 * 4, dtype=jp.float32).reshape((3, 4))
-        for in_axis in range(2):
-            for out_axis in range(2):
-                expected = jax.jit(jax.vmap(jax_add, in_axes=in_axis, out_axes=out_axis))(a, b)
-
-                # test jax_kernel()
-                (output,) = jax.jit(jax.vmap(jk_add1d, in_axes=in_axis, out_axes=out_axis))(a, b)
-                test.assertEqual(output.shape, expected.shape)
-                assert_np_equal(np.asarray(output), np.asarray(expected))
-
-                # test jax_callable()
-                (output,) = jax.jit(jax.vmap(jc_add1d, in_axes=in_axis, out_axes=out_axis))(a, b)
-                test.assertEqual(output.shape, expected.shape)
-                assert_np_equal(np.asarray(output), np.asarray(expected))
+        check_vmap_cases(a, b, jk_add1d, jc_add1d)
 
         # test 2d batching
         a = jp.arange(2 * 3 * 4, dtype=jp.float32).reshape((2, 3, 4))
         b = jp.ones(2 * 3 * 4, dtype=jp.float32).reshape((2, 3, 4))
-        for in_axis in range(3):
-            for out_axis in range(3):
-                expected = jax.jit(jax.vmap(jax_add, in_axes=in_axis, out_axes=out_axis))(a, b)
-
-                # test jax_kernel()
-                (output,) = jax.jit(jax.vmap(jk_add2d, in_axes=in_axis, out_axes=out_axis))(a, b)
-                test.assertEqual(output.shape, expected.shape)
-                assert_np_equal(np.asarray(output), np.asarray(expected))
-
-                # test jax_callable()
-                (output,) = jax.jit(jax.vmap(jc_add2d, in_axes=in_axis, out_axes=out_axis))(a, b)
-                test.assertEqual(output.shape, expected.shape)
-                assert_np_equal(np.asarray(output), np.asarray(expected))
+        check_vmap_cases(a, b, jk_add2d, jc_add2d)
 
 
 @wp.kernel
