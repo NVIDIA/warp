@@ -537,7 +537,33 @@ def test_cholesky_solve_inplace_matrix(test, device):
 # should collapse to sequential, exercising a different codegen path from
 # block_dim == TILE_DIM. CPU coverage is incidental via the per-device fanout
 # of the regular tests.)
+#
+# These kernels live in their own modules so that the block_dim == 1 launch
+# specializes only them instead of recompiling every kernel in this module.
+# The module-scope enable_mathdx_solver option does not carry over to a unique
+# module, so it is repeated here. The launch is always a single block, so the
+# grid-stride wrapper is not needed either.
 # -----------------------------------------------------------------------------
+
+
+@wp.kernel(enable_backward=False, grid_stride=False, module="unique", module_options={"enable_mathdx_solver": False})
+def tile_lower_solve_vec_isolated_kernel(
+    gL: wp.array2d[wp.float64], gy: wp.array1d[wp.float64], gz: wp.array1d[wp.float64]
+):
+    L = wp.tile_load(gL, shape=(N, N))
+    y = wp.tile_load(gy, shape=N)
+    z = wp.tile_lower_solve(L, y)
+    wp.tile_store(gz, z)
+
+
+@wp.kernel(enable_backward=False, grid_stride=False, module="unique", module_options={"enable_mathdx_solver": False})
+def tile_cholesky_solve_mat_isolated_kernel(
+    gL: wp.array2d[wp.float64], gy: wp.array2d[wp.float64], gx: wp.array2d[wp.float64]
+):
+    L = wp.tile_load(gL, shape=(N, N))
+    y = wp.tile_load(gy, shape=(N, M_RHS))
+    x = wp.tile_cholesky_solve(L, y)
+    wp.tile_store(gx, x)
 
 
 def test_lower_solve_block_dim_1(test, device):
@@ -549,7 +575,7 @@ def test_lower_solve_block_dim_1(test, device):
     y = _make_arr(y_np, wp.float64, device)
     z = wp.zeros(N, dtype=wp.float64, device=device)
 
-    wp.launch_tiled(tile_lower_solve_vec_kernel, dim=[1], inputs=[L, y, z], block_dim=1, device=device)
+    wp.launch_tiled(tile_lower_solve_vec_isolated_kernel, dim=[1], inputs=[L, y, z], block_dim=1, device=device)
     assert_np_equal(z.numpy(), z_ref, tol=1e-10)
 
 
@@ -563,7 +589,7 @@ def test_cholesky_solve_matrix_block_dim_1(test, device):
     y = _make_arr(y_np, wp.float64, device)
     x = wp.zeros((N, M_RHS), dtype=wp.float64, device=device)
 
-    wp.launch_tiled(tile_cholesky_solve_mat_kernel, dim=[1], inputs=[L, y, x], block_dim=1, device=device)
+    wp.launch_tiled(tile_cholesky_solve_mat_isolated_kernel, dim=[1], inputs=[L, y, x], block_dim=1, device=device)
     assert_np_equal(x.numpy(), x_ref, tol=1e-10)
 
 
@@ -576,7 +602,7 @@ class TestTileSolveNoMathDx(unittest.TestCase):
     pass
 
 
-_devices = get_test_devices()
+devices = get_test_devices()
 
 for name, func in [
     ("test_lower_solve_vector", test_lower_solve_vector),
@@ -599,7 +625,7 @@ for name, func in [
     ("test_lower_solve_block_dim_1", test_lower_solve_block_dim_1),
     ("test_cholesky_solve_matrix_block_dim_1", test_cholesky_solve_matrix_block_dim_1),
 ]:
-    add_function_test(TestTileSolveNoMathDx, name, func, devices=_devices, check_output=False)
+    add_function_test(TestTileSolveNoMathDx, name, func, devices=devices, check_output=False)
 
 
 if __name__ == "__main__":
