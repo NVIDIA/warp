@@ -3414,6 +3414,32 @@ def test_alloc_strides(test, device):
                 test_transposed(shape, wp.float32)
                 test_transposed(shape, wp.vec3)
 
+        # Allocate gapped layouts whose required capacity includes contributions from multiple strides.
+        stride_cases = [
+            ((3, 3), (16, 12)),
+            ((2, 3, 4), (40, 16, 4)),
+        ]
+        for shape, strides in stride_cases:
+            with test.subTest(msg=f"shape={shape}, strides={strides}"):
+                a = wp.empty(shape, dtype=wp.int32, strides=strides)
+                expected_capacity = np.dtype(np.int32).itemsize + sum(
+                    (dim - 1) * stride for dim, stride in zip(shape, strides, strict=True)
+                )
+                test.assertEqual(a.capacity, expected_capacity)
+
+        # allocate an empty array with custom strides
+        a = wp.empty((0, 3), dtype=wp.int32, strides=(4, 16))
+        test.assertEqual(a.capacity, 0)
+        test.assertIsNone(a.ptr)
+
+        # wrong number of strides should be rejected during construction
+        with test.assertRaisesRegex(ValueError, "Invalid number of strides, expected 2 strides, got 1"):
+            wp.empty((0, 3), dtype=wp.int32, strides=(4,))
+
+        # allocating with negative strides is unsupported
+        with test.assertRaisesRegex(NotImplementedError, "Negative strides"):
+            wp.empty((3, 3), dtype=wp.int32, strides=(16, -4))
+
 
 def test_casting(test, device):
     idxs = (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12)

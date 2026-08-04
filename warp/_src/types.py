@@ -3709,22 +3709,17 @@ class array(Array[DType, NDim]):
             capacity = size * dtype_size
         else:
             strides = tuple(strides)
+            if len(strides) != ndim:
+                raise ValueError(f"Invalid number of strides, expected {ndim} strides, got {len(strides)}")
             is_contiguous = strides == contiguous_strides
 
-            # To calculate the required capacity, find the dimension with largest stride.
-            # Normally it is the first one, but it could be different (e.g., transposed arrays).
-            max_stride = strides[0]
-            max_dim = 0
-            for i in range(1, ndim):
-                if strides[i] > max_stride:
-                    max_stride = strides[i]
-                    max_dim = i
-
-            if max_stride > 0:
-                capacity = shape[max_dim] * strides[max_dim]
+            if any(stride < 0 for stride in strides):
+                raise NotImplementedError("Negative strides are not supported for newly allocated arrays.")
+            elif size == 0:
+                capacity = 0
             else:
-                # single element storage with zero strides
-                capacity = dtype_size
+                max_offset = sum((dim - 1) * stride for dim, stride in zip(shape, strides, strict=True))
+                capacity = max_offset + dtype_size
 
         allocator = device.get_allocator(pinned=pinned)
         allocator_memory_kind = getattr(allocator, "memory_kind", None)
