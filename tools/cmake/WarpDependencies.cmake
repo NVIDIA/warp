@@ -164,6 +164,20 @@ function(warp_find_libmathdx)
         set(_mathdx_root "${PROJECT_SOURCE_DIR}/_build/target-deps/libmathdx")
     endif()
 
+    # libmathdx 0.4.0 and newer ship archives that wrap the payload in a single top-level
+    # directory (e.g. libmathdx-linux-x86_64), one level above the layout Warp builds
+    # against. Descend into that wrapper when the root does not already hold the layout.
+    if(NOT EXISTS "${_mathdx_root}/include")
+        file(GLOB _mathdx_nested LIST_DIRECTORIES true "${_mathdx_root}/libmathdx-*")
+        foreach(_candidate IN LISTS _mathdx_nested)
+            if(EXISTS "${_candidate}/include")
+                message(STATUS "Using nested libmathdx directory ${_candidate}")
+                set(_mathdx_root "${_candidate}")
+                break()
+            endif()
+        endforeach()
+    endif()
+
     if(WIN32)
         set(_mathdx_lib_dir "${_mathdx_root}/lib/x64")
     else()
