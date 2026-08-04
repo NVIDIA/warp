@@ -1,0 +1,31 @@
+{
+  "profile": "production-p95-request-latency",
+  "representative_requests": 10000,
+  "total_ms": 100.0,
+  "objective": {
+    "metric": "p95_request_latency",
+    "target_ms": 50.0
+  },
+  "stages": [
+    {
+      "name": "decode",
+      "latency_ms": 68.0,
+      "share_percent": 68.0
+    },
+    {
+      "name": "spatial_filter",
+      "latency_ms": 1.2,
+      "share_percent": 1.2
+    },
+    {
+      "name": "other",
+      "latency_ms": 30.8,
+      "share_percent": 30.8
+    }
+  ],
+  "spatial_filter": {
+    "peak_memory_mib": 14.0,
+    "memory_budget_mib": 8192.0,
+    "capacity_limited": false
+  }
+}

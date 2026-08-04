@@ -1,0 +1,307 @@
+{
+  "skill_name": "warp-eval",
+  "evals": [
+    {
+      "id": "trigger-spatial-hot-path",
+      "prompt": "Our molecular preprocessing service spends most of its time in a Python loop that checks nearby 3D particles and builds a variable-length contact list. At production size it scans about two million particles and runs out of memory when we increase the cutoff. Find opportunities to make this narrow stage faster and reduce its memory footprint.",
+      "expected_output": "The agent activates warp-eval and begins a neutral Warp evaluation.",
+      "expected_skill": "warp-eval",
+      "assertions": [
+        "The agent reads the warp-eval SKILL.md.",
+        "The first line names NVIDIA Warp as the option being evaluated and makes clear that the skill will report evidence without an adoption recommendation.",
+        "The agent does not predict a speedup or memory reduction from the prompt alone.",
+        "The agent does not profile, install dependencies, prototype, benchmark, or use a GPU without the skill's explicit authorization checkpoint.",
+        "Any authorized measured evaluation includes the strongest in-project baseline, a Warp prototype, and an end-to-end Warp benchmark unless a gate aborts first."
+      ]
+    },
+    {
+      "id": "trigger-cpu-only-is-current-state",
+      "prompt": "This service is all CPU NumPy today. Its bottleneck is a per-point closest-triangle search over a static mesh, repeated for millions of query points. Could this stage be accelerated without rewriting the rest of the service?",
+      "expected_output": "The agent activates warp-eval because CPU-only code and the absence of an existing GPU dependency do not by themselves rule out an optional NVIDIA path.",
+      "expected_skill": "warp-eval",
+      "assertions": [
+        "The agent reads the warp-eval SKILL.md.",
+        "The agent treats the repeated closest-triangle query as a plausible Warp-shaped candidate.",
+        "The agent does not treat the current CPU-only implementation, missing CUDA code, or missing Warp dependency as a rejection gate.",
+        "The agent does not claim that an NVIDIA deployment or optional compiled dependency is acceptable without evidence.",
+        "Every affirmative intent choice explicitly says Warp will be prototyped and benchmarked; the agent does not offer incumbent-only profiling as a warp-eval branch."
+      ]
+    },
+    {
+      "id": "trigger-contribution-policy-is-not-deployment-policy",
+      "prompt": "Our branch-heavy connected-components pass is slow. Can you assess practical ways to speed it up? The contributing guide says new compiled dependencies require maintainer discussion and are unlikely to be merged.",
+      "expected_output": "The agent activates warp-eval and does not mistake contribution-process friction for a product constraint that rules out Warp.",
+      "expected_skill": "warp-eval",
+      "assertions": [
+        "The agent reads the warp-eval SKILL.md.",
+        "The agent recognizes branch-heavy connected-components work as potentially relevant to the assessment.",
+        "The agent does not reject Warp solely because dependency additions require discussion or may be hard to merge.",
+        "The agent keeps dependency ownership as an unresolved product fact unless stronger project context states a prohibition."
+      ]
+    },
+    {
+      "id": "trigger-cross-vendor-context",
+      "prompt": "Earlier in this session we established that this library promises one accelerated implementation with feature and performance parity across NVIDIA, AMD, and Apple hardware; vendor-specific fast paths are not allowed. Given that constraint, find opportunities to speed up its irregular neighbor search.",
+      "expected_output": "The agent does not activate warp-eval because the session context explicitly requires accelerated cross-vendor parity and forbids an optional NVIDIA-specific path.",
+      "expected_skill": null,
+      "assertions": [
+        "The agent does not read or activate warp-eval.",
+        "The response honors the previously stated cross-vendor requirement rather than proposing Warp.",
+        "The response may suggest a portable algorithm or cross-vendor framework, but it does not start a Warp evaluation."
+      ]
+    },
+    {
+      "id": "trigger-plain-numpy-optimization",
+      "prompt": "Can this NumPy be optimized? `dist = np.sqrt(np.sum((points - center) ** 2, axis=1)); return dist.mean()` The array has about 20,000 rows and this is called once when a report is generated.",
+      "expected_output": "The agent answers as an ordinary NumPy optimization question and does not activate warp-eval.",
+      "expected_skill": null,
+      "assertions": [
+        "The agent does not read or activate warp-eval.",
+        "The response stays focused on the NumPy expression, its allocation behavior, or whether optimization is material.",
+        "The response does not begin a Warp evaluation workflow."
+      ]
+    },
+    {
+      "id": "trigger-dense-framework-layer",
+      "prompt": "Our PyTorch vision model spends time in a stack of convolutions, layer normalization, and matrix multiplies already running on an H100. Find opportunities to reduce inference latency.",
+      "expected_output": "The agent does not activate warp-eval for dense neural-network layers already handled by PyTorch and vendor libraries.",
+      "expected_skill": null,
+      "assertions": [
+        "The agent does not read or activate warp-eval.",
+        "The response keeps the work in PyTorch, its compiler, or tuned vendor libraries unless evidence identifies a genuinely custom operation.",
+        "The response does not recommend a Warp port for the named dense layers."
+      ]
+    },
+    {
+      "id": "trigger-array-api-question",
+      "prompt": "In the simulation library we're using, what is the difference between a dense array and an indexed array view, and when can each be passed to a kernel?",
+      "expected_output": "The agent answers the array API question without activating the Warp evaluation skill.",
+      "expected_skill": null,
+      "assertions": [
+        "The agent does not read or activate warp-eval.",
+        "The response answers the API semantics directly.",
+        "The response does not start an evaluation, ask about deployment intent, or produce an adoption recommendation."
+      ]
+    },
+    {
+      "id": "trigger-already-chosen-kernel-implementation",
+      "prompt": "Our PyTorch project already uses custom CUDA extensions, and this path has been approved as a CUDA kernel. Implement `triangle_aabbs(vertices, faces, out)`, where vertices is float32 `[N, 3]`, faces is int32 `[M, 3]`, and out is float32 `[M, 6]` containing each triangle's minimum and maximum coordinates.",
+      "expected_output": "The agent implements the already-chosen CUDA kernel without activating warp-eval.",
+      "expected_skill": null,
+      "assertions": [
+        "The agent does not read or activate warp-eval.",
+        "The response treats CUDA as already decided and focuses on a correct triangle-AABB implementation and launch.",
+        "The response does not reopen the backend-adoption decision or run an evaluation workflow."
+      ]
+    },
+    {
+      "id": "trigger-explicit-cpu-only-requirement",
+      "prompt": "This command must keep running on CPU-only edge systems and customers are not permitted to install or use any accelerator runtime. Can you speed up its particle-contact loop?",
+      "expected_output": "The agent does not activate warp-eval because the request explicitly rules out every GPU path.",
+      "expected_skill": null,
+      "assertions": [
+        "The agent does not read or activate warp-eval.",
+        "The response respects the CPU-only deployment requirement.",
+        "The response pursues a CPU algorithmic or implementation improvement rather than proposing Warp."
+      ]
+    },
+    {
+      "id": "trigger-general-optimization-scan",
+      "prompt": "Find opportunities to optimize the current codebase.",
+      "expected_output": "The agent treats this as a general optimization request and does not activate warp-eval without an identified hot path or Warp-shaped workload.",
+      "expected_skill": null,
+      "assertions": [
+        "The agent does not read or activate warp-eval.",
+        "The response begins an ordinary codebase performance investigation rather than assuming an accelerator or backend.",
+        "The response does not propose NVIDIA Warp solely from the generic request."
+      ]
+    },
+    {
+      "id": "trigger-general-optimization-accelerators-ruled-out-context",
+      "prompt": "Earlier in this session we established that production runs on CPU-only edge systems and that accelerator runtimes and vendor-specific backends are prohibited. Now find opportunities to optimize the current codebase.",
+      "expected_output": "The agent honors the prior CPU-only constraint and does not activate warp-eval for the otherwise generic optimization request.",
+      "expected_skill": null,
+      "assertions": [
+        "The agent does not read or activate warp-eval.",
+        "The response treats the earlier deployment constraint as part of the current request.",
+        "The response limits recommendations to CPU-compatible algorithmic and implementation improvements."
+      ]
+    },
+    {
+      "id": "trigger-general-optimization-candidate-context",
+      "prompt": "Earlier in this session we established that an optional NVIDIA GPU backend is acceptable and that profiling found a branch-heavy 3D neighbor loop dominating runtime and memory. Find opportunities to optimize the current codebase.",
+      "expected_output": "The agent activates warp-eval because the prior session context supplies both an acceptable NVIDIA path and a measured Warp-shaped bottleneck.",
+      "expected_skill": "warp-eval",
+      "assertions": [
+        "The agent reads the warp-eval SKILL.md.",
+        "The agent uses the prior session context rather than treating the final generic sentence in isolation.",
+        "The agent identifies the branch-heavy 3D neighbor loop as the candidate without presenting an adoption opinion.",
+        "The agent does not profile, install dependencies, prototype, benchmark, or use a GPU without the skill's explicit authorization checkpoint.",
+        "If the user authorizes measured work, the agent cannot narrow warp-eval to incumbent-only profiling; Warp must be prototyped and benchmarked unless a gate aborts first."
+      ]
+    },
+    {
+      "id": "proceed-persistent-mesh-query",
+      "prompt": "Assess optimization opportunities in `evals/files/proceed-persistent-mesh-query/queries.py` using the production constraints in `evals/files/proceed-persistent-mesh-query/context.md`.",
+      "expected_output": "The agent keeps the persistent point-to-mesh query seam in scope, finds no rejection gate, and stops at the intent and authorization checkpoint before measured work.",
+      "expected_skill": "warp-eval",
+      "files": [
+        "evals/files/proceed-persistent-mesh-query/queries.py",
+        "evals/files/proceed-persistent-mesh-query/context.md"
+      ],
+      "assertions": [
+        "The agent reads warp-eval and both supplied persistent-query fixture files.",
+        "The agent recognizes repeated queries against a reusable static mesh as a Class 2 candidate.",
+        "The agent does not invent Gate A or E because the context explicitly permits an optional NVIDIA backend and compiled dependency.",
+        "The agent does not invent Gates B, C, D, or F from absent evidence.",
+        "The agent states the inferred query/cache contract and then stops at the intent and authorization checkpoint without profiling, prototyping, benchmarking, GPU use, or a report directory."
+      ]
+    },
+    {
+      "id": "pattern-fused-edge-intermediate-candidate",
+      "prompt": "Assess the message-passing stage in `evals/files/pattern-fused-edge-intermediate/message_passing.py` using `evals/files/pattern-fused-edge-intermediate/context.md`.",
+      "expected_output": "The agent recognizes a Class 4 fused-loop candidate whose potential value is removing the materialized edge-feature tensor, finds no rejection gate, and stops at authorization.",
+      "expected_skill": "warp-eval",
+      "files": [
+        "evals/files/pattern-fused-edge-intermediate/message_passing.py",
+        "evals/files/pattern-fused-edge-intermediate/context.md"
+      ],
+      "assertions": [
+        "The agent reads warp-eval and both supplied message-passing fixture files.",
+        "The agent classifies the seam as Class 4 because a fused gather-transform-accumulate could avoid the `[edges, features]` intermediate.",
+        "The agent identifies memory or reachable graph size as the candidate metric rather than claiming traversal alone is valuable.",
+        "The agent records `torch.compile` as an already-tried baseline and does not invent a rejection gate.",
+        "The agent stops at the intent and authorization checkpoint without profiling, prototyping, benchmarking, GPU use, or a report directory."
+      ]
+    },
+    {
+      "id": "pattern-sequential-recurrence-not-candidate",
+      "prompt": "Assess optimization opportunities in `evals/files/pattern-sequential-recurrence/adaptive_filter.py` using the constraints in `evals/files/pattern-sequential-recurrence/context.md`.",
+      "expected_output": "The agent finds no Warp target pattern because the nonlinear recurrence is intrinsically serial under the stated contract, and stops without profiling or an authorization request.",
+      "expected_skill": "warp-eval",
+      "files": [
+        "evals/files/pattern-sequential-recurrence/adaptive_filter.py",
+        "evals/files/pattern-sequential-recurrence/context.md"
+      ],
+      "assertions": [
+        "The agent reads warp-eval and both supplied recurrence fixture files.",
+        "The agent distinguishes an intrinsically sequential state recurrence from a parallelizable per-item loop.",
+        "The agent does not invent a deployment, boundary, dense-algebra, incumbent, obligation, or materiality gate.",
+        "The agent reports that no target pattern stands under the exact-order contract and does not offer a Warp prototype.",
+        "The agent stops before authorization, profiling, prototyping, benchmarking, GPU use, or a report directory."
+      ]
+    },
+    {
+      "id": "gate-a-deployment-excludes-nvidia",
+      "prompt": "Assess how to speed up the neighbor-search bottleneck in `evals/files/gate-a-required-portability/neighbors.py`. Treat `evals/files/gate-a-required-portability/deployment.md` as the product's deployment contract.",
+      "expected_output": "A single-sentence ABORT that names Gate A, cites the stated cross-vendor deployment contract, and states that a Warp-specific path cannot satisfy it.",
+      "expected_skill": "warp-eval",
+      "files": [
+        "evals/files/gate-a-required-portability/neighbors.py",
+        "evals/files/gate-a-required-portability/deployment.md"
+      ],
+      "assertions": [
+        "The agent reads warp-eval and both supplied Gate A fixture files.",
+        "The agent returns ABORT under Gate A because accelerated cross-vendor parity is mandatory and backend-specific paths are forbidden.",
+        "The answer points to deployment.md as the source of the disqualifying fact and does not recommend an alternative.",
+        "The answer does not ask an NVIDIA-intent question, profile, prototype, benchmark, use a GPU, or create warp-evaluation-report/."
+      ]
+    },
+    {
+      "id": "gate-b-host-device-boundary",
+      "prompt": "Assess worthwhile acceleration opportunities for the geometric scoring path in `evals/files/gate-b-unwidenable-host-boundary/scoring.py`. The call boundary and production regime are documented in `evals/files/gate-b-unwidenable-host-boundary/architecture.md`.",
+      "expected_output": "A single-sentence ABORT that names Gate B and states that the fixed host/device round trip dominates the small infrequent call.",
+      "expected_skill": "warp-eval",
+      "files": [
+        "evals/files/gate-b-unwidenable-host-boundary/scoring.py",
+        "evals/files/gate-b-unwidenable-host-boundary/architecture.md"
+      ],
+      "assertions": [
+        "The agent reads warp-eval and both supplied Gate B fixture files.",
+        "The agent returns ABORT under Gate B because every small, infrequent call must start and end with host NumPy arrays and the boundary cannot be widened.",
+        "The answer states the boundary fact without recommending an alternative or proposing a GPU microbenchmark.",
+        "The answer does not ask about NVIDIA deployment, profile, prototype, benchmark, use a GPU, or create warp-evaluation-report/."
+      ]
+    },
+    {
+      "id": "gate-c-dense-tensor-algebra",
+      "prompt": "Review the slow feature stage in `evals/files/gate-c-dense-vendor-lowered/feature_stage.py` and decide whether a narrow custom implementation is worth assessing.",
+      "expected_output": "A single-sentence ABORT that names Gate C and states that the dense convolution, normalization, and matrix multiplication are already mapped to tuned PyTorch and vendor paths.",
+      "expected_skill": "warp-eval",
+      "files": [
+        "evals/files/gate-c-dense-vendor-lowered/feature_stage.py"
+      ],
+      "assertions": [
+        "The agent reads warp-eval and the supplied Gate C fixture.",
+        "The agent returns ABORT under Gate C because the region is ordinary dense tensor algebra already mapped to PyTorch and vendor libraries.",
+        "The answer states the existing mapping without recommending an alternative.",
+        "The answer does not ask about NVIDIA deployment, profile, write a replacement kernel, benchmark, or create warp-evaluation-report/."
+      ]
+    },
+    {
+      "id": "gate-d-mature-cuda-baseline",
+      "prompt": "Assess the contact-compaction stage described by `evals/files/gate-d-mature-incumbent/contact_api.py` and `evals/files/gate-d-mature-incumbent/baseline.md`. Is a rewrite worth pursuing for performance?",
+      "expected_output": "A single-sentence ABORT that names Gate D and states that the maintained CUDA implementation already satisfies the contract near the measured hardware limit.",
+      "expected_skill": "warp-eval",
+      "files": [
+        "evals/files/gate-d-mature-incumbent/contact_api.py",
+        "evals/files/gate-d-mature-incumbent/baseline.md"
+      ],
+      "assertions": [
+        "The agent reads warp-eval and both supplied Gate D fixture files.",
+        "The agent returns ABORT under Gate D because the maintained CUDA baseline already satisfies semantics and is measured near the relevant hardware limit.",
+        "The answer does not recommend an action or invent a non-performance objective.",
+        "The answer does not ask about NVIDIA deployment, profile again, prototype a Warp duplicate, benchmark, or create warp-evaluation-report/."
+      ]
+    },
+    {
+      "id": "gate-d-cpu-library-is-not-cuda",
+      "prompt": "Evaluate the query seam described by `evals/files/gate-d-cpu-incumbent-not-cuda/operation_api.py` using the baseline facts in `evals/files/gate-d-cpu-incumbent-not-cuda/baseline.md`.",
+      "expected_output": "The agent does not fire Gate D: the fast native implementation executes on the CPU, not through CUDA. It keeps the query seam in scope and stops at the authorization checkpoint before measured work.",
+      "expected_skill": "warp-eval",
+      "files": [
+        "evals/files/gate-d-cpu-incumbent-not-cuda/operation_api.py",
+        "evals/files/gate-d-cpu-incumbent-not-cuda/baseline.md"
+      ],
+      "assertions": [
+        "The agent reads warp-eval and both supplied CPU-baseline fixture files.",
+        "The agent states that Gate D requires confirmed CUDA execution on an NVIDIA GPU and does not use an adjacent or analogous gate.",
+        "The agent treats the native CPU implementation as the strongest in-project baseline rather than a reason to screen out Warp.",
+        "The agent preserves `query(mode=\"all\", return_metadata=True)` as the measured contract and does not substitute `query_first`.",
+        "The agent does not profile, prototype, benchmark, use a GPU, or create warp-evaluation-report/ before explicit authorization."
+      ]
+    },
+    {
+      "id": "gate-e-project-obligations-blocked",
+      "prompt": "Assess acceleration opportunities in the collision candidate builder in `evals/files/gate-e-runtime-obligations-forbidden/candidates.py`. Treat `evals/files/gate-e-runtime-obligations-forbidden/packaging-policy.md` as binding release policy.",
+      "expected_output": "A single-sentence ABORT that names Gate E and cites the explicit ban on compiled dependencies, runtime code generation, and writable caches.",
+      "expected_skill": "warp-eval",
+      "files": [
+        "evals/files/gate-e-runtime-obligations-forbidden/candidates.py",
+        "evals/files/gate-e-runtime-obligations-forbidden/packaging-policy.md"
+      ],
+      "assertions": [
+        "The agent reads warp-eval and both supplied Gate E fixture files.",
+        "The agent returns ABORT under Gate E based on the stated release policy rather than merely observing that the project is currently pure Python.",
+        "The answer cites packaging-policy.md and does not recommend an alternative.",
+        "The answer does not ask whether an optional compiled extra is acceptable, profile, prototype, benchmark, use a GPU, or create warp-evaluation-report/."
+      ]
+    },
+    {
+      "id": "gate-f-stage-cannot-move-objective",
+      "prompt": "Use the supplied production profile in `evals/files/gate-f-immaterial-stage/profile.json` to screen the spatial-filter code in `evals/files/gate-f-immaterial-stage/spatial_filter.py` for optimization work. Our objective is the p95 request latency recorded in that profile.",
+      "expected_output": "A single-sentence ABORT that names Gate F and states that making the 1.2% candidate free can improve p95 latency by only about 1.01x.",
+      "expected_skill": "warp-eval",
+      "files": [
+        "evals/files/gate-f-immaterial-stage/spatial_filter.py",
+        "evals/files/gate-f-immaterial-stage/profile.json"
+      ],
+      "assertions": [
+        "The agent reads warp-eval and both supplied Gate F fixture files.",
+        "The agent returns ABORT under Gate F because the supplied profile proves the candidate cannot materially move the requested latency metric.",
+        "The answer gives the ceiling arithmetic: eliminating 1.2 ms from a 100 ms request leaves 98.8 ms, about a 1.01x maximum speedup.",
+        "The answer does not redirect work or recommend an alternative, and does not profile, prototype, benchmark, use a GPU, or create warp-evaluation-report/."
+      ]
+    }
+  ]
+}
