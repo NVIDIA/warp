@@ -6151,85 +6151,356 @@ def closest_point_edge_edge(p1: vec3f, q1: vec3f, p2: vec3f, q2: vec3f, epsilon:
     ...
 
 def volume_sample(id: uint64, uvw: vec3f, sampling_mode: int32, dtype: Any) -> Any:
-    """Sample the volume of type ``dtype`` given by ``id`` at the volume local-space point ``uvw``.
+    """Sample the volume of type ``dtype`` given by ``id`` at the index-space point ``uvw``.
 
-    Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`."""
+    ``uvw`` is expressed in index space (voxel coordinates) and may be fractional; convert a
+    world-space position first with :func:`~warp.volume_world_to_index`. ``sampling_mode`` must be
+    :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`. ``CLOSEST`` rounds each coordinate to
+    the nearest voxel, with halfway cases rounded away from zero. Use ``CLOSEST`` for integer data;
+    ``LINEAR`` performs trilinear interpolation for floating-point scalar and vector data.
+
+    Sampling follows NanoVDB value resolution: inactive leaf voxels and internal tiles may carry
+    stored inactive values that differ from the grid's root background value. A location with no
+    more specific stored value resolves to the background. The whole sample is ``0`` if the volume
+    does not store values of type ``dtype``.
+
+    For floating-point scalar and vector data, ``LINEAR`` sampling is differentiable with respect to
+    ``uvw``; at integer voxel planes, the derivative is taken from the cell on the positive side.
+    The derivative is zero for ``CLOSEST``. Gradients are not propagated to the stored voxel values.
+    To read values held in a separate array, use :func:`~warp.volume_sample_index`. See
+    :class:`warp.Volume` and the :ref:`Volume sampling <volume_sampling>` user-guide examples.
+
+    Args:
+        id: The ``id`` of a :class:`warp.Volume` to sample.
+        uvw: Sampling location in index space (voxel coordinates); may be fractional.
+        sampling_mode: :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`; use ``CLOSEST`` for
+            integer data.
+        dtype: Value type stored by the volume and returned by the sample. One of ``int32``,
+            ``int64``, ``uint32``, ``float32``, ``float64``, :class:`warp.vec3f`,
+            :class:`warp.vec3d`, :class:`warp.vec4f`, or :class:`warp.vec4d`.
+
+    Returns:
+        The sampled value of type ``dtype``.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def sample(vid: wp.uint64, out: wp.array[wp.float32]):
+                p = wp.volume_world_to_index(vid, wp.vec3(0.5, 0.0, 0.0))
+                out[0] = wp.volume_sample(vid, p, wp.Volume.LINEAR, dtype=float)
+
+            values = np.zeros((2, 2, 2), dtype=np.float32)
+            values[1, :, :] = 1.0  # f(i, j, k) = i
+            volume = wp.Volume.load_from_numpy(values, voxel_size=1.0, bg_value=0.0)
+            out = wp.zeros(1, dtype=wp.float32)
+            wp.launch(sample, dim=1, inputs=[volume.id], outputs=[out])
+            print(round(float(out.numpy()[0]), 1))
+
+        .. testoutput::
+
+            0.5"""
     ...
 
 def volume_sample_grad(id: uint64, uvw: vec3f, sampling_mode: int32, grad: Any, dtype: Any) -> Any:
-    """Sample the volume given by ``id`` and its gradient at the volume local-space point ``uvw``.
+    """Sample the volume of type ``dtype`` given by ``id`` and its spatial gradient at the
+    index-space point ``uvw``.
 
-    Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`."""
+    Behaves like :func:`~warp.volume_sample`, additionally writing the gradient of the sampled value
+    with respect to the index-space coordinates ``uvw`` into ``grad``. For a scalar ``dtype``,
+    ``grad`` is a length-three vector with the same scalar type. For :class:`warp.vec3f` and
+    :class:`warp.vec3d`, it is a 3-by-3 Jacobian matrix with one row per value component.
+    Four-component vector data is not supported by this function.
+
+    For floating-point scalar and vector data under :attr:`warp.Volume.LINEAR`, this is the gradient
+    of the trilinear interpolant. At integer voxel planes, where that interpolant is generally not
+    differentiable, the gradient comes from the cell on the positive side. Under
+    :attr:`warp.Volume.CLOSEST` the gradient is zero; use ``CLOSEST`` for integer data. The gradient
+    is with respect to index-space coordinates, not world space.
+
+    Args:
+        id: The ``id`` of a :class:`warp.Volume` to sample.
+        uvw: Sampling location in index space (voxel coordinates); may be fractional.
+        sampling_mode: :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`; use ``CLOSEST`` for
+            integer data.
+        grad: Output gradient of the sampled value with respect to ``uvw`` (see above for its shape).
+        dtype: Value type stored by the volume (see :func:`~warp.volume_sample`).
+
+    Returns:
+        The sampled value of type ``dtype``.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def sample_grad(vid: wp.uint64, out: wp.array[wp.float32]):
+                grad = wp.vec3()
+                out[0] = wp.volume_sample_grad(vid, wp.vec3(0.5, 0.0, 0.0), wp.Volume.LINEAR, grad, dtype=float)
+                out[1] = grad[0]
+
+            values = np.zeros((2, 2, 2), dtype=np.float32)
+            values[1, :, :] = 1.0  # f(i, j, k) = i
+            volume = wp.Volume.load_from_numpy(values, voxel_size=1.0, bg_value=0.0)
+            out = wp.zeros(2, dtype=wp.float32)
+            wp.launch(sample_grad, dim=1, inputs=[volume.id], outputs=[out])
+            print(round(float(out.numpy()[0]), 1), round(float(out.numpy()[1]), 1))
+
+        .. testoutput::
+
+            0.5 1.0"""
     ...
 
 def volume_lookup(id: uint64, i: int32, j: int32, k: int32, dtype: Any) -> Any:
-    """Query the value of voxel with coordinates ``i``, ``j``, ``k`` for a volume of type ``dtype``.
+    """Return the value of type ``dtype`` stored at the voxel with integer index-space coordinates
+    ``i``, ``j``, ``k``, without interpolation.
 
-    If the voxel at this index does not exist, this function returns the background value."""
+    The lookup follows NanoVDB value resolution: inactive leaf voxels and internal tiles may carry
+    stored inactive values that differ from the grid's root background value. A location with no
+    more specific stored value resolves to the background. The result is ``0`` if the volume does
+    not store values of type ``dtype``. Not differentiable; use :func:`~warp.volume_sample` for
+    interpolated reads of floating-point scalar and vector data.
+
+    Args:
+        id: The ``id`` of a :class:`warp.Volume`.
+        i: Voxel coordinate along the first index-space axis (may be negative).
+        j: Voxel coordinate along the second index-space axis (may be negative).
+        k: Voxel coordinate along the third index-space axis (may be negative).
+        dtype: Value type stored by the volume (see :func:`~warp.volume_sample`).
+
+    Returns:
+        The resolved voxel value of type ``dtype``.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def lookup(vid: wp.uint64, out: wp.array[wp.float32]):
+                out[0] = wp.volume_lookup(vid, 1, 0, 0, dtype=float)
+
+            values = np.zeros((2, 2, 2), dtype=np.float32)
+            values[1, :, :] = 1.0  # f(i, j, k) = i
+            volume = wp.Volume.load_from_numpy(values, voxel_size=1.0, bg_value=0.0)
+            out = wp.zeros(1, dtype=wp.float32)
+            wp.launch(lookup, dim=1, inputs=[volume.id], outputs=[out])
+            print(round(float(out.numpy()[0]), 1))
+
+        .. testoutput::
+
+            1.0"""
     ...
 
 def volume_store(id: uint64, i: int32, j: int32, k: int32, value: Any) -> None:
-    """Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``."""
+    """Store ``value`` at the voxel with integer index-space coordinates ``i``, ``j``, ``k``.
+
+    A value is written when the coordinate has leaf-level storage, whether or not that voxel is
+    active. The call does not allocate a leaf, activate a voxel, or modify the background value; it
+    is a no-op outside allocated leaves and when the volume's stored type does not match ``value``.
+    Allocate leaf topology with :meth:`warp.Volume.allocate_by_tiles` before storing. Not
+    differentiable.
+
+    Args:
+        id: The ``id`` of a :class:`warp.Volume` to modify.
+        i: Voxel coordinate along the first index-space axis.
+        j: Voxel coordinate along the second index-space axis.
+        k: Voxel coordinate along the third index-space axis.
+        value: Value to write; its type must match the volume's stored type.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def store(vid: wp.uint64):
+                wp.volume_store(vid, 1, 2, 3, 4.0)
+
+            @wp.kernel
+            def lookup(vid: wp.uint64, out: wp.array[wp.float32]):
+                out[0] = wp.volume_lookup(vid, 1, 2, 3, dtype=float)
+
+            volume = wp.Volume.load_from_numpy(np.zeros((2, 2, 2), dtype=np.float32), voxel_size=1.0, bg_value=0.0)
+            out = wp.zeros(1, dtype=wp.float32)
+            wp.launch(store, dim=1, inputs=[volume.id])
+            wp.launch(lookup, dim=1, inputs=[volume.id], outputs=[out])
+            print(round(float(out.numpy()[0]), 1))
+
+        .. testoutput::
+
+            4.0"""
     ...
 
 def volume_sample_f(id: uint64, uvw: vec3f, sampling_mode: int32) -> float:
-    """Sample the volume given by ``id`` at the volume local-space point ``uvw``.
+    """Sample the :class:`warp.float32` volume given by ``id`` at the index-space point ``uvw``.
 
-    Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`."""
+    ``uvw`` is in index space (voxel coordinates) and may be fractional; ``sampling_mode`` must be
+    :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`. Sampling uses the resolved NanoVDB
+    value (see :func:`~warp.volume_sample`), and the sample is ``0`` if ``id`` is not a ``float32``
+    volume. In kernels, equivalent to :func:`~warp.volume_sample` with ``dtype=float``, which
+    documents the coordinate-frame, value-resolution, boundary, and differentiability behavior.
+
+    See :func:`~warp.volume_sample` for a usage example."""
     ...
 
 def volume_sample_grad_f(id: uint64, uvw: vec3f, sampling_mode: int32, grad: vec3f) -> float:
-    """Sample the volume and its gradient given by ``id`` at the volume local-space point ``uvw``.
+    """Sample the :class:`warp.float32` volume given by ``id`` and its gradient at the
+    index-space point ``uvw``.
 
-    Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`."""
+    ``grad`` receives the gradient of the sampled value with respect to the index-space coordinates
+    ``uvw`` (a :class:`warp.vec3`, zero for :attr:`warp.Volume.CLOSEST`). In kernels, equivalent to
+    :func:`~warp.volume_sample_grad` with ``dtype=float``.
+
+    See :func:`~warp.volume_sample_grad` for a usage example."""
     ...
 
 def volume_lookup_f(id: uint64, i: int32, j: int32, k: int32) -> float:
-    """Query the value of voxel with coordinates ``i``, ``j``, ``k``.
+    """Return the :class:`warp.float32` value of the voxel at integer index-space coordinates
+    ``i``, ``j``, ``k``, without interpolation.
 
-    If the voxel at this index does not exist, this function returns the background value."""
+    Returns the resolved NanoVDB value (see :func:`~warp.volume_lookup`); the result is ``0`` if
+    ``id`` is not a ``float32`` volume. Not differentiable. In kernels, equivalent to
+    :func:`~warp.volume_lookup` with ``dtype=float``.
+
+    See :func:`~warp.volume_lookup` for a usage example."""
     ...
 
 def volume_store_f(id: uint64, i: int32, j: int32, k: int32, value: float32) -> None:
-    """Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``."""
+    """Store the :class:`warp.float32` ``value`` at the voxel with integer index-space coordinates
+    ``i``, ``j``, ``k``.
+
+    Writes only where leaf-level storage exists (see :func:`~warp.volume_store`); a no-op outside
+    allocated leaves or for non-``float32`` volumes. Does not activate voxels. Not differentiable.
+
+    See :func:`~warp.volume_store` for a usage example."""
     ...
 
 def volume_sample_v(id: uint64, uvw: vec3f, sampling_mode: int32) -> vec3f:
-    """Sample the vector volume given by ``id`` at the volume local-space point ``uvw``.
+    """Sample the vector (:class:`warp.vec3f`) volume given by ``id`` at the index-space point ``uvw``.
 
-    Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`."""
+    ``uvw`` is in index space (voxel coordinates) and may be fractional; ``sampling_mode`` must be
+    :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR` and is applied per component. Sampling
+    uses the resolved NanoVDB value (see :func:`~warp.volume_sample`), and the sample is ``0`` if
+    ``id`` is not a ``vec3f`` volume. In kernels, equivalent to :func:`~warp.volume_sample` with
+    ``dtype=warp.vec3f``.
+
+    See :func:`~warp.volume_sample` for a usage example."""
     ...
 
 def volume_lookup_v(id: uint64, i: int32, j: int32, k: int32) -> vec3f:
-    """Query the vector value of voxel with coordinates ``i``, ``j``, ``k``.
+    """Return the :class:`warp.vec3f` value of the voxel at integer index-space coordinates ``i``,
+    ``j``, ``k``, without interpolation.
 
-    If the voxel at this index does not exist, this function returns the background value."""
+    Returns the resolved NanoVDB value (see :func:`~warp.volume_lookup`); the result is ``0`` if
+    ``id`` is not a ``vec3f`` volume. Not differentiable. In kernels, equivalent to
+    :func:`~warp.volume_lookup` with ``dtype=warp.vec3f``.
+
+    See :func:`~warp.volume_lookup` for a usage example."""
     ...
 
 def volume_store_v(id: uint64, i: int32, j: int32, k: int32, value: vec3f) -> None:
-    """Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``."""
+    """Store the :class:`warp.vec3f` ``value`` at the voxel with integer index-space coordinates
+    ``i``, ``j``, ``k``.
+
+    Writes only where leaf-level storage exists (see :func:`~warp.volume_store`); a no-op outside
+    allocated leaves or for non-``vec3f`` volumes. Does not activate voxels. Not differentiable.
+
+    See :func:`~warp.volume_store` for a usage example."""
     ...
 
 def volume_sample_i(id: uint64, uvw: vec3f) -> int:
-    """Sample the :class:`warp.int32` volume given by ``id`` at the volume local-space point ``uvw``."""
+    """Sample the :class:`warp.int32` volume given by ``id`` at the index-space point ``uvw``.
+
+    Integer volumes only support nearest-voxel sampling, so there is no ``sampling_mode`` argument
+    (:attr:`warp.Volume.CLOSEST` is always used) and the result is not differentiable. ``uvw`` is in
+    index space (voxel coordinates) and may be fractional; it is rounded to the nearest voxel, with
+    halfway cases rounded away from zero. Sampling uses the resolved NanoVDB value (see
+    :func:`~warp.volume_sample`), and the result is ``0`` if ``id`` is not an ``int32`` volume.
+
+    See :func:`~warp.volume_sample` for a usage example."""
     ...
 
 def volume_lookup_i(id: uint64, i: int32, j: int32, k: int32) -> int:
-    """Query the :class:`warp.int32` value of voxel with coordinates ``i``, ``j``, ``k``.
+    """Return the :class:`warp.int32` value of the voxel at integer index-space coordinates ``i``,
+    ``j``, ``k``, without interpolation.
 
-    If the voxel at this index does not exist, this function returns the background value."""
+    Returns the resolved NanoVDB value (see :func:`~warp.volume_lookup`); the result is ``0`` if
+    ``id`` is not an ``int32`` volume. Not differentiable. In kernels, equivalent to
+    :func:`~warp.volume_lookup` with ``dtype=warp.int32``.
+
+    See :func:`~warp.volume_lookup` for a usage example."""
     ...
 
 def volume_store_i(id: uint64, i: int32, j: int32, k: int32, value: int32) -> None:
-    """Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``."""
+    """Store the :class:`warp.int32` ``value`` at the voxel with integer index-space coordinates
+    ``i``, ``j``, ``k``.
+
+    Writes only where leaf-level storage exists (see :func:`~warp.volume_store`); a no-op outside
+    allocated leaves or for non-``int32`` volumes. Does not activate voxels. Not differentiable.
+
+    See :func:`~warp.volume_store` for a usage example."""
     ...
 
 def volume_sample_index(id: uint64, uvw: vec3f, sampling_mode: int32, voxel_data: Array[Any], background: Any) -> Any:
-    """Sample the volume given by ``id`` at the volume local-space point ``uvw``.
+    """Sample the volume given by ``id`` at the index-space point ``uvw``, reading voxel values from
+    a separate ``voxel_data`` array.
 
-    Values for allocated voxels are read from the ``voxel_data`` array, and ``background`` is used as the value of non-existing voxels.
-    Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`.
-    This function is available for both index grids and classical volumes."""
+    On NanoVDB ``OnIndex`` and ``OnIndexMask`` grids, each active voxel maps to a linear index into
+    ``voxel_data`` and ``background`` supplies inactive voxels. On ``Index`` and ``IndexMask`` grids
+    and on classical value grids, every slot in an allocated leaf maps to ``voxel_data`` regardless
+    of its active mask; ``background`` is used outside allocated leaves. This lets several fields
+    share one topology. See :meth:`warp.Volume.allocate_by_voxels` and
+    :func:`~warp.volume_lookup_index`.
+
+    ``uvw`` is in index space (voxel coordinates) and may be fractional. Sampling modes and boundary
+    conventions match :func:`~warp.volume_sample`; use ``CLOSEST`` for integer data. For
+    floating-point scalar and vector data, ``LINEAR`` is differentiable with respect to ``uvw``,
+    ``voxel_data``, and ``background``. See the
+    :ref:`Volume sampling <volume_sampling>` user-guide examples.
+
+    Args:
+        id: The ``id`` of a :class:`warp.Volume` providing the topology and voxel indices.
+        uvw: Sampling location in index space (voxel coordinates); may be fractional.
+        sampling_mode: :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`; use ``CLOSEST`` for
+            integer data.
+        voxel_data: Per-voxel values indexed by each voxel's linear index. For volumes whose
+            indexable count fits in ``int32``, must hold at least :func:`~warp.volume_voxel_count`
+            entries. :meth:`warp.Volume.get_voxel_count` returns a host-side capacity that is safe
+            for allocation but may exceed the live indexable count for rebuildable volumes. The
+            array's dtype must match ``background``.
+        background: Value used for inactive voxels on ``OnIndex`` and ``OnIndexMask`` grids and
+            outside allocated leaves on ``Index`` and ``IndexMask`` grids and classical value grids;
+            its dtype must match ``voxel_data``.
+
+    Returns:
+        The sampled value, of the same dtype as ``voxel_data``.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def fill(vid: wp.uint64, d: wp.array[wp.float32]):
+                i, j, k = wp.tid()
+                idx = wp.volume_lookup_index(vid, i, j, k)
+                if idx >= 0:
+                    d[idx] = wp.float32(i) * 10.0
+
+            @wp.kernel
+            def sample(vid: wp.uint64, d: wp.array[wp.float32], out: wp.array[wp.float32]):
+                out[0] = wp.volume_sample_index(vid, wp.vec3(0.5, 0.0, 0.0), wp.Volume.LINEAR, d, 0.0)
+
+            voxels = wp.array([[0, 0, 0], [1, 0, 0]], dtype=wp.vec3i)
+            volume = wp.Volume.allocate_by_voxels(voxels, voxel_size=1.0)
+            data = wp.zeros(volume.get_voxel_count(), dtype=wp.float32)
+            out = wp.zeros(1, dtype=wp.float32)
+            wp.launch(fill, dim=(2, 1, 1), inputs=[volume.id, data])
+            wp.launch(sample, dim=1, inputs=[volume.id, data], outputs=[out])
+            print(round(float(out.numpy()[0]), 1))
+
+        .. testoutput::
+
+            5.0"""
     ...
 
 def volume_sample_grad_index(
@@ -6240,66 +6511,267 @@ def volume_sample_grad_index(
     background: Any,
     grad: Any,
 ) -> Any:
-    """Sample the volume given by ``id`` and its gradient at the volume local-space point ``uvw``.
+    """Sample the volume given by ``id`` and its spatial gradient at the index-space point ``uvw``,
+    reading voxel values from a separate ``voxel_data`` array.
 
-    Values for allocated voxels are read from the ``voxel_data`` array, and ``background`` is used as the value of non-existing voxels.
-    Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`.
-    This function is available for both index grids and classical volumes."""
+    Like :func:`~warp.volume_sample_index`, but also writes the gradient of the sampled value with
+    respect to the index-space coordinates ``uvw`` into ``grad``. For scalar data, ``grad`` is a
+    length-three vector with the same scalar type. For :class:`warp.vec3f` and
+    :class:`warp.vec3d` data, it is a 3-by-3 Jacobian matrix with one row per value component.
+    Four-component vector data is not supported by this function.
+
+    For floating-point scalar and vector data under :attr:`warp.Volume.LINEAR`, the function is
+    differentiable with respect to ``uvw``, ``voxel_data``, and ``background``. At integer voxel
+    planes, the gradient and reverse-mode derivative with respect to ``uvw`` come from the cell on
+    the positive side. Under :attr:`warp.Volume.CLOSEST`, ``grad`` and the derivative with respect to
+    ``uvw`` are zero; use ``CLOSEST`` for integer data.
+
+    Args:
+        id: The ``id`` of a :class:`warp.Volume` providing the topology and voxel indices.
+        uvw: Sampling location in index space (voxel coordinates); may be fractional.
+        sampling_mode: :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`; use ``CLOSEST`` for
+            integer data.
+        voxel_data: Per-voxel values indexed by each voxel's linear index; shares the dtype of
+            ``background``. See :func:`~warp.volume_sample_index` for sizing requirements.
+        background: Value used for inactive voxels on ``OnIndex`` and ``OnIndexMask`` grids and
+            outside allocated leaves on ``Index`` and ``IndexMask`` grids and classical value grids;
+            its dtype must match ``voxel_data``.
+        grad: Output gradient of the sampled value with respect to ``uvw``.
+
+    Returns:
+        The sampled value, of the same dtype as ``voxel_data``.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def fill(vid: wp.uint64, d: wp.array[wp.float32]):
+                i, j, k = wp.tid()
+                idx = wp.volume_lookup_index(vid, i, j, k)
+                if idx >= 0:
+                    d[idx] = wp.float32(i) * 10.0
+
+            @wp.kernel
+            def sample_grad(vid: wp.uint64, d: wp.array[wp.float32], out: wp.array[wp.float32]):
+                grad = wp.vec3()
+                out[0] = wp.volume_sample_grad_index(vid, wp.vec3(0.5, 0.0, 0.0), wp.Volume.LINEAR, d, 0.0, grad)
+                out[1] = grad[0]
+
+            voxels = wp.array([[0, 0, 0], [1, 0, 0]], dtype=wp.vec3i)
+            volume = wp.Volume.allocate_by_voxels(voxels, voxel_size=1.0)
+            data = wp.zeros(volume.get_voxel_count(), dtype=wp.float32)
+            out = wp.zeros(2, dtype=wp.float32)
+            wp.launch(fill, dim=(2, 1, 1), inputs=[volume.id, data])
+            wp.launch(sample_grad, dim=1, inputs=[volume.id, data], outputs=[out])
+            print(round(float(out.numpy()[0]), 1), round(float(out.numpy()[1]), 1))
+
+        .. testoutput::
+
+            5.0 10.0"""
     ...
 
 def volume_lookup_index(id: uint64, i: int32, j: int32, k: int32) -> int32:
-    """Query the index associated with the voxel at coordinates ``i``, ``j``, ``k``.
+    """Return the linear index associated with integer index-space coordinates ``i``, ``j``, ``k``.
 
-    If the voxel at this index does not exist, this function returns -1.
-    This function is available for both index grids and classical volumes."""
+    On NanoVDB ``OnIndex`` and ``OnIndexMask`` grids, active voxels have zero-based indices and
+    inactive voxels return ``-1``. On ``Index`` and ``IndexMask`` grids and on classical value grids,
+    every slot in an allocated leaf has an index regardless of its active mask; coordinates outside
+    allocated leaves return ``-1``. For volumes whose indexable count fits in ``int32``, nonnegative
+    indices lie in ``[0, volume_voxel_count(id))``. Guard against ``-1`` before gathering from a
+    per-voxel array. Not differentiable.
+
+    Args:
+        id: The ``id`` of a :class:`warp.Volume`.
+        i: Voxel coordinate along the first index-space axis.
+        j: Voxel coordinate along the second index-space axis.
+        k: Voxel coordinate along the third index-space axis.
+
+    Returns:
+        The voxel's linear index, or ``-1`` when the coordinate is not indexable.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def lookup_index(vid: wp.uint64, out: wp.array[wp.int32]):
+                out[0] = wp.volume_lookup_index(vid, 1, 0, 0)
+
+            voxels = wp.array([[0, 0, 0], [1, 0, 0]], dtype=wp.vec3i)
+            volume = wp.Volume.allocate_by_voxels(voxels, voxel_size=1.0)
+            out = wp.zeros(1, dtype=wp.int32)
+            wp.launch(lookup_index, dim=1, inputs=[volume.id], outputs=[out])
+            print(int(out.numpy()[0]))
+
+        .. testoutput::
+
+            1"""
     ...
 
 def volume_voxel_count(id: uint64) -> int32:
     """Return the number of indexable voxels in the volume given by ``id``.
 
-    For active-voxel index grids, this is the active voxel count. For dense tile grids, this is the number of
-    allocated leaf nodes multiplied by 512. The result is a 32-bit signed integer and is capped at ``2**31 - 1``
-    because voxel-index APIs use 32-bit indices."""
+    For NanoVDB ``OnIndex`` and ``OnIndexMask`` grids, this is the active voxel count. For ``Index``
+    and ``IndexMask`` grids and for classical value grids, it is the number of allocated leaf nodes
+    multiplied by 512, because every leaf slot is indexable. When the true count fits in ``int32``,
+    this is the required size of a per-voxel ``voxel_data`` array (as used by
+    :func:`~warp.volume_sample_index`) and the exclusive upper bound of indices returned by
+    :func:`~warp.volume_lookup_index`.
+
+    The result is capped at ``2**31 - 1``. A larger volume cannot be fully represented by these
+    ``int32`` index APIs: lookup indices may overflow, and the capped count is not sufficient to
+    allocate data for every underlying slot. Not differentiable.
+
+    Args:
+        id: The ``id`` of a :class:`warp.Volume`.
+
+    Returns:
+        The number of indexable voxels, capped at ``2**31 - 1``.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def count(vid: wp.uint64, out: wp.array[wp.int32]):
+                out[0] = wp.volume_voxel_count(vid)
+
+            volume = wp.Volume.load_from_numpy(np.zeros((2, 2, 2), dtype=np.float32), voxel_size=1.0, bg_value=0.0)
+            out = wp.zeros(1, dtype=wp.int32)
+            wp.launch(count, dim=1, inputs=[volume.id], outputs=[out])
+            print(int(out.numpy()[0]))
+
+        .. testoutput::
+
+            512"""
     ...
 
 @over
 def volume_index_to_world(id: uint64, uvw: vec3f) -> vec3f:
-    """Transform a point ``uvw`` defined in volume index space to world space given the volume's intrinsic affine transformation."""
+    """Transform the point ``uvw`` from the volume's index space (voxel coordinates) to world space
+    using the volume's affine index-to-world transform.
+
+    Applies the full affine map, including translation. For direction vectors, use
+    :func:`~warp.volume_index_to_world_dir` instead.
+
+    Args:
+        id: The ``id`` of a :class:`warp.Volume`.
+        uvw: Point in index space.
+
+    Returns:
+        The transformed point in world space with ``float32`` precision.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def to_world(vid: wp.uint64, out: wp.array[wp.vec3]):
+                out[0] = wp.volume_index_to_world(vid, wp.vec3(2.0, 0.0, 0.0))
+
+            volume = wp.Volume.load_from_numpy(
+                np.zeros((2, 2, 2), dtype=np.float32), min_world=(1.0, 2.0, 3.0), voxel_size=0.5, bg_value=0.0
+            )
+            out = wp.zeros(1, dtype=wp.vec3)
+            wp.launch(to_world, dim=1, inputs=[volume.id], outputs=[out])
+            p = out.numpy()[0]
+            print(round(float(p[0]), 1), round(float(p[1]), 1), round(float(p[2]), 1))
+
+        .. testoutput::
+
+            2.0 2.0 3.0"""
     ...
 
 @over
 def volume_index_to_world(id: uint64, uvw: vec3d) -> vec3d:
-    """Transform a point ``uvw`` defined in volume index space to world space, using double precision."""
+    """Transform the point ``uvw`` from the volume's index space (voxel coordinates) to world space
+    using the volume's affine index-to-world transform (float64 precision).
+
+    The ``float64`` overload of :func:`~warp.volume_index_to_world`. Behavior and usage match the
+    default ``float32`` overload; see it for details and a usage example."""
     ...
 
 @over
 def volume_world_to_index(id: uint64, xyz: vec3f) -> vec3f:
-    """Transform a point ``xyz`` defined in volume world space to the volume's index space given the volume's intrinsic affine transformation."""
+    """Transform the point ``xyz`` from world space to the volume's index space (voxel coordinates)
+    using the inverse of the volume's affine index-to-world transform.
+
+    Applies the full affine map, including translation; the result may be passed as the ``uvw``
+    argument of the volume sampling built-ins such as :func:`~warp.volume_sample`. For direction
+    vectors, use :func:`~warp.volume_world_to_index_dir` instead.
+
+    Args:
+        id: The ``id`` of a :class:`warp.Volume`.
+        xyz: Point in world space.
+
+    Returns:
+        The transformed point in index space with ``float32`` precision.
+
+    See :func:`~warp.volume_index_to_world` for a usage example."""
     ...
 
 @over
 def volume_world_to_index(id: uint64, xyz: vec3d) -> vec3d:
-    """Transform a point ``xyz`` defined in volume world space to index space, using double precision."""
+    """Transform the point ``xyz`` from world space to the volume's index space (voxel coordinates)
+    using the inverse of the volume's affine index-to-world transform (float64 precision).
+
+    The ``float64`` overload of :func:`~warp.volume_world_to_index`. Behavior and usage match the
+    default ``float32`` overload; see it for details and a usage example."""
     ...
 
 @over
 def volume_index_to_world_dir(id: uint64, uvw: vec3f) -> vec3f:
-    """Transform a direction ``uvw`` defined in volume index space to world space given the volume's intrinsic affine transformation."""
+    """Transform the direction ``uvw`` from the volume's index space to world space using the linear
+    part of the volume's affine transform.
+
+    Translation is not applied and the result is not renormalized, so a scaling transform changes the
+    vector's length. For positions, use :func:`~warp.volume_index_to_world` instead.
+
+    Args:
+        id: The ``id`` of a :class:`warp.Volume`.
+        uvw: Direction in index space.
+
+    Returns:
+        The transformed direction in world space with ``float32`` precision.
+
+    See :func:`~warp.volume_index_to_world` for a usage example."""
     ...
 
 @over
 def volume_index_to_world_dir(id: uint64, uvw: vec3d) -> vec3d:
-    """Transform a direction ``uvw`` defined in volume index space to world space, using double precision."""
+    """Transform the direction ``uvw`` from the volume's index space to world space using the linear
+    part of the volume's affine transform (float64 precision).
+
+    The ``float64`` overload of :func:`~warp.volume_index_to_world_dir`. Behavior and usage match
+    the default ``float32`` overload; see it for details and a usage example."""
     ...
 
 @over
 def volume_world_to_index_dir(id: uint64, xyz: vec3f) -> vec3f:
-    """Transform a direction ``xyz`` defined in volume world space to the volume's index space given the volume's intrinsic affine transformation."""
+    """Transform the direction ``xyz`` from world space to the volume's index space using the linear
+    part of the volume's affine transform.
+
+    Translation is not applied and the result is not renormalized. For positions, use
+    :func:`~warp.volume_world_to_index` instead.
+
+    Args:
+        id: The ``id`` of a :class:`warp.Volume`.
+        xyz: Direction in world space.
+
+    Returns:
+        The transformed direction in index space with ``float32`` precision.
+
+    See :func:`~warp.volume_index_to_world` for a usage example."""
     ...
 
 @over
 def volume_world_to_index_dir(id: uint64, xyz: vec3d) -> vec3d:
-    """Transform a direction ``xyz`` defined in volume world space to index space, using double precision."""
+    """Transform the direction ``xyz`` from world space to the volume's index space using the linear
+    part of the volume's affine transform (float64 precision).
+
+    The ``float64`` overload of :func:`~warp.volume_world_to_index_dir`. Behavior and usage match
+    the default ``float32`` overload; see it for details and a usage example."""
     ...
 
 @over
@@ -6312,18 +6784,63 @@ def texture_sample(tex: Texture1D, u: float32, dtype: Any, lod: float32) -> Any:
 
     Args:
         tex: The 1D texture to sample.
-        u: U coordinate. Range is [0, 1] if the texture was created with
-            ``normalized_coords=True`` (default), or [0, width] if ``normalized_coords=False``.
-        dtype: The return type (``float``, :class:`warp.vec2f`, or :class:`warp.vec4f`).
-        lod: Mipmap level-of-detail as a float. When omitted, the base mip level is sampled
-            using the non-LOD code path. Fractional values blend between neighbouring mip
-            levels when ``mip_filter_mode`` is :attr:`warp.TextureFilterMode.LINEAR`.
-            Ignored for textures created with a single mip level.
+        u: U coordinate. With ``normalized_coords=True``, texel ``i`` at a mip level of width
+            ``level_width`` is centered at ``(i + 0.5) / level_width``. With
+            ``normalized_coords=False``, texel ``i`` of a single-level texture is centered at
+            ``i + 0.5`` on both backends. For a mipmapped texture on the CPU backend, coordinates
+            remain in base-level texel space and the center is
+            ``(i + 0.5) * base_width / level_width``. CUDA mipmapped textures require normalized
+            coordinates. Coordinates and filtering footprints beyond the texture are handled by its
+            address mode.
+        dtype: The return type, which selects how many channels are read: ``float`` (1 channel),
+            :class:`warp.vec2f` (2), or :class:`warp.vec4f` (4). Use the type matching the texture's
+            :attr:`~warp.Texture.num_channels`. The CPU backend normalizes unsigned integer data to
+            ``[0, 1]`` and signed integer data to ``[-1, 1]``. The CUDA backend does the same for
+            8- and 16-bit integer formats but does not promote 32-bit ones, so an ``int32`` or
+            ``uint32`` texture yields neither a normalized nor a numerically converted value there;
+            use an 8- or 16-bit or a floating-point format instead. Floating-point texture data is
+            returned as ``float32`` channel values without normalization.
+        lod: Mipmap level-of-detail as a float. When omitted or negative, mip level 0 is sampled.
+            Nonnegative values are clamped to the texture's available mip-level range. Fractional
+            values blend between neighbouring mip levels when ``mip_filter_mode`` is
+            :attr:`warp.TextureFilterMode.LINEAR`; the coordinate is evaluated independently at
+            each level used in the blend. Ignored for textures created with a single mip level.
 
     Returns:
         The sampled value of the specified ``dtype``.
 
-    Filtering mode is :attr:`warp.TextureFilterMode.CLOSEST` or :attr:`warp.TextureFilterMode.LINEAR`."""
+    The filtering mode (:class:`warp.TextureFilterMode`) and the addressing of out-of-range
+    coordinates (:class:`warp.TextureAddressMode`) are those set when the texture was created; see
+    :class:`warp.Texture`. On CUDA, ``WRAP`` and ``MIRROR`` are treated as ``CLAMP`` when
+    ``normalized_coords=False`` (the CPU sampler honors them).
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def sample(t1: wp.Texture1D, t2: wp.Texture2D, t3: wp.Texture3D, out: wp.array[wp.float32]):
+                out[0] = wp.texture_sample(t1, 1.0, dtype=float)                    # halfway between texels 0 and 1
+                out[1] = wp.texture_sample(t2, wp.vec2(1.5, 0.5), dtype=float)      # texel (col 1, row 0)
+                out[2] = wp.texture_sample(t3, wp.vec3(1.5, 0.5, 0.5), dtype=float) # texel (col 1, row 0, slice 0)
+
+            data_1d = np.array([0.0, 10.0, 20.0, 30.0], dtype=np.float32)
+            tex_1d = wp.Texture1D(data_1d, filter_mode=wp.TextureFilterMode.LINEAR, normalized_coords=False)
+
+            data_2d = np.array([[0.0, 1.0], [2.0, 3.0]], dtype=np.float32)
+            tex_2d = wp.Texture2D(data_2d, filter_mode=wp.TextureFilterMode.CLOSEST, normalized_coords=False)
+
+            data_3d = np.arange(8, dtype=np.float32).reshape(2, 2, 2)
+            tex_3d = wp.Texture3D(data_3d, filter_mode=wp.TextureFilterMode.CLOSEST, normalized_coords=False)
+
+            out = wp.zeros(3, dtype=wp.float32)
+            wp.launch(sample, dim=1, inputs=[tex_1d, tex_2d, tex_3d], outputs=[out])
+            r = out.numpy()
+            print(round(float(r[0]), 1), round(float(r[1]), 1), round(float(r[2]), 1))
+
+        .. testoutput::
+
+            5.0 1.0 1.0"""
     ...
 
 @over
@@ -6336,18 +6853,36 @@ def texture_sample(tex: Texture2D, uv: vec2f, dtype: Any, lod: float32) -> Any:
 
     Args:
         tex: The 2D texture to sample.
-        uv: UV coordinates as a :class:`warp.vec2f`. Range is [0, 1] if the texture was created with
-            ``normalized_coords=True`` (default), or [0, width] x [0, height] if ``normalized_coords=False``.
-        dtype: The return type (``float``, :class:`warp.vec2f`, or :class:`warp.vec4f`).
-        lod: Mipmap level-of-detail as a float. When omitted, the base mip level is sampled
-            using the non-LOD code path. Fractional values blend between neighbouring mip
-            levels when ``mip_filter_mode`` is :attr:`warp.TextureFilterMode.LINEAR`.
-            Ignored for textures created with a single mip level.
+        uv: UV coordinates as a :class:`warp.vec2f`. With ``normalized_coords=True``, texel
+            ``(i, j)`` at a mip level of size ``(level_width, level_height)`` is centered at
+            ``((i + 0.5) / level_width, (j + 0.5) / level_height)``. With
+            ``normalized_coords=False``, texel ``(i, j)`` of a single-level texture is centered at
+            ``(i + 0.5, j + 0.5)`` on both backends. For a mipmapped texture on the CPU backend,
+            coordinates remain in base-level texel space and the center is
+            ``((i + 0.5) * base_width / level_width, (j + 0.5) * base_height / level_height)``. CUDA
+            mipmapped textures require normalized coordinates. Coordinates and filtering footprints
+            beyond the texture are handled by its per-axis address modes.
+        dtype: The return type, which selects how many channels are read: ``float`` (1 channel),
+            :class:`warp.vec2f` (2), or :class:`warp.vec4f` (4). Use the type matching the texture's
+            :attr:`~warp.Texture.num_channels`. The CPU backend normalizes unsigned integer data to
+            ``[0, 1]`` and signed integer data to ``[-1, 1]``. The CUDA backend does the same for
+            8- and 16-bit integer formats but does not promote 32-bit ones, so an ``int32`` or
+            ``uint32`` texture yields neither a normalized nor a numerically converted value there;
+            use an 8- or 16-bit or a floating-point format instead. Floating-point texture data is
+            returned as ``float32`` channel values without normalization.
+        lod: Mipmap level-of-detail as a float. When omitted or negative, mip level 0 is sampled.
+            Nonnegative values are clamped to the texture's available mip-level range. Fractional
+            values blend between neighbouring mip levels when ``mip_filter_mode`` is
+            :attr:`warp.TextureFilterMode.LINEAR`; the coordinates are evaluated independently at
+            each level used in the blend. Ignored for textures created with a single mip level.
 
     Returns:
         The sampled value of the specified ``dtype``.
 
-    Filtering mode is :attr:`warp.TextureFilterMode.CLOSEST` or :attr:`warp.TextureFilterMode.LINEAR`."""
+    The filtering mode (:class:`warp.TextureFilterMode`) and the addressing of out-of-range
+    coordinates (:class:`warp.TextureAddressMode`) are those set when the texture was created; see
+    :class:`warp.Texture`. On CUDA, ``WRAP`` and ``MIRROR`` are treated as ``CLAMP`` when
+    ``normalized_coords=False`` (the CPU sampler honors them)."""
     ...
 
 @over
@@ -6360,20 +6895,39 @@ def texture_sample(tex: Texture2D, u: float32, v: float32, dtype: Any, lod: floa
 
     Args:
         tex: The 2D texture to sample.
-        u: U coordinate. Range is [0, 1] if the texture was created with
-            ``normalized_coords=True`` (default), or [0, width] if ``normalized_coords=False``.
-        v: V coordinate. Range is [0, 1] if the texture was created with
-            ``normalized_coords=True`` (default), or [0, height] if ``normalized_coords=False``.
-        dtype: The return type (``float``, :class:`warp.vec2f`, or :class:`warp.vec4f`).
-        lod: Mipmap level-of-detail as a float. When omitted, the base mip level is sampled
-            using the non-LOD code path. Fractional values blend between neighbouring mip
-            levels when ``mip_filter_mode`` is :attr:`warp.TextureFilterMode.LINEAR`.
-            Ignored for textures created with a single mip level.
+        u: U coordinate. At a mip level of width ``level_width``, texel column ``i`` is centered at
+            ``(i + 0.5) / level_width`` when ``normalized_coords=True``. With unnormalized
+            coordinates, its center is ``i + 0.5`` in a single-level texture on both backends; for a
+            mipmapped texture on the CPU backend, its center is
+            ``(i + 0.5) * base_width / level_width``.
+        v: V coordinate. At a mip level of height ``level_height``, texel row ``j`` is centered at
+            ``(j + 0.5) / level_height`` when ``normalized_coords=True``. With unnormalized
+            coordinates, its center is ``j + 0.5`` in a single-level texture on both backends; for a
+            mipmapped texture on the CPU backend, its center is
+            ``(j + 0.5) * base_height / level_height``. CUDA mipmapped textures require normalized
+            coordinates. Coordinates and filtering footprints beyond the texture are handled by its
+            per-axis address modes.
+        dtype: The return type, which selects how many channels are read: ``float`` (1 channel),
+            :class:`warp.vec2f` (2), or :class:`warp.vec4f` (4). Use the type matching the texture's
+            :attr:`~warp.Texture.num_channels`. The CPU backend normalizes unsigned integer data to
+            ``[0, 1]`` and signed integer data to ``[-1, 1]``. The CUDA backend does the same for
+            8- and 16-bit integer formats but does not promote 32-bit ones, so an ``int32`` or
+            ``uint32`` texture yields neither a normalized nor a numerically converted value there;
+            use an 8- or 16-bit or a floating-point format instead. Floating-point texture data is
+            returned as ``float32`` channel values without normalization.
+        lod: Mipmap level-of-detail as a float. When omitted or negative, mip level 0 is sampled.
+            Nonnegative values are clamped to the texture's available mip-level range. Fractional
+            values blend between neighbouring mip levels when ``mip_filter_mode`` is
+            :attr:`warp.TextureFilterMode.LINEAR`; the coordinates are evaluated independently at
+            each level used in the blend. Ignored for textures created with a single mip level.
 
     Returns:
         The sampled value of the specified ``dtype``.
 
-    Filtering mode is :attr:`warp.TextureFilterMode.CLOSEST` or :attr:`warp.TextureFilterMode.LINEAR`."""
+    The filtering mode (:class:`warp.TextureFilterMode`) and the addressing of out-of-range
+    coordinates (:class:`warp.TextureAddressMode`) are those set when the texture was created; see
+    :class:`warp.Texture`. On CUDA, ``WRAP`` and ``MIRROR`` are treated as ``CLAMP`` when
+    ``normalized_coords=False`` (the CPU sampler honors them)."""
     ...
 
 @over
@@ -6386,18 +6940,37 @@ def texture_sample(tex: Texture3D, uvw: vec3f, dtype: Any, lod: float32) -> Any:
 
     Args:
         tex: The 3D texture to sample.
-        uvw: UVW coordinates as a :class:`warp.vec3f`. Range is [0, 1] if the texture was created with
-            ``normalized_coords=True`` (default), or [0, width] x [0, height] x [0, depth] if ``normalized_coords=False``.
-        dtype: The return type (``float``, :class:`warp.vec2f`, or :class:`warp.vec4f`).
-        lod: Mipmap level-of-detail as a float. When omitted, the base mip level is sampled
-            using the non-LOD code path. Fractional values blend between neighbouring mip
-            levels when ``mip_filter_mode`` is :attr:`warp.TextureFilterMode.LINEAR`.
-            Ignored for textures created with a single mip level.
+        uvw: UVW coordinates as a :class:`warp.vec3f`. With ``normalized_coords=True``, texel
+            ``(i, j, k)`` at a mip level of size ``(level_width, level_height, level_depth)`` is
+            centered at ``((i + 0.5) / level_width, (j + 0.5) / level_height, (k + 0.5) / level_depth)``.
+            With ``normalized_coords=False``, texel ``(i, j, k)`` of a single-level texture is
+            centered at ``(i + 0.5, j + 0.5, k + 0.5)`` on both backends. For a mipmapped texture on
+            the CPU backend, coordinates remain in base-level texel space and the center is
+            ``((i + 0.5) * base_width / level_width, (j + 0.5) * base_height / level_height,
+            (k + 0.5) * base_depth / level_depth)``. CUDA mipmapped textures require normalized
+            coordinates. Coordinates and filtering footprints beyond the texture are handled by its
+            per-axis address modes.
+        dtype: The return type, which selects how many channels are read: ``float`` (1 channel),
+            :class:`warp.vec2f` (2), or :class:`warp.vec4f` (4). Use the type matching the texture's
+            :attr:`~warp.Texture.num_channels`. The CPU backend normalizes unsigned integer data to
+            ``[0, 1]`` and signed integer data to ``[-1, 1]``. The CUDA backend does the same for
+            8- and 16-bit integer formats but does not promote 32-bit ones, so an ``int32`` or
+            ``uint32`` texture yields neither a normalized nor a numerically converted value there;
+            use an 8- or 16-bit or a floating-point format instead. Floating-point texture data is
+            returned as ``float32`` channel values without normalization.
+        lod: Mipmap level-of-detail as a float. When omitted or negative, mip level 0 is sampled.
+            Nonnegative values are clamped to the texture's available mip-level range. Fractional
+            values blend between neighbouring mip levels when ``mip_filter_mode`` is
+            :attr:`warp.TextureFilterMode.LINEAR`; the coordinates are evaluated independently at
+            each level used in the blend. Ignored for textures created with a single mip level.
 
     Returns:
         The sampled value of the specified ``dtype``.
 
-    Filtering mode is :attr:`warp.TextureFilterMode.CLOSEST` or :attr:`warp.TextureFilterMode.LINEAR`."""
+    The filtering mode (:class:`warp.TextureFilterMode`) and the addressing of out-of-range
+    coordinates (:class:`warp.TextureAddressMode`) are those set when the texture was created; see
+    :class:`warp.Texture`. On CUDA, ``WRAP`` and ``MIRROR`` are treated as ``CLAMP`` when
+    ``normalized_coords=False`` (the CPU sampler honors them)."""
     ...
 
 @over
@@ -6410,22 +6983,44 @@ def texture_sample(tex: Texture3D, u: float32, v: float32, w: float32, dtype: An
 
     Args:
         tex: The 3D texture to sample.
-        u: U coordinate. Range is [0, 1] if the texture was created with
-            ``normalized_coords=True`` (default), or [0, width] if ``normalized_coords=False``.
-        v: V coordinate. Range is [0, 1] if the texture was created with
-            ``normalized_coords=True`` (default), or [0, height] if ``normalized_coords=False``.
-        w: W coordinate. Range is [0, 1] if the texture was created with
-            ``normalized_coords=True`` (default), or [0, depth] if ``normalized_coords=False``.
-        dtype: The return type (``float``, :class:`warp.vec2f`, or :class:`warp.vec4f`).
-        lod: Mipmap level-of-detail as a float. When omitted, the base mip level is sampled
-            using the non-LOD code path. Fractional values blend between neighbouring mip
-            levels when ``mip_filter_mode`` is :attr:`warp.TextureFilterMode.LINEAR`.
-            Ignored for textures created with a single mip level.
+        u: U coordinate. At a mip level of width ``level_width``, texel column ``i`` is centered at
+            ``(i + 0.5) / level_width`` when ``normalized_coords=True``. With unnormalized
+            coordinates, its center is ``i + 0.5`` in a single-level texture on both backends; for a
+            mipmapped texture on the CPU backend, its center is
+            ``(i + 0.5) * base_width / level_width``.
+        v: V coordinate. At a mip level of height ``level_height``, texel row ``j`` is centered at
+            ``(j + 0.5) / level_height`` when ``normalized_coords=True``. With unnormalized
+            coordinates, its center is ``j + 0.5`` in a single-level texture on both backends; for a
+            mipmapped texture on the CPU backend, its center is
+            ``(j + 0.5) * base_height / level_height``.
+        w: W coordinate. At a mip level of depth ``level_depth``, texel depth index ``k`` is centered
+            at ``(k + 0.5) / level_depth`` when ``normalized_coords=True``. With unnormalized
+            coordinates, its center is ``k + 0.5`` in a single-level texture on both backends; for a
+            mipmapped texture on the CPU backend, its center is
+            ``(k + 0.5) * base_depth / level_depth``. CUDA mipmapped textures require normalized
+            coordinates. Coordinates and filtering footprints beyond the texture are handled by its
+            per-axis address modes.
+        dtype: The return type, which selects how many channels are read: ``float`` (1 channel),
+            :class:`warp.vec2f` (2), or :class:`warp.vec4f` (4). Use the type matching the texture's
+            :attr:`~warp.Texture.num_channels`. The CPU backend normalizes unsigned integer data to
+            ``[0, 1]`` and signed integer data to ``[-1, 1]``. The CUDA backend does the same for
+            8- and 16-bit integer formats but does not promote 32-bit ones, so an ``int32`` or
+            ``uint32`` texture yields neither a normalized nor a numerically converted value there;
+            use an 8- or 16-bit or a floating-point format instead. Floating-point texture data is
+            returned as ``float32`` channel values without normalization.
+        lod: Mipmap level-of-detail as a float. When omitted or negative, mip level 0 is sampled.
+            Nonnegative values are clamped to the texture's available mip-level range. Fractional
+            values blend between neighbouring mip levels when ``mip_filter_mode`` is
+            :attr:`warp.TextureFilterMode.LINEAR`; the coordinates are evaluated independently at
+            each level used in the blend. Ignored for textures created with a single mip level.
 
     Returns:
         The sampled value of the specified ``dtype``.
 
-    Filtering mode is :attr:`warp.TextureFilterMode.CLOSEST` or :attr:`warp.TextureFilterMode.LINEAR`."""
+    The filtering mode (:class:`warp.TextureFilterMode`) and the addressing of out-of-range
+    coordinates (:class:`warp.TextureAddressMode`) are those set when the texture was created; see
+    :class:`warp.Texture`. On CUDA, ``WRAP`` and ``MIRROR`` are treated as ``CLAMP`` when
+    ``normalized_coords=False`` (the CPU sampler honors them)."""
     ...
 
 @over

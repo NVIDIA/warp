@@ -676,11 +676,11 @@ template <typename T> __device__ T tex3DLod(unsigned long long texObj, float x, 
 
 // Helper to convert CUDA types to Warp types
 //
-// Each ``sample_*`` helper accepts a single ``lod`` argument. When ``lod`` equals
-// :c:macro:`WP_TEXTURE_LOD_DISABLED`, the helper dispatches to the original non-LOD
-// texture fetch (``tex1D`` / ``tex2D`` / ``tex3D`` on GPU, base mip level on CPU)
+// Each ``sample_*`` helper accepts a single ``lod`` argument. When ``lod`` is negative
+// (including :c:macro:`WP_TEXTURE_LOD_DISABLED`), the helper dispatches to the original
+// non-LOD texture fetch (``tex1D`` / ``tex2D`` / ``tex3D`` on GPU, base mip level on CPU)
 // so that callers that never opt into LOD preserve the pre-mipmap behavior exactly.
-// Any other ``lod`` value routes through the mipmap-aware path (``tex1DLod`` / ...).
+// Any nonnegative ``lod`` value routes through the mipmap-aware path (``tex1DLod`` / ...).
 template <typename T> struct texture_sample_helper;
 
 template <> struct texture_sample_helper<float> {
