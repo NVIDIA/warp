@@ -3,6 +3,9 @@
 
 import contextlib
 import io
+import os
+import subprocess
+import sys
 import unittest
 import warnings
 
@@ -573,6 +576,42 @@ class TestUtils(unittest.TestCase):
         q = (0.0, 0.0)
         qd = (0.0, 0.0)
         self.assertEqual(original_fn(q, qd), created_fn(q, qd))
+
+    def test_create_warp_function_name_is_deterministic(self):
+        script = (
+            "import warp as wp\n"
+            "from warp.tests.test_utils import parenthesized_multiline_lambda\n"
+            "created_fn, _ = wp.utils.create_warp_function(parenthesized_multiline_lambda())\n"
+            'print(f"created-function-key:{created_fn.key}")\n'
+        )
+        marker = "created-function-key:"
+        keys = []
+
+        for seed in ("1", "2"):
+            env = os.environ.copy()
+            env["PYTHONHASHSEED"] = seed
+            result = subprocess.run(
+                [sys.executable, "-c", script],
+                check=False,
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+            self.assertEqual(
+                result.returncode,
+                0,
+                msg=f"Subprocess failed for PYTHONHASHSEED={seed}:\n{result.stderr}",
+            )
+            matching_lines = [line for line in result.stdout.splitlines() if line.startswith(marker)]
+            self.assertEqual(
+                len(matching_lines),
+                1,
+                msg=f"Expected one function-key marker in subprocess output:\n{result.stdout}",
+            )
+            keys.append(matching_lines[0].removeprefix(marker))
+
+        self.assertEqual(keys[0], keys[1])
+        self.assertRegex(keys[0], r"^func_[0-9a-f]{16}$")
 
     def test_warn(self):
         # Clear any state from prior tests in the same process.

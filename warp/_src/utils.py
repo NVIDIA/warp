@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import cProfile
 import gc
+import hashlib
 import os
 import sys
 import threading
@@ -889,7 +890,7 @@ def create_warp_function(func: Callable) -> tuple[wp.Function, warp._src.context
     from .codegen import Adjoint, get_full_arg_spec  # noqa: PLC0415
 
     def unique_name(code: str):
-        return "func_" + hex(hash(code))[-8:]
+        return f"func_{hashlib.sha256(code.encode('utf-8')).hexdigest()[:16]}"
 
     # Create a Warp function from the input function
     source = None
