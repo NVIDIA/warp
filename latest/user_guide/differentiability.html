@@ -872,8 +872,8 @@ This allows users to define code that should replace the automatically generated
 <span class="math notranslate nohighlight">\(\color{green}{g(x)}\)</span>, which we refer to as “replay” function (that matches the original function definition by default),
 and its derivative <span class="math notranslate nohighlight">\(\color{blue}{g^\prime(x)}\)</span>, referred to as “grad”.</p>
 <p>Both the replay and the grad implementations can be customized by the user. They are defined as follows:</p>
-<div class="pst-scrollable-table-container"><table class="table" id="id7">
-<caption><span class="caption-text">Customizing the replay and grad versions of function <code class="docutils literal notranslate"><span class="pre">myfunc</span></code></span><a class="headerlink" href="#id7" title="Link to this table">#</a></caption>
+<div class="pst-scrollable-table-container"><table class="table" id="id8">
+<caption><span class="caption-text">Customizing the replay and grad versions of function <code class="docutils literal notranslate"><span class="pre">myfunc</span></code></span><a class="headerlink" href="#id8" title="Link to this table">#</a></caption>
 <colgroup>
 <col style="width: 100.0%" />
 </colgroup>
@@ -1626,7 +1626,7 @@ then be safely updated with in-place addition or subtraction (<code class="docut
 will invalidate gradient computations related to the vector, matrix, or quaternion.</p>
 </section>
 <section id="dynamic-loops">
-<h3>Dynamic Loops<a class="headerlink" href="#dynamic-loops" title="Link to this heading">#</a></h3>
+<span id="id7"></span><h3>Dynamic Loops<a class="headerlink" href="#dynamic-loops" title="Link to this heading">#</a></h3>
 <p>Currently, dynamic loops are not replayed or unrolled in the backward pass, meaning intermediate values that are
 meant to be computed in the loop and may be necessary for adjoint calculations are not updated.</p>
 <p>In the following example, the correct gradient is computed because the <code class="docutils literal notranslate"><span class="pre">x</span></code> array adjoints do not depend on intermediate values of <code class="docutils literal notranslate"><span class="pre">sum</span></code>:</p>
