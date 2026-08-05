@@ -133,6 +133,174 @@ Otherwise, kernel compilation may fail.
 
 Note that shared memory tile allocations are guaranteed to be 16-byte aligned.
 
+.. _tile_shared_memory_budget:
+
+Shared Memory Budget
+~~~~~~~~~~~~~~~~~~~~
+
+Currently, Warp computes a kernel's shared memory request by summing every expression in
+the kernel body that creates an *owning* shared tile: one with its own shared-memory
+allocation, as opposed to a *non-owning* view onto another tile's storage. The sum does not
+consider how many tiles are live at any one point. Warp does not yet perform live-range
+analysis or reuse shared-memory slots, so a tile's storage remains reserved after its last
+use.
+
+This matters most for fused kernels built from chained tile operations, since each
+operation that returns a new tile adds its own storage to the request:
+
+.. code:: python
+
+    TILE_DIM = 32   # one 32x32 float32 tile = 4,096 B
+
+    @wp.kernel
+    def chained(a: wp.array3d[float], b: wp.array3d[float], out: wp.array3d[float]):
+        i = wp.tid()
+        A = wp.tile_load(a[i], shape=(TILE_DIM, TILE_DIM), storage="shared")   # site 1
+        B = wp.tile_load(b[i], shape=(TILE_DIM, TILE_DIM), storage="shared")   # site 2
+        T1 = wp.tile_matmul(A, B)                                              # site 3
+        T2 = wp.tile_matmul(T1, B)                                             # site 4
+        T3 = wp.tile_matmul(T2, B)                                             # site 5
+        wp.tile_store(out[i], T3)
+
+    # requests 5 x 4,096 = 20,480 B, although at most three tiles are ever live
+
+For forward-only execution, writing the same computation so each result lands in an
+existing tile brings the request down to the three tiles it declares:
+
+.. code:: python
+
+    @wp.kernel(enable_backward=False)
+    def reused_forward_only(a: wp.array3d[float], b: wp.array3d[float], out: wp.array3d[float]):
+        i = wp.tid()
+        A = wp.tile_load(a[i], shape=(TILE_DIM, TILE_DIM), storage="shared")          # site 1
+        B = wp.tile_load(b[i], shape=(TILE_DIM, TILE_DIM), storage="shared")          # site 2
+        T = wp.tile_zeros(shape=(TILE_DIM, TILE_DIM), dtype=float, storage="shared")  # site 3
+        for _ in range(3):
+            wp.tile_matmul(A, B, T, alpha=1.0, beta=0.0)   # writes into T, no new tile
+            wp.tile_assign(A, T)
+        wp.tile_store(out[i], A)
+
+    # requests 3 x 4,096 = 12,288 B
+
+This rewrite preserves the forward result, but it overwrites intermediate values needed by
+the backward pass, so it does not preserve the gradients of ``chained``.
+
+The per-site sum has two exceptions:
+
+* **Non-owning views do not increase the shared memory request.** Slices,
+  :func:`tile_view <warp._src.lang.tile_view>`, and
+  :func:`tile_transpose <warp._src.lang.tile_transpose>` alias an existing tile's storage,
+  so they do not require a separate shared-memory reservation.
+* **Called functions share one scratch region, however many times you call them.** The shared
+  tiles a :func:`@wp.func <warp.func>` creates are scratch space it gives back when it returns,
+  so a later call reuses the same bytes instead of adding to the request. A kernel reserves
+  enough for the largest single callee it uses, on top of its own total. That figure is itself
+  a total, so a chain of nested calls adds up along the deepest path.
+
+The following kernel illustrates both exceptions:
+
+.. code:: python
+
+    TILE_S = 16  # one 16x16 float32 tile = 1,024 B
+    TILE_L = 32  # one 32x32 float32 tile = 4,096 B
+
+    @wp.func
+    def small_scratch(out: wp.array3d[float], index: int):
+        # Owning tile in the callee: 1,024 B
+        scratch = wp.tile_ones(shape=(TILE_S, TILE_S), dtype=float, storage="shared")
+        wp.tile_store(out[index], scratch)
+
+    @wp.func
+    def large_scratch(out: wp.array3d[float], index: int):
+        # Owning tile in the callee: 4,096 B
+        scratch = wp.tile_ones(shape=(TILE_L, TILE_L), dtype=float, storage="shared")
+        wp.tile_store(out[index], scratch)
+
+    @wp.kernel
+    def accounting(out: wp.array3d[float]):
+        # Owning tile in the kernel: 1,024 B
+        owned = wp.tile_zeros(shape=(TILE_S, TILE_S), dtype=float, storage="shared")
+
+        # This view aliases owned and adds no shared-memory reservation
+        view = wp.tile_transpose(owned)
+        wp.tile_store(out[0], view)
+
+        # Three calls, one scratch region, sized by the largest callee: 4,096 B
+        small_scratch(out, 1)
+        small_scratch(out, 2)
+        large_scratch(out, 3)
+
+        # Forward request: 1,024 B kernel + 4,096 B callee scratch = 5,120 B
+
+The two rules pull in opposite directions. Warp sums the owning tiles a body creates, so one more
+``wp.tile_zeros`` in ``accounting`` would raise the request by 1,024 B. It takes a maximum over
+the functions a kernel calls, so one more ``small_scratch(out, 4)`` would not change it at all.
+
+When ``enable_backward`` is left on, the backward kernel pairs each owning shared tile with
+an equally sized gradient buffer, so those tiles cost twice as much. A kernel therefore
+requests exactly twice its forward total. One that calls a ``@wp.func`` with a custom
+gradient can request less, because the gradient body is counted once instead of doubled.
+
+To bring a kernel back within the budget, start with the changes that apply to any kernel:
+
+* Loop over smaller tiles instead of operating on one large tile. A blocked matrix multiply
+  that accumulates partial products over slices of the inner dimension reserves only those
+  slices and the accumulator, whatever the size of the full result.
+* Reduce tile dimensions, or use a smaller data type when the resulting precision is
+  acceptable.
+* Prefer transpose and slice views over materializing a new tile.
+
+A loop reuses its tiles only while Warp leaves it rolled. Warp unrolls a loop whose trip count
+is a compile-time constant no greater than :attr:`warp.config.max_unroll` (16 by default), and
+each unrolled iteration creates its own tiles, so the request grows with the trip count
+instead of staying flat. Measured on sm_86, a blocked multiply with two 1,024 B slices and a
+1,024 B accumulator requests 3,072 B when the loop bound arrives as a kernel argument, and
+17,408 B when the same loop reads ``range(8)``.
+
+Those per-iteration tiles are also what the backward pass reads back, so rolling a loop to hold
+the request flat can change gradients while leaving the forward result intact. Roll one freely
+in a forward-only kernel, and read :ref:`dynamic_loops` before rolling one that is
+differentiated.
+
+Reducing the launch dimension does not help. The request is per block and follows from the
+tiles a kernel creates, so a smaller grid or batch leaves it unchanged.
+
+The remaining options depend on whether the kernel participates in automatic
+differentiation.
+
+**Forward-only kernels.** When gradients are not required, set ``enable_backward=False``
+and reuse shared storage aggressively:
+
+* Use the in-place forms, which do not support automatic differentiation:
+  :func:`tile_cholesky_inplace <warp._src.lang.tile_cholesky_inplace>`,
+  :func:`tile_lower_solve_inplace <warp._src.lang.tile_lower_solve_inplace>`, and
+  :func:`tile_upper_solve_inplace <warp._src.lang.tile_upper_solve_inplace>`.
+* Pass an existing tile as the output of
+  :func:`tile_matmul <warp._src.lang.tile_matmul>` and use ``alpha`` and ``beta`` to
+  accumulate into it, instead of binding each product to a new name.
+* Copy into a tile you already own with :func:`tile_assign <warp._src.lang.tile_assign>`.
+
+**Differentiable kernels.** Preserve the intermediate values needed by the backward pass.
+Split a long fused kernel into differentiable phases, store the intermediates that pass needs
+in distinct arrays, and record every launch on the same :class:`Tape`. This trades shared
+memory for global memory and additional launches.
+
+The output-tile form of :func:`tile_matmul <warp._src.lang.tile_matmul>` and
+:func:`tile_assign <warp._src.lang.tile_assign>` have adjoints, but repeated reuse can
+overwrite values needed by an earlier operation's adjoint. Do not assume that a
+forward-equivalent rewrite preserves gradients. Check the complete kernel with
+:func:`gradcheck <warp.autograd.gradcheck>` or a recorded sequence with
+:func:`gradcheck_tape <warp.autograd.gradcheck_tape>`.
+
+Compare the total against
+:attr:`Device.max_shared_memory_per_block <warp.Device.max_shared_memory_per_block>` for the
+target device, leaving room for the static shared memory Warp reserves per block: at least
+four bytes per thread, or ``4 * block_dim``. A kernel launches only when its dynamic request
+*plus* that static reservation fits within the device budget. So a request slightly below
+``max_shared_memory_per_block`` can still fail, and raising ``block_dim`` lowers the dynamic
+ceiling without changing the tiles themselves. Warp does not report an oversized budget at
+compile time; see `Shared memory overflow`_ for how the failure surfaces.
+
 Shared Tile Load Performance
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -1562,9 +1730,10 @@ Shared memory tiles store data in a region accessible by all threads in the bloc
 enabling random access. They are required for operations such as
 :func:`wp.tile_matmul() <warp._src.lang.tile_matmul>` that need to read arbitrary
 elements. Shared memory is a limited per-block resource whose size varies by
-architecture. Query the budget for a specific device with
-:attr:`Device.max_shared_memory_per_block <warp.Device.max_shared_memory_per_block>`.
-Tiles that exceed the budget cause a kernel launch failure. See `Shared Memory Tiles`_.
+architecture, and a kernel has to fit every shared tile it creates, not just the largest
+one. A launch fails once that total runs over what the device allows. See
+`Shared Memory Tiles`_ for the storage model, and :ref:`tile_shared_memory_budget` for how
+Warp arrives at the total and how much of the device limit you can actually spend.
 
 Warp migrates tiles from register to shared memory automatically when an operation
 requires it. For example, :func:`wp.tile_matmul() <warp._src.lang.tile_matmul>` will
@@ -1609,19 +1778,37 @@ Debugging garbage or NaN output
 Shared memory overflow
 ^^^^^^^^^^^^^^^^^^^^^^
 
-*Why does my kernel fail when I increase the tile size?*
+*My kernel exceeds the device's shared memory budget. How does that surface?*
 
-Tile sizes that exceed the device's per-block shared memory budget surface differently
-depending on the operation. For non-MathDx shared-storage tiles, you may see a load-time
-warning that the kernel's shared-memory configuration exceeds the device's per-block
-maximum, followed by ``CUDA_ERROR_LAUNCH_OUT_OF_RESOURCES`` at launch. For MathDx-backed
-operations (:func:`wp.tile_matmul() <warp._src.lang.tile_matmul>`,
+The symptom depends on whether the kernel's total request is too large or a single
+operation's own requirement is too large.
+
+When the **kernel total** exceeds the budget, Warp emits a warning the first time the
+kernel's hooks are resolved, naming the requested and available byte counts:
+``Failed to configure kernel dynamic shared memory for this device, tried to configure
+... for N bytes, but maximum available is M``. The launch then fails with
+``CUDA error 1: invalid argument``. That launch error does not mention shared memory, so
+the earlier warning is the diagnostic to look for.
+
+The ``maximum available`` figure in that warning is the raw device budget and does not
+subtract the static shared memory reserved per block, so the warning can report a requested
+size that is *smaller* than the maximum it prints and still be a genuine overflow. Compare
+against ``max_shared_memory_per_block - 4 * block_dim`` instead, which is the ceiling as long
+as nothing else in the kernel claims static shared memory. See
+:ref:`tile_shared_memory_budget`.
+
+When a **single MathDx-backed operation** (:func:`wp.tile_matmul() <warp._src.lang.tile_matmul>`,
 :func:`wp.tile_fft() <warp._src.lang.tile_fft>`,
-:func:`wp.tile_cholesky() <warp._src.lang.tile_cholesky>`), the failure surfaces at LTO
-compile time, typically as
-``Failed to compile LTO '...'. Set the environment variable LIBMATHDX_LOG_LEVEL=5 and rerun for more details.`` In both cases, reduce tile dimensions or switch to a smaller data type,
-and query :attr:`Device.max_shared_memory_per_block <warp.Device.max_shared_memory_per_block>`
-to see the budget. See :ref:`mathdx` for more details.
+:func:`wp.tile_cholesky() <warp._src.lang.tile_cholesky>`) cannot fit on its own, the
+failure comes earlier, at LTO compile time, typically as
+``Failed to compile LTO '...'. Set the environment variable LIBMATHDX_LOG_LEVEL=5 and rerun for more details.``
+See :ref:`mathdx` for more details.
+
+:attr:`Device.max_shared_memory_per_block <warp.Device.max_shared_memory_per_block>` reports
+the device limit, and the static reservation puts the usable figure below it. Reducing tile
+dimensions or switching to a smaller data type lowers the request, but the total also grows
+with the number of shared tiles the kernel creates, which is often the larger factor in a
+fused kernel. See :ref:`tile_shared_memory_budget`.
 
 Out-of-bounds handling
 ^^^^^^^^^^^^^^^^^^^^^^

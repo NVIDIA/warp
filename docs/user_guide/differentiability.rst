@@ -1275,6 +1275,8 @@ important caveat: each component may only be assigned a value once (not includin
 then be safely updated with in-place addition or subtraction (``+=`` or ``-=``) operations, but direct re-assignment (``=``)
 will invalidate gradient computations related to the vector, matrix, or quaternion.
 
+.. _dynamic_loops:
+
 Dynamic Loops
 ^^^^^^^^^^^^^
 Currently, dynamic loops are not replayed or unrolled in the backward pass, meaning intermediate values that are
