@@ -9,6 +9,11 @@
       * Kernel
       * Python
 
-   Query the vector value of voxel with coordinates ``i``, ``j``, ``k``.
+   Return the :class:`warp.vec3f` value of the voxel at integer index-space coordinates ``i``,
+   ``j``, ``k``, without interpolation.
    
-   If the voxel at this index does not exist, this function returns the background value.
+   Returns the resolved NanoVDB value (see :func:`~warp.volume_lookup`); the result is ``0`` if
+   ``id`` is not a ``vec3f`` volume. Not differentiable. In kernels, equivalent to
+   :func:`~warp.volume_lookup` with ``dtype=warp.vec3f``.
+   
+   See :func:`~warp.volume_lookup` for a usage example.

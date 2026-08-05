@@ -9,7 +9,37 @@
       * Kernel
       * Python
 
-   Query the index associated with the voxel at coordinates ``i``, ``j``, ``k``.
+   Return the linear index associated with integer index-space coordinates ``i``, ``j``, ``k``.
    
-   If the voxel at this index does not exist, this function returns -1.
-   This function is available for both index grids and classical volumes.
+   On NanoVDB ``OnIndex`` and ``OnIndexMask`` grids, active voxels have zero-based indices and
+   inactive voxels return ``-1``. On ``Index`` and ``IndexMask`` grids and on classical value grids,
+   every slot in an allocated leaf has an index regardless of its active mask; coordinates outside
+   allocated leaves return ``-1``. For volumes whose indexable count fits in ``int32``, nonnegative
+   indices lie in ``[0, volume_voxel_count(id))``. Guard against ``-1`` before gathering from a
+   per-voxel array. Not differentiable.
+   
+   :param id: The ``id`` of a :class:`warp.Volume`.
+   :param i: Voxel coordinate along the first index-space axis.
+   :param j: Voxel coordinate along the second index-space axis.
+   :param k: Voxel coordinate along the third index-space axis.
+   
+   :returns: The voxel's linear index, or ``-1`` when the coordinate is not indexable.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def lookup_index(vid: wp.uint64, out: wp.array[wp.int32]):
+           out[0] = wp.volume_lookup_index(vid, 1, 0, 0)
+   
+       voxels = wp.array([[0, 0, 0], [1, 0, 0]], dtype=wp.vec3i)
+       volume = wp.Volume.allocate_by_voxels(voxels, voxel_size=1.0)
+       out = wp.zeros(1, dtype=wp.int32)
+       wp.launch(lookup_index, dim=1, inputs=[volume.id], outputs=[out])
+       print(int(out.numpy()[0]))
+   
+   .. testoutput::
+   
+       1
+   

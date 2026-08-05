@@ -9,6 +9,52 @@
       * Kernel
       * Differentiable
 
-   Sample the volume of type ``dtype`` given by ``id`` at the volume local-space point ``uvw``.
+   Sample the volume of type ``dtype`` given by ``id`` at the index-space point ``uvw``.
    
-   Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`.
+   ``uvw`` is expressed in index space (voxel coordinates) and may be fractional; convert a
+   world-space position first with :func:`~warp.volume_world_to_index`. ``sampling_mode`` must be
+   :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`. ``CLOSEST`` rounds each coordinate to
+   the nearest voxel, with halfway cases rounded away from zero. Use ``CLOSEST`` for integer data;
+   ``LINEAR`` performs trilinear interpolation for floating-point scalar and vector data.
+   
+   Sampling follows NanoVDB value resolution: inactive leaf voxels and internal tiles may carry
+   stored inactive values that differ from the grid's root background value. A location with no
+   more specific stored value resolves to the background. The whole sample is ``0`` if the volume
+   does not store values of type ``dtype``.
+   
+   For floating-point scalar and vector data, ``LINEAR`` sampling is differentiable with respect to
+   ``uvw``; at integer voxel planes, the derivative is taken from the cell on the positive side.
+   The derivative is zero for ``CLOSEST``. Gradients are not propagated to the stored voxel values.
+   To read values held in a separate array, use :func:`~warp.volume_sample_index`. See
+   :class:`warp.Volume` and the :ref:`Volume sampling <volume_sampling>` user-guide examples.
+   
+   :param id: The ``id`` of a :class:`warp.Volume` to sample.
+   :param uvw: Sampling location in index space (voxel coordinates); may be fractional.
+   :param sampling_mode: :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`; use ``CLOSEST`` for
+                         integer data.
+   :param dtype: Value type stored by the volume and returned by the sample. One of ``int32``,
+                 ``int64``, ``uint32``, ``float32``, ``float64``, :class:`warp.vec3f`,
+                 :class:`warp.vec3d`, :class:`warp.vec4f`, or :class:`warp.vec4d`.
+   
+   :returns: The sampled value of type ``dtype``.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def sample(vid: wp.uint64, out: wp.array[wp.float32]):
+           p = wp.volume_world_to_index(vid, wp.vec3(0.5, 0.0, 0.0))
+           out[0] = wp.volume_sample(vid, p, wp.Volume.LINEAR, dtype=float)
+   
+       values = np.zeros((2, 2, 2), dtype=np.float32)
+       values[1, :, :] = 1.0  # f(i, j, k) = i
+       volume = wp.Volume.load_from_numpy(values, voxel_size=1.0, bg_value=0.0)
+       out = wp.zeros(1, dtype=wp.float32)
+       wp.launch(sample, dim=1, inputs=[volume.id], outputs=[out])
+       print(round(float(out.numpy()[0]), 1))
+   
+   .. testoutput::
+   
+       0.5
+   

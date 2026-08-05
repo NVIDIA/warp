@@ -547,8 +547,12 @@
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Query the vector value of voxel with coordinates <code class="docutils literal notranslate"><span class="pre">i</span></code>, <code class="docutils literal notranslate"><span class="pre">j</span></code>, <code class="docutils literal notranslate"><span class="pre">k</span></code>.</p>
-<p>If the voxel at this index does not exist, this function returns the background value.</p>
+<p>Return the <a class="reference internal" href="../../api_reference/_generated/warp.vec3f.html#warp.vec3f" title="warp.vec3f"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3f</span></code></a> value of the voxel at integer index-space coordinates <code class="docutils literal notranslate"><span class="pre">i</span></code>,
+<code class="docutils literal notranslate"><span class="pre">j</span></code>, <code class="docutils literal notranslate"><span class="pre">k</span></code>, without interpolation.</p>
+<p>Returns the resolved NanoVDB value (see <a class="reference internal" href="warp.volume_lookup.html#warp._src.lang.volume_lookup" title="warp._src.lang.volume_lookup"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_lookup()</span></code></a>); the result is <code class="docutils literal notranslate"><span class="pre">0</span></code> if
+<code class="docutils literal notranslate"><span class="pre">id</span></code> is not a <code class="docutils literal notranslate"><span class="pre">vec3f</span></code> volume. Not differentiable. In kernels, equivalent to
+<a class="reference internal" href="warp.volume_lookup.html#warp._src.lang.volume_lookup" title="warp._src.lang.volume_lookup"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_lookup()</span></code></a> with <code class="docutils literal notranslate"><span class="pre">dtype=warp.vec3f</span></code>.</p>
+<p>See <a class="reference internal" href="warp.volume_lookup.html#warp._src.lang.volume_lookup" title="warp._src.lang.volume_lookup"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_lookup()</span></code></a> for a usage example.</p>
 </dd></dl>
 
 </section>

@@ -9,8 +9,60 @@
       * Kernel
       * Differentiable
 
-   Sample the volume given by ``id`` and its gradient at the volume local-space point ``uvw``.
+   Sample the volume given by ``id`` and its spatial gradient at the index-space point ``uvw``,
+   reading voxel values from a separate ``voxel_data`` array.
    
-   Values for allocated voxels are read from the ``voxel_data`` array, and ``background`` is used as the value of non-existing voxels.
-   Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`.
-   This function is available for both index grids and classical volumes.
+   Like :func:`~warp.volume_sample_index`, but also writes the gradient of the sampled value with
+   respect to the index-space coordinates ``uvw`` into ``grad``. For scalar data, ``grad`` is a
+   length-three vector with the same scalar type. For :class:`warp.vec3f` and
+   :class:`warp.vec3d` data, it is a 3-by-3 Jacobian matrix with one row per value component.
+   Four-component vector data is not supported by this function.
+   
+   For floating-point scalar and vector data under :attr:`warp.Volume.LINEAR`, the function is
+   differentiable with respect to ``uvw``, ``voxel_data``, and ``background``. At integer voxel
+   planes, the gradient and reverse-mode derivative with respect to ``uvw`` come from the cell on
+   the positive side. Under :attr:`warp.Volume.CLOSEST`, ``grad`` and the derivative with respect to
+   ``uvw`` are zero; use ``CLOSEST`` for integer data.
+   
+   :param id: The ``id`` of a :class:`warp.Volume` providing the topology and voxel indices.
+   :param uvw: Sampling location in index space (voxel coordinates); may be fractional.
+   :param sampling_mode: :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`; use ``CLOSEST`` for
+                         integer data.
+   :param voxel_data: Per-voxel values indexed by each voxel's linear index; shares the dtype of
+                      ``background``. See :func:`~warp.volume_sample_index` for sizing requirements.
+   :param background: Value used for inactive voxels on ``OnIndex`` and ``OnIndexMask`` grids and
+                      outside allocated leaves on ``Index`` and ``IndexMask`` grids and classical value grids;
+                      its dtype must match ``voxel_data``.
+   :param grad: Output gradient of the sampled value with respect to ``uvw``.
+   
+   :returns: The sampled value, of the same dtype as ``voxel_data``.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def fill(vid: wp.uint64, d: wp.array[wp.float32]):
+           i, j, k = wp.tid()
+           idx = wp.volume_lookup_index(vid, i, j, k)
+           if idx >= 0:
+               d[idx] = wp.float32(i) * 10.0
+   
+       @wp.kernel
+       def sample_grad(vid: wp.uint64, d: wp.array[wp.float32], out: wp.array[wp.float32]):
+           grad = wp.vec3()
+           out[0] = wp.volume_sample_grad_index(vid, wp.vec3(0.5, 0.0, 0.0), wp.Volume.LINEAR, d, 0.0, grad)
+           out[1] = grad[0]
+   
+       voxels = wp.array([[0, 0, 0], [1, 0, 0]], dtype=wp.vec3i)
+       volume = wp.Volume.allocate_by_voxels(voxels, voxel_size=1.0)
+       data = wp.zeros(volume.get_voxel_count(), dtype=wp.float32)
+       out = wp.zeros(2, dtype=wp.float32)
+       wp.launch(fill, dim=(2, 1, 1), inputs=[volume.id, data])
+       wp.launch(sample_grad, dim=1, inputs=[volume.id, data], outputs=[out])
+       print(round(float(out.numpy()[0]), 1), round(float(out.numpy()[1]), 1))
+   
+   .. testoutput::
+   
+       5.0 10.0
+   

@@ -9,8 +9,61 @@
       * Kernel
       * Differentiable
 
-   Sample the volume given by ``id`` at the volume local-space point ``uvw``.
+   Sample the volume given by ``id`` at the index-space point ``uvw``, reading voxel values from
+   a separate ``voxel_data`` array.
    
-   Values for allocated voxels are read from the ``voxel_data`` array, and ``background`` is used as the value of non-existing voxels.
-   Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`.
-   This function is available for both index grids and classical volumes.
+   On NanoVDB ``OnIndex`` and ``OnIndexMask`` grids, each active voxel maps to a linear index into
+   ``voxel_data`` and ``background`` supplies inactive voxels. On ``Index`` and ``IndexMask`` grids
+   and on classical value grids, every slot in an allocated leaf maps to ``voxel_data`` regardless
+   of its active mask; ``background`` is used outside allocated leaves. This lets several fields
+   share one topology. See :meth:`warp.Volume.allocate_by_voxels` and
+   :func:`~warp.volume_lookup_index`.
+   
+   ``uvw`` is in index space (voxel coordinates) and may be fractional. Sampling modes and boundary
+   conventions match :func:`~warp.volume_sample`; use ``CLOSEST`` for integer data. For
+   floating-point scalar and vector data, ``LINEAR`` is differentiable with respect to ``uvw``,
+   ``voxel_data``, and ``background``. See the
+   :ref:`Volume sampling <volume_sampling>` user-guide examples.
+   
+   :param id: The ``id`` of a :class:`warp.Volume` providing the topology and voxel indices.
+   :param uvw: Sampling location in index space (voxel coordinates); may be fractional.
+   :param sampling_mode: :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`; use ``CLOSEST`` for
+                         integer data.
+   :param voxel_data: Per-voxel values indexed by each voxel's linear index. For volumes whose
+                      indexable count fits in ``int32``, must hold at least :func:`~warp.volume_voxel_count`
+                      entries. :meth:`warp.Volume.get_voxel_count` returns a host-side capacity that is safe
+                      for allocation but may exceed the live indexable count for rebuildable volumes. The
+                      array's dtype must match ``background``.
+   :param background: Value used for inactive voxels on ``OnIndex`` and ``OnIndexMask`` grids and
+                      outside allocated leaves on ``Index`` and ``IndexMask`` grids and classical value grids;
+                      its dtype must match ``voxel_data``.
+   
+   :returns: The sampled value, of the same dtype as ``voxel_data``.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def fill(vid: wp.uint64, d: wp.array[wp.float32]):
+           i, j, k = wp.tid()
+           idx = wp.volume_lookup_index(vid, i, j, k)
+           if idx >= 0:
+               d[idx] = wp.float32(i) * 10.0
+   
+       @wp.kernel
+       def sample(vid: wp.uint64, d: wp.array[wp.float32], out: wp.array[wp.float32]):
+           out[0] = wp.volume_sample_index(vid, wp.vec3(0.5, 0.0, 0.0), wp.Volume.LINEAR, d, 0.0)
+   
+       voxels = wp.array([[0, 0, 0], [1, 0, 0]], dtype=wp.vec3i)
+       volume = wp.Volume.allocate_by_voxels(voxels, voxel_size=1.0)
+       data = wp.zeros(volume.get_voxel_count(), dtype=wp.float32)
+       out = wp.zeros(1, dtype=wp.float32)
+       wp.launch(fill, dim=(2, 1, 1), inputs=[volume.id, data])
+       wp.launch(sample, dim=1, inputs=[volume.id, data], outputs=[out])
+       print(round(float(out.numpy()[0]), 1))
+   
+   .. testoutput::
+   
+       5.0
+   

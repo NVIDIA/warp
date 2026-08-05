@@ -2935,11 +2935,11 @@ with <a class="reference internal" href="../api_reference/_generated/warp.HashGr
 </section>
 </section>
 <section id="volumes">
-<h3>Volumes<a class="headerlink" href="#volumes" title="Link to this heading">#</a></h3>
+<span id="volume-sampling"></span><h3>Volumes<a class="headerlink" href="#volumes" title="Link to this heading">#</a></h3>
 <p>Sparse volumes are incredibly useful for representing grid data over large domains, such as signed distance fields
 (SDFs) for complex objects, or velocities for large-scale fluid flow. Warp supports reading sparse volumetric grids
 stored using the <a class="reference external" href="https://developer.nvidia.com/nanovdb">NanoVDB</a> standard. Users can access voxels directly
-or use built-in closest-point or trilinear interpolation to sample grid data from world or local space.</p>
+or use built-in nearest-neighbor or trilinear interpolation to sample grid data from world or index space.</p>
 <p>Volume objects can be created directly from Warp arrays containing a NanoVDB grid, from the contents of a
 standard <code class="docutils literal notranslate"><span class="pre">.nvdb</span></code> file using <a class="reference internal" href="../api_reference/_generated/warp.Volume.html#warp.Volume.load_from_nvdb" title="warp.Volume.load_from_nvdb"><code class="xref py py-func docutils literal notranslate"><span class="pre">load_from_nvdb()</span></code></a>,
 from an uncompressed in-memory buffer using <a class="reference internal" href="../api_reference/_generated/warp.Volume.html#warp.Volume.load_from_address" title="warp.Volume.load_from_address"><code class="xref py py-func docutils literal notranslate"><span class="pre">load_from_address()</span></code></a>,
@@ -2984,7 +2984,7 @@ the <cite>blosc</cite> Python package to be installed.</p>
     <span class="c1"># load sample point in world-space</span>
     <span class="n">p</span> <span class="o">=</span> <span class="n">points</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span>
 
-    <span class="c1"># transform position to the volume&#39;s local-space</span>
+    <span class="c1"># transform position to the volume&#39;s index space</span>
     <span class="n">q</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">volume_world_to_index</span><span class="p">(</span><span class="n">volume</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
 
     <span class="c1"># sample volume with trilinear interpolation</span>
@@ -3006,7 +3006,7 @@ to values in arbitrarily shaped arrays:</p>
     <span class="c1"># load sample point in world-space</span>
     <span class="n">p</span> <span class="o">=</span> <span class="n">points</span><span class="p">[</span><span class="n">tid</span><span class="p">]</span>
 
-    <span class="c1"># transform position to the volume&#39;s local-space</span>
+    <span class="c1"># transform position to the volume&#39;s index space</span>
     <span class="n">q</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">volume_world_to_index</span><span class="p">(</span><span class="n">volume</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
 
     <span class="c1"># sample volume with trilinear interpolation</span>

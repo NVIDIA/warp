@@ -11,6 +11,35 @@
 
    Return the number of indexable voxels in the volume given by ``id``.
    
-   For active-voxel index grids, this is the active voxel count. For dense tile grids, this is the number of
-   allocated leaf nodes multiplied by 512. The result is a 32-bit signed integer and is capped at ``2**31 - 1``
-   because voxel-index APIs use 32-bit indices.
+   For NanoVDB ``OnIndex`` and ``OnIndexMask`` grids, this is the active voxel count. For ``Index``
+   and ``IndexMask`` grids and for classical value grids, it is the number of allocated leaf nodes
+   multiplied by 512, because every leaf slot is indexable. When the true count fits in ``int32``,
+   this is the required size of a per-voxel ``voxel_data`` array (as used by
+   :func:`~warp.volume_sample_index`) and the exclusive upper bound of indices returned by
+   :func:`~warp.volume_lookup_index`.
+   
+   The result is capped at ``2**31 - 1``. A larger volume cannot be fully represented by these
+   ``int32`` index APIs: lookup indices may overflow, and the capped count is not sufficient to
+   allocate data for every underlying slot. Not differentiable.
+   
+   :param id: The ``id`` of a :class:`warp.Volume`.
+   
+   :returns: The number of indexable voxels, capped at ``2**31 - 1``.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def count(vid: wp.uint64, out: wp.array[wp.int32]):
+           out[0] = wp.volume_voxel_count(vid)
+   
+       volume = wp.Volume.load_from_numpy(np.zeros((2, 2, 2), dtype=np.float32), voxel_size=1.0, bg_value=0.0)
+       out = wp.zeros(1, dtype=wp.int32)
+       wp.launch(count, dim=1, inputs=[volume.id], outputs=[out])
+       print(int(out.numpy()[0]))
+   
+   .. testoutput::
+   
+       512
+   

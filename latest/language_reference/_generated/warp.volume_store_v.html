@@ -547,7 +547,11 @@
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Store <code class="docutils literal notranslate"><span class="pre">value</span></code> at the voxel with coordinates <code class="docutils literal notranslate"><span class="pre">i</span></code>, <code class="docutils literal notranslate"><span class="pre">j</span></code>, <code class="docutils literal notranslate"><span class="pre">k</span></code>.</p>
+<p>Store the <a class="reference internal" href="../../api_reference/_generated/warp.vec3f.html#warp.vec3f" title="warp.vec3f"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3f</span></code></a> <code class="docutils literal notranslate"><span class="pre">value</span></code> at the voxel with integer index-space coordinates
+<code class="docutils literal notranslate"><span class="pre">i</span></code>, <code class="docutils literal notranslate"><span class="pre">j</span></code>, <code class="docutils literal notranslate"><span class="pre">k</span></code>.</p>
+<p>Writes only where leaf-level storage exists (see <a class="reference internal" href="warp.volume_store.html#warp._src.lang.volume_store" title="warp._src.lang.volume_store"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_store()</span></code></a>); a no-op outside
+allocated leaves or for non-<code class="docutils literal notranslate"><span class="pre">vec3f</span></code> volumes. Does not activate voxels. Not differentiable.</p>
+<p>See <a class="reference internal" href="warp.volume_store.html#warp._src.lang.volume_store" title="warp._src.lang.volume_store"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_store()</span></code></a> for a usage example.</p>
 </dd></dl>
 
 </section>

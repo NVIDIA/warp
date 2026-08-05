@@ -10,7 +10,19 @@
       * Python
       * Differentiable
 
-   Transform a point ``xyz`` defined in volume world space to the volume's index space given the volume's intrinsic affine transformation.
+   Transform the point ``xyz`` from world space to the volume's index space (voxel coordinates)
+   using the inverse of the volume's affine index-to-world transform.
+   
+   Applies the full affine map, including translation; the result may be passed as the ``uvw``
+   argument of the volume sampling built-ins such as :func:`~warp.volume_sample`. For direction
+   vectors, use :func:`~warp.volume_world_to_index_dir` instead.
+   
+   :param id: The ``id`` of a :class:`warp.Volume`.
+   :param xyz: Point in world space.
+   
+   :returns: The transformed point in index space with ``float32`` precision.
+   
+   See :func:`~warp.volume_index_to_world` for a usage example.
 
 .. function:: warp._src.lang.volume_world_to_index(id: uint64, xyz: vec3d) -> vec3d
    :noindex:
@@ -22,4 +34,8 @@
       * Python
       * Differentiable
 
-   Transform a point ``xyz`` defined in volume world space to index space, using double precision.
+   Transform the point ``xyz`` from world space to the volume's index space (voxel coordinates)
+   using the inverse of the volume's affine index-to-world transform (float64 precision).
+   
+   The ``float64`` overload of :func:`~warp.volume_world_to_index`. Behavior and usage match the
+   default ``float32`` overload; see it for details and a usage example.

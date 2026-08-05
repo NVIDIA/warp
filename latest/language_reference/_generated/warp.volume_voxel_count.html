@@ -539,9 +539,37 @@
 </ul>
 </td></tr></table>
 <p>Return the number of indexable voxels in the volume given by <code class="docutils literal notranslate"><span class="pre">id</span></code>.</p>
-<p>For active-voxel index grids, this is the active voxel count. For dense tile grids, this is the number of
-allocated leaf nodes multiplied by 512. The result is a 32-bit signed integer and is capped at <code class="docutils literal notranslate"><span class="pre">2**31</span> <span class="pre">-</span> <span class="pre">1</span></code>
-because voxel-index APIs use 32-bit indices.</p>
+<p>For NanoVDB <code class="docutils literal notranslate"><span class="pre">OnIndex</span></code> and <code class="docutils literal notranslate"><span class="pre">OnIndexMask</span></code> grids, this is the active voxel count. For <code class="docutils literal notranslate"><span class="pre">Index</span></code>
+and <code class="docutils literal notranslate"><span class="pre">IndexMask</span></code> grids and for classical value grids, it is the number of allocated leaf nodes
+multiplied by 512, because every leaf slot is indexable. When the true count fits in <code class="docutils literal notranslate"><span class="pre">int32</span></code>,
+this is the required size of a per-voxel <code class="docutils literal notranslate"><span class="pre">voxel_data</span></code> array (as used by
+<a class="reference internal" href="warp.volume_sample_index.html#warp._src.lang.volume_sample_index" title="warp._src.lang.volume_sample_index"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_sample_index()</span></code></a>) and the exclusive upper bound of indices returned by
+<a class="reference internal" href="warp.volume_lookup_index.html#warp._src.lang.volume_lookup_index" title="warp._src.lang.volume_lookup_index"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_lookup_index()</span></code></a>.</p>
+<p>The result is capped at <code class="docutils literal notranslate"><span class="pre">2**31</span> <span class="pre">-</span> <span class="pre">1</span></code>. A larger volume cannot be fully represented by these
+<code class="docutils literal notranslate"><span class="pre">int32</span></code> index APIs: lookup indices may overflow, and the capped count is not sufficient to
+allocate data for every underlying slot. Not differentiable.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>id</strong> – The <code class="docutils literal notranslate"><span class="pre">id</span></code> of a <a class="reference internal" href="../../api_reference/_generated/warp.Volume.html#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Volume</span></code></a>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The number of indexable voxels, capped at <code class="docutils literal notranslate"><span class="pre">2**31</span> <span class="pre">-</span> <span class="pre">1</span></code>.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">count</span><span class="p">(</span><span class="n">vid</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">uint64</span><span class="p">,</span> <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">]):</span>
+    <span class="n">out</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">volume_voxel_count</span><span class="p">(</span><span class="n">vid</span><span class="p">)</span>
+
+<span class="n">volume</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Volume</span><span class="o">.</span><span class="n">load_from_numpy</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span> <span class="n">voxel_size</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">bg_value</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+<span class="n">out</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">count</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">volume</span><span class="o">.</span><span class="n">id</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">numpy</span><span class="p">()[</span><span class="mi">0</span><span class="p">]))</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>512
+</pre></div>
+</div>
 </dd></dl>
 
 </section>

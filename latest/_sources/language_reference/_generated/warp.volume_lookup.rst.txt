@@ -8,6 +8,39 @@
 
       * Kernel
 
-   Query the value of voxel with coordinates ``i``, ``j``, ``k`` for a volume of type ``dtype``.
+   Return the value of type ``dtype`` stored at the voxel with integer index-space coordinates
+   ``i``, ``j``, ``k``, without interpolation.
    
-   If the voxel at this index does not exist, this function returns the background value.
+   The lookup follows NanoVDB value resolution: inactive leaf voxels and internal tiles may carry
+   stored inactive values that differ from the grid's root background value. A location with no
+   more specific stored value resolves to the background. The result is ``0`` if the volume does
+   not store values of type ``dtype``. Not differentiable; use :func:`~warp.volume_sample` for
+   interpolated reads of floating-point scalar and vector data.
+   
+   :param id: The ``id`` of a :class:`warp.Volume`.
+   :param i: Voxel coordinate along the first index-space axis (may be negative).
+   :param j: Voxel coordinate along the second index-space axis (may be negative).
+   :param k: Voxel coordinate along the third index-space axis (may be negative).
+   :param dtype: Value type stored by the volume (see :func:`~warp.volume_sample`).
+   
+   :returns: The resolved voxel value of type ``dtype``.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def lookup(vid: wp.uint64, out: wp.array[wp.float32]):
+           out[0] = wp.volume_lookup(vid, 1, 0, 0, dtype=float)
+   
+       values = np.zeros((2, 2, 2), dtype=np.float32)
+       values[1, :, :] = 1.0  # f(i, j, k) = i
+       volume = wp.Volume.load_from_numpy(values, voxel_size=1.0, bg_value=0.0)
+       out = wp.zeros(1, dtype=wp.float32)
+       wp.launch(lookup, dim=1, inputs=[volume.id], outputs=[out])
+       print(round(float(out.numpy()[0]), 1))
+   
+   .. testoutput::
+   
+       1.0
+   

@@ -539,7 +539,38 @@
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Transform a point <code class="docutils literal notranslate"><span class="pre">uvw</span></code> defined in volume index space to world space given the volume’s intrinsic affine transformation.</p>
+<p>Transform the point <code class="docutils literal notranslate"><span class="pre">uvw</span></code> from the volume’s index space (voxel coordinates) to world space
+using the volume’s affine index-to-world transform.</p>
+<p>Applies the full affine map, including translation. For direction vectors, use
+<a class="reference internal" href="warp.volume_index_to_world_dir.html#warp._src.lang.volume_index_to_world_dir" title="warp._src.lang.volume_index_to_world_dir"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_index_to_world_dir()</span></code></a> instead.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>id</strong> – The <code class="docutils literal notranslate"><span class="pre">id</span></code> of a <a class="reference internal" href="../../api_reference/_generated/warp.Volume.html#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Volume</span></code></a>.</p></li>
+<li><p><strong>uvw</strong> – Point in index space.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The transformed point in world space with <code class="docutils literal notranslate"><span class="pre">float32</span></code> precision.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">to_world</span><span class="p">(</span><span class="n">vid</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">uint64</span><span class="p">,</span> <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">]):</span>
+    <span class="n">out</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">volume_index_to_world</span><span class="p">(</span><span class="n">vid</span><span class="p">,</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">))</span>
+
+<span class="n">volume</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Volume</span><span class="o">.</span><span class="n">load_from_numpy</span><span class="p">(</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span> <span class="n">min_world</span><span class="o">=</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">),</span> <span class="n">voxel_size</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">bg_value</span><span class="o">=</span><span class="mf">0.0</span>
+<span class="p">)</span>
+<span class="n">out</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">to_world</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">volume</span><span class="o">.</span><span class="n">id</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">])</span>
+<span class="n">p</span> <span class="o">=</span> <span class="n">out</span><span class="o">.</span><span class="n">numpy</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="mi">1</span><span class="p">),</span> <span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="mi">1</span><span class="p">),</span> <span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="mi">2</span><span class="p">]),</span> <span class="mi">1</span><span class="p">))</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>2.0 2.0 3.0
+</pre></div>
+</div>
 </dd></dl>
 
 <dl class="py function">
@@ -565,7 +596,10 @@
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Transform a point <code class="docutils literal notranslate"><span class="pre">uvw</span></code> defined in volume index space to world space, using double precision.</p>
+<p>Transform the point <code class="docutils literal notranslate"><span class="pre">uvw</span></code> from the volume’s index space (voxel coordinates) to world space
+using the volume’s affine index-to-world transform (float64 precision).</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">float64</span></code> overload of <a class="reference internal" href="#warp._src.lang.volume_index_to_world" title="warp._src.lang.volume_index_to_world"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_index_to_world()</span></code></a>. Behavior and usage match the
+default <code class="docutils literal notranslate"><span class="pre">float32</span></code> overload; see it for details and a usage example.</p>
 </dd></dl>
 
 </section>

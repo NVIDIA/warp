@@ -10,7 +10,18 @@
       * Python
       * Differentiable
 
-   Transform a direction ``xyz`` defined in volume world space to the volume's index space given the volume's intrinsic affine transformation.
+   Transform the direction ``xyz`` from world space to the volume's index space using the linear
+   part of the volume's affine transform.
+   
+   Translation is not applied and the result is not renormalized. For positions, use
+   :func:`~warp.volume_world_to_index` instead.
+   
+   :param id: The ``id`` of a :class:`warp.Volume`.
+   :param xyz: Direction in world space.
+   
+   :returns: The transformed direction in index space with ``float32`` precision.
+   
+   See :func:`~warp.volume_index_to_world` for a usage example.
 
 .. function:: warp._src.lang.volume_world_to_index_dir(id: uint64, xyz: vec3d) -> vec3d
    :noindex:
@@ -22,4 +33,8 @@
       * Python
       * Differentiable
 
-   Transform a direction ``xyz`` defined in volume world space to index space, using double precision.
+   Transform the direction ``xyz`` from world space to the volume's index space using the linear
+   part of the volume's affine transform (float64 precision).
+   
+   The ``float64`` overload of :func:`~warp.volume_world_to_index_dir`. Behavior and usage match
+   the default ``float32`` overload; see it for details and a usage example.

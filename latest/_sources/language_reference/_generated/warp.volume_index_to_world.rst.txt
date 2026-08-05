@@ -10,7 +10,37 @@
       * Python
       * Differentiable
 
-   Transform a point ``uvw`` defined in volume index space to world space given the volume's intrinsic affine transformation.
+   Transform the point ``uvw`` from the volume's index space (voxel coordinates) to world space
+   using the volume's affine index-to-world transform.
+   
+   Applies the full affine map, including translation. For direction vectors, use
+   :func:`~warp.volume_index_to_world_dir` instead.
+   
+   :param id: The ``id`` of a :class:`warp.Volume`.
+   :param uvw: Point in index space.
+   
+   :returns: The transformed point in world space with ``float32`` precision.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def to_world(vid: wp.uint64, out: wp.array[wp.vec3]):
+           out[0] = wp.volume_index_to_world(vid, wp.vec3(2.0, 0.0, 0.0))
+   
+       volume = wp.Volume.load_from_numpy(
+           np.zeros((2, 2, 2), dtype=np.float32), min_world=(1.0, 2.0, 3.0), voxel_size=0.5, bg_value=0.0
+       )
+       out = wp.zeros(1, dtype=wp.vec3)
+       wp.launch(to_world, dim=1, inputs=[volume.id], outputs=[out])
+       p = out.numpy()[0]
+       print(round(float(p[0]), 1), round(float(p[1]), 1), round(float(p[2]), 1))
+   
+   .. testoutput::
+   
+       2.0 2.0 3.0
+   
 
 .. function:: warp._src.lang.volume_index_to_world(id: uint64, uvw: vec3d) -> vec3d
    :noindex:
@@ -22,4 +52,8 @@
       * Python
       * Differentiable
 
-   Transform a point ``uvw`` defined in volume index space to world space, using double precision.
+   Transform the point ``uvw`` from the volume's index space (voxel coordinates) to world space
+   using the volume's affine index-to-world transform (float64 precision).
+   
+   The ``float64`` overload of :func:`~warp.volume_index_to_world`. Behavior and usage match the
+   default ``float32`` overload; see it for details and a usage example.

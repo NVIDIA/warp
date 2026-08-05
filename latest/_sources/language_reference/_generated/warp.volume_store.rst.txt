@@ -8,4 +8,39 @@
 
       * Kernel
 
-   Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``.
+   Store ``value`` at the voxel with integer index-space coordinates ``i``, ``j``, ``k``.
+   
+   A value is written when the coordinate has leaf-level storage, whether or not that voxel is
+   active. The call does not allocate a leaf, activate a voxel, or modify the background value; it
+   is a no-op outside allocated leaves and when the volume's stored type does not match ``value``.
+   Allocate leaf topology with :meth:`warp.Volume.allocate_by_tiles` before storing. Not
+   differentiable.
+   
+   :param id: The ``id`` of a :class:`warp.Volume` to modify.
+   :param i: Voxel coordinate along the first index-space axis.
+   :param j: Voxel coordinate along the second index-space axis.
+   :param k: Voxel coordinate along the third index-space axis.
+   :param value: Value to write; its type must match the volume's stored type.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def store(vid: wp.uint64):
+           wp.volume_store(vid, 1, 2, 3, 4.0)
+   
+       @wp.kernel
+       def lookup(vid: wp.uint64, out: wp.array[wp.float32]):
+           out[0] = wp.volume_lookup(vid, 1, 2, 3, dtype=float)
+   
+       volume = wp.Volume.load_from_numpy(np.zeros((2, 2, 2), dtype=np.float32), voxel_size=1.0, bg_value=0.0)
+       out = wp.zeros(1, dtype=wp.float32)
+       wp.launch(store, dim=1, inputs=[volume.id])
+       wp.launch(lookup, dim=1, inputs=[volume.id], outputs=[out])
+       print(round(float(out.numpy()[0]), 1))
+   
+   .. testoutput::
+   
+       4.0
+   

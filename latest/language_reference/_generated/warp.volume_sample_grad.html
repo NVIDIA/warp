@@ -548,8 +548,51 @@
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Sample the volume given by <code class="docutils literal notranslate"><span class="pre">id</span></code> and its gradient at the volume local-space point <code class="docutils literal notranslate"><span class="pre">uvw</span></code>.</p>
-<p>Interpolation should be <a class="reference internal" href="../../api_reference/_generated/warp.Volume.html#warp.Volume.CLOSEST" title="warp.Volume.CLOSEST"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.Volume.CLOSEST</span></code></a> or <a class="reference internal" href="../../api_reference/_generated/warp.Volume.html#warp.Volume.LINEAR" title="warp.Volume.LINEAR"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.Volume.LINEAR</span></code></a>.</p>
+<p>Sample the volume of type <code class="docutils literal notranslate"><span class="pre">dtype</span></code> given by <code class="docutils literal notranslate"><span class="pre">id</span></code> and its spatial gradient at the
+index-space point <code class="docutils literal notranslate"><span class="pre">uvw</span></code>.</p>
+<p>Behaves like <a class="reference internal" href="warp.volume_sample.html#warp._src.lang.volume_sample" title="warp._src.lang.volume_sample"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_sample()</span></code></a>, additionally writing the gradient of the sampled value
+with respect to the index-space coordinates <code class="docutils literal notranslate"><span class="pre">uvw</span></code> into <code class="docutils literal notranslate"><span class="pre">grad</span></code>. For a scalar <code class="docutils literal notranslate"><span class="pre">dtype</span></code>,
+<code class="docutils literal notranslate"><span class="pre">grad</span></code> is a length-three vector with the same scalar type. For <a class="reference internal" href="../../api_reference/_generated/warp.vec3f.html#warp.vec3f" title="warp.vec3f"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3f</span></code></a> and
+<a class="reference internal" href="../../api_reference/_generated/warp.vec3d.html#warp.vec3d" title="warp.vec3d"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3d</span></code></a>, it is a 3-by-3 Jacobian matrix with one row per value component.
+Four-component vector data is not supported by this function.</p>
+<p>For floating-point scalar and vector data under <a class="reference internal" href="../../api_reference/_generated/warp.Volume.html#warp.Volume.LINEAR" title="warp.Volume.LINEAR"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.Volume.LINEAR</span></code></a>, this is the gradient
+of the trilinear interpolant. At integer voxel planes, where that interpolant is generally not
+differentiable, the gradient comes from the cell on the positive side. Under
+<a class="reference internal" href="../../api_reference/_generated/warp.Volume.html#warp.Volume.CLOSEST" title="warp.Volume.CLOSEST"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.Volume.CLOSEST</span></code></a> the gradient is zero; use <code class="docutils literal notranslate"><span class="pre">CLOSEST</span></code> for integer data. The gradient
+is with respect to index-space coordinates, not world space.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>id</strong> – The <code class="docutils literal notranslate"><span class="pre">id</span></code> of a <a class="reference internal" href="../../api_reference/_generated/warp.Volume.html#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Volume</span></code></a> to sample.</p></li>
+<li><p><strong>uvw</strong> – Sampling location in index space (voxel coordinates); may be fractional.</p></li>
+<li><p><strong>sampling_mode</strong> – <a class="reference internal" href="../../api_reference/_generated/warp.Volume.html#warp.Volume.CLOSEST" title="warp.Volume.CLOSEST"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.Volume.CLOSEST</span></code></a> or <a class="reference internal" href="../../api_reference/_generated/warp.Volume.html#warp.Volume.LINEAR" title="warp.Volume.LINEAR"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.Volume.LINEAR</span></code></a>; use <code class="docutils literal notranslate"><span class="pre">CLOSEST</span></code> for
+integer data.</p></li>
+<li><p><strong>grad</strong> – Output gradient of the sampled value with respect to <code class="docutils literal notranslate"><span class="pre">uvw</span></code> (see above for its shape).</p></li>
+<li><p><strong>dtype</strong> – Value type stored by the volume (see <a class="reference internal" href="warp.volume_sample.html#warp._src.lang.volume_sample" title="warp._src.lang.volume_sample"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_sample()</span></code></a>).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The sampled value of type <code class="docutils literal notranslate"><span class="pre">dtype</span></code>.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">sample_grad</span><span class="p">(</span><span class="n">vid</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">uint64</span><span class="p">,</span> <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">]):</span>
+    <span class="n">grad</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">()</span>
+    <span class="n">out</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">volume_sample_grad</span><span class="p">(</span><span class="n">vid</span><span class="p">,</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span> <span class="n">wp</span><span class="o">.</span><span class="n">Volume</span><span class="o">.</span><span class="n">LINEAR</span><span class="p">,</span> <span class="n">grad</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+    <span class="n">out</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">grad</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+<span class="n">values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="n">values</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span> <span class="o">=</span> <span class="mf">1.0</span>  <span class="c1"># f(i, j, k) = i</span>
+<span class="n">volume</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Volume</span><span class="o">.</span><span class="n">load_from_numpy</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">voxel_size</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">bg_value</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+<span class="n">out</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">sample_grad</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">volume</span><span class="o">.</span><span class="n">id</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">numpy</span><span class="p">()[</span><span class="mi">0</span><span class="p">]),</span> <span class="mi">1</span><span class="p">),</span> <span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">numpy</span><span class="p">()[</span><span class="mi">1</span><span class="p">]),</span> <span class="mi">1</span><span class="p">))</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>0.5 1.0
+</pre></div>
+</div>
 </dd></dl>
 
 </section>

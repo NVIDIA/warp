@@ -539,7 +539,23 @@
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Transform a point <code class="docutils literal notranslate"><span class="pre">xyz</span></code> defined in volume world space to the volume’s index space given the volume’s intrinsic affine transformation.</p>
+<p>Transform the point <code class="docutils literal notranslate"><span class="pre">xyz</span></code> from world space to the volume’s index space (voxel coordinates)
+using the inverse of the volume’s affine index-to-world transform.</p>
+<p>Applies the full affine map, including translation; the result may be passed as the <code class="docutils literal notranslate"><span class="pre">uvw</span></code>
+argument of the volume sampling built-ins such as <a class="reference internal" href="warp.volume_sample.html#warp._src.lang.volume_sample" title="warp._src.lang.volume_sample"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_sample()</span></code></a>. For direction
+vectors, use <a class="reference internal" href="warp.volume_world_to_index_dir.html#warp._src.lang.volume_world_to_index_dir" title="warp._src.lang.volume_world_to_index_dir"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_world_to_index_dir()</span></code></a> instead.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>id</strong> – The <code class="docutils literal notranslate"><span class="pre">id</span></code> of a <a class="reference internal" href="../../api_reference/_generated/warp.Volume.html#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Volume</span></code></a>.</p></li>
+<li><p><strong>xyz</strong> – Point in world space.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The transformed point in index space with <code class="docutils literal notranslate"><span class="pre">float32</span></code> precision.</p>
+</dd>
+</dl>
+<p>See <a class="reference internal" href="warp.volume_index_to_world.html#warp._src.lang.volume_index_to_world" title="warp._src.lang.volume_index_to_world"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_index_to_world()</span></code></a> for a usage example.</p>
 </dd></dl>
 
 <dl class="py function">
@@ -565,7 +581,10 @@
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Transform a point <code class="docutils literal notranslate"><span class="pre">xyz</span></code> defined in volume world space to index space, using double precision.</p>
+<p>Transform the point <code class="docutils literal notranslate"><span class="pre">xyz</span></code> from world space to the volume’s index space (voxel coordinates)
+using the inverse of the volume’s affine index-to-world transform (float64 precision).</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">float64</span></code> overload of <a class="reference internal" href="#warp._src.lang.volume_world_to_index" title="warp._src.lang.volume_world_to_index"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_world_to_index()</span></code></a>. Behavior and usage match the
+default <code class="docutils literal notranslate"><span class="pre">float32</span></code> overload; see it for details and a usage example.</p>
 </dd></dl>
 
 </section>

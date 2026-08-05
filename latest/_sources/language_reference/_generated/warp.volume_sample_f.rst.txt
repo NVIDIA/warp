@@ -10,6 +10,12 @@
       * Python
       * Differentiable
 
-   Sample the volume given by ``id`` at the volume local-space point ``uvw``.
+   Sample the :class:`warp.float32` volume given by ``id`` at the index-space point ``uvw``.
    
-   Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`.
+   ``uvw`` is in index space (voxel coordinates) and may be fractional; ``sampling_mode`` must be
+   :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`. Sampling uses the resolved NanoVDB
+   value (see :func:`~warp.volume_sample`), and the sample is ``0`` if ``id`` is not a ``float32``
+   volume. In kernels, equivalent to :func:`~warp.volume_sample` with ``dtype=float``, which
+   documents the coordinate-frame, value-resolution, boundary, and differentiability behavior.
+   
+   See :func:`~warp.volume_sample` for a usage example.

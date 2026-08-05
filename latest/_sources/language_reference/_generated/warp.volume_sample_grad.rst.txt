@@ -9,6 +9,48 @@
       * Kernel
       * Differentiable
 
-   Sample the volume given by ``id`` and its gradient at the volume local-space point ``uvw``.
+   Sample the volume of type ``dtype`` given by ``id`` and its spatial gradient at the
+   index-space point ``uvw``.
    
-   Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`.
+   Behaves like :func:`~warp.volume_sample`, additionally writing the gradient of the sampled value
+   with respect to the index-space coordinates ``uvw`` into ``grad``. For a scalar ``dtype``,
+   ``grad`` is a length-three vector with the same scalar type. For :class:`warp.vec3f` and
+   :class:`warp.vec3d`, it is a 3-by-3 Jacobian matrix with one row per value component.
+   Four-component vector data is not supported by this function.
+   
+   For floating-point scalar and vector data under :attr:`warp.Volume.LINEAR`, this is the gradient
+   of the trilinear interpolant. At integer voxel planes, where that interpolant is generally not
+   differentiable, the gradient comes from the cell on the positive side. Under
+   :attr:`warp.Volume.CLOSEST` the gradient is zero; use ``CLOSEST`` for integer data. The gradient
+   is with respect to index-space coordinates, not world space.
+   
+   :param id: The ``id`` of a :class:`warp.Volume` to sample.
+   :param uvw: Sampling location in index space (voxel coordinates); may be fractional.
+   :param sampling_mode: :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`; use ``CLOSEST`` for
+                         integer data.
+   :param grad: Output gradient of the sampled value with respect to ``uvw`` (see above for its shape).
+   :param dtype: Value type stored by the volume (see :func:`~warp.volume_sample`).
+   
+   :returns: The sampled value of type ``dtype``.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def sample_grad(vid: wp.uint64, out: wp.array[wp.float32]):
+           grad = wp.vec3()
+           out[0] = wp.volume_sample_grad(vid, wp.vec3(0.5, 0.0, 0.0), wp.Volume.LINEAR, grad, dtype=float)
+           out[1] = grad[0]
+   
+       values = np.zeros((2, 2, 2), dtype=np.float32)
+       values[1, :, :] = 1.0  # f(i, j, k) = i
+       volume = wp.Volume.load_from_numpy(values, voxel_size=1.0, bg_value=0.0)
+       out = wp.zeros(2, dtype=wp.float32)
+       wp.launch(sample_grad, dim=1, inputs=[volume.id], outputs=[out])
+       print(round(float(out.numpy()[0]), 1), round(float(out.numpy()[1]), 1))
+   
+   .. testoutput::
+   
+       0.5 1.0
+   

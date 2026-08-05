@@ -548,8 +548,12 @@
 </td><td><ul class="simple">
 </ul>
 </td></tr></table>
-<p>Sample the volume and its gradient given by <code class="docutils literal notranslate"><span class="pre">id</span></code> at the volume local-space point <code class="docutils literal notranslate"><span class="pre">uvw</span></code>.</p>
-<p>Interpolation should be <a class="reference internal" href="../../api_reference/_generated/warp.Volume.html#warp.Volume.CLOSEST" title="warp.Volume.CLOSEST"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.Volume.CLOSEST</span></code></a> or <a class="reference internal" href="../../api_reference/_generated/warp.Volume.html#warp.Volume.LINEAR" title="warp.Volume.LINEAR"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.Volume.LINEAR</span></code></a>.</p>
+<p>Sample the <a class="reference internal" href="../../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.float32</span></code></a> volume given by <code class="docutils literal notranslate"><span class="pre">id</span></code> and its gradient at the
+index-space point <code class="docutils literal notranslate"><span class="pre">uvw</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">grad</span></code> receives the gradient of the sampled value with respect to the index-space coordinates
+<code class="docutils literal notranslate"><span class="pre">uvw</span></code> (a <a class="reference internal" href="../../api_reference/_generated/warp.vec3.html#warp.vec3" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3</span></code></a>, zero for <a class="reference internal" href="../../api_reference/_generated/warp.Volume.html#warp.Volume.CLOSEST" title="warp.Volume.CLOSEST"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.Volume.CLOSEST</span></code></a>). In kernels, equivalent to
+<a class="reference internal" href="warp.volume_sample_grad.html#warp._src.lang.volume_sample_grad" title="warp._src.lang.volume_sample_grad"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_sample_grad()</span></code></a> with <code class="docutils literal notranslate"><span class="pre">dtype=float</span></code>.</p>
+<p>See <a class="reference internal" href="warp.volume_sample_grad.html#warp._src.lang.volume_sample_grad" title="warp._src.lang.volume_sample_grad"><code class="xref py py-func docutils literal notranslate"><span class="pre">volume_sample_grad()</span></code></a> for a usage example.</p>
 </dd></dl>
 
 </section>

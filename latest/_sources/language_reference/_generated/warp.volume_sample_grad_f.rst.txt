@@ -10,6 +10,11 @@
       * Python
       * Differentiable
 
-   Sample the volume and its gradient given by ``id`` at the volume local-space point ``uvw``.
+   Sample the :class:`warp.float32` volume given by ``id`` and its gradient at the
+   index-space point ``uvw``.
    
-   Interpolation should be :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`.
+   ``grad`` receives the gradient of the sampled value with respect to the index-space coordinates
+   ``uvw`` (a :class:`warp.vec3`, zero for :attr:`warp.Volume.CLOSEST`). In kernels, equivalent to
+   :func:`~warp.volume_sample_grad` with ``dtype=float``.
+   
+   See :func:`~warp.volume_sample_grad` for a usage example.

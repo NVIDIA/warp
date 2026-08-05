@@ -8,4 +8,10 @@
 
       * Kernel
 
-   Store ``value`` at the voxel with coordinates ``i``, ``j``, ``k``.
+   Store the :class:`warp.float32` ``value`` at the voxel with integer index-space coordinates
+   ``i``, ``j``, ``k``.
+   
+   Writes only where leaf-level storage exists (see :func:`~warp.volume_store`); a no-op outside
+   allocated leaves or for non-``float32`` volumes. Does not activate voxels. Not differentiable.
+   
+   See :func:`~warp.volume_store` for a usage example.

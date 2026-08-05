@@ -2557,6 +2557,7 @@ To record a grouped rebuild inside a CUDA graph without a prior warm-up build, r
 with :meth:`grid.reserve(num_points, with_groups=True) <warp.HashGrid.reserve>`.
 
 
+.. _volume_sampling:
 
 Volumes
 #######
@@ -2564,7 +2565,7 @@ Volumes
 Sparse volumes are incredibly useful for representing grid data over large domains, such as signed distance fields
 (SDFs) for complex objects, or velocities for large-scale fluid flow. Warp supports reading sparse volumetric grids
 stored using the `NanoVDB <https://developer.nvidia.com/nanovdb>`_ standard. Users can access voxels directly
-or use built-in closest-point or trilinear interpolation to sample grid data from world or local space.
+or use built-in nearest-neighbor or trilinear interpolation to sample grid data from world or index space.
 
 Volume objects can be created directly from Warp arrays containing a NanoVDB grid, from the contents of a
 standard ``.nvdb`` file using :func:`load_from_nvdb() <warp.Volume.load_from_nvdb>`,
@@ -2611,7 +2612,7 @@ To sample the volume inside a kernel we pass a reference to it by ID, and use th
         # load sample point in world-space
         p = points[tid]
 
-        # transform position to the volume's local-space
+        # transform position to the volume's index space
         q = wp.volume_world_to_index(volume, p)
 
         # sample volume with trilinear interpolation
@@ -2633,7 +2634,7 @@ to values in arbitrarily shaped arrays::
         # load sample point in world-space
         p = points[tid]
 
-        # transform position to the volume's local-space
+        # transform position to the volume's index space
         q = wp.volume_world_to_index(volume, p)
 
         # sample volume with trilinear interpolation
