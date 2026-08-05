@@ -149,9 +149,11 @@ python -m warp.examples.browse
         </tr>
         <tr>
             <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_fft_poisson_navier_stokes_2d.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/core_fft_poisson_navier_stokes_2d.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_fdtd_3d.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/core_fdtd_3d.png"></a></td>
         </tr>
         <tr>
             <td align="center">2-D incompressible turbulence in a periodic box</td>
+            <td align="center">3-D FDTD Luneburg lens</td>
         </tr>
     </tbody>
 </table>

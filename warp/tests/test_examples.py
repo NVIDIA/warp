@@ -264,6 +264,13 @@ add_example_test(
     devices=cuda_test_devices,
     test_options={"headless": True, "num_steps": 100, "sim_substeps": 10},
 )
+add_example_test(
+    TestCoreExamples,
+    name="core.example_fdtd_3d",
+    devices=test_devices,
+    test_options={"headless": True, "num_steps": 100, "steps_per_frame": 10},
+    test_options_cpu={"resolution": 64, "num_steps": 30},
+)
 
 
 class TestOptimExamples(unittest.TestCase):
