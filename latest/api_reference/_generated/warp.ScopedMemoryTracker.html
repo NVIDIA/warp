@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.ScopedMemoryTracker &#8212; Warp 1.17.0.dev0</title>
+    <title>warp.ScopedMemoryTracker &#8212; Warp 1.17.0.dev1</title>
   
   
   
@@ -44,7 +44,7 @@
 
 
 
-    <script src="../../_static/documentation_options.js?v=362fd641"></script>
+    <script src="../../_static/documentation_options.js?v=92575258"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -69,7 +69,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.17.0.dev0" />
+  <meta name="docsearch:version" content="1.17.0.dev1" />
   
     
     <script src="../../_static/searchtools.js"></script>
@@ -146,11 +146,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0.dev0 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0.dev0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0.dev1 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0.dev1 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.17.0.dev0</p>
+    <p class="title logo__title">Warp 1.17.0.dev1</p>
   
 </a></div>
     
@@ -290,11 +290,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0.dev0 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0.dev0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.17.0.dev1 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.17.0.dev1 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.17.0.dev0</p>
+    <p class="title logo__title">Warp 1.17.0.dev1</p>
   
 </a>
 
@@ -527,7 +527,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">report_func</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/utils.py#L2188-L2303"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.ScopedMemoryTracker" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/utils.py#L2189-L2304"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.ScopedMemoryTracker" title="Link to this definition">#</a></dt>
 <dd><p>Context manager that tracks memory allocations across all devices.</p>
 <p>Tracking is performed in the C++ native layer by intercepting all
 <code class="docutils literal notranslate"><span class="pre">wp_alloc_*</span></code> / <code class="docutils literal notranslate"><span class="pre">wp_free_*</span></code> calls, so both Python-originated and
@@ -579,7 +579,7 @@ instead of being printed to <code class="docutils literal notranslate"><span cla
 </div>
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.ScopedMemoryTracker.report">
-<span class="sig-name descname"><span class="pre">report</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sort</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'size'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_items</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/utils.py#L2266-L2293"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.ScopedMemoryTracker.report" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">report</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sort</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'size'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_items</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/utils.py#L2267-L2294"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.ScopedMemoryTracker.report" title="Link to this definition">#</a></dt>
 <dd><p>Print an allocation report.</p>
 <p>Can be called multiple times – each call reflects the current state.
 Concurrent calls produce serialized snapshots of the global tracker
@@ -602,7 +602,7 @@ category (default <code class="docutils literal notranslate"><span class="pre">1
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.ScopedMemoryTracker.clear">
-<span class="sig-name descname"><span class="pre">clear</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/utils.py#L2294-L2303"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.ScopedMemoryTracker.clear" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">clear</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/utils.py#L2295-L2304"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.ScopedMemoryTracker.clear" title="Link to this definition">#</a></dt>
 <dd><p>Reset all tracking data while keeping the tracker active.</p>
 <p>After calling this, subsequent <a class="reference internal" href="#warp.ScopedMemoryTracker.report" title="warp.ScopedMemoryTracker.report"><code class="xref py py-meth docutils literal notranslate"><span class="pre">report()</span></code></a> calls only reflect
 allocations that occurred after the reset.</p>
