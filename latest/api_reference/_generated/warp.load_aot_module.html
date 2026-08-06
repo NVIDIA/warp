@@ -526,7 +526,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">arch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">module_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">use_ptx</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">strip_hash</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">strip_hash</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
 <span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L11672-L11774"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.load_aot_module" title="Link to this definition">#</a></dt>
@@ -547,7 +547,7 @@ when loading modules for the GPU. If <code class="docutils literal notranslate">
 try both PTX and CUBIN (PTX first) and load the first that exists.
 If neither exists, a <code class="docutils literal notranslate"><span class="pre">FileNotFoundError</span></code> is raised listing all
 attempted paths.</p></li>
-<li><p><strong>strip_hash</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – <p>Whether to strip the hash from the module and kernel names.
+<li><p><strong>strip_hash</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a><em> | </em><em>None</em>) – <p>Whether to strip the hash from the module and kernel names.
 Setting this value to <code class="docutils literal notranslate"><span class="pre">True</span></code> or <code class="docutils literal notranslate"><span class="pre">False</span></code> will update the module’s
 <code class="docutils literal notranslate"><span class="pre">&quot;strip_hash&quot;</span></code> option. If left at <code class="docutils literal notranslate"><span class="pre">None</span></code>, the current value will
 be used.</p>
