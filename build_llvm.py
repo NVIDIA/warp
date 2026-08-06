@@ -25,22 +25,17 @@ llvm_build_path = os.path.join(llvm_project_path, "out", "build")
 llvm_install_path = os.path.join(llvm_project_path, "out", "install")
 
 
+def prebuilt_library_path(arch: str) -> str:
+    """Return the directory that the prebuilt Clang/LLVM SDK is linked into."""
+    return os.path.join(base_path, "_build", "host-deps", "llvm-project", f"release-{packman_llvm_platform(arch)}")
+
+
 # Fetch prebuilt Clang/LLVM libraries
 def fetch_prebuilt_libraries(arch):
     if os.name == "nt":
         packman = os.path.join(base_path, "tools", "packman", "packman.cmd")
-        packages = {"x86_64": "15.0.7-windows-x86_64-ptx-vs142"}
     else:
         packman = os.path.join(base_path, "tools", "packman", "packman")
-        if sys.platform == "darwin":
-            packages = {
-                "aarch64": "15.0.7-darwin-aarch64-macos11",
-            }
-        else:
-            packages = {
-                "aarch64": "15.0.7-linux-aarch64-gcc7.5",
-                "x86_64": "18.1.3-linux-x86_64-gcc9.4",
-            }
 
     # Reuse the current interpreter so packman skips downloading its bundled Python,
     # whose manylinux_2_35 build can't run on older-glibc CI images. Use it only as a
@@ -48,37 +43,48 @@ def fetch_prebuilt_libraries(arch):
     # the build-platform Python instead of sys.executable's crossenv wrapper.
     packman_env = {"PM_PYTHON_EXT": sys.executable, **os.environ}
 
+    # `pull` rather than `install`: packman verifies the checksum attribute only when walking a
+    # project file, so the manifest is what makes the download tamper-evident.
     packman_cmd = [
         packman,
-        "install",
-        "-l",
-        os.path.join(base_path, "_build", "host-deps", "llvm-project", f"release-{arch}"),
-        "clang+llvm-warp",
-        packages[arch],
+        "pull",
+        "--platform",
+        packman_llvm_platform(arch),
+        os.path.join(base_path, "deps", "llvm-deps.packman.xml"),
     ]
 
-    def _run_packman_install():
+    def _run_packman_pull():
         subprocess.check_output(packman_cmd, stderr=subprocess.STDOUT, text=True, env=packman_env)
 
     try:
-        _run_packman_install()
+        _run_packman_pull()
     except subprocess.CalledProcessError as e:
         output = e.output or ""
         is_intel_mac = sys.platform == "darwin" and platform.machine() == "x86_64"
         # Intel Mac runners cross-compile to aarch64 but can't exec the aarch64-only
-        # 7zz packman 8.2.2 installs. Remove this branch and
+        # 7zz packman 8.2.2 installs. Compressed tar archives are decompressed through
+        # that helper, so .tar.xz packages hit this too. Remove this branch and
         # _patch_packman_7zz_for_intel_mac once the internal Mac CI runners migrate
         # off Intel.
         if is_intel_mac and "Bad CPU type in executable" in output and "7zz" in output:
             _patch_packman_7zz_for_intel_mac()
             try:
-                _run_packman_install()
+                _run_packman_pull()
             except subprocess.CalledProcessError as retry_err:
                 print(retry_err.output)
-                raise
+                raise RuntimeError(
+                    "Failed to fetch the prebuilt Clang/LLVM SDK from GitHub Releases "
+                    "after patching the packman 7zz binary for Intel Mac. "
+                    "Build LLVM from source with `build_lib.py --build-llvm`, or point at an "
+                    "existing SDK with `build_lib.py --llvm-path <dir>`."
+                ) from retry_err
         else:
             print(output)
-            raise
+            raise RuntimeError(
+                "Failed to fetch the prebuilt Clang/LLVM SDK from GitHub Releases. "
+                "Build LLVM from source with `build_lib.py --build-llvm`, or point at an "
+                "existing SDK with `build_lib.py --llvm-path <dir>`."
+            ) from e
 
 
 # ip7z 25.01 universal2 (arm64 + x86_64) Mac release, used to replace the
@@ -160,7 +166,7 @@ def build_llvm_clang_from_source_for_arch(args, arch: str, llvm_source: str) -> 
         check_build_dependencies(verbose=args.verbose)
 
         repo_url = "https://github.com/llvm/llvm-project.git"
-        version = "21.1.0"
+        version = "22.1.8"
         print(f"Cloning LLVM project from {repo_url} (branch llvmorg-{version})...")
 
         # Use shallow clone for faster download (depth=1, single branch only)
@@ -430,7 +436,7 @@ def build_warp_clang_for_arch(args, lib_name: str, arch: str) -> None:
         clang_dll_path = os.path.join(build_path, "bin", lib_name)
 
         if hasattr(args, "llvm_path") and args.llvm_path:
-            # Use existing LLVM installation (e.g., from Docker /opt/llvm)
+            # Use an LLVM installation supplied by the caller
             libpath = os.path.join(args.llvm_path, "lib")
             if not os.path.exists(libpath):
                 raise FileNotFoundError(f"LLVM library directory not found at {libpath}")
@@ -441,7 +447,17 @@ def build_warp_clang_for_arch(args, lib_name: str, arch: str) -> None:
         else:
             # obtain Clang and LLVM libraries from packman
             fetch_prebuilt_libraries(arch)
-            libpath = os.path.join(base_path, "_build", "host-deps", "llvm-project", f"release-{arch}", "lib")
+            libpath = os.path.join(prebuilt_library_path(arch), "lib")
+            # Guard against a no-op packman pull: it exits 0 but creates nothing
+            # when the platform token is unmatched or a .user override redirects it.
+            _lib_ext = ".lib" if os.name == "nt" else ".a"
+            if not os.path.isdir(libpath) or not any(f.endswith(_lib_ext) for f in os.listdir(libpath)):
+                raise RuntimeError(
+                    f"Packman pull succeeded but no LLVM {_lib_ext} libraries were "
+                    f"found under {libpath}. "
+                    "Build LLVM from source with `build_lib.py --build-llvm`, or "
+                    "point at an existing SDK with `build_lib.py --llvm-path <dir>`."
+                )
 
         libs = []
 

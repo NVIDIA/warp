@@ -1,9 +1,13 @@
 # SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-# Dockerfile for Warp Builder with LLVM - Multi-architecture
+# Dockerfile for Warp Builder - Multi-architecture
 # Supports both x86_64 and aarch64
-# This version builds LLVM from source, making it fully self-contained
+#
+# Provides the toolchain (CUDA, CMake, Ninja, uv). Clang/LLVM is deliberately NOT
+# baked in: build_lib.py fetches the SDK through Packman using the digests pinned in
+# deps/llvm-deps.packman.xml, so the LLVM version is chosen by the repository being
+# built rather than by whichever image happens to be in use.
 
 ARG CUDA_VERSION=13.0.2
 ARG MANYLINUX_IMAGE=quay.io/pypa/manylinux_2_28_x86_64:latest
@@ -83,24 +87,13 @@ RUN if [ "$TARGETARCH" = "sbsa" ]; then \
     rm "${CMAKE_FILE}" && \
     /opt/cmake/bin/cmake --version
 
-# Build LLVM from source
-FROM base AS llvm-builder
-WORKDIR /tmp/llvm-build
+# Modern Ninja for the final image (yum's ninja-build is too old for current CMake projects).
+# Latest release: https://github.com/ninja-build/ninja/releases
+FROM base AS ninja-installer
 
-ARG TARGETARCH
-
-COPY --from=cmake-installer /opt/cmake /opt/cmake
-ENV PATH=/opt/cmake/bin:${PATH}
-
-# Install build tools needed for LLVM (not needed in final image)
-RUN yum install -y \
-    curl \
-    git \
-    unzip \
+RUN yum install -y curl unzip \
     && yum clean all
 
-# Install modern Ninja from GitHub releases (yum's ninja-build is too old for LLVM 21.1.0)
-# Latest release: https://github.com/ninja-build/ninja/releases
 ARG NINJA_VERSION=1.13.2
 RUN ARCH=$(uname -m) && \
     if [ "$ARCH" = "x86_64" ]; then \
@@ -122,193 +115,6 @@ RUN ARCH=$(uname -m) && \
     rm "${NINJA_FILE}" && \
     ninja --version
 
-# Clone LLVM 21.1.0 (same version as build_llvm.py)
-# Using specific commit hash for security: 3623fe661ae35c6c80ac221f14d85be76aa870f1 (llvmorg-21.1.0)
-RUN git clone https://github.com/llvm/llvm-project.git llvm-project && \
-    cd llvm-project && \
-    git checkout 3623fe661ae35c6c80ac221f14d85be76aa870f1 && \
-    cd ..
-
-# Determine target backend and host triple based on architecture
-RUN if [ "$TARGETARCH" = "x86_64" ]; then \
-    echo "X86" > /tmp/target_backend; \
-    echo "x86_64-pc-linux" > /tmp/host_triple; \
-    else \
-    echo "AArch64" > /tmp/target_backend; \
-    echo "aarch64-pc-linux" > /tmp/host_triple; \
-    fi
-
-# Configure and build LLVM with Clang
-# This mirrors the configuration in build_llvm.py for Linux x86_64/aarch64
-# Note: Using modern Ninja installed from GitHub releases for faster parallel builds
-RUN cmake \
-    -S llvm-project/llvm \
-    -B build \
-    -G Ninja \
-    -D CMAKE_BUILD_TYPE=MinSizeRel \
-    -D "LLVM_TARGETS_TO_BUILD=$(cat /tmp/target_backend);NVPTX" \
-    -D LLVM_ENABLE_PROJECTS=clang \
-    -D LLVM_ENABLE_ZLIB=FALSE \
-    -D LLVM_ENABLE_ZSTD=FALSE \
-    -D LLVM_ENABLE_TERMINFO=FALSE \
-    -D LLVM_BUILD_LLVM_C_DYLIB=FALSE \
-    -D LLVM_BUILD_RUNTIME=FALSE \
-    -D LLVM_BUILD_RUNTIMES=FALSE \
-    -D LLVM_BUILD_TOOLS=FALSE \
-    -D LLVM_BUILD_UTILS=FALSE \
-    -D LLVM_INCLUDE_BENCHMARKS=FALSE \
-    -D LLVM_INCLUDE_DOCS=FALSE \
-    -D LLVM_INCLUDE_EXAMPLES=FALSE \
-    -D LLVM_INCLUDE_RUNTIMES=FALSE \
-    -D LLVM_INCLUDE_TESTS=FALSE \
-    -D LLVM_INCLUDE_TOOLS=TRUE \
-    -D LLVM_INCLUDE_UTILS=FALSE \
-    -D "CMAKE_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=0 -fabi-version=13" \
-    -D CMAKE_INSTALL_PREFIX=/opt/llvm \
-    -D "LLVM_HOST_TRIPLE=$(cat /tmp/host_triple)" \
-    -D CLANG_BUILD_TOOLS=FALSE \
-    -D LLVM_ENABLE_PLUGINS=FALSE \
-    -D CLANG_PLUGIN_SUPPORT=FALSE \
-    -D CLANG_ENABLE_ARCMT=FALSE \
-    -D CLANG_ENABLE_STATIC_ANALYZER=FALSE \
-    -D CLANG_TOOLING_BUILD_AST_INTROSPECTION=FALSE \
-    -D CLANG_TOOL_AMDGPU_ARCH_BUILD=FALSE \
-    -D CLANG_TOOL_APINOTES_TEST_BUILD=FALSE \
-    -D CLANG_TOOL_ARCMT_TEST_BUILD=FALSE \
-    -D CLANG_TOOL_CLANG_CHECK_BUILD=FALSE \
-    -D CLANG_TOOL_CLANG_DIFF_BUILD=FALSE \
-    -D CLANG_TOOL_CLANG_EXTDEF_MAPPING_BUILD=FALSE \
-    -D CLANG_TOOL_CLANG_FORMAT_BUILD=FALSE \
-    -D CLANG_TOOL_CLANG_FORMAT_VS_BUILD=FALSE \
-    -D CLANG_TOOL_CLANG_FUZZER_BUILD=FALSE \
-    -D CLANG_TOOL_CLANG_IMPORT_TEST_BUILD=FALSE \
-    -D CLANG_TOOL_CLANG_LINKER_WRAPPER_BUILD=FALSE \
-    -D CLANG_TOOL_CLANG_NVLINK_WRAPPER_BUILD=FALSE \
-    -D CLANG_TOOL_CLANG_OFFLOAD_BUNDLER_BUILD=FALSE \
-    -D CLANG_TOOL_CLANG_OFFLOAD_PACKAGER_BUILD=FALSE \
-    -D CLANG_TOOL_CLANG_OFFLOAD_WRAPPER_BUILD=FALSE \
-    -D CLANG_TOOL_CLANG_REFACTOR_BUILD=FALSE \
-    -D CLANG_TOOL_CLANG_RENAME_BUILD=FALSE \
-    -D CLANG_TOOL_CLANG_REPL_BUILD=FALSE \
-    -D CLANG_TOOL_CLANG_SCAN_DEPS_BUILD=FALSE \
-    -D CLANG_TOOL_CLANG_SHLIB_BUILD=FALSE \
-    -D CLANG_TOOL_C_ARCMT_TEST_BUILD=FALSE \
-    -D CLANG_TOOL_C_INDEX_TEST_BUILD=FALSE \
-    -D CLANG_TOOL_DIAGTOOL_BUILD=FALSE \
-    -D CLANG_TOOL_DRIVER_BUILD=FALSE \
-    -D CLANG_TOOL_LIBCLANG_BUILD=FALSE \
-    -D CLANG_TOOL_SCAN_BUILD_BUILD=FALSE \
-    -D CLANG_TOOL_SCAN_BUILD_PY_BUILD=FALSE \
-    -D CLANG_TOOL_SCAN_VIEW_BUILD=FALSE \
-    -D LLVM_ENABLE_BINDINGS=FALSE \
-    -D LLVM_ENABLE_OCAMLDOC=FALSE \
-    -D LLVM_TOOL_BUGPOINT_BUILD=FALSE \
-    -D LLVM_TOOL_BUGPOINT_PASSES_BUILD=FALSE \
-    -D LLVM_TOOL_CLANG_BUILD=FALSE \
-    -D LLVM_TOOL_DSYMUTIL_BUILD=FALSE \
-    -D LLVM_TOOL_DXIL_DIS_BUILD=FALSE \
-    -D LLVM_TOOL_GOLD_BUILD=FALSE \
-    -D LLVM_TOOL_LLC_BUILD=FALSE \
-    -D LLVM_TOOL_LLDB_BUILD=FALSE \
-    -D LLVM_TOOL_LLI_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_AR_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_AS_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_AS_FUZZER_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_BCANALYZER_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_CAT_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_CFI_VERIFY_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_CONFIG_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_COV_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_CVTRES_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_CXXDUMP_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_CXXFILT_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_CXXMAP_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_C_TEST_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_DEBUGINFOD_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_DEBUGINFOD_FIND_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_DIFF_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_DIS_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_DIS_FUZZER_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_DLANG_DEMANGLE_FUZZER_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_DWARFDUMP_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_DWARFUTIL_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_DWP_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_EXEGESIS_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_EXTRACT_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_GO_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_GSYMUTIL_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_IFS_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_ISEL_FUZZER_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_ITANIUM_DEMANGLE_FUZZER_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_JITLINK_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_JITLISTENER_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_LIBTOOL_DARWIN_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_LINK_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_LIPO_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_LTO2_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_LTO_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_MCA_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_MC_ASSEMBLE_FUZZER_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_MC_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_MC_DISASSEMBLE_FUZZER_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_MICROSOFT_DEMANGLE_FUZZER_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_ML_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_MODEXTRACT_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_MT_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_NM_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_OBJCOPY_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_OBJDUMP_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_OPT_FUZZER_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_OPT_REPORT_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_PDBUTIL_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_PROFDATA_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_PROFGEN_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_RC_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_READOBJ_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_REDUCE_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_REMARK_SIZE_DIFF_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_RTDYLD_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_RUST_DEMANGLE_FUZZER_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_SHLIB_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_SIM_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_SIZE_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_SPECIAL_CASE_LIST_FUZZER_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_SPLIT_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_STRESS_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_STRINGS_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_SYMBOLIZER_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_TAPI_DIFF_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_TLI_CHECKER_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_UNDNAME_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_XRAY_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_YAML_NUMERIC_PARSER_FUZZER_BUILD=FALSE \
-    -D LLVM_TOOL_LLVM_YAML_PARSER_FUZZER_BUILD=FALSE \
-    -D LLVM_TOOL_LTO_BUILD=FALSE \
-    -D LLVM_TOOL_OBJ2YAML_BUILD=FALSE \
-    -D LLVM_TOOL_OPT_BUILD=FALSE \
-    -D LLVM_TOOL_OPT_VIEWER_BUILD=FALSE \
-    -D LLVM_TOOL_REMARKS_SHLIB_BUILD=FALSE \
-    -D LLVM_TOOL_SANCOV_BUILD=FALSE \
-    -D LLVM_TOOL_SANSTATS_BUILD=FALSE \
-    -D LLVM_TOOL_SPLIT_FILE_BUILD=FALSE \
-    -D LLVM_TOOL_VERIFY_USELISTORDER_BUILD=FALSE \
-    -D LLVM_TOOL_VFABI_DEMANGLE_FUZZER_BUILD=FALSE \
-    -D LLVM_TOOL_XCODE_TOOLCHAIN_BUILD=FALSE \
-    -D LLVM_TOOL_YAML2OBJ_BUILD=FALSE
-
-# Build LLVM (this takes 30-60 minutes)
-# Use all available CPU cores for parallel build
-RUN cmake --build build --parallel $(nproc)
-
-# Install LLVM to /opt/llvm
-RUN cmake --install build
-
-# Copy LLVM license files
-RUN mkdir -p /opt/llvm/licenses && \
-    cp /tmp/llvm-build/llvm-project/llvm/LICENSE.TXT /opt/llvm/licenses/ && \
-    echo "LLVM is licensed under the Apache License v2.0 with LLVM Exceptions" > /opt/llvm/licenses/README.txt && \
-    echo "See: https://llvm.org/LICENSE.txt" >> /opt/llvm/licenses/README.txt
-
 # Get uv from official image
 FROM ghcr.io/astral-sh/uv:latest AS uv
 
@@ -325,11 +131,8 @@ COPY --from=cuda-installer /opt/cuda/linux-${TARGETARCH} /usr/local/cuda
 # Copy the pinned CMake binary distribution from Kitware.
 COPY --from=cmake-installer /opt/cmake /opt/cmake
 
-# Copy LLVM installation from builder stage
-COPY --from=llvm-builder /opt/llvm /opt/llvm
-
-# Copy the pinned modern Ninja downloaded in the LLVM builder stage.
-COPY --from=llvm-builder /usr/local/bin/ninja /usr/local/bin/ninja
+# Copy the pinned modern Ninja.
+COPY --from=ninja-installer /usr/local/bin/ninja /usr/local/bin/ninja
 
 # Copy uv from official image
 COPY --from=uv /uv /uvx /bin/
@@ -347,29 +150,26 @@ RUN mkdir -p /usr/local/cuda/licenses && \
     echo "See: https://docs.nvidia.com/cuda/eula/" >> /usr/local/cuda/licenses/README.txt
 
 # Set environment variables
-ENV PATH=/opt/cmake/bin:/usr/local/cuda/bin:/opt/llvm/bin:${PATH}
-ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64:/usr/local/cuda/lib:/opt/llvm/lib:${LD_LIBRARY_PATH}
+ENV PATH=/opt/cmake/bin:/usr/local/cuda/bin:${PATH}
+ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64:/usr/local/cuda/lib:${LD_LIBRARY_PATH}
 ENV CUDA_HOME=/usr/local/cuda
 ENV CUDA_PATH=/usr/local/cuda
 
-# Verify CUDA, CMake, Ninja, LLVM, and uv installation
+# Verify CUDA, CMake, Ninja, and uv installation
 RUN nvcc --version && \
     cmake --version && \
     ninja --version && \
     uv --version && \
-    echo "Build environment ready with LLVM!" && \
-    echo "LLVM libraries:" && \
-    ls -lh /opt/llvm/lib/*.a | head -10
+    echo "Build environment ready"
 
 # Set working directory
 WORKDIR /workspace
 
 # Metadata labels
-LABEL org.opencontainers.image.title="Warp Builder with LLVM"
-LABEL org.opencontainers.image.description="Self-contained build environment for NVIDIA Warp with CUDA ${CUDA_VERSION} and LLVM 21.1.0"
+LABEL org.opencontainers.image.title="Warp Builder"
+LABEL org.opencontainers.image.description="Build environment for NVIDIA Warp with CUDA ${CUDA_VERSION}"
 LABEL org.opencontainers.image.vendor="NVIDIA"
 LABEL org.opencontainers.image.source="https://github.com/NVIDIA/warp"
 LABEL cuda.version="${CUDA_VERSION}"
-LABEL llvm.version="21.1.0"
 
 CMD ["/bin/bash"]

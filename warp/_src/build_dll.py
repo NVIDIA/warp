@@ -69,6 +69,24 @@ def machine_architecture() -> str:
     raise RuntimeError(f"Unrecognized machine architecture {machine}")
 
 
+def packman_llvm_platform(arch: str) -> str:
+    """Map a Warp architecture string to the Packman platform token for the prebuilt Clang/LLVM SDK.
+
+    These tokens are the ones used in ``deps/llvm-deps.packman.xml``. They follow
+    ``packman.utils.get_platform()`` rather than the spelling inside the release asset names, so that a
+    manual ``packman pull`` with no ``--platform`` resolves on a native host.
+
+    ``build_llvm.py`` star-imports this module, so this is the single definition for both the library
+    and the build scripts. Keep it in sync with ``warp_get_llvm_packman_platform()`` in
+    ``tools/cmake/WarpDependencies.cmake``, which must express the same mapping in CMake.
+    """
+    if os.name == "nt":
+        return f"windows-{arch}"
+    if sys.platform == "darwin":
+        return f"macos-{arch}"
+    return f"linux-{arch}"
+
+
 def run_cmd(cmd, print_success_output=True):
     if verbose_cmd:
         print(cmd)
@@ -336,7 +354,7 @@ def get_llvm_include_paths(args, warp_home_path, mode: str, arch: str) -> list[s
         FileNotFoundError: If user-provided llvm_path include directory doesn't exist.
     """
     if hasattr(args, "llvm_path") and args.llvm_path:
-        # Use LLVM include path if provided (e.g., from Docker /opt/llvm)
+        # Use LLVM include path if the caller supplied one
         include_path = os.path.join(args.llvm_path, "include")
         if not os.path.isdir(include_path):
             print(f"Warning: LLVM include directory not found: {include_path}")
@@ -352,7 +370,12 @@ def get_llvm_include_paths(args, warp_home_path, mode: str, arch: str) -> list[s
             warp_home_path.parent, "external", "llvm-project", "out", "install", f"{mode}-{arch}", "include"
         )
         packman_path = os.path.join(
-            warp_home_path.parent, "_build", "host-deps", "llvm-project", f"release-{arch}", "include"
+            warp_home_path.parent,
+            "_build",
+            "host-deps",
+            "llvm-project",
+            f"release-{packman_llvm_platform(arch)}",
+            "include",
         )
 
         # Check paths in priority order

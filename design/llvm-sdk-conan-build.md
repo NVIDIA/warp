@@ -13,14 +13,17 @@ The distribution plan linked above moves these prebuilt SDKs to GitHub Releases 
 but its build phase left open how the SDKs get built: a public Conan recipe, or container-based
 Python/CMake scripts like `docker/warp-builder` and `build_llvm.py`.
 
-Three overlapping build definitions exist today:
+Two overlapping build definitions exist today:
 
 1. `build_llvm.py`: plain CMake driver, used by `build_lib.py --build-llvm` as a user-facing fallback.
-2. `docker/warp-builder/Dockerfile`: mirrors those flags inside manylinux containers to bake `/opt/llvm`
-   into builder images.
-3. An NVIDIA-internal Conan recipe (`clang-warp`): the most complete of the three, with per-platform
+2. An NVIDIA-internal Conan recipe (`clang-warp`): the more complete of the two, with per-platform
    profiles, a two-pass native-tablegen cross build for windows-aarch64, size optimization,
    and library pruning.
+
+`docker/warp-builder/Dockerfile` was a third: it mirrored those flags inside manylinux containers to
+bake `/opt/llvm` into the builder images, because publishing prebuilt SDKs was impractical at the time.
+Publishing to GitHub Releases removed that constraint, so the image no longer ships Clang/LLVM and
+builds inside it fetch the SDK through Packman like any other consumer.
 
 This document specifies the build side of the distribution plan: a public, standalone Conan recipe
 under `tools/llvm/` executed entirely on GitHub Actions runners.
