@@ -314,6 +314,7 @@ autosummary_filename_map = {
 }
 
 AUTOSUMMARY_ANNOTATION_OVERRIDES = {
+    "warp.config.enable_mempools_at_init": ": bool = True",
     "warp.config.launch_array_access_mode": (
         ": warp.config.LaunchArrayAccessMode = warp.config.LaunchArrayAccessMode.RELAXED"
     ),

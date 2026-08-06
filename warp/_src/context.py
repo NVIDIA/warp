@@ -4930,7 +4930,6 @@ class Device:
                 # enable if supported
                 self.is_mempool_enabled = self.is_mempool_supported
             else:
-                # disable by default
                 self.is_mempool_enabled = False
 
             uuid_buffer = (ctypes.c_char * 16)()
