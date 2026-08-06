@@ -145,7 +145,7 @@ def _warp_custom_callback(stream, buffers, opaque, opaque_len):
         stream,
         None,
     ):
-        _raise_cuda_launch_error(kernel, device)
+        _raise_cuda_launch_error(kernel, device, hooks, False)
 
 
 def _create_jax_warp_primitive():

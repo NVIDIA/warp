@@ -1265,6 +1265,7 @@ WP_API bool wp_cuda_get_suggested_block_size(
 }
 WP_API int wp_cuda_get_max_shared_memory(void* context) { return 0; }
 WP_API bool wp_cuda_configure_kernel_shared_memory(void* kernel, int size) { return false; }
+WP_API int wp_cuda_get_kernel_static_shared_memory(void* context, void* kernel) { return -1; }
 WP_API bool wp_cuda_set_kernel_cluster_attrs(void* kernel, int cx, int cy, int cz) { return false; }
 WP_API int wp_cuda_get_max_cluster_dim(void* context, void* kernel, int block_dim, int dynamic_smem_bytes) { return 1; }
 

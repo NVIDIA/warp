@@ -667,7 +667,8 @@ def build_lto_solver(
                     source = "estimated limit" if max_smem_is_estimate else "device-reported limit"
                     hint = (
                         f"Estimated shared memory requirement is {smem_estimate_bytes}B, "
-                        f"but the {source} is {max_smem_bytes}B. "
+                        f"but the {source} is {max_smem_bytes}B, and a kernel's usable budget is lower "
+                        "still because Warp reserves static shared memory per block. "
                         "The tile size(s) may be too large for this device."
                     )
 

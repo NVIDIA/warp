@@ -2004,6 +2004,7 @@ def launch_deterministic(
     from warp._src import context as warp_context  # noqa: PLC0415
     from warp._src.context import (  # noqa: PLC0415
         _build_cuda_kernel_params,
+        _raise_cuda_launch_error,
         det_counter_buf_t,
         det_scatter_buf_t,
     )
@@ -2255,7 +2256,7 @@ def launch_deterministic(
             stream.cuda_stream,
             None,
         ):
-            raise RuntimeError(f"Error launching kernel: {kernel.key} on device {device}: {runtime.get_error_string()}")
+            _raise_cuda_launch_error(kernel, device, hooks, adjoint)
 
     if active_counter_targets:
         # === Two-pass execution ===

@@ -577,7 +577,7 @@ class FfiKernel:
                     stream,
                     None,  # apic_info
                 ):
-                    _raise_cuda_launch_error(self.kernel, device)
+                    _raise_cuda_launch_error(self.kernel, device, hooks, False)
 
         except Exception as e:
             print(traceback.format_exc())

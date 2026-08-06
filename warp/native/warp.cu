@@ -5399,6 +5399,21 @@ bool wp_cuda_configure_kernel_shared_memory(void* kernel, int size)
     return true;
 }
 
+int wp_cuda_get_kernel_static_shared_memory(void* context, void* kernel)
+{
+    if (!kernel)
+        return -1;
+
+    ContextGuard guard(context);
+
+    int static_smem_bytes = 0;
+    CUresult res = cuFuncGetAttribute_f(&static_smem_bytes, CU_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES, (CUfunction)kernel);
+    if (res != CUDA_SUCCESS)
+        return -1;
+
+    return static_smem_bytes;
+}
+
 bool wp_cuda_set_kernel_cluster_attrs(void* kernel, int cx, int cy, int cz)
 {
     if (!kernel)

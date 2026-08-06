@@ -899,6 +899,10 @@ WP_API size_t wp_cuda_launch_kernel(
 );
 WP_API int wp_cuda_get_max_shared_memory(void* context);
 WP_API bool wp_cuda_configure_kernel_shared_memory(void* kernel, int size);
+// Static (compile-time) shared memory the loaded kernel reserves per block, in bytes.
+// Returns -1 if the kernel handle is null or the driver query fails. The dynamic shared
+// memory a kernel can be configured for is wp_cuda_get_max_shared_memory() minus this value.
+WP_API int wp_cuda_get_kernel_static_shared_memory(void* context, void* kernel);
 // Set CUDA Thread Block Cluster attributes on a loaded kernel function.
 // For total cluster size > 8 (non-portable range), enables
 // CU_FUNC_NON_PORTABLE_CLUSTER_SIZE_ALLOWED. Sizes <= 8 are no-ops at this

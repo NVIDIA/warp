@@ -887,6 +887,36 @@ def call_builtin_from_desc(
     return return_value
 
 
+_SMEM_MITIGATION_MSG = (
+    "Warp reserves shared memory for every tile expression in the kernel, including tiles that are no longer "
+    "live. Reduce the number of tile expressions, shrink the tiles, or lower block_dim. See "
+    "https://nvidia.github.io/warp/stable/user_guide/programming_model/tiles.html#tile-shared-memory-budget"
+)
+
+
+def _smem_shortfall_clause(block_dim: int, requested: int, static: int, device_max: int) -> str | None:
+    """Describe the gap between a dynamic shared memory request and the budget a kernel can reach.
+
+    The returned clause is meant to follow a lead-in naming the request, as in
+    ``f"requests {requested} bytes, {clause}"``. ``device_max`` is the device's opt-in maximum and
+    ``static`` is the loaded kernel's static shared memory, or ``-1`` when the driver query failed.
+
+    Returns ``None`` when the static size is unknown or the request actually fits, so callers keep
+    their generic message instead of blaming shared memory for an unrelated driver failure.
+    """
+    if static < 0:
+        return None
+
+    available = device_max - static
+    if requested <= available:
+        return None
+
+    return (
+        f"but only {available} bytes are available at block_dim={block_dim} (device limit {device_max} "
+        f"bytes, minus {static} bytes of static shared memory this kernel reserves)"
+    )
+
+
 class KernelHooks:
     def __init__(
         self,
@@ -896,12 +926,20 @@ class KernelHooks:
         backward_smem_bytes=0,
         cluster_dim=1,
         det_launch_meta: DeterministicMeta | None = None,
+        forward_smem_shortfall: str | None = None,
+        backward_smem_shortfall: str | None = None,
     ):
         self.forward = forward
         self.backward = backward
 
         self.forward_smem_bytes = forward_smem_bytes
         self.backward_smem_bytes = backward_smem_bytes
+
+        # Shortfall clause for a direction whose dynamic shared memory could not be configured,
+        # or None when it configured cleanly. Formatted once here because every input is fixed
+        # for the life of this ModuleExec, so the launch failure path re-derives nothing.
+        self.forward_smem_shortfall = forward_smem_shortfall
+        self.backward_smem_shortfall = backward_smem_shortfall
 
         # Effective CUDA Thread Block Cluster size baked into the loaded
         # CUfunction(s): the requested cluster_dim when the compile target carries
@@ -3189,17 +3227,34 @@ class ModuleExec:
             # configure kernels maximum shared memory size
             max_smem_bytes = self.device.max_shared_memory_per_block
 
-            if not runtime.core.wp_cuda_configure_kernel_shared_memory(forward_kernel, forward_smem_bytes):
-                log_warning(
-                    f"Failed to configure kernel dynamic shared memory for this device, tried to configure {forward_name} kernel for {forward_smem_bytes} bytes, but maximum available is {max_smem_bytes}"
-                )
+            def configure_smem(kernel_func, direction: str, requested: int) -> str | None:
+                """Configure dynamic shared memory, warning and returning a shortfall clause on failure."""
+                if runtime.core.wp_cuda_configure_kernel_shared_memory(kernel_func, requested):
+                    return None
 
-            if options["enable_backward"] and not runtime.core.wp_cuda_configure_kernel_shared_memory(
-                backward_kernel, backward_smem_bytes
-            ):
-                log_warning(
-                    f"Failed to configure kernel dynamic shared memory for this device, tried to configure {backward_name} kernel for {backward_smem_bytes} bytes, but maximum available is {max_smem_bytes}"
+                static_smem_bytes = runtime.core.wp_cuda_get_kernel_static_shared_memory(
+                    self.device.context, kernel_func
                 )
+                shortfall = _smem_shortfall_clause(self.block_dim, requested, static_smem_bytes, max_smem_bytes)
+                if shortfall is None:
+                    # The driver rejected the request for some reason other than overflow, or the
+                    # static size is unknown, so there is no budget to report.
+                    log_warning(
+                        f"Failed to configure {requested} bytes of dynamic shared memory for kernel "
+                        f"'{kernel.key}' ({direction}) on {self.device.alias}."
+                    )
+                    return None
+
+                log_warning(
+                    f"Failed to configure dynamic shared memory for kernel '{kernel.key}' ({direction}) on "
+                    f"{self.device.alias}: requests {requested} bytes, {shortfall}."
+                )
+                return shortfall
+
+            forward_smem_shortfall = configure_smem(forward_kernel, "forward", forward_smem_bytes)
+            backward_smem_shortfall = (
+                configure_smem(backward_kernel, "backward", backward_smem_bytes) if options["enable_backward"] else None
+            )
 
             # Resolve the effective cluster_dim once here (cached on the hooks)
             # and configure the cluster attribute on the loaded CUfunction(s).
@@ -3244,6 +3299,8 @@ class ModuleExec:
                 backward_smem_bytes,
                 cluster_dim=effective_cluster_dim,
                 det_launch_meta=self.det_launch_meta_map.get(name),
+                forward_smem_shortfall=forward_smem_shortfall,
+                backward_smem_shortfall=backward_smem_shortfall,
             )
 
         else:
@@ -4853,8 +4910,11 @@ class Device:
             ``0`` for CPU devices.
         sm_count (int): The number of streaming multiprocessors on the CUDA device.
             ``0`` for CPU devices.
-        max_shared_memory_per_block (int): The maximum shared memory available per block
-            in bytes (opt-in maximum via ``cuFuncSetAttribute``). ``0`` for CPU devices.
+        max_shared_memory_per_block (int): The device's opt-in maximum shared memory per block
+            in bytes (via ``cuFuncSetAttribute``). A kernel's usable dynamic shared memory is
+            lower than this by the static shared memory the kernel reserves per block, which
+            grows with ``block_dim``. See :ref:`tile_shared_memory_budget` for how to size tiles
+            against it. ``0`` for CPU devices.
         is_uva (bool): Indicates whether the device supports unified addressing.
             ``False`` for CPU devices.
         is_cpu_memory_access_from_gpu_supported (bool): Indicates whether GPU kernels on this device can directly
@@ -7331,6 +7391,12 @@ class Runtime:
 
             self.core.wp_cuda_configure_kernel_shared_memory.argtypes = [ctypes.c_void_p, ctypes.c_int]
             self.core.wp_cuda_configure_kernel_shared_memory.restype = ctypes.c_bool
+
+            self.core.wp_cuda_get_kernel_static_shared_memory.argtypes = [
+                ctypes.c_void_p,  # context
+                ctypes.c_void_p,  # kernel (CUfunction)
+            ]
+            self.core.wp_cuda_get_kernel_static_shared_memory.restype = ctypes.c_int
 
             self.core.wp_cuda_set_kernel_cluster_attrs.argtypes = [
                 ctypes.c_void_p,  # kernel (CUfunction)
@@ -9984,13 +10050,26 @@ def _build_cuda_kernel_params(params: Sequence[Any]):
     return (ctypes.c_void_p * len(kernel_args))(*kernel_args)
 
 
-def _raise_cuda_launch_error(kernel: Kernel, device: Device) -> None:
+def _raise_cuda_launch_error(kernel: Kernel, device: Device, hooks: KernelHooks, adjoint: bool) -> None:
     """Raise a RuntimeError describing a failed CUDA kernel launch.
 
     Call only on the failure path (``if wp_cuda_launch_kernel(...):``) so the
     success path -- the overwhelming majority of launches -- never enters this
-    function. The six call sites must keep the launch+raise inlined and in sync.
+    function. The seven call sites must keep the launch+raise inlined and in sync.
+
+    A kernel whose dynamic shared memory could not be configured fails every launch, since
+    the same byte count goes to ``cuLaunchKernel``. The load-time warning fires only once
+    because hooks are cached, so this is the only diagnostic from the second launch onward.
     """
+    direction = "backward" if adjoint else "forward"
+    shortfall = hooks.backward_smem_shortfall if adjoint else hooks.forward_smem_shortfall
+    if shortfall is not None:
+        raise RuntimeError(
+            f"Error launching kernel: {kernel.key} on device {device}: the {direction} kernel requests "
+            f"{hooks.backward_smem_bytes if adjoint else hooks.forward_smem_bytes} bytes of dynamic shared "
+            f"memory, {shortfall}. {_SMEM_MITIGATION_MSG}"
+        )
+
     err = runtime.get_error_string()
     raise RuntimeError(f"Error launching kernel: {kernel.key} on device {device}: {err}")
 
@@ -10365,7 +10444,7 @@ class Launch:
                     stream.cuda_stream,
                     apic_info_ptr,
                 ):
-                    _raise_cuda_launch_error(self.kernel, self.device)
+                    _raise_cuda_launch_error(self.kernel, self.device, self.hooks, True)
             else:
                 if runtime.core.wp_cuda_launch_kernel(
                     self.device.context,
@@ -10380,7 +10459,7 @@ class Launch:
                     stream.cuda_stream,
                     apic_info_ptr,
                 ):
-                    _raise_cuda_launch_error(self.kernel, self.device)
+                    _raise_cuda_launch_error(self.kernel, self.device, self.hooks, False)
 
 
 def _cuda_grid_blocks(total_dim_size: int, block_dim: int) -> int:
@@ -10840,7 +10919,7 @@ def launch(
                         stream.cuda_stream,
                         apic_info_ptr,
                     ):
-                        _raise_cuda_launch_error(kernel, device)
+                        _raise_cuda_launch_error(kernel, device, hooks, True)
 
             else:
                 if hooks.forward is None:
@@ -10888,7 +10967,7 @@ def launch(
                         stream.cuda_stream,
                         apic_info_ptr,
                     ):
-                        _raise_cuda_launch_error(kernel, device)
+                        _raise_cuda_launch_error(kernel, device, hooks, False)
 
             try:
                 runtime.verify_cuda_device(device)
@@ -11051,6 +11130,13 @@ def get_suggested_block_size(kernel, device: DeviceLike = None) -> tuple[int, in
         ctypes.byref(min_grid_size),
     )
     if not success:
+        if hooks.forward_smem_shortfall is not None:
+            raise RuntimeError(
+                f"CUDA occupancy query failed for kernel '{kernel.key}' on device '{device}': the forward "
+                f"kernel requests {hooks.forward_smem_bytes} bytes of dynamic shared memory, "
+                f"{hooks.forward_smem_shortfall}. {_SMEM_MITIGATION_MSG}"
+            )
+
         err = runtime.get_error_string()
         raise RuntimeError(f"CUDA occupancy query failed for kernel '{kernel.key}' on device '{device}': {err}")
 
