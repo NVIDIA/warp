@@ -788,6 +788,86 @@ def test_torch_graph_torch_stream(test, device):
     assert passed.item()
 
 
+def _test_torch_graph_radix_sort(test, device, register_capture):
+    """Run radix sorts inside a Torch-initiated graph capture and verify replay results.
+
+    With ``register_capture`` the capture is registered with Warp via
+    ``wp.capture_begin(external=True)``; without it, Warp sees an unregistered
+    (foreign) capture and must still produce a correct graph (with a warning
+    about the intentionally leaked scratch buffer).
+    """
+    torch = _import_torch()
+
+    torch_device = wp.device_to_torch(device)
+
+    rng = np.random.default_rng(123)
+    n_small, n_large = 2500, 100000
+
+    # radix_sort_pairs() uses the second half of each array as scratch storage
+    ks_np = rng.integers(0, 2**40, size=n_small, dtype=np.int64)
+    vs_np = np.arange(n_small, dtype=np.int32)
+    kl_np = rng.integers(0, 2**40, size=n_large, dtype=np.int64)
+    vl_np = np.arange(n_large, dtype=np.int32)
+    ks = wp.zeros(2 * n_small, dtype=wp.int64, device=device)
+    vs = wp.zeros(2 * n_small, dtype=wp.int32, device=device)
+    kl = wp.zeros(2 * n_large, dtype=wp.int64, device=device)
+    vl = wp.zeros(2 * n_large, dtype=wp.int32, device=device)
+
+    def reset_sort_inputs():
+        ks.assign(np.concatenate([ks_np, np.zeros(n_small, dtype=np.int64)]))
+        vs.assign(np.concatenate([vs_np, np.zeros(n_small, dtype=np.int32)]))
+        kl.assign(np.concatenate([kl_np, np.zeros(n_large, dtype=np.int64)]))
+        vl.assign(np.concatenate([vl_np, np.zeros(n_large, dtype=np.int32)]))
+
+    def assert_sort_results():
+        so = np.argsort(ks_np, kind="stable")
+        lo = np.argsort(kl_np, kind="stable")
+        np.testing.assert_array_equal(ks.numpy()[:n_small], ks_np[so])
+        np.testing.assert_array_equal(vs.numpy()[:n_small], vs_np[so])
+        np.testing.assert_array_equal(kl.numpy()[:n_large], kl_np[lo])
+        np.testing.assert_array_equal(vl.numpy()[:n_large], vl_np[lo])
+
+    g = torch.cuda.CUDAGraph()
+
+    # create a device-specific torch stream to use for capture
+    # (otherwise torch.cuda.graph reuses its capture stream, which can be problematic if it's from a different device)
+    torch_stream = torch.cuda.Stream(device=torch_device)
+
+    # make warp use the same stream
+    warp_stream = wp.stream_from_torch(torch_stream)
+
+    # capture graph, with the sorts requiring scratch reallocation mid-capture
+    with wp.ScopedStream(warp_stream), torch.cuda.graph(g, stream=torch_stream):
+        if register_capture:
+            wp.capture_begin(force_module_load=False, external=True)
+        try:
+            wp.utils.radix_sort_pairs(ks, vs, n_small)
+            wp.utils.radix_sort_pairs(kl, vl, n_large)
+        finally:
+            if register_capture:
+                wp.capture_end()
+
+    # replay graph
+    for _i in range(3):
+        reset_sort_inputs()
+        # the uploads run on Warp's current stream, the replay on the Torch stream
+        wp.synchronize_device(device)
+        g.replay()
+        # the replay runs on the Torch stream, which .numpy() does not synchronize with
+        wp.synchronize_device(device)
+        assert_sort_results()
+
+
+def test_torch_graph_radix_sort_registered(test, device):
+    """Verify radix sorts inside a Torch graph capture registered with Warp as external."""
+    _test_torch_graph_radix_sort(test, device, register_capture=True)
+
+
+def test_torch_graph_radix_sort_unregistered(test, device):
+    """Verify radix sorts inside a Torch graph capture not registered with Warp."""
+    _test_torch_graph_radix_sort(test, device, register_capture=False)
+
+
 def test_torch_graph_warp_stream(test, device):
     """Capture Torch graph on Warp stream"""
 
@@ -1137,6 +1217,20 @@ else:
             TestTorch,
             "test_torch_graph_torch_stream",
             test_torch_graph_torch_stream,
+            devices=torch_cuda_candidate_devices,
+            device_check=_check_torch_device,
+        )
+        add_function_test(
+            TestTorch,
+            "test_torch_graph_radix_sort_registered",
+            test_torch_graph_radix_sort_registered,
+            devices=torch_cuda_candidate_devices,
+            device_check=_check_torch_device,
+        )
+        add_function_test(
+            TestTorch,
+            "test_torch_graph_radix_sort_unregistered",
+            test_torch_graph_radix_sort_unregistered,
             devices=torch_cuda_candidate_devices,
             device_check=_check_torch_device,
         )

@@ -78,6 +78,9 @@ _KERNEL_RETURN_ERROR = (
 
 warp_home = os.path.realpath(os.path.join(os.path.dirname(__file__), ".."))
 
+# must match warp.h
+WP_CURRENT_STREAM = 0xFFFFFFFFFFFFFFFF
+
 
 class CudaMemcpyKind(enum.IntEnum):
     H2H = 0
@@ -4515,7 +4518,7 @@ class CudaMempoolAllocator:
         self.device = device
 
     def allocate(self, size_in_bytes):
-        ptr = runtime.core.wp_alloc_device_async(self.device.context, size_in_bytes, None)
+        ptr = runtime.core.wp_alloc_device_async(self.device.context, size_in_bytes, WP_CURRENT_STREAM, None)
         if not ptr:
             raise RuntimeError(f"Failed to allocate {size_in_bytes} bytes on device '{self.device}'")
         _set_alloc_tag_if_tracking(ptr)
@@ -5812,7 +5815,12 @@ class Runtime:
             self.core.wp_alloc_device.restype = ctypes.c_void_p
             self.core.wp_alloc_device_default.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.c_char_p]
             self.core.wp_alloc_device_default.restype = ctypes.c_void_p
-            self.core.wp_alloc_device_async.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.c_char_p]
+            self.core.wp_alloc_device_async.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_size_t,
+                ctypes.c_void_p,
+                ctypes.c_char_p,
+            ]
             self.core.wp_alloc_device_async.restype = ctypes.c_void_p
             self.core.wp_alloc_device_managed.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.c_char_p]
             self.core.wp_alloc_device_managed.restype = ctypes.c_void_p

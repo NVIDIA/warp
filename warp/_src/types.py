@@ -7811,15 +7811,14 @@ class HashGrid:
     def reserve(self, num_points, with_groups=False):
         """Reserve enough memory to build the grid for the given number of points.
 
-        Reserving ahead of CPU or CUDA graph capture makes subsequent :meth:`build` calls of up to
-        ``num_points`` points allocation-free, without requiring a warm-up build before capture. CPU live replay can
-        allocate on the first replayed build, so pre-reserving is optional. :meth:`reserve` cannot be called during CPU
-        graph capture.
+        Reserving ahead of graph capture lets subsequent :meth:`build` calls of up to ``num_points`` points reuse the
+        grid's buffers without reallocating them, avoiding a warm-up build before capture. Sort scratch memory is
+        managed safely during CUDA graph capture regardless of reserving. CPU live replay can allocate on the first
+        replayed build, so pre-reserving is optional. :meth:`reserve` cannot be called during CPU graph capture.
 
         Args:
             num_points (int): Number of points the grid should accommodate.
-            with_groups (bool): Also reserve the buffers used by grouped builds, so that a
-                grouped :meth:`build` (with ``groups``) is allocation-free as well.
+            with_groups (bool): Also reserve the buffers used by grouped builds (with ``groups``).
         """
         if self.device.is_cpu and warp._src.context._get_apic_capture_for_device(self.device) is not None:
             raise NotImplementedError(

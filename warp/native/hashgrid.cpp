@@ -286,10 +286,6 @@ template <typename Type> void hash_grid_reserve_device_impl(uint64_t id, int num
         grid.point_ids = (int*)wp_alloc_device(WP_CURRENT_CONTEXT, 2 * num_to_alloc * sizeof(int), tag);
         grid.max_points = num_to_alloc;
 
-        // ensure we pre-size our sort routine to avoid
-        // allocations during graph capture
-        radix_sort_reserve(WP_CURRENT_CONTEXT, num_to_alloc);
-
         resized = true;
     }
 
@@ -300,9 +296,6 @@ template <typename Type> void hash_grid_reserve_device_impl(uint64_t id, int num
         const int num_to_alloc = num_points * 3 / 2;
         grid.point_keys = (uint64_t*)wp_alloc_device(WP_CURRENT_CONTEXT, 2 * num_to_alloc * sizeof(uint64_t), tag);
         grid.max_keys = num_to_alloc;
-
-        // grouped builds sort 64-bit keys, which need larger sort scratch than 32-bit keys
-        radix_sort_reserve_u64(WP_CURRENT_CONTEXT, num_to_alloc);
 
         resized = true;
     }

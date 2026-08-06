@@ -1034,7 +1034,7 @@ void* wp_alloc_device(void* context, size_t s, const char* tag) { return NULL; }
 
 void* wp_alloc_device_default(void* context, size_t s, const char* tag) { return NULL; }
 
-void* wp_alloc_device_async(void* context, size_t s, const char* tag) { return NULL; }
+void* wp_alloc_device_async(void* context, size_t s, void* stream, const char* tag) { return NULL; }
 
 void* wp_alloc_device_managed(void* context, size_t s, const char* tag) { return NULL; }
 

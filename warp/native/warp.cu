@@ -170,27 +170,6 @@ struct ContextInfo {
     CUmodule conditional_module = NULL;
 };
 
-// Information used for freeing allocations.
-struct FreeInfo {
-    void* context = NULL;
-    void* ptr = NULL;
-    bool is_async = false;
-};
-
-struct CaptureInfo {
-    CUstream stream = NULL;  // the main stream where capture begins and ends
-    CUcontext context = NULL;  // context where capture was started
-    uint64_t id = 0;  // unique capture id from CUDA
-    bool external = false;  // whether this is an external capture
-    cudaStreamCaptureMode mode = cudaStreamCaptureModeThreadLocal;  // mode used to open the capture (for pause/resume)
-    std::vector<FreeInfo> tmp_allocs;  // temporary allocations owned by the graph (e.g., staged array fill values)
-};
-
-struct StreamInfo {
-    CUevent cached_event = NULL;  // event used for stream synchronization (cached to avoid creating temporary events)
-    CaptureInfo* capture = NULL;  // capture info (only if started on this stream)
-};
-
 // Extra resources tied to a graph, freed after the graph is released by CUDA.
 // Used with the on_graph_destroy() callback.
 struct GraphDestroyCallbackInfo {
@@ -414,7 +393,7 @@ static ContextInfo* get_context_info(CUcontext ctx)
 
 static inline ContextInfo* get_context_info(void* context) { return get_context_info(static_cast<CUcontext>(context)); }
 
-static inline StreamInfo* get_stream_info(CUstream stream)
+StreamInfo* get_stream_info(CUstream stream)
 {
     auto it = g_streams.find(stream);
     if (it != g_streams.end())
@@ -423,13 +402,29 @@ static inline StreamInfo* get_stream_info(CUstream stream)
         return NULL;
 }
 
-static inline CaptureInfo* get_capture_info(CUstream stream)
+CaptureInfo* get_capture_info(CUstream stream)
 {
     if (!g_captures.empty() && wp_cuda_stream_is_capturing(stream)) {
         uint64_t capture_id = get_capture_id(stream);
         auto capture_iter = g_captures.find(capture_id);
         if (capture_iter != g_captures.end())
             return capture_iter->second;
+    }
+    return NULL;
+}
+
+CaptureInfo* find_capture_info(uint64_t capture_id)
+{
+    // Find the registered capture that owns the given capture id, either directly
+    // (top-level capture) or as the parent of a child graph capture currently being
+    // recorded. While a child body graph is captured, the parent capture's main
+    // stream also reports the child's capture id (capture ids are stable across
+    // pause/resume), which identifies the parent from any participating stream,
+    // including forked streams that carry no capture info of their own.
+    for (const auto& capture_iter : g_captures) {
+        CaptureInfo* capture = capture_iter.second;
+        if (capture && (capture->id == capture_id || get_capture_id(capture->stream) == capture_id))
+            return capture;
     }
     return NULL;
 }
@@ -757,7 +752,7 @@ void* wp_alloc_device(void* context, size_t s, const char* tag)
     int ordinal = wp_cuda_context_get_device_ordinal(context);
 
     if (wp_cuda_device_is_mempool_supported(ordinal))
-        return wp_alloc_device_async(context, s, tag);
+        return wp_alloc_device_async(context, s, WP_CURRENT_STREAM, tag);
     else
         return wp_alloc_device_default(context, s, tag);
 }
@@ -801,17 +796,17 @@ void wp_free_device_default(void* context, void* ptr)
     }
 }
 
-void* wp_alloc_device_async(void* context, size_t s, const char* tag)
+void* wp_alloc_device_async(void* context, size_t s, void* stream_, const char* tag)
 {
     // stream-ordered allocations don't rely on the current context,
     // but we set the context here for consistent behaviour
     ContextGuard guard(context);
 
-    ContextInfo* context_info = get_context_info(context);
-    if (!context_info)
-        return NULL;
-
-    CUstream stream = context_info->stream;
+    CUstream stream;
+    if (stream_ != WP_CURRENT_STREAM)
+        stream = static_cast<CUstream>(stream_);
+    else
+        stream = get_current_stream(context);
 
     void* ptr = NULL;
     check_cuda(cudaMallocAsync(&ptr, s, stream));
@@ -2860,6 +2855,9 @@ void wp_cuda_context_destroy(void* context)
         if (ctx == wp_cuda_context_get_current())
             wp_cuda_context_set_current(NULL);
 
+        // release the radix sort side stream associated with this context
+        radix_sort_context_release(context);
+
         // release the cached info about this context
         ContextInfo* info = get_context_info(ctx);
         if (info) {
@@ -3255,9 +3253,6 @@ void wp_cuda_stream_destroy(void* context, void* stream)
 
     wp_cuda_stream_unregister(context, stream);
 
-    // release temporary radix sort buffer associated with this stream
-    radix_sort_release(context, stream);
-
     check_cu(cuStreamDestroy_f(static_cast<CUstream>(stream)));
 }
 
@@ -3305,6 +3300,9 @@ void wp_cuda_stream_unregister(void* context, void* stream)
         if (cuda_stream == context_info->stream)
             context_info->stream = NULL;
     }
+
+    // release temporary radix sort scratch space associated with this stream
+    radix_sort_stream_release(context, stream);
 }
 
 void* wp_cuda_stream_get_current() { return get_current_stream(); }
@@ -3514,6 +3512,9 @@ bool wp_cuda_graph_end_capture(void* context, void* stream, void** graph_ret)
         wp::set_error_string("Warp error: stream has no capture started");
         return false;
     }
+
+    // clean up any capture-specific radix sort buffers
+    radix_sort_end_capture(capture->id);
 
     // get capture info
     bool external = capture->external;
