@@ -19,6 +19,7 @@ import warp.tests.aot.aux_test_generic_one_overload
 import warp.tests.aot.aux_test_hash_reload
 import warp.tests.aot.aux_test_mixed_generic_kernels
 import warp.tests.aot.aux_test_mixed_regular_and_generic
+import warp.tests.aot.aux_test_strip_hash_option
 from warp.tests.unittest_utils import *
 
 # Use generic (portable) CPU compilation for AOT tests — these tests exercise
@@ -31,6 +32,7 @@ for _mod in (
     warp.tests.aot.aux_test_hash_reload,
     warp.tests.aot.aux_test_mixed_generic_kernels,
     warp.tests.aot.aux_test_mixed_regular_and_generic,
+    warp.tests.aot.aux_test_strip_hash_option,
 ):
     wp.set_module_options({"cpu_compiler_flags": ""}, _mod)
 
@@ -191,6 +193,101 @@ def test_enable_hashing(test, device):
 
         with open(os.path.abspath(os.path.join(os.path.dirname(__file__), "aux_test_hash_reload.py")), "w") as f:
             f.writelines(ADD_KERNEL_FINAL)
+
+
+def test_strip_hash_preserved_when_unspecified(test, device):
+    """Ensure omitting ``strip_hash`` leaves the module option untouched.
+
+    Both ``compile_aot_module()`` and ``load_aot_module()`` must honor a
+    ``"strip_hash"`` value set through ``wp.set_module_options()``. If the load
+    resets it, the binaries written under stripped names become unreachable.
+    """
+
+    module = wp.get_module(warp.tests.aot.aux_test_strip_hash_option.__name__)
+    original_options = dict(wp.get_module_options(warp.tests.aot.aux_test_strip_hash_option))
+
+    try:
+        shutil.rmtree(TEST_CACHE_DIR, ignore_errors=True)
+        TEST_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        wp.set_module_options(
+            {"block_dim": 1 if device.is_cpu else 256, "strip_hash": True},
+            warp.tests.aot.aux_test_strip_hash_option,
+        )
+
+        # Neither call passes strip_hash, so both must fall back to the module option.
+        wp.compile_aot_module(warp.tests.aot.aux_test_strip_hash_option, device, module_dir=TEST_CACHE_DIR)
+        test.assertTrue(module.options["strip_hash"])
+
+        wp.load_aot_module(warp.tests.aot.aux_test_strip_hash_option, device, module_dir=TEST_CACHE_DIR)
+        test.assertTrue(module.options["strip_hash"])
+
+        x = wp.zeros(10, dtype=wp.int32, device=device)
+        wp.launch(
+            warp.tests.aot.aux_test_strip_hash_option.add_one,
+            dim=x.shape,
+            inputs=[x],
+            device=device,
+        )
+
+        assert_np_equal(x.numpy(), np.ones((10,), dtype=np.int32))
+    finally:
+        shutil.rmtree(TEST_CACHE_DIR, ignore_errors=True)
+        wp.set_module_options(original_options, warp.tests.aot.aux_test_strip_hash_option)
+
+
+def test_strip_hash_overridden_when_explicit(test, device):
+    """Ensure an explicit ``strip_hash`` argument wins over the module option.
+
+    This is the counterpart to preserving the option when the argument is
+    omitted: passing ``strip_hash=False`` to a module configured with
+    ``{"strip_hash": True}`` must still disable stripping in both calls.
+    """
+
+    module = wp.get_module(warp.tests.aot.aux_test_strip_hash_option.__name__)
+    original_options = dict(wp.get_module_options(warp.tests.aot.aux_test_strip_hash_option))
+
+    try:
+        shutil.rmtree(TEST_CACHE_DIR, ignore_errors=True)
+        TEST_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        wp.set_module_options(
+            {"block_dim": 1 if device.is_cpu else 256, "strip_hash": True},
+            warp.tests.aot.aux_test_strip_hash_option,
+        )
+
+        # Both calls pass strip_hash explicitly, so the module option must be overridden.
+        wp.compile_aot_module(
+            warp.tests.aot.aux_test_strip_hash_option, device, module_dir=TEST_CACHE_DIR, strip_hash=False
+        )
+        test.assertFalse(module.options["strip_hash"])
+
+        # Hashed naming appends a "_<hash>" suffix that stripped naming omits.
+        prefix = f"wp_{module.name}_"
+        artifacts = sorted(p.name for p in TEST_CACHE_DIR.iterdir() if p.is_file())
+        test.assertTrue(artifacts)
+        for name in artifacts:
+            test.assertTrue(name.startswith(prefix), artifacts)
+            test.assertRegex(name[len(prefix) :], r"^[0-9a-f]{7}\.")
+
+        # Restore the module option so the load call has something to override.
+        wp.set_module_options({"strip_hash": True}, warp.tests.aot.aux_test_strip_hash_option)
+
+        wp.load_aot_module(
+            warp.tests.aot.aux_test_strip_hash_option, device, module_dir=TEST_CACHE_DIR, strip_hash=False
+        )
+        test.assertFalse(module.options["strip_hash"])
+
+        x = wp.zeros(10, dtype=wp.int32, device=device)
+        wp.launch(
+            warp.tests.aot.aux_test_strip_hash_option.add_one,
+            dim=x.shape,
+            inputs=[x],
+            device=device,
+        )
+
+        assert_np_equal(x.numpy(), np.ones((10,), dtype=np.int32))
+    finally:
+        shutil.rmtree(TEST_CACHE_DIR, ignore_errors=True)
+        wp.set_module_options(original_options, warp.tests.aot.aux_test_strip_hash_option)
 
 
 def test_module_load_resolution(test, device):
@@ -519,6 +616,18 @@ devices = get_test_devices()
 add_function_test(TestModuleAOT, "test_aot_cache_skip", test_aot_cache_skip, devices=devices)
 add_function_test(TestModuleAOT, "test_disable_hashing", test_disable_hashing, devices=devices)
 add_function_test(TestModuleAOT, "test_enable_hashing", test_enable_hashing, devices=devices)
+add_function_test(
+    TestModuleAOT,
+    "test_strip_hash_preserved_when_unspecified",
+    test_strip_hash_preserved_when_unspecified,
+    devices=devices,
+)
+add_function_test(
+    TestModuleAOT,
+    "test_strip_hash_overridden_when_explicit",
+    test_strip_hash_overridden_when_explicit,
+    devices=devices,
+)
 add_function_test(TestModuleAOT, "test_module_load_resolution", test_module_load_resolution, devices=devices)
 add_function_test(TestModuleAOT, "test_generic_kernel_no_overloads", test_generic_kernel_no_overloads, devices=devices)
 add_function_test(

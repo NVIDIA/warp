@@ -11675,7 +11675,7 @@ def load_aot_module(
     arch: int | None = None,
     module_dir: str | os.PathLike | None = None,
     use_ptx: bool | None = None,
-    strip_hash: bool = False,
+    strip_hash: bool | None = None,
 ) -> None:
     """Load a previously compiled module (ahead of time).
 
