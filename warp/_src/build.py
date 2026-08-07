@@ -729,7 +729,7 @@ def build_lto_fft(arch, size, ept, direction, dir, precision, builder):
             meta[lto_symbol] = shared_memory_bytes
 
             with open(temp_paths[".meta"], "w") as meta_file:
-                json.dump(meta, meta_file)
+                json.dump(meta, meta_file, sort_keys=True)
 
             return True, {".lto": lto_code_data, ".meta": shared_memory_bytes}
 
