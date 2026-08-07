@@ -4175,6 +4175,8 @@ class array(Array[DType, NDim]):
 
     def zero_(self):
         """Zero out the array entries."""
+        if self.size == 0:
+            return
         self._apic_ensure_tracked()
         if self.is_contiguous:
             # simple memset is usually faster than generic fill
