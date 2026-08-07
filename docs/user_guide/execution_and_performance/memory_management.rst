@@ -616,6 +616,8 @@ Set up a shared RMM pool for PyTorch and Warp:
     a = wp.zeros(1000, dtype=wp.float32, device="cuda:0")
 
 
+.. _cross_device_memory_access:
+
 Cross-Device Memory Access
 --------------------------
 

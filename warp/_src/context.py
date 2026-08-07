@@ -9627,16 +9627,34 @@ def _format_array_memory_kind(value: warp.array) -> str:
     return f"memory_kinds=[{', '.join(kind_names)}]"
 
 
-def _raise_launch_array_access_error(kernel, arg_name: str, value: warp.array, device: Device) -> None:
+def _raise_launch_array_access_error(
+    kernel,
+    arg_name: str,
+    value: warp.array,
+    device: Device,
+    mode: warp.config.LaunchArrayAccessMode,
+) -> None:
     memory_kind = _format_array_memory_kind(value)
-    raise RuntimeError(
-        f"Error launching kernel '{kernel.key}', trying to launch on device='{device}', "
-        f"but input array for argument '{arg_name}' is on device={value.device} ({memory_kind}), "
-        f"whose memory is not accessible or cannot be verified as accessible from "
-        f"'{device}'. Move the array to '{device}', enable the required peer/mempool/coherent access, "
-        f"or set warp.config.launch_array_access_mode = warp.config.LaunchArrayAccessMode.RELAXED "
-        f"only if this launch is valid for the hardware and memory kind."
-    )
+    if mode == warp.config.LaunchArrayAccessMode.STRICT:
+        # STRICT rejects any off-device array, even one the launch device could access.
+        raise RuntimeError(
+            f"Error launching kernel '{kernel.key}' on device='{device}': "
+            "warp.config.LaunchArrayAccessMode.STRICT requires every Warp array argument "
+            f"to be allocated on the launch device, but argument '{arg_name}' is on "
+            f"device={value.device} ({memory_kind}). Move the array to '{device}', or use "
+            "warp.config.LaunchArrayAccessMode.CHECKED to allow the launch when the launch "
+            "device can access this allocation."
+        )
+    else:
+        # CHECKED only reaches here once the array is classified as inaccessible.
+        raise RuntimeError(
+            f"Error launching kernel '{kernel.key}', trying to launch on device='{device}', "
+            f"but input array for argument '{arg_name}' is on device={value.device} ({memory_kind}), "
+            f"whose memory is not accessible or cannot be verified as accessible from "
+            f"'{device}'. Move the array to '{device}', enable the required peer/mempool/coherent access, "
+            f"or set warp.config.launch_array_access_mode = warp.config.LaunchArrayAccessMode.RELAXED "
+            f"only if this launch is valid for the hardware and memory kind."
+        )
 
 
 def _warn_unknown_launch_array_access(kernel, arg_name: str, value: warp.array, device: Device) -> None:
@@ -9667,11 +9685,11 @@ def _validate_launch_array_access(kernel, arg_name: str, value: warp.array, devi
         return
 
     if mode == warp.config.LaunchArrayAccessMode.STRICT:
-        _raise_launch_array_access_error(kernel, arg_name, value, device)
+        _raise_launch_array_access_error(kernel, arg_name, value, device, mode)
     elif mode == warp.config.LaunchArrayAccessMode.CHECKED:
         access_status = _classify_array_access_from_device(value, device)
         if access_status == _ArrayAccessStatus.INACCESSIBLE:
-            _raise_launch_array_access_error(kernel, arg_name, value, device)
+            _raise_launch_array_access_error(kernel, arg_name, value, device, mode)
         elif access_status == _ArrayAccessStatus.UNKNOWN:
             _warn_unknown_launch_array_access(kernel, arg_name, value, device)
         return
@@ -10604,6 +10622,18 @@ def launch(
     """Launch a Warp kernel on the target device
 
     Kernel launches are asynchronous with respect to the calling Python thread.
+
+    The default ``wp.config.LaunchArrayAccessMode.RELAXED`` mode does not check
+    whether array arguments are accessible from the launch device. Cross-device
+    access depends on the access direction, memory kind, and system
+    capabilities. An inaccessible array may cause a segmentation fault in a
+    CPU kernel or a CUDA illegal memory access. Set
+    :attr:`warp.config.launch_array_access_mode` to
+    ``wp.config.LaunchArrayAccessMode.CHECKED`` to detect known-invalid
+    accesses before launch. Use ``wp.config.LaunchArrayAccessMode.STRICT`` to
+    require every Warp array argument to be allocated on the launch device,
+    including cross-device allocations the hardware could access. See
+    :ref:`launch_array_access_checks` for details and limitations.
 
     Args:
         kernel: The name of a Warp kernel function, decorated with the :func:`@wp.kernel <warp.kernel>` decorator

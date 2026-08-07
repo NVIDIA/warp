@@ -282,6 +282,45 @@ If a bug with Warp's kernel caching logic is suspected, kernel caching can be di
 
     wp.config.cache_kernels = False
 
+Cross-Device Array Access
+-------------------------
+
+A cross-device launch runs a kernel on one device with an array allocated on
+another. If the launch device cannot access the array, a CPU kernel may fail
+with a segmentation fault (``SIGSEGV``), or CUDA may report error 700
+(``an illegal memory access was encountered``). The default
+``wp.config.LaunchArrayAccessMode.RELAXED`` mode does not check array
+accessibility before a kernel runs.
+
+Whether a cross-device launch is valid depends on which device accesses the
+array and how the array was allocated. System capabilities and access settings
+also matter, so the same launch may work on one system and fail on another. Use
+:func:`wp.can_access(device, array) <warp.can_access>` to check a specific
+allocation. See :ref:`cross_device_memory_access` for the full access model and
+platform-specific examples.
+
+To diagnose a suspected cross-device array access failure without rejecting
+supported access, enable checked validation:
+
+.. code-block:: python
+
+    wp.config.launch_array_access_mode = wp.config.LaunchArrayAccessMode.CHECKED
+
+``CHECKED`` raises a ``RuntimeError`` before execution when Warp can determine
+that an array is inaccessible. If Warp cannot verify a custom or externally
+managed allocation, it emits a warning and allows the launch to proceed.
+
+Use ``STRICT`` to require every Warp array argument to be allocated on the
+launch device. It also rejects cross-device allocations that the hardware
+could access:
+
+.. code-block:: python
+
+    wp.config.launch_array_access_mode = wp.config.LaunchArrayAccessMode.STRICT
+
+See :ref:`launch_array_access_checks` for the complete behavior, limitations,
+and performance considerations.
+
 CUDA Error Verification
 -----------------------
 
