@@ -1015,7 +1015,7 @@ routes array allocations through RMM.</p>
 </section>
 </section>
 <section id="cross-device-memory-access">
-<h2>Cross-Device Memory Access<a class="headerlink" href="#cross-device-memory-access" title="Link to this heading">#</a></h2>
+<span id="id3"></span><h2>Cross-Device Memory Access<a class="headerlink" href="#cross-device-memory-access" title="Link to this heading">#</a></h2>
 <p>Warp arrays are associated with an allocation <a class="reference internal" href="../../api_reference/_generated/warp.Device.html#warp.Device" title="warp.Device"><code class="xref py py-class docutils literal notranslate"><span class="pre">Device</span></code></a> such as
 <code class="docutils literal notranslate"><span class="pre">&quot;cpu&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;cuda:0&quot;</span></code>, and kernels run on a launch device. The portable
 default is to launch kernels on the same device as their array arguments. On

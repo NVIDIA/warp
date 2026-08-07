@@ -757,6 +757,37 @@ conflicts when using multiple processes and to support the caching of runtime-de
 </pre></div>
 </div>
 </section>
+<section id="cross-device-array-access">
+<h2>Cross-Device Array Access<a class="headerlink" href="#cross-device-array-access" title="Link to this heading">#</a></h2>
+<p>A cross-device launch runs a kernel on one device with an array allocated on
+another. If the launch device cannot access the array, a CPU kernel may fail
+with a segmentation fault (<code class="docutils literal notranslate"><span class="pre">SIGSEGV</span></code>), or CUDA may report error 700
+(<code class="docutils literal notranslate"><span class="pre">an</span> <span class="pre">illegal</span> <span class="pre">memory</span> <span class="pre">access</span> <span class="pre">was</span> <span class="pre">encountered</span></code>). The default
+<code class="docutils literal notranslate"><span class="pre">wp.config.LaunchArrayAccessMode.RELAXED</span></code> mode does not check array
+accessibility before a kernel runs.</p>
+<p>Whether a cross-device launch is valid depends on which device accesses the
+array and how the array was allocated. System capabilities and access settings
+also matter, so the same launch may work on one system and fail on another. Use
+<a class="reference internal" href="../api_reference/_generated/warp.can_access.html#warp.can_access" title="warp.can_access"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.can_access(device,</span> <span class="pre">array)</span></code></a> to check a specific
+allocation. See <a class="reference internal" href="execution_and_performance/memory_management.html#cross-device-memory-access"><span class="std std-ref">Cross-Device Memory Access</span></a> for the full access model and
+platform-specific examples.</p>
+<p>To diagnose a suspected cross-device array access failure without rejecting
+supported access, enable checked validation:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">launch_array_access_mode</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">LaunchArrayAccessMode</span><span class="o">.</span><span class="n">CHECKED</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">CHECKED</span></code> raises a <code class="docutils literal notranslate"><span class="pre">RuntimeError</span></code> before execution when Warp can determine
+that an array is inaccessible. If Warp cannot verify a custom or externally
+managed allocation, it emits a warning and allows the launch to proceed.</p>
+<p>Use <code class="docutils literal notranslate"><span class="pre">STRICT</span></code> to require every Warp array argument to be allocated on the
+launch device. It also rejects cross-device allocations that the hardware
+could access:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">launch_array_access_mode</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">LaunchArrayAccessMode</span><span class="o">.</span><span class="n">STRICT</span>
+</pre></div>
+</div>
+<p>See <a class="reference internal" href="execution_and_performance/memory_management.html#launch-array-access-checks"><span class="std std-ref">Checked Launch Validation</span></a> for the complete behavior, limitations,
+and performance considerations.</p>
+</section>
 <section id="cuda-error-verification">
 <h2>CUDA Error Verification<a class="headerlink" href="#cuda-error-verification" title="Link to this heading">#</a></h2>
 <p>It is possible to generate out-of-bounds memory access violations through poorly formed kernel code or inputs. In this
@@ -887,6 +918,7 @@ static variables is not detected, because the JIT does not run kernel module con
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#assertions">Assertions</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#step-through-debugging">Step-Through Debugging</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#generated-code">Generated Code</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cross-device-array-access">Cross-Device Array Access</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cuda-error-verification">CUDA Error Verification</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#detecting-non-finite-values">Detecting Non-Finite Values</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cuda-toolkit-debugging-tools">CUDA Toolkit Debugging Tools</a></li>

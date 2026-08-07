@@ -536,9 +536,20 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">block_dim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">256</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L10589-L10998"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.launch" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L10607-L11028"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.launch" title="Link to this definition">#</a></dt>
 <dd><p>Launch a Warp kernel on the target device</p>
 <p>Kernel launches are asynchronous with respect to the calling Python thread.</p>
+<p>The default <code class="docutils literal notranslate"><span class="pre">warp.config.LaunchArrayAccessMode.RELAXED</span></code> mode does not check
+whether array arguments are accessible from the launch device. Cross-device
+access depends on the access direction, memory kind, and system
+capabilities. An inaccessible array may cause a segmentation fault in a
+CPU kernel or a CUDA illegal memory access. Set
+<a class="reference internal" href="warp.config.launch_array_access_mode.html#warp.config.launch_array_access_mode" title="warp.config.launch_array_access_mode"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.launch_array_access_mode</span></code></a> to
+<code class="docutils literal notranslate"><span class="pre">warp.config.LaunchArrayAccessMode.CHECKED</span></code> to detect known-invalid
+accesses before launch. Use <code class="docutils literal notranslate"><span class="pre">warp.config.LaunchArrayAccessMode.STRICT</span></code> to
+require every Warp array argument to be allocated on the launch device,
+including cross-device allocations the hardware could access. See
+<a class="reference internal" href="../../user_guide/execution_and_performance/memory_management.html#launch-array-access-checks"><span class="std std-ref">Checked Launch Validation</span></a> for details and limitations.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
