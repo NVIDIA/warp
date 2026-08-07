@@ -262,6 +262,27 @@ That check cannot run pre-publish because draft assets require authentication;
 the full consumption path (redirect chain, checksum rejection of corrupted archives, cache reuse,
 `@` surviving in asset names) was validated end-to-end against a temporary fork release.
 
+Publish by re-asserting the tag in the same call, and check the tag first:
+
+```bash
+gh api repos/NVIDIA/warp/releases/<id> --jq .tag_name          # expect llvm-sdk-<version>-warp.<revision>
+gh api -X PATCH repos/NVIDIA/warp/releases/<id> \
+  -f tag_name='llvm-sdk-<version>-warp.<revision>' -F draft=false -f make_latest=false
+```
+
+A draft's `tag_name` is only a stored string; no git ref exists until the release is published.
+Any edit of a draft that omits `tag_name` silently replaces it with an `untagged-<hash>` placeholder,
+and publishing then creates a git tag carrying that placeholder name.
+This is not specific to the web UI: `gh release edit <tag> --notes ...` without `--tag` resets it too,
+and pre-creating the git tag beforehand does not prevent it.
+Only re-sending `tag_name` on each edit preserves it, which also restores it after a reset.
+The `publish-draft` job asserts the tag after creating the draft and prints the publish command
+in the job summary, but it cannot police edits made afterwards.
+
+The consequence is not cosmetic. Publishing under a placeholder produces a tag that looks like debris,
+inviting deletion, and deleting the tag of a published release reverts it to a draft,
+which takes every consumer offline at once. That sequence has already happened once.
+
 **5. Consumer migration (distribution plan Phase 2).**
 A checked-in Packman manifest pins the release tag, per-platform package versions,
 and SHA-256 digests, and `build_llvm.py` / CMake route through it.

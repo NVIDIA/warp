@@ -433,7 +433,14 @@ jobs:
           RELEASE_TAG="llvm-sdk-${LLVM_VERSION}-warp.${BUNDLE_REVISION}"
           # Re-runs replace their own draft: delete any existing DRAFT with
           # the same derived tag (published releases are never touched).
-          gh api "repos/${GITHUB_REPOSITORY}/releases" \
+          #
+          # --paginate is required, not decorative. The releases list is ordered by
+          # created_at descending, and a release's created_at is the date of its
+          # TARGET COMMIT, not when the record was drafted. A stale draft from an
+          # older build therefore sorts by that older commit date and can fall past
+          # the first page, at which point this dedupe would silently miss it and
+          # leave two drafts sharing one tag.
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/releases?per_page=100" \
             --jq ".[] | select(.draft and .tag_name == \"${RELEASE_TAG}\") | .id" |
           while read -r release_id; do
             echo "Replacing existing draft ${release_id} for ${RELEASE_TAG}"
@@ -458,3 +465,37 @@ jobs:
             --title "LLVM SDK $LLVM_VERSION ($RELEASE_TAG)" \
             --notes-file _notes.md \
             _release/*.tar.xz _release/SHA256SUMS _release/llvm-source-and-build-info.json
+
+          # A draft's tag_name is only a stored string; no git ref exists until the
+          # release is published. Any PATCH of a draft that omits tag_name silently
+          # replaces it with an "untagged-<hash>" placeholder, and publishing then
+          # creates a git tag carrying that placeholder name. Deleting such a tag
+          # later reverts the release to a draft and takes every consumer offline,
+          # since draft assets are not anonymously downloadable.
+          #
+          # Creation is not where that happens: gh release create sets tag_name
+          # correctly. This lookup exists mainly to capture RELEASE_ID for the
+          # summary below, and doubles as a cheap assertion that the draft really
+          # carries the tag we derived. The edit-time hazard and the safe publish
+          # procedure are documented in design/llvm-sdk-conan-build.md.
+          RELEASE_ID=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/releases?per_page=100" \
+            --jq ".[] | select(.draft and .tag_name == \"${RELEASE_TAG}\") | .id" | head -1)
+          if [ -z "$RELEASE_ID" ]; then
+            echo "::error::Draft created but no draft carries tag_name ${RELEASE_TAG}; its tag was reset to a placeholder."
+            exit 1
+          fi
+
+          {
+            echo "### Draft release \`${RELEASE_TAG}\` (id ${RELEASE_ID})"
+            echo
+            echo "Verify the tag immediately before publishing. If you edit the notes first, re-send"
+            echo "\`tag_name\` on every edit, or the tag silently becomes an \`untagged-<hash>\` placeholder."
+            echo
+            echo '```bash'
+            echo "gh api repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID} --jq .tag_name"
+            echo ""
+            echo "# publish, re-asserting the tag in the same call"
+            echo "gh api -X PATCH repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID} \\"
+            echo "  -f tag_name='${RELEASE_TAG}' -F draft=false -f make_latest=false"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

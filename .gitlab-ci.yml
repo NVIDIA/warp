@@ -19,13 +19,19 @@ workflow:
   rules:
     - if: $CI_PROJECT_ROOT_NAMESPACE != "omniverse" # Prevent pipelines that can't access the runners
       when: never
+    # Product releases only. The repository also carries llvm-sdk-* tags for the prebuilt
+    # Clang/LLVM SDKs, which are build inputs rather than Warp releases. Without this filter
+    # they would start a full pipeline, and the deploy jobs keyed on $CI_COMMIT_TAG would
+    # `gh release upload` Warp wheels onto the SDK release.
+    - if: $CI_COMMIT_TAG && $CI_COMMIT_TAG !~ /^v/
+      when: never
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
     - if: $CI_MERGE_REQUEST_TARGET_BRANCH_SHA
     - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
       auto_cancel:
         on_new_commit: none
         on_job_failure: none
-    - if: $CI_COMMIT_TAG # Run for tagged releases
+    - if: $CI_COMMIT_TAG =~ /^v/
     - if: $CI_COMMIT_BRANCH =~ /^release-.*/
     - if: $CI_PIPELINE_SOURCE == "web" # Run if triggered from the UI
 
@@ -1178,7 +1184,7 @@ publish wheels to github release:
   extends:
     - .ipp_lnx_x86_64_cpu_micro
   rules:
-    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_TAG =~ /^v/
   before_script:
     - conda install gh --channel conda-forge
   script:
@@ -1208,7 +1214,7 @@ publish cuda 13 wheels to github release:
   extends:
     - .ipp_lnx_x86_64_cpu_micro
   rules:
-    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_TAG =~ /^v/
   before_script:
     - !reference [.snippets, section-start-install-deps]
     - conda install gh --channel conda-forge --yes
