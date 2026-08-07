@@ -2587,8 +2587,12 @@ class ModuleHasher:
                         new_str = kernel.hash.hex()[:8] if kernel.hash else "None"
                         log_debug(f"[ModuleHasher] Kernel hash changed: {kernel.key} ({old_str} -> {new_str})")
 
+        # Canonicalize the unique codegen roots using the same full content digest
+        # that defines module identity. ModuleBuilder consumes this ordered view.
+        self.unique_kernels = dict(sorted(self.unique_kernels.items()))
+
         # include all unique kernels in the module hash
-        for kernel_hash in sorted(self.unique_kernels.keys()):
+        for kernel_hash in self.unique_kernels:
             ch.update(kernel_hash)
 
         # configuration parameters
@@ -3033,6 +3037,13 @@ class ModuleBuilder:
 
         return meta
 
+    def get_link_inputs(self):
+        """Return deterministic snapshots of native link inputs."""
+        return (
+            [self.ltoirs[key] for key in sorted(self.ltoirs)],
+            [self.fatbins[key] for key in sorted(self.fatbins)],
+        )
+
     def _codegen_functions(self, functions, device, forward_only=False, reverse_only=False):
         """Helper to generate code for a list of functions.
 
@@ -3074,8 +3085,9 @@ class ModuleBuilder:
         # code-gen LTO forward declarations
         if len(self.ltoirs_decl) > 0:
             source += 'extern "C" {\n'
-            for fwd in self.ltoirs_decl.values():
-                source += fwd + "\n"
+            # IMPORTANT: Sort by symbol so LTO discovery order cannot change the generated source.
+            for symbol in sorted(self.ltoirs_decl):
+                source += self.ltoirs_decl[symbol] + "\n"
             source += "}\n"
 
         # code-gen structs
@@ -3843,6 +3855,12 @@ class Module:
         """
         return f"{self.get_module_identifier(block_dim=block_dim)}.meta"
 
+    @staticmethod
+    def _write_meta(output_meta_path: str | os.PathLike, meta: dict) -> None:
+        """Write deterministic module metadata."""
+        with open(output_meta_path, "w") as meta_file:
+            json.dump(meta, meta_file, sort_keys=True)
+
     @synchronized(_codegen_lock)
     def _run_codegen(self, options: dict, is_cpu: bool) -> tuple[str, str, dict, list, list]:
         """Run the Python-side codegen window.
@@ -3869,7 +3887,8 @@ class Module:
             ext = "cu"
             source = builder.codegen("cuda")
         meta = builder.build_meta()
-        return source, ext, meta, list(builder.ltoirs.values()), list(builder.fatbins.values())
+        ltoirs, fatbins = builder.get_link_inputs()
+        return source, ext, meta, ltoirs, fatbins
 
     def _compile(
         self,
@@ -4076,8 +4095,7 @@ class Module:
 
         output_meta_path = os.path.join(build_dir, self._get_meta_name(block_dim=active_block_dim))
 
-        with open(output_meta_path, "w") as meta_file:
-            json.dump(meta, meta_file)
+        self._write_meta(output_meta_path, meta)
 
         # -----------------------------------------------------------
         # update cache
