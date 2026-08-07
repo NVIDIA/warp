@@ -352,6 +352,12 @@ template <typename Type> CUDA_CALLABLE inline transform_t<Type> transform_invers
 }
 
 
+template <typename Type> CUDA_CALLABLE inline transform_t<Type> transform_normalize(const transform_t<Type>& t)
+{
+    return transform_t<Type>(t.p, normalize(t.q));
+}
+
+
 template <typename Type>
 CUDA_CALLABLE inline vec_t<3, Type> transform_vector(const transform_t<Type>& t, const vec_t<3, Type>& x)
 {
@@ -1008,6 +1014,14 @@ adj_transform_inverse(const transform_t<Type>& t, transform_t<Type>& adj_t, cons
     adj_p = -adj_np;
     adj_quat_rotate(q_inv, t.p, adj_q_inv, adj_t.p, adj_p);
     adj_quat_inverse(t.q, adj_t.q, adj_q_inv);
+}
+
+template <typename Type>
+CUDA_CALLABLE inline void
+adj_transform_normalize(const transform_t<Type>& t, transform_t<Type>& adj_t, const transform_t<Type>& adj_ret)
+{
+    adj_t.p += adj_ret.p;
+    adj_normalize(t.q, adj_t.q, adj_ret.q);
 }
 
 template <typename Type>

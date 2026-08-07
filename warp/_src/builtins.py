@@ -2144,6 +2144,13 @@ add_builtin(
     group="Transformations",
     doc="Compute the inverse of the transformation ``xform``.",
 )
+add_builtin(
+    "transform_normalize",
+    input_types={"xform": transformation(dtype=Float)},
+    value_func=sametypes_create_value_func(transformation(dtype=Float)),
+    group="Transformations",
+    doc="Normalize the rotational part of the transformation ``xform``, leaving its translation unchanged.",
+)
 # ---------------------------------
 # Spatial Math
 
