@@ -582,7 +582,7 @@ def test_generic_type_as_argument(test, device):
 
 
 def test_type_operator_misspell(test, device):
-    @wp.kernel
+    @wp.kernel(module="unique")
     def kernel():
         i = wp.tid()
         _ = typez(i)(0)
@@ -597,7 +597,7 @@ def test_type_operator_misspell(test, device):
 
 
 def test_type_attribute_error(test, device):
-    @wp.kernel
+    @wp.kernel(module="unique")
     def kernel():
         a = wp.vec3(0.0)
         _ = a.dtype.shape

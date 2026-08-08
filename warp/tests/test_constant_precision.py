@@ -392,7 +392,7 @@ def test_quatd_mixed_literal_variable(test, device):
 def test_typed_constructor_rejects_mismatched_variable(test, device):
     """Passing a float64 variable to a float32 constructor errors."""
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def kernel(x: wp.float64):
         v = wp.vec3f(x, x, x)
 
@@ -404,7 +404,7 @@ def test_matrix_constructor_rejects_mismatched_variable(test, device):
     """Passing a float64 variable to a float32 matrix constructor errors."""
     mat22f = wp.types.matrix((2, 2), wp.float32)
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def kernel(x: wp.float64):
         m = mat22f(x, x, x, x)
 
@@ -416,7 +416,7 @@ def test_matrix_fill_rejects_mismatched_variable(test, device):
     """Filling a float32 matrix with a float64 variable errors."""
     mat22f = wp.types.matrix((2, 2), wp.float32)
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def kernel(x: wp.float64):
         m = mat22f(x)
 
@@ -427,7 +427,7 @@ def test_matrix_fill_rejects_mismatched_variable(test, device):
 def test_mixed_literal_variable_rejects_wrong_type(test, device):
     """vec3h(literal, float32_var, literal) errors — variable type doesn't match constructor dtype."""
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def kernel(x: wp.float32):
         v = wp.vec3h(1.0, x, 3.0)
 

@@ -162,7 +162,7 @@ def test_unpack_quat_slice_kernel():
 
 
 def test_unpack_error_non_constant_bounds(test, device):
-    @wp.kernel
+    @wp.kernel(module="unique")
     def kernel(arr: wp.array[int], n: int):
         # n is not compile-time constant
         v = wp.vec3i(*arr[:n])
@@ -172,7 +172,7 @@ def test_unpack_error_non_constant_bounds(test, device):
 
 
 def test_unpack_error_missing_stop_bound(test, device):
-    @wp.kernel
+    @wp.kernel(module="unique")
     def kernel(arr: wp.array[int]):
         v = wp.vec3i(*arr[0:])  # Missing upper bound
 
@@ -181,7 +181,7 @@ def test_unpack_error_missing_stop_bound(test, device):
 
 
 def test_unpack_error_unsupported_type(test, device):
-    @wp.kernel
+    @wp.kernel(module="unique")
     def kernel():
         x = 42
 
@@ -193,7 +193,7 @@ def test_unpack_error_unsupported_type(test, device):
 
 
 def test_unpack_error_negative_index(test, device):
-    @wp.kernel
+    @wp.kernel(module="unique")
     def kernel(arr: wp.array[int]):
         v = wp.vec3i(*arr[:-3])
 
@@ -202,7 +202,7 @@ def test_unpack_error_negative_index(test, device):
 
 
 def test_unpack_error_negative_step(test, device):
-    @wp.kernel
+    @wp.kernel(module="unique")
     def kernel(arr: wp.array[int]):
         v = wp.vec3i(*arr[5:2:-1])
 

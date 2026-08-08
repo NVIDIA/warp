@@ -1248,7 +1248,7 @@ def test_vec_slicing_assign(test, device):
 
 
 def test_vec_assign_inplace_errors(test, device):
-    @wp.kernel
+    @wp.kernel(module="unique")
     def kernel_1():
         v = wp.vec4(1.0, 2.0, 3.0, 4.0)
         v[1:] = wp.vec3d(5.0, 6.0, 7.0)
@@ -1259,7 +1259,7 @@ def test_vec_assign_inplace_errors(test, device):
     ):
         wp.launch(kernel_1, dim=1, device=device)
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def kernel_2():
         v = wp.vec4(1.0, 2.0, 3.0, 4.0)
         v[1:] = wp.float64(5.0)
@@ -1270,7 +1270,7 @@ def test_vec_assign_inplace_errors(test, device):
     ):
         wp.launch(kernel_2, dim=1, device=device)
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def kernel_3():
         v = wp.vec4(1.0, 2.0, 3.0, 4.0)
         v[1:] = wp.mat22(5.0, 6.0, 7.0, 8.0)
@@ -1281,7 +1281,7 @@ def test_vec_assign_inplace_errors(test, device):
     ):
         wp.launch(kernel_3, dim=1, device=device)
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def kernel_4():
         v = wp.vec4(1.0, 2.0, 3.0, 4.0)
         v[1:] = wp.vec2(5.0, 6.0)

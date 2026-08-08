@@ -246,7 +246,7 @@ def test_diag(test, device, dtype, register_kernels=False):
 
 
 def test_anon_constructor_error_shape_arg_missing(test, device):
-    @wp.kernel
+    @wp.kernel(module="unique")
     def kernel():
         wp.types.matrix(1.0, 2.0, 3.0)
 
@@ -258,7 +258,7 @@ def test_anon_constructor_error_shape_arg_missing(test, device):
 
 
 def test_anon_constructor_error_shape_mismatch(test, device):
-    @wp.kernel
+    @wp.kernel(module="unique")
     def kernel():
         wp.types.matrix(wp.types.matrix(shape=(1, 2), dtype=float), shape=(3, 4), dtype=float)
 
@@ -270,7 +270,7 @@ def test_anon_constructor_error_shape_mismatch(test, device):
 
 
 def test_anon_constructor_error_type_mismatch(test, device):
-    @wp.kernel
+    @wp.kernel(module="unique")
     def kernel(x: wp.float32):
         wp.types.matrix(x, shape=(3, 2), dtype=wp.float16)
 
@@ -282,7 +282,7 @@ def test_anon_constructor_error_type_mismatch(test, device):
 
 
 def test_anon_constructor_error_invalid_arg_count(test, device):
-    @wp.kernel
+    @wp.kernel(module="unique")
     def kernel():
         wp.types.matrix(1.0, 2.0, 3.0, shape=(2, 2), dtype=float)
 
@@ -294,7 +294,7 @@ def test_anon_constructor_error_invalid_arg_count(test, device):
 
 
 def test_tpl_constructor_error_incompatible_sizes(test, device):
-    @wp.kernel
+    @wp.kernel(module="unique")
     def kernel():
         wp.mat33(wp.mat22(1.0, 2.0, 3.0, 4.0))
 
@@ -306,7 +306,7 @@ def test_tpl_constructor_error_incompatible_sizes(test, device):
 
 
 def test_tpl_constructor_error_invalid_arg_count(test, device):
-    @wp.kernel
+    @wp.kernel(module="unique")
     def kernel():
         wp.mat22(1.0, 2.0, 3.0)
 

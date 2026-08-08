@@ -535,15 +535,24 @@ class TestCompositeComponentAdjoint(unittest.TestCase):
     def test_slot_type_mismatch_reference_rhs_reports_error(self):
         """Reject a vector reference assigned into a scalar component with a type mismatch and no slot-store call."""
 
-        @wp.kernel
+        @wp.kernel(module="unique")
         def _k_mismatch(y: wp.array[wp.vec3], src: wp.array[wp.vec3]):
             i = wp.tid()
             y[i].y = src[i]  # scalar slot (.y) <- vec3 reference rhs: type mismatch
 
+        n = 1
+        y = wp.zeros(n, dtype=wp.vec3)
+        src = wp.zeros(n, dtype=wp.vec3)
+
+        # Launch rather than calling adj.build() directly: rejecting the mismatch is
+        # what a user hits, and driving a build through the adjoint leaves a failed
+        # build in the kernel's module without the module ever being asked to load.
         # Match the message so an unrelated runtime failure cannot satisfy this assertion.
         with self.assertRaisesRegex(RuntimeError, "must be of the same type as the reference"):
-            _k_mismatch.adj.build(builder=None)
+            wp.launch(_k_mismatch, n, inputs=[y, src])
 
+        # No public API exposes the emitted code, so read it off the adjoint: the
+        # mismatch has to be rejected before any slot store is written.
         self.assertTrue(_k_mismatch.adj.blocks, "Expected build() to initialize codegen blocks before failing.")
         forward = "\n".join(_k_mismatch.adj.blocks[0].body_forward)
         reverse = "\n".join(_k_mismatch.adj.blocks[0].body_reverse)

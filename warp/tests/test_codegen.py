@@ -478,7 +478,7 @@ def test_invalid_namespace_path(test, device):
         tid = wp.foo.bar.tid()
         print(tid)
 
-    kernel = wp.Kernel(func=kernel_invalid_intermediate)
+    kernel = make_isolated_kernel(kernel_invalid_intermediate)
     with test.assertRaisesRegex(AttributeError, r"`foo` is not an attribute of"):
         wp.launch(kernel, dim=1, device=device)
 
@@ -487,7 +487,7 @@ def test_invalid_namespace_path(test, device):
         tid = wp.types.tid()
         print(tid)
 
-    kernel = wp.Kernel(func=kernel_submodule_missing_func)
+    kernel = make_isolated_kernel(kernel_submodule_missing_func)
     with test.assertRaisesRegex(AttributeError, r"Could not find function wp.types.tid"):
         wp.launch(kernel, dim=1, device=device)
 
@@ -496,7 +496,7 @@ def test_invalid_namespace_path(test, device):
         x = wp.nonexistent_func()
         print(x)
 
-    kernel = wp.Kernel(func=kernel_missing_func)
+    kernel = make_isolated_kernel(kernel_missing_func)
     with test.assertRaisesRegex(AttributeError, r"Could not find function wp.nonexistent_func"):
         wp.launch(kernel, dim=1, device=device)
 
@@ -515,15 +515,15 @@ def test_error_global_var(test, device):
 
     out = wp.empty_like(arr)
 
-    kernel = wp.Kernel(func=kernel_1_fn)
+    kernel = make_isolated_kernel(kernel_1_fn)
     with test.assertRaisesRegex(TypeError, r"Invalid external reference type: <class 'warp._src.types.array'>"):
         wp.launch(kernel, dim=out.shape, inputs=(), outputs=(out,), device=device)
 
-    kernel = wp.Kernel(func=kernel_2_fn)
+    kernel = make_isolated_kernel(kernel_2_fn)
     with test.assertRaisesRegex(TypeError, r"Invalid external reference type: <class 'warp._src.types.array'>"):
         wp.launch(kernel, dim=out.shape, inputs=(), outputs=(out,), device=device)
 
-    kernel = wp.Kernel(func=kernel_3_fn)
+    kernel = make_isolated_kernel(kernel_3_fn)
     with test.assertRaisesRegex(TypeError, r"Invalid external reference type: <class 'warp._src.types.array'>"):
         wp.launch(kernel, dim=out.shape, inputs=(), outputs=(out,), device=device)
 
@@ -535,14 +535,14 @@ def test_error_collection_construct(test, device):
     def kernel_2_fn():
         x = {"a": 1.0, "b": 2.0, "c": 3.0}
 
-    kernel = wp.Kernel(func=kernel_1_fn)
+    kernel = make_isolated_kernel(kernel_1_fn)
     with test.assertRaisesRegex(
         RuntimeError,
         r"List constructs are not supported in kernels. Use vectors like `wp.vec3\(\)` for small fixed-size collections, or `wp.zeros\(shape=N, dtype=\.\.\.\)` for stack-allocated arrays.",
     ):
         wp.launch(kernel, dim=1, device=device)
 
-    kernel = wp.Kernel(func=kernel_2_fn)
+    kernel = make_isolated_kernel(kernel_2_fn)
     with test.assertRaisesRegex(RuntimeError, r"Construct `ast.Dict` not supported in kernels."):
         wp.launch(kernel, dim=1, device=device)
 
@@ -554,11 +554,11 @@ def test_error_unmatched_arguments(test, device):
     def kernel_2_fn():
         x = wp.dot(wp.vec2(1.0, 2.0), wp.vec2h(1.0, 2.0))
 
-    kernel = wp.Kernel(func=kernel_1_fn)
+    kernel = make_isolated_kernel(kernel_1_fn)
     with test.assertRaisesRegex(RuntimeError, r"Input types must be the same, got \['int32', 'float32'\]"):
         wp.launch(kernel, dim=1, device=device)
 
-    kernel = wp.Kernel(func=kernel_2_fn)
+    kernel = make_isolated_kernel(kernel_2_fn)
     with test.assertRaisesRegex(
         RuntimeError,
         r"Input types must be exactly the same, got \['vec2f', 'vec2h'\]",
@@ -970,28 +970,28 @@ def test_error_return_annotation_mismatch(test, device):
     def kernel_4_fn():
         _x, _y, _z = foo_4(123)
 
-    kernel = wp.Kernel(func=kernel_1_fn)
+    kernel = make_isolated_kernel(kernel_1_fn)
     with test.assertRaisesRegex(
         wp.WarpCodegenError,
         r"The function `foo_1` has its return type annotated as `int16` but the code returns a value of type `int8`.",
     ):
         wp.launch(kernel, dim=1, device=device)
 
-    kernel = wp.Kernel(func=kernel_2_fn)
+    kernel = make_isolated_kernel(kernel_2_fn)
     with test.assertRaisesRegex(
         wp.WarpCodegenError,
         r"The function `foo_2` has its return type annotated as `int` but the code returns 2 values.",
     ):
         wp.launch(kernel, dim=1, device=device)
 
-    kernel = wp.Kernel(func=kernel_3_fn)
+    kernel = make_isolated_kernel(kernel_3_fn)
     with test.assertRaisesRegex(
         wp.WarpCodegenError,
         r"The function `foo_3` has its return type annotated as `tuple\[int, int\]` but the code returns a tuple with types `\(int32, float32\)`.",
     ):
         wp.launch(kernel, dim=1, device=device)
 
-    kernel = wp.Kernel(func=kernel_4_fn)
+    kernel = make_isolated_kernel(kernel_4_fn)
     with test.assertRaisesRegex(
         wp.WarpCodegenError,
         r"The function `foo_4` has its return type annotated as a tuple of 3 elements but the code returns 2 values.",
@@ -1667,7 +1667,7 @@ def test_grad_of_function_bound_to_local(test, device):
 # Rebinding a function-valued local to a different function has no codegen-able meaning
 # (Warp has no function pointers) and should raise a clear error rather than miscompile.
 def test_rebind_function_local_errors(test, device):
-    @wp.kernel
+    @wp.kernel(module="unique")
     def rebind_function_local_kernel(out: wp.array[float]):
         f = func_to_local_double
         f = func_to_local_halve
@@ -1680,7 +1680,7 @@ def test_rebind_function_local_errors(test, device):
 # Rebinding a function-valued local to a non-function value (e.g. `f = some_func; f = 1.0`) has no
 # codegen-able meaning either and should raise a clear error rather than fail on the generic type check.
 def test_rebind_function_local_to_value_errors(test, device):
-    @wp.kernel
+    @wp.kernel(module="unique")
     def rebind_function_local_to_value_kernel(out: wp.array[float]):
         f = func_to_local_double
         f = 1.0

@@ -588,7 +588,7 @@ def test_bool_capacity_rejected(test, device):
     def kernel_fn():
         s = wp.tile_stack(capacity=True, dtype=int)
 
-    kernel = wp.Kernel(func=kernel_fn)
+    kernel = make_isolated_kernel(kernel_fn)
     with test.assertRaisesRegex(RuntimeError, r"tile_stack|overload"):
         wp.launch_tiled(kernel, dim=[1], inputs=[], block_dim=32, device=device)
 
@@ -597,7 +597,7 @@ def test_zero_capacity_rejected(test, device):
     def kernel_fn():
         s = wp.tile_stack(capacity=ZERO_CAP, dtype=int)
 
-    kernel = wp.Kernel(func=kernel_fn)
+    kernel = make_isolated_kernel(kernel_fn)
     with test.assertRaisesRegex((RuntimeError, ValueError), "positive integer"):
         wp.launch_tiled(kernel, dim=[1], inputs=[], block_dim=32, device=device)
 
@@ -608,7 +608,7 @@ def test_push_type_mismatch_rejected(test, device):
         s = wp.tile_stack(capacity=SMALL_CAP, dtype=int)
         wp.tile_stack_push(s, 1.0, True)
 
-    kernel = wp.Kernel(func=kernel_fn)
+    kernel = make_isolated_kernel(kernel_fn)
     with test.assertRaisesRegex((RuntimeError, TypeError), "does not match"):
         wp.launch_tiled(kernel, dim=[1], inputs=[], block_dim=32, device=device)
 

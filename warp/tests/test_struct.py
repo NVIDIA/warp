@@ -256,7 +256,7 @@ def test_nested_mat(test, device):
 
 
 def test_assign_view(test, device):
-    @wp.kernel
+    @wp.kernel(module="unique")
     def kernel_assign_view(out: wp.array2d[wp.mat44]):
         out[0][2, 2] = 6.0
 
@@ -270,7 +270,7 @@ def test_assign_view(test, device):
 
 
 def test_struct_attribute_error(test, device):
-    @wp.kernel
+    @wp.kernel(module="unique")
     def kernel(foo: Foo):
         _ = foo.nonexisting
 

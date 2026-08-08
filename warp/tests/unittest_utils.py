@@ -43,6 +43,23 @@ import warp as wp  # noqa: E402
 pxr = importlib.util.find_spec("pxr")
 USD_AVAILABLE = pxr is not None
 
+
+def make_isolated_kernel(func, **kwargs):
+    """Build a :class:`warp.Kernel` in a module of its own.
+
+    A kernel that fails to build fails its whole module, so a test that builds a
+    deliberately broken kernel has to keep it out of the test file's module.
+    ``@wp.kernel(module="unique")`` covers the decorator form; this covers the
+    kernels tests construct directly, and the cases where ``module="unique"``
+    would surface the failure too early (it hashes, and so builds, the kernel at
+    decoration time). The module name is keyed on the definition site rather than
+    the qualified name alone, so a test that rebinds the same name to several
+    broken kernels still gets one module each.
+    """
+    key = f"{func.__module__}.{func.__qualname__}:{func.__code__.co_firstlineno}"
+    return wp.Kernel(func=func, module=wp.get_module(key), **kwargs)
+
+
 # default test mode (see get_test_devices())
 #   "basic" - only run on CPU and first GPU device
 #   "unique" - run on CPU and all unique GPU arches
