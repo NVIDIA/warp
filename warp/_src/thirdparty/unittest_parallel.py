@@ -633,6 +633,7 @@ class ParallelTestManager:
         with _coverage(self.args, self.temp_dir):
             runner = unittest.TextTestRunner(
                 stream=StringIO(),
+                descriptions=False,  # NVIDIA Modification
                 resultclass=resultclass,  # NVIDIA Modification
                 verbosity=self.args.verbose,
                 failfast=self.args.failfast,
