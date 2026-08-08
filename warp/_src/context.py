@@ -45,6 +45,8 @@ from typing import (
     overload as typing_overload,
 )
 
+from warp._src.build_architecture import machine_architecture
+
 if TYPE_CHECKING:
     from typing import ParamSpec
 
@@ -3499,7 +3501,7 @@ class Module:
         # Resolve None-means-autodetect for enable_tiles_in_stack_memory
         enable_tiles = config.enable_tiles_in_stack_memory
         if enable_tiles is None:
-            enable_tiles = platform.machine() == "aarch64"
+            enable_tiles = machine_architecture() == "aarch64"
         options["enable_tiles_in_stack_memory"] = enable_tiles
 
         return options
@@ -5679,7 +5681,7 @@ class Graph:
 
 class Runtime:
     def __init__(self):
-        if platform.system() == "Darwin" and platform.machine() == "x86_64":
+        if platform.system() == "Darwin" and machine_architecture() == "x86_64":
             raise RuntimeError(
                 "Warp no longer supports Intel-based macOS (x86_64). "
                 "Please use Warp 1.9.x or earlier for Intel Mac support, "

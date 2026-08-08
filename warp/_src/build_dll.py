@@ -7,33 +7,34 @@ import concurrent.futures
 import functools
 import os
 import pathlib
-import platform
 import re
 import shutil
 import subprocess
 import sys
 import time
 
+from warp._src.build_architecture import Architecture, machine_architecture
 from warp._src.utils import ScopedTimer
 
 verbose_cmd = True  # print command lines before executing them
 
 MIN_CTK_VERSION = (12, 0)
 
-# Echoed by our wrapper command before dumping the environment; vcvars64.bat does not emit it.
+# Echoed by our wrapper command before dumping the environment; the MSVC
+# environment script does not emit it.
 _VCVARS_ENV_DUMP_MARKER = "__WARP_VCVARS_ENV_BEGIN__"
 
 
 def _parse_vcvars_environment(output: str) -> dict[str, str]:
-    """Parse environment variables from ``vcvars64.bat && set`` output.
+    """Parse environment variables from selected MSVC script ``&& set`` output.
 
     Scans the command output for ``_VCVARS_ENV_DUMP_MARKER`` and only begins parsing
-    after it, so any banner text emitted by ``vcvars64.bat`` is ignored. Each
+    after it, so any banner text emitted by the selected MSVC script is ignored. Each
     subsequent line is split on the first ``=`` into a ``KEY=VALUE`` pair; lines
     without a separator or with an empty key are skipped.
 
     Args:
-        output: Decoded output of ``vcvars64.bat && echo MARKER && set``.
+        output: Decoded output of selected MSVC script ``&& echo MARKER && set``.
 
     Returns:
         Mapping of environment variable names to values found after the marker.
@@ -56,17 +57,19 @@ def _parse_vcvars_environment(output: str) -> dict[str, str]:
     return env
 
 
-def machine_architecture() -> str:
-    """Return a canonical machine architecture string.
-    - "x86_64" for x86-64, aka. AMD64, aka. x64
-    - "aarch64" for AArch64, aka. ARM64
-    """
-    machine = platform.machine()
-    if machine == "x86_64" or machine == "AMD64":
-        return "x86_64"
-    if machine == "aarch64" or machine == "arm64":
-        return "aarch64"
-    raise RuntimeError(f"Unrecognized machine architecture {machine}")
+def _msvc_toolchain_layout(arch: Architecture) -> tuple[str, str]:
+    if arch == "aarch64":
+        return "HostARM64", "arm64"
+    return "HostX64", "x64"
+
+
+def _msvc_environment_script(vs_path: str, arch: Architecture) -> tuple[str, list[str]]:
+    if arch == "aarch64":
+        return (
+            os.path.join(vs_path, "Common7", "Tools", "VsDevCmd.bat"),
+            ["-arch=arm64", "-host_arch=arm64"],
+        )
+    return os.path.join(vs_path, "VC", "Auxiliary", "Build", "vcvars64.bat"), []
 
 
 def packman_llvm_platform(arch: str) -> str:
@@ -107,9 +110,12 @@ def run_cmd(cmd, print_success_output=True):
         raise e
 
 
-# cut-down version of vcvars64.bat that allows using
+# Cut-down version of the MSVC environment script that allows using
 # custom toolchain locations, returns the compiler program path
-def set_msvc_env(msvc_path, sdk_path):
+def set_msvc_env(msvc_path, sdk_path, host_arch: Architecture | None = None) -> str:
+    host_arch = host_arch or machine_architecture()
+    host_directory, target_directory = _msvc_toolchain_layout(host_arch)
+
     if "INCLUDE" not in os.environ:
         os.environ["INCLUDE"] = ""
 
@@ -125,17 +131,17 @@ def set_msvc_env(msvc_path, sdk_path):
     os.environ["INCLUDE"] += os.pathsep + os.path.join(sdk_path, "include/ucrt")
     os.environ["INCLUDE"] += os.pathsep + os.path.join(sdk_path, "include/shared")
 
-    os.environ["LIB"] += os.pathsep + os.path.join(msvc_path, "lib/x64")
-    os.environ["LIB"] += os.pathsep + os.path.join(sdk_path, "lib/ucrt/x64")
-    os.environ["LIB"] += os.pathsep + os.path.join(sdk_path, "lib/um/x64")
+    os.environ["LIB"] += os.pathsep + os.path.join(msvc_path, "lib", target_directory)
+    os.environ["LIB"] += os.pathsep + os.path.join(sdk_path, "lib", "ucrt", target_directory)
+    os.environ["LIB"] += os.pathsep + os.path.join(sdk_path, "lib", "um", target_directory)
 
-    os.environ["PATH"] += os.pathsep + os.path.join(msvc_path, "bin/HostX64/x64")
-    os.environ["PATH"] += os.pathsep + os.path.join(sdk_path, "bin/x64")
+    os.environ["PATH"] += os.pathsep + os.path.join(msvc_path, "bin", host_directory, target_directory)
+    os.environ["PATH"] += os.pathsep + os.path.join(sdk_path, "bin", target_directory)
 
-    return os.path.join(msvc_path, "bin", "HostX64", "x64", "cl.exe")
+    return os.path.join(msvc_path, "bin", host_directory, target_directory, "cl.exe")
 
 
-def find_host_compiler() -> str:
+def find_host_compiler(host_arch: Architecture | None = None) -> str:
     """Find the host C++ compiler.
 
     On Windows, checks for pre-configured Visual Studio environment before
@@ -146,36 +152,52 @@ def find_host_compiler() -> str:
         Path to compiler executable, or empty string if not found (Windows only).
         Note: Empty string return allows build_lib.py to handle error gracefully.
     """
-    if os.name == "nt":
-        # Check if Visual Studio environment already configured (conda, Docker, vcvars64, etc.)
-        # VCINSTALLDIR and VCToolsVersion are set by vcvars64.bat
-        if os.environ.get("VCINSTALLDIR") or os.environ.get("VCToolsVersion"):
-            if verbose_cmd:
-                print("Visual Studio environment already configured, skipping vcvars64.bat")
+    host_arch = host_arch or machine_architecture()
 
-            cl_path = shutil.which("cl.exe")
-            if cl_path:
+    if os.name == "nt":
+        # Check if Visual Studio environment already configured (conda, Docker, etc.)
+        # VCINSTALLDIR and VCToolsVersion are set by the MSVC environment script.
+        if os.environ.get("VCINSTALLDIR") or os.environ.get("VCToolsVersion"):
+            arm_environment_matches = (
+                os.environ.get("VSCMD_ARG_HOST_ARCH") == "arm64" and os.environ.get("VSCMD_ARG_TGT_ARCH") == "arm64"
+            )
+            if host_arch != "aarch64" or arm_environment_matches:
                 if verbose_cmd:
-                    print(f"Using cl.exe from pre-configured environment: {cl_path}")
-                return cl_path
-            else:
-                # Fall through to auto-configuration if cl.exe not actually available
+                    print("Visual Studio environment already configured, skipping MSVC environment script")
+
+                cl_path = shutil.which("cl.exe")
+                if cl_path:
+                    if verbose_cmd:
+                        print(f"Using cl.exe from pre-configured environment: {cl_path}")
+                    return cl_path
+                # Fall through to auto-configuration if cl.exe is not actually available.
                 if verbose_cmd:
                     print("Warning: VS environment variables set but cl.exe not found, attempting auto-configuration")
+            else:
+                if verbose_cmd:
+                    print("Warning: VS environment is not configured for native ARM64, attempting auto-configuration")
 
         vswhere_path = r"%ProgramFiles(x86)%/Microsoft Visual Studio/Installer/vswhere.exe"
         vswhere_path = os.path.expandvars(vswhere_path)
         if not os.path.isfile(vswhere_path):
             return ""  # Signal to caller that VS not found
 
-        vs_path = run_cmd(f'"{vswhere_path}" -latest -property installationPath').decode().rstrip()
-        vsvars_path = os.path.join(vs_path, "VC\\Auxiliary\\Build\\vcvars64.bat")
+        component = (
+            "Microsoft.VisualStudio.Component.VC.Tools.ARM64"
+            if host_arch == "aarch64"
+            else "Microsoft.VisualStudio.Component.VC.Tools.x86.x64"
+        )
+        vs_path = (
+            run_cmd(f'"{vswhere_path}" -latest -requires {component} -property installationPath').decode().rstrip()
+        )
+        vsvars_path, vsvars_arguments = _msvc_environment_script(vs_path, host_arch)
 
         if not os.path.isfile(vsvars_path):
             return ""  # Signal to caller that VS environment script not found
 
+        vsvars_command = " ".join([f'"{vsvars_path}"', *vsvars_arguments])
         output = run_cmd(
-            f'"{vsvars_path}" && echo {_VCVARS_ENV_DUMP_MARKER} && set', print_success_output=False
+            f"{vsvars_command} && echo {_VCVARS_ENV_DUMP_MARKER} && set", print_success_output=False
         ).decode()
 
         os.environ.update(_parse_vcvars_environment(output))
@@ -187,6 +209,11 @@ def find_host_compiler() -> str:
         vc_tools_version = os.environ.get("VCToolsVersion")
         if not vc_tools_version:
             return ""  # Signal to caller that VS environment script did not configure MSVC
+
+        if host_arch == "aarch64" and (
+            os.environ.get("VSCMD_ARG_HOST_ARCH") != "arm64" or os.environ.get("VSCMD_ARG_TGT_ARCH") != "arm64"
+        ):
+            return ""  # Signal to caller that the MSVC environment script selected the wrong architecture
 
         cl_version = vc_tools_version.split(".")
 

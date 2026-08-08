@@ -28,6 +28,7 @@ import time
 import build_llvm
 import warp._src.build_dll as build_dll
 import warp.config as config
+from warp._src.build_architecture import machine_architecture
 from warp._src.generated_files import generate_exports_header_file, generate_version_header
 
 
@@ -194,7 +195,7 @@ def find_libmathdx(cuda_toolkit_major_version: int, base_path: str) -> str | Non
         "pull",
         "--verbose",
         "--platform",
-        f"{platform.system()}-{build_dll.machine_architecture()}".lower(),
+        f"{platform.system()}-{machine_architecture()}".lower(),
         "--include-tag",
         f"cu{cuda_toolkit_major_version}",
         os.path.join(base_path, "deps", "libmathdx-deps.packman.xml"),
@@ -431,7 +432,7 @@ def main(argv: list[str] | None = None) -> int:
             return 1
 
     # Warn if building on Intel Mac (cross-compiling for ARM64)
-    if platform.system() == "Darwin" and platform.machine() == "x86_64":
+    if platform.system() == "Darwin" and machine_architecture() == "x86_64":
         print("=" * 80)
         print("WARNING: Building Warp on Intel-based macOS")
         print("=" * 80)
@@ -628,7 +629,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         is_gitlab_ci_windows = os.getenv("GITLAB_CI") is not None and platform.system() == "Windows"
-        is_intel_mac = platform.system() == "Darwin" and platform.machine() == "x86_64"
+        is_intel_mac = platform.system() == "Darwin" and machine_architecture() == "x86_64"
 
         if is_gitlab_ci_windows or is_intel_mac:
             if is_gitlab_ci_windows:
@@ -645,7 +646,7 @@ def main(argv: list[str] | None = None) -> int:
                 compiler = "clang++" if args.clang_build_toolchain else args.host_compiler
                 # GCC ships libasan.so; Clang ships libclang_rt.asan-<arch>.so.
                 runtime_name = (
-                    f"libclang_rt.asan-{platform.machine()}.so"
+                    f"libclang_rt.asan-{machine_architecture()}.so"
                     if "clang" in os.path.basename(compiler)
                     else "libasan.so"
                 )

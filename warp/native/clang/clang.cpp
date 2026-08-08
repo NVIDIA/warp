@@ -82,12 +82,25 @@ extern void __jit_debug_register_code();
 namespace wp {
 
 #if defined(_WIN32)
-// Windows defaults to using the COFF binary format (aka. "msvc" in the target triple).
-// Override it to use the ELF format to support DWARF debug info, but keep using the
-// Microsoft calling convention (see also https://llvm.org/docs/DebuggingJITedCode.html).
+// Windows x86-64 uses ELF for DWARF debugging while retaining the Microsoft
+// calling convention. ARM64 stays native COFF because LLVM's ELF writer cannot
+// represent Windows relocations, and a non-Windows triple would select the
+// wrong stack-probing and TLS ABI. COFF ARM64 objects are linked by RTDyld
+// because JITLink supports COFF only for x86-64.
+#if defined(__aarch64__) || defined(_M_ARM64)
+static const char* target_triple = "aarch64-pc-windows-msvc";
+#else
 static const char* target_triple = "x86_64-pc-windows-elf";
+#endif
 #else
 static const char* target_triple = LLVM_DEFAULT_TARGET_TRIPLE;
+#endif
+
+// JITLink does not support COFF ARM64; RuntimeDyldCOFFAArch64 does.
+#if defined(_WIN32) && (defined(__aarch64__) || defined(_M_ARM64))
+static constexpr bool force_legacy_cpu_linker = true;
+#else
+static constexpr bool force_legacy_cpu_linker = false;
 #endif
 
 // Minimum CUDA compute capability that supports all of Warp's features.
@@ -232,7 +245,7 @@ static std::unique_ptr<clang::CompilerInstance> create_compiler(
         args.push_back("+f16c");
 #endif
 
-#if defined(__aarch64__)
+#if defined(__aarch64__) || defined(_M_ARM64)
         if (tiles_in_stack_memory) {
             // Static memory support is broken on AArch64 CPUs. As a workaround we reserve some stack memory on kernel
             // entry, and point the callee-saved x28 register to it so we can access it anywhere. See
@@ -584,7 +597,14 @@ WP_API int wp_compile_cpp(
     else
         target_options.AllowFPOpFusion = llvm::FPOpFusion::Strict;
     llvm::Reloc::Model relocation_model = llvm::Reloc::PIC_;  // Position Independent Code
+#if defined(_WIN32) && (defined(__aarch64__) || defined(_M_ARM64))
+    // Windows ARM64 is always PIC. With the large code model, __chkstk uses
+    // ADRP+ADD relocations that RTDyld cannot range-extend to warp-clang.dll.
+    // The small model emits a BRANCH26 call, for which RTDyld creates a stub.
+    llvm::CodeModel::Model code_model = llvm::CodeModel::Small;
+#else
     llvm::CodeModel::Model code_model = llvm::CodeModel::Large;  // Don't make assumptions about displacement sizes
+#endif
 
 #if LLVM_VERSION_MAJOR >= 18
     llvm::CodeGenOptLevel codegen_opt;
@@ -745,7 +765,16 @@ static llvm::orc::LLJIT* get_or_create_jit(bool use_legacy_linker)
 #else
                 auto get_memory_manager = []() {
 #endif
+#if defined(_WIN32) && (defined(__aarch64__) || defined(_M_ARM64))
+                    // Keep code and data in one allocation so ADRP+ADD references
+                    // remain within ±4 GiB. RTDyld's COFF ARM64 relocator neither
+                    // range-checks nor creates stubs for page-relative relocations.
+                    return std::make_unique<llvm::SectionMemoryManager>(
+                        /*MM=*/nullptr, /*ReserveAllocationSpace=*/true
+                    );
+#else
                     return std::make_unique<llvm::SectionMemoryManager>();
+#endif
                 };
                 auto layer
                     = std::make_unique<llvm::orc::RTDyldObjectLinkingLayer>(session, std::move(get_memory_manager));
@@ -871,6 +900,9 @@ static bool warp_clang_is_asan_build()
 // builds (WP_ENABLE_DEBUG=1).
 WP_API int wp_load_obj(const char* object_file, const char* module_name, bool use_legacy_linker)
 {
+    // Windows ARM64 COFF objects require RTDyld.
+    use_legacy_linker = use_legacy_linker || force_legacy_cpu_linker;
+
     std::lock_guard<std::mutex> lock(jit_mutex);
 
     auto* jit = get_or_create_jit(use_legacy_linker);
@@ -904,6 +936,9 @@ WP_API int wp_load_obj(const char* object_file, const char* module_name, bool us
 
         auto error = dll->define(llvm::orc::absoluteSymbols({
 #endif
+            // Keep this table function-only on Windows ARM64. RTDyld can create
+            // long-branch stubs for calls into warp-clang.dll, but not for
+            // page-relative data references. Do not add data symbols here.
             SYMBOL(printf), SYMBOL(puts), SYMBOL(putchar), SYMBOL_T(abs, int (*)(int)), SYMBOL(llabs), SYMBOL(fmodf),
                 SYMBOL_T(fmod, double (*)(double, double)), SYMBOL(logf), SYMBOL_T(log, double (*)(double)),
                 SYMBOL(log2f), SYMBOL_T(log2, double (*)(double)), SYMBOL(log10f), SYMBOL_T(log10, double (*)(double)),

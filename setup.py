@@ -2,15 +2,23 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import argparse
+import importlib.util
 import os
 import pathlib
-import platform
 import shutil
 import sys
 from typing import ClassVar, NamedTuple
 
 import setuptools
 from wheel.bdist_wheel import bdist_wheel
+
+build_architecture_path = pathlib.Path(__file__).parent / "warp" / "_src" / "build_architecture.py"
+build_architecture_spec = importlib.util.spec_from_file_location("warp_build_architecture", build_architecture_path)
+if build_architecture_spec is None or build_architecture_spec.loader is None:
+    raise RuntimeError(f"Could not load build architecture helpers from {build_architecture_path}")
+build_architecture_module = importlib.util.module_from_spec(build_architecture_spec)
+build_architecture_spec.loader.exec_module(build_architecture_module)
+machine_architecture = build_architecture_module.machine_architecture
 
 # Parse --build-option arguments meant for the bdist_wheel command. We have to parse these
 # ourselves because when bdist_wheel runs it's too late to select a subset of libraries for package_data.
@@ -21,7 +29,7 @@ parser.add_argument(
     "-P",
     type=str,
     default="",
-    help="Wheel platform: windows-x86_64|linux-x86_64|linux-aarch64|macos-aarch64",
+    help="Wheel platform: windows-x86_64|windows-aarch64|linux-x86_64|linux-aarch64|macos-aarch64",
 )
 parser.add_argument(
     "--manylinux",
@@ -31,18 +39,6 @@ parser.add_argument(
     help="Manylinux flavor for Linux wheels: manylinux_2_28|manylinux_2_34",
 )
 args = parser.parse_known_args()[0]
-
-
-# returns a canonical machine architecture string
-# - "x86_64" for x86-64, aka. AMD64, aka. x64
-# - "aarch64" for AArch64, aka. ARM64
-def machine_architecture() -> str:
-    machine = platform.machine()
-    if machine == "x86_64" or machine == "AMD64":
-        return "x86_64"
-    if machine == "aarch64" or machine == "arm64":
-        return "aarch64"
-    raise RuntimeError(f"Unrecognized machine architecture {machine}")
 
 
 def machine_os() -> str:
@@ -74,6 +70,7 @@ class Platform(NamedTuple):
 
 platforms = [
     Platform("windows", "x86_64", "Windows x86-64", ".dll", "win_amd64"),
+    Platform("windows", "aarch64", "Windows ARM64", ".dll", "win_arm64"),
     Platform("linux", "x86_64", "Linux x86-64", ".so", "manylinux_2_28_x86_64"),
     Platform("linux", "aarch64", "Linux AArch64", ".so", "manylinux_2_34_aarch64"),
     Platform("macos", "aarch64", "macOS ARM64", ".dylib", "macosx_11_0_arm64"),
@@ -94,7 +91,7 @@ def detect_warp_libraries():
         for p in platforms:
             if os.path.splitext(file.name)[1] == p.extension:
                 # If this is a local build, assume we want a wheel for this machine's architecture
-                if file.parent.name == "bin" and p.arch == machine_architecture():
+                if file.parent.name == "bin" and p.os == machine_os() and p.arch == machine_architecture():
                     detected_libraries.add(Library(file.name, "bin/", p))
                 else:
                     # Expect libraries to be in a subdirectory named after the wheel platform
@@ -132,7 +129,7 @@ if args.command == "bdist_wheel":
         if len(detected_platforms) > 1:
             print("Libraries for multiple platforms were detected.")
             print("Run `python -m build --wheel -C--build-option=-P<platform>` to select a specific one.")
-            print("Available platforms: windows-x86_64, linux-x86_64, linux-aarch64, macos-aarch64")
+            print("Available platforms: windows-x86_64, windows-aarch64, linux-x86_64, linux-aarch64, macos-aarch64")
             # Select the libraries corresponding with the this machine's platform
             for p in platforms:
                 if p.os == machine_os() and p.arch == machine_architecture():
@@ -154,7 +151,7 @@ class WarpBDistWheel(bdist_wheel):
     # setuptools.Command can validate the command line options.
     user_options: ClassVar[list[tuple[str, str, str]]] = [
         *bdist_wheel.user_options,
-        ("platform=", "P", "Wheel platform: windows-x86_64|linux-x86_64|linux-aarch64|macos-aarch64"),
+        ("platform=", "P", "Wheel platform: windows-x86_64|windows-aarch64|linux-x86_64|linux-aarch64|macos-aarch64"),
         ("manylinux=", "M", "Manylinux flavor for Linux wheels: manylinux_2_28|manylinux_2_34"),
     ]
 
