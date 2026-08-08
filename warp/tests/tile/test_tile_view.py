@@ -1045,6 +1045,40 @@ def test_tile_view_offset_oob_rejected(test, device):
         wp.launch_tiled(pos_kernel, dim=[1], inputs=[], block_dim=32, device=device)
 
 
+def test_tile_view_shape_oob_rejected(test, device):
+    # An explicit shape must fit inside the parent tile. The view aliases the parent
+    # storage, so an extent reaching past the end of an axis would read (and, through
+    # an assignment, write) the shared memory that follows.
+    @wp.kernel(module="unique", enable_backward=False)
+    def overrun_1d_kernel():
+        t = wp.tile_ones(shape=(TILE_N,), dtype=float)
+        v = wp.tile_view(t, offset=(2,), shape=(TILE_N,))  # 2 + TILE_N > TILE_N
+
+    with test.assertRaisesRegex((RuntimeError, ValueError), r"out of bounds"):
+        wp.launch_tiled(overrun_1d_kernel, dim=[1], inputs=[], block_dim=32, device=device)
+
+    @wp.kernel(module="unique", enable_backward=False)
+    def overrun_2d_kernel():
+        t = wp.tile_ones(shape=(TILE_M, TILE_N), dtype=float)
+        v = wp.tile_view(t, offset=(0, 1), shape=(TILE_M, TILE_N))  # last axis overruns
+
+    with test.assertRaisesRegex((RuntimeError, ValueError), r"out of bounds"):
+        wp.launch_tiled(overrun_2d_kernel, dim=[1], inputs=[], block_dim=32, device=device)
+
+    # A view that exactly reaches the end of every axis stays valid. The shape is
+    # spelled with literals because arithmetic on module-level constants is not
+    # folded at code-gen time, which would leave the extent unresolved.
+    @wp.kernel(module="unique", enable_backward=False)
+    def exact_fit_kernel(dst: wp.array2d[float]):
+        t = wp.tile_ones(shape=(16, 32), dtype=float)
+        v = wp.tile_view(t, offset=(1, 2), shape=(15, 30))
+        wp.tile_store(dst, v)
+
+    dst = wp.zeros((15, 30), dtype=float, device=device)
+    wp.launch_tiled(exact_fit_kernel, dim=[1], inputs=[dst], block_dim=32, device=device)
+    assert_np_equal(dst.numpy(), np.ones((15, 30), dtype=np.float32))
+
+
 def test_tile_view_runtime_slice_bound_rejected(test, device):
     # An explicit slice offset with a runtime bound cannot infer the view shape at
     # code-gen time, so it must be rejected with a clear message (not crash).
@@ -1163,6 +1197,7 @@ add_function_test(TestTileView, "test_tile_chain_int_element", test_tile_chain_i
 add_function_test(
     TestTileView, "test_tile_view_offset_oob_rejected", test_tile_view_offset_oob_rejected, devices=devices
 )
+add_function_test(TestTileView, "test_tile_view_shape_oob_rejected", test_tile_view_shape_oob_rejected, devices=devices)
 add_function_test(
     TestTileView,
     "test_tile_view_runtime_slice_bound_rejected",
