@@ -3,6 +3,7 @@
 
 # TODO: add more tests for kernels and generics
 
+import itertools
 import os
 import subprocess
 import sys
@@ -11,6 +12,7 @@ import unittest
 from importlib import util
 
 import warp as wp
+from warp._src.context import ModuleBuilder, ModuleHasher
 from warp.tests.unittest_utils import *
 
 FUNC_OVERLOAD_1 = """# -*- coding: utf-8 -*-
@@ -181,6 +183,7 @@ def load_code_as_module(code, name):
 
 
 def test_function_overload_hashing(test, device):
+    """Verify that identical overloads share a hash and changed overloads do not."""
     m1 = load_code_as_module(FUNC_OVERLOAD_1, "func_overload_1")
     m2 = load_code_as_module(FUNC_OVERLOAD_2, "func_overload_2")
     m3 = load_code_as_module(FUNC_OVERLOAD_3, "func_overload_3")
@@ -197,6 +200,7 @@ def test_function_overload_hashing(test, device):
 
 
 def test_function_generic_overload_hashing(test, device):
+    """Verify that generic overload bodies contribute to the module hash."""
     m1 = load_code_as_module(FUNC_GENERIC_1, "func_generic_1")
     m2 = load_code_as_module(FUNC_GENERIC_2, "func_generic_2")
     m3 = load_code_as_module(FUNC_GENERIC_3, "func_generic_3")
@@ -221,8 +225,55 @@ def k():
 """
 
 
+@wp.kernel
+def codegen_order_zulu(output: wp.array[wp.float32]):
+    output[wp.tid()] = 1.0
+
+
+@wp.kernel
+def codegen_order_alpha(output: wp.array[wp.float32]):
+    output[wp.tid()] = 2.0
+
+
+@wp.kernel
+def codegen_order_mike(output: wp.array[wp.float32]):
+    output[wp.tid()] = 3.0
+
+
+def make_same_key_kernel(value):
+    @wp.kernel
+    def same_key(output: wp.array[wp.float32]):
+        output[wp.tid()] = value
+
+    return same_key
+
+
+same_key_first = make_same_key_kernel(1.0)
+same_key_second = make_same_key_kernel(2.0)
+
+
+@wp.func
+def call_order_first(value: float):
+    return value + 1.0
+
+
+@wp.func
+def call_order_second(value: float):
+    return value + 2.0
+
+
+@wp.kernel
+def call_order_caller(output: wp.array[wp.float32]):
+    output[wp.tid()] = call_order_first(1.0) + call_order_second(2.0) + call_order_first(3.0)
+
+
+@wp.kernel
+def artifact_order_kernel(output: wp.array[wp.float32]):
+    output[wp.tid()] = 1.0
+
+
 def test_module_load(test, device):
-    """Ensure that loading a module does not change its hash"""
+    """Ensure that loading a module does not change its hash."""
     m = load_code_as_module(SIMPLE_MODULE, "simple_module")
 
     hash1 = m.hash_module()
@@ -236,10 +287,10 @@ class TestOptionResolution(unittest.TestCase):
     """Tests for centralized option resolution."""
 
     def test_none_vs_explicit_optimization_level(self):
-        """optimization_level=None must hash differently from any explicit level.
+        """Verify that the optimization-level sentinel differs from explicit levels.
 
-        None is a sentinel meaning "use target-specific default" (O2 for CPU,
-        O3 for CUDA), so the hash must distinguish it from explicit values.
+        ``None`` selects the target-specific default, O2 for CPU and O3 for
+        CUDA, so the hash must distinguish it from either explicit value.
         """
         m1 = load_code_as_module(SIMPLE_MODULE, "opt_level_none")
         m1.options["optimization_level"] = None
@@ -263,7 +314,7 @@ class TestOptionResolution(unittest.TestCase):
             wp.config.optimization_level = old
 
     def test_none_vs_explicit_mode(self):
-        """mode=None and mode='release' must hash identically when config.mode is 'release'."""
+        """Verify that resolved and explicit release modes produce the same hash."""
         m1 = load_code_as_module(SIMPLE_MODULE, "mode_none")
         m1.options["mode"] = None
 
@@ -278,7 +329,7 @@ class TestOptionResolution(unittest.TestCase):
             wp.config.mode = old
 
     def test_config_change_propagates_to_hash(self):
-        """Changing config.mode must change the hash when module mode is None."""
+        """Verify that changing the global mode changes a module's resolved hash."""
         m = load_code_as_module(SIMPLE_MODULE, "mode_propagation")
         m.options["mode"] = None
 
@@ -295,7 +346,7 @@ class TestOptionResolution(unittest.TestCase):
             wp.config.mode = old
 
     def test_verify_fp_affects_hash(self):
-        """verify_fp=True vs False must produce different hashes."""
+        """Verify that ``verify_fp`` contributes to the module hash."""
         m = load_code_as_module(SIMPLE_MODULE, "verify_fp_test")
 
         old = wp.config.verify_fp
@@ -353,7 +404,7 @@ class TestModuleHasherKernelOptions(unittest.TestCase):
 
 class TestModuleHashing(unittest.TestCase):
     def test_unique_module_import_hash_before_explicit_init(self):
-        """Unique-module import-time hashing must work before explicit ``wp.init()``."""
+        """Verify unique-module hashing before explicit ``wp.init()``."""
         code = (
             "import warp as wp\n"
             "import warp._src.optim.linear\n"
@@ -366,7 +417,7 @@ class TestModuleHashing(unittest.TestCase):
         self.assertIn("OK", result.stdout)
 
     def test_init_invalidates_pre_runtime_module_options(self):
-        """``wp.init()`` must clear hashes/options resolved before runtime existed."""
+        """Verify that ``wp.init()`` invalidates pre-runtime hashes and options."""
         code = (
             "import warp as wp\n"
             "m = wp.get_module('__main__')\n"
@@ -381,6 +432,93 @@ class TestModuleHashing(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("before True True", result.stdout)
         self.assertIn("after False False", result.stdout)
+
+    def test_codegen_is_independent_of_kernel_order(self):
+        """Verify that kernel order does not affect hashes, source, or metadata."""
+        kernels = (codegen_order_zulu, codegen_order_alpha, codegen_order_mike)
+        module = codegen_order_zulu.module
+        options = module.resolve_options(wp.config, 256)
+        module_hashes = set()
+        sources = {"cpu": set(), "cuda": set()}
+        metadata = []
+
+        for device, device_sources in sources.items():
+            for kernel_order in itertools.permutations(kernels):
+                hasher = ModuleHasher(kernel_order, options)
+                builder = ModuleBuilder(module, options, hasher=hasher)
+                module_hashes.add(hasher.get_hash())
+                device_sources.add(builder.codegen(device))
+                metadata.append(builder.build_meta())
+
+        self.assertEqual(len(module_hashes), 1)
+        self.assertEqual(len(sources["cpu"]), 1)
+        self.assertEqual(len(sources["cuda"]), 1)
+        for actual_meta in metadata[1:]:
+            self.assertEqual(actual_meta, metadata[0])
+
+    def test_codegen_orders_same_key_kernels_by_digest(self):
+        """Verify that full digests order same-key kernels deterministically.
+
+        The factory creates kernels with the same key but different captured
+        values, which gives them distinct content hashes.
+        """
+        kernels = (same_key_first, same_key_second)
+        module = same_key_first.module
+        options = module.resolve_options(wp.config, 256)
+
+        self.assertIs(same_key_second.module, module)
+        self.assertEqual(same_key_first.key, same_key_second.key)
+
+        sources = {"cpu": set(), "cuda": set()}
+        for device, device_sources in sources.items():
+            for kernel_order in itertools.permutations(kernels):
+                hasher = ModuleHasher(kernel_order, options)
+                builder = ModuleBuilder(module, options, hasher=hasher)
+                self.assertNotEqual(same_key_first.hash, same_key_second.hash)
+                device_sources.add(builder.codegen(device))
+
+        self.assertEqual(len(sources["cpu"]), 1)
+        self.assertEqual(len(sources["cuda"]), 1)
+
+    def test_called_user_functions_preserve_discovery_order(self):
+        """Verify that user-function calls retain their discovery order."""
+        module = call_order_caller.module
+        options = module.resolve_options(wp.config, 256)
+        hasher = ModuleHasher((call_order_caller,), options)
+        ModuleBuilder(module, options, hasher=hasher)
+
+        calls = call_order_caller.adj.called_user_functions
+        self.assertIs(type(calls), dict)
+        self.assertEqual(tuple(calls), (call_order_first, call_order_second))
+
+    def test_module_builder_orders_independent_artifacts(self):
+        """Verify deterministic ordering of declarations, link inputs, and metadata."""
+        module = artifact_order_kernel.module
+        options = module.resolve_options(wp.config, 256)
+        hasher = ModuleHasher((artifact_order_kernel,), options)
+        builder = ModuleBuilder(module, options, hasher=hasher)
+
+        builder.ltoirs_decl["zulu"] = "void issue_1738_zulu();"
+        builder.ltoirs_decl["alpha"] = "void issue_1738_alpha();"
+        source = builder.codegen("cuda")
+        self.assertLess(source.index("issue_1738_alpha"), source.index("issue_1738_zulu"))
+
+        builder.ltoirs["zulu"] = b"zulu-lto"
+        builder.ltoirs["alpha"] = b"alpha-lto"
+        builder.fatbins["zulu"] = b"zulu-fatbin"
+        builder.fatbins["alpha"] = b"alpha-fatbin"
+        self.assertEqual(
+            builder.get_link_inputs(),
+            ([b"alpha-lto", b"zulu-lto"], [b"alpha-fatbin", b"zulu-fatbin"]),
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            meta_path = os.path.join(temp_dir, "module.meta")
+            module._write_meta(meta_path, {"zulu": 0, "alpha": 1})
+            with open(meta_path) as meta_file:
+                serialized_meta = meta_file.read()
+
+        self.assertEqual(serialized_meta, '{"alpha": 1, "zulu": 0}')
 
 
 devices = get_test_devices()
