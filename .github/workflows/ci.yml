@@ -33,6 +33,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
+    env:
+      UV_PYTHON: ${{ matrix.python_request || '3.12' }}
     strategy:
       fail-fast: false
       matrix:
@@ -42,36 +44,50 @@ jobs:
             platform: windows
             cuda-version: "12.9.2"
             cuda-platform: windows-x86_64
+            build-args: ""
             artifact-name: build-artifact-windows-cuda12
           - os: windows-2022
             platform: windows
             cuda-version: "13.0.3"
             cuda-platform: windows-x86_64
+            build-args: ""
             artifact-name: build-artifact-windows-cuda13
+          - os: windows-11-arm
+            platform: windows-aarch64
+            python_request: cpython-3.12-windows-aarch64-none
+            cuda-version: ""
+            cuda-platform: ""
+            build-args: --no-cuda
+            artifact-name: build-artifact-windows-aarch64-cpu
           - os: ubuntu-24.04
             platform: ubuntu-x86_64
             cuda-version: "12.9.2"
             cuda-platform: linux-x86_64
+            build-args: ""
             artifact-name: build-artifact-ubuntu-x86_64-cuda12
           - os: ubuntu-24.04
             platform: ubuntu-x86_64
             cuda-version: "13.0.3"
             cuda-platform: linux-x86_64
+            build-args: ""
             artifact-name: build-artifact-ubuntu-x86_64-cuda13
           - os: ubuntu-24.04-arm
             platform: ubuntu-aarch64
             cuda-version: "12.9.2"
             cuda-platform: linux-aarch64
+            build-args: ""
             artifact-name: build-artifact-ubuntu-aarch64-cuda12
           - os: ubuntu-24.04-arm
             platform: ubuntu-aarch64
             cuda-version: "13.0.3"
             cuda-platform: linux-sbsa
+            build-args: ""
             artifact-name: build-artifact-ubuntu-aarch64-cuda13
           - os: macos-latest
             platform: macos
             cuda-version: ''
             cuda-platform: ''
+            build-args: ""
             artifact-name: build-artifact-macos
     steps:
       - name: Checkout repository
@@ -96,7 +112,7 @@ jobs:
           path: warp/bin/
           # Hash only native-binary inputs. VERSION.md changes flow through
           # generated warp/native/version.h, which is covered by native headers.
-          key: build-${{ matrix.artifact-name }}-${{ matrix.cuda-version }}-${{ hashFiles('build_lib.py', 'build_llvm.py', 'warp/_src/build_dll.py', 'warp/native/**/*.cpp', 'warp/native/**/*.cu', 'warp/native/**/*.cuh', 'warp/native/**/*.h', 'warp/native/libdevice/*.bc', 'warp/native/warp.map', 'deps/libmathdx-deps.packman.xml', '.github/actions/setup-warp-cuda/action.yml', 'tools/ci/cuda_toolkit.py', 'tools/ci/cuda_toolkit_requirements.json', 'tools/ci/cuda_toolkit_lock.json') }}
+          key: build-${{ matrix.artifact-name }}-${{ matrix.cuda-version }}-${{ hashFiles('build_lib.py', 'build_llvm.py', 'warp/_src/build_architecture.py', 'warp/_src/build_dll.py', 'warp/native/clang/clang.cpp', 'warp/native/**/*.cpp', 'warp/native/**/*.cu', 'warp/native/**/*.cuh', 'warp/native/**/*.h', 'warp/native/libdevice/*.bc', 'warp/native/warp.map', 'deps/llvm-deps.packman.xml', 'deps/libmathdx-deps.packman.xml', '.github/actions/setup-warp-cuda/action.yml', 'tools/ci/cuda_toolkit.py', 'tools/ci/cuda_toolkit_requirements.json', 'tools/ci/cuda_toolkit_lock.json') }}
       
       - name: Set up CUDA Toolkit for Warp
         if: steps.cache-build.outputs.cache-hit != 'true' && matrix.cuda-version != ''
@@ -106,10 +122,12 @@ jobs:
           platform: ${{ matrix.cuda-platform }}
           cache-read: ${{ github.repository == 'NVIDIA/warp' }}
           cache-write: ${{ github.repository == 'NVIDIA/warp' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-') || inputs.allow-ctk-cache-save) }}
-      
+
       - name: Build Warp
         if: steps.cache-build.outputs.cache-hit != 'true'
-        run: uv run build_lib.py
+        env:
+          WARP_CACHE_PATH: ${{ runner.temp }}/warp-cache-${{ matrix.artifact-name }}
+        run: uv run build_lib.py ${{ matrix.build-args }}
       
       - name: Upload build artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
@@ -118,7 +136,6 @@ jobs:
           path: warp/bin/
           retention-days: ${{ github.repository == 'NVIDIA/warp' && 7 || 1 }}
       
-
   build-warp-python-free-threaded:
     if: github.event_name != 'schedule' || github.repository == 'NVIDIA/warp'
     runs-on: ubuntu-24.04
@@ -175,6 +192,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
+    env:
+      UV_PYTHON: ${{ matrix.python_request || '3.12' }}
     strategy:
       fail-fast: false
       matrix:
@@ -184,16 +203,32 @@ jobs:
             platform: windows
             cuda-version: "13.0.3"
             cuda-platform: windows-x86_64
+            warp-enable-cuda: "ON"
+            msvc-component: Microsoft.VisualStudio.Component.VC.Tools.x86.x64
+            msvc-host-arch: x64
+            msvc-target-arch: x64
             warp-cache-path-suffix: '\warp-cache-cmake'
+          - os: windows-11-arm
+            platform: windows-aarch64
+            python_request: cpython-3.12-windows-aarch64-none
+            cuda-version: ""
+            cuda-platform: ""
+            warp-enable-cuda: "OFF"
+            msvc-component: Microsoft.VisualStudio.Component.VC.Tools.ARM64
+            msvc-host-arch: arm64
+            msvc-target-arch: arm64
+            warp-cache-path-suffix: '\warp-cache-cmake-windows-aarch64'
           - os: ubuntu-24.04
             platform: ubuntu-x86_64
             cuda-version: "13.0.3"
             cuda-platform: linux-x86_64
+            warp-enable-cuda: "ON"
             warp-cache-path-suffix: /warp-cache-cmake
           - os: ubuntu-24.04-arm
             platform: ubuntu-aarch64
             cuda-version: "13.0.3"
             cuda-platform: linux-sbsa
+            warp-enable-cuda: "ON"
             warp-cache-path-suffix: /warp-cache-cmake
     steps:
       - name: Checkout repository
@@ -211,6 +246,7 @@ jobs:
         run: uv python install
 
       - name: Set up CUDA Toolkit for Warp
+        if: matrix.warp-enable-cuda == 'ON'
         uses: ./.github/actions/setup-warp-cuda
         with:
           version: ${{ matrix.cuda-version }}
@@ -227,51 +263,87 @@ jobs:
         run: uv sync --no-install-project
 
       - name: Set up MSVC developer environment
-        if: matrix.platform == 'windows'
+        if: startsWith(matrix.platform, 'windows')
         run: |
           $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-          $vsPath = & $vswhere -latest -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          $vsPath = & $vswhere -latest -requires "${{ matrix.msvc-component }}" -property installationPath
           $vsDevCmd = Join-Path $vsPath "Common7\Tools\VsDevCmd.bat"
           if (!(Test-Path $vsDevCmd)) {
             throw "VsDevCmd.bat was not found"
           }
 
           $before = @{}
+          $developerEnvironment = @{}
           Get-ChildItem Env: | ForEach-Object { $before[$_.Name] = $_.Value }
-          cmd /c "`"$vsDevCmd`" -arch=x64 -host_arch=x64 > nul && set" |
+          $environmentLines = cmd /c "`"$vsDevCmd`" -arch=${{ matrix.msvc-target-arch }} -host_arch=${{ matrix.msvc-host-arch }} > nul && set"
+          if ($LASTEXITCODE -ne 0) {
+            throw "VsDevCmd.bat failed with exit code $LASTEXITCODE"
+          }
+
+          $environmentLines |
             ForEach-Object {
               $name, $value = $_ -split '=', 2
-              if ($name -and $before[$name] -ne $value) {
-                "$name=$value" >> $env:GITHUB_ENV
+              if ($name) {
+                $developerEnvironment[$name] = $value
+                if ($before[$name] -ne $value) {
+                  "$name=$value" >> $env:GITHUB_ENV
+                }
               }
             }
 
+          if ("${{ matrix.platform }}" -eq "windows-aarch64") {
+            if ($developerEnvironment["VSCMD_ARG_HOST_ARCH"] -ne "arm64") {
+              throw "MSVC host architecture is not arm64"
+            }
+            if ($developerEnvironment["VSCMD_ARG_TGT_ARCH"] -ne "arm64") {
+              throw "MSVC target architecture is not arm64"
+            }
+          }
+
       - name: Build Warp with CMake
-        if: matrix.platform != 'windows'
+        if: ${{ !startsWith(matrix.platform, 'windows') }}
         env:
           WARP_CACHE_PATH: ${{ runner.temp }}${{ matrix.warp-cache-path-suffix }}
         run: |
-          cuda_path="${CUDA_HOME:-${CUDA_PATH:-}}"
-          if [ -z "$cuda_path" ]; then
-            echo "CUDA_HOME or CUDA_PATH must be set" >&2
-            exit 1
+          cmake_args=(
+            -S .
+            -B _build/cmake
+            -G Ninja
+            -DCMAKE_BUILD_TYPE=Release
+            "-DWARP_ENABLE_CUDA=${{ matrix.warp-enable-cuda }}"
+          )
+          if [ "${{ matrix.warp-enable-cuda }}" = "ON" ]; then
+            cuda_path="${CUDA_HOME:-${CUDA_PATH:-}}"
+            if [ -z "$cuda_path" ]; then
+              echo "CUDA_HOME or CUDA_PATH must be set" >&2
+              exit 1
+            fi
+            cmake_args+=("-DWARP_CUDA_PATH:PATH=$cuda_path")
           fi
-          cmake -S . -B _build/cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DWARP_CUDA_PATH:PATH="$cuda_path"
+          cmake "${cmake_args[@]}"
           cmake --build _build/cmake --parallel
 
       - name: Build Warp with CMake
-        if: matrix.platform == 'windows'
+        if: startsWith(matrix.platform, 'windows')
         env:
           WARP_CACHE_PATH: ${{ runner.temp }}${{ matrix.warp-cache-path-suffix }}
         run: |
-          if (!$env:CUDA_PATH) {
-            throw "CUDA_PATH must be set"
+          $cmakeArgs = @(
+            "-S", ".",
+            "-B", "_build/cmake",
+            "-G", "Ninja",
+            "-DCMAKE_BUILD_TYPE=Release",
+            "-DCMAKE_C_COMPILER=cl",
+            "-DCMAKE_CXX_COMPILER=cl",
+            "-DWARP_ENABLE_CUDA=${{ matrix.warp-enable-cuda }}"
+          )
+          if ("${{ matrix.warp-enable-cuda }}" -eq "ON") {
+            if (!$env:CUDA_PATH) {
+              throw "CUDA_PATH must be set"
+            }
+            $cmakeArgs += "-DWARP_CUDA_PATH:PATH=$env:CUDA_PATH"
           }
-          cmake -S . -B _build/cmake -G Ninja `
-            -DCMAKE_BUILD_TYPE=Release `
-            -DCMAKE_C_COMPILER=cl `
-            -DCMAKE_CXX_COMPILER=cl `
-            "-DWARP_CUDA_PATH:PATH=$env:CUDA_PATH"
+          cmake @cmakeArgs
           cmake --build _build/cmake --parallel
 
       - name: Verify Warp diagnostics
@@ -312,6 +384,8 @@ jobs:
     needs: build-warp
     permissions:
       contents: read
+    env:
+      UV_PYTHON: ${{ matrix.python_request || '3.12' }}
     strategy:
       fail-fast: false
       matrix:
@@ -320,6 +394,11 @@ jobs:
             platform: windows
             artifact-name: build-artifact-windows-cuda12
             jax-extra: jax>=0.5
+          - os: windows-11-arm
+            platform: windows-aarch64
+            python_request: cpython-3.12-windows-aarch64-none
+            artifact-name: build-artifact-windows-aarch64-cpu
+            jax-extra: ""
           - os: ubuntu-24.04
             platform: ubuntu-x86_64
             artifact-name: build-artifact-ubuntu-x86_64-cuda13
@@ -354,7 +433,16 @@ jobs:
           path: warp/bin/
       
       - name: Run Tests
+        if: matrix.jax-extra != ''
+        env:
+          WARP_CACHE_PATH: ${{ runner.temp }}/warp-cache-${{ matrix.artifact-name }}-tests
         run: uv run --extra dev --with "${{ matrix.jax-extra }}" -m warp.tests --junit-report-xml rspec.xml -s autodetect
+
+      - name: Run Tests
+        if: matrix.jax-extra == ''
+        env:
+          WARP_CACHE_PATH: ${{ runner.temp }}/warp-cache-${{ matrix.artifact-name }}-tests
+        run: uv run --extra dev -m warp.tests --junit-report-xml rspec.xml -s autodetect
       
       - name: Test Summary
         uses: test-summary/action@31493c76ec9e7aa675f1585d3ed6f1da69269a86  # v2.4

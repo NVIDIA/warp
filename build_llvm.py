@@ -6,7 +6,6 @@
 import hashlib
 import io
 import os
-import platform
 import shutil
 import stat
 import subprocess
@@ -14,6 +13,7 @@ import sys
 import tarfile
 import urllib.request
 
+from warp._src.build_architecture import machine_architecture
 from warp._src.build_dll import *
 
 # set build output path off this file
@@ -70,7 +70,7 @@ def fetch_prebuilt_libraries(arch: str) -> None:
         _run_packman_pull()
     except subprocess.CalledProcessError as e:
         output = e.output or ""
-        is_intel_mac = sys.platform == "darwin" and platform.machine() == "x86_64"
+        is_intel_mac = sys.platform == "darwin" and machine_architecture() == "x86_64"
         # Intel Mac runners cross-compile to aarch64 but can't exec the aarch64-only
         # 7zz packman 8.2.2 installs. Compressed tar archives are decompressed through
         # that helper, so .tar.xz packages hit this too. Remove this branch and
