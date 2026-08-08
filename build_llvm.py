@@ -470,6 +470,7 @@ def build_warp_clang_for_arch(args, lib_name: str, arch: str) -> None:
                 )
 
         libs = []
+        exported_symbols_file = None
 
         for _, _, libraries in os.walk(libpath):
             libs.extend(libraries)
@@ -486,6 +487,7 @@ def build_warp_clang_for_arch(args, lib_name: str, arch: str) -> None:
             libs = [f"-l{lib[3:-2]}" for lib in libs if os.path.splitext(lib)[1] == ".a"]
             if sys.platform == "darwin":
                 libs += libs  # prevents unresolved symbols due to link order
+                exported_symbols_file = os.path.join(build_path, "native", "warp-clang.macos.exports")
             else:
                 libs.insert(0, "-Wl,--start-group")
                 libs.append("-Wl,--end-group")
@@ -503,6 +505,7 @@ def build_warp_clang_for_arch(args, lib_name: str, arch: str) -> None:
             arch=arch,
             libs=libs,
             mode=args.mode if args.build_llvm else "release",
+            exported_symbols_file=exported_symbols_file,
         )
 
     except Exception as e:
