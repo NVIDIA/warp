@@ -1,6 +1,10 @@
 # Warp Builder Docker Images
 
-Multi-architecture Docker images for building NVIDIA Warp with CUDA and LLVM compiled from source.
+Multi-architecture Docker images providing the toolchain for building NVIDIA Warp: CUDA, CMake, Ninja, and uv.
+
+Clang/LLVM is deliberately not baked in. `build_lib.py` fetches the prebuilt SDK through Packman using the
+digests pinned in `deps/llvm-deps.packman.xml`, so the LLVM version is chosen by the repository you are
+building rather than by the image. Bumping LLVM is a one-line manifest change and needs no new image.
 
 > **⚠️ Access Restriction:** These images are currently set to **Internal** visibility on GitHub.
 > They are only accessible to:
@@ -24,7 +28,7 @@ jobs:
       - uses: actions/checkout@v4
       
       - name: Build Warp
-        run: uv run build_lib.py --llvm-path /opt/llvm
+        run: uv run build_lib.py
       
       - name: Build wheel
         run: uv build --wheel
@@ -49,7 +53,7 @@ docker run --rm \
   -v $(pwd):/workspace \
   -w /workspace \
   ghcr.io/nvidia/warp-builder:cuda13 \
-  bash -c "uv run build_lib.py --llvm-path /opt/llvm"
+  bash -c "uv run build_lib.py"
 
 # 4. Build Python wheel (optional)
 docker run --rm \
@@ -76,7 +80,7 @@ docker run --rm -it \
   bash
 
 # Inside container:
-# uv run build_lib.py --llvm-path /opt/llvm       # Build
+# uv run build_lib.py                             # Build
 # uv run --extra dev -m warp.tests -s autodetect  # Test (GPU tests will be skipped without --gpus)
 # uv build --wheel                                 # Package
 ```
@@ -88,15 +92,15 @@ docker run --rm -it \
 **Short aliases (recommended for most users):**
 
 - `latest` - Default CUDA 13 build
-- `cuda13` - Selected CUDA 13.x build (currently 13.0.2 with LLVM 21)
-- `cuda12` - Latest CUDA 12.x build (currently 12.9.1 with LLVM 21)
+- `cuda13` - Selected CUDA 13.x build (currently 13.0.2)
+- `cuda12` - Latest CUDA 12.x build (currently 12.9.1)
 
 **Full version tags (for reproducibility):**
 
-- `cuda13.0.2-llvm21-latest` - Multi-arch, always current
-- `cuda13.0.2-llvm21-YYYYMMDD` - Multi-arch, date-pinned workflow build
-- `cuda13.0.2-llvm21-x86_64-latest` - Architecture-specific
-- `cuda13.0.2-llvm21-aarch64-latest` - Architecture-specific
+- `cuda13.0.2-latest` - Multi-arch, always current
+- `cuda13.0.2-YYYYMMDD` - Multi-arch, date-pinned workflow build
+- `cuda13.0.2-x86_64-latest` - Architecture-specific
+- `cuda13.0.2-aarch64-latest` - Architecture-specific
 
 **Examples:**
 
@@ -105,10 +109,10 @@ docker run --rm -it \
 docker pull ghcr.io/nvidia/warp-builder:cuda13
 
 # Pinned to specific CUDA version
-docker pull ghcr.io/nvidia/warp-builder:cuda13.0.2-llvm21-latest
+docker pull ghcr.io/nvidia/warp-builder:cuda13.0.2-latest
 
 # Pinned to exact build date
-docker pull ghcr.io/nvidia/warp-builder:cuda13.0.2-llvm21-YYYYMMDD
+docker pull ghcr.io/nvidia/warp-builder:cuda13.0.2-YYYYMMDD
 ```
 
 Replace `YYYYMMDD` with the date from a published workflow build.
@@ -170,7 +174,8 @@ docker buildx build --platform linux/amd64 -t warp-builder:cuda13 -f Dockerfile 
 - **Base:** manylinux_2_28 (x86_64) / manylinux_2_34 (aarch64)
 - **CUDA:** Configurable (supports 12.x and 13.x, default 13.0.2)
   - Installed using NVIDIA's [parse_redist.py](https://github.com/NVIDIA/build-system-archive-import-examples) script to pull only the minimal components needed for building Warp
-- **LLVM:** Compiled from source at `/opt/llvm` (default 21.1.0)
+- **LLVM:** Not included. Fetched at build time by `build_lib.py` through Packman, per
+  `deps/llvm-deps.packman.xml`.
 - **Python:** Managed by uv
 - **Tools:** GCC toolchain (from manylinux base)
 
@@ -184,7 +189,7 @@ Images are automatically built by the workflow at `.github/workflows/build-warp-
 
 - CUDA 12.9.1 (x86_64 + aarch64)
 - CUDA 13.0.2 (x86_64 + aarch64)
-- All 4 builds run in parallel (~60 minutes total)
+- All 4 builds run in parallel (a few minutes; no LLVM is built or downloaded here)
 
 **To trigger a rebuild:**
 
@@ -212,22 +217,20 @@ These images contain software components under different licenses:
   - License files are included in the image at `/usr/local/cuda/licenses/`
   - By using these images, you agree to the CUDA EULA terms
   
-- **LLVM/Clang:** Licensed under [Apache License v2.0 with LLVM Exceptions](https://llvm.org/LICENSE.txt)
+- **LLVM/Clang:** Not redistributed in these images. The SDK is fetched at build time from the
+  [NVIDIA/warp releases](https://github.com/NVIDIA/warp/releases) and ships its own licenses under
+  `licenses/` in the extracted tree.
 
-  - License files are included in the image at `/opt/llvm/licenses/`
-  - Source code available at <https://github.com/llvm/llvm-project>
-  
 - **Container Image:** Components built and distributed by NVIDIA for use with NVIDIA Warp
 
 To view licenses in a running container:
 
 ```bash
 docker run --rm ghcr.io/nvidia/warp-builder:cuda13 cat /usr/local/cuda/licenses/README.txt
-docker run --rm ghcr.io/nvidia/warp-builder:cuda13 cat /opt/llvm/licenses/README.txt
 ```
 
 ## Notes
 
-- Always pass `--llvm-path /opt/llvm` to `build_lib.py` to use the built-in LLVM
-- Images are self-contained with no external dependencies (no Packman required)
-- LLVM is compiled with targets for X86/AArch64 + NVPTX
+- Building Warp in these images requires network access to `github.com` so Packman can fetch the
+  Clang/LLVM SDK. Use `--llvm-path` or `WARP_LLVM_PATH` to point at a local SDK instead.
+- The published Warp LLVM SDK is built with targets for X86/AArch64 + NVPTX

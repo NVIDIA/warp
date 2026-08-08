@@ -43,6 +43,24 @@ function(warp_get_packman_platform out_var)
     set(${out_var} "${_platform}" PARENT_SCOPE)
 endfunction()
 
+# The LLVM SDK manifest uses packman's own platform tokens, which spell macOS as
+# "macos" rather than the "darwin" that deps/libmathdx-deps.packman.xml expects.
+# macOS is always aarch64 here, matching build_llvm.py, which builds warp-clang
+# for arm64 even when cross-compiling from an Intel Mac.
+function(warp_get_llvm_packman_platform out_var)
+    warp_get_host_arch(_arch)
+    if(WIN32)
+        set(_platform "windows-${_arch}")
+    elseif(APPLE)
+        set(_platform "macos-aarch64")
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        set(_platform "linux-${_arch}")
+    else()
+        message(FATAL_ERROR "Unsupported Packman platform: ${CMAKE_SYSTEM_NAME}")
+    endif()
+    set(${out_var} "${_platform}" PARENT_SCOPE)
+endfunction()
+
 function(warp_get_packman_python out_var)
     if(NOT WARP_PYTHON_EXECUTABLE)
         message(FATAL_ERROR "warp_find_python() must be called before fetching Packman dependencies")
@@ -239,26 +257,17 @@ function(warp_find_llvm)
         return()
     endif()
 
-    warp_get_host_arch(_arch)
-
     if(WARP_LLVM_PATH)
         set(_llvm_root "${WARP_LLVM_PATH}")
     else()
         warp_get_packman_python(_packman_python)
         warp_get_packman_command(_packman)
-        if(WIN32)
-            set(_llvm_package "15.0.7-windows-x86_64-ptx-vs142")
-        elseif(APPLE)
-            set(_llvm_package "15.0.7-darwin-aarch64-macos11")
-        elseif(_arch STREQUAL "aarch64")
-            set(_llvm_package "15.0.7-linux-aarch64-gcc7.5")
-        else()
-            set(_llvm_package "18.1.3-linux-x86_64-gcc9.4")
-        endif()
-        set(_llvm_root "${PROJECT_SOURCE_DIR}/_build/host-deps/llvm-project/release-${_arch}")
+        warp_get_llvm_packman_platform(_llvm_platform)
+        set(_llvm_root "${PROJECT_SOURCE_DIR}/_build/host-deps/llvm-project/release-${_llvm_platform}")
         execute_process(
             COMMAND "${CMAKE_COMMAND}" -E env "PM_PYTHON_EXT=${_packman_python}"
-                    "${_packman}" install -l "${_llvm_root}" clang+llvm-warp "${_llvm_package}"
+                    "${_packman}" pull --verbose --platform "${_llvm_platform}"
+                    "${PROJECT_SOURCE_DIR}/deps/llvm-deps.packman.xml"
             WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
             COMMAND_ERROR_IS_FATAL ANY
         )

@@ -76,20 +76,18 @@ jobs:
           CUDA_VERSION="${{ matrix.cuda_version }}"
           DATE_TAG=$(date +%Y%m%d)
           ARCH="${{ matrix.arch }}"
-          LLVM_VERSION_MAJOR="21"
           
           # Lowercase repository owner for GHCR compatibility
           OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           IMAGE_BASE="ghcr.io/${OWNER_LOWER}/warp-builder"
           
           # Generate tags with full CUDA version
-          TAGS="${IMAGE_BASE}:cuda${CUDA_VERSION}-llvm${LLVM_VERSION_MAJOR}-${ARCH}-${DATE_TAG}"
-          TAGS="${TAGS},${IMAGE_BASE}:cuda${CUDA_VERSION}-llvm${LLVM_VERSION_MAJOR}-${ARCH}-latest"
+          TAGS="${IMAGE_BASE}:cuda${CUDA_VERSION}-${ARCH}-${DATE_TAG}"
+          TAGS="${TAGS},${IMAGE_BASE}:cuda${CUDA_VERSION}-${ARCH}-latest"
           
           echo "dockerfile=Dockerfile" >> $GITHUB_OUTPUT
           echo "tags=${TAGS}" >> $GITHUB_OUTPUT
           echo "date_tag=${DATE_TAG}" >> $GITHUB_OUTPUT
-          echo "llvm_version_major=${LLVM_VERSION_MAJOR}" >> $GITHUB_OUTPUT
           echo "image_base=${IMAGE_BASE}" >> $GITHUB_OUTPUT
           echo "cuda_version=${CUDA_VERSION}" >> $GITHUB_OUTPUT
 
@@ -110,19 +108,17 @@ jobs:
           cache-to: type=gha,mode=max,scope=warp-builder-${{ matrix.arch }}
           labels: |
             org.opencontainers.image.title=Warp Builder
-            org.opencontainers.image.description=Build environment for NVIDIA Warp with CUDA ${{ steps.meta.outputs.cuda_version }} and LLVM 21.1.0
+            org.opencontainers.image.description=Build environment for NVIDIA Warp with CUDA ${{ steps.meta.outputs.cuda_version }}
             org.opencontainers.image.vendor=NVIDIA
             org.opencontainers.image.licenses=NVIDIA CUDA EULA AND Apache-2.0
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.created=${{ github.event.repository.updated_at }}
             cuda.version=${{ steps.meta.outputs.cuda_version }}
-            llvm.version=21.1.0
-            llvm.version.short=21
 
       - name: Report image size
         run: |
-          IMAGE="${{ steps.meta.outputs.image_base }}:cuda${{ steps.meta.outputs.cuda_version }}-llvm${{ steps.meta.outputs.llvm_version_major }}-${{ matrix.arch }}-latest"
+          IMAGE="${{ steps.meta.outputs.image_base }}:cuda${{ steps.meta.outputs.cuda_version }}-${{ matrix.arch }}-latest"
           
           # Pull image to get accurate info
           docker pull $IMAGE
@@ -176,12 +172,11 @@ jobs:
         id: meta
         run: |
           CUDA_VERSION="${{ matrix.cuda_version }}"
-          LLVM_VERSION_MAJOR="21"
           
           # Lowercase repository owner for GHCR compatibility
           OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           IMAGE_BASE="ghcr.io/${OWNER_LOWER}/warp-builder"
-          IMAGE_TAG="${IMAGE_BASE}:cuda${CUDA_VERSION}-llvm${LLVM_VERSION_MAJOR}-${{ matrix.arch }}-latest"
+          IMAGE_TAG="${IMAGE_BASE}:cuda${CUDA_VERSION}-${{ matrix.arch }}-latest"
           
           echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
 
@@ -213,11 +208,10 @@ jobs:
               echo "Architecture:"
               uname -m
               echo ""
-              echo "LLVM Path: /opt/llvm"
-              ls -lh /opt/llvm/lib/*.a 2>/dev/null | head -5 || echo "LLVM libs found"
+              echo "LLVM: fetched by build_lib.py through Packman"
               echo ""
               echo "=== Building Warp ==="
-              uv run build_lib.py --llvm-path /opt/llvm
+              uv run build_lib.py
               echo ""
               echo "=== Build Complete ==="
               ls -lh warp/bin/
@@ -226,7 +220,7 @@ jobs:
               rm -rf warp/bin _build/cmake-image
               uv sync --no-install-project
               export WARP_CACHE_PATH="/tmp/warp-cache-cmake-image-${{ github.run_id }}-${{ matrix.cuda_version }}-${{ matrix.arch }}"
-              cmake -S . -B _build/cmake-image -G Ninja -DWARP_LLVM_PATH=/opt/llvm
+              cmake -S . -B _build/cmake-image -G Ninja
               cmake --build _build/cmake-image --parallel
               uv run python -c "import warp; info = warp.print_diagnostics(); assert not info[\"warp_native\"].startswith(\"unknown\"); assert not info[\"warp_clang\"].startswith(\"unknown\")"
               ls -lh warp/bin/
@@ -261,7 +255,6 @@ jobs:
       - name: Create and push multi-arch manifests
         run: |
           DATE_TAG=$(date +%Y%m%d)
-          LLVM_VERSION_MAJOR="21"
           
           # Lowercase repository owner for GHCR compatibility
           OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
@@ -269,7 +262,7 @@ jobs:
           
           # Create manifests for both CUDA versions
           for CUDA_VERSION in "12.9.1" "13.0.2"; do
-            BASE_TAG="cuda${CUDA_VERSION}-llvm${LLVM_VERSION_MAJOR}"
+            BASE_TAG="cuda${CUDA_VERSION}"
             CUDA_MAJOR=$(echo ${CUDA_VERSION} | cut -d. -f1)
             
             echo "Creating manifests for CUDA ${CUDA_VERSION}..."
@@ -293,8 +286,8 @@ jobs:
           # Create :latest pointing to CUDA 13
           echo "Creating :latest tag (points to CUDA 13)..."
           docker buildx imagetools create -t ${IMAGE_BASE}:latest \
-            ${IMAGE_BASE}:cuda13.0.2-llvm${LLVM_VERSION_MAJOR}-x86_64-latest \
-            ${IMAGE_BASE}:cuda13.0.2-llvm${LLVM_VERSION_MAJOR}-aarch64-latest
+            ${IMAGE_BASE}:cuda13.0.2-x86_64-latest \
+            ${IMAGE_BASE}:cuda13.0.2-aarch64-latest
           
           echo "---" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -302,7 +295,6 @@ jobs:
 
       - name: Verify multi-arch manifests
         run: |
-          LLVM_VERSION_MAJOR="21"
           
           # Lowercase repository owner for GHCR compatibility
           OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
@@ -336,7 +328,7 @@ jobs:
           echo "**Build Warp:**" >> $GITHUB_STEP_SUMMARY
           echo '```bash' >> $GITHUB_STEP_SUMMARY
           echo "docker run --rm -v \$(pwd):/workspace -w /workspace ${IMAGE_BASE}:cuda13 \\" >> $GITHUB_STEP_SUMMARY
-          echo "  bash -c \"uv run build_lib.py --llvm-path /opt/llvm\"" >> $GITHUB_STEP_SUMMARY
+          echo "  bash -c \"uv run build_lib.py\"" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Date-pinned tags: \`:cuda13-${DATE_TAG}\`, \`:cuda12-${DATE_TAG}\`" >> $GITHUB_STEP_SUMMARY

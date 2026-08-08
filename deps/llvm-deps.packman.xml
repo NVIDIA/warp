@@ -1,0 +1,50 @@
+<project toolsVersion="7.6" remotes="github-warp-releases">
+  <!--
+    Prebuilt Clang/LLVM SDKs for warp-clang, published as GitHub release assets on NVIDIA/warp.
+
+    This manifest exists so the download can be verified. Packman honors a package's checksum
+    attribute only when walking a project file, so `packman pull` against this file is the only
+    path that checks what it downloaded; `packman install NAME VERSION` has no checksum support
+    at all. That is why build_llvm.py and tools/cmake/WarpDependencies.cmake both pull from here
+    rather than calling install directly.
+
+    The llvm-sdk-* tag namespace is deliberate. It avoids v*, which is reserved for Warp product
+    releases and is what the product-release and CodeQL workflows trigger on, so an SDK release
+    can never fire them. Bumping the SDK means editing the tag here and the matching block in
+    docker/warp-builder/Dockerfile; the two must always name the same release.
+
+    Do not delete this tag to tidy the tag list. Deleting the git tag of a published GitHub
+    release reverts that release to a draft, and draft assets require authentication, so every
+    anonymous build breaks at once. That is not hypothetical: it happened during development.
+
+    toolsVersion must stay at 7.6 or higher: the checksum attribute was introduced in Packman 7.6,
+    and an older Packman would parse this file and silently skip verification.
+
+    Platform tokens follow packman.utils.get_platform() so that a manual `packman pull` with no
+    platform flag still resolves on a native host. If no package matches the selected platform and
+    none omits the platforms attribute, Packman selects nothing and exits successfully.
+  -->
+  <remote2 name="github-warp-releases">
+    <transport actions="download" protocol="https"
+               packageLocation="github.com/NVIDIA/warp/releases/download/llvm-sdk-22.1.8-warp.1/${name}@${version}.tar.xz"
+               packageExtensions="" />
+  </remote2>
+
+  <dependency name="llvm" linkPath="../_build/host-deps/llvm-project/release-${platform}">
+    <package name="clang+llvm-warp" platforms="linux-x86_64"
+             version="22.1.8-linux-x86_64-gcc14-cxxabi0-warp.1"
+             checksum="ef200e86229a515438875193d48305e70811a126feed4fa908f89c8d6ee7e59a"/>
+    <package name="clang+llvm-warp" platforms="linux-aarch64"
+             version="22.1.8-linux-aarch64-gcc14-cxxabi0-warp.1"
+             checksum="e2ca00689c22dd2aba2374144d9654d19eb2efad141bf4440a318dcc5d3777c6"/>
+    <package name="clang+llvm-warp" platforms="macos-aarch64"
+             version="22.1.8-macos-arm64-macos11-warp.1"
+             checksum="326f721a23f123a6ff3da9e0c48bdecad7d9da5eb25aef694b5f63baa2671a64"/>
+    <package name="clang+llvm-warp" platforms="windows-x86_64"
+             version="22.1.8-windows-x86_64-vs142-static-mt-warp.1"
+             checksum="abccac29fb07ddfa2597c642c82a4b26f59a22d9bd27e5fee5ba9c08ddeeab28"/>
+    <package name="clang+llvm-warp" platforms="windows-aarch64"
+             version="22.1.8-windows-arm64-vs143-static-mt-warp.1"
+             checksum="3f73d82516609eaae34cce0ae2183b261c0e448cc500b1f4e4025a9386c44357"/>
+  </dependency>
+</project>

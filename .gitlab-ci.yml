@@ -50,6 +50,14 @@ variables:
   UV_TRIXIE_SLIM_IMAGE: "ghcr.io/astral-sh/uv:0.11.16-trixie-slim@sha256:bf3ae2823f0399092f2e47ec7bae6a8e0b389d2310a9bc7f0741f0fa1629040f"
   UV_TRIXIE_SLIM_ARM_IMAGE: "ghcr.io/astral-sh/uv:0.11.16-trixie-slim@sha256:e4e5baeeb366609825aadbe4387686c39dab036b0cc68d938fcb9a61aa05bf75"
   MINIFORGE_IMAGE: "condaforge/miniforge3:25.11.0-0@sha256:d2fadb08950045962fd1cfb1eeb6224442027f03095862e725f4c1c7b17a3caf"
+  # Stale pin, and harmless. These tags name older images that still bake in LLVM 21,
+  # from before the builder image stopped shipping Clang/LLVM at all. Nothing links
+  # that LLVM: these jobs run build_lib.py without --llvm-path, so the SDK always
+  # comes from Packman via deps/llvm-deps.packman.xml no matter what the image holds.
+  #
+  # Once images built from the current Dockerfile are published to this registry,
+  # move these to the LLVM-free tag scheme: warp-builder:cuda12.9.1-latest and
+  # warp-builder:cuda13.0.2-latest.
   WARP_BUILDER_IMAGE_CU12: "${CI_REGISTRY_IMAGE}/warp-builder:cuda12.9.1-llvm21-latest"
   WARP_BUILDER_IMAGE_CU13: "${CI_REGISTRY_IMAGE}/warp-builder:cuda13.0.2-llvm21-latest"
   
