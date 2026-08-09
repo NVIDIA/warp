@@ -431,8 +431,11 @@ def add_kernel_test(cls, kernel, dim, name=None, expect=None, inputs=None, devic
 
             args.append(output)
 
-        # force load so that we don't generate any log output during launch
-        kernel.module.load(device)
+        # Force-load the same module variant that wp.launch() will use so that
+        # we don't generate any log output during launch. CPU launches always
+        # use a block dimension of 1, regardless of the launch default.
+        load_block_dim = 1 if wp.get_device(device).is_cpu else None
+        kernel.module.load(device, block_dim=load_block_dim)
 
         with CheckOutput(self):
             wp.launch(kernel, dim=dim, inputs=args, device=device)

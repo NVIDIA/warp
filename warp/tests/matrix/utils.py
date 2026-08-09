@@ -45,20 +45,33 @@ def randvals(rng, shape, dtype):
     return rng.integers(1, high=5, size=shape, dtype=dtype)
 
 
-def getkernel(kernel_cache, func, suffix=""):
+def getkernel(kernel_cache, func, suffix="", enable_backward=None):
     """Get or create a cached kernel.
 
     Args:
         kernel_cache: Dictionary to cache kernels (module-local).
         func: Kernel function to wrap.
         suffix: Optional suffix for the kernel key.
+        enable_backward: Whether to generate a backward kernel. Uses the
+            module default when not specified.
 
     Returns:
         Cached or newly created wp.Kernel.
     """
     key = func.__name__ + "_" + suffix
     if key not in kernel_cache:
-        kernel_cache[key] = wp.Kernel(func=func, key=key)
+        options = {} if enable_backward is None else {"enable_backward": enable_backward}
+        kernel_cache[key] = wp.Kernel(func=func, key=key, options=options)
+    elif enable_backward is not None:
+        cached_kernel = kernel_cache[key]
+        cached_enable_backward = cached_kernel.options.get(
+            "enable_backward", cached_kernel.module.options["enable_backward"]
+        )
+        if cached_enable_backward != enable_backward:
+            raise ValueError(
+                f"Kernel {key!r} is already cached with enable_backward={cached_enable_backward!r}, "
+                f"but enable_backward={enable_backward!r} was requested."
+            )
     return kernel_cache[key]
 
 

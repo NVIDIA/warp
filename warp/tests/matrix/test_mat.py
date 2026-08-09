@@ -19,6 +19,12 @@ np_signed_int_types = [np.int8, np.int16, np.int32, np.int64, np.byte]
 
 kernel_cache = {}
 
+# Compilation hygiene
+#
+# This file's shared module is large, so compile only entry points exercised by the tests. Register dtype-specific
+# kernels before the first launch, disable backward generation for forward-only coverage, and keep kernels declared
+# inside tests in unique modules so they cannot invalidate the shared module after it loads.
+
 
 def test_shape_mismatch(test, device):
     test.assertNotEqual(wp.mat33f(0.0), wp.mat22f(0.0))
@@ -90,7 +96,8 @@ def test_negation(test, device, dtype, register_kernels=False):
     mat44 = wp.types.matrix(shape=(4, 4), dtype=wptype)
     mat55 = wp.types.matrix(shape=(5, 5), dtype=wptype)
 
-    output_select_kernel = get_select_kernel(kernel_cache, wptype)
+    if dtype in np_float_types:
+        output_select_kernel = get_select_kernel(kernel_cache, wptype)
 
     def check_mat_negation(
         m2: wp.array[mat22],
@@ -126,7 +133,12 @@ def test_negation(test, device, dtype, register_kernels=False):
                 outcomponents[idx] = wptype(2) * mat5[i, j]
                 idx = idx + 1
 
-    kernel = getkernel(kernel_cache, check_mat_negation, suffix=dtype.__name__)
+    kernel = getkernel(
+        kernel_cache,
+        check_mat_negation,
+        suffix=dtype.__name__,
+        enable_backward=dtype in np_float_types,
+    )
 
     if register_kernels:
         return
@@ -180,8 +192,6 @@ def test_matmul(test, device, dtype, register_kernels=False):
     mat32 = wp.types.matrix(shape=(3, 2), dtype=wptype)
     mat44 = wp.types.matrix(shape=(4, 4), dtype=wptype)
 
-    output_select_kernel = get_select_kernel(kernel_cache, wptype)
-
     def check_mat_mul(
         i23: wp.array[mat23],
         i32: wp.array[mat32],
@@ -195,7 +205,12 @@ def test_matmul(test, device, dtype, register_kernels=False):
         o33[i] = i32[i] @ i23[i]
         o44[i] = i44[i] @ i44[i]
 
-    kernel = getkernel(kernel_cache, check_mat_mul, suffix=dtype.__name__)
+    kernel = getkernel(
+        kernel_cache,
+        check_mat_mul,
+        suffix=dtype.__name__,
+        enable_backward=dtype in np_float_types,
+    )
 
     if register_kernels:
         return
@@ -250,7 +265,8 @@ def test_subtraction(test, device, dtype, register_kernels=False):
     mat44 = wp.types.matrix(shape=(4, 4), dtype=wptype)
     mat55 = wp.types.matrix(shape=(5, 5), dtype=wptype)
 
-    output_select_kernel = get_select_kernel(kernel_cache, wptype)
+    if dtype in np_float_types:
+        output_select_kernel = get_select_kernel(kernel_cache, wptype)
 
     def check_mat_sub(
         s2: wp.array[mat22],
@@ -290,7 +306,12 @@ def test_subtraction(test, device, dtype, register_kernels=False):
                 outcomponents[idx] = wptype(2) * v5result[i, j]
                 idx = idx + 1
 
-    kernel = getkernel(kernel_cache, check_mat_sub, suffix=dtype.__name__)
+    kernel = getkernel(
+        kernel_cache,
+        check_mat_sub,
+        suffix=dtype.__name__,
+        enable_backward=dtype in np_float_types,
+    )
 
     if register_kernels:
         return
@@ -1434,7 +1455,7 @@ def test_transform_vector(test, device, dtype, register_kernels=False):
             tape.zero()
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def test_matrix_mutation(expected: wp.types.matrix(shape=(10, 3), dtype=float)):
     m = wp.types.matrix(shape=(10, 3), dtype=float)
 
@@ -1453,7 +1474,7 @@ def test_matrix_mutation(expected: wp.types.matrix(shape=(10, 3), dtype=float)):
 Mat23 = wp.types.matrix((2, 3), dtype=wp.float16)
 
 
-@wp.kernel(module="unique")
+@wp.kernel(enable_backward=False, module="unique")
 def matrix_len_kernel(
     m1: wp.mat22,
     m2: wp.types.matrix((3, 3), float),
@@ -1929,7 +1950,7 @@ def test_mat_from_rows_indexing_assign(test, device):
         wp.expect_eq(m[-3][-1], 456.0)
         wp.expect_eq(m[-3][-2], 345.0)
 
-    @wp.kernel(module="unique")
+    @wp.kernel(enable_backward=False, module="unique")
     def kernel():
         fn()
 
@@ -1999,7 +2020,7 @@ def test_mat_from_cols_indexing_assign(test, device):
         wp.expect_eq(m[-2][-2], 1134.0)
         wp.expect_eq(m[-2][-3], 456.0)
 
-    @wp.kernel(module="unique")
+    @wp.kernel(enable_backward=False, module="unique")
     def kernel():
         fn()
 
@@ -2650,7 +2671,7 @@ def test_mat_from_rows_slicing_assign(test, device):
             True,
         )
 
-    @wp.kernel(module="unique")
+    @wp.kernel(enable_backward=False, module="unique")
     def kernel():
         fn()
 
@@ -3313,7 +3334,7 @@ def test_mat_from_cols_slicing_assign(test, device):
             True,
         )
 
-    @wp.kernel(module="unique")
+    @wp.kernel(enable_backward=False, module="unique")
     def kernel():
         fn()
 
