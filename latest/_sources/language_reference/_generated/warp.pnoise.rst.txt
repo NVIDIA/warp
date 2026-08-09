@@ -10,9 +10,52 @@
       * Python
       * Differentiable
 
-   Periodic Perlin-style noise.
+   Sample 1D Perlin noise that repeats with an integer period.
    
-   Sample 1D noise.
+   Wraps the :func:`noise` lattice every ``px`` cells, with one cell per input unit.
+   ``state`` selects the field and is not advanced. Values have the same scale and
+   device-reproducibility behavior as :func:`noise`.
+   
+   Periods must be positive; zero invokes undefined behavior. Samples repeat under
+   whole-period shifts when the original and shifted coordinates remain on the same
+   side of zero. A shift that crosses zero may produce a different value, so use
+   non-negative coordinates when the field must repeat seamlessly.
+   
+   With negative coordinates, the field has one non-smooth boundary per period along
+   each axis. In 1D, the value is continuous across these boundaries, but Warp
+   autodiff reports a one-sided coordinate derivative. In vector overloads, crossing
+   a boundary can instead produce a finite value jump when another coordinate is
+   fractional. Away from these boundaries, the field is differentiable with respect
+   to coordinates. Period arguments receive no Warp autodiff gradient.
+   
+   :param state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
+   :param x: Coordinate to sample. One noise feature spans one unit.
+   :param px: Period along x, in units. Must be greater than zero.
+   
+   :returns: The noise value at ``x``. Exactly zero at integer coordinates, with a
+             theoretical range of ``±0.5``.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def sample_periodic_noise(seed: int, coords: wp.array[float], values: wp.array[float]):
+           tid = wp.tid()
+           state = wp.rand_init(seed)
+           values[tid] = wp.pnoise(state, coords[tid], 4)
+   
+       # a point, then the same point shifted by one and by two periods
+       coords = wp.array([0.75, 4.75, 8.75], dtype=float)
+       values = wp.zeros(len(coords), dtype=float)
+   
+       wp.launch(sample_periodic_noise, dim=len(coords), inputs=[42, coords], outputs=[values])
+       print([round(v, 3) for v in values.numpy().tolist()])
+   
+   .. testoutput::
+   
+       [0.174, 0.174, 0.174]
+   
 
 .. function:: warp._src.lang.pnoise(state: uint32, xy: vec2f, px: int32, py: int32) -> float
    :noindex:
@@ -24,9 +67,18 @@
       * Python
       * Differentiable
 
-   Periodic Perlin-style noise.
+   Sample 2D Perlin noise that repeats with an integer period.
    
-   Sample 2D noise.
+   See :func:`pnoise` for shared behavior, restrictions, and a usage example.
+   
+   :param state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
+   :param xy: Coordinate to sample. One noise feature spans one unit.
+   :param px: Period along x, in units. Must be greater than zero.
+   :param py: Period along y, in units. Must be greater than zero.
+   
+   :returns: The noise value at ``xy``. Exactly zero when every component is an integer,
+             with a theoretical range of ``±sqrt(2)/2``.
+   
 
 .. function:: warp._src.lang.pnoise(state: uint32, xyz: vec3f, px: int32, py: int32, pz: int32) -> float
    :noindex:
@@ -38,9 +90,19 @@
       * Python
       * Differentiable
 
-   Periodic Perlin-style noise.
+   Sample 3D Perlin noise that repeats with an integer period.
    
-   Sample 3D noise.
+   See :func:`pnoise` for shared behavior, restrictions, and a usage example.
+   
+   :param state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
+   :param xyz: Coordinate to sample. One noise feature spans one unit.
+   :param px: Period along x, in units. Must be greater than zero.
+   :param py: Period along y, in units. Must be greater than zero.
+   :param pz: Period along z, in units. Must be greater than zero.
+   
+   :returns: The noise value at ``xyz``. Exactly zero when every component is an integer,
+             with a theoretical range of ``±sqrt(3)/2``.
+   
 
 .. function:: warp._src.lang.pnoise(state: uint32, xyzt: vec4f, px: int32, py: int32, pz: int32, pt: int32) -> float
    :noindex:
@@ -52,6 +114,18 @@
       * Python
       * Differentiable
 
-   Periodic Perlin-style noise.
+   Sample 4D Perlin noise that repeats with an integer period.
    
-   Sample 4D noise.
+   The fourth coordinate is commonly used as looping time. See :func:`pnoise` for
+   shared behavior, restrictions, and a usage example.
+   
+   :param state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
+   :param xyzt: Coordinate to sample. One noise feature spans one unit.
+   :param px: Period along x, in units. Must be greater than zero.
+   :param py: Period along y, in units. Must be greater than zero.
+   :param pz: Period along z, in units. Must be greater than zero.
+   :param pt: Period along the fourth axis, in units. Must be greater than zero.
+   
+   :returns: The noise value at ``xyzt``. Exactly zero when every component is an integer,
+             with a theoretical range of ``±1``.
+   
