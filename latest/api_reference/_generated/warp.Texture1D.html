@@ -518,7 +518,7 @@
 <h1>warp.Texture1D<a class="headerlink" href="#warp-texture1d" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.Texture1D">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Texture1D</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L1142-L1219"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture1D" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Texture1D</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L1117-L1194"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Texture1D" title="Link to this definition">#</a></dt>
 <dd><p>1D texture class.</p>
 <div class="admonition-experimental admonition">
 <p class="admonition-title">Experimental</p>
@@ -547,14 +547,8 @@ Use this for explicit 1D texture creation and as a type hint in kernel parameter
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">copy_from</span></code>(src)</p></td>
 <td><p>Copy texture data from a source.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">copy_from_array</span></code>(src)</p></td>
-<td><p>Copy from a CUDA Warp array into this texture's CUDA array.</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">copy_to</span></code>(dst)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">copy_to</span></code>(dst)</p></td>
 <td><p>Copy texture data to a destination.</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">copy_to_array</span></code>(dst)</p></td>
-<td><p>Copy from this texture's CUDA array into a CUDA Warp array.</p></td>
 </tr>
 </tbody>
 </table>

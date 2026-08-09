@@ -11,9 +11,7 @@
    .. autosummary::
    
       ~Texture1D.copy_from
-      ~Texture1D.copy_from_array
       ~Texture1D.copy_to
-      ~Texture1D.copy_to_array
    
    
    
