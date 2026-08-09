@@ -1138,44 +1138,238 @@ jobs:
 
   check-unnamespaced-symbols:
     if: github.event_name != 'schedule' || github.repository == 'NVIDIA/warp'
-    runs-on: ubuntu-latest
+    name: check-unnamespaced-symbols (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
     needs: build-warp
     permissions:
       contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: linux-x86_64-cuda13
+            artifact-name: build-artifact-ubuntu-x86_64-cuda13
+            symbol-format: elf
+            allow-nv-optimus: false
+          - os: ubuntu-24.04-arm
+            platform: linux-aarch64-cuda13
+            artifact-name: build-artifact-ubuntu-aarch64-cuda13
+            symbol-format: elf
+            allow-nv-optimus: false
+          - os: windows-2022
+            platform: windows-x86_64-cuda13
+            artifact-name: build-artifact-windows-cuda13
+            symbol-format: pe
+            allow-nv-optimus: true
+          - os: macos-latest
+            platform: macos-aarch64-cpu
+            artifact-name: build-artifact-macos
+            symbol-format: macho
+            allow-nv-optimus: false
+          - os: windows-11-arm
+            platform: windows-aarch64-cpu
+            artifact-name: build-artifact-windows-aarch64-cpu
+            symbol-format: pe
+            allow-nv-optimus: false
     steps:
       - name: Download Warp build artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
         with:
-          name: build-artifact-ubuntu-x86_64-cuda13
+          name: ${{ matrix.artifact-name }}
           path: warp/bin/
-      - name: Check for un-namespaced symbols
+      - name: Check ELF exports
+        if: matrix.symbol-format == 'elf'
+        shell: bash
         run: |
-          echo "Checking for un-namespaced symbols..."
-          LIBRARIES_TO_CHECK="warp/bin/warp.so warp/bin/warp-clang.so"
-          found_symbols=""
+          set -uo pipefail
+          libraries=(warp/bin/warp.so warp/bin/warp-clang.so)
+          failed=0
 
-          for lib in $LIBRARIES_TO_CHECK; do
-            echo "--> Checking $lib"
-            if [ ! -f "$lib" ]; then
-              echo "ERROR: $lib not found"
-              found_symbols="true"
+          for library in "${libraries[@]}"; do
+            echo "--> Checking $library"
+            if [ ! -f "$library" ]; then
+              echo "::error::$library not found"
+              failed=1
               continue
             fi
-            output=$(readelf -Ws "$lib" | awk '$7 ~ /^[0-9]+$/ && $8 !~ /^(_?wp_|PyInit__warp_)/ {print $8}' | grep -Ev '^(_Z|__|\.)' || true)
-            
-            if [ -n "$output" ]; then
-              echo "ERROR: Found un-namespaced symbols in $lib:"
-              echo "$output"
-              found_symbols="true"
+            if ! readelf_output=$(readelf --dyn-syms --wide "$library"); then
+              echo "::error::readelf failed for $library"
+              failed=1
+              continue
+            fi
+
+            symbols=()
+            while IFS= read -r symbol; do
+              [ -n "$symbol" ] && symbols+=("$symbol")
+            done < <(
+              printf '%s\n' "$readelf_output" \
+                | awk '$5 ~ /^(GLOBAL|WEAK)$/ && $7 != "UND" && NF >= 8 {sub(/@.*/, "", $8); if ($8 != "") print $8}' \
+                | sort -u
+            )
+            if [ "${#symbols[@]}" -eq 0 ]; then
+              echo "::error::No exports were parsed from $library"
+              failed=1
+              continue
+            fi
+
+            unexpected=()
+            library_name=$(basename "$library")
+            for symbol in "${symbols[@]}"; do
+              case "$symbol" in
+                wp_*|_wp_*|PyInit__warp_*) continue ;;
+              esac
+              if [ "$library_name" = "warp-clang.so" ] \
+                && { [ "$symbol" = "__jit_debug_descriptor" ] \
+                  || [ "$symbol" = "__jit_debug_register_code" ]; }; then
+                continue
+              fi
+              unexpected+=("$symbol")
+            done
+
+            if [ "${#unexpected[@]}" -ne 0 ]; then
+              echo "::error::Unexpected exports in $library"
+              printf '  %s\n' "${unexpected[@]}"
+              failed=1
             fi
           done
 
-          if [ -n "$found_symbols" ]; then
-            echo "FAIL: Un-namespaced symbols detected. Please prefix them with 'wp_' or '_wp_'."
-            exit 1
-          fi
+          [ "$failed" -eq 0 ] || exit 1
+      - name: Check Mach-O exports
+        if: matrix.symbol-format == 'macho'
+        shell: bash
+        run: |
+          set -uo pipefail
+          libraries=(warp/bin/libwarp.dylib warp/bin/libwarp-clang.dylib)
+          failed=0
 
-          echo "SUCCESS: All symbols are correctly namespaced."
+          for library in "${libraries[@]}"; do
+            echo "--> Checking $library"
+            if [ ! -f "$library" ]; then
+              echo "::error::$library not found"
+              failed=1
+              continue
+            fi
+            if ! nm_output=$(nm -gjU "$library"); then
+              echo "::error::nm failed for $library"
+              failed=1
+              continue
+            fi
+
+            symbols=()
+            while IFS= read -r symbol; do
+              [ -n "$symbol" ] && symbols+=("$symbol")
+            done < <(printf '%s\n' "$nm_output" | sed 's/^_//' | sort -u)
+            if [ "${#symbols[@]}" -eq 0 ]; then
+              echo "::error::No exports were parsed from $library"
+              failed=1
+              continue
+            fi
+
+            unexpected=()
+            library_name=$(basename "$library")
+            for symbol in "${symbols[@]}"; do
+              case "$symbol" in
+                wp_*|_wp_*|PyInit__warp_*) continue ;;
+              esac
+              if [ "$library_name" = "libwarp-clang.dylib" ] \
+                && { [ "$symbol" = "__jit_debug_descriptor" ] \
+                  || [ "$symbol" = "__jit_debug_register_code" ]; }; then
+                continue
+              fi
+              unexpected+=("$symbol")
+            done
+
+            if [ "${#unexpected[@]}" -ne 0 ]; then
+              echo "::error::Unexpected exports in $library"
+              printf '  %s\n' "${unexpected[@]}"
+              failed=1
+            fi
+          done
+
+          [ "$failed" -eq 0 ] || exit 1
+      - name: Check PE exports
+        if: matrix.symbol-format == 'pe'
+        env:
+          ALLOW_NV_OPTIMUS: ${{ matrix.allow-nv-optimus }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          if (!(Test-Path -LiteralPath $vswhere)) {
+            throw "vswhere.exe was not found"
+          }
+          $dumpbin = & $vswhere -latest -products '*' -find 'VC\Tools\MSVC\**\dumpbin.exe' | Select-Object -First 1
+          if (!$dumpbin) {
+            throw "vswhere found no dumpbin.exe"
+          }
+
+          $libraries = @("warp/bin/warp.dll", "warp/bin/warp-clang.dll")
+          $failed = $false
+          foreach ($library in $libraries) {
+            Write-Host "--> Checking $library"
+            if (!(Test-Path -LiteralPath $library)) {
+              Write-Host "::error::$library not found"
+              $failed = $true
+              continue
+            }
+
+            $dumpbinOutput = & $dumpbin /nologo /exports $library 2>&1
+            if ($LASTEXITCODE -ne 0) {
+              Write-Host "::error::dumpbin failed for $library"
+              $dumpbinOutput | Write-Host
+              $failed = $true
+              continue
+            }
+            $symbols = @(
+              $dumpbinOutput |
+                ForEach-Object {
+                  if ($_ -match '^\s+\d+\s+[0-9A-Fa-f]+\s+[0-9A-Fa-f]+\s+(\S+)') {
+                    $Matches[1]
+                  }
+                } |
+                Sort-Object -Unique
+            )
+            if ($symbols.Count -eq 0) {
+              Write-Host "::error::No exports were parsed from $library"
+              $failed = $true
+              continue
+            }
+
+            $libraryName = Split-Path -Leaf $library
+            $unexpected = [System.Collections.Generic.List[string]]::new()
+            foreach ($symbol in $symbols) {
+              $allowed = $symbol.StartsWith("wp_") `
+                -or $symbol.StartsWith("_wp_") `
+                -or $symbol.StartsWith("PyInit__warp_")
+              if ($libraryName -eq "warp-clang.dll" -and $symbol -in @(
+                "__jit_debug_descriptor",
+                "__jit_debug_register_code"
+              )) {
+                $allowed = $true
+              }
+              if (
+                $env:ALLOW_NV_OPTIMUS -eq "true" `
+                  -and $libraryName -eq "warp.dll" `
+                  -and $symbol -eq "NvOptimusEnablementCuda"
+              ) {
+                $allowed = $true
+              }
+              if (!$allowed) {
+                $unexpected.Add($symbol)
+              }
+            }
+
+            if ($unexpected.Count -ne 0) {
+              Write-Host "::error::Unexpected exports in $library"
+              $unexpected | Sort-Object | ForEach-Object { Write-Host "  $_" }
+              $failed = $true
+            }
+          }
+
+          if ($failed) {
+            throw "Unexpected exported symbols were found"
+          }
 
   # Validate that the type stub file (warp/__init__.pyi) passes static type checking.
   type-check-stubs:

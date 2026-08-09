@@ -579,7 +579,16 @@ def _get_architectures_cu13(
     return gencode_opts, clang_arch_flags
 
 
-def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str] | None = None, mode=None):
+def build_dll_for_arch(
+    args,
+    dll_path,
+    cpp_paths,
+    cu_paths,
+    arch,
+    libs: list[str] | None = None,
+    mode=None,
+    exported_symbols_file: str | None = None,
+):
     mode = args.mode if (mode is None) else mode
     cuda_home = args.cuda_path
     cuda_cmd = None
@@ -911,6 +920,8 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
                 elapsed = (time.perf_counter_ns() - wall_clock) / 1000000.0
                 print(f"build took {elapsed:.2f} ms ({args.jobs:d} workers)")
 
+        opt_exported_symbols = ""
+
         if sys.platform == "darwin":
             # macOS linker rejects undefined symbols by default. Permit dynamic
             # lookup here, then validate below so unexpected unresolved symbols
@@ -918,6 +929,8 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
             opt_undefined = "-Wl,-undefined,dynamic_lookup"
             opt_exclude_libs = ""
             opt_static_runtime = ""
+            if exported_symbols_file is not None:
+                opt_exported_symbols = f'-Wl,-exported_symbols_list,"{exported_symbols_file}"'
         else:
             # -z lazy: pin lazy PLT binding so dlopen(..., RTLD_LAZY) works for non-Python
             # C++ hosts even on distros that flip the default to -z now via RELRO.
@@ -929,7 +942,7 @@ def build_dll_for_arch(args, dll_path, cpp_paths, cu_paths, arch, libs: list[str
 
         with ScopedTimer("link", active=args.verbose):
             origin = "@loader_path" if (sys.platform == "darwin") else "$ORIGIN"
-            link_cmd = f"{cpp_compiler} {version} -shared -Wl,-rpath,'{origin}' {opt_static_runtime} {opt_undefined} {opt_exclude_libs}{sanitize_ld} -o '{dll_path}' {' '.join(ld_inputs + libs)}"
+            link_cmd = f"{cpp_compiler} {version} -shared -Wl,-rpath,'{origin}' {opt_static_runtime} {opt_undefined} {opt_exported_symbols} {opt_exclude_libs}{sanitize_ld} -o '{dll_path}' {' '.join(ld_inputs + libs)}"
             run_cmd(link_cmd)
 
             # Platform-specific paths collect all undefined symbol names.

@@ -1,0 +1,4 @@
+_wp_*
+__wp_*
+___jit_debug_descriptor
+___jit_debug_register_code
