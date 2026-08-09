@@ -16,7 +16,6 @@ if TYPE_CHECKING:
 
     from warp._src.context import DeviceLike
 
-from warp._src.logger import log_warning
 from warp._src.types import (
     array,
     float16,
@@ -777,30 +776,6 @@ class Texture:
 
             self_array = array(ptr=self._host_ptr, shape=self._get_shape(), dtype=self.dtype, device=self.device)
             warp._src.context.copy(dst, self_array)
-
-    def copy_from_array(self, src: array):
-        """Copy from a CUDA Warp array into this texture's CUDA array.
-        Deprecated, use ``Texture.copy_from()`` method instead."""
-
-        log_warning(
-            "The Texture.copy_from_array() method is deprecated, use Texture.copy_from() instead.",
-            category=DeprecationWarning,
-            stacklevel=2,
-        )
-
-        self.copy_from(src)
-
-    def copy_to_array(self, dst: array):
-        """Copy from this texture's CUDA array into a CUDA Warp array.
-        Deprecated, use ``Texture.copy_to()`` method instead."""
-
-        log_warning(
-            "The Texture.copy_to_array() method is deprecated, use Texture.copy_to() instead.",
-            category=DeprecationWarning,
-            stacklevel=2,
-        )
-
-        self.copy_to(dst)
 
     @staticmethod
     def _compute_mip_shapes(base_shape, ndim, num_mip_levels):
