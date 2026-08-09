@@ -3,6 +3,7 @@
 
 import ctypes
 import ctypes.util
+import functools
 import gc
 import importlib.util
 import io
@@ -360,6 +361,7 @@ def assert_np_equal(result: np.ndarray, expect: np.ndarray, tol=0.0):
 # if check_output is True any output to stdout will be treated as an error
 def create_test_func(func, device, check_output, device_check=None, **kwargs):
     # pass args to func
+    @functools.wraps(func)
     def test_func(self):
         if device_check is not None:
             device_check(self, device)
@@ -369,10 +371,6 @@ def create_test_func(func, device, check_output, device_check=None, **kwargs):
                 func(self, device, **kwargs)
         else:
             func(self, device, **kwargs)
-
-    # Copy the __unittest_expecting_failure__ attribute from func to test_func
-    if hasattr(func, "__unittest_expecting_failure__"):
-        test_func.__unittest_expecting_failure__ = func.__unittest_expecting_failure__
 
     return test_func
 
