@@ -12,6 +12,7 @@ upstream option matrix. Consumers never use Conan: the deployed tree
 import os
 import shutil
 import subprocess
+from pathlib import Path
 
 from conan import ConanFile
 from conan.errors import ConanException, ConanInvalidConfiguration
@@ -20,7 +21,6 @@ from conan.tools.cmake import CMake, CMakeToolchain, cmake_layout
 from conan.tools.files import (
     apply_conandata_patches,
     collect_libs,
-    copy,
     export_conandata_patches,
     get,
     load,
@@ -30,6 +30,7 @@ from conan.tools.files import (
 )
 from conan.tools.microsoft import is_msvc
 from conan.tools.scm import Version
+from license_bundle import assemble_license_bundle
 
 # Host tools LLVM runs mid-build; when cross-compiling these must be built
 # for the build machine first and passed via LLVM_NATIVE_TOOL_DIR.
@@ -59,6 +60,7 @@ class ClangWarp(ConanFile):
     default_options = {"targets": None}  # noqa: RUF012 -- None -> host backend + NVPTX
 
     no_copy_source = True
+    exports = "license_bundle.py"
 
     def export_sources(self):
         export_conandata_patches(self)
@@ -275,14 +277,11 @@ class ClangWarp(ConanFile):
     def package(self):
         cmake = CMake(self)
         cmake.install()
-        for project in ("llvm", "clang"):
-            copy(
-                self,
-                "LICENSE.TXT",
-                src=os.path.join(self.source_folder, project),
-                dst=os.path.join(self.package_folder, "licenses", project),
-                keep_path=False,
-            )
+        assemble_license_bundle(
+            Path(self.source_folder),
+            Path(self.package_folder) / "licenses",
+            str(self.version),
+        )
         # Nothing in bin/, share/, libexec/, or LLVM's CMake package files is
         # part of the SDK; Warp links the static libraries directly.
         for subdir in ("bin", "share", "libexec", os.path.join("lib", "cmake")):

@@ -28,6 +28,17 @@ _VS_TOOLSETS = {"190": "vs140", "191": "vs141", "192": "vs142", "193": "vs143", 
 _ARCH_TAGS = {"x86_64": "x86_64", "armv8": "aarch64"}
 
 
+def make_build_environment(image_digest, runner_image):
+    """Describe the container or GitHub-hosted runner used for a build."""
+    if image_digest and runner_image:
+        raise ValueError("--image-digest and --runner-image are mutually exclusive")
+    if image_digest:
+        return {"kind": "container", "identity": image_digest}
+    if runner_image:
+        return {"kind": "github-hosted-runner", "identity": runner_image}
+    return None
+
+
 def parse_profile_settings(profile_path):
     """Parse the [settings] section of a Conan profile into a dict."""
     settings = {}
@@ -126,9 +137,18 @@ def main(argv=None):
     parser.add_argument("--output-dir", required=True, help="Directory to write the archive and build-info JSON")
     parser.add_argument("--recipe-sha", default="", help="Git SHA of the recipe checkout")
     parser.add_argument("--image-digest", default="", help="Container image digest, if any")
+    parser.add_argument("--runner-image", default="", help="GitHub-hosted runner image identity, if any")
     parser.add_argument("--toolchain-info", default="", help="Free-form toolchain description")
     parser.add_argument("--conan-version", default="", help="Conan version used for the build")
     args = parser.parse_args(argv)
+
+    try:
+        build_environment = make_build_environment(
+            args.image_digest,
+            args.runner_image,
+        )
+    except ValueError as exc:
+        parser.error(str(exc))
 
     if not os.path.isdir(args.sdk_dir):
         parser.error(f"--sdk-dir does not exist or is not a directory: {args.sdk_dir}")
@@ -159,6 +179,8 @@ def main(argv=None):
         "image_digest": args.image_digest,
         "toolchain_info": args.toolchain_info,
     }
+    if build_environment is not None:
+        build_info["build_environment"] = build_environment
     info_path = archive_path.replace(".tar.xz", ".buildinfo.json")
     with open(info_path, "w", encoding="utf-8") as f:
         json.dump(build_info, f, indent=2)

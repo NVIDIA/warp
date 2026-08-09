@@ -65,6 +65,27 @@ Then `out/llvm-sdk` is a plain install tree usable directly with
 `package_sdk.py` turns it into the deterministic release archive;
 `check_sdk.py` verifies tree shape and ABI markers.
 
+Every archive contains exactly this license and attribution tree:
+
+```text
+licenses/
+├── LLVM-ATTRIBUTION.txt
+├── clang/LICENSE.TXT
+├── llvm/LICENSE.TXT
+└── third-party/
+    ├── BLAKE3/LICENSE
+    ├── MD5/NOTICE.txt
+    ├── Unicode/ConvertUTF-NOTICE.txt
+    ├── Unicode/UnicodeData-NOTICE.txt
+    ├── regex/COPYRIGHT
+    ├── strlcpy/NOTICE.txt
+    └── xxhash/NOTICE.txt
+```
+
+This fixed ten-file manifest covers LLVM, Clang, and the third-party notices
+needed by the static libraries. Re-audit it against the source tree whenever
+LLVM is bumped; missing sources or ambiguous extraction markers fail packaging.
+
 ## CI
 
 `.github/workflows/build-llvm-sdk.yml` (manual `workflow_dispatch`) builds
@@ -84,9 +105,16 @@ when the draft is published. Publishing remains a manual promotion step
 per the LLVM SDK distribution plan. Partial-platform dispatches build
 and validate without drafting.
 
+Build-info schema 1 now has an optional typed `build_environment` object.
+Linux archives identify their pinned container digest. Native archives identify
+the requested runner label and GitHub's `ImageOS` and `ImageVersion` values.
+The existing container-only `image_digest` field is unchanged.
+
 ## Updating the LLVM version
 
 1. Add the new version's source URL and sha256 to `conandata.yml`
    (verify the digest against the official release independently).
-2. Dispatch the workflow with the new `llvm_version`.
-3. Follow the release steps in the LLVM SDK distribution plan.
+2. Re-audit the fixed third-party license and notice manifest against the new
+   LLVM source tree.
+3. Dispatch the workflow with the new `llvm_version`.
+4. Follow the release steps in the LLVM SDK distribution plan.
