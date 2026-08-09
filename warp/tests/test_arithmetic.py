@@ -41,11 +41,39 @@ def randvals(rng, shape, dtype):
 
 kernel_cache = {}
 
+# Compilation hygiene
+#
+# This file's shared module is large, and backward code accounts for roughly two thirds of it. The unary, nonzero,
+# binary-op, and clamp checks only differentiate their float instantiations, so the integer ones skip backward
+# codegen.
 
-def getkernel(func, suffix=""):
+
+def getkernel(func, suffix="", enable_backward=None):
+    """Get or create a cached kernel.
+
+    Args:
+        func: Kernel function to wrap.
+        suffix: Optional suffix for the kernel key.
+        enable_backward: Whether to generate a backward kernel. Uses the
+            module default when not specified.
+
+    Returns:
+        Cached or newly created wp.Kernel.
+    """
     key = func.__name__ + "_" + suffix
     if key not in kernel_cache:
-        kernel_cache[key] = wp.Kernel(func=func, key=key)
+        options = {} if enable_backward is None else {"enable_backward": enable_backward}
+        kernel_cache[key] = wp.Kernel(func=func, key=key, options=options)
+    elif enable_backward is not None:
+        cached_kernel = kernel_cache[key]
+        cached_enable_backward = cached_kernel.options.get(
+            "enable_backward", cached_kernel.module.options["enable_backward"]
+        )
+        if cached_enable_backward != enable_backward:
+            raise ValueError(
+                f"Kernel {key!r} is already cached with enable_backward={cached_enable_backward!r}, "
+                f"but enable_backward={enable_backward!r} was requested."
+            )
     return kernel_cache[key]
 
 
@@ -115,7 +143,7 @@ def test_unary_ops(test, device, dtype, register_kernels=False):
             outputs[3, i] = wptype(2.0) * wp.abs(i3)
             outputs[4, i] = wptype(2.0) * wp.step(i4)
 
-    kernel = getkernel(check_unary, suffix=dtype.__name__)
+    kernel = getkernel(check_unary, suffix=dtype.__name__, enable_backward=dtype in np_float_types)
     output_select_kernel = get_select_kernel2(wptype)
 
     if register_kernels:
@@ -221,7 +249,7 @@ def test_nonzero(test, device, dtype, register_kernels=False):
             i0 = inputs[i]
             outputs[i] = wp.nonzero(i0)
 
-    kernel = getkernel(check_nonzero, suffix=dtype.__name__)
+    kernel = getkernel(check_nonzero, suffix=dtype.__name__, enable_backward=dtype in np_float_types)
     output_select_kernel = get_select_kernel(wptype)
 
     if register_kernels:
@@ -292,7 +320,7 @@ def test_binary_ops(test, device, dtype, register_kernels=False):
             outputs[6, i] = wptype(2) * wp.max(i6, j6)
             outputs[7, i] = wptype(2) * wp.floordiv(i7, j7)
 
-    kernel = getkernel(check_binary_ops, suffix=dtype.__name__)
+    kernel = getkernel(check_binary_ops, suffix=dtype.__name__, enable_backward=dtype in np_float_types)
     output_select_kernel = get_select_kernel2(wptype)
 
     if register_kernels:
@@ -981,7 +1009,7 @@ def test_clamp(test, device, dtype, register_kernels=False):
             # multiply output by 2 so we've got something to backpropagate:
             outputs[i] = wptype(2) * wp.clamp(in1[i], in2[i], in3[i])
 
-    kernel = getkernel(check_clamp, suffix=dtype.__name__)
+    kernel = getkernel(check_clamp, suffix=dtype.__name__, enable_backward=dtype in np_float_types)
     output_select_kernel = get_select_kernel(wptype)
 
     if register_kernels:

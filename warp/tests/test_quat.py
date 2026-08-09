@@ -12,6 +12,12 @@ np_float_types = [np.float32, np.float64, np.float16]
 
 kernel_cache = {}
 
+# Compilation hygiene
+#
+# This file's shared module is large, so compile only entry points exercised by the tests. Backward code accounts for
+# roughly two thirds of the generated module, so kernels that are never replayed through a tape disable it. Keep
+# kernels declared inside tests in unique modules so they cannot invalidate the shared module after it loads.
+
 
 @wp.func
 def quat_from_euler(e: wp.vec3, i: int, j: int, k: int) -> wp.quat:
@@ -50,10 +56,32 @@ def quat_from_euler(e: wp.vec3, i: int, j: int, k: int) -> wp.quat:
     )
 
 
-def getkernel(func, suffix=""):
+def getkernel(func, suffix="", enable_backward=None):
+    """Get or create a cached kernel.
+
+    Args:
+        func: Kernel function to wrap.
+        suffix: Optional suffix for the kernel key.
+        enable_backward: Whether to generate a backward kernel. Uses the
+            module default when not specified.
+
+    Returns:
+        Cached or newly created wp.Kernel.
+    """
     key = func.__name__ + "_" + suffix
     if key not in kernel_cache:
-        kernel_cache[key] = wp.Kernel(func=func, key=key)
+        options = {} if enable_backward is None else {"enable_backward": enable_backward}
+        kernel_cache[key] = wp.Kernel(func=func, key=key, options=options)
+    elif enable_backward is not None:
+        cached_kernel = kernel_cache[key]
+        cached_enable_backward = cached_kernel.options.get(
+            "enable_backward", cached_kernel.module.options["enable_backward"]
+        )
+        if cached_enable_backward != enable_backward:
+            raise ValueError(
+                f"Kernel {key!r} is already cached with enable_backward={cached_enable_backward!r}, "
+                f"but enable_backward={enable_backward!r} was requested."
+            )
     return kernel_cache[key]
 
 
@@ -914,7 +942,7 @@ def test_indexing(test, device, dtype, register_kernels=False):
     assert_np_equal(r3.numpy()[0], 2.0 * q.numpy()[0, 3], tol=tol)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def test_assignment():
     q = wp.quat(1.0, 2.0, 3.0, 4.0)
     q[0] = 1.23
@@ -1291,7 +1319,7 @@ def test_slerp_grad(test, device, dtype, register_kernels=False):
 
         quats[tid] = qn
 
-    quat_sampler = getkernel(quat_sampler_slerp, suffix=dtype.__name__)
+    quat_sampler = getkernel(quat_sampler_slerp, suffix=dtype.__name__, enable_backward=False)
 
     if register_kernels:
         return
@@ -1453,7 +1481,7 @@ def test_quat_to_axis_angle_grad(test, device, dtype, register_kernels=False):
 
         quats[tid] = qn
 
-    quat_sampler = getkernel(quat_sampler, suffix=dtype.__name__)
+    quat_sampler = getkernel(quat_sampler, suffix=dtype.__name__, enable_backward=False)
 
     if register_kernels:
         return
@@ -1794,8 +1822,10 @@ def test_quat_identity(test, device, dtype, register_kernels=False):
         output[2] = q[2]
         output[3] = q[3]
 
-    quat_identity_kernel = getkernel(quat_identity_test, suffix=dtype.__name__)
-    quat_identity_default_kernel = getkernel(quat_identity_test_default, suffix=np.float32.__name__)
+    quat_identity_kernel = getkernel(quat_identity_test, suffix=dtype.__name__, enable_backward=False)
+    quat_identity_default_kernel = getkernel(
+        quat_identity_test_default, suffix=np.float32.__name__, enable_backward=False
+    )
 
     if register_kernels:
         return
@@ -1882,7 +1912,7 @@ def test_anon_type_instance(test, device, dtype, register_kernels=False):
 # which tests some different code paths that
 # need to ensure types are correctly canonicalized
 # during codegen
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def test_constructor_default():
     qzero = wp.quat()
     wp.expect_eq(qzero[0], 0.0)
@@ -1950,7 +1980,7 @@ def test_quat_backward(test, device):
     wp.synchronize_device(device)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def quat_len_kernel(q: wp.quat, out: wp.array[int]):
     length = wp.static(len(q))
     wp.expect_eq(wp.static(len(q)), 4)
@@ -2305,7 +2335,7 @@ def test_quat_indexing_assign(test, device):
         wp.expect_eq(q[-3], 4.0)
         wp.expect_eq(q[-4], 123.0)
 
-    @wp.kernel(module="unique")
+    @wp.kernel(enable_backward=False, module="unique")
     def kernel():
         fn()
 
@@ -2368,7 +2398,7 @@ def test_quat_slicing_assign(test, device):
         q[:-1] -= vec3(23.0, 24.0, 25.0)
         wp.expect_eq(q == wp.quat(-8.0, 15.0, 12.0, 40.0), True)
 
-    @wp.kernel(module="unique")
+    @wp.kernel(enable_backward=False, module="unique")
     def kernel():
         fn()
 

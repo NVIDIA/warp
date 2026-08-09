@@ -41,11 +41,39 @@ def randvals(rng, shape, dtype):
 
 kernel_cache = {}
 
+# Compilation hygiene
+#
+# This file's shared module is large, and backward code accounts for roughly two thirds of it. Only the tests that
+# replay a kernel through a tape need that code, so the rest disable it: comparison and constant checks are
+# forward-only for every dtype, and the arithmetic checks are forward-only for the integer dtypes.
 
-def getkernel(func, suffix=""):
+
+def getkernel(func, suffix="", enable_backward=None):
+    """Get or create a cached kernel.
+
+    Args:
+        func: Kernel function to wrap.
+        suffix: Optional suffix for the kernel key.
+        enable_backward: Whether to generate a backward kernel. Uses the
+            module default when not specified.
+
+    Returns:
+        Cached or newly created wp.Kernel.
+    """
     key = func.__name__ + "_" + suffix
     if key not in kernel_cache:
-        kernel_cache[key] = wp.Kernel(func=func, key=key)
+        options = {} if enable_backward is None else {"enable_backward": enable_backward}
+        kernel_cache[key] = wp.Kernel(func=func, key=key, options=options)
+    elif enable_backward is not None:
+        cached_kernel = kernel_cache[key]
+        cached_enable_backward = cached_kernel.options.get(
+            "enable_backward", cached_kernel.module.options["enable_backward"]
+        )
+        if cached_enable_backward != enable_backward:
+            raise ValueError(
+                f"Kernel {key!r} is already cached with enable_backward={cached_enable_backward!r}, "
+                f"but enable_backward={enable_backward!r} was requested."
+            )
     return kernel_cache[key]
 
 
@@ -311,8 +339,8 @@ def test_constructors(test, device, dtype, register_kernels=False):
         v53[0] = wptype(2) * v5result[3]
         v54[0] = wptype(2) * v5result[4]
 
-    vec_kernel = getkernel(check_vector_constructors, suffix=dtype.__name__)
-    kernel = getkernel(check_scalar_constructor, suffix=dtype.__name__)
+    vec_kernel = getkernel(check_vector_constructors, suffix=dtype.__name__, enable_backward=dtype in np_float_types)
+    kernel = getkernel(check_scalar_constructor, suffix=dtype.__name__, enable_backward=dtype in np_float_types)
 
     if register_kernels:
         return
@@ -497,8 +525,8 @@ def test_anon_type_instance(test, device, dtype, register_kernels=False):
             output[idx] = wptype(2) * v5result[i]
             idx = idx + 1
 
-    scalar_kernel = getkernel(check_scalar_init, suffix=dtype.__name__)
-    component_kernel = getkernel(check_component_init, suffix=dtype.__name__)
+    scalar_kernel = getkernel(check_scalar_init, suffix=dtype.__name__, enable_backward=dtype in np_float_types)
+    component_kernel = getkernel(check_component_init, suffix=dtype.__name__, enable_backward=dtype in np_float_types)
     output_select_kernel = get_select_kernel(wptype)
 
     if register_kernels:
@@ -617,7 +645,7 @@ def test_indexing(test, device, dtype, register_kernels=False):
         v53[0] = wptype(2) * v5[0][3]
         v54[0] = wptype(2) * v5[0][4]
 
-    kernel = getkernel(check_indexing, suffix=dtype.__name__)
+    kernel = getkernel(check_indexing, suffix=dtype.__name__, enable_backward=dtype in np_float_types)
 
     if register_kernels:
         return
@@ -730,8 +758,8 @@ def test_equality(test, device, dtype, register_kernels=False):
         wp.expect_neq(v54[0], v50[0])
         wp.expect_neq(v55[0], v50[0])
 
-    unsigned_kernel = getkernel(check_unsigned_equality, suffix=dtype.__name__)
-    signed_kernel = getkernel(check_signed_equality, suffix=dtype.__name__)
+    unsigned_kernel = getkernel(check_unsigned_equality, suffix=dtype.__name__, enable_backward=False)
+    signed_kernel = getkernel(check_signed_equality, suffix=dtype.__name__, enable_backward=False)
 
     if register_kernels:
         return
@@ -858,7 +886,7 @@ def test_scalar_multiplication(test, device, dtype, register_kernels=False):
         v53[0] = wptype(2) * v5result[3]
         v54[0] = wptype(2) * v5result[4]
 
-    kernel = getkernel(check_mul, suffix=dtype.__name__)
+    kernel = getkernel(check_mul, suffix=dtype.__name__, enable_backward=dtype in np_float_types)
 
     if register_kernels:
         return
@@ -990,7 +1018,7 @@ def test_scalar_multiplication_rightmul(test, device, dtype, register_kernels=Fa
         v53[0] = wptype(2) * v5result[3]
         v54[0] = wptype(2) * v5result[4]
 
-    kernel = getkernel(check_rightmul, suffix=dtype.__name__)
+    kernel = getkernel(check_rightmul, suffix=dtype.__name__, enable_backward=dtype in np_float_types)
 
     if register_kernels:
         return
@@ -1124,7 +1152,7 @@ def test_cw_multiplication(test, device, dtype, register_kernels=False):
         v53[0] = wptype(2) * v5result[3]
         v54[0] = wptype(2) * v5result[4]
 
-    kernel = getkernel(check_cw_mul, suffix=dtype.__name__)
+    kernel = getkernel(check_cw_mul, suffix=dtype.__name__, enable_backward=dtype in np_float_types)
 
     if register_kernels:
         return
@@ -1266,7 +1294,7 @@ def test_scalar_division(test, device, dtype, register_kernels=False):
         v53[0] = wptype(2) * v5result[3]
         v54[0] = wptype(2) * v5result[4]
 
-    kernel = getkernel(check_div, suffix=dtype.__name__)
+    kernel = getkernel(check_div, suffix=dtype.__name__, enable_backward=dtype in np_float_types)
 
     if register_kernels:
         return
@@ -1425,7 +1453,7 @@ def test_cw_division(test, device, dtype, register_kernels=False):
         v53[0] = wptype(2) * v5result[3]
         v54[0] = wptype(2) * v5result[4]
 
-    kernel = getkernel(check_cw_div, suffix=dtype.__name__)
+    kernel = getkernel(check_cw_div, suffix=dtype.__name__, enable_backward=dtype in np_float_types)
 
     if register_kernels:
         return
@@ -1593,7 +1621,7 @@ def test_addition(test, device, dtype, register_kernels=False):
         v53[0] = wptype(2) * v5result[3]
         v54[0] = wptype(2) * v5result[4]
 
-    kernel = getkernel(check_add, suffix=dtype.__name__)
+    kernel = getkernel(check_add, suffix=dtype.__name__, enable_backward=dtype in np_float_types)
 
     if register_kernels:
         return
@@ -1706,7 +1734,7 @@ def test_dotproduct(test, device, dtype, register_kernels=False):
         dot4[0] = wptype(2) * wp.dot(v4[0], s4[0])
         dot5[0] = wptype(2) * wp.dot(v5[0], s5[0])
 
-    kernel = getkernel(check_dot, suffix=dtype.__name__)
+    kernel = getkernel(check_dot, suffix=dtype.__name__, enable_backward=dtype in np_float_types)
 
     if register_kernels:
         return
@@ -1850,7 +1878,7 @@ def test_modulo(test, device, dtype, register_kernels=False):
         v53[0] = (wptype(2) * wp.mod(v5[0], s5[0]))[3]
         v54[0] = (wptype(2) * wp.mod(v5[0], s5[0]))[4]
 
-    kernel = getkernel(check_mod, suffix=dtype.__name__)
+    kernel = getkernel(check_mod, suffix=dtype.__name__, enable_backward=False)
 
     if register_kernels:
         return
@@ -1961,7 +1989,7 @@ def test_equivalent_types(test, device, dtype, register_kernels=False):
         wp.expect_eq(v4, vec4_equiv(wptype(1), wptype(2), wptype(3), wptype(4)))
         wp.expect_eq(v5, vec5_equiv(wptype(1), wptype(2), wptype(3), wptype(4), wptype(5)))
 
-    kernel = getkernel(check_equivalence, suffix=dtype.__name__)
+    kernel = getkernel(check_equivalence, suffix=dtype.__name__, enable_backward=False)
 
     if register_kernels:
         return
@@ -1986,7 +2014,7 @@ def test_conversions(test, device, dtype, register_kernels=False):
         wp.expect_eq(v2, v0)
         wp.expect_eq(v3, v0)
 
-    kernel = getkernel(check_vectors_equal, suffix=dtype.__name__)
+    kernel = getkernel(check_vectors_equal, suffix=dtype.__name__, enable_backward=False)
 
     if register_kernels:
         return
@@ -2026,7 +2054,7 @@ def test_constants(test, device, dtype, register_kernels=False):
         wp.expect_eq(cv4, vec4(wptype(1), wptype(2), wptype(3), wptype(4)))
         wp.expect_eq(cv5, vec5(wptype(1), wptype(2), wptype(3), wptype(4), wptype(5)))
 
-    kernel = getkernel(check_vector_constants, suffix=dtype.__name__)
+    kernel = getkernel(check_vector_constants, suffix=dtype.__name__, enable_backward=False)
 
     if register_kernels:
         return
@@ -2054,7 +2082,7 @@ def test_abs(test, device, dtype, register_kernels=False):
         res5 = wp.abs(vec5(wptype(-1), wptype(2), wptype(-3), wptype(4), wptype(-5)))
         wp.expect_eq(res5, vec5(wptype(1), wptype(2), wptype(3), wptype(4), wptype(5)))
 
-    kernel = getkernel(check_vector_abs, suffix=dtype.__name__)
+    kernel = getkernel(check_vector_abs, suffix=dtype.__name__, enable_backward=False)
 
     if register_kernels:
         return
@@ -2082,7 +2110,7 @@ def test_sign(test, device, dtype, register_kernels=False):
         res5 = wp.sign(vec5(wptype(-1), wptype(2), wptype(-3), wptype(4), wptype(-5)))
         wp.expect_eq(res5, vec5(wptype(-1), wptype(1), wptype(-1), wptype(1), wptype(-1)))
 
-    kernel = getkernel(check_vector_sign, suffix=dtype.__name__)
+    kernel = getkernel(check_vector_sign, suffix=dtype.__name__, enable_backward=False)
 
     if register_kernels:
         return
