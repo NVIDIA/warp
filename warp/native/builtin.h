@@ -2008,14 +2008,23 @@ struct slice_t {
     }
 };
 
+CUDA_CALLABLE inline void slice_assert_step_nonzero(const slice_t& slice)
+{
+    if (slice.step != 0) {
+        return;
+    }
+
+#if defined(__CUDA_ARCH__)
+    printf("slice step cannot be zero\n");
+    __trap();
+#else
+    _wp_assert("slice step cannot be zero", __FILE__, unsigned(__LINE__));
+#endif
+}
+
 CUDA_CALLABLE inline slice_t slice_adjust_indices(const slice_t& slice, int length)
 {
-#ifndef NDEBUG
-    if (slice.step == 0) {
-        printf("%s:%d slice step cannot be 0\n", __FILE__, __LINE__);
-        assert(0);
-    }
-#endif
+    slice_assert_step_nonzero(slice);
 
     int start, stop;
 
@@ -2036,15 +2045,8 @@ CUDA_CALLABLE inline slice_t slice_adjust_indices(const slice_t& slice, int leng
     return { start, stop, slice.step };
 }
 
-CUDA_CALLABLE inline int slice_get_length(const slice_t& slice)
+CUDA_CALLABLE inline int slice_get_length_unchecked(const slice_t& slice)
 {
-#ifndef NDEBUG
-    if (slice.step == 0) {
-        printf("%s:%d slice step cannot be 0\n", __FILE__, __LINE__);
-        assert(0);
-    }
-#endif
-
     if (slice.step > 0 && slice.start < slice.stop) {
         return 1 + (slice.stop - slice.start - 1) / slice.step;
     }
@@ -2054,6 +2056,12 @@ CUDA_CALLABLE inline int slice_get_length(const slice_t& slice)
     }
 
     return 0;
+}
+
+CUDA_CALLABLE inline int slice_get_length(const slice_t& slice)
+{
+    slice_assert_step_nonzero(slice);
+    return slice_get_length_unchecked(slice);
 }
 
 template <typename T> inline CUDA_CALLABLE T atomic_add(T* buf, T value)

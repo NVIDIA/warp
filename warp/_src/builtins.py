@@ -12446,7 +12446,7 @@ def view_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]
                 )
 
         # Each integer index collapses one dimension.
-        int_count = sum(x.step == 0 for x in idx_types)
+        int_count = sum(type_is_int(x) for x in idx_types)
         ndim = arr_type.ndim - int_count
         assert ndim > 0
     else:
