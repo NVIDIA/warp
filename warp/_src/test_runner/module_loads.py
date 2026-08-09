@@ -81,6 +81,7 @@ class ModuleLoadSummary:
             "hash_churn": [dataclasses.asdict(record) for record in self.hash_churn],
             "repeated_compilations": [dataclasses.asdict(record) for record in self.repeated_compilations],
             "slowest_compiled": [dataclasses.asdict(record) for record in self.slowest_compiled],
+            "read_errors": list(self.read_errors),
         }
 
 

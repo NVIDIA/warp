@@ -751,6 +751,11 @@ class TestDiagnosticEvents(unittest.TestCase):
             self.assertEqual(evidence["fault"]["state"], "empty")
             self.assertIs(evidence["fault"]["fatal_traceback_evidence"], False)
 
+            # A worker that dies before the parent registers it has no index,
+            # but its sinks opened first and its filenames embed the PID.
+            evidence = diagnostics._artifact_evidence(run_dir, None, 8123)
+            self.assertEqual(evidence["fault"]["state"], "empty")
+
             fault_path.unlink()
             evidence = diagnostics._artifact_evidence(run_dir, 2, 8123)
             self.assertEqual(evidence["fault"]["state"], "missing")
@@ -1220,6 +1225,12 @@ class TestResultLifecycle(unittest.TestCase):
             with self.subTest(value=1):
                 self.fail("subtest failure")
 
+    class MultipleFailingSubTests(unittest.TestCase):
+        def test_subtest_failures(self):
+            for value in range(3):
+                with self.subTest(value=value):
+                    self.fail(f"subtest {value} failed")
+
     def setUp(self):
         from warp._src.test_runner.events import (
             WorkerEventReporter,
@@ -1279,6 +1290,22 @@ class TestResultLifecycle(unittest.TestCase):
         self.assertEqual(len(result.failures), 1)
         self.assertEqual(len(result.errors), 0)
         self.assertEqual(result.test_record[0][3], "FAIL")
+
+    def test_repeated_subtest_failures_report_one_outcome_for_the_test(self):
+        """Count a test once in the suite totals however many subtests fail."""
+        from warp.tests.unittest_utils import ParallelJunitTestResult
+
+        suite = unittest.defaultTestLoader.loadTestsFromTestCase(self.MultipleFailingSubTests)
+        runner = unittest.TextTestRunner(
+            resultclass=ParallelJunitTestResult,
+            stream=io.StringIO(),
+            verbosity=0,
+        )
+        result = runner.run(suite)
+
+        outcomes = [event for event in self.queue.items if event.event.value == "test_outcome"]
+        self.assertEqual(len(outcomes), 1)
+        self.assertEqual(len(result.test_record), 3)
 
     def test_manager_emits_suite_and_test_lifecycles(self):
         from warp._src.test_runner.worker import ParallelTestManager
@@ -2405,6 +2432,8 @@ class TestModuleLoadCollection(unittest.TestCase):
         self.assertEqual((repeat.module, repeat.module_hash, repeat.compilations), ("wp.sim", "abc1234", 2))
         self.assertEqual(repeat.aggregate_ms, 150.0)
         self.assertEqual([record.module for record in summary.slowest_compiled], ["wp.top", "wp.sim", "wp.sim"])
+        # Unreadable logs are why "complete" can be false, so they ship with it.
+        self.assertEqual(summary.to_dict()["read_errors"], [])
 
 
 class TestExitProvenance(unittest.TestCase):

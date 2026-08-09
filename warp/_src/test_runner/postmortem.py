@@ -69,17 +69,40 @@ def _worker_candidate(worker: dict[str, Any]) -> dict[str, str | None]:
     return {"kind": "none", "name": None}
 
 
-def _artifact_evidence(run_dir: pathlib.Path | None, worker_index: int, pid: int) -> dict[str, dict[str, Any]]:
+def _resolve_artifact(run_dir: pathlib.Path, file_name: str) -> pathlib.Path | None:
+    """Resolve one artifact, expanding the wildcard used when the worker index is unknown."""
+    if "*" not in file_name:
+        return run_dir / file_name
+    matches = sorted(run_dir.glob(file_name))
+    return matches[0] if matches else None
+
+
+def _finalize_evidence(name: str, evidence: dict[str, Any]) -> dict[str, Any]:
+    if name == "fault":
+        evidence["fatal_traceback_evidence"] = {"non_empty": True, "empty": False}.get(evidence["state"])
+    return evidence
+
+
+def _artifact_evidence(run_dir: pathlib.Path | None, worker_index: int | None, pid: int) -> dict[str, dict[str, Any]]:
+    # Sinks are opened before WORKER_STARTED is emitted, so a worker that died
+    # before the parent registered it can still have evidence on disk. Its
+    # filenames embed the PID, so match on that rather than reporting nothing.
+    index = "*" if worker_index is None else worker_index
     names = {
-        "journal": f"worker-{worker_index}-{pid}.events.jsonl",
-        "output": f"worker-{worker_index}-pid-{pid}.output.log",
-        "fault": f"worker-{worker_index}-pid-{pid}.fault.log",
+        "journal": f"worker-{index}-{pid}.events.jsonl",
+        "output": f"worker-{index}-pid-{pid}.output.log",
+        "fault": f"worker-{index}-pid-{pid}.fault.log",
     }
     artifacts = {}
     for name, file_name in names.items():
         evidence = {"path": None, "state": "missing", "size_bytes": None}
         if run_dir is not None:
-            path = run_dir / file_name
+            path = _resolve_artifact(run_dir, file_name)
+            if path is None:
+                # Record the pattern we searched so a reader can tell an absent
+                # file from a lookup that was never attempted.
+                artifacts[name] = _finalize_evidence(name, evidence | {"path": str(run_dir / file_name)})
+                continue
             evidence["path"] = str(path)
             try:
                 size = path.stat().st_size
@@ -90,10 +113,7 @@ def _artifact_evidence(run_dir: pathlib.Path | None, worker_index: int, pid: int
             else:
                 evidence["size_bytes"] = size
                 evidence["state"] = "empty" if size == 0 else "non_empty"
-        if name == "fault":
-            state = evidence["state"]
-            evidence["fatal_traceback_evidence"] = {"non_empty": True, "empty": False}.get(state)
-        artifacts[name] = evidence
+        artifacts[name] = _finalize_evidence(name, evidence)
     return artifacts
 
 
@@ -143,7 +163,7 @@ def build_crash_snapshot(failure, classifications, snapshots, process_exits, run
                 "first_gil_state_change": None,
                 "last_non_ok_test": None,
                 **{name: value for name, value in process_exit.items() if name != "pid"},
-                "artifacts": _artifact_evidence(None, 0, process_exit["pid"]),
+                "artifacts": _artifact_evidence(run_path, None, process_exit["pid"]),
             }
         )
 
