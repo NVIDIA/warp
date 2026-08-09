@@ -198,11 +198,21 @@ To index a multi-dimensional array, use the following kernel syntax::
 
 To create an array slice, use the following syntax, where the number of indices is less than the array dimensions::
 
-    # returns an 1d array slice representing a row of the 2d array
+    # returns a 1D array slice representing a row of the 2D array
     row = input[i]
 
+    # start, stop, step, and column may be runtime expressions
+    view = input[start:stop:step, column]
+
 Slice operators can be concatenated, e.g.: ``s = array[i][j][k]``. Slices can be passed to :func:`wp.func <warp.func>` user functions provided
-the function also declares the expected array dimension. Currently, only single-index slicing is supported.
+the function also declares the expected array dimension.
+
+Unlike slices of fixed-size values, the ``start``, ``stop``, and ``step``
+components of a Warp array slice may be runtime expressions. A slice step of
+zero is invalid. A zero known at compile time raises a code-generation error. If
+a runtime step evaluates to zero, Warp reports the error and fails the kernel:
+the process aborts on CPU, while the CUDA kernel traps and reports a launch
+error.
 
 The following construction methods are provided for allocating zero-initialized and empty (non-initialized) arrays:
 
@@ -1059,8 +1069,9 @@ Indexing and slicing for vectors, matrices, quaternions, and transforms, follow 
 
 Negative indices are wrapped around, such that ``-1`` refers to the last element. Slices always create new copies.
 
-Inside kernels, the ``start / stop / step`` values of a slice must be **compile-time constants**.  Simple element indexing (``v[i]``, ``m[i, j]``) may use run-time
-expressions.
+For these fixed-size types, the ``start / stop / step`` values of a slice must
+be **compile-time constants**. Simple element indexing (``v[i]``, ``m[i, j]``)
+may use runtime expressions.
 
 
 Unpacking

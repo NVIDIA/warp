@@ -4353,26 +4353,7 @@ class Adjoint:
                     target.mark_read()
 
             else:
-                # Keep the original source-level indices for deterministic view
-                # tracking before the plain array path rewrites integer indices
-                # into slice arguments for the native view builtin.
                 view_indices = tuple(indices)
-
-                if warp._src.types.matches_array_class(target_type, warp._src.types.array):
-                    # In order to reduce the number of overloads needed in the C
-                    # implementation to support combinations of int/slice indices,
-                    # we convert all integer indices into slices, and set their
-                    # step to 0 if they are representing an integer index.
-                    new_indices = []
-                    for idx in indices:
-                        if not warp._src.types.is_slice(strip_reference(idx.type)):
-                            new_idx = adj.add_builtin_call("slice", (idx, idx, 0))
-                            new_indices.append(new_idx)
-                        else:
-                            new_indices.append(idx)
-
-                    indices = new_indices
-
                 # handles array views (fewer indices than dimensions)
                 out = adj.add_builtin_call("view", [target, *indices])
                 adj.deterministic.track_view(out, target, view_indices)
@@ -4839,6 +4820,8 @@ class Adjoint:
         start = SLICE_BEGIN if node.lower is None else adj.eval(node.lower)
         stop = SLICE_END if node.upper is None else adj.eval(node.upper)
         step = 1 if node.step is None else adj.eval(node.step)
+        if isinstance(step, Var) and step.constant == 0:
+            raise WarpCodegenValueError("Slice step cannot be zero.")
         return adj.add_builtin_call("slice", (start, stop, step))
 
     def store_ref_param_value(adj, name, value, *, augmented=False):

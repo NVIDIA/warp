@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import subprocess
+import sys
 import unittest
 from functools import cache
 from typing import Any
@@ -3593,6 +3595,92 @@ def test_array2d_slicing(test, device):
     wp.launch(test_array2d_slicing_kernel, dim=1, inputs=(arr,), device=device)
 
 
+# Keep the fatal-path subprocess from compiling the entire test_array module.
+@wp.kernel(module="unique")
+def dynamic_array_slice_kernel(
+    array: wp.array2d[int],
+    start: int,
+    stop: int,
+    step: int,
+    output: wp.array[int],
+):
+    view = array[start:stop:step, 1]
+    output[0] = view.shape[0]
+    output[1] = view[0]
+    output[2] = view[view.shape[0] - 1]
+
+
+def test_dynamic_array_slice(test, device):
+    """Verify that dynamic array slices handle positive and negative runtime steps."""
+    array = wp.array(tuple(range(18)), dtype=int, shape=(6, 3), device=device)
+    cases = (
+        ("positive", 1, 6, 2, np.array([3, 4, 16], dtype=np.int32)),
+        ("negative", 5, 0, -2, np.array([3, 16, 4], dtype=np.int32)),
+    )
+
+    for name, start, stop, step, expected in cases:
+        with test.subTest(name=name):
+            output = wp.empty(3, dtype=int, device=device)
+            wp.launch(
+                dynamic_array_slice_kernel,
+                dim=1,
+                inputs=[array, start, stop, step, output],
+                device=device,
+            )
+            np.testing.assert_array_equal(output.numpy(), expected)
+
+
+def _trigger_runtime_zero_step(device_alias: str):
+    """Trigger a runtime zero-step array slice on the requested device."""
+    with wp.ScopedDevice(device_alias):
+        array = wp.array(tuple(range(18)), dtype=int, shape=(6, 3))
+        output = wp.empty(3, dtype=int)
+        wp.launch(dynamic_array_slice_kernel, dim=1, inputs=[array, 0, 6, 0, output])
+        wp.synchronize_device()
+
+
+def _run_runtime_zero_step_subprocess(device_alias: str, timeout: int = 120):
+    """Run a runtime zero-step slice in an isolated child process.
+
+    CPU execution aborts, while CUDA execution leaves the context unusable
+    after trapping.
+    """
+    return subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "import sys; from warp.tests.test_array import _trigger_runtime_zero_step; "
+            "_trigger_runtime_zero_step(sys.argv[1])",
+            device_alias,
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+    )
+
+
+def test_array_runtime_zero_step(test, device):
+    """Verify that runtime zero-step array slices fail on each backend.
+
+    Run each case in a subprocess because the CPU path aborts and the CUDA
+    path leaves the context unusable after trapping.
+    """
+    if sys.platform == "win32":
+        test.skipTest(
+            "Skip on Windows because the intentional host abort or CUDA trap may destabilize QA hosts, which cannot "
+            "be identified reliably."
+        )
+
+    result = _run_runtime_zero_step_subprocess(device.alias)
+    output = result.stdout + result.stderr
+    test.assertRegex(output, "slice step cannot be zero")
+    if device.is_cuda:
+        test.assertRegex(output, "Warp CUDA error")
+    else:
+        test.assertNotEqual(result.returncode, 0)
+
+
 @wp.kernel
 def test_array3d_slicing_kernel(arr: wp.array3d[int]):
     sub = arr[-1:]
@@ -3982,6 +4070,48 @@ cuda_devices = get_cuda_test_devices()
 
 
 class TestArray(unittest.TestCase):
+    def test_literal_zero_step_slice_in_kernel(self):
+        """Verify that literal zero-step array slices fail during code generation.
+
+        This validation occurs in device-independent Warp code generation, so
+        use CPU rather than repeating the same frontend failure on each backend.
+        """
+
+        @wp.kernel(module="unique")
+        def invalid_zero_step_slice_1d(a: wp.array[int]):
+            view = a[0:2:0]
+
+        @wp.kernel(module="unique")
+        def invalid_zero_step_slice_2d(a: wp.array2d[int]):
+            view = a[0:2:0]
+
+        @wp.kernel(module="unique")
+        def invalid_zero_step_slice_3d(a: wp.array3d[int]):
+            view = a[0:2:0]
+
+        @wp.kernel(module="unique")
+        def invalid_zero_step_slice_4d(a: wp.array4d[int]):
+            view = a[0:2:0]
+
+        cases = (
+            ("1d", invalid_zero_step_slice_1d, wp.zeros(2, dtype=int, device="cpu")),
+            ("2d", invalid_zero_step_slice_2d, wp.zeros((2, 2), dtype=int, device="cpu")),
+            ("3d", invalid_zero_step_slice_3d, wp.zeros((2, 2, 2), dtype=int, device="cpu")),
+            ("4d", invalid_zero_step_slice_4d, wp.zeros((2, 2, 2, 2), dtype=int, device="cpu")),
+        )
+
+        for name, kernel, array in cases:
+            with self.subTest(name=name):
+                with self.assertRaisesRegex(wp.WarpCodegenValueError, "Slice step cannot be zero"):
+                    wp.launch(kernel, dim=1, inputs=[array], device="cpu")
+
+    def test_zero_step_slice_at_python_scope(self):
+        """Verify that Python-scope zero-step array slices raise ``ValueError``."""
+        array = wp.zeros(4, dtype=int, device="cpu")
+
+        with self.assertRaisesRegex(ValueError, "slice step cannot be zero"):
+            _ = array[::0]
+
     def test_array_new_del(self):
         # test the scenario in which an array instance is created but not initialized before gc
         instance = wp.array.__new__(wp.array)
@@ -4125,6 +4255,8 @@ add_function_test(TestArray, "test_array1d_slicing", test_array1d_slicing, devic
 add_function_test(TestArray, "test_array2d_slicing", test_array2d_slicing, devices=devices)
 add_function_test(TestArray, "test_array3d_slicing", test_array3d_slicing, devices=devices)
 add_function_test(TestArray, "test_array4d_slicing", test_array4d_slicing, devices=devices)
+add_function_test(TestArray, "test_dynamic_array_slice", test_dynamic_array_slice, devices=devices)
+add_function_test(TestArray, "test_array_runtime_zero_step", test_array_runtime_zero_step, devices=devices)
 
 add_function_test(TestArray, "test_graph_fill_vecmat", test_graph_fill_vecmat, devices=cuda_devices)
 

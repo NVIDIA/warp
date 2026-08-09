@@ -251,6 +251,9 @@ stride:
      [-1.  5. -1.  7.]
      [-1.  9. -1. 11.]]
 
+As with Python slices, a slice step of zero raises
+``ValueError("slice step cannot be zero")``.
+
 Scalar item indexing is intentionally not supported on ``wp.array`` objects at
 Python scope, so ``a[0, 0]`` raises an error. Use slicing to create array views,
 or convert to NumPy with :meth:`array.numpy <warp.array.numpy>` when reading
