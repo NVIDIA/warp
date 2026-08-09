@@ -5225,9 +5225,9 @@ add_builtin(
             def histogram(data: wp.array[float], out: wp.array[float]):
 
                 bins = wp.tile_zeros(dtype=float, shape=4, storage="shared")
-                i = wp.tid()
+                tile_idx, thread_idx = wp.tid()
                 # Bin values in [0, 8) into 4 bins of width 2
-                b = int(data[i] / 2.0)
+                b = int(data[thread_idx] / 2.0)
                 wp.tile_scatter_add(bins, b, 1.0, True)
                 wp.tile_store(out, bins, offset=0)
 
