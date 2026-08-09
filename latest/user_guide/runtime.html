@@ -686,12 +686,21 @@ To index a multi-dimensional array, use the following kernel syntax:</p>
 </pre></div>
 </div>
 <p>To create an array slice, use the following syntax, where the number of indices is less than the array dimensions:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># returns an 1d array slice representing a row of the 2d array</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># returns a 1D array slice representing a row of the 2D array</span>
 <span class="n">row</span> <span class="o">=</span> <span class="nb">input</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+<span class="c1"># start, stop, step, and column may be runtime expressions</span>
+<span class="n">view</span> <span class="o">=</span> <span class="nb">input</span><span class="p">[</span><span class="n">start</span><span class="p">:</span><span class="n">stop</span><span class="p">:</span><span class="n">step</span><span class="p">,</span> <span class="n">column</span><span class="p">]</span>
 </pre></div>
 </div>
 <p>Slice operators can be concatenated, e.g.: <code class="docutils literal notranslate"><span class="pre">s</span> <span class="pre">=</span> <span class="pre">array[i][j][k]</span></code>. Slices can be passed to <a class="reference internal" href="../api_reference/_generated/warp.func.html#warp.func" title="warp.func"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.func</span></code></a> user functions provided
-the function also declares the expected array dimension. Currently, only single-index slicing is supported.</p>
+the function also declares the expected array dimension.</p>
+<p>Unlike slices of fixed-size values, the <code class="docutils literal notranslate"><span class="pre">start</span></code>, <code class="docutils literal notranslate"><span class="pre">stop</span></code>, and <code class="docutils literal notranslate"><span class="pre">step</span></code>
+components of a Warp array slice may be runtime expressions. A slice step of
+zero is invalid. A zero known at compile time raises a code-generation error. If
+a runtime step evaluates to zero, Warp reports the error and fails the kernel:
+the process aborts on CPU, while the CUDA kernel traps and reports a launch
+error.</p>
 <p>The following construction methods are provided for allocating zero-initialized and empty (non-initialized) arrays:</p>
 <ul class="simple">
 <li><p><a class="reference internal" href="../api_reference/_generated/warp.zeros.html#warp.zeros" title="warp.zeros"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.zeros()</span></code></a></p></li>
@@ -1541,8 +1550,9 @@ A full reference for operators and functions for these types is available in the
 </pre></div>
 </div>
 <p>Negative indices are wrapped around, such that <code class="docutils literal notranslate"><span class="pre">-1</span></code> refers to the last element. Slices always create new copies.</p>
-<p>Inside kernels, the <code class="docutils literal notranslate"><span class="pre">start</span> <span class="pre">/</span> <span class="pre">stop</span> <span class="pre">/</span> <span class="pre">step</span></code> values of a slice must be <strong>compile-time constants</strong>.  Simple element indexing (<code class="docutils literal notranslate"><span class="pre">v[i]</span></code>, <code class="docutils literal notranslate"><span class="pre">m[i,</span> <span class="pre">j]</span></code>) may use run-time
-expressions.</p>
+<p>For these fixed-size types, the <code class="docutils literal notranslate"><span class="pre">start</span> <span class="pre">/</span> <span class="pre">stop</span> <span class="pre">/</span> <span class="pre">step</span></code> values of a slice must
+be <strong>compile-time constants</strong>. Simple element indexing (<code class="docutils literal notranslate"><span class="pre">v[i]</span></code>, <code class="docutils literal notranslate"><span class="pre">m[i,</span> <span class="pre">j]</span></code>)
+may use runtime expressions.</p>
 </section>
 <section id="unpacking">
 <h3>Unpacking<a class="headerlink" href="#unpacking" title="Link to this heading">#</a></h3>
