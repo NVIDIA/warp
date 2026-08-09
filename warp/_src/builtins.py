@@ -11672,36 +11672,102 @@ add_builtin(
     input_types={"state": uint32, "x": float},
     value_type=float,
     group="Random",
-    doc="""Non-periodic Perlin-style noise.
+    doc="""Sample 1D non-periodic Perlin noise.
 
-    Sample 1D noise.""",
+    Samples a smooth, deterministic field on an integer lattice with one cell per input
+    unit. ``state`` selects the field and is not advanced. Scale the coordinate to
+    change feature size and the result to change amplitude. Each coordinate
+    dimensionality defines a distinct field.
+
+    Values are centered on zero, are exactly zero at integer lattice points, and have a
+    theoretical range of ``±sqrt(N)/2`` for ``N`` dimensions. Differentiable with
+    respect to the coordinate. Results are reproducible per device, but CPU and CUDA
+    values may differ slightly. Use :func:`pnoise` for periodic noise.
+
+    Keep each coordinate component below ``2^23`` (about 8.4e6). At that magnitude and
+    above, ``float32`` cannot represent sub-cell coordinates: scalar noise returns zero,
+    while vector noise may remain nonzero if another component is fractional.
+    Coordinates outside the signed 32-bit lattice-index range are unsupported.
+
+    Args:
+        state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
+        x: Coordinate to sample. One noise feature spans one unit.
+
+    Returns:
+        The noise value at ``x``. Exactly zero at integer coordinates, with a
+        theoretical range of ``±0.5``.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def sample_noise(seed: int, coords: wp.array[float], values: wp.array[float]):
+                tid = wp.tid()
+                state = wp.rand_init(seed)
+                values[tid] = wp.noise(state, coords[tid])
+
+            coords = wp.array([0.5, 2.25, 4.75], dtype=float)
+            values = wp.zeros(len(coords), dtype=float)
+
+            wp.launch(sample_noise, dim=len(coords), inputs=[42, coords], outputs=[values])
+            print([round(v, 3) for v in values.numpy().tolist()])
+
+        .. testoutput::
+
+            [0.243, -0.09, -0.11]""",
 )
 add_builtin(
     "noise",
     input_types={"state": uint32, "xy": vec2},
     value_type=float,
     group="Random",
-    doc="""Non-periodic Perlin-style noise.
+    doc="""Sample 2D non-periodic Perlin noise.
 
-    Sample 2D noise.""",
+    See :func:`noise` for shared behavior, restrictions, and a usage example.
+
+    Args:
+        state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
+        xy: Coordinate to sample. One noise feature spans one unit.
+
+    Returns:
+        The noise value at ``xy``. Exactly zero when every component is an integer,
+        with a theoretical range of ``±sqrt(2)/2``.""",
 )
 add_builtin(
     "noise",
     input_types={"state": uint32, "xyz": vec3},
     value_type=float,
     group="Random",
-    doc="""Non-periodic Perlin-style noise.
+    doc="""Sample 3D non-periodic Perlin noise.
 
-    Sample 3D noise.""",
+    See :func:`noise` for shared behavior, restrictions, and a usage example.
+
+    Args:
+        state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
+        xyz: Coordinate to sample. One noise feature spans one unit.
+
+    Returns:
+        The noise value at ``xyz``. Exactly zero when every component is an integer,
+        with a theoretical range of ``±sqrt(3)/2``.""",
 )
 add_builtin(
     "noise",
     input_types={"state": uint32, "xyzt": vec4},
     value_type=float,
     group="Random",
-    doc="""Non-periodic Perlin-style noise.
+    doc="""Sample 4D non-periodic Perlin noise.
 
-    Sample 4D noise.""",
+    The fourth coordinate is commonly used as time to animate a 3D field. See
+    :func:`noise` for shared behavior, restrictions, and a usage example.
+
+    Args:
+        state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
+        xyzt: Coordinate to sample. One noise feature spans one unit.
+
+    Returns:
+        The noise value at ``xyzt``. Exactly zero when every component is an integer,
+        with a theoretical range of ``±1``.""",
 )
 
 add_builtin(
@@ -11709,36 +11775,114 @@ add_builtin(
     input_types={"state": uint32, "x": float, "px": int},
     value_type=float,
     group="Random",
-    doc="""Periodic Perlin-style noise.
+    doc="""Sample 1D Perlin noise that repeats with an integer period.
 
-    Sample 1D noise.""",
+    Wraps the :func:`noise` lattice every ``px`` cells, with one cell per input unit.
+    ``state`` selects the field and is not advanced. Values have the same scale and
+    device-reproducibility behavior as :func:`noise`.
+
+    Periods must be positive; zero invokes undefined behavior. Samples repeat under
+    whole-period shifts when the original and shifted coordinates remain on the same
+    side of zero. A shift that crosses zero may produce a different value, so use
+    non-negative coordinates when the field must repeat seamlessly.
+
+    With negative coordinates, the field has one non-smooth boundary per period along
+    each axis. In 1D, the value is continuous across these boundaries, but Warp
+    autodiff reports a one-sided coordinate derivative. In vector overloads, crossing
+    a boundary can instead produce a finite value jump when another coordinate is
+    fractional. Away from these boundaries, the field is differentiable with respect
+    to coordinates. Period arguments receive no Warp autodiff gradient.
+
+    Args:
+        state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
+        x: Coordinate to sample. One noise feature spans one unit.
+        px: Period along x, in units. Must be greater than zero.
+
+    Returns:
+        The noise value at ``x``. Exactly zero at integer coordinates, with a
+        theoretical range of ``±0.5``.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def sample_periodic_noise(seed: int, coords: wp.array[float], values: wp.array[float]):
+                tid = wp.tid()
+                state = wp.rand_init(seed)
+                values[tid] = wp.pnoise(state, coords[tid], 4)
+
+            # a point, then the same point shifted by one and by two periods
+            coords = wp.array([0.75, 4.75, 8.75], dtype=float)
+            values = wp.zeros(len(coords), dtype=float)
+
+            wp.launch(sample_periodic_noise, dim=len(coords), inputs=[42, coords], outputs=[values])
+            print([round(v, 3) for v in values.numpy().tolist()])
+
+        .. testoutput::
+
+            [0.174, 0.174, 0.174]""",
 )
 add_builtin(
     "pnoise",
     input_types={"state": uint32, "xy": vec2, "px": int, "py": int},
     value_type=float,
     group="Random",
-    doc="""Periodic Perlin-style noise.
+    doc="""Sample 2D Perlin noise that repeats with an integer period.
 
-    Sample 2D noise.""",
+    See :func:`pnoise` for shared behavior, restrictions, and a usage example.
+
+    Args:
+        state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
+        xy: Coordinate to sample. One noise feature spans one unit.
+        px: Period along x, in units. Must be greater than zero.
+        py: Period along y, in units. Must be greater than zero.
+
+    Returns:
+        The noise value at ``xy``. Exactly zero when every component is an integer,
+        with a theoretical range of ``±sqrt(2)/2``.""",
 )
 add_builtin(
     "pnoise",
     input_types={"state": uint32, "xyz": vec3, "px": int, "py": int, "pz": int},
     value_type=float,
     group="Random",
-    doc="""Periodic Perlin-style noise.
+    doc="""Sample 3D Perlin noise that repeats with an integer period.
 
-    Sample 3D noise.""",
+    See :func:`pnoise` for shared behavior, restrictions, and a usage example.
+
+    Args:
+        state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
+        xyz: Coordinate to sample. One noise feature spans one unit.
+        px: Period along x, in units. Must be greater than zero.
+        py: Period along y, in units. Must be greater than zero.
+        pz: Period along z, in units. Must be greater than zero.
+
+    Returns:
+        The noise value at ``xyz``. Exactly zero when every component is an integer,
+        with a theoretical range of ``±sqrt(3)/2``.""",
 )
 add_builtin(
     "pnoise",
     input_types={"state": uint32, "xyzt": vec4, "px": int, "py": int, "pz": int, "pt": int},
     value_type=float,
     group="Random",
-    doc="""Periodic Perlin-style noise.
+    doc="""Sample 4D Perlin noise that repeats with an integer period.
 
-    Sample 4D noise.""",
+    The fourth coordinate is commonly used as looping time. See :func:`pnoise` for
+    shared behavior, restrictions, and a usage example.
+
+    Args:
+        state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
+        xyzt: Coordinate to sample. One noise feature spans one unit.
+        px: Period along x, in units. Must be greater than zero.
+        py: Period along y, in units. Must be greater than zero.
+        pz: Period along z, in units. Must be greater than zero.
+        pt: Period along the fourth axis, in units. Must be greater than zero.
+
+    Returns:
+        The noise value at ``xyzt``. Exactly zero when every component is an integer,
+        with a theoretical range of ``±1``.""",
 )
 
 add_builtin(
@@ -11747,9 +11891,51 @@ add_builtin(
     defaults={"octaves": uint32(1), "lacunarity": 2.0, "gain": 0.5},
     value_type=vec2,
     group="Random",
-    doc="""Divergence-free vector field based on Perlin noise.
+    doc="""Sample a divergence-free 2D vector field derived from Perlin noise.
 
-    Use the gradient of a Perlin noise function.""",
+    Returns a rotated Perlin-noise gradient, making the field analytically
+    divergence-free. Its continuous flow preserves area, although numerical advection
+    may not. The 3D and 4D overloads instead return the spatial curl of three noise
+    potentials as a :class:`warp.vec3`.
+
+    Octave ``i`` uses frequency ``lacunarity ** i`` and weight ``gain ** i``. With
+    ``lacunarity > 1`` and ``0 < gain < 1``, later octaves add finer, weaker detail.
+    Contributions may cancel, so magnitude is not monotonic in the octave controls.
+    Zero octaves returns zero. Scale the coordinate for feature size and the result for
+    speed.
+
+    ``state`` selects the field and is not advanced. Results are reproducible per
+    device, but CPU and CUDA values may differ slightly. Differentiable with respect to
+    the coordinate; ``octaves``, ``lacunarity``, and ``gain`` receive no gradient.
+
+    Args:
+        state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
+        xy: Coordinate to sample. One swirl spans about one unit at the base frequency.
+        octaves: Number of noise octaves to sum. Zero returns a zero vector.
+        lacunarity: Frequency multiplier between successive octaves.
+        gain: Amplitude multiplier between successive octaves.
+
+    Returns:
+        A divergence-free 2D vector at ``xy``. Not normalized.
+
+    Example:
+
+        .. testcode::
+
+            @wp.kernel
+            def advect(seed: int, positions: wp.array[wp.vec2], dt: float):
+                tid = wp.tid()
+                state = wp.rand_init(seed)
+                positions[tid] = positions[tid] + wp.curlnoise(state, positions[tid]) * dt
+
+            positions = wp.array([[0.5, 0.5], [1.25, 2.0]], dtype=wp.vec2)
+
+            wp.launch(advect, dim=len(positions), inputs=[42, positions, 0.1])
+            print([[round(c, 3) for c in p] for p in positions.numpy().tolist()])
+
+        .. testoutput::
+
+            [[0.628, 0.514], [1.256, 2.003]]""",
 )
 add_builtin(
     "curlnoise",
@@ -11757,9 +11943,20 @@ add_builtin(
     defaults={"octaves": uint32(1), "lacunarity": 2.0, "gain": 0.5},
     value_type=vec3,
     group="Random",
-    doc="""Divergence-free vector field based on Perlin noise.
+    doc="""Sample a divergence-free 3D vector field derived from Perlin noise.
 
-    Use the curl of three Perlin noise functions.""",
+    Returns the spatial curl of three Perlin-noise potentials. See :func:`curlnoise` for
+    shared behavior, restrictions, and a usage example.
+
+    Args:
+        state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
+        xyz: Coordinate to sample. One swirl spans about one unit at the base frequency.
+        octaves: Number of noise octaves to sum. Zero returns a zero vector.
+        lacunarity: Frequency multiplier between successive octaves.
+        gain: Amplitude multiplier between successive octaves.
+
+    Returns:
+        A divergence-free 3D vector at ``xyz``. Not normalized.""",
 )
 add_builtin(
     "curlnoise",
@@ -11767,9 +11964,23 @@ add_builtin(
     defaults={"octaves": uint32(1), "lacunarity": 2.0, "gain": 0.5},
     value_type=vec3,
     group="Random",
-    doc="""Divergence-free vector field based on Perlin noise.
+    doc="""Sample a divergence-free 3D vector field that also varies along a fourth axis.
 
-    Use the curl of three Perlin noise functions.""",
+    Returns a :class:`warp.vec3` spatial curl; the fourth input axis parametrizes the
+    field and is commonly used as time. The field remains divergence-free in the first
+    three axes. See :func:`curlnoise` for shared behavior, restrictions, and a usage
+    example.
+
+    Args:
+        state: RNG state used as a hash seed (see :func:`rand_init`), never advanced.
+        xyzt: Coordinate to sample, with the fourth component usually time. One swirl
+            spans about one unit at the base frequency.
+        octaves: Number of noise octaves to sum. Zero returns a zero vector.
+        lacunarity: Frequency multiplier between successive octaves.
+        gain: Amplitude multiplier between successive octaves.
+
+    Returns:
+        A divergence-free 3D vector at ``xyzt``. Not normalized.""",
 )
 
 
