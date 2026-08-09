@@ -1,8 +1,9 @@
 ## Description
 
 <!--
-Explain what changed, why it matters, and reference issues with "closes #1234"
-when applicable.
+Explain what changed and why it matters. If it affects a downstream project that
+uses Warp, describe the project and the impact. Link the related issue or
+discussion, using "closes #1234" when applicable.
 -->
 
 ## Changes
