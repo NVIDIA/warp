@@ -761,6 +761,70 @@ def test_bvh_query_ray_tiled(test, device):
         )
 
 
+def test_tile_bvh_query_non_power_of_two_block_dim(test, device):
+    """Tiled queries must report the same primitives as the serial query for any block_dim.
+
+    Regression test for GH-1746: the parallel expansion rounded the lane count up to a
+    power of two, so with a non-power-of-two block_dim the paths belonging to the missing
+    lanes were never walked and their subtrees were silently dropped from the results.
+    """
+    num_bounds = 777
+
+    lowers = np.stack([np.arange(num_bounds), np.zeros(num_bounds), np.zeros(num_bounds)], axis=1).astype(np.float32)
+
+    device_lowers = wp.array(lowers, dtype=wp.vec3, device=device)
+    device_uppers = wp.array(lowers + 0.5, dtype=wp.vec3, device=device)
+
+    bvh = wp.Bvh(device_lowers, device_uppers)
+
+    # A box overlapping every bound: any dropped subtree shows up as a zero count and
+    # any double report as a count above one, since the tiled kernel counts per bound.
+    query_lower = wp.vec3(-1.0, -1.0, -1.0)
+    query_upper = wp.vec3(1.0e6, 1.0e6, 1.0e6)
+
+    reference = wp.zeros(shape=(num_bounds), dtype=int, device=device)
+    wp.launch(
+        kernel=bvh_query_aabb,
+        dim=1,
+        inputs=[bvh.id, query_lower, query_upper, reference],
+        device=device,
+    )
+    reference_result = reference.numpy()
+
+    for block_dim in (3, 31, 48, 96, 100):
+        counts = wp.zeros(shape=(num_bounds), dtype=int, device=device)
+        wp.launch_tiled(
+            kernel=tile_bvh_query_aabb_kernel,
+            dim=1,
+            inputs=[bvh.id, query_lower, query_upper, counts],
+            device=device,
+            block_dim=block_dim,
+        )
+        assert_np_equal(counts.numpy(), reference_result)
+
+    # The ray traversal shares the same expansion logic.
+    query_start = wp.vec3(-1.0, 0.25, 0.25)
+    query_dir = wp.vec3(1.0, 0.0, 0.0)
+
+    ray_reference = wp.zeros(shape=(num_bounds), dtype=int, device=device)
+    wp.launch(
+        kernel=bvh_query_ray,
+        dim=1,
+        inputs=[bvh.id, query_start, query_dir, ray_reference],
+        device=device,
+    )
+
+    ray_counts = wp.zeros(shape=(num_bounds), dtype=int, device=device)
+    wp.launch_tiled(
+        kernel=tile_bvh_query_ray_kernel,
+        dim=1,
+        inputs=[bvh.id, query_start, query_dir, ray_counts],
+        device=device,
+        block_dim=48,
+    )
+    assert_np_equal(ray_counts.numpy(), ray_reference.numpy())
+
+
 @wp.kernel
 def tile_bvh_query_valid_aabb_kernel(
     bvh_id: wp.uint64,
@@ -847,6 +911,12 @@ add_function_test(
 add_function_test(TestBvh, "test_bvh_refit_root_leaves", test_bvh_refit_root_leaves, devices=cuda_devices)
 add_function_test(TestBvh, "test_tile_bvh_query_aabb", test_tile_bvh_query, devices=cuda_devices)
 add_function_test(TestBvh, "test_tile_bvh_query_ray", test_tile_bvh_query_ray, devices=cuda_devices)
+add_function_test(
+    TestBvh,
+    "test_tile_bvh_query_non_power_of_two_block_dim",
+    test_tile_bvh_query_non_power_of_two_block_dim,
+    devices=cuda_devices,
+)
 
 # Tests for new bvh_query_*_tiled() API
 add_function_test(TestBvh, "test_bvh_query_aabb_tiled", test_bvh_query_aabb_tiled, devices=cuda_devices)
