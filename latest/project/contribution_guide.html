@@ -528,7 +528,7 @@
 <section id="contents">
 <h2>Contents<a class="headerlink" href="#contents" title="Link to this heading">#</a></h2>
 <ul class="simple">
-<li><p><a class="reference internal" href="#before-you-start">Before You Start</a></p></li>
+<li><p><a class="reference internal" href="#planning-a-contribution">Planning a Contribution</a></p></li>
 <li><p><a class="reference internal" href="#code-contributions">Code Contributions</a></p></li>
 <li><p><a class="reference internal" href="#quality-expectations">Quality Expectations</a></p></li>
 <li><p><a class="reference internal" href="#coding-guidelines">Coding Guidelines</a></p></li>
@@ -539,26 +539,19 @@
 <li><p><a class="reference internal" href="#benchmarks">Benchmarks</a></p></li>
 </ul>
 </section>
-<section id="before-you-start">
-<h2>Before You Start<a class="headerlink" href="#before-you-start" title="Link to this heading">#</a></h2>
-<p>For small fixes such as typos, broken links, or minor documentation improvements,
-feel free to open a pull request directly.</p>
-<p>For bug fixes, feature contributions, or any non-trivial change:</p>
-<ul class="simple">
-<li><p><strong>Check existing issues first.</strong> Search <a class="reference external" href="https://github.com/NVIDIA/warp/issues">GitHub Issues</a>
-to see if someone is already working on it. If an issue is already assigned to
-someone else, coordinate in the issue thread before starting your own implementation.</p></li>
-<li><p><strong>Propose new features before implementing them.</strong> Open a
-<a class="reference external" href="https://github.com/NVIDIA/warp/issues/new">GitHub Issue</a> or
-<a class="reference external" href="https://github.com/NVIDIA/warp/discussions">Discussion</a> to describe what you
-want to build and get feedback. Not all features are a good fit for Warp, and
-early discussion avoids wasted effort.</p></li>
-<li><p><strong>Gauge the complexity of what you’re picking up.</strong> Some areas of the codebase
-(e.g. JAX/PyTorch interop, code generation, CUDA runtime internals) involve subtle
-interactions that may not be apparent from a GitHub issue description alone. If you
-are not already familiar with the subsystem, comment on the issue to ask for context
-before investing time in a pull request.</p></li>
-</ul>
+<section id="planning-a-contribution">
+<h2>Planning a Contribution<a class="headerlink" href="#planning-a-contribution" title="Link to this heading">#</a></h2>
+<p>Before opening a pull request, search <a class="reference external" href="https://github.com/NVIDIA/warp/issues">GitHub Issues</a>
+and <a class="reference external" href="https://github.com/NVIDIA/warp/discussions">Discussions</a> for earlier reports
+and relevant context. Report bugs in an issue first. For other substantial
+changes, start an issue or discussion.</p>
+<p>Explain what the change would address and why it matters. If it affects an
+application, library, research project, or production system that uses Warp,
+describe the impact. Include a reproduction when possible. If you already have a
+fix, mention it and briefly explain your approach.</p>
+<p>Issues track bugs, requests, and project plans. They are not a task list for
+contributors. An open or unassigned issue does not mean maintainers are looking
+for someone to implement it.</p>
 </section>
 <section id="code-contributions">
 <h2>Code Contributions<a class="headerlink" href="#code-contributions" title="Link to this heading">#</a></h2>
@@ -660,6 +653,10 @@ Work with reviewers to ensure the pull request is in a state suitable for mergin
 </section>
 <section id="quality-expectations">
 <h2>Quality Expectations<a class="headerlink" href="#quality-expectations" title="Link to this heading">#</a></h2>
+<p>Review time is limited, and we cannot review every pull request. We are more
+likely to review a contribution when it solves a problem in a project that uses
+Warp and fits the project’s direction. Focused changes with thorough validation
+are easier to review.</p>
 <p>To keep the review process efficient and the codebase healthy, please ensure your
 contribution meets these expectations:</p>
 <ul class="simple">
@@ -1129,7 +1126,7 @@ reboot, so this is mainly a concern on long-running systems. Pass
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#contents">Contents</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#before-you-start">Before You Start</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#planning-a-contribution">Planning a Contribution</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#code-contributions">Code Contributions</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#quality-expectations">Quality Expectations</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#coding-guidelines">Coding Guidelines</a></li>
