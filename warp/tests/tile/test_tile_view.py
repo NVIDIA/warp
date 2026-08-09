@@ -1057,6 +1057,25 @@ def test_tile_view_shape_oob_rejected(test, device):
     with test.assertRaisesRegex((RuntimeError, ValueError), r"out of bounds"):
         wp.launch_tiled(overrun_1d_kernel, dim=[1], inputs=[], block_dim=32, device=device)
 
+    # A zero or negative extent is nonsensical and must be rejected before it
+    # reaches the tile type constructor, matching the slice path's rejection of
+    # empty tiles.
+    @wp.kernel(module="unique", enable_backward=False)
+    def negative_extent_kernel():
+        t = wp.tile_ones(shape=(TILE_N,), dtype=float)
+        v = wp.tile_view(t, offset=(2,), shape=(-1,))
+
+    with test.assertRaisesRegex((RuntimeError, ValueError), r"positive extents"):
+        wp.launch_tiled(negative_extent_kernel, dim=[1], inputs=[], block_dim=32, device=device)
+
+    @wp.kernel(module="unique", enable_backward=False)
+    def zero_extent_kernel():
+        t = wp.tile_ones(shape=(TILE_M, TILE_N), dtype=float)
+        v = wp.tile_view(t, offset=(0, 0), shape=(TILE_M, 0))
+
+    with test.assertRaisesRegex((RuntimeError, ValueError), r"positive extents"):
+        wp.launch_tiled(zero_extent_kernel, dim=[1], inputs=[], block_dim=32, device=device)
+
     @wp.kernel(module="unique", enable_backward=False)
     def overrun_2d_kernel():
         t = wp.tile_ones(shape=(TILE_M, TILE_N), dtype=float)
