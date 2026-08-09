@@ -728,17 +728,39 @@ just focus on the differences:
 
 - :func:`jax_callable() <warp.jax_callable>` does not take a ``launch_dims`` argument,
   since the target function is responsible for launching kernels using appropriate dimensions.
-- :func:`jax_callable() <warp.jax_callable>` takes an optional ``graph_mode`` argument, which determines how the callable can be captured in a CUDA graph.
+- :func:`jax_callable() <warp.jax_callable>` takes an optional ``graph_mode`` argument,
+  which determines how the callable can be captured in a CUDA graph.
   Graphs are generally desirable, since they can greatly improve the application performance.
-  ``JaxCallableGraphMode.JAX`` (default) lets JAX capture the graph, which may be used as a subgraph in an enclosing capture for maximal benefit.
-  ``JaxCallableGraphMode.WARP`` lets Warp capture the graph. Use this mode when the callable cannot be used as a subgraph, such as when the callable uses conditional graph nodes.
-  ``JaxCallableGraphMode.NONE`` disables graph capture. Use this mode if the callable performs operations that are not allowed during graph capture, such as host synchronization.
-  On CPU, ``JaxCallableGraphMode.JAX`` and ``JaxCallableGraphMode.NONE`` run
-  without graph capture. The Warp graph modes require CUDA and raise an error
-  on CPU.
-  When using ``JaxCallableGraphMode.WARP``, captured graphs are cached for reuse. Use ``graph_cache_max`` to limit the
-  number of cached graphs, and call :func:`clear_jax_callable_graph_cache() <warp.clear_jax_callable_graph_cache>` to
-  release cached graph memory for one callable or all registered JAX callables.
+
+  - ``JaxCallableGraphMode.JAX`` (default) lets JAX capture the graph,
+    which may be used as a subgraph in an enclosing capture.
+  - ``JaxCallableGraphMode.WARP`` lets Warp capture the graph.
+    For a given compiled call, Warp reuses a captured graph
+    when the input and output buffer addresses match those of an earlier invocation.
+    Use this mode when the callable cannot be used as a subgraph,
+    such as when it uses conditional graph nodes.
+  - ``JaxCallableGraphMode.WARP_STAGED`` captures a Warp graph against stable staging buffers.
+    Input and output copies are nodes in the captured graph,
+    so the graph can be reused when JAX supplies different buffer addresses for a compiled call.
+  - ``JaxCallableGraphMode.WARP_STAGED_EX`` also captures against stable staging buffers,
+    but submits the input and output copies outside the graph.
+  - ``JaxCallableGraphMode.NONE`` disables graph capture.
+    Use this mode if the callable performs operations that are not allowed during graph capture,
+    such as host synchronization.
+
+  Staged modes use extra device memory for their staging buffers.
+  By default, every non-empty array input is copied into a staging buffer
+  and every non-empty array output is copied back on each call.
+  Use ``stage_in_argnames`` and ``stage_out_argnames`` to restrict these per-call copies to a non-empty subset.
+  Omitted inputs keep the values copied during graph setup, while omitted outputs are not copied back.
+  Benchmark both staged modes for the target workload.
+  On CPU, ``JaxCallableGraphMode.JAX`` and ``JaxCallableGraphMode.NONE`` run without graph capture.
+  The Warp graph modes require CUDA and raise an error on CPU.
+  ``JaxCallableGraphMode.WARP`` caches captured graphs for reuse.
+  Use ``graph_cache_max`` to limit the number of cached graphs,
+  and call :func:`clear_jax_callable_graph_cache() <warp.clear_jax_callable_graph_cache>`
+  to release cached graph memory for one callable or all registered JAX callables.
+  These cache controls do not apply to the staged modes.
 - :func:`jax_kernel() <warp.jax_kernel>` and :func:`jax_callable() <warp.jax_callable>` take an optional
   ``module_preload_mode`` argument. The default, ``JaxModulePreloadMode.CURRENT_DEVICE``, preloads the module on the
   current JAX device. ``JaxModulePreloadMode.ALL_DEVICES`` preloads it on the host CPU and every supported local CUDA
