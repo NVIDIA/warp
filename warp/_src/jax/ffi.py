@@ -1373,6 +1373,8 @@ def jax_kernel(
     else:
         hashable_launch_dims = launch_dims
 
+    hashable_in_out_argnames = tuple(in_out_argnames) if in_out_argnames else None
+
     if not enable_backward:
         key = (
             kernel.func,
@@ -1381,6 +1383,7 @@ def jax_kernel(
             vmap_method,
             hashable_launch_dims,
             hashable_output_dims,
+            hashable_in_out_argnames,
             module_preload_mode,
             has_side_effect,
             block_dim,
@@ -1395,7 +1398,7 @@ def jax_kernel(
                     launch_dims,
                     block_dim,
                     output_dims,
-                    in_out_argnames,
+                    hashable_in_out_argnames,
                     module_preload_mode,
                     has_side_effect=has_side_effect,
                 )
@@ -1788,6 +1791,10 @@ def jax_callable(
     else:
         hashable_output_dims = output_dims
 
+    hashable_in_out_argnames = tuple(in_out_argnames) if in_out_argnames else None
+    hashable_stage_in_argnames = tuple(stage_in_argnames) if stage_in_argnames else None
+    hashable_stage_out_argnames = tuple(stage_out_argnames) if stage_out_argnames else None
+
     # Note: we don't include graph_cache_max in the key, it is applied below.
     key = (
         func,
@@ -1795,6 +1802,9 @@ def jax_callable(
         graph_mode,
         vmap_method,
         hashable_output_dims,
+        hashable_in_out_argnames,
+        hashable_stage_in_argnames,
+        hashable_stage_out_argnames,
         module_preload_mode,
         has_side_effect,
     )
@@ -1808,9 +1818,9 @@ def jax_callable(
                 graph_mode,
                 vmap_method,
                 output_dims,
-                in_out_argnames,
-                stage_in_argnames,
-                stage_out_argnames,
+                hashable_in_out_argnames,
+                hashable_stage_in_argnames,
+                hashable_stage_out_argnames,
                 graph_cache_max,
                 module_preload_mode,
                 has_side_effect,
