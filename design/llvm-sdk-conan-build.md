@@ -184,8 +184,10 @@ Every job has the same shape:
    `test_package` compiles, links, and (except when cross-compiling) runs automatically.
 3. Deployer produces the normalized SDK tree; deterministic `tar.xz` with the distribution plan's
    asset naming.
-4. Emit a build-info JSON fragment (recipe git SHA, resolved profile, container image digest,
-   toolchain and Conan versions) for the promotion job to merge.
+4. Emit a build-info JSON fragment with the recipe git SHA, resolved profile, container image digest,
+   toolchain and Conan versions, and an optional typed `build_environment`. Linux records the pinned
+   manylinux digest; native jobs record the runner label plus GitHub's `ImageOS` and `ImageVersion`.
+   The existing schema version and container-only `image_digest` field remain unchanged.
 5. Upload as a job artifact for the release pipeline.
    On `platforms=all` dispatches, a fully green build+smoke matrix automatically assembles the
    draft release: the archives, a `SHA256SUMS` file, and the merged build-info document,
@@ -208,7 +210,29 @@ larger GitHub-hosted runners, not a return to internal CI.
 
 The deployer (`deployers/llvm_sdk.py`, a standard Conan `deploy()` hook) copies the package into a
 normalized tree: `include/llvm`, `include/clang`, flat `lib/` with static libraries only,
-and `licenses/` with LLVM's LICENSE.TXT and third-party notices.
+and the following fixed ten-file license and attribution bundle:
+
+```text
+licenses/
+├── LLVM-ATTRIBUTION.txt                              # generated for the pinned LLVM release
+├── clang/LICENSE.TXT                                 # clang/LICENSE.TXT
+├── llvm/LICENSE.TXT                                  # llvm/LICENSE.TXT
+└── third-party/
+    ├── BLAKE3/LICENSE                                # llvm/lib/Support/BLAKE3/LICENSE
+    ├── MD5/NOTICE.txt                                # comment in llvm/lib/Support/MD5.cpp
+    ├── Unicode/ConvertUTF-NOTICE.txt                 # comment in llvm/lib/Support/ConvertUTF.cpp
+    ├── Unicode/UnicodeData-NOTICE.txt                # comment in llvm/lib/Support/UnicodeNameToCodepointGenerated.cpp
+    ├── regex/COPYRIGHT                               # llvm/lib/Support/COPYRIGHT.regex
+    ├── strlcpy/NOTICE.txt                            # comment in llvm/lib/Support/regstrlcpy.c
+    └── xxhash/NOTICE.txt                             # comment in llvm/lib/Support/xxhash.cpp
+```
+
+Copied license files must exist, and each extracted notice marker must remain unique. Markers name the
+upstream project or its license rather than quoting copyright years or maintainer emails, so a routine
+re-sync of a vendored source does not fail the build. Missing sources or ambiguous markers fail packaging;
+the fixed manifest must be re-audited whenever LLVM is bumped.
+This bundle is the archive's license contract; it is not a complete software bill of materials. SBOM
+generation remains a separate promotion-stage requirement.
 Conan artifacts are stripped.
 The tree shape matches what `build_llvm.py:fetch_prebuilt_libraries` and `WarpDependencies.cmake`
 already expect, so consumer code needs no changes when the download source moves.

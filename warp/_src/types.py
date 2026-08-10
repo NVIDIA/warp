@@ -3963,6 +3963,8 @@ class array(Array[DType, NDim]):
                     stop = self.shape[idx]
                 if step is None:
                     step = 1
+                if step == 0:
+                    raise ValueError("slice step cannot be zero")
                 if start < 0:
                     start = self.shape[idx] + start
                 if stop < 0:

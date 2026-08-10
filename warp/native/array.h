@@ -734,6 +734,8 @@ template <typename T> CUDA_CALLABLE inline T& index(const indexedarray_t<T>& iar
 }
 
 
+// Unlike the variadic slice overload, these default-construct their result.
+// See 7e5fb05b for the sm_89 NVCC miscompile behind that difference.
 template <typename T> CUDA_CALLABLE inline array_t<T> view(array_t<T>& src, int i)
 {
     assert(src.ndim > 1);
@@ -816,6 +818,15 @@ template <typename T> CUDA_CALLABLE inline array_t<T> view(array_t<T>& src, int 
 }
 
 
+CUDA_CALLABLE inline slice_t view_arg_as_slice(int index) { return { index, index, 1 }; }
+
+CUDA_CALLABLE inline slice_t view_arg_as_slice(const slice_t& slice) { return slice; }
+
+CUDA_CALLABLE inline bool view_arg_is_slice(int) { return false; }
+
+CUDA_CALLABLE inline bool view_arg_is_slice(const slice_t&) { return true; }
+
+
 template <typename T, size_t... Idxs>
 size_t byte_offset_helper(array_t<T>& src, const slice_t (&slices)[sizeof...(Idxs)], index_sequence<Idxs...>)
 {
@@ -830,13 +841,14 @@ CUDA_CALLABLE inline array_t<T> view(array_t<T>& src, const Slices&... slice_arg
     static_assert(N >= 1 && N <= 4, "view supports 1 to 4 slices");
     assert(src.ndim >= N);
 
-    slice_t slices[N] = { slice_args... };
+    slice_t slices[N] = { view_arg_as_slice(slice_args)... };
+    bool is_slice_arg[N] = { view_arg_is_slice(slice_args)... };
     int slice_idxs[N];
     int slice_count = 0;
 
     for (int i = 0; i < N; ++i) {
-        if (slices[i].step == 0) {
-            // We have a slice representing an integer index.
+        if (!is_slice_arg[i]) {
+            // We have an integer index.
             if (slices[i].start < 0) {
                 slices[i].start += src.shape[i];
             }
@@ -862,7 +874,7 @@ CUDA_CALLABLE inline array_t<T> view(array_t<T>& src, const Slices&... slice_arg
     int dim = 0;
     for (; dim < slice_count; ++dim) {
         int idx = slice_idxs[dim];
-        out.shape[dim] = slice_get_length(slices[idx]);
+        out.shape[dim] = slice_get_length_unchecked(slices[idx]);
         out.strides[dim] = src.strides[idx] * slices[idx].step;
     }
     for (; dim < slice_count + 4 - N; ++dim) {

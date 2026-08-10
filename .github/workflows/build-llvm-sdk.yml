@@ -239,6 +239,8 @@ jobs:
           LLVM_VERSION: ${{ needs.validate-inputs.outputs.llvm-version }}
           BUNDLE_REVISION: ${{ inputs.bundle_revision }}
         run: |
+          : "${ImageOS:?ImageOS is not set on this GitHub-hosted runner}"
+          : "${ImageVersion:?ImageVersion is not set on this GitHub-hosted runner}"
           # See the Build SDK step: point conan at the VS2022 installation.
           EXTRA_CONF=()
           if [[ "${{ runner.os }}" == "Windows" ]]; then
@@ -274,6 +276,7 @@ jobs:
             --output-dir _sdk_assets \
             --recipe-sha "$GITHUB_SHA" \
             --conan-version "${CONAN_VERSION}" \
+            --runner-image "${{ matrix.runner }} ImageOS=$ImageOS ImageVersion=$ImageVersion" \
             --toolchain-info "$(python3 -c 'import platform; print(platform.platform())')"
 
       - name: Upload SDK artifact
@@ -457,6 +460,8 @@ jobs:
           Build-time LLVM/Clang SDKs for Warp's CPU-JIT compiler (warp-clang). This is NOT a Warp product release. See `tools/llvm/README.md` and `design/llvm-sdk-conan-build.md`.
 
           Draft created automatically by the build-llvm-sdk workflow from a fully green build+smoke matrix. Publish only after promotion checks.
+
+          Archives contain an expanded LLVM, Clang, and third-party notice bundle.
           EOF
           gh release create "$RELEASE_TAG" \
             --repo "$GITHUB_REPOSITORY" \

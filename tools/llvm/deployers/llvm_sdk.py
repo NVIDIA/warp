@@ -9,7 +9,14 @@ survives in it. Shape:
     llvm-sdk/
     ├── include/{llvm,clang,...}   # all installed headers
     ├── lib/                       # static libraries only, flat
-    └── licenses/{llvm,clang}/LICENSE.TXT
+    └── licenses/
+        ├── LLVM-ATTRIBUTION.txt
+        ├── {llvm,clang}/LICENSE.TXT
+        └── third-party/
+            ├── BLAKE3/LICENSE
+            ├── regex/COPYRIGHT
+            ├── {MD5,strlcpy,xxhash}/NOTICE.txt
+            └── Unicode/{ConvertUTF-NOTICE.txt,UnicodeData-NOTICE.txt}
 """
 
 import os

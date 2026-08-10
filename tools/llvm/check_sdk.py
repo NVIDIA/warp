@@ -13,6 +13,8 @@ import os
 import subprocess
 import sys
 
+from license_bundle import LICENSE_BUNDLE_PATHS
+
 # Accepted --platform values; each selects one set of platform checks below.
 PLATFORMS = ("linux-x86_64", "linux-aarch64", "macos-arm64", "windows-x86_64", "windows-arm64")
 
@@ -43,15 +45,22 @@ def run(cmd):
         raise ToolError(f"{' '.join(cmd)} failed with exit {exc.returncode}: {stderr[:200]}") from exc
 
 
+def check_licenses(sdk, errors):
+    """Check that every required project and third-party notice is present."""
+    for bundle_path in LICENSE_BUNDLE_PATHS:
+        relative_path = os.path.join("licenses", bundle_path)
+        path = os.path.join(sdk, relative_path)
+        if not os.path.isfile(path) or os.path.getsize(path) == 0:
+            errors.append(f"missing or empty license: {relative_path}")
+
+
 def check_tree(sdk, platform, errors):
     """Check the SDK tree layout and return the sorted list of lib/ archives."""
     suffix = ".lib" if platform.startswith("windows") else ".a"
-    for required in ("include/llvm/IR", "include/clang", "lib", "licenses/llvm", "licenses/clang"):
+    check_licenses(sdk, errors)
+    for required in ("include/llvm/IR", "include/clang", "lib"):
         if not os.path.isdir(os.path.join(sdk, required)):
             errors.append(f"missing directory: {required}")
-    for lic in ("licenses/llvm/LICENSE.TXT", "licenses/clang/LICENSE.TXT"):
-        if not os.path.isfile(os.path.join(sdk, lic)):
-            errors.append(f"missing license: {lic}")
     lib_dir = os.path.join(sdk, "lib")
     if not os.path.isdir(lib_dir):
         return []

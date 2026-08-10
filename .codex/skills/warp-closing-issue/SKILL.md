@@ -38,6 +38,8 @@ confirmation after the user sees the exact target issues and comment body.
 - Require behavioral probe summaries in the private assessment. Public comments may
   mention probes only when they clarify the recommendation, remaining risk, or
   requester-facing behavior.
+- Format public comment Markdown for GitHub rendering: put each prose paragraph and each list item on one physical source line. Use hard line breaks only between structural blocks such as paragraphs, headings, list items, and fenced code blocks; never wrap prose to a fixed column width.
+- Surface actionable, issue-related future work under `### Follow-up to consider`. Include the section only when the assessment found a specific improvement, and distinguish non-blocking follow-ups from gaps that prevent closure.
 
 Optional command snippets live in [commands.md](references/commands.md). Prefer the
 GitHub app/MCP connector when it fits; `gh` is installed and authenticated here and is
@@ -160,7 +162,23 @@ fine for gaps or simple issue operations.
    - <actionable follow-up or none>
 
    Draft comment:
-   <exact public comment; include behavioral probes only when useful for public clarity>
+   <opening resolution or progress statement and issue-specific explanation; put each prose paragraph on one physical source line>
+
+   ### Public API behavior
+
+   <include only when relevant>
+
+   ### Test coverage
+
+   - <new, modified, or absent test coverage; put each list item on one physical source line>
+
+   ### Behavioral verification
+
+   <include only when public probe results materially clarify the outcome, risk, or requester-facing behavior>
+
+   ### Follow-up to consider
+
+   - <include only for actionable, issue-related future work; state when it does not block closure>
 
    Confirm whether to post this comment to <#>. If closure is recommended, also
    confirm whether to close <#> as completed.
@@ -182,19 +200,23 @@ Progress update: <full-sha> landed <summary>.
 
 Then explain what changed in issue terms, mention supporting commits if useful, and
 state whether the issue should remain open. Mention docs/CHANGELOG-only commits only
-as supporting metadata. Include `Spotted Improvements` only for actionable follow-up
-work. If leaving an externally filed issue open for requester verification, say that
-directly. Drop empty sections.
+as supporting metadata. If leaving an externally filed issue open for requester
+verification, say that directly. Drop empty sections.
 
-Include test coverage as unordered bullets. Name changed test files and test functions.
-If no tests changed, say whether that is reasonable for the commit type or a potential
-oversight.
+Use level-three headings for named public sections:
 
-When public API behavior is relevant, include a `Public API behavior` section
-before test coverage. Prefer prose bullets for small changes. Use short code blocks
-only when they make scope clearer. Use `Public API behavior`, not `Public API
-surface`, when APIs already existed and the commit expands or fixes their
-behavior.
+Leave one blank line between each level-three heading and its following paragraph, list, or code block.
+
+- `### Public API behavior`: include only for relevant public API behavior.
+- `### Test coverage`: always include.
+- `### Behavioral verification`: include only when executed public probe results materially clarify the outcome, risk, or requester-facing behavior; do not add it solely to say that no probe was feasible.
+- `### Follow-up to consider`: include only for actionable, issue-related future work found during assessment; do not add it for a concern already fully handled in another required section.
+
+Include test coverage as unordered bullets. Name changed test files and test functions. If no tests changed, say whether that is reasonable for the commit type or a potential oversight.
+
+When public API behavior is relevant, include `### Public API behavior` before test coverage. Prefer prose bullets for small changes. Use short code blocks only when they make scope clearer. Use `Public API behavior`, not `Public API surface`, when APIs already existed and the commit expands or fixes their behavior.
+
+Suitable items from private `Spotted Improvements` become public follow-ups only when they do not duplicate a concern fully handled in another required section. Follow-ups may cover test coverage, refactoring, features, bug fixes, documentation, or maintainability; do not add unrelated wish lists or invented work. State explicitly when a follow-up does not block closure.
 
 Split examples by scope when both Python and kernel APIs are involved. Python
 scope includes constructors, host-side functions, arguments, configuration, and
@@ -202,16 +224,17 @@ exceptions. Kernel scope includes Warp builtins that must be called from
 `@wp.kernel` / `@wp.func`. For example:
 
 ```markdown
-Public API behavior:
+### Public API behavior
 
-Python scope:
+**Python scope**
+
 - `wp.Mesh(..., bvh_constructor="cubql")` now supports the fixed behavior.
 - `wp.Bvh(..., constructor="cubql")` is now supported.
 - Grouped meshes/BVHs and winding-number support remain unsupported for cuBQL.
 
-Kernel scope:
-- Existing `wp.mesh_query_point*`, `wp.mesh_query_furthest_point_no_sign`, and
-  `wp.mesh_query_aabb*` builtins now work with cuBQL-backed meshes.
+**Kernel scope**
+
+- Existing `wp.mesh_query_point*`, `wp.mesh_query_furthest_point_no_sign`, and `wp.mesh_query_aabb*` builtins now work with cuBQL-backed meshes.
 ```
 
 Behavioral probe summaries are required in the private assessment. In the public
@@ -250,6 +273,9 @@ issue by guess.
   instead of `gh issue comment --body-file` or `gh api --input`.
 - The public comment shows a kernel-only Warp API as if it can be called directly
   from Python scope.
+- Public comment prose or a list item is manually wrapped across physical source lines instead of relying on GitHub's responsive rendering.
+- A named public section uses a colon label instead of the required level-three heading.
+- The assessment found distinct actionable, issue-related future work not fully handled in another required section, but the draft omits `### Follow-up to consider`, or presents a non-blocking follow-up as a closure blocker.
 
 ## Maintenance
 
