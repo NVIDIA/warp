@@ -15,6 +15,7 @@
   "branches": ["main"],
   "dvcs": "git",
   "environment_type": "virtualenv",
+  "matrix": {"pip+asv_runner": ["0.3.0"]},
   "show_commit_url": "https://github.com/NVIDIA/warp/commit/",
   "benchmark_dir": "asv/benchmarks",
   "env_dir": "asv/env",

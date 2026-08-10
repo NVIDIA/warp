@@ -35,6 +35,8 @@ the benchmark is device-independent and needs no GPU.
 
 import warp as wp
 
+from ..benchmarks_utils import setup_once
+
 
 def small_sparse_mv(
     rows: wp.array(dtype=wp.int32),
@@ -165,6 +167,7 @@ class DeclareUniqueModuleKernel:
     number = 40
     warmup_time = 0.2
 
+    @setup_once
     def setup(self):
         wp.init()
         self._small = small_sparse_mv

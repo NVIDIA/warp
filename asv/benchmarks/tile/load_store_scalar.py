@@ -12,6 +12,8 @@ import numpy as np
 
 import warp as wp
 
+from ..benchmarks_utils import setup_once
+
 # Non-POT tile sizes that are NOT float4-aligned for float32 (last_dim * 4 % 16 != 0)
 _TILE_DIMS = {1: 17, 2: 17, 3: 7}
 
@@ -66,6 +68,7 @@ class LoadStoreScalar:
     params = ([1, 2, 3], ["float32", "vec3"])
     param_names = ["ndim", "dtype"]
 
+    @setup_once
     def setup(self, ndim, dtype_name):
         wp.init()
         wp.set_module_options({"fast_math": True, "enable_backward": False})

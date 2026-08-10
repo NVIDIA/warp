@@ -1,17 +1,5 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 
 # ruff: noqa: PLC0415
 
@@ -24,7 +12,7 @@ from numpy.random import default_rng
 
 import warp as wp
 
-from .benchmarks_utils import get_asset_directory
+from .benchmarks_utils import get_asset_directory, setup_once
 
 pxr = importlib.util.find_spec("pxr")
 USD_AVAILABLE = pxr is not None
@@ -77,6 +65,7 @@ class MeshQuery:
     number = 20
     timeout = 60
 
+    @setup_once
     def setup(self, leaf_size, asset, bvh_constructor):
         from pxr import Usd, UsdGeom
 
@@ -368,6 +357,7 @@ class BvhAABBQuery:
     number = 5
     timeout = 120
 
+    @setup_once
     def setup(self, query_radius, leaf_size, device, bvh_constructor):
         with wp.ScopedDevice(device):
             from pxr import Usd, UsdGeom
@@ -499,6 +489,7 @@ class BvhRayQuery:
     number = 5
     timeout = 120
 
+    @setup_once
     def setup(self, resolution, leaf_size, device, bvh_constructor):
         cam_pos = wp.vec3(0.0, 0.75, 7.0)
         cam_rot = wp.quat(0.0, 0.0, 0.0, 1.0)

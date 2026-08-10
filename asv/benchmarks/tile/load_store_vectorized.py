@@ -12,6 +12,8 @@ import numpy as np
 
 import warp as wp
 
+from ..benchmarks_utils import setup_once
+
 
 def _create_kernel_2d(tile_dim, dtype):
     TILE = tile_dim
@@ -70,6 +72,7 @@ class LoadStoreVectorized:
     params = ([1024, 2048], [2, 3], ["float32", "vec3", "mat22"])
     param_names = ["size", "ndim", "dtype"]
 
+    @setup_once
     def setup(self, size, ndim, dtype_name):
         wp.init()
         wp.set_module_options({"fast_math": True, "enable_backward": False})

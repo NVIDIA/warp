@@ -7,6 +7,8 @@ import numpy as np
 
 import warp as wp
 
+from ..benchmarks_utils import setup_once
+
 
 def _create_kernel_1d(tile_dim, dtype):
     TILE = tile_dim
@@ -60,6 +62,7 @@ class LoadStoreRegister:
     params = ([1, 2, 3], ["float32", "vec3", "mat22"])
     param_names = ["ndim", "dtype"]
 
+    @setup_once
     def setup(self, ndim, dtype_name):
         wp.init()
         wp.set_module_options({"fast_math": True, "enable_backward": False})
