@@ -492,10 +492,10 @@ There are a few details to know:
   :func:`wp.capture_if() <warp.capture_if>`, when the deterministic launch
   would need to allocate temporary buffers while capturing the conditional
   body.
-* APIC serialization (``apic=True`` with :func:`wp.capture_save()
+* API Capture (APIC) serialization (``apic=True`` with :func:`wp.capture_save()
   <warp.capture_save>`) is not currently supported for deterministic CUDA
   kernels.  Use ordinary CUDA graph capture or disable deterministic mode for
-  APIC-captured kernels.
+  APIC-recorded kernels.
 
 Performance
 -----------

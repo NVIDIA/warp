@@ -7768,6 +7768,11 @@ class HashGrid:
                 :func:`warp.hash_grid_query` preserves the all-points traversal behavior.
                 Group ids may be arbitrary ``int32`` values and are consumed on-device, so group assignments may
                 change between rebuilds, including during CPU and CUDA graph replay.
+
+        Raises:
+            NotImplementedError: If called during a saveable graph capture
+                (``apic=True``), because HashGrid serialization is not yet
+                supported.
         """
         if not types_equal(points.dtype, self._vec_type):
             raise TypeError(f"Hash grid points should have type {self._vec_type.__name__}, got {points.dtype}")

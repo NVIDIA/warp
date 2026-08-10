@@ -161,7 +161,7 @@ In the snippet above, array ``a`` will be allocated using the mempool allocator 
 In most cases, it shouldn't be necessary to fiddle with these enablement functions, but they are there if you need them.
 By default, Warp will enable memory pools on startup if they are supported, which will bring the benefits of improved allocation speed automatically.
 Most Warp code should continue to function with or without mempool allocators, with the exception of memory allocations
-during CUDA graph capture, which will raise an exception if memory pools are not enabled. CPU APIC graph capture does
+during CUDA graph capture, which will raise an exception if memory pools are not enabled. CPU graph capture does
 not use CUDA-style memory pools; host allocations made during CPU capture are retained for the captured graph's
 lifetime and reused on replay.
 
@@ -258,7 +258,7 @@ Mempool allocators can be used in CUDA graphs, which means that you can capture 
 
 Capturing allocations in CUDA graphs is similar to capturing other operations like kernel launches or memory copies.  During capture, the operations don't actually execute, but are recorded.  To execute the captured operations, we must launch the graph using :func:`wp.capture_launch() <warp.capture_launch>`.  This is important to keep in mind if you want to use an array that was allocated during CUDA graph capture.  The array doesn't actually exist until the captured graph is launched.  In the snippet above, we would get an error if we tried to print the array before calling :func:`wp.capture_launch() <warp.capture_launch>`.
 
-CPU APIC graph capture handles allocations differently: CPU arrays allocated
+CPU graph capture handles allocations differently: CPU arrays allocated
 inside the capture are allocated immediately, retained for the lifetime of the
 captured graph, and reused on every replay. This allows temporary CPU buffers,
 including FEM temporary storage, to participate in CPU graph capture without a

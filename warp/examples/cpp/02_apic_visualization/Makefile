@@ -15,8 +15,8 @@
 
 # Makefile for APIC Wave Visualization Example
 #
-# This builds a C++ program that loads a pre-captured CUDA graph
-# and visualizes it using GLFW/OpenGL.
+# This builds a C++ program that loads an APIC artifact, reconstructs a CUDA
+# graph, and visualizes it using GLFW/OpenGL.
 
 # Compiler
 NVCC := nvcc
@@ -188,7 +188,7 @@ help:
 	@echo "Targets:"
 	@echo "  all (default)   - Build everything (auto-captures graph if needed)"
 	@echo "  cpp             - Build only C++ program (for iterating on C++ code)"
-	@echo "  capture         - Capture the APIC graph only (no C++ build)"
+	@echo "  capture         - Generate the APIC graph artifacts only (no C++ build)"
 	@echo "  clean           - Remove build artifacts"
 	@echo "  distclean       - Remove build artifacts and generated/ directory"
 	@echo "  help            - Show this help message"

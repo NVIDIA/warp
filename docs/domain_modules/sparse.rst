@@ -132,7 +132,7 @@ To get the exact count on host, you can explicitly synchronize using :meth:`BsrM
 
 .. note::
 
-    During CPU APIC graph capture, :meth:`BsrMatrix.nnz_sync` performs its host
+    During CPU graph capture, :meth:`BsrMatrix.nnz_sync` performs its host
     readback outside the recorded stream when the matrix topology has not been
     changed by the capture. If the same capture has already recorded a topology
     update for that matrix, :meth:`BsrMatrix.nnz_sync` raises

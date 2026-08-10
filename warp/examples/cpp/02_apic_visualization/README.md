@@ -1,21 +1,25 @@
 # APIC Wave Simulation Example
 
-This example demonstrates Warp's APIC (API Capture) mode for capturing and executing CUDA graphs from C++.
-It implements an interactive wave simulation where users can create ripples by clicking, visualized in real-time using GLFW/OpenGL.
+This example demonstrates Warp's API Capture (APIC) save/load workflow for replaying a CUDA graph from C++. It implements an interactive wave simulation where users can create ripples by clicking, visualized in real time with GLFW/OpenGL.
 
 ## Overview
 
-APIC mode captures CUDA kernel launches into a graph during Python execution, then allows efficient replay from C++ without the Python runtime. This example demonstrates:
+During Python capture, `apic=True` records a serializable APIC operation stream alongside the live CUDA graph. `wp.capture_save()` writes that representation to disk. The C++ loader reads it, reconstructs a fresh CUDA graph, and replays the workload without a Python runtime. This example demonstrates:
 
-1. **Python Phase**: Capture a multi-kernel simulation loop as a single CUDA graph
-2. **C++ Phase**: Load the graph, execute it with dynamic inputs, and visualize results
+1. **Python phase**: Capture and save a multi-kernel simulation frame.
+2. **C++ phase**: Load the saved representation, reconstruct a CUDA graph,
+   update its inputs, and visualize the results.
 
-### Key APIC Benefits Demonstrated
+### Key Capabilities Demonstrated
 
-- **Graph Complexity**: The captured graph contains 17 kernel launches (1 displacement + 16 wave solve iterations)
-- **Single Launch**: C++ executes the entire frame with ONE `cudaGraphLaunch()` call
-- **Dynamic Parameters**: Mouse position is passed as a parameter each frame - no graph rebuilding needed
-- **Zero Python Runtime**: Production deployment requires only CUDA and the Warp native library
+- **Standalone deployment**: The C++ application does not require a Python
+  runtime.
+- **Graph reconstruction**: The APIC operation stream reconstructs a CUDA graph
+  containing 17 kernel launches (1 displacement + 16 wave-solve iterations).
+- **Dynamic parameters**: Named inputs can change each frame without
+  reconstructing the graph again.
+- **Low-overhead replay**: C++ executes the entire frame with one
+  `cudaGraphLaunch()` call.
 
 ## Files
 
@@ -23,7 +27,7 @@ APIC mode captures CUDA kernel launches into a graph during Python execution, th
 - `main.cu` - C++ program that loads the graph and provides interactive visualization
 - `Makefile` / `CMakeLists.txt` - Build systems (Make for Unix, CMake for cross-platform)
 - `generated/` - Directory containing generated files (auto-created by capture script):
-  - `wave_sim.wrp` - Serialized CUDA graph (Warp Recorded Program)
+  - `wave_sim.wrp` - Serialized APIC graph representation
   - `wave_sim_modules/` - Compiled CUDA modules (cubins)
 
 ## Quick Start
@@ -33,7 +37,7 @@ APIC mode captures CUDA kernel launches into a graph during Python execution, th
 This example runs from within the Warp repository.
 
 **Requirements:**
-- **Python 3.8+**
+- **Python 3.10+**
 - **CUDA Toolkit 12.0+** (includes `nvcc` compiler)
 - **NVIDIA GPU**
 - **GLFW library** (for OpenGL window creation)
@@ -68,7 +72,7 @@ make              # Build everything (auto-captures graph if needed)
 
 - `make` (default) - Build everything, auto-capture graph if needed
 - `make cpp` - Build only C++ program (fast iteration, assumes graph exists)
-- `make capture` - Capture the APIC graph only (no C++ build)
+- `make capture` - Generate the APIC graph artifacts only (no C++ build)
 - `make clean` - Remove executable only
 - `make distclean` - Remove executable and `generated/` directory
 
@@ -125,21 +129,25 @@ graph = wp.capture_end(device=device)
 
 # Save with named bindings
 wp.capture_save(graph, "generated/wave_sim",
-                inputs={"heights_in": grid1, "mouse_pos": mouse_pos},
-                outputs={"heights_out": grid0})
+                inputs={"heights": grid1,
+                        "heights_prev": grid0,
+                        "mouse_pos": mouse_pos},
+                outputs={"heights_out": grid1,
+                         "heights_prev_out": grid0})
 ```
 
-This creates `wave_sim.wrp` containing 17 kernel launches (1 displace + 16 solve).
+This creates an APIC operation stream describing 17 kernel launches (1 displacement + 16 solves). The stream and module files are later used to construct a fresh CUDA graph.
 
 ### 2. C++: Load Graph and Visualize
 
-The C++ program loads the pre-captured graph and executes it each frame:
+The C++ program loads the saved APIC representation, reconstructs a CUDA graph, and executes it each frame:
 
 ```cpp
 #include "aot.h"   // Warp AOT utilities
-#include "warp.h"  // Warp C API including APIC functions
+#include "warp.h"  // Warp C API
+#include "apic.h"  // APIC graph loading and execution
 
-// Load the pre-captured graph
+// Load the saved APIC representation
 APICGraph* graph = wp_apic_load_graph(context, "generated/wave_sim", 0);  // 0 = CUDA
 
 // Query parameters
@@ -157,17 +165,21 @@ cudaGraphExec_t exec = (cudaGraphExec_t)wp_apic_get_cuda_graph_exec(graph);
 while (!glfwWindowShouldClose(window)) {
     // Update mouse position from GLFW input
     float mouse_grid[2] = { ... };
-    cudaMemcpy(d_mouse_pos, mouse_grid, 2 * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpyAsync(d_mouse_pos, mouse_grid, 2 * sizeof(float), cudaMemcpyHostToDevice, stream);
 
-    // Set input parameters
-    wp_apic_set_param(graph, "heights_in", d_heights, heights_size);
+    // Set both wave-state buffers and the interactive input
+    wp_apic_set_param(graph, "heights", d_heights[current_buffer], heights_size);
+    wp_apic_set_param(graph, "heights_prev", d_heights[1 - current_buffer], heights_size);
     wp_apic_set_param(graph, "mouse_pos", d_mouse_pos, 2 * sizeof(float));
 
     // Execute the graph - runs ALL 17 kernels in one call!
     cudaGraphLaunch(exec, stream);
+    cudaStreamSynchronize(stream);  // Wait before reading graph outputs
 
-    // Get output
-    wp_apic_get_param(graph, "heights_out", d_heights, heights_size);
+    // Read both output buffers, then swap them for the next frame
+    wp_apic_get_param(graph, "heights_out", d_heights[1 - current_buffer], heights_size);
+    wp_apic_get_param(graph, "heights_prev_out", d_heights[current_buffer], heights_size);
+    current_buffer = 1 - current_buffer;
 
     // Render with OpenGL...
 }
@@ -206,14 +218,9 @@ void wp_apic_destroy_graph(APICGraph* graph);
 - **Scroll**: Zoom in/out
 - **ESC**: Exit
 
-## Performance
+## Deployment and Performance
 
-The key advantage of APIC is efficiency:
-
-- **Without APIC**: 17 separate kernel launches per frame, each with CPU-GPU synchronization overhead
-- **With APIC**: 1 `cudaGraphLaunch()` per frame, CUDA handles all scheduling internally
-
-This is especially beneficial for simulations with many small kernels where launch overhead would otherwise dominate.
+APIC makes the captured workload deployable in this standalone application. CUDA graph replay provides the launch efficiency: compared with issuing 17 individual CUDA launches from C++, the reconstructed graph needs one `cudaGraphLaunch()` call per frame and avoids repeated host launch overhead. This is especially useful for workloads containing many small kernels.
 
 ## Troubleshooting
 

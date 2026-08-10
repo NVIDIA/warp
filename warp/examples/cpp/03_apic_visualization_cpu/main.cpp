@@ -3,11 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+// clang-format off
 /*
  * APIC Wave Simulation Example (CPU)
  *
  * This program demonstrates how to:
- * 1. Load a pre-captured graph (.wrp file) using Warp's APIC API
+ * 1. Load a saved APIC graph representation (.wrp file)
  * 2. Execute the graph on the CPU with dynamic input parameters
  * 3. Visualize the results using GLFW/OpenGL
  *
@@ -20,7 +21,6 @@
  * See README.md for build instructions.
  */
 
-// clang-format off
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
 

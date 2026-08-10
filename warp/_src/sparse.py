@@ -197,6 +197,9 @@ class BsrMatrix(Generic[_BlockType]):
         Raises:
             RuntimeError: If called during a live CUDA graph capture because
               reading ``offsets[nrow]`` requires a device-to-host transfer.
+            NotImplementedError: If called during CPU graph capture after a
+              topology update has been recorded. Query the count after replay
+              instead.
         """
 
         if self.device.is_capturing and not self.device.is_cpu:
@@ -244,9 +247,9 @@ class BsrMatrix(Generic[_BlockType]):
         Raises:
             RuntimeError: If called during a live CUDA graph capture because
               reading the status requires a device-to-host transfer.
-            NotImplementedError: If called during a CPU APIC graph capture,
-              because a status update recorded in the capture is applied only on
-              replay. Query the status after graph replay.
+            NotImplementedError: If called during CPU graph capture, because a
+              status update recorded in the capture is applied only on replay.
+              Query the status after graph replay.
         """
 
         status = self._status_if_any()

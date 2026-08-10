@@ -51,10 +51,12 @@ def array_scan(in_array: wp.array, out_array: wp.array, inclusive: bool = True) 
     This function computes the inclusive or exclusive scan of the input array and stores the result in the output array.
     The scan operation computes a running sum of elements in the array. Vector types are scanned component-wise.
 
-    During CPU APIC graph capture (:class:`ScopedCapture <warp.ScopedCapture>` with ``apic=True``), ``int32``,
-    ``float32``, ``int64``, and ``float64`` scalar and vector scans are recorded into the byte stream, including
-    positively-strided (non-contiguous) 1D arrays. Negatively-strided CPU arrays raise :exc:`NotImplementedError`;
-    run those scans outside the captured region.
+    During CPU graph capture, or CUDA graph capture with ``apic=True``,
+    ``int32``, ``float32``, ``int64``, and ``float64`` scalar and vector scans
+    are recorded into the API Capture (APIC) operation stream, including
+    positively-strided (non-contiguous) 1D arrays. Non-empty,
+    negatively-strided arrays raise :exc:`NotImplementedError`; run those scans
+    outside the captured region.
 
     Args:
         in_array: Input array to scan. Must be a scalar or vector type with scalar type ``int32``, ``int64``,
@@ -65,8 +67,9 @@ def array_scan(in_array: wp.array, out_array: wp.array, inclusive: bool = True) 
 
     Raises:
         RuntimeError: If array storage devices don't match, if storage size is insufficient, or if data types are unsupported.
-        NotImplementedError: If called inside a CPU APIC :class:`ScopedCapture <warp.ScopedCapture>` with a
-          negatively-strided array.
+        NotImplementedError: If called with a non-empty, negatively-strided
+          array during CPU graph capture or CUDA graph capture with
+          ``apic=True``.
     """
 
     if in_array.device != out_array.device:
@@ -378,6 +381,10 @@ def runlength_encode(
     and its count.
     For example, ``[1,1,1,2,2,3]`` becomes ``values=[1,2,3]`` and ``lengths=[3,2,1]``.
 
+    During CPU graph capture, or CUDA graph capture with ``apic=True``, a
+    non-empty call requires an explicit ``run_count`` array because the
+    host-return form cannot represent a replay-time result.
+
     Args:
         values: Input array to encode. Must be of type ``int32``.
         run_values: Output array to store unique values. Must be at least value_count in size.
@@ -392,6 +399,8 @@ def runlength_encode(
     Raises:
         RuntimeError: If array storage devices don't match, if storage size is insufficient, if data types are
           unsupported, or if ``value_count`` is negative.
+        NotImplementedError: If ``run_count`` is ``None`` for a non-empty call
+          during CPU graph capture or CUDA graph capture with ``apic=True``.
     """
     if run_values.device != values.device or run_lengths.device != values.device:
         raise RuntimeError("run_values, run_lengths and values storage devices do not match")
@@ -516,12 +525,13 @@ def array_sum(
     This function computes the sum of array elements, optionally along a specified axis.
     The operation can be performed on the entire array or along a specific dimension.
 
-    During matching-device APIC graph capture, non-empty calls require an explicit
-    ``out`` array so replay can store the current result. Existing whole-array,
-    explicit-count, composite-dtype, and positive-stride axis reductions are
-    recorded. Negative strides raise ``NotImplementedError`` during APIC capture.
-    Counts and reduction strides must fit the native signed 32-bit ABI, and
-    participating addresses and strides must be aligned to the scalar type.
+    During CPU graph capture, or CUDA graph capture with ``apic=True``,
+    non-empty calls require an explicit ``out`` array so replay can store the
+    current result. Existing whole-array, explicit-count, composite-dtype, and
+    positive-stride axis reductions are recorded. Negative strides raise
+    ``NotImplementedError`` during API Capture (APIC) recording. Counts and
+    reduction strides must fit signed 32-bit integers, and participating
+    addresses and strides must be aligned to the scalar type.
 
     Args:
         values: Input array to sum. Its scalar type must be ``float32`` or ``float64``.
@@ -534,11 +544,11 @@ def array_sum(
         otherwise returns the ``out`` array.
 
     Raises:
-        RuntimeError: If output array storage device or data type is incompatible with input array, or if a
-            matching-device APIC-captured call uses a count or layout that the native reduction ABI cannot represent.
-        NotImplementedError: If a non-empty call under matching-device APIC graph capture omits ``out``. Also raised
-            if any input or output array has a negative stride under matching-device APIC graph capture, including
-            for a zero-count call.
+        RuntimeError: If output array storage device or data type is incompatible with input array, or if an
+            APIC-recorded call uses an unsupported count or memory layout.
+        NotImplementedError: If a non-empty call during APIC recording omits
+            ``out``. Also raised if any input or output array has a negative
+            stride during APIC recording, including for a zero-count call.
     """
     if value_count is None:
         if axis is None:
@@ -651,12 +661,13 @@ def array_inner(
     This function computes the dot product between two arrays, optionally along a specified axis.
     The operation can be performed on the entire arrays or along a specific dimension.
 
-    During matching-device APIC graph capture, non-empty calls require an explicit
-    ``out`` array so replay can store the current result. Existing whole-array,
-    explicit-count, composite-dtype, and positive-stride axis reductions are
-    recorded. Negative strides raise ``NotImplementedError`` during APIC capture.
-    Counts and reduction strides must fit the native signed 32-bit ABI, and
-    participating addresses and strides must be aligned to the scalar type.
+    During CPU graph capture, or CUDA graph capture with ``apic=True``,
+    non-empty calls require an explicit ``out`` array so replay can store the
+    current result. Existing whole-array, explicit-count, composite-dtype, and
+    positive-stride axis reductions are recorded. Negative strides raise
+    ``NotImplementedError`` during API Capture (APIC) recording. Counts and
+    reduction strides must fit signed 32-bit integers, and participating
+    addresses and strides must be aligned to the scalar type.
 
     Args:
         a: First input array.
@@ -670,11 +681,11 @@ def array_inner(
         otherwise returns the ``out`` array.
 
     Raises:
-        RuntimeError: If array storage devices, sizes, or data types are incompatible, or if a matching-device
-            APIC-captured call uses a count or layout that the native reduction ABI cannot represent.
-        NotImplementedError: If a non-empty call under matching-device APIC graph capture omits ``out``. Also raised
-            if any input or output array has a negative stride under matching-device APIC graph capture, including
-            for a zero-count call.
+        RuntimeError: If array storage devices, sizes, or data types are incompatible, or if an APIC-recorded call
+            uses an unsupported count or memory layout.
+        NotImplementedError: If a non-empty call during APIC recording omits
+            ``out``. Also raised if any input or output array has a negative
+            stride during APIC recording, including for a zero-count call.
     """
     if a.size != b.size:
         raise RuntimeError(f"A and b array storage sizes do not match ({a.size} vs {b.size})")
@@ -1935,19 +1946,18 @@ class ScopedPeerAccess:
 class ScopedCapture:
     """Context manager to capture a sequence of operations into a graph.
 
-    Captures kernel launches, memory copies, and memsets for later replay
-    with reduced launch overhead. Works on both CPU and CUDA devices. The
-    captured graph is available as the ``graph`` attribute after exiting
-    the context.
+    Captures supported Warp operations for later replay with reduced launch
+    overhead. Works on both CPU and CUDA devices. The captured graph is
+    available as the ``graph`` attribute after exiting the context.
 
     Args:
         device: Device on which to capture operations (CPU or CUDA).
         stream: Stream on which to capture operations (CUDA only).
         force_module_load: If ``True``, force all modules to load before capture begins.
-        external: If ``True``, indicates an external graph capture is already active.
+        external: If ``True``, indicates an external CUDA graph capture is already active.
             The ``capture_mode`` argument should specify the mode that was used to
             initiate the external capture.
-        apic: If ``True``, enable APIC recording for serialization via
+        apic: If ``True``, enable API Capture (APIC) recording for serialization via
             :func:`capture_save`. On CPU, recording always occurs regardless
             of this flag (needed for CPU graph replay). Default is ``False``.
         capture_mode: The :class:`~warp.CaptureMode` to use when opening

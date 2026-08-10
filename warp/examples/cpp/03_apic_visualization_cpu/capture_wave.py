@@ -2,18 +2,18 @@
 # SPDX-License-Identifier: Apache-2.0
 
 """
-Capture a wave simulation as an APIC graph for C++ execution on CPU.
+Capture and save a wave simulation for C++ CPU replay with API Capture (APIC).
 
 This script captures a full frame of wave simulation (multiple substeps) as a
-single graph using Warp's APIC mode on the CPU device. The resulting .wrp file
-can be loaded and executed from C++ without requiring a Python runtime or GPU.
+CPU graph and saves its operation stream and compiled modules. The resulting
+.wrp file can be loaded and replayed from C++ without a Python runtime or GPU.
 
 Usage:
     python capture_wave.py
     uv run capture_wave.py
 
 Output:
-    generated/wave_sim.wrp          - Serialized graph
+    generated/wave_sim.wrp          - Serialized APIC graph representation
     generated/wave_sim_modules/     - Compiled CPU modules (.o files)
 """
 
@@ -95,7 +95,7 @@ def capture_wave_graph(
     substeps: int = 16,
     output_path: str = "generated/wave_sim",
 ):
-    """Capture the wave simulation as an APIC graph on CPU."""
+    """Capture and save the wave simulation for APIC replay on CPU."""
     device = "cpu"
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
@@ -163,7 +163,7 @@ def capture_wave_graph(
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Capture wave simulation as APIC graph (CPU)")
+    parser = argparse.ArgumentParser(description="Capture and save a wave simulation for APIC CPU replay")
     parser.add_argument("--width", type=int, default=128, help="Grid width")
     parser.add_argument("--height", type=int, default=128, help="Grid height")
     parser.add_argument("--substeps", type=int, default=16, help="Substeps per frame")

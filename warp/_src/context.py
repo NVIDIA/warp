@@ -5122,7 +5122,7 @@ class Device:
         """A boolean indicating whether this device is currently capturing a graph.
 
         For CUDA devices this reflects CUDA stream capture; for the CPU device it reflects
-        an active APIC graph capture (which does not use a CUDA stream).
+        an active CPU graph capture (which uses APIC recording, not a CUDA stream).
         """
         if self.is_cuda and self.stream is not None:
             # There is no CUDA API to check if graph capture was started on a device, so we
@@ -5559,7 +5559,7 @@ class Graph:
             )
 
     def set_param(self, name: str, arr) -> None:
-        """Copy array data into a named parameter region of a loaded APIC graph.
+        """Copy array data into a named parameter region of a loaded graph.
 
         Args:
             name: The parameter name as registered in :func:`wp.capture_save`
@@ -5597,7 +5597,7 @@ class Graph:
             raise RuntimeError(f"Failed to set parameter '{name}': {runtime.get_error_string()}")
 
     def get_param(self, name: str, arr) -> None:
-        """Copy data from a named parameter region of a loaded APIC graph into an array.
+        """Copy data from a named parameter region of a loaded graph into an array.
 
         Args:
             name: The parameter name as registered in :func:`wp.capture_save`
@@ -5633,19 +5633,20 @@ class Graph:
             raise RuntimeError(f"Failed to get parameter '{name}': {runtime.get_error_string()}")
 
     def get_param_ptr(self, name: str):
-        """Return the device pointer of a named parameter region in a loaded APIC graph.
+        """Return the address of a named parameter region in a loaded graph.
 
-        The returned pointer is owned by the graph and remains valid until the
-        graph is destroyed. Useful for zero-copy interop with other libraries
-        or for implementing custom replay loops in C++ via the ``wp_apic_*``
-        C API.
+        The returned address is a host pointer for a CPU graph and a device
+        pointer for a CUDA graph. It is owned by the graph and remains valid
+        until the graph is destroyed. This is useful for zero-copy interop with
+        other libraries or for implementing custom replay loops in C++ via the
+        ``wp_apic_*`` C API.
 
         Args:
             name: The parameter name registered when the graph was saved.
 
         Returns:
-            The device pointer (as an integer) for the parameter region,
-            or ``None`` if ``name`` is not a registered parameter.
+            The address (as an integer) of the parameter region, or ``None`` if
+            ``name`` is not a registered parameter.
 
         Raises:
             RuntimeError: If this graph was not loaded from a ``.wrp`` file
@@ -5657,7 +5658,7 @@ class Graph:
 
     @property
     def params(self) -> dict:
-        """Mapping of parameter name to binding metadata for a loaded APIC graph.
+        """Mapping of parameter name to binding metadata for a loaded graph.
 
         Each value is a dict with a single ``"size"`` key giving the parameter
         region's size in bytes. Empty for graphs that were not loaded from a
@@ -10303,10 +10304,10 @@ class Launch:
 
         Note:
             This method does not perform warp-level type conversion, so it should not be
-            used on array-typed parameters during CPU APIC capture. APIC relocation
+            used on array-typed parameters during CPU graph capture. APIC relocation
             metadata requires the original ``warp.array`` objects stored in ``fwd_args``
             to track region IDs; passing a raw ctype struct bypasses that. Use
-            ``set_param_at_index()`` instead when a CPU APIC capture is active.
+            ``set_param_at_index()`` instead when a CPU graph capture is active.
         """
         if adjoint:
             params_index = index + len(self.kernel.adj.args) + 1
@@ -11936,13 +11937,13 @@ def capture_begin(
 ):
     """Begin capture of a graph.
 
-    Captures all subsequent kernel launches and memory operations. On CUDA devices,
-    operations are captured by the CUDA driver into a native graph. On CPU devices,
-    there is no native graph equivalent; operations are always recorded into an
-    APIC (API Capture) byte stream, which :func:`capture_launch` replays.
+    Records supported Warp operations subsequently issued on the selected
+    device. On CUDA devices, the CUDA driver captures operations into a CUDA
+    graph. On CPU devices, operations are recorded into an API Capture (APIC)
+    operation stream, which :func:`capture_launch` replays in C++.
 
-    If ``apic=True``, APIC recording is also performed alongside the CUDA native
-    graph, and the result can be serialized to a ``.wrp`` file via
+    If ``apic=True``, APIC recording is also performed alongside CUDA graph
+    capture, and the result can be serialized to a ``.wrp`` file via
     :func:`capture_save`. The flag has no effect on CPU (recording is always on
     there) beyond gating whether :func:`capture_save` is allowed.
 
@@ -11959,8 +11960,8 @@ def capture_begin(
           The ``capture_mode`` argument should specify the mode that was used to
           initiate the external capture.
         apic: Whether to allow :func:`capture_save` on the captured graph. On
-          CUDA this also enables APIC byte-stream recording during the capture;
-          on CPU, recording happens regardless because it is the only
+          CUDA this also enables APIC operation-stream recording during the
+          capture; on CPU, recording happens regardless because it is the only
           replay mechanism.
         capture_mode: The :class:`~warp.CaptureMode` (i.e.
           ``cudaStreamCaptureMode``) used when Warp opens the capture.
@@ -12351,8 +12352,9 @@ def capture_if(
     The condition value is retrieved from the first element of the ``condition`` array.
 
     This function is particularly useful with CUDA graphs, but can be used without graph capture as well.
-    CUDA 12.4+ is required for CUDA graph conditional nodes. CPU APIC capture records this operation directly, but
-    branch bodies must be callbacks; passing :class:`Graph` objects under CPU APIC capture is not yet supported.
+    CUDA 12.4+ is required for CUDA graph conditional nodes. During APIC recording (all CPU captures and CUDA
+    captures with ``apic=True``), branch bodies must be callbacks; passing :class:`Graph` objects is not yet
+    supported. CUDA capture with ``apic=False`` supports either form.
 
     Args:
         condition: Warp array holding the condition value.
@@ -12582,8 +12584,9 @@ def capture_while(condition: warp.array[int], while_body: Callable | Graph, stre
     The ``while_body`` callback is responsible for updating the condition value so the loop can terminate.
 
     This function is particularly useful with CUDA graphs, but can be used without graph capture as well.
-    CUDA 12.4+ is required for CUDA graph conditional nodes. CPU APIC capture records this operation directly, but
-    the loop body must be a callback; passing a :class:`Graph` object under CPU APIC capture is not yet supported.
+    CUDA 12.4+ is required for CUDA graph conditional nodes. During APIC recording (all CPU captures and CUDA
+    captures with ``apic=True``), the loop body must be a callback; passing a :class:`Graph` object is not yet
+    supported. CUDA capture with ``apic=False`` supports either form.
 
     Args:
         condition: Warp array holding the condition value.
@@ -12772,10 +12775,11 @@ def capture_launch(graph: Graph, stream: Stream | None = None):
     """Launch a previously captured graph.
 
     For CUDA graphs, this launches via ``cudaGraphLaunch()``.
-    For CPU graphs, this replays recorded operations in a tight native C loop.
+    For CPU graphs, this replays recorded operations in a C++ loop inside Warp.
 
     Args:
-        graph: A :class:`Graph` as returned by :func:`~warp.capture_end()`
+        graph: A :class:`Graph` returned by :func:`~warp.capture_end()` or
+          :func:`~warp.capture_load()`.
         stream: A :class:`Stream` to launch the graph on (CUDA only)
     """
 
@@ -12835,17 +12839,23 @@ def capture_launch(graph: Graph, stream: Stream | None = None):
 def capture_save(graph: Graph, path: str, inputs: dict | None = None, outputs: dict | None = None):
     """Serialize a captured graph to a ``.wrp`` file for later replay.
 
-    The graph must have been captured with ``apic=True``.
+    The graph must have been captured with ``apic=True``. For graphs containing
+    recorded kernels, the ``.wrp`` file and its companion ``_modules`` directory
+    must be kept together.
 
     Args:
         graph: A :class:`Graph` captured with ``apic=True``.
-        path: Output path (without extension). Creates ``{path}.wrp`` and ``{path}_modules/``.
+        path: Output path. The ``.wrp`` extension is added if missing. Creates
+          ``<stem>.wrp`` and ``<stem>_modules/``.
         inputs: Named input arrays (e.g., ``{"positions": pos_array}``).
         outputs: Named output arrays (e.g., ``{"results": result_array}``).
 
     If the same array appears in both ``inputs`` and ``outputs`` (e.g., for
     in-place operations), both names will refer to the same memory region.
     Updating either via ``set_param`` on the loaded graph affects the same data.
+    Each name binds the array's entire base allocation rather than a view
+    offset. Arrays passed to ``set_param`` and ``get_param`` must have the same
+    byte capacity as that serialized region.
     """
     import os  # noqa: PLC0415
     import shutil  # noqa: PLC0415
@@ -12993,6 +13003,11 @@ def capture_save(graph: Graph, path: str, inputs: dict | None = None, outputs: d
 
 def capture_load(path: str, device: DeviceLike = None) -> Graph:
     """Load a serialized graph from a ``.wrp`` file.
+
+    For graphs containing recorded kernels, the companion
+    ``<stem>_modules/`` directory created by :func:`capture_save` must remain
+    next to the file. ``device`` must have the same device family (CPU or CUDA)
+    as the saved graph.
 
     Args:
         path: Path to the ``.wrp`` file (extension added automatically if missing).

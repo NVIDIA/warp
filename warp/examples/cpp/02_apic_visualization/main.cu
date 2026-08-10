@@ -15,27 +15,27 @@
  * limitations under the License.
  */
 
+// clang-format off
 /*
  * APIC Wave Simulation Example
  *
  * This program demonstrates how to:
- * 1. Load a pre-captured CUDA graph (.wrp file) using Warp's APIC API
- * 2. Execute the graph with dynamic input parameters
- * 3. Visualize the results using GLFW/OpenGL
+ * 1. Load a saved APIC graph representation (.wrp file)
+ * 2. Reconstruct a CUDA graph with Warp's APIC API
+ * 3. Execute the graph with dynamic input parameters
+ * 4. Visualize the results using GLFW/OpenGL
  *
- * The wave simulation graph is captured by the Python script (capture_wave.py)
- * and contains multiple kernel launches for a full simulation frame.
+ * The Python script (capture_wave.py) records and saves the work for a full simulation frame.
  *
- * Key APIC concepts demonstrated:
- * - Graph contains 17 kernel launches (1 displacement + 16 wave solve)
+ * Key concepts demonstrated:
+ * - A saved operation stream reconstructs a CUDA graph containing 17 kernel launches
  * - C++ issues ONE cudaGraphLaunch() per frame
  * - Mouse position is passed as a dynamic parameter
- * - No graph rebuilding needed - structure is fixed, only data changes
+ * - Reconstruction happens once; later frames update only data
  *
  * See README.md for build instructions.
  */
 
-// clang-format off
 // Include order matters: GLAD must come before other GL headers,
 // and aot.h (CUDA) must come after GLAD to avoid type conflicts
 #include <glad/gl.h>

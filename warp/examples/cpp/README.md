@@ -1,15 +1,15 @@
 # Warp C++ Integration Examples
 
-This directory contains examples demonstrating how to integrate Warp-compiled kernels into standalone C++ applications.
+This directory contains examples demonstrating how to integrate Warp workloads into standalone C++ applications.
 
 ## Purpose
 
-These examples show how to author and test GPU kernels in Python using Warp, then deploy them in C++ programs without runtime Python dependencies. This workflow enables:
+The examples cover two integration patterns:
 
-- **Rapid prototyping**: Write and test kernels in Python with Warp's expressive API
-- **Production deployment**: Integrate proven kernels into existing C++ codebases
-- **Performance**: Leverage Warp's kernel generation without Python runtime overhead
-- **Flexibility**: Choose between runtime CUBIN loading or compile-time source inclusion
+- **Ahead-of-time (AOT) kernels**: Compile CUDA kernels from Python, then load their CUBIN modules or include their generated source in C++.
+- **API Capture (APIC)**: Record and save a supported Warp workload from Python, then load and replay it from C++ on CUDA or CPU.
+
+Both patterns let the deployed application run without a Python runtime.
 
 ## Examples
 
@@ -17,39 +17,45 @@ These examples show how to author and test GPU kernels in Python using Warp, the
 |---------|-------------|--------------|
 | **[00_cubin_launch](00_cubin_launch/)** | Runtime CUBIN loading with CUDA Driver API | SAXPY operation, CUBIN module loading, `cuLaunchKernel()`, architecture-specific binaries |
 | **[01_source_include](01_source_include/)** | Static source inclusion with autodiff | Gradient descent, automatic differentiation, forward/backward kernels, `<<<>>>` launch syntax, multi-architecture compilation |
-| **[02_apic_visualization](02_apic_visualization/)** | Interactive APIC graph replay (CUDA + GLFW) | Multi-kernel graph capture, `cudaGraphLaunch()`, dynamic parameters, real-time wave-equation visualization |
-| **[03_apic_visualization_cpu](03_apic_visualization_cpu/)** | APIC graph replay on CPU (no CUDA at runtime) | CPU-only `wp_apic_cpu_replay_graph()`, `dlopen("warp-clang.so")` for the JIT, GLFW visualization |
+| **[02_apic_visualization](02_apic_visualization/)** | CUDA replay from a saved API Capture (APIC) representation | APIC operation recording, CUDA graph reconstruction, dynamic parameters, real-time GLFW visualization |
+| **[03_apic_visualization_cpu](03_apic_visualization_cpu/)** | CPU replay from a saved APIC representation (no CUDA at runtime) | CPU operation-stream replay, dynamic parameters, `warp-clang`, real-time GLFW visualization |
 
 ## Quick Start
 
 ```bash
+# Run from warp/examples/cpp
+
 # Example 1: Runtime CUBIN loading
-cd 00_cubin_launch
-make && ./00_cubin_launch
+(cd 00_cubin_launch && make && ./00_cubin_launch)
 
 # Example 2: Source inclusion with autodiff
-cd 01_source_include
-make && ./01_source_include
+(cd 01_source_include && make && ./01_source_include)
+
+# Example 3: APIC save/load with CUDA graph replay
+(cd 02_apic_visualization && make && ./02_apic_visualization)
+
+# Example 4: APIC save/load with CPU replay
+(cd 03_apic_visualization_cpu && make && ./03_apic_visualization_cpu)
 ```
 
 ## Build Systems
 
-Both examples support dual build systems:
+All four examples support two build systems:
 
-- **Makefile** - Unix/Linux only (`make` auto-runs the example's Python setup script if needed)
-- **CMake 3.20+** - Cross-platform: Linux and Windows (run the example's Python setup script before `cmake -B build`: `compile_kernel.py` for the AOT examples, `capture_wave.py` for the APIC examples)
+- **Makefile** - Supported Unix-like platforms (`make` auto-runs the example's Python setup script if needed)
+- **CMake 3.20+** - Cross-platform (run the example's Python setup script before `cmake -B build`: `compile_kernel.py` for the AOT examples, `capture_wave.py` for the APIC examples)
 
 **Make Targets**:
-- `make` - Build everything, auto-compile kernel if needed
+- `make` - Build everything and run the example's Python setup if needed
 - `make cpp` - Build only C++ code (fast iteration)
 - `make clean` - Remove executable only
 - `make distclean` - Remove executable and `generated/` directory
 
-**Note**: macOS is **not supported** - these examples require CUDA, which is not available on macOS.
+The three CUDA examples (`00`, `01`, and `02`) do not support macOS. The CPU APIC example (`03`) does not require CUDA; see its README for platform-specific prerequisites.
 
-## General Workflow
+## AOT Workflow
 
-All examples follow a two-phase workflow:
+Examples `00` and `01` follow this two-phase workflow.
 
 ### 1. Python Phase: Compile Kernels
 
@@ -96,11 +102,15 @@ cuLaunchKernel(kernel, grid, 1, 1, block, 1, 1, 0, nullptr, params, nullptr);
 my_kernel_cuda_kernel_forward<<<grid, block>>>(dim, arr_x);
 ```
 
+## API Capture Workflow
+
+Examples `02` and `03` use `wp.capture_begin(..., apic=True)` and `wp.capture_save()` to write a `.wrp` file plus a companion `_modules` directory. The standalone C++ application loads both artifacts through the APIC API. The CUDA example reconstructs a CUDA graph for replay; the CPU example directly interprets the recorded operation stream.
+
 ## Key Concepts
 
 ### Warp AOT Header
 
-Examples use Warp's AOT (Ahead-Of-Time) header (`warp/native/aot.h`) which provides:
+The CUDA examples use Warp's AOT (Ahead-Of-Time) header (`warp/native/aot.h`), which provides:
 
 - Automatic CUDA detection and configuration
 - Error checking macros (`CHECK_CU`, `CHECK_CUDA`)
@@ -113,6 +123,7 @@ Examples use Warp's AOT (Ahead-Of-Time) header (`warp/native/aot.h`) which provi
 
 - **Driver API** (`cuda.h`): CUBIN module loading, `cuLaunchKernel()` (used in 00_cubin_launch)
 - **Runtime API** (`cuda_runtime.h`): Memory management, `<<<>>>` launch syntax (used in 01_source_include)
+- **Graph API**: CUDA graph reconstruction and `cudaGraphLaunch()` (used in 02_apic_visualization)
 
 ## Prerequisites
 
@@ -121,12 +132,14 @@ These examples are designed to run from within the Warp repository.
 ### Requirements
 
 - **Python 3.10+**
-- **CUDA Toolkit**:
-  - `00_cubin_launch`: **12.0+** (Warp's minimum requirement)
+- **CUDA Toolkit and NVIDIA GPU** for examples `00`, `01`, and `02`:
+  - `00_cubin_launch` and `02_apic_visualization`: **12.0+**
   - `01_source_include`: **12.8+** (required for `sm_120` compilation)
-- **NVIDIA GPU** with CUDA support
-- **Operating System**: Linux or Windows (macOS not supported - no CUDA)
+- **Warp LLVM library (`warp-clang`)** for CPU replay in `03_apic_visualization_cpu`
+- **Operating System**: Linux or Windows for the CUDA examples; the CPU example also supports macOS
 - **Build System**: GNU Make (Unix/Linux) or CMake 3.20+ (cross-platform)
+
+The visualization examples also require OpenGL and GLFW. See each example's README for exact prerequisites and setup.
 
 ### Setup
 

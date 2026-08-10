@@ -14,17 +14,17 @@
 # limitations under the License.
 
 """
-Capture a wave simulation as an APIC graph for C++ execution.
+Capture and save a wave simulation for C++ execution with API Capture (APIC).
 
-This script captures a full frame of wave simulation (multiple substeps) as a single
-CUDA graph using Warp's APIC mode. The resulting .wrp file can be loaded and executed
-from C++ without requiring the Python runtime.
+This script captures a full simulation frame with ``apic=True``. Warp saves the
+APIC operation stream and compiled modules, which the C++ loader uses to
+reconstruct a CUDA graph without a Python runtime.
 
 Usage:
     python capture_wave.py
 
 Output:
-    generated/wave_sim.wrp          - Serialized CUDA graph
+    generated/wave_sim.wrp          - Serialized APIC graph representation
     generated/wave_sim_modules/     - Compiled CUDA modules (cubins)
 """
 
@@ -112,13 +112,13 @@ def capture_wave_graph(
     substeps: int = 16,
     output_path: str = "generated/wave_sim",
 ):
-    """Capture the wave simulation as an APIC graph.
+    """Capture and save the wave simulation with APIC.
 
     Args:
         width: Grid width
         height: Grid height
         substeps: Number of simulation substeps per frame
-        output_path: Output path for .wrp file (without extension)
+        output_path: Output path for the .wrp file. The extension is optional.
     """
     device = wp.get_cuda_device()
 
@@ -199,7 +199,7 @@ def capture_wave_graph(
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Capture wave simulation as APIC graph")
+    parser = argparse.ArgumentParser(description="Capture and save a wave simulation with APIC")
     parser.add_argument("--width", type=int, default=128, help="Grid width")
     parser.add_argument("--height", type=int, default=128, help="Grid height")
     parser.add_argument("--substeps", type=int, default=16, help="Substeps per frame")
