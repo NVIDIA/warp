@@ -3285,14 +3285,19 @@ class Adjoint:
         if cond.constant is not None:
             return adj.eval(node.body) if cond.constant else adj.eval(node.orelse)
 
+        def load_ifexp_branch(var):
+            if is_reference(var.type):
+                return adj.add_builtin_call("copy", [var])
+            return adj.load(var)
+
         adj.begin_if(cond)
         body = adj.eval(node.body)
-        body = adj.load(body)
+        body = load_ifexp_branch(body)
         adj.end_if(cond)
 
         adj.begin_else(cond)
         orelse = adj.eval(node.orelse)
-        orelse = adj.load(orelse)
+        orelse = load_ifexp_branch(orelse)
         adj.end_else(cond)
 
         return adj.add_builtin_call("where", [cond, body, orelse])

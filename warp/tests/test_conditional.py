@@ -75,6 +75,39 @@ def test_conditional_ifexp_nested():
 
 
 @wp.kernel
+def test_conditional_ifexp_reference_div_or_load_grad_kernel(
+    arr: wp.array[float],
+    term: wp.array[float],
+    flag: wp.bool,
+    out: wp.array[float],
+):
+    tid = wp.tid()
+    out[tid] = arr[tid] / term[tid] if flag else arr[tid]
+
+
+@wp.kernel
+def test_conditional_ifexp_reference_arr_or_term_grad_kernel(
+    arr: wp.array[float],
+    term: wp.array[float],
+    flag: wp.bool,
+    out: wp.array[float],
+):
+    tid = wp.tid()
+    out[tid] = arr[tid] if flag else term[tid]
+
+
+@wp.kernel
+def test_conditional_ifexp_reference_vec_or_vec_grad_kernel(
+    arr: wp.array[wp.vec3],
+    term: wp.array[wp.vec3],
+    flag: wp.bool,
+    out: wp.array[wp.vec3],
+):
+    tid = wp.tid()
+    out[tid] = arr[tid] if flag else term[tid]
+
+
+@wp.kernel
 def test_conditional_ifexp_constant():
     a = 1.0 if False else -1.0
     b = 2.0 if 123 else -2.0
@@ -423,6 +456,108 @@ def test_short_circuit_or_grad(test: unittest.TestCase, device):
     np.testing.assert_allclose(tape.gradients[x].numpy(), [1.0, 3.0, 1.0, 1.0])
 
 
+def _run_ifexp_reference_branch_grad(kernel, flag: bool, device):
+    arr_np = np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float32)
+    term_np = np.full(4, 2.0, dtype=np.float32)
+    arr = wp.array(arr_np, dtype=float, device=device, requires_grad=True)
+    term = wp.array(term_np, dtype=float, device=device, requires_grad=True)
+    out = wp.zeros(4, dtype=float, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(kernel, dim=4, inputs=[arr, term, flag], outputs=[out], device=device)
+
+    seed = wp.ones(4, dtype=float, device=device)
+    tape.backward(grads={out: seed})
+
+    return out.numpy(), tape.gradients[arr].numpy(), tape.gradients[term].numpy()
+
+
+def test_ifexp_reference_branch_grad(test: unittest.TestCase, device):
+    """Ternary branches returning array elements must propagate selected adjoints."""
+    out, grad_arr, grad_term = _run_ifexp_reference_branch_grad(
+        test_conditional_ifexp_reference_div_or_load_grad_kernel, False, device
+    )
+    np.testing.assert_allclose(out, [1.0, 2.0, 3.0, 4.0])
+    np.testing.assert_allclose(grad_arr, [1.0, 1.0, 1.0, 1.0])
+    np.testing.assert_allclose(grad_term, [0.0, 0.0, 0.0, 0.0])
+
+    out, grad_arr, grad_term = _run_ifexp_reference_branch_grad(
+        test_conditional_ifexp_reference_div_or_load_grad_kernel, True, device
+    )
+    np.testing.assert_allclose(out, [0.5, 1.0, 1.5, 2.0])
+    np.testing.assert_allclose(grad_arr, [0.5, 0.5, 0.5, 0.5])
+    np.testing.assert_allclose(grad_term, [-0.25, -0.5, -0.75, -1.0])
+
+    out, grad_arr, grad_term = _run_ifexp_reference_branch_grad(
+        test_conditional_ifexp_reference_arr_or_term_grad_kernel, False, device
+    )
+    np.testing.assert_allclose(out, [2.0, 2.0, 2.0, 2.0])
+    np.testing.assert_allclose(grad_arr, [0.0, 0.0, 0.0, 0.0])
+    np.testing.assert_allclose(grad_term, [1.0, 1.0, 1.0, 1.0])
+
+    out, grad_arr, grad_term = _run_ifexp_reference_branch_grad(
+        test_conditional_ifexp_reference_arr_or_term_grad_kernel, True, device
+    )
+    np.testing.assert_allclose(out, [1.0, 2.0, 3.0, 4.0])
+    np.testing.assert_allclose(grad_arr, [1.0, 1.0, 1.0, 1.0])
+    np.testing.assert_allclose(grad_term, [0.0, 0.0, 0.0, 0.0])
+
+
+def _run_ifexp_reference_vec_branch_grad(flag: bool, device):
+    arr_np = np.array(
+        [
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+            [10.0, 11.0, 12.0],
+        ],
+        dtype=np.float32,
+    )
+    term_np = arr_np * 2.0
+    arr = wp.array(arr_np, dtype=wp.vec3, device=device, requires_grad=True)
+    term = wp.array(term_np, dtype=wp.vec3, device=device, requires_grad=True)
+    out = wp.zeros(4, dtype=wp.vec3, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(
+            test_conditional_ifexp_reference_vec_or_vec_grad_kernel,
+            dim=4,
+            inputs=[arr, term, flag],
+            outputs=[out],
+            device=device,
+        )
+
+    seed = wp.array(np.ones((4, 3), dtype=np.float32), dtype=wp.vec3, device=device)
+    tape.backward(grads={out: seed})
+
+    return out.numpy(), tape.gradients[arr].numpy(), tape.gradients[term].numpy()
+
+
+def test_ifexp_reference_vec_branch_grad(test: unittest.TestCase, device):
+    """Ternary branches returning vector array elements must propagate selected adjoints."""
+    arr_np = np.array(
+        [
+            [1.0, 2.0, 3.0],
+            [4.0, 5.0, 6.0],
+            [7.0, 8.0, 9.0],
+            [10.0, 11.0, 12.0],
+        ],
+        dtype=np.float32,
+    )
+
+    out, grad_arr, grad_term = _run_ifexp_reference_vec_branch_grad(False, device)
+    np.testing.assert_allclose(out, arr_np * 2.0)
+    np.testing.assert_allclose(grad_arr, np.zeros_like(arr_np))
+    np.testing.assert_allclose(grad_term, np.ones_like(arr_np))
+
+    out, grad_arr, grad_term = _run_ifexp_reference_vec_branch_grad(True, device)
+    np.testing.assert_allclose(out, arr_np)
+    np.testing.assert_allclose(grad_arr, np.ones_like(arr_np))
+    np.testing.assert_allclose(grad_term, np.zeros_like(arr_np))
+
+
 @wp.kernel
 def branch_local_merge_codegen_kernel(x: wp.array[float], out: wp.array[float]):
     # ``r`` is first assigned inside nested ``if``/``else`` branches, so it has no version
@@ -558,6 +693,12 @@ add_function_test(TestConditional, "test_short_circuit_and", test_short_circuit_
 add_function_test(TestConditional, "test_short_circuit_or", test_short_circuit_or, devices=devices)
 add_function_test(TestConditional, "test_short_circuit_and_grad", test_short_circuit_and_grad, devices=devices)
 add_function_test(TestConditional, "test_short_circuit_or_grad", test_short_circuit_or_grad, devices=devices)
+add_function_test(
+    TestConditional, "test_ifexp_reference_branch_grad", test_ifexp_reference_branch_grad, devices=devices
+)
+add_function_test(
+    TestConditional, "test_ifexp_reference_vec_branch_grad", test_ifexp_reference_vec_branch_grad, devices=devices
+)
 add_function_test(TestConditional, "test_branch_local_merge_codegen", test_branch_local_merge_codegen, devices=devices)
 add_function_test(TestConditional, "test_branch_local_merge_runtime", test_branch_local_merge_runtime, devices=devices)
 
