@@ -880,6 +880,19 @@ defined in <code class="docutils literal notranslate"><span class="pre">default_
 using <a class="reference external" href="https://docs.python.org/3/library/unittest.html#test-discovery">test discovery</a>, use
 <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">run</span> <span class="pre">--extra</span> <span class="pre">dev</span> <span class="pre">-m</span> <span class="pre">warp.tests</span> <span class="pre">-s</span> <span class="pre">autodetect</span></code>, which will discover tests in modules matching the path
 <code class="docutils literal notranslate"><span class="pre">warp/tests/test*.py</span></code>.</p>
+<blockquote>
+<div><p>The runner uses up to eight test processes, capped further by the detected CPU count and the
+number of selected test classes. On systems with sufficient CPU and GPU resources, the limit can be raised
+with <code class="docutils literal notranslate"><span class="pre">--maxjobs</span> <span class="pre">N</span></code>. Performance gains depend on the workload and hardware and generally diminish at higher
+process counts. Additional workers running CUDA tests can also increase peak GPU memory usage.</p>
+</div></blockquote>
+<blockquote>
+<div><p>The native libraries in <code class="docutils literal notranslate"><span class="pre">warp/bin</span></code> are not rebuilt automatically. After merging or rebasing
+on <code class="docutils literal notranslate"><span class="pre">main</span></code>, or otherwise pulling changes to <code class="docutils literal notranslate"><span class="pre">warp/native/</span></code>, rebuild with
+<code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">run</span> <span class="pre">build_lib.py</span></code> (or <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">run</span> <span class="pre">build_lib.py</span> <span class="pre">--quick</span></code> when the installed CUDA driver is at
+least as new as the CUDA Toolkit). Running against stale binaries can crash or corrupt
+JIT-compiled kernels in confusing ways, such as when a merge changed a native struct layout.</p>
+</div></blockquote>
 <section id="running-a-subset-of-tests">
 <h4>Running a Subset of Tests<a class="headerlink" href="#running-a-subset-of-tests" title="Link to this heading">#</a></h4>
 <p>Instead of running the full test suite, there are two main ways to select a subset of tests to run.
