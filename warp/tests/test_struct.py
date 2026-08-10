@@ -1,14 +1,18 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import contextlib
 import gc  # Added for garbage collection tests
+import io
 import unittest
+import warnings
 import weakref
 from typing import Any
 
 import numpy as np
 
 import warp as wp
+from warp._src import logger as _logger
 from warp.fem import Sample as StructFromAnotherModule
 from warp.tests.unittest_utils import *
 
@@ -964,6 +968,86 @@ class TestStruct(unittest.TestCase):
                 s = struct_type()
                 with self.assertRaisesRegex(TypeError, r"Struct field 'values' expects dtype int32, got float32"):
                     s.values = wrong_dtype
+
+    def test_struct_scalar_to_composite_field_rejected(self):
+        """A single value assigned to a composite struct field must be rejected."""
+
+        @wp.struct
+        class CompositeFieldStruct:
+            v: wp.vec3
+            m: wp.mat22
+            q: wp.quat
+            t: wp.transform
+
+        fields = (("v", "vec3f"), ("m", "mat22f"), ("q", "quatf"), ("t", "transformf"))
+        values = (123, 1.5, wp.float32(1.5), wp.int32(2))
+
+        for field, type_name in fields:
+            for value in values:
+                with self.subTest(field=field, value_type=type(value).__name__):
+                    s = CompositeFieldStruct()
+                    with self.assertRaisesRegex(
+                        TypeError,
+                        rf"Struct field '{field}' expects {type_name} but got a single value",
+                    ):
+                        setattr(s, field, value)
+
+        # Conversions from containers must keep working.
+        s = CompositeFieldStruct()
+
+        s.v = wp.vec3(1.0, 2.0, 3.0)
+        assert_np_equal(np.array(s.v), np.array([1.0, 2.0, 3.0], dtype=np.float32))
+
+        s.v = [4.0, 5.0, 6.0]
+        assert_np_equal(np.array(s.v), np.array([4.0, 5.0, 6.0], dtype=np.float32))
+
+        s.v = (7.0, 8.0, 9.0)
+        assert_np_equal(np.array(s.v), np.array([7.0, 8.0, 9.0], dtype=np.float32))
+
+        s.v = np.array([10.0, 11.0, 12.0])
+        assert_np_equal(np.array(s.v), np.array([10.0, 11.0, 12.0], dtype=np.float32))
+
+        s.m = [[1.0, 2.0], [3.0, 4.0]]
+        assert_np_equal(np.array(s.m).reshape(2, 2), np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32))
+
+        # None still zero-initializes.
+        s.v = None
+        assert_np_equal(np.array(s.v), np.zeros(3, dtype=np.float32))
+
+    def test_struct_numpy_and_boolean_scalar_to_composite_field_deprecated(self):
+        """NumPy numeric scalars and Python, NumPy, and Warp Booleans must warn while promotion is supported."""
+
+        @wp.struct
+        class CompositeFieldStruct:
+            v: wp.vec3
+            m: wp.mat22
+            q: wp.quat
+            t: wp.transform
+
+        fields = (("v", "vec3f"), ("m", "mat22f"), ("q", "quatf"), ("t", "transformf"))
+        values = (True, np.bool_(True), wp.bool(True), np.float32(1.5), np.int64(3))
+
+        saved_warnings_seen = _logger._warnings_seen.copy()
+        try:
+            for field, type_name in fields:
+                for value in values:
+                    with self.subTest(field=field, value_type=type(value).__name__):
+                        s = CompositeFieldStruct()
+                        _logger._warnings_seen.clear()
+                        with warnings.catch_warnings(), contextlib.redirect_stderr(io.StringIO()) as stderr:
+                            warnings.simplefilter("always", DeprecationWarning)
+                            setattr(s, field, value)
+
+                        self.assertRegex(
+                            stderr.getvalue(),
+                            rf"type `{type(value).__name__}`.*`{type_name}`.*struct field '{field}'.*deprecated",
+                        )
+
+                        result = np.array(getattr(s, field)).reshape(-1)
+                        assert_np_equal(result, np.full(result.size, float(value), dtype=np.float32))
+        finally:
+            _logger._warnings_seen.clear()
+            _logger._warnings_seen.update(saved_warnings_seen)
 
     def test_nested_vec_assignment(self):
         v = VecStruct()

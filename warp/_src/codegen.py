@@ -25,6 +25,8 @@ from copy import copy as shallowcopy
 from dataclasses import dataclass
 from typing import Any, ClassVar, Literal, NamedTuple, get_args, get_origin
 
+import numpy as np
+
 import warp.config
 from warp._src.deterministic import DeterministicCodegen
 from warp._src.logger import log_debug, log_warning
@@ -448,13 +450,21 @@ def _make_struct_field_setter(cls, field: str, var_type: type):
         elif type(value) is var_type:
             setattr(inst._ctype, field, value)
         else:
-            if is_scalar(value):
+            if isinstance(value, (builtins.bool, warp.bool, np.bool_, np.integer, np.floating)):
                 log_warning(
-                    f"Implicit conversion from a scalar type to the composite type "
+                    f"Implicit conversion from a value of type `{type(value).__name__}` to the composite type "
                     f"`{type_repr(var_type)}` for struct field '{field}' is deprecated. "
-                    f"Use an explicit conversion, e.g.: `{type_repr(var_type)}(...)`.",
+                    f"Construct the value explicitly, e.g.: `{type_repr(var_type)}(...)`.",
                     category=DeprecationWarning,
                     stacklevel=3,
+                )
+                # Normalize values so transformations broadcast like the other composite types.
+                value = float(value) if isinstance(value, np.floating) else int(value)
+            elif not hasattr(value, "__len__"):
+                raise TypeError(
+                    f"Struct field '{field}' expects {type_repr(var_type)} but got a single "
+                    f"value of type {type(value).__name__}. Construct the value explicitly, "
+                    f"e.g.: {type_repr(var_type)}(...)."
                 )
             # conversion from list/tuple, ndarray, etc.
             setattr(inst._ctype, field, var_type(value))

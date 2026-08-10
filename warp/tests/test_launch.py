@@ -1,11 +1,15 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import contextlib
+import io
 import unittest
+import warnings
 
 import numpy as np
 
 import warp as wp
+from warp._src import logger as _logger
 from warp.tests.unittest_utils import *
 
 dim_x = wp.constant(2)
@@ -447,6 +451,78 @@ def test_launch_bounds_single_tuple(test, device):
     assert_np_equal(x.numpy(), np.full(n, 2.0, dtype=np.float32))
 
 
+@wp.kernel
+def kernel_vec3_param(v: wp.vec3):
+    tid = wp.tid()
+
+
+@wp.kernel
+def kernel_mat22_param(m: wp.mat22):
+    tid = wp.tid()
+
+
+@wp.kernel
+def kernel_quat_param(q: wp.quat):
+    tid = wp.tid()
+
+
+@wp.kernel
+def kernel_transform_param(t: wp.transform):
+    tid = wp.tid()
+
+
+@wp.kernel
+def kernel_composite_params(v: wp.vec3, m: wp.mat22, q: wp.quat, t: wp.transform, out: wp.array[float]):
+    out[0] = v[0]
+    out[1] = v[1]
+    out[2] = v[2]
+    out[3] = m[0, 0]
+    out[4] = m[0, 1]
+    out[5] = m[1, 0]
+    out[6] = m[1, 1]
+    out[7] = q[0]
+    out[8] = q[1]
+    out[9] = q[2]
+    out[10] = q[3]
+    out[11] = t[0]
+    out[12] = t[1]
+    out[13] = t[2]
+    out[14] = t[3]
+    out[15] = t[4]
+    out[16] = t[5]
+    out[17] = t[6]
+
+
+def test_launch_cmd_composite_defaults(test, device):
+    """Composite parameters left unset on a default-constructed Launch are zero-initialized."""
+    out = wp.full(18, -1.0, dtype=float, device=device)
+
+    cmd = wp.Launch(kernel_composite_params, device)
+    cmd.set_param_by_name("out", out)
+    cmd.set_dim(1)
+    cmd.launch()
+
+    wp.synchronize_device(device)
+
+    assert_np_equal(out.numpy(), np.zeros(18, dtype=np.float32))
+
+    out = wp.full(18, -1.0, dtype=float, device=device, requires_grad=True)
+    out.grad.fill_(1.0)
+
+    cmd = wp.Launch(kernel_composite_params, device, adjoint=True)
+    adjoint_arg_offset = len(cmd.kernel.adj.args) + 1
+    adjoint_composites = cmd.params[adjoint_arg_offset : adjoint_arg_offset + 4]
+    adjoint_components = np.concatenate([np.array(value).reshape(-1) for value in adjoint_composites])
+    assert_np_equal(adjoint_components, np.zeros(18, dtype=np.float32))
+
+    cmd.set_param_by_name("out", out)
+    cmd.set_param_by_name("out", out.grad, adjoint=True)
+    cmd.set_dim(1)
+    cmd.launch()
+
+    wp.synchronize_device(device)
+
+
 def test_launch_device_block_dim_failure(test, device):
     """Raise when CUDA rejects an oversized launch block.
 
@@ -505,7 +581,75 @@ cuda_devices = get_cuda_test_devices()
 
 
 class TestLaunch(unittest.TestCase):
-    pass
+    def test_launch_scalar_to_composite_param_rejected(self):
+        """A single value passed where a composite kernel parameter is expected must be rejected."""
+        kernels = (
+            (kernel_vec3_param, "v", "vec3f"),
+            (kernel_mat22_param, "m", "mat22f"),
+            (kernel_quat_param, "q", "quatf"),
+            (kernel_transform_param, "t", "transformf"),
+        )
+        values = (123, 1.5, wp.float32(1.5), wp.int32(2))
+
+        for kernel, param, type_name in kernels:
+            for value in values:
+                with self.subTest(param=param, value_type=type(value).__name__):
+                    with self.assertRaisesRegex(
+                        RuntimeError,
+                        rf"argument '{param}' expects {type_name} but got a single value",
+                    ):
+                        wp.launch(kernel, dim=1, inputs=[value])
+
+        # Conversions from containers must keep working.
+        for value in ((1.0, 2.0, 3.0), [1.0, 2.0, 3.0], np.array([1.0, 2.0, 3.0]), wp.vec3(1.0, 2.0, 3.0)):
+            with self.subTest(container=type(value).__name__):
+                wp.launch(kernel_vec3_param, dim=1, inputs=[value])
+
+        # `None` is not a single value being promoted, it keeps failing as before.
+        with self.assertRaisesRegex(ValueError, r"Failed to convert argument for param v to vec3f"):
+            wp.launch(kernel_vec3_param, dim=1, inputs=[None])
+
+        wp.synchronize_device()
+
+    def test_launch_numpy_and_boolean_scalar_to_composite_param_deprecated(self):
+        """NumPy numeric scalars and Python, NumPy, and Warp Booleans must warn while promotion is supported."""
+        values = (True, np.bool_(True), wp.bool(True), np.float32(1.5), np.int64(3))
+        params = (("v", "vec3f"), ("m", "mat22f"), ("q", "quatf"), ("t", "transformf"))
+        out = wp.empty(18, dtype=float)
+
+        saved_warnings_seen = _logger._warnings_seen.copy()
+        try:
+            for value in values:
+                with self.subTest(value_type=type(value).__name__):
+                    _logger._warnings_seen.clear()
+                    with warnings.catch_warnings(), contextlib.redirect_stderr(io.StringIO()) as stderr:
+                        warnings.simplefilter("always", DeprecationWarning)
+                        wp.launch(kernel_composite_params, dim=1, inputs=[value, value, value, value, out])
+
+                    warning_output = stderr.getvalue()
+                    for param, type_name in params:
+                        self.assertRegex(
+                            warning_output,
+                            rf"type `{type(value).__name__}`.*`{type_name}`.*kernel parameter '{param}'.*deprecated",
+                        )
+
+                    assert_np_equal(out.numpy(), np.full(18, float(value), dtype=np.float32))
+        finally:
+            _logger._warnings_seen.clear()
+            _logger._warnings_seen.update(saved_warnings_seen)
+
+    def test_launch_cmd_set_param_scalar_to_composite_rejected(self):
+        """A single value set on a recorded launch's composite parameter must be rejected."""
+        cmd = wp.Launch(kernel_vec3_param, wp.get_device())
+
+        with self.assertRaisesRegex(RuntimeError, r"argument 'v' expects vec3f but got a single value"):
+            cmd.set_param_at_index(0, 123)
+
+        with self.assertRaisesRegex(RuntimeError, r"argument 'v' expects vec3f but got a single value"):
+            cmd.set_param_by_name("v", 123)
+
+        # Explicit construction must keep working.
+        cmd.set_param_by_name("v", wp.vec3(1.0, 2.0, 3.0))
 
 
 add_function_test(TestLaunch, "test_launch_1d", test1d, devices=devices)
@@ -520,6 +664,7 @@ add_function_test(TestLaunch, "test_launch_cmd_set_dim", test_launch_cmd_set_dim
 add_function_test(TestLaunch, "test_launch_cmd_empty", test_launch_cmd_empty, devices=devices)
 add_function_test(TestLaunch, "test_launch_cmd_adjoint", test_launch_cmd_adjoint, devices=devices)
 add_function_test(TestLaunch, "test_launch_cmd_adjoint_empty", test_launch_cmd_adjoint_empty, devices=devices)
+add_function_test(TestLaunch, "test_launch_cmd_composite_defaults", test_launch_cmd_composite_defaults, devices=devices)
 
 add_function_test(TestLaunch, "test_launch_tuple_args", test_launch_tuple_args, devices=devices)
 

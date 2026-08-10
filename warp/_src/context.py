@@ -9866,15 +9866,23 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
         if warp._src.types.types_equal(type(value), arg_type):
             return value
         else:
-            # try constructing the required value from the argument (handles tuple / list, Gf.Vec3 case)
-            if warp._src.types.is_scalar(value):
+            if isinstance(value, (bool, warp.bool, np.bool_, np.integer, np.floating)):
                 log_warning(
-                    f"Implicit conversion from a scalar type to the composite type "
+                    f"Implicit conversion from a value of type `{type(value).__name__}` to the composite type "
                     f"`{type_str(arg_type)}` for kernel parameter '{arg_name}' is deprecated. "
-                    f"Use an explicit conversion, e.g.: `{type_str(arg_type)}(...)`.",
+                    f"Construct the value explicitly, e.g.: `{type_str(arg_type)}(...)`.",
                     category=DeprecationWarning,
                     stacklevel=4,
                 )
+                # Normalize values so transformations broadcast like the other composite types.
+                value = float(value) if isinstance(value, np.floating) else int(value)
+            elif value is not None and not hasattr(value, "__len__"):
+                raise RuntimeError(
+                    f"Error launching kernel '{kernel.key}', argument '{arg_name}' expects "
+                    f"{type_str(arg_type)} but got a single value of type {type(value).__name__}. "
+                    f"Construct the value explicitly, e.g.: {type_str(arg_type)}(...)."
+                )
+            # try constructing the required value from the argument (handles tuple / list, Gf.Vec3 case)
             try:
                 return arg_type(value)
             except Exception as e:
@@ -10152,6 +10160,9 @@ class Launch:
                     params.append(a.type.__ctype__())
                 elif isinstance(a.type, warp._src.codegen.Struct):
                     params.append(a.type().__ctype__())
+                elif warp._src.types.type_is_composite(a.type):
+                    # composite types cannot be built from a single value implicitly
+                    params.append(a.type(0))
                 else:
                     params.append(pack_arg(kernel, a.type, a.label, 0, device, False))
 
@@ -10162,6 +10173,9 @@ class Launch:
                         params.append(a.type.__ctype__())
                     elif isinstance(a.type, warp._src.codegen.Struct):
                         params.append(a.type().__ctype__())
+                    elif warp._src.types.type_is_composite(a.type):
+                        # composite types cannot be built from a single value implicitly
+                        params.append(a.type(0))
                     else:
                         # For primitive types in adjoint mode, initialize with 0
                         params.append(pack_arg(kernel, a.type, a.label, 0, device, True))
