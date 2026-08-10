@@ -1,3 +1,6 @@
+@REM SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+@REM SPDX-License-Identifier: Apache-2.0
+
 @echo off
 setlocal
 
