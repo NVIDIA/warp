@@ -529,22 +529,21 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">capture_mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">CaptureMode.THREAD_LOCAL</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/utils.py#L1935-L2018"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.ScopedCapture" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/utils.py#L1946-L2028"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.ScopedCapture" title="Link to this definition">#</a></dt>
 <dd><p>Context manager to capture a sequence of operations into a graph.</p>
-<p>Captures kernel launches, memory copies, and memsets for later replay
-with reduced launch overhead. Works on both CPU and CUDA devices. The
-captured graph is available as the <code class="docutils literal notranslate"><span class="pre">graph</span></code> attribute after exiting
-the context.</p>
+<p>Captures supported Warp operations for later replay with reduced launch
+overhead. Works on both CPU and CUDA devices. The captured graph is
+available as the <code class="docutils literal notranslate"><span class="pre">graph</span></code> attribute after exiting the context.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>device</strong> (<a class="reference internal" href="warp.DeviceLike.html#warp.DeviceLike" title="warp.DeviceLike"><em>DeviceLike</em></a>) – Device on which to capture operations (CPU or CUDA).</p></li>
 <li><p><strong>stream</strong> – Stream on which to capture operations (CUDA only).</p></li>
 <li><p><strong>force_module_load</strong> – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, force all modules to load before capture begins.</p></li>
-<li><p><strong>external</strong> – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, indicates an external graph capture is already active.
+<li><p><strong>external</strong> – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, indicates an external CUDA graph capture is already active.
 The <code class="docutils literal notranslate"><span class="pre">capture_mode</span></code> argument should specify the mode that was used to
 initiate the external capture.</p></li>
-<li><p><strong>apic</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, enable APIC recording for serialization via
+<li><p><strong>apic</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, enable API Capture (APIC) recording for serialization via
 <a class="reference internal" href="warp.capture_save.html#warp.capture_save" title="warp.capture_save"><code class="xref py py-func docutils literal notranslate"><span class="pre">capture_save()</span></code></a>. On CPU, recording always occurs regardless
 of this flag (needed for CPU graph replay). Default is <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
 <li><p><strong>capture_mode</strong> (<a class="reference internal" href="warp.CaptureMode.html#warp.CaptureMode" title="warp.CaptureMode"><em>CaptureMode</em></a>) – The <a class="reference internal" href="warp.CaptureMode.html#warp.CaptureMode" title="warp.CaptureMode"><code class="xref py py-class docutils literal notranslate"><span class="pre">CaptureMode</span></code></a> to use when opening

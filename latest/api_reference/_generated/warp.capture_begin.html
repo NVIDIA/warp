@@ -529,14 +529,14 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">capture_mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">CaptureMode.THREAD_LOCAL</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L11929-L12062"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.capture_begin" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L11930-L12063"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.capture_begin" title="Link to this definition">#</a></dt>
 <dd><p>Begin capture of a graph.</p>
-<p>Captures all subsequent kernel launches and memory operations. On CUDA devices,
-operations are captured by the CUDA driver into a native graph. On CPU devices,
-there is no native graph equivalent; operations are always recorded into an
-APIC (API Capture) byte stream, which <a class="reference internal" href="warp.capture_launch.html#warp.capture_launch" title="warp.capture_launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">capture_launch()</span></code></a> replays.</p>
-<p>If <code class="docutils literal notranslate"><span class="pre">apic=True</span></code>, APIC recording is also performed alongside the CUDA native
-graph, and the result can be serialized to a <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> file via
+<p>Records supported Warp operations subsequently issued on the selected
+device. On CUDA devices, the CUDA driver captures operations into a CUDA
+graph. On CPU devices, operations are recorded into an API Capture (APIC)
+operation stream, which <a class="reference internal" href="warp.capture_launch.html#warp.capture_launch" title="warp.capture_launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">capture_launch()</span></code></a> replays in C++.</p>
+<p>If <code class="docutils literal notranslate"><span class="pre">apic=True</span></code>, APIC recording is also performed alongside CUDA graph
+capture, and the result can be serialized to a <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> file via
 <a class="reference internal" href="warp.capture_save.html#warp.capture_save" title="warp.capture_save"><code class="xref py py-func docutils literal notranslate"><span class="pre">capture_save()</span></code></a>. The flag has no effect on CPU (recording is always on
 there) beyond gating whether <a class="reference internal" href="warp.capture_save.html#warp.capture_save" title="warp.capture_save"><code class="xref py py-func docutils literal notranslate"><span class="pre">capture_save()</span></code></a> is allowed.</p>
 <dl class="field-list simple">
@@ -554,8 +554,8 @@ driver is older than CUDA 12.3.</p></li>
 The <code class="docutils literal notranslate"><span class="pre">capture_mode</span></code> argument should specify the mode that was used to
 initiate the external capture.</p></li>
 <li><p><strong>apic</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether to allow <a class="reference internal" href="warp.capture_save.html#warp.capture_save" title="warp.capture_save"><code class="xref py py-func docutils literal notranslate"><span class="pre">capture_save()</span></code></a> on the captured graph. On
-CUDA this also enables APIC byte-stream recording during the capture;
-on CPU, recording happens regardless because it is the only
+CUDA this also enables APIC operation-stream recording during the
+capture; on CPU, recording happens regardless because it is the only
 replay mechanism.</p></li>
 <li><p><strong>capture_mode</strong> (<a class="reference internal" href="warp.CaptureMode.html#warp.CaptureMode" title="warp._src.context.CaptureMode"><em>CaptureMode</em></a>) – The <a class="reference internal" href="warp.CaptureMode.html#warp.CaptureMode" title="warp.CaptureMode"><code class="xref py py-class docutils literal notranslate"><span class="pre">CaptureMode</span></code></a> (i.e.
 <code class="docutils literal notranslate"><span class="pre">cudaStreamCaptureMode</span></code>) used when Warp opens the capture.

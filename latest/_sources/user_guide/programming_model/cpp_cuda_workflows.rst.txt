@@ -454,8 +454,9 @@ See :ref:`apic_save_load` for the C API surface, serialization format notes, and
 current limitations. The C++ examples cover both device families:
 
 - `02_apic_visualization <https://github.com/NVIDIA/warp/tree/main/warp/examples/cpp/02_apic_visualization>`_
-  captures a CUDA graph in Python, loads it from C++, updates named inputs, and
-  replays the frame with ``cudaGraphLaunch()``.
+  records and saves a CUDA workload in Python. The C++ loader reconstructs a
+  CUDA graph, updates named inputs, and replays the frame with
+  ``cudaGraphLaunch()``.
 - `03_apic_visualization_cpu <https://github.com/NVIDIA/warp/tree/main/warp/examples/cpp/03_apic_visualization_cpu>`_
   captures and replays on the CPU device. The C++ viewer does not link against
   CUDA. It loads recorded CPU kernel objects and replays the graph with

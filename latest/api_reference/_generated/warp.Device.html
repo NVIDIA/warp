@@ -823,7 +823,7 @@ devices.</p>
 <span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">is_capturing</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L5120-L5140"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Device.is_capturing" title="Link to this definition">#</a></dt>
 <dd><p>A boolean indicating whether this device is currently capturing a graph.</p>
 <p>For CUDA devices this reflects CUDA stream capture; for the CPU device it reflects
-an active APIC graph capture (which does not use a CUDA stream).</p>
+an active CPU graph capture (which uses APIC recording, not a CUDA stream).</p>
 </dd></dl>
 
 <dl class="py property">

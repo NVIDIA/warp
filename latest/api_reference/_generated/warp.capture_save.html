@@ -518,14 +518,17 @@
 <h1>warp.capture_save<a class="headerlink" href="#warp-capture-save" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.capture_save">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">capture_save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">graph</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inputs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outputs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L12835-L12992"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.capture_save" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">capture_save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">graph</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inputs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">outputs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L12839-L13002"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.capture_save" title="Link to this definition">#</a></dt>
 <dd><p>Serialize a captured graph to a <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> file for later replay.</p>
-<p>The graph must have been captured with <code class="docutils literal notranslate"><span class="pre">apic=True</span></code>.</p>
+<p>The graph must have been captured with <code class="docutils literal notranslate"><span class="pre">apic=True</span></code>. For graphs containing
+recorded kernels, the <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> file and its companion <code class="docutils literal notranslate"><span class="pre">_modules</span></code> directory
+must be kept together.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>graph</strong> (<a class="reference internal" href="warp.Graph.html#warp.Graph" title="warp._src.context.Graph"><em>Graph</em></a>) – A <a class="reference internal" href="warp.Graph.html#warp.Graph" title="warp.Graph"><code class="xref py py-class docutils literal notranslate"><span class="pre">Graph</span></code></a> captured with <code class="docutils literal notranslate"><span class="pre">apic=True</span></code>.</p></li>
-<li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Output path (without extension). Creates <code class="docutils literal notranslate"><span class="pre">{path}.wrp</span></code> and <code class="docutils literal notranslate"><span class="pre">{path}_modules/</span></code>.</p></li>
+<li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Output path. The <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> extension is added if missing. Creates
+<code class="docutils literal notranslate"><span class="pre">&lt;stem&gt;.wrp</span></code> and <code class="docutils literal notranslate"><span class="pre">&lt;stem&gt;_modules/</span></code>.</p></li>
 <li><p><strong>inputs</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em> | </em><em>None</em>) – Named input arrays (e.g., <code class="docutils literal notranslate"><span class="pre">{&quot;positions&quot;:</span> <span class="pre">pos_array}</span></code>).</p></li>
 <li><p><strong>outputs</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)"><em>dict</em></a><em> | </em><em>None</em>) – Named output arrays (e.g., <code class="docutils literal notranslate"><span class="pre">{&quot;results&quot;:</span> <span class="pre">result_array}</span></code>).</p></li>
 </ul>
@@ -533,7 +536,10 @@
 </dl>
 <p>If the same array appears in both <code class="docutils literal notranslate"><span class="pre">inputs</span></code> and <code class="docutils literal notranslate"><span class="pre">outputs</span></code> (e.g., for
 in-place operations), both names will refer to the same memory region.
-Updating either via <code class="docutils literal notranslate"><span class="pre">set_param</span></code> on the loaded graph affects the same data.</p>
+Updating either via <code class="docutils literal notranslate"><span class="pre">set_param</span></code> on the loaded graph affects the same data.
+Each name binds the array’s entire base allocation rather than a view
+offset. Arrays passed to <code class="docutils literal notranslate"><span class="pre">set_param</span></code> and <code class="docutils literal notranslate"><span class="pre">get_param</span></code> must have the same
+byte capacity as that serialized region.</p>
 </dd></dl>
 
 </section>

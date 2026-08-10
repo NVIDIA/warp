@@ -2013,15 +2013,21 @@ information on how to use events for measuring GPU performance.</p>
 </section>
 <section id="graphs">
 <span id="id7"></span><h2>Graphs<a class="headerlink" href="#graphs" title="Link to this heading">#</a></h2>
-<p>Launching kernels from Python introduces significant additional overhead compared to C++ or native programs.
-To address this, Warp exposes the concept of <a class="reference external" href="https://developer.nvidia.com/blog/cuda-graphs/">CUDA graphs</a>
-to allow recording large batches of kernels and replaying them with very little CPU overhead.
-The same <a class="reference internal" href="../api_reference/_generated/warp.capture_begin.html#warp.capture_begin" title="warp.capture_begin"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_begin()</span></code></a> / <a class="reference internal" href="../api_reference/_generated/warp.capture_end.html#warp.capture_end" title="warp.capture_end"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_end()</span></code></a> /
-<a class="reference internal" href="../api_reference/_generated/warp.capture_launch.html#warp.capture_launch" title="warp.capture_launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_launch()</span></code></a> API also supports recording on CPU devices and
-serializing captured graphs to a file for later replay from Python or a standalone C++ program (see
-<a class="reference internal" href="#cpu-graphs"><span class="std std-ref">CPU Graphs</span></a> and <a class="reference internal" href="#apic-save-load"><span class="std std-ref">Saving and Loading Graphs</span></a> below).</p>
-<p>To record a series of kernel launches use the <a class="reference internal" href="../api_reference/_generated/warp.capture_begin.html#warp.capture_begin" title="warp.capture_begin"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_begin()</span></code></a> and
-<a class="reference internal" href="../api_reference/_generated/warp.capture_end.html#warp.capture_end" title="warp.capture_end"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_end()</span></code></a> API as follows:</p>
+<p>Issuing Warp operations one at a time from Python adds host overhead, especially
+for inexpensive kernels. Warp’s graph capture feature records a sequence of
+supported operations and replays it with one
+<a class="reference internal" href="../api_reference/_generated/warp.capture_launch.html#warp.capture_launch" title="warp.capture_launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_launch()</span></code></a> call.</p>
+<p>On CUDA devices, live capture uses <a class="reference external" href="https://developer.nvidia.com/blog/cuda-graphs/">CUDA graphs</a>. On CPU devices, Warp
+records operations in an API Capture (APIC) operation stream and replays that
+stream in C++. Both paths use the same
+<a class="reference internal" href="../api_reference/_generated/warp.capture_begin.html#warp.capture_begin" title="warp.capture_begin"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_begin()</span></code></a> /
+<a class="reference internal" href="../api_reference/_generated/warp.capture_end.html#warp.capture_end" title="warp.capture_end"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_end()</span></code></a> /
+<a class="reference internal" href="../api_reference/_generated/warp.capture_launch.html#warp.capture_launch" title="warp.capture_launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_launch()</span></code></a> API. APIC can also serialize
+supported CPU or CUDA graphs for later replay from Python or a standalone C++
+program; see <a class="reference internal" href="#cpu-graphs"><span class="std std-ref">CPU Graphs</span></a> and <a class="reference internal" href="#apic-save-load"><span class="std std-ref">API Capture: Saving and Loading Graphs</span></a>.</p>
+<p>To record a sequence of operations, use
+<a class="reference internal" href="../api_reference/_generated/warp.capture_begin.html#warp.capture_begin" title="warp.capture_begin"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_begin()</span></code></a> and
+<a class="reference internal" href="../api_reference/_generated/warp.capture_end.html#warp.capture_end" title="warp.capture_end"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_end()</span></code></a> as follows:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># begin capture</span>
 <span class="n">wp</span><span class="o">.</span><span class="n">capture_begin</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda&quot;</span><span class="p">)</span>
 
@@ -2062,9 +2068,11 @@ allocator initialization, use <code class="docutils literal notranslate"><span c
 </pre></div>
 </div>
 <p>The <code class="docutils literal notranslate"><span class="pre">capture_mode</span></code> argument applies only to CUDA graph capture and is ignored for CPU graph recording.</p>
-<p>Note that only launch calls are recorded in the graph; any Python executed outside of the kernel code will not be recorded.
-Typically it is only beneficial to use CUDA graphs when the graph will be reused or launched multiple times, as
-there is a graph-creation overhead.</p>
+<p>Graph capture records supported Warp operations issued while capture is active;
+it does not record arbitrary Python execution. The supported operation set
+depends on the capture path and is described in <a class="reference internal" href="#cpu-graphs"><span class="std std-ref">CPU Graphs</span></a> and
+<a class="reference internal" href="#apic-save-load"><span class="std std-ref">API Capture: Saving and Loading Graphs</span></a>. Capture has setup overhead, so it is generally most
+useful when the graph will be launched more than once.</p>
 <section id="conditional-execution">
 <h3>Conditional Execution<a class="headerlink" href="#conditional-execution" title="Link to this heading">#</a></h3>
 <p>CUDA 12.4+ supports conditional graph nodes that enable dynamic control flow in CUDA graphs.</p>
@@ -2093,8 +2101,9 @@ there is a graph-creation overhead.</p>
 <span class="n">wp</span><span class="o">.</span><span class="n">capture_launch</span><span class="p">(</span><span class="n">capture</span><span class="o">.</span><span class="n">graph</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>The <code class="docutils literal notranslate"><span class="pre">on_true</span></code> and <code class="docutils literal notranslate"><span class="pre">on_false</span></code> callbacks can be previously captured graph objects or Python callback functions.
-These callbacks are captured as child graphs of the enclosing graph.
+<p>For CUDA graph capture with <code class="docutils literal notranslate"><span class="pre">apic=False</span></code>, <code class="docutils literal notranslate"><span class="pre">on_true</span></code> and <code class="docutils literal notranslate"><span class="pre">on_false</span></code> can
+be previously captured graph objects or Python callback functions. Python
+callbacks are captured as child graphs of the enclosing graph.
 It’s possible to specify only one or both callbacks, as needed.
 When the parent graph is launched, the correct child graph is executed based on the value of the condition.
 This is done efficiently on the device without involving the CPU.</p>
@@ -2214,7 +2223,12 @@ This is done efficiently on the device without involving the CPU.</p>
     <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">bar</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>The <code class="docutils literal notranslate"><span class="pre">while_body</span></code> callback will be executed as long as the condition is non-zero. The callback is responsible for updating the condition value so that the loop eventually terminates. The <code class="docutils literal notranslate"><span class="pre">while_body</span></code> argument can be a previously captured graph or a Python callback function. Here is an example that will run some number of iterations, using the condition value as a counter:</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">while_body</span></code> callback will be executed as long as the condition is
+non-zero. The callback is responsible for updating the condition value so that
+the loop eventually terminates. For CUDA graph capture with <code class="docutils literal notranslate"><span class="pre">apic=False</span></code>,
+<code class="docutils literal notranslate"><span class="pre">while_body</span></code> can be a previously captured graph or a Python callback
+function. Here is an example that will run some number of iterations, using the
+condition value as a counter:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">hello_kernel</span><span class="p">():</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Hello&quot;</span><span class="p">)</span>
@@ -2272,9 +2286,9 @@ CUDA graph conditional nodes.</p>
 <p>Due to a current CUDA limitation, graphs with conditional nodes cannot be
 used as child graphs. It means that it’s not possible to create nested
 conditional constructs using previously captured graphs. If nesting is
-required, using Python callback functions is the way to go. CPU APIC capture
-also requires Python callback functions for <code class="docutils literal notranslate"><span class="pre">capture_if()</span></code> /
-<code class="docutils literal notranslate"><span class="pre">capture_while()</span></code> branch bodies; passing previously captured
+required, use Python callback functions. APIC recording—all CPU captures
+and CUDA captures with <code class="docutils literal notranslate"><span class="pre">apic=True</span></code>—also requires Python callbacks for
+<code class="docutils literal notranslate"><span class="pre">capture_if()</span></code> / <code class="docutils literal notranslate"><span class="pre">capture_while()</span></code> bodies; passing previously captured
 <a class="reference internal" href="../api_reference/_generated/warp.Graph.html#warp.Graph" title="warp.Graph"><code class="xref py py-class docutils literal notranslate"><span class="pre">Graph</span></code></a> objects is not yet implemented.</p>
 </div>
 <div class="admonition note">
@@ -2289,11 +2303,11 @@ also requires Python callback functions for <code class="docutils literal notran
 <p>CPU graph capture is experimental. The recorded operation set, file format, and
 Python and C API are subject to change without a formal deprecation cycle.</p>
 </div>
-<p>Graph capture works on CPU devices using exactly the same API as the CUDA path.
-Operations recorded between <a class="reference internal" href="../api_reference/_generated/warp.capture_begin.html#warp.capture_begin" title="warp.capture_begin"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_begin()</span></code></a> and
+<p>CPU graph capture uses the same core API as CUDA graph capture. Operations
+recorded between <a class="reference internal" href="../api_reference/_generated/warp.capture_begin.html#warp.capture_begin" title="warp.capture_begin"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_begin()</span></code></a> and
 <a class="reference internal" href="../api_reference/_generated/warp.capture_end.html#warp.capture_end" title="warp.capture_end"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_end()</span></code></a> are deferred until
 <a class="reference internal" href="../api_reference/_generated/warp.capture_launch.html#warp.capture_launch" title="warp.capture_launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_launch()</span></code></a> is called, at which point Warp
-replays them in a tight native loop. This eliminates the per-kernel Python
+replays them in a C++ loop. This eliminates the per-kernel Python
 dispatch overhead that otherwise dominates CPU launches:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
 
@@ -2312,11 +2326,11 @@ dispatch overhead that otherwise dominates CPU launches:</p>
     <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">steps</span><span class="p">):</span>
         <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">my_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">N</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span>
 
-<span class="c1"># Replay the entire batch with one native call into Warp</span>
+<span class="c1"># Replay the entire batch with one call into Warp</span>
 <span class="n">wp</span><span class="o">.</span><span class="n">capture_launch</span><span class="p">(</span><span class="n">capture</span><span class="o">.</span><span class="n">graph</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>The operations recorded on CPU now cover most of the CUDA path:</p>
+<p>CPU graph capture currently supports:</p>
 <ul class="simple">
 <li><p>Forward and backward kernel launches
 (<a class="reference internal" href="../api_reference/_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch()</span></code></a>, <a class="reference internal" href="../api_reference/_generated/warp.launch_tiled.html#warp.launch_tiled" title="warp.launch_tiled"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch_tiled()</span></code></a>,
@@ -2338,7 +2352,8 @@ are replayed with <a class="reference internal" href="../api_reference/_generate
 <li><p>Bounding-volume-hierarchy updates (<a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh.refit" title="warp.Bvh.refit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">wp.Bvh.refit()</span></code></a> and
 <a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh.rebuild" title="warp.Bvh.rebuild"><code class="xref py py-meth docutils literal notranslate"><span class="pre">wp.Bvh.rebuild()</span></code></a>), re-run on replay against the
 current <code class="docutils literal notranslate"><span class="pre">lowers</span></code> / <code class="docutils literal notranslate"><span class="pre">uppers</span></code> so a captured graph queries the updated tree.
-These make the graph replay-only (see the limitations below).</p></li>
+For CPU graphs, these operations are live-only and cannot be saved (see the
+limitations below).</p></li>
 <li><p>Live CPU graphs record <a class="reference internal" href="../api_reference/_generated/warp.HashGrid.html#warp.HashGrid.build" title="warp.HashGrid.build"><code class="xref py py-meth docutils literal notranslate"><span class="pre">HashGrid.build()</span></code></a> in
 operation order. Each replay reads the current contents of the normalized
 point and optional group arrays, and the first replay may allocate or grow
@@ -2350,32 +2365,29 @@ of times each call.</p></li>
 </ul>
 <p>The following kernel patterns are also supported under capture: tile primitives
 (<code class="docutils literal notranslate"><span class="pre">wp.tile_zeros</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.tile</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.untile</span></code>, tile reductions and scans),
-kernels with scalar parameters of any size (serialized into per-launch value
-blobs, with pointer fields patched via relocation metadata at replay), and
-empty / zero-length array arguments.</p>
+kernels with scalar parameters of any size, and empty / zero-length array
+arguments.</p>
 <p>Memory allocations made during CPU capture, including temporary arrays borrowed
 by <code class="docutils literal notranslate"><span class="pre">warp.fem</span></code> internals, are retained for the lifetime of the graph and reused
-on replay. <code class="docutils literal notranslate"><span class="pre">Device.is_capturing</span></code> reports active CPU APIC capture, and Warp’s
-internal capture pause/resume flow can temporarily suspend CPU recording for
-setup work that should not enter the replay stream.</p>
-<p>Current limitations of CPU graph capture:</p>
+on replay. <code class="docutils literal notranslate"><span class="pre">Device.is_capturing</span></code> reports active CPU graph capture.</p>
+<p>Important CPU graph behavior and current limitations:</p>
 <ul class="simple">
 <li><p><a class="reference internal" href="../api_reference/_generated/warp.utils.array_scan.html#warp.utils.array_scan" title="warp.utils.array_scan"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_scan()</span></code></a> records <code class="docutils literal notranslate"><span class="pre">int32</span></code>, <code class="docutils literal notranslate"><span class="pre">float32</span></code>,
 <code class="docutils literal notranslate"><span class="pre">int64</span></code>, and <code class="docutils literal notranslate"><span class="pre">float64</span></code> scalar and vector scans – including positively-strided
-(non-contiguous) 1D arrays – into the CPU APIC byte stream. Negative strides raise
-<a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a> inside a CPU <a class="reference internal" href="../api_reference/_generated/warp.ScopedCapture.html#warp.ScopedCapture" title="warp.ScopedCapture"><code class="xref py py-class docutils literal notranslate"><span class="pre">ScopedCapture</span></code></a>; run them outside the
-captured region.</p></li>
+(non-contiguous) 1D arrays – into the CPU graph’s operation stream. Non-empty scans
+with negative strides raise <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a> inside a CPU
+<a class="reference internal" href="../api_reference/_generated/warp.ScopedCapture.html#warp.ScopedCapture" title="warp.ScopedCapture"><code class="xref py py-class docutils literal notranslate"><span class="pre">ScopedCapture</span></code></a>; run them outside the captured region.</p></li>
 <li><p><a class="reference internal" href="../api_reference/_generated/warp.utils.array_sum.html#warp.utils.array_sum" title="warp.utils.array_sum"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_sum()</span></code></a> and
 <a class="reference internal" href="../api_reference/_generated/warp.utils.array_inner.html#warp.utils.array_inner" title="warp.utils.array_inner"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_inner()</span></code></a> require an explicit
-<code class="docutils literal notranslate"><span class="pre">out</span></code> array for non-empty APIC captures. Explicit counts, composite dtypes,
+<code class="docutils literal notranslate"><span class="pre">out</span></code> array for non-empty calls during CPU graph capture. Explicit counts, composite dtypes,
 and positive-stride axis reductions are recorded; negative strides raise
 <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a>, and negative counts raise <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">RuntimeError</span></code></a>.
 Counts and reduction strides must fit a signed 32-bit integer, and participating
 addresses and layout strides must be aligned to the reduction’s scalar type.</p></li>
 <li><p><a class="reference internal" href="../api_reference/_generated/warp.utils.runlength_encode.html#warp.utils.runlength_encode" title="warp.utils.runlength_encode"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.runlength_encode()</span></code></a> requires an explicit
-<code class="docutils literal notranslate"><span class="pre">run_count</span></code> array during CPU APIC capture; the host-return form (<code class="docutils literal notranslate"><span class="pre">run_count=None</span></code>) raises
-<a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a>, because its capture-time host integer cannot represent the
-replay-time result.</p></li>
+<code class="docutils literal notranslate"><span class="pre">run_count</span></code> array during CPU graph capture; the host-return form (<code class="docutils literal notranslate"><span class="pre">run_count=None</span></code>)
+raises <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a>, because its capture-time host integer cannot
+represent the replay-time result.</p></li>
 <li><p>Non-contiguous <a class="reference internal" href="../api_reference/_generated/warp.copy.html#warp.copy" title="warp.copy"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.copy()</span></code></a>, non-contiguous
 <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.fill_" title="warp.array.fill_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.fill_()</span></code></a>, and fills on
 <a class="reference internal" href="../api_reference/_generated/warp.indexedarray.html#warp.indexedarray" title="warp.indexedarray"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.indexedarray</span></code></a> / <code class="docutils literal notranslate"><span class="pre">wp.fabricarray</span></code> raise
@@ -2385,23 +2397,27 @@ setters such as <a class="reference internal" href="../api_reference/_generated/
 Raw ctype array parameters passed through
 <a class="reference internal" href="../api_reference/_generated/warp.Launch.html#warp.Launch.set_param_at_index_from_ctype" title="warp.Launch.set_param_at_index_from_ctype"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Launch.set_param_at_index_from_ctype()</span></code></a>
 cannot be recorded because APIC needs the original <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a>
-object to describe replay-time pointer relocation.</p></li>
+object to preserve its replay-time memory reference.</p></li>
+<li><p>Kernel parameters of type <code class="docutils literal notranslate"><span class="pre">wp.fixedarray</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.fabricarray</span></code>, or
+<code class="docutils literal notranslate"><span class="pre">wp.indexedfabricarray</span></code> cannot yet be recorded by APIC.</p></li>
 <li><p><a class="reference internal" href="../api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.nnz_sync" title="warp.sparse.BsrMatrix.nnz_sync"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BsrMatrix.nnz_sync()</span></code></a> cannot read the
 result of a topology update recorded earlier in the same CPU capture. Read the
 count after replay, or avoid the readback inside the captured region.</p></li>
 <li><p><a class="reference internal" href="../api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.status_sync" title="warp.sparse.BsrMatrix.status_sync"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BsrMatrix.status_sync()</span></code></a> cannot read
 the sparse status during a live CUDA graph capture (it requires a device-to-host
-readback) or during a CPU APIC capture (a recorded status update is applied only
+readback) or during CPU graph capture (a recorded status update is applied only
 on replay). Read the status after replay instead.</p></li>
-<li><p>A captured <a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh.refit" title="warp.Bvh.refit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">wp.Bvh.refit()</span></code></a> or
-<a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh.rebuild" title="warp.Bvh.rebuild"><code class="xref py py-meth docutils literal notranslate"><span class="pre">wp.Bvh.rebuild()</span></code></a> makes the graph replay-only: the recorded
-BVH handle is process-local, so <a class="reference internal" href="../api_reference/_generated/warp.capture_save.html#warp.capture_save" title="warp.capture_save"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_save()</span></code></a> rejects a
-graph that records either operation.</p></li>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh.refit" title="warp.Bvh.refit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">wp.Bvh.refit()</span></code></a> and
+<a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh.rebuild" title="warp.Bvh.rebuild"><code class="xref py py-meth docutils literal notranslate"><span class="pre">wp.Bvh.rebuild()</span></code></a> have APIC records only for live
+CPU graphs. Their BVH handle is process-local, so
+<a class="reference internal" href="../api_reference/_generated/warp.capture_save.html#warp.capture_save" title="warp.capture_save"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_save()</span></code></a> rejects a graph that records
+either operation.</p></li>
 <li><p>Recording is scoped to the capture’s device: a host (CPU) helper op invoked while a CUDA
 graph capture is active executes immediately instead of being recorded into the CUDA graph,
 and vice versa.</p></li>
-<li><p>Nested captures are rejected on both CPU and CUDA. Only one capture may be
-active at a time on a given thread.</p></li>
+<li><p>Only one APIC-backed capture—any CPU capture or a CUDA capture with
+<code class="docutils literal notranslate"><span class="pre">apic=True</span></code>—may be active in a process. CUDA captures with <code class="docutils literal notranslate"><span class="pre">apic=False</span></code>
+follow CUDA stream and capture-mode rules.</p></li>
 <li><p>A captured CPU graph replays correctly even after the caller releases its
 own references to the Warp arrays used during capture. You do not need to
 keep arrays passed to captured kernel launches or
@@ -2414,8 +2430,8 @@ same address, until the graph is destroyed. Freeing or reusing it sooner is
 undefined behavior.</p></li>
 </ul>
 </section>
-<section id="saving-and-loading-graphs">
-<span id="apic-save-load"></span><h3>Saving and Loading Graphs<a class="headerlink" href="#saving-and-loading-graphs" title="Link to this heading">#</a></h3>
+<section id="api-capture-saving-and-loading-graphs">
+<span id="apic-save-load"></span><h3>API Capture: Saving and Loading Graphs<a class="headerlink" href="#api-capture-saving-and-loading-graphs" title="Link to this heading">#</a></h3>
 <div class="admonition-experimental admonition">
 <p class="admonition-title">Experimental</p>
 <p>API Capture (APIC) is experimental. The <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> file format, the Python
@@ -2425,21 +2441,22 @@ subject to change without a formal deprecation cycle. <code class="docutils lite
 by one version of Warp may not be loadable by another. The current writer
 emits format version 15, and the reader accepts versions 13 through 15.</p>
 </div>
-<p>API Capture lets you serialize a captured graph to disk and load it back later, either
-from another Python program, or from a standalone C++ application that links only
-against the Warp native library. This is useful for shipping a precomputed
+<p>The APIC operation stream lets Warp serialize a supported captured graph to
+disk and load it back later from another Python program or a standalone C++
+application without a Python runtime. This is useful for shipping a precomputed
 simulation pipeline as part of a binary, or for amortizing capture cost across
-many runs.</p>
+many runs. The standalone dependencies for CUDA and CPU replay are described
+below.</p>
 <section id="capturing-for-serialization">
 <h4>Capturing for serialization<a class="headerlink" href="#capturing-for-serialization" title="Link to this heading">#</a></h4>
 <p>To make a captured graph eligible for saving, pass <code class="docutils literal notranslate"><span class="pre">apic=True</span></code> to
 <a class="reference internal" href="../api_reference/_generated/warp.capture_begin.html#warp.capture_begin" title="warp.capture_begin"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_begin()</span></code></a> (or <a class="reference internal" href="../api_reference/_generated/warp.ScopedCapture.html#warp.ScopedCapture" title="warp.ScopedCapture"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedCapture</span></code></a>).
-On CUDA this enables API Capture byte-stream recording alongside the native CUDA graph
-capture; on CPU the byte stream is always recorded (it is the only replay
-mechanism), and <code class="docutils literal notranslate"><span class="pre">apic=True</span></code> simply unlocks
+On CUDA this enables APIC operation-stream recording alongside CUDA graph
+capture; on CPU the operation stream is always recorded (it is the only replay
+mechanism), and <code class="docutils literal notranslate"><span class="pre">apic=True</span></code> simply enables
 <a class="reference internal" href="../api_reference/_generated/warp.capture_save.html#warp.capture_save" title="warp.capture_save"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_save()</span></code></a>.</p>
-<p>On CUDA, <code class="docutils literal notranslate"><span class="pre">apic=True</span></code> records the same extended operation set as the CPU path so saved
-graphs replay it from current inputs: kernel launches (forward, adjoint, and reusable
+<p>On CUDA, <code class="docutils literal notranslate"><span class="pre">apic=True</span></code> records the following supported operations so saved
+graphs replay them from current inputs: kernel launches (forward, adjoint, and reusable
 <code class="docutils literal notranslate"><span class="pre">record_cmd=True</span></code> launches), contiguous same-device memory copies and memsets, contiguous
 <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.fill_" title="warp.array.fill_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.fill_()</span></code></a>,
 <a class="reference internal" href="../api_reference/_generated/warp.utils.array_sum.html#warp.utils.array_sum" title="warp.utils.array_sum"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_sum()</span></code></a>,
@@ -2450,15 +2467,18 @@ graphs replay it from current inputs: kernel launches (forward, adjoint, and reu
 <a class="reference internal" href="../api_reference/_generated/warp.utils.runlength_encode.html#warp.utils.runlength_encode" title="warp.utils.runlength_encode"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.runlength_encode()</span></code></a> (with an explicit
 <code class="docutils literal notranslate"><span class="pre">run_count</span></code>), <a class="reference internal" href="../api_reference/_generated/warp.sparse.bsr_set_transpose.html#warp.sparse.bsr_set_transpose" title="warp.sparse.bsr_set_transpose"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.sparse.bsr_set_transpose()</span></code></a>, and
 <a class="reference internal" href="../api_reference/_generated/warp.capture_if.html#warp.capture_if" title="warp.capture_if"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_if()</span></code></a> / <a class="reference internal" href="../api_reference/_generated/warp.capture_while.html#warp.capture_while" title="warp.capture_while"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_while()</span></code></a>
-conditionals. Unlike the CPU path, CUDA host code for these reductions issues CUDA operations
-while native stream capture is active so the driver records native graph nodes. No GPU
-reduction executes during capture; GPU work begins only when the graph is launched.</p>
-<p>During a matching-device CUDA <code class="docutils literal notranslate"><span class="pre">apic=True</span></code> capture, non-empty calls to these reductions
-require an explicit <code class="docutils literal notranslate"><span class="pre">out</span></code> array. Explicit counts, composite dtypes, and positive-stride axis
-reductions are recorded. A negative count raises <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">RuntimeError</span></code></a> in that capture, and any
-negative input or output stride raises <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a>, including for a zero-count
-call. Counts and reduction strides must fit a signed 32-bit integer, and participating
-addresses and layout strides must be aligned to the reduction’s scalar type.</p>
+conditionals. Unlike the CPU path, CUDA host code for these helper operations
+issues CUDA operations while CUDA stream capture is active so the driver
+records graph nodes. No GPU reduction executes during capture; GPU work begins
+only when the graph is launched.</p>
+<p>During a matching-device CUDA <code class="docutils literal notranslate"><span class="pre">apic=True</span></code> capture, non-empty calls to
+<a class="reference internal" href="../api_reference/_generated/warp.utils.array_sum.html#warp.utils.array_sum" title="warp.utils.array_sum"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_sum()</span></code></a> and
+<a class="reference internal" href="../api_reference/_generated/warp.utils.array_inner.html#warp.utils.array_inner" title="warp.utils.array_inner"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_inner()</span></code></a> require an explicit
+<code class="docutils literal notranslate"><span class="pre">out</span></code> array. Explicit counts, composite dtypes, and positive-stride axis reductions are
+recorded. A negative count raises <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">RuntimeError</span></code></a> in that capture, and any negative input
+or output stride raises <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a>, including for a zero-count call. Counts and
+reduction strides must fit a signed 32-bit integer, and participating addresses and layout
+strides must be aligned to the reduction’s scalar type.</p>
 <p>A few operations cannot be captured for save/load on CUDA and raise
 <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a> during an <code class="docutils literal notranslate"><span class="pre">apic=True</span></code> capture; build these outside the captured
 region:</p>
@@ -2512,11 +2532,29 @@ memory region snapshots, kernel and module metadata, and named bindings.</p></li
 (<code class="docutils literal notranslate"><span class="pre">.cubin</span></code> / <code class="docutils literal notranslate"><span class="pre">.ptx</span></code> for CUDA, <code class="docutils literal notranslate"><span class="pre">.o</span></code> for CPU) referenced by the operation
 stream.</p></li>
 </ul>
+<p>For a graph with recorded kernels, the <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> file and its companion
+<code class="docutils literal notranslate"><span class="pre">_modules</span></code> directory are one artifact. Keep their relative names and
+distribute or move them together; the graph cannot be loaded from either part
+alone.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Load only <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> files and companion module directories from trusted
+sources. The experimental loader is not hardened for untrusted artifacts,
+and loading a graph also loads its compiled kernel binaries into the
+process.</p>
+</div>
 <p>The <code class="docutils literal notranslate"><span class="pre">inputs</span></code> and <code class="docutils literal notranslate"><span class="pre">outputs</span></code> arguments associate human-readable names with
 memory regions of the captured arrays. Those names are used at load time to
 update inputs and read outputs from the loaded graph (see below). The same array
 may appear in both <code class="docutils literal notranslate"><span class="pre">inputs</span></code> and <code class="docutils literal notranslate"><span class="pre">outputs</span></code> (e.g. for in-place operations).
 Both names will refer to the same memory region.</p>
+<p>A binding names the array’s entire base allocation, not a view or slice offset.
+<a class="reference internal" href="../api_reference/_generated/warp.Graph.html#warp.Graph.set_param" title="warp.Graph.set_param"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Graph.set_param()</span></code></a> and
+<a class="reference internal" href="../api_reference/_generated/warp.Graph.html#warp.Graph.get_param" title="warp.Graph.get_param"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Graph.get_param()</span></code></a> require an array on the graph’s
+device whose byte capacity exactly matches the serialized region size. The
+binding does not enforce the original dtype or shape, so the caller remains
+responsible for using compatible data. <a class="reference internal" href="../api_reference/_generated/warp.Graph.html#warp.Graph.params" title="warp.Graph.params"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Graph.params</span></code></a>
+exposes the required size of every binding.</p>
 </section>
 <section id="loading-and-replaying">
 <h4>Loading and replaying<a class="headerlink" href="#loading-and-replaying" title="Link to this heading">#</a></h4>
@@ -2537,12 +2575,22 @@ data into named memory regions with <code class="docutils literal notranslate"><
 <span class="n">graph</span><span class="o">.</span><span class="n">get_param</span><span class="p">(</span><span class="s2">&quot;results&quot;</span><span class="p">,</span> <span class="n">output_array</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>A <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> file captured on a CUDA device can be loaded on a CUDA device (the
-file is built against a specific compute architecture for <code class="docutils literal notranslate"><span class="pre">.cubin</span></code>, or any
-architecture supported by the bundled PTX); a file captured on a CPU device can
-be loaded on a CPU device. The <code class="docutils literal notranslate"><span class="pre">device</span></code> passed to
-<a class="reference internal" href="../api_reference/_generated/warp.capture_load.html#warp.capture_load" title="warp.capture_load"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_load()</span></code></a> must match the device family the
-graph was captured on.</p>
+<p>For a loaded CUDA graph, the first
+<a class="reference internal" href="../api_reference/_generated/warp.capture_launch.html#warp.capture_launch" title="warp.capture_launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_launch()</span></code></a> lazily reconstructs and
+instantiates the CUDA graph. Later launches reuse that executable.</p>
+<p>Only loaded graphs expose parameter bindings;
+<a class="reference internal" href="../api_reference/_generated/warp.Graph.html#warp.Graph.is_loaded" title="warp.Graph.is_loaded"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Graph.is_loaded</span></code></a> distinguishes them from live
+graphs returned by <a class="reference internal" href="../api_reference/_generated/warp.capture_end.html#warp.capture_end" title="warp.capture_end"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_end()</span></code></a>.
+<a class="reference internal" href="../api_reference/_generated/warp.Graph.html#warp.Graph.get_param_ptr" title="warp.Graph.get_param_ptr"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Graph.get_param_ptr()</span></code></a> returns the graph-owned
+address of a binding (a host address for CPU graphs or a device address for CUDA
+graphs), which remains valid only until the graph is destroyed.</p>
+<p>A <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> file captured on a CUDA device must be loaded on a CUDA device with
+a compatible companion module; a file captured on a CPU device must be loaded
+on a CPU device. The <code class="docutils literal notranslate"><span class="pre">device</span></code> passed to
+<a class="reference internal" href="../api_reference/_generated/warp.capture_load.html#warp.capture_load" title="warp.capture_load"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_load()</span></code></a> must match the captured device
+family. This is currently a caller requirement: the experimental loader does
+not reliably diagnose a mismatch when it first opens the file. Architecture and
+platform constraints are listed under the current limitations below.</p>
 </section>
 <section id="standalone-c-replay">
 <h4>Standalone C++ replay<a class="headerlink" href="#standalone-c-replay" title="Link to this heading">#</a></h4>
@@ -2550,7 +2598,7 @@ graph was captured on.</p>
 Python runtime. The Warp native library exposes a small C API for this purpose,
 declared in <a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/native/apic.h">warp/native/apic.h</a>. The core entry points are:</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="c1">// Load a .wrp file. device_type: 0 = CUDA, 1 = CPU.</span>
-<span class="c1">// For CUDA, context is a CUcontext; for CPU it must be NULL.</span>
+<span class="c1">// For CUDA, context is a CUcontext; for CPU it is ignored (pass NULL).</span>
 <span class="n">APICGraph</span><span class="o">*</span><span class="w"> </span><span class="nf">wp_apic_load_graph</span><span class="p">(</span><span class="kt">void</span><span class="o">*</span><span class="w"> </span><span class="n">context</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="n">path</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">device_type</span><span class="p">);</span>
 
 <span class="c1">// Update or read named parameter regions on the loaded graph.</span>
@@ -2578,8 +2626,9 @@ directory of compiled kernels.</p>
 <section id="cuda-replay-02-apic-visualization">
 <h5>CUDA replay (<code class="docutils literal notranslate"><span class="pre">02_apic_visualization</span></code>)<a class="headerlink" href="#cuda-replay-02-apic-visualization" title="Link to this heading">#</a></h5>
 <p>Source: <a class="reference external" href="https://github.com/NVIDIA/warp/tree/main/warp/examples/cpp/02_apic_visualization">warp/examples/cpp/02_apic_visualization</a></p>
-<p>This example captures a full simulation frame (one displacement kernel followed
-by 16 wave-equation integration substeps) as a single CUDA graph. C++ then
+<p>This example records and saves a full simulation frame (one displacement kernel
+followed by 16 wave-equation integration substeps) as an APIC operation stream.
+The C++ loader uses that representation to reconstruct a CUDA graph, then
 launches the entire frame with one <code class="docutils literal notranslate"><span class="pre">cudaGraphLaunch()</span></code> per rendered frame:</p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;aot.h&quot;</span><span class="c1">   // pulls in &lt;cuda.h&gt; and &lt;cuda_runtime.h&gt;</span>
 <span class="cp">#include</span><span class="w"> </span><span class="cpf">&quot;warp.h&quot;</span><span class="c1">  // Warp C API</span>
@@ -2693,33 +2742,28 @@ cmake<span class="w"> </span>--build<span class="w"> </span>build<span class="w"
 options, controls, and platform-specific notes.</p>
 <p>Current limitations of API Capture:</p>
 <ul class="simple">
-<li><p>The recorded operation set covers kernel launches, supported <a class="reference internal" href="../api_reference/_generated/warp.copy.html#warp.copy" title="warp.copy"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.copy()</span></code></a> variants,
-<a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.zero_" title="warp.array.zero_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.zero_()</span></code></a>, contiguous <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.fill_" title="warp.array.fill_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.fill_()</span></code></a>,
-and the host library helpers (<a class="reference internal" href="../api_reference/_generated/warp.utils.array_scan.html#warp.utils.array_scan" title="warp.utils.array_scan"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_scan()</span></code></a>,
-<a class="reference internal" href="../api_reference/_generated/warp.utils.radix_sort_pairs.html#warp.utils.radix_sort_pairs" title="warp.utils.radix_sort_pairs"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.radix_sort_pairs()</span></code></a>,
-<a class="reference internal" href="../api_reference/_generated/warp.utils.segmented_sort_pairs.html#warp.utils.segmented_sort_pairs" title="warp.utils.segmented_sort_pairs"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.segmented_sort_pairs()</span></code></a>,
-<a class="reference internal" href="../api_reference/_generated/warp.utils.runlength_encode.html#warp.utils.runlength_encode" title="warp.utils.runlength_encode"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.runlength_encode()</span></code></a>, and the
-<code class="docutils literal notranslate"><span class="pre">warp.sparse</span></code> BSR <code class="docutils literal notranslate"><span class="pre">from_triplets</span></code>/<code class="docutils literal notranslate"><span class="pre">transpose</span></code> builders, including
-topology-only builds). See the CPU graph capture
-limitations above for the supported dtype and layout ranges.</p></li>
 <li><p>Only <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Mesh</span></code></a> object handles are serialized.
-<a class="reference internal" href="../api_reference/_generated/warp.Volume.html#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Volume</span></code></a> and <a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh" title="warp.Bvh"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Bvh</span></code></a> handles are not
-yet supported.</p></li>
+<a class="reference internal" href="../api_reference/_generated/warp.Volume.html#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Volume</span></code></a>, <a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh" title="warp.Bvh"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Bvh</span></code></a>, and
+<a class="reference internal" href="../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.HashGrid</span></code></a> handles are not yet supported.</p></li>
+<li><p>Kernel arguments of type <code class="docutils literal notranslate"><span class="pre">wp.fixedarray</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.fabricarray</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">wp.indexedfabricarray</span></code> cannot yet be recorded by APIC.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">HashGrid.build()</span></code> is supported by live CPU graphs captured with
 <code class="docutils literal notranslate"><span class="pre">apic=False</span></code>. It is not supported by saveable captures because <code class="docutils literal notranslate"><span class="pre">HashGrid</span></code>
 resources and their process-local IDs cannot yet be serialized. Calling
 <code class="docutils literal notranslate"><span class="pre">HashGrid.build()</span></code> with <code class="docutils literal notranslate"><span class="pre">apic=True</span></code> raises <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a>.
-Call <code class="docutils literal notranslate"><span class="pre">HashGrid.reserve()</span></code> before CPU graph capture; reserve calls inside a
-capture are rejected.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">.wrp</span></code> files are not portable across CUDA compute architectures unless the
-capture was built with PTX output (set <code class="docutils literal notranslate"><span class="pre">warp.config.cuda_output</span> <span class="pre">=</span> <span class="pre">&quot;ptx&quot;</span></code>
-before capture). Multi-GPU and cross-architecture loading are not yet
-supported.</p></li>
+Pre-reserving is optional for CPU replay but avoids allocation on the first
+launch. If used, call <code class="docutils literal notranslate"><span class="pre">HashGrid.reserve()</span></code> before capture; reserve calls
+inside CPU capture are rejected.</p></li>
+<li><p>A CUBIN companion is specific to its compiled CUDA architecture. PTX may be
+JIT-compiled on architectures supported by its target and the installed
+driver, but PTX is not an unconditional cross-architecture guarantee. One
+APIC graph cannot span multiple GPUs.</p></li>
 <li><p>Loading CPU <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> graphs requires the warp-clang backend and the companion
-<code class="docutils literal notranslate"><span class="pre">_modules</span></code> directory with the recorded CPU kernel object files. It does not
-require a CUDA-enabled Warp native library. Loading CUDA <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> graphs still
-requires a CUDA-enabled build.</p></li>
-<li><p>Both CPU and CUDA <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> graph replay support APIC-captured
+<code class="docutils literal notranslate"><span class="pre">_modules</span></code> directory with compatible CPU kernel object files. Those
+<code class="docutils literal notranslate"><span class="pre">.o</span></code> files are tied to their platform, architecture, compiler ABI, and Warp
+runtime. CPU loading does not require a CUDA-enabled Warp native library;
+loading CUDA <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> graphs does.</p></li>
+<li><p>Both CPU and CUDA <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> graph replay support APIC-recorded
 <a class="reference internal" href="../api_reference/_generated/warp.capture_if.html#warp.capture_if" title="warp.capture_if"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_if()</span></code></a> and
 <a class="reference internal" href="../api_reference/_generated/warp.capture_while.html#warp.capture_while" title="warp.capture_while"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_while()</span></code></a> conditionals and loops. Stream
 events and texture array copies are not recorded.</p></li>
@@ -3624,7 +3668,7 @@ Journal of Computer Graphics Techniques (JCGT), vol. 9, no. 3, 20–38, 2020.</p
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#graphs">Graphs</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#conditional-execution">Conditional Execution</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#cpu-graphs">CPU Graphs</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#saving-and-loading-graphs">Saving and Loading Graphs</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#api-capture-saving-and-loading-graphs">API Capture: Saving and Loading Graphs</a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#capturing-for-serialization">Capturing for serialization</a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#loading-and-replaying">Loading and replaying</a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#standalone-c-replay">Standalone C++ replay</a><ul class="nav section-nav flex-column">

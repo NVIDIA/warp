@@ -918,12 +918,13 @@ on the native type headers such as <code class="docutils literal notranslate"><s
 <p>API Capture (APIC) can serialize a captured Warp graph to a <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> file plus a
 companion module directory. The saved graph can later be loaded from Python or
 from a standalone C++ program that links against the Warp native library.</p>
-<p>See <a class="reference internal" href="../runtime.html#apic-save-load"><span class="std std-ref">Saving and Loading Graphs</span></a> for the C API surface, serialization format notes, and
+<p>See <a class="reference internal" href="../runtime.html#apic-save-load"><span class="std std-ref">API Capture: Saving and Loading Graphs</span></a> for the C API surface, serialization format notes, and
 current limitations. The C++ examples cover both device families:</p>
 <ul class="simple">
 <li><p><a class="reference external" href="https://github.com/NVIDIA/warp/tree/main/warp/examples/cpp/02_apic_visualization">02_apic_visualization</a>
-captures a CUDA graph in Python, loads it from C++, updates named inputs, and
-replays the frame with <code class="docutils literal notranslate"><span class="pre">cudaGraphLaunch()</span></code>.</p></li>
+records and saves a CUDA workload in Python. The C++ loader reconstructs a
+CUDA graph, updates named inputs, and replays the frame with
+<code class="docutils literal notranslate"><span class="pre">cudaGraphLaunch()</span></code>.</p></li>
 <li><p><a class="reference external" href="https://github.com/NVIDIA/warp/tree/main/warp/examples/cpp/03_apic_visualization_cpu">03_apic_visualization_cpu</a>
 captures and replays on the CPU device. The C++ viewer does not link against
 CUDA. It loads recorded CPU kernel objects and replays the graph with
