@@ -181,6 +181,25 @@ namespace cuBQL {
                                               const typename AffineSpaceT<L>::vector_t& n)
   { return xfmNormal(m.l,n); }
 
+  template<typename T>
+  box_t<T,3> xfmBox(const AffineSpaceT<LinearSpace3<vec_t<T,3>>> &xfm,
+                    const box_t<T,3> &in)
+  {
+    box_t<T,3> out;
+    if (in.empty()) return out;
+    auto l = in.lower;
+    auto u = in.upper;
+    out.extend(xfmPoint(xfm,vec_t<T,3>(l.x,l.y,l.z)));
+    out.extend(xfmPoint(xfm,vec_t<T,3>(l.x,l.y,u.z)));
+    out.extend(xfmPoint(xfm,vec_t<T,3>(l.x,u.y,l.z)));
+    out.extend(xfmPoint(xfm,vec_t<T,3>(l.x,u.y,u.z)));
+    out.extend(xfmPoint(xfm,vec_t<T,3>(u.x,l.y,l.z)));
+    out.extend(xfmPoint(xfm,vec_t<T,3>(u.x,l.y,u.z)));
+    out.extend(xfmPoint(xfm,vec_t<T,3>(u.x,u.y,l.z)));
+    out.extend(xfmPoint(xfm,vec_t<T,3>(u.x,u.y,u.z)));
+    return out;
+  }
+
 
   ////////////////////////////////////////////////////////////////////////////////
   /// Comparison Operators
@@ -221,4 +240,8 @@ namespace cuBQL {
   using affine3f = AffineSpace3f;
   using affine2d = AffineSpace2d;
   using affine3d = AffineSpace3d;
+
+  template<typename L>
+  inline __cubql_both dbgout operator<<(dbgout o, const AffineSpaceT<L> &v)
+  { o << "Affine(" << v.l << "+" << v.p << ")"; return o; }
 } // ::cuBQL

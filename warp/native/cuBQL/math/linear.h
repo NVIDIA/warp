@@ -328,6 +328,11 @@ namespace cuBQL {
     return cout << "{ vx = " << m.vx << ", vy = " << m.vy << ", vz = " << m.vz << "}";
   }
 
+  template<typename T>
+  inline __cubql_both dbgout operator<<(dbgout o, const LinearSpace3<T> &m)
+  { o  << "{ vx = " << m.vx << ", vy = " << m.vy << ", vz = " << m.vz << "}"; return o; }
+  
+
   /*! Shortcuts for common linear spaces. */
   using LinearSpace2f  = LinearSpace2<vec2f> ;
   using LinearSpace3f  = LinearSpace3<vec3f> ;

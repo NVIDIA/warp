@@ -498,7 +498,12 @@ namespace cuBQL {
       // ==================================================================
       // sort {item,nodeID} list
       // ==================================================================
-      
+
+      // The PrimState key packs nodeID in bits [32,64); sorting by that
+      // range groups each leaf's prims contiguously. hipCUB miscompiles a
+      // partial-range radix sort with begin_bit=32, so sort the full [0,64)
+      // range instead: nodeID (high bits) still dominates the ordering while
+      // primID (low bits) only acts as a harmless tie-breaker.
       // set up sorting of prims
       uint8_t   *d_temp_storage = NULL;
       size_t     temp_storage_bytes = 0;
@@ -508,13 +513,13 @@ namespace cuBQL {
       cub::DeviceRadixSort::SortKeys((void*&)d_temp_storage, temp_storage_bytes,
                                      (uint64_t*)primStates,
                                      (uint64_t*)sortedPrimStates,
-                                     numPrims,32,64,s);
+                                     numPrims,0,64,s);
       _ALLOC(d_temp_storage,temp_storage_bytes,s,memResource);
       rc =
       cub::DeviceRadixSort::SortKeys((void*&)d_temp_storage, temp_storage_bytes,
                                      (uint64_t*)primStates,
                                      (uint64_t*)sortedPrimStates,
-                                     numPrims,32,64,s);
+                                     numPrims,0,64,s);
       rc = rc; // ignore 'unused' warning
       CUBQL_CUDA_CALL(StreamSynchronize(s));
       _FREE(d_temp_storage,s,memResource);

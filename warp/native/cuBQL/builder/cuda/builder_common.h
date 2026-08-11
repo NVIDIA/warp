@@ -98,6 +98,7 @@ namespace cuBQL {
       if (bits & sign) bits ^= 0x7fffffff;
       return bits;
     }
+    
     template<> inline __device__
     int64_t encode(double f)
     {
@@ -133,9 +134,11 @@ namespace cuBQL {
       if (bits & sign) bits ^= 0x7fffffff;
       return __int_as_float(bits);
     }
+    
     template<> inline __device__
     int32_t decode<int32_t>(int32_t bits)
     { return bits; }
+    
     template<> inline __device__
     int64_t decode<int64_t>(int64_t bits)
     { return bits; }
@@ -159,7 +162,7 @@ namespace cuBQL {
       inline __device__ box_t make_box() const;
 
       inline __device__ scalar_t get_lower(int dim) const {
-        if constexpr (box_t::numDims>4) 
+        if constexpr (box_t::numDims>4)
           return decode<scalar_t>(lower[dim]);
         else if constexpr (box_t::numDims==4) {
           return decode<scalar_t>(dim>1
@@ -174,7 +177,7 @@ namespace cuBQL {
         }
       }
       inline __device__ scalar_t get_upper(int dim) const {
-        if constexpr (box_t::numDims>4) 
+        if constexpr (box_t::numDims>4)
           return decode<scalar_t>(upper[dim]);
         else if constexpr (box_t::numDims==4) {
           return decode<scalar_t>(dim>1
@@ -191,11 +194,6 @@ namespace cuBQL {
       
       typename int_type_of<scalar_t>::type lower[box_t::numDims];
       typename int_type_of<scalar_t>::type upper[box_t::numDims];
-      // int32_t lower[box_t::numDims];
-      // int32_t upper[box_t::numDims];
-      
-      // inline static __device__ int32_t encode(float f);
-      // inline static __device__ float   decode(int32_t bits);
     };
     
     template<typename box_t>
@@ -203,14 +201,7 @@ namespace cuBQL {
     AtomicBox<box_t>::get_center(int dim) const
     {
       return (get_lower(dim)+get_upper(dim))/(AtomicBox<box_t>::scalar_t)2;
-      // return 0.5f*(decode(lower[dim])+decode(upper[dim]));
     }
-    // template<typename box_t>
-    // inline __device__ float AtomicBox<box_t>::get_center(int dim) const
-    // {
-    //   return 0.5f*(get_lower(dim)+get_upper(dim));
-    //   // return 0.5f*(decode(lower[dim])+decode(upper[dim]));
-    // }
 
     template<typename box_t>
     inline __device__ box_t AtomicBox<box_t>::make_box() const
@@ -225,23 +216,6 @@ namespace cuBQL {
       return box;
     }
     
-    // template<typename box_t>
-    // inline __device__ int32_t AtomicBox<box_t>::encode(float f)
-    // {
-    //   const int32_t sign = 0x80000000;
-    //   int32_t bits = __float_as_int(f);
-    //   if (bits & sign) bits ^= 0x7fffffff;
-    //   return bits;
-    // }
-      
-    // template<typename box_t>
-    // inline __device__ float AtomicBox<box_t>::decode(int32_t bits)
-    // {
-    //   const int32_t sign = 0x80000000;
-    //   if (bits & sign) bits ^= 0x7fffffff;
-    //   return __int_as_float(bits);
-    // }
-    
     template<typename box_t>
     inline __device__ void AtomicBox<box_t>::set_empty()
     {
@@ -254,23 +228,24 @@ namespace cuBQL {
     }
 
     template<typename box_t> inline __device__
-    void atomic_grow(AtomicBox<box_t> &abox, const typename box_t::vec_t &other)
+    void atomic_grow(AtomicBox<box_t> &abox,
+                     typename box_t::vec_t other)
     {
       using scalar_t = typename AtomicBox<box_t>::scalar_t;
 #pragma unroll
       for (int d=0;d<box_t::numDims;d++) {
         const typename int_type_of<scalar_t>::type enc
-          = //AtomicBox<box_t>::
-          encode(other[d]);//get(other,d));
+          = encode(other[d]);
         if (enc < abox.lower[d])
-          atomic_min(&abox.lower[d],enc);
+          atomic_min(abox.lower+d,enc);
         if (enc > abox.upper[d])
-          atomic_max(&abox.upper[d],enc);
+          atomic_max(abox.upper+d,enc);
       }
     } 
     
     template<typename box_t>
-    inline __device__ void atomic_grow(AtomicBox<box_t> &abox, const box_t &other)
+    inline __device__
+    void atomic_grow(AtomicBox<box_t> &abox, box_t other)
     {
       using scalar_t = typename AtomicBox<box_t>::scalar_t;
 #pragma unroll
@@ -281,13 +256,14 @@ namespace cuBQL {
         const typename int_type_of<scalar_t>::type 
           enc_upper = //AtomicBox<box_t>::
           encode(other.get_upper(d));
-        if (enc_lower < abox.lower[d]) atomic_min(&abox.lower[d],enc_lower);
-        if (enc_upper > abox.upper[d]) atomic_max(&abox.upper[d],enc_upper);
+        if (enc_lower < abox.lower[d]) atomic_min(abox.lower+d,enc_lower);
+        if (enc_upper > abox.upper[d]) atomic_max(abox.upper+d,enc_upper);
       }
     }
 
     template<typename box_t>
-    inline __device__ void atomic_grow(AtomicBox<box_t> &abox, const AtomicBox<box_t> &other)
+    inline __device__ void atomic_grow(AtomicBox<box_t> &abox,
+                                       const AtomicBox<box_t> &other)
     {
       using scalar_t = typename AtomicBox<box_t>::scalar_t;
 #pragma unroll

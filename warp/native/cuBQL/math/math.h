@@ -4,14 +4,15 @@
 #pragma once
 
 #include "cuBQL/math/common.h"
-#ifdef __CUDACC__
-#include <cuda/std/limits>
-#endif
+// #ifdef __CUDACC__
+// #include <cuda/std/limits>
+// #endif
 #include <limits>
 
 namespace cuBQL {
   
-#ifdef __CUDACC__
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
+// #if defined(__CUDACC__) || defined(__HIPCC__)
   // make sure we use the built-in cuda functoins that use floats, not
   // the c-stdlib ones that use doubles.
   using ::min;
@@ -21,15 +22,18 @@ namespace cuBQL {
   using std::max;
 #endif
 
-#ifdef __CUDA_ARCH__
-# define CUBQL_INF ::cuda::std::numeric_limits<float>::infinity()
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
+// #if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+# define CUBQL_INF CUDART_INF_F
+// # define CUBQL_INF ::cuda::std::numeric_limits<float>::infinity()
 #else
 # define CUBQL_INF std::numeric_limits<float>::infinity()
 #endif
 
-#if !defined(__CUDACC__)
-    inline float __int_as_float(int i) { return (const float &)i; }
-    inline int __float_as_int(float f) { return (const int &)f; }
+#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
+#else
+    inline __cubql_both float __int_as_float(int i) { return (const float &)i; }
+    inline __cubql_both int __float_as_int(float f) { return (const int &)f; }
 #endif
 
   inline __cubql_both float squareOf(float f) { return f*f; }
@@ -44,6 +48,7 @@ namespace cuBQL {
 
   /*! square of a value */
   inline __cubql_both float sqr(float f) { return f*f; }
+  inline __cubql_both double sqr(double f) { return f*f; }
   
   /*! unary functors on scalar types, so we can lift them to vector types later on */
   inline __cubql_both float  rcp(float f)     { return 1.f/f; }

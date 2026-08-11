@@ -20,6 +20,51 @@ verbose_cmd = True  # print command lines before executing them
 
 MIN_CTK_VERSION = (12, 0)
 
+
+def find_rocm_sdk() -> str | None:
+    rocm_path = os.environ.get("ROCM_PATH") or os.environ.get("ROCM_HOME")
+    if rocm_path and os.path.isdir(rocm_path):
+        return rocm_path
+
+    hipcc = shutil.which("hipcc")
+    if hipcc:
+        candidate = os.path.dirname(os.path.dirname(os.path.abspath(hipcc)))
+        if os.path.isdir(candidate):
+            return candidate
+
+    default_path = "/opt/rocm"
+    if os.path.isdir(default_path):
+        return default_path
+
+    return None
+
+
+def find_hipcc_executable(rocm_path: str | None) -> str:
+    hipcc_name = "hipcc.exe" if os.name == "nt" else "hipcc"
+    if rocm_path:
+        hipcc_path = os.path.join(rocm_path, "bin", hipcc_name)
+        if os.path.exists(hipcc_path):
+            return f'"{hipcc_path}"'
+    hipcc_in_path = shutil.which("hipcc")
+    if hipcc_in_path:
+        return hipcc_in_path
+    return hipcc_name
+
+
+def _parse_hip_arches(args) -> list[str]:
+    if getattr(args, "hip_arch", None):
+        raw = args.hip_arch.replace(";", ",").replace(" ", ",")
+        return [arch for arch in raw.split(",") if arch]
+
+    env_arch = os.environ.get("ROCM_TARGETS") or os.environ.get("HIP_ARCH")
+    if env_arch:
+        raw = env_arch.replace(";", ",").replace(" ", ",")
+        return [arch for arch in raw.split(",") if arch]
+
+    # Default to gfx942 for HIP builds when not specified.
+    return ["gfx942"]
+
+
 # Echoed by our wrapper command before dumping the environment; the MSVC
 # environment script does not emit it.
 _VCVARS_ENV_DUMP_MARKER = "__WARP_VCVARS_ENV_BEGIN__"
@@ -592,6 +637,8 @@ def build_dll_for_arch(
     mode = args.mode if (mode is None) else mode
     cuda_home = args.cuda_path
     cuda_cmd = None
+    hip_enabled = bool(getattr(args, "enable_hip", False) and getattr(args, "rocm_path", None) and cu_paths)
+    hipcc_cmd = find_hipcc_executable(args.rocm_path) if hip_enabled else None
 
     # Derive a unique tag from dll_path for object file names to allow parallel builds
     _obj_tag = "." + os.path.splitext(os.path.basename(dll_path))[0].replace(".", "_")
@@ -607,6 +654,12 @@ def build_dll_for_arch(
     if libs is None:
         libs = []
 
+    if cu_paths and hip_enabled and args.use_libmathdx:
+        if args.verbose:
+            print("HIP build detected: disabling libmathdx support.")
+        args.use_libmathdx = False
+        args.libmathdx_path = None
+
     warp_home_path = pathlib.Path(__file__).parent.parent
     warp_home = warp_home_path.resolve()
 
@@ -615,7 +668,11 @@ def build_dll_for_arch(
 
     native_dir = os.path.join(warp_home, "native")
 
-    if cu_paths:
+    nvcc_opts = []
+    clang_opts = []
+    nvcc_cmd = None
+
+    if cu_paths and not hip_enabled:
         # check CUDA Toolkit version
         ctk_version = get_cuda_toolkit_version(cuda_home)
         if ctk_version < MIN_CTK_VERSION:
@@ -671,7 +728,7 @@ def build_dll_for_arch(
     # is the library being built with CUDA enabled?
     cuda_enabled = "WP_ENABLE_CUDA=1" if (cu_paths is not None) else "WP_ENABLE_CUDA=0"
 
-    if args.libmathdx_path:
+    if args.libmathdx_path and not hip_enabled:
         libmathdx_includes = f' -I"{args.libmathdx_path}/include"'
         mathdx_enabled = "WP_ENABLE_MATHDX=1"
     else:
@@ -806,13 +863,19 @@ def build_dll_for_arch(
 
     else:
         # Unix compilation
-        cuda_compiler = "clang++" if args.clang_build_toolchain else "nvcc"
+        if hip_enabled:
+            cuda_compiler = hipcc_cmd
+        else:
+            cuda_compiler = "clang++" if args.clang_build_toolchain else "nvcc"
         cpp_compiler = "clang++" if args.clang_build_toolchain else args.host_compiler
 
         # Build include paths for LLVM and CUDA
         llvm_include_paths = get_llvm_include_paths(args, warp_home_path, mode, arch)
         cpp_includes = format_include_paths(llvm_include_paths, "-I")
-        cuda_includes = f' -I"{cuda_home}/include"' if cu_paths else ""
+        if cu_paths and hip_enabled:
+            cuda_includes = f' -I"{args.rocm_path}/include"'
+        else:
+            cuda_includes = f' -I"{cuda_home}/include"' if cu_paths else ""
         includes = cpp_includes + cuda_includes
 
         if sys.platform == "darwin":
@@ -827,6 +890,8 @@ def build_dll_for_arch(
                 version = ""
 
         cpp_flags = f'-Werror -Wuninitialized {version} --std=c++17 -fno-rtti -D{cuda_enabled} -D{mathdx_enabled} -D{cuda_compat_enabled} -fPIC -fvisibility=hidden -fvisibility-inlines-hidden -D_GLIBCXX_USE_CXX11_ABI=0 -I"{native_dir}" {includes} '
+        if hip_enabled:
+            cpp_flags += " -D__HIP_PLATFORM_AMD__ "
 
         if mode == "debug":
             cpp_flags += "-Og -g -D_DEBUG -DWP_ENABLE_DEBUG=1"
@@ -872,7 +937,35 @@ def build_dll_for_arch(
                         opt.replace("@filename@", os.path.basename(cu_path).replace(".", "_")) for opt in nvcc_opts
                     ]
 
-                    if cuda_compiler == "nvcc":
+                    if hip_enabled:
+                        hip_arches = _parse_hip_arches(args)
+                        hip_arch_flags = " ".join([f"--offload-arch={a}" for a in hip_arches])
+                        # User-supplied extra hipcc options (e.g., "-Xarch_device -fno-inline"),
+                        # applied only to reduce.cu.
+                        if os.path.basename(cu_path) == "reduce.cu":
+                            hip_extra_flags = getattr(args, "hipcc_options", None) or ""
+                        else:
+                            hip_extra_flags = ""
+                        # Match nvcc/NVRTC default: strict IEEE 754 FP semantics
+                        hip_fp_flags = "-fno-finite-math-only -fno-associative-math -fno-reciprocal-math -fno-strict-aliasing"
+                        # Match the host C++ ABI (`-D_GLIBCXX_USE_CXX11_ABI=0` is used for
+                        # the .cpp objects above); without this the libstdc++ ABI tag
+                        # leaks into the mangled names of std::string-taking helpers,
+                        # breaking the host<->HIP link step.
+                        hip_abi_flags = "-fvisibility-inlines-hidden -D_GLIBCXX_USE_CXX11_ABI=0"
+                        if mode == "debug":
+                            cuda_cmd = (
+                                f'{hipcc_cmd} -x hip -std=c++17 -g -O0 -fPIC -fvisibility=hidden {hip_abi_flags} '
+                                f'-D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 {hip_fp_flags} {hip_arch_flags} {hip_extra_flags} -DWP_ENABLE_CUDA=1 '
+                                f'-I"{native_dir}" -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
+                            )
+                        elif mode == "release":
+                            cuda_cmd = (
+                                f'{hipcc_cmd} -x hip -std=c++17 -O3 -fPIC -fvisibility=hidden {hip_abi_flags} -DNDEBUG '
+                                f'{hip_fp_flags} {hip_arch_flags} {hip_extra_flags} -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{mathdx_enabled} '
+                                f'{libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
+                            )
+                    elif cuda_compiler == "nvcc":
                         if mode == "debug":
                             cuda_cmd = f'{nvcc_cmd} --std=c++17 -g -G -O0 --compiler-options -fPIC,-fvisibility=hidden,-fvisibility-inlines-hidden,-D_GLIBCXX_USE_CXX11_ABI=0 -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -line-info {" ".join(_nvcc_opts)} -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
                         elif mode == "release":
@@ -888,7 +981,18 @@ def build_dll_for_arch(
 
                     ld_inputs.append(quote(cu_out))
 
-                if args.use_dynamic_cuda:
+                if hip_enabled:
+                    hip_lib_dir = os.path.join(args.rocm_path, "lib")
+                    ld_inputs.append(f'-L"{hip_lib_dir}" -lamdhip64')
+                    if os.path.exists(os.path.join(hip_lib_dir, "libhiprtc.so")) or os.path.exists(
+                        os.path.join(hip_lib_dir, "libhiprtc.a")
+                    ):
+                        ld_inputs.append("-lhiprtc")
+                    if os.path.exists(os.path.join(hip_lib_dir, "libhiprtc-builtins.so")) or os.path.exists(
+                        os.path.join(hip_lib_dir, "libhiprtc-builtins.a")
+                    ):
+                        ld_inputs.append("-lhiprtc-builtins")
+                elif args.use_dynamic_cuda:
                     ld_inputs.append(
                         f'-L"{cuda_home}/lib64" -L"{cuda_home}/lib" -lcudart -lnvrtc -lnvptxcompiler_static -lpthread -ldl -lrt'
                     )
@@ -897,7 +1001,7 @@ def build_dll_for_arch(
                         f'-L"{cuda_home}/lib64" -lcudart_static -lnvrtc_static -lnvrtc-builtins_static -lnvptxcompiler_static -lpthread -ldl -lrt'
                     )
 
-                if args.libmathdx_path:
+                if args.libmathdx_path and not hip_enabled:
                     if args.use_dynamic_cuda:
                         ld_inputs.append(f"-lnvJitLink -L{args.libmathdx_path}/lib -lmathdx")
                     else:
@@ -942,7 +1046,17 @@ def build_dll_for_arch(
 
         with ScopedTimer("link", active=args.verbose):
             origin = "@loader_path" if (sys.platform == "darwin") else "$ORIGIN"
-            link_cmd = f"{cpp_compiler} {version} -shared -Wl,-rpath,'{origin}' {opt_static_runtime} {opt_undefined} {opt_exported_symbols} {opt_exclude_libs}{sanitize_ld} -o '{dll_path}' {' '.join(ld_inputs + libs)}"
+            # On HIP, link via hipcc (clang-based) to pull in the HIP runtime; drop the
+            # g++-only version flag and the static libstdc++/version-script options.
+            if hip_enabled:
+                link_compiler = hipcc_cmd
+                link_version = ""
+                link_static_runtime = ""
+            else:
+                link_compiler = cpp_compiler
+                link_version = version
+                link_static_runtime = opt_static_runtime
+            link_cmd = f"{link_compiler} {link_version} -shared -Wl,-rpath,'{origin}' {link_static_runtime} {opt_undefined} {opt_exported_symbols} {opt_exclude_libs}{sanitize_ld} -o '{dll_path}' {' '.join(ld_inputs + libs)}"
             run_cmd(link_cmd)
 
             # Platform-specific paths collect all undefined symbol names.

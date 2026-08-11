@@ -6,9 +6,9 @@
 #include "cuBQL/math/common.h"
 #include "cuBQL/math/vec.h"
 #include "cuBQL/math/box.h"
-#ifdef __CUDACC__
-# include <cuda.h>
-#endif
+// #ifdef __CUDACC__
+// # include <cuda.h>
+// #endif
 
 namespace cuBQL {
 
@@ -145,19 +145,19 @@ namespace cuBQL {
   using bvh3f = BinaryBVH<float,3>;
   using bvh3d = BinaryBVH<double,3>;
 
-#ifdef __CUDACC__
+#if defined(__CUDACC__) || defined(__HIPCC__)
   typedef BinaryBVH<float,2> bvh_float2;
   typedef BinaryBVH<float,3> bvh_float3;
   typedef BinaryBVH<float,4> bvh_float4;
 #endif
-  
+
 } // ::cuBQL
 
-#ifdef __CUDACC__
+#if defined(__CUDACC__) || defined(__HIPCC__)
 # include "cuBQL/builder/cuda.h"
 #endif
-# include "cuBQL/builder/cpu.h"
 
+# include "cuBQL/builder/cpu.h"
 
 
   

@@ -12,13 +12,6 @@ namespace cuBQL {
   // *** INTERFACE ***
   // ========================================================================
   
-  // struct RayTriangleIntersection {
-  //   vec3f N;
-  //   float t,u,v;
-    
-  //   inline __cubql_both bool compute(Ray ray, Triangle tri);
-  // };
-
   template<typename T>
   struct RayTriangleIntersection_t {
     using vec3 = vec_t<T,3>;
@@ -40,20 +33,36 @@ namespace cuBQL {
   inline __cubql_both
   bool RayTriangleIntersection_t<T>::compute(const ray_t<T> &ray,
                                              const triangle_t<T> &tri,
-                                             bool dbg)
+                                             bool _dbg)
   {
+#ifdef NDEBUG
+    const bool dbg = false;
+#else
+    auto dbg = _dbg;
+#endif
+    if (dbg) {/* nothing, just for 'maybe_unused' */};
+    
     using vec3 = vec_t<T,3>;
     const vec3 v0(tri.a);
     const vec3 v1(tri.b);
     const vec3 v2(tri.c);
 
+    // if (dbg) {
+    //   dout << "-----------\ntriangle " << v0 << " " << v1 << " " << v2 << "\n";
+    // }
+    
     const vec3 e1 = v1-v0;
     const vec3 e2 = v2-v0;
 
     N = cross(e1,e2);
+    // if (dbg) {
+    //   dout << "e1 " << e1 << "\n";
+    //   dout << "e2 " << e2 << "\n";
+    //   dout << "N " << N << "\n";
+    // }
     if (N == vec3(T(0)))
       return false;
-
+    
     if (abst(dot(ray.direction,N)) < T(1e-12)) return false;
     
     // P = o+td
@@ -63,6 +72,8 @@ namespace cuBQL {
     // t*dot(d,N) = -dot(o-v0,N)
     // t = -dot(o-v0,N)/dot(d,N)
     t = -dot(ray.origin-v0,N)/dot(ray.direction,N);
+    // if (dbg)
+    //   dout << "t " << t << " [ " << ray.tMin << " " << ray.tMax << "]\n";
     if (t <= ray.tMin || t >= ray.tMax) return false;
     
     vec3 P = (ray.origin - v0) + t*ray.direction;
@@ -107,53 +118,6 @@ namespace cuBQL {
     return true;
   }
   
-  // inline __cubql_both
-  // bool RayTriangleIntersection::compute(Ray ray, Triangle tri)
-  // {
-  //   const vec3f v0 = tri.a;
-  //   const vec3f v1 = tri.b;
-  //   const vec3f v2 = tri.c;
-    
-  //   const vec3f e1 = v1-v0;
-  //   const vec3f e2 = v2-v0;
-    
-  //   vec3f N = cross(e1,e2);
-  //   if (fabsf(dot(ray.direction,N)) < 1e-12f) return false;
-    
-  //   t = -dot(ray.origin-v0,N)/dot(ray.direction,N);
-    
-  //   if (t <= 0.f || t >= ray.tMax) return false;
-    
-  //   vec3f P = ray.origin - v0 + t*ray.direction;
-    
-  //   float e1u,e2u,Pu;
-  //   float e1v,e2v,Pv;
-  //   if (fabsf(N.x) >= max(fabsf(N.y),fabsf(N.z))) {
-  //     e1u = e1.y; e2u = e2.y; Pu = P.y;
-  //     e1v = e1.z; e2v = e2.z; Pv = P.z;
-  //   } else if (fabsf(N.y) > fabsf(N.z)) {
-  //     e1u = e1.x; e2u = e2.x; Pu = P.x;
-  //     e1v = e1.z; e2v = e2.z; Pv = P.z;
-  //   } else {
-  //     e1u = e1.x; e2u = e2.x; Pu = P.x;
-  //     e1v = e1.y; e2v = e2.y; Pv = P.y;
-  //   }
-  //   auto det = [](float a, float b, float c, float d) -> float
-  //   { return a*d - c*b; };
-    
-  //   // P = v0 + u * e1 + v * e2 + h * N
-  //   // (P-v0) = [e1,e2]*(u,v,h)
-  //   if (det(e1u,e1v,e2u,e2v) == 0.f) return false;
-    
-  //   u = det(Pu,e2u,Pv,e2v)/det(e1u,e2u,e1v,e2v);
-  //   v = det(e1u,Pu,e1v,Pv)/det(e1u,e2u,e1v,e2v);
-  //   if ((u < 0.f) || (v < 0.f) || ((u+v) >= 1.f)) return false;
-    
-  //   return true;
-  // }
-
-
-
 
   template<int /*! 0, 1, or 2 */axis, int /* +1 or -1 */sign>
   inline __cubql_both
@@ -164,15 +128,15 @@ namespace cuBQL {
     const vec3f dir = ray.direction();
     const vec3f org = ray.origin;
     
-    if (dbg) {
-      dout << "-----------\ntriangle " << triangle << "\n";
-    }
+    // if (dbg) {
+    //   dout << "-----------\ntriangle " << triangle << "\n";
+    // }
     using cuBQL::dot;
     using cuBQL::cross;
 
     vec3f n = triangle.normal();
-    if (dbg) dout << "normal " << n << endl;
-    if (dbg) dout << "dir " << dir << endl;
+    // if (dbg) dout << "normal " << n << endl;
+    // if (dbg) dout << "dir " << dir << endl;
 
     float cosND = dot(n,dir);
     if (cosND == 0.f)
@@ -182,7 +146,7 @@ namespace cuBQL {
 
     float t = -dot(org-triangle.a,n)/cosND;
     if (t <= ray.tMin || t >= ray.tMax) {
-      if (dbg) dout << " -> not in interval" << endl;
+      // if (dbg) dout << " -> not in interval" << endl;
       return false;
     }
     
@@ -203,7 +167,7 @@ namespace cuBQL {
     float sx = pluecker(vec3f(0.f),dir,a,b);
     float sy = pluecker(vec3f(0.f),dir,b,c);
     float sz = pluecker(vec3f(0.f),dir,c,a);
-    if (dbg) dout << "pluecker " << sx << " " << sy << " " << sz << endl;
+    // if (dbg) dout << "pluecker " << sx << " " << sy << " " << sz << endl;
     // for ray to be inside edges it must have all positive or all
     // negative pluecker winding order
     auto min3=[](float x, float y, float z)
@@ -211,11 +175,11 @@ namespace cuBQL {
     auto max3=[](float x, float y, float z)
     { return max(max(x,y),z); };
     if (min3(sx,sy,sz) >= 0.f || max3(sx,sy,sz) <= 0.f) {
-      if (dbg) dout << " -> HIT\n";
+      // if (dbg) dout << " -> HIT\n";
       return true;
     }
       
-      if (dbg) dout << " -> MISS\n";
+      // if (dbg) dout << " -> MISS\n";
     return false;
   }
   
@@ -228,15 +192,15 @@ namespace cuBQL {
     vec3f org = ray.origin;
     vec3f dir = ray.direction;
     
-    if (dbg) {
-      dout << "-----------\ntriangle " << triangle << "\n";
-    }
+    // if (dbg) {
+    //   dout << "-----------\ntriangle " << triangle << "\n";
+    // }
     using cuBQL::dot;
     using cuBQL::cross;
 
     vec3f n = triangle.normal();
-    if (dbg) dout << "normal " << n << endl;
-    if (dbg) dout << "dir " << dir << endl;
+    // if (dbg) dout << "normal " << n << endl;
+    // if (dbg) dout << "dir " << dir << endl;
 
     float cosND = dot(n,dir);
     if (cosND == 0.f)
@@ -246,7 +210,7 @@ namespace cuBQL {
 
     float t = -dot(org-triangle.a,n)/cosND;
     if (t <= ray.tMin || t >= ray.tMax) {
-      if (dbg) dout << " -> not in interval" << endl;
+      // if (dbg) dout << " -> not in interval" << endl;
       return false;
     }
     
@@ -267,7 +231,7 @@ namespace cuBQL {
     float sx = pluecker(vec3f(0.f),dir,a,b);
     float sy = pluecker(vec3f(0.f),dir,b,c);
     float sz = pluecker(vec3f(0.f),dir,c,a);
-    if (dbg) dout << "pluecker " << sx << " " << sy << " " << sz << endl;
+    // if (dbg) dout << "pluecker " << sx << " " << sy << " " << sz << endl;
     // float sx = pluecker(beg,dir,a,b-a);
     // float sy = pluecker(beg,dir,b,c-b);
     // float sz = pluecker(beg,dir,c,a-c);
@@ -278,11 +242,11 @@ namespace cuBQL {
     auto max3=[](float x, float y, float z)
     { return max(max(x,y),z); };
     if (min3(sx,sy,sz) >= 0.f || max3(sx,sy,sz) <= 0.f) {
-      if (dbg) dout << " -> HIT\n";
+      // if (dbg) dout << " -> HIT\n";
       return true;
     }
       
-      if (dbg) dout << " -> MISS\n";
+      // if (dbg) dout << " -> MISS\n";
     return false;
   }
   

@@ -6394,13 +6394,17 @@ cpu_module_header = """
 
 cuda_module_header = """
 #define WP_TILE_BLOCK_DIM {block_dim}
+#if !defined(__HIPCC__)
 #define WP_NO_CRT
+#endif
 #include "builtin.h"
 #include "deterministic.h"
 
-// Map wp.breakpoint() to a device brkpt at the call site so cuda-gdb attributes the stop to the generated .cu line
+// Map wp.breakpoint() to a device brkpt at the call site so the debugger attributes the stop to the generated source line
 #if defined(__CUDACC__) && !defined(_MSC_VER)
 #define __debugbreak() __brkpt()
+#elif defined(__HIPCC__) && !defined(_MSC_VER)
+#define __debugbreak() __builtin_trap()
 #endif
 
 // avoid namespacing of float type for casting to float type, this is to avoid wp::float(x), which is not valid in C++

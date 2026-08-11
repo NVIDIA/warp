@@ -9,15 +9,30 @@
 
 #include <vector>
 
+#include <stdio.h>
+
+#if defined(__HIP_PLATFORM_AMD__)
+#include "hip_util.h"
+#else
 #include <cudaTypedefs.h>
 #include <cuda_runtime_api.h>
-#include <stdio.h>
+#endif  // __HIP_PLATFORM_AMD__
+
+#ifndef WP_HAS_MEMCPY_BATCH
+#if defined(__HIP_PLATFORM_AMD__)
+#define WP_HAS_MEMCPY_BATCH (HIP_VERSION >= 70100000)
+#else
+#define WP_HAS_MEMCPY_BATCH (CUDA_VERSION >= 12080)
+#endif  // defined(__HIP_PLATFORM_AMD__)
+#endif  // WP_HAS_MEMCPY_BATCH
 
 #define check_cuda(code) (check_cuda_result(code, __FUNCTION__, __FILE__, __LINE__))
 #define check_cu(code) (check_cu_result(code, __FUNCTION__, __FILE__, __LINE__))
 
+inline void ignore_cuda_error(cudaError_t) {}
+inline void ignore_cu_result(CUresult) {}
 
-#if defined(__CUDACC__)
+#if defined(__CUDACC__) || defined(__HIPCC__)
 #if _DEBUG
 // helper for launching kernels (synchronize + error checking after each kernel)
 #define wp_launch_device(context, kernel, dim, args) { \
@@ -42,7 +57,7 @@
         kernel<<<num_blocks, 256, 0, stream>>>args; \
         end_cuda_range(WP_TIMING_KERNEL_BUILTIN, stream); }}
 #endif  // _DEBUG
-#endif  // defined(__CUDACC__)
+#endif  // defined(__CUDACC__) || defined(__HIPCC__)
 
 
 CUresult cuDriverGetVersion_f(int* version);
@@ -58,7 +73,7 @@ CUresult cuDevicePrimaryCtxRetain_f(CUcontext* ctx, CUdevice dev);
 CUresult cuDevicePrimaryCtxRelease_f(CUdevice dev);
 CUresult cuDeviceCanAccessPeer_f(int* can_access, CUdevice dev, CUdevice peer_dev);
 CUresult cuMemGetInfo_f(size_t* free, size_t* total);
-#if CUDA_VERSION >= 12080
+#if WP_HAS_MEMCPY_BATCH
 // batched memcpy
 CUresult cuMemcpyBatchAsync_f(
     CUdeviceptr* dsts,
@@ -109,7 +124,7 @@ CUresult cuEventQuery_f(CUevent event);
 CUresult cuEventRecord_f(CUevent event, CUstream stream);
 CUresult cuEventRecordWithFlags_f(CUevent event, CUstream stream, unsigned int flags);
 CUresult cuEventSynchronize_f(CUevent event);
-#if CUDA_VERSION >= 12030
+#if defined(__HIP_PLATFORM_AMD__) || CUDA_VERSION >= 12030
 // function used to add conditional graph nodes, not available in older CUDA versions
 CUresult cuGraphAddNode_f(
     CUgraphNode* phGraphNode,

@@ -79,7 +79,8 @@ namespace cuBQL {
     /*! create a box from two points. note this will NOT make sure
       that a<b; if this is an empty box it will just create an empty
       box! */
-    inline __cubql_both box_t(const vec_t_data<T,D> &a, const vec_t_data<T,D> &b)
+    inline __cubql_both box_t(const vec_t_data<T,D> &a,
+                              const vec_t_data<T,D> &b)
     {
       lower = vec_t(a);
       upper = vec_t(b);
@@ -88,11 +89,23 @@ namespace cuBQL {
     /*! returns a box that bounds both 'this' and another point 'v';
       this does not get modified */
     inline __cubql_both box_t including(const vec_t &v) const
-    { return box_t{min(lower,v),max(upper,v)}; }
+    {
+      // return box_t(min(lower,v),max(upper,v));
+      box_t b;
+      b.lower = min(this->lower,v);
+      b.upper = max(this->upper,v);
+      return b;
+    }
     /*! returns a box that bounds both 'this' and another box 'b';
       this does not get modified */
     inline __cubql_both box_t including(const box_t &b) const
-    { return box_t{min(lower,b.lower),max(upper,b.upper)}; }
+    {
+      box_t bb;
+      bb.lower = min(this->lower,b.lower);
+      bb.upper = max(this->upper,b.upper);
+      return bb;
+      // return box_t(min(lower,b.lower),max(upper,b.upper));
+    }
     
     inline __cubql_both box_t &grow(const vec_t &v)
     { lower = min(lower,v); upper = max(upper,v); return *this; }

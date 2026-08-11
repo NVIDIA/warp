@@ -25,13 +25,14 @@ namespace cuBQL {
     };
 
     template<typename T, int D>
-    struct CUBQL_ALIGN(16) TempNode {
+    struct CUBQL_ALIGN(16)
+      TempNode {
       using box_t = cuBQL::box_t<T,D>;
       union {
         struct {
-          AtomicBox<box_t> centBounds;
           uint32_t         count;
           uint32_t         unused;
+          AtomicBox<box_t> centBounds;
         } openBranch;
         struct {
           uint32_t offset;
@@ -42,7 +43,6 @@ namespace cuBQL {
         struct {
           uint32_t offset;
           uint32_t count;
-          uint32_t unused[2];
         } doneNode;
       };
     };
@@ -82,7 +82,8 @@ namespace cuBQL {
         me.done   = false;
         // this could be made faster by block-reducing ...
         atomicAdd(&nodes[0].openBranch.count,1);
-        atomic_grow(nodes[0].openBranch.centBounds,box.center());//centerOf(box));
+        auto ctr = box.center();
+        atomic_grow(nodes[0].openBranch.centBounds,ctr);
       } else {
         me.nodeID = (uint32_t)-1;
         me.done   = true;
@@ -208,13 +209,14 @@ namespace cuBQL {
       
       auto in = nodes[nodeID].openBranch;
       if (in.count <= buildConfig.makeLeafThreshold) {
-        auto &done  = nodes[nodeID].doneNode;
+        auto done  = nodes[nodeID].doneNode;
         done.count  = in.count;
         // set this to max-value, so the prims can later do atomicMin
         // with their position ion the leaf list; this value is
         // greater than any prim position.
         done.offset = (uint32_t)-1;
         nodeState   = DONE_NODE;
+        nodes[nodeID].doneNode = done;
       } else {
         float widestWidth = 0.f;
         int   widestDim   = -1;
@@ -235,7 +237,8 @@ namespace cuBQL {
           widestCtr = ctr;
         }
       
-        auto &open = nodes[nodeID].openNode;
+        // auto &open = nodes[nodeID].openNode;
+        auto open = nodes[nodeID].openNode;
         if (widestDim >= 0) {
           open.pos = widestCtr;
         }
@@ -249,12 +252,15 @@ namespace cuBQL {
 #pragma unroll
         for (int side=0;side<2;side++) {
           const int childID = open.offset+side;
-          auto &child = nodes[childID].openBranch;
-          child.centBounds.set_empty();
-          child.count         = 0;
+          TempNode<T,D> child;
+          // auto &child = nodes[childID].openBranch;
+          child.openBranch.centBounds.set_empty();
+          child.openBranch.count         = 0;
           nodeStates[childID] = OPEN_BRANCH;
+          nodes[childID] = child;
         }
         nodeState = OPEN_NODE;
+        nodes[nodeID].openNode = open;
       }
 #endif
     }
@@ -420,7 +426,6 @@ namespace cuBQL {
                GpuMemoryResource &memResource)
     {
       assert(sizeof(PrimState) == sizeof(uint64_t));
-      
       // ==================================================================
       // do build on temp nodes
       // ==================================================================
@@ -432,10 +437,12 @@ namespace cuBQL {
       _ALLOC(nodeStates,2*numPrims,s,memResource);
       _ALLOC(primStates,numPrims,s,memResource);
       _ALLOC(buildState,1,s,memResource);
-      initState<<<1,1,0,s>>>(buildState,
-                             nodeStates,
-                             tempNodes);
-      initPrims<<<divRoundUp(numPrims,1024),1024,0,s>>>
+
+      initState<<<1,128,0,s>>>(buildState,
+                               nodeStates,
+                               tempNodes);
+      
+      initPrims<<<divRoundUp(numPrims,128),128,0,s>>>
         (tempNodes,
          primStates,boxes,numPrims);
 
@@ -445,61 +452,30 @@ namespace cuBQL {
       // ------------------------------------------------------------------      
       cudaEvent_t stateDownloadedEvent;
       CUBQL_CUDA_CALL(EventCreate(&stateDownloadedEvent));
-      
-      
-#if CUBQL_PROFILE
-      int pass = 0;
-      static Profile t_writeNodes;
-      static Profile t_writePrims;
-      static Profile t_sortPrims;
-      static Profile t_nodePass[100];
-      static Profile t_primPass[100];
-      if (t_writeNodes.name == "") {
-        t_writeNodes.setName("writeNodes");
-        t_writePrims.setName("writePrims");
-        t_sortPrims.setName("sortPrims");
-        for (int i=0;i<100;i++) {
-          t_nodePass[i].setName("nodePass",i);
-          t_primPass[i].setName("primPass",i);
-        }
-      }
-#endif
       while (true) {
         CUBQL_CUDA_CALL(MemcpyAsync(&numNodes,&buildState->numNodes,
                                     sizeof(numNodes),cudaMemcpyDeviceToHost,s));
-        if (numNodes == numDone)
-          break;
         CUBQL_CUDA_CALL(EventRecord(stateDownloadedEvent,s));
         CUBQL_CUDA_CALL(EventSynchronize(stateDownloadedEvent));
-#if CUBQL_PROFILE
-        t_nodePass[pass].sync_start();
-#endif
+        CUBQL_CUDA_SYNC_CHECK_STREAM(s);
+        if (numNodes == numDone)
+          break;
+
         selectSplits<<<divRoundUp(numNodes,1024),1024,0,s>>>
           (buildState,
            nodeStates,tempNodes,numNodes,
            buildConfig);
-#if CUBQL_PROFILE
-        t_nodePass[pass].sync_stop();
-        t_primPass[pass].sync_start();
-#endif
+
         numDone = numNodes;
 
-// #if 1
-        if (sizeof(T)*D <= sizeof(float3)) {
+        if (1 && sizeof(T)*D <= sizeof(float3)) {
           updatePrims_shm<<<divRoundUp(numPrims,512),512,0,s>>>
             (nodeStates,tempNodes,
              primStates,boxes,numPrims,numDone);
         } else 
-// #else
-        updatePrims<<<divRoundUp(numPrims,1024),1024,0,s>>>
+        updatePrims<<<divRoundUp(numPrims,128),128,0,s>>>
           (nodeStates,tempNodes,
            primStates,boxes,numPrims);
-// #endif
-        
-#if CUBQL_PROFILE
-        t_primPass[pass].sync_stop();
-        ++ pass;
-#endif
       }
       CUBQL_CUDA_CALL(EventDestroy(stateDownloadedEvent));
       // ==================================================================
@@ -507,30 +483,26 @@ namespace cuBQL {
       // ==================================================================
       
       // set up sorting of prims
+      // hipCUB miscompiles a partial-range radix sort (begin_bit=32); sort the
+      // full [0,64) range so the nodeID in the high bits still groups each
+      // leaf's prims contiguously (primID low bits act as tie-breaker only).
       uint8_t   *d_temp_storage     = NULL;
       size_t     temp_storage_bytes = 0;
       PrimState *sortedPrimStates   = 0;
-#if CUBQL_PROFILE
-      t_sortPrims.sync_start();
-#endif
       _ALLOC(sortedPrimStates,numPrims,s,memResource);
       auto rc =
         cub::DeviceRadixSort::SortKeys((void*&)d_temp_storage, temp_storage_bytes,
                                      (uint64_t*)primStates,
                                      (uint64_t*)sortedPrimStates,
-                                     numPrims,32,64,s);
+                                     numPrims,0,64,s);
       _ALLOC(d_temp_storage,temp_storage_bytes,s,memResource);
       rc =
         cub::DeviceRadixSort::SortKeys((void*&)d_temp_storage, temp_storage_bytes,
                                        (uint64_t*)primStates,
                                        (uint64_t*)sortedPrimStates,
-                                       numPrims,32,64,s);
+                                       numPrims,0,64,s);
       rc = rc;
       _FREE(d_temp_storage,s,memResource);
-#if CUBQL_PROFILE
-      t_sortPrims.sync_stop();
-      t_writePrims.sync_start();
-#endif
       // ==================================================================
       // allocate and write BVH item list, and write offsets of leaf nodes
       // ==================================================================
@@ -539,10 +511,6 @@ namespace cuBQL {
       _ALLOC(bvh.primIDs,numPrims,s,memResource);
       writePrimsAndLeafOffsets<<<divRoundUp(numPrims,1024),1024,0,s>>>
         (tempNodes,bvh.primIDs,sortedPrimStates,numPrims);
-#if CUBQL_PROFILE
-      t_writePrims.sync_stop();
-      t_writeNodes.sync_start();
-#endif
 
       // ==================================================================
       // allocate and write final nodes
@@ -551,9 +519,6 @@ namespace cuBQL {
       _ALLOC(bvh.nodes,numNodes,s,memResource);
       writeNodes<<<divRoundUp(numNodes,1024),1024,0,s>>>
         (bvh.nodes,tempNodes,numNodes);
-#if CUBQL_PROFILE
-      t_writeNodes.sync_stop();
-#endif
       _FREE(sortedPrimStates,s,memResource);
       _FREE(tempNodes,s,memResource);
       _FREE(nodeStates,s,memResource);

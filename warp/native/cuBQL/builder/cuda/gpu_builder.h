@@ -9,7 +9,6 @@
 #include "cuBQL/builder/cuda/elh_builder.h"
 
 namespace cuBQL {
-
   template<typename T, int D>
   struct is3f { enum { value = false }; };
   template<>
@@ -69,7 +68,6 @@ namespace cuBQL {
       bvh.primIDs = 0;
     }
   }
-}
-
-
+  
+} // ::cuBQL
 

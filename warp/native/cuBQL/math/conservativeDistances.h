@@ -62,7 +62,7 @@ namespace cuBQL {
   inline __cubql_both float fSqrLength_rd(vec_t<T,D> v)
   {
     float sum = 0.f;
-#pragma unroll
+// #pragma unroll
     for (int i=0;i<D;i++)
       sum += fSquare_rd(v[i]);
     return sum;
