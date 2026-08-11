@@ -9,8 +9,8 @@ Recommended for publication based on the completed evaluation evidence in this r
 ## Evaluation Metadata
 
 - Skill: `warp-eval`
-- Evaluation date: 2026-08-04
-- Evaluator version: `0.9.2`
+- Evaluation date: 2026-08-11
+- Evaluator version: `1.2.0`
 - Agents: Claude Code (`aws/anthropic/bedrock-claude-opus-4-8`), Codex (`openai/openai/gpt-5.5`)
 - Tasks: 22 evaluation tasks (14 positive, 8 negative)
 - Dataset digest: `sha256:3cef7eea3a63f09e3fd21bc5026ce689b012891fadbaed79881c8766b7e5640c` (skill-evaluator-dataset-snapshot/1)
@@ -34,12 +34,12 @@ The three-tier evaluation checks whether the skill:
 
 | Measure | Claude Code (Baseline → Skill Uplift) | Codex (Baseline → Skill Uplift) |
 |---|---:|---:|
-| Overall | 76% → 93% (+17 points) | 71% → 96% (+25 points) |
-| Security | 100% → 100% (±0 points) | 100% → 100% (±0 points) |
-| Correctness | 86% → 93% (+6 points) | 74% → 100% (+26 points) |
-| Discoverability | 67% → 100% (+33 points) | 62% → 91% (+29 points) |
-| Effectiveness | 64% → 81% (+17 points) | 59% → 92% (+33 points) |
-| Efficiency | 64% → 94% (+29 points) | 61% → 97% (+36 points) |
+| Overall | 75% → 96% (+21 points) | 69% → 94% (+25 points) |
+| Security | 100% → 100% (±0 points) | 91% → 100% (+9 points) |
+| Correctness | 82% → 96% (+15 points) | 74% → 94% (+20 points) |
+| Discoverability | 68% → 100% (+32 points) | 61% → 91% (+31 points) |
+| Effectiveness | 60% → 86% (+25 points) | 58% → 86% (+28 points) |
+| Efficiency | 64% → 96% (+32 points) | 62% → 98% (+36 points) |
 
 **How to read this table:** baseline is the same task attempted without the target skill. Uplift is `skill score - baseline score`, shown in percentage points.
 
@@ -59,7 +59,7 @@ Example: `47% → 92% (+45 points)` means the skill-assisted run scored 92%, 45 
 <summary>Show detailed findings and successful checks</summary>
 
 - Schema & Repository Governance: Found skill manifest: SKILL.md
-- AGENT_EVAL: Tier 3 evaluation complete: verdict PASS; best agent codex
+- AGENT_EVAL: Tier 3 evaluation complete: verdict PASS; best agent claude-code
 
 </details>
 
