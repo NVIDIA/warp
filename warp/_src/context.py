@@ -2475,12 +2475,48 @@ def _get_cpu_feature_set() -> frozenset[str]:
     return _cpu_feature_set_cache
 
 
-def _get_cpu_isa_hash() -> str:
-    """Return a short hash of the CPU ISA features, or empty string if none detected."""
-    features = ",".join(sorted(_get_cpu_feature_set()))
-    if not features:
+# Cached CPU toolchain version — computed once after the native library is loaded.
+_cpu_toolchain_version_cache: str | None = None
+
+
+def _get_cpu_toolchain_version() -> str:
+    """Return the LLVM version used by the CPU compiler, or an empty string if unavailable.
+
+    The version is cached only after the LLVM native library is available,
+    allowing a successful retry after initialization.
+    """
+    global _cpu_toolchain_version_cache
+    if _cpu_toolchain_version_cache is not None:
+        return _cpu_toolchain_version_cache
+
+    if runtime is None or runtime.llvm is None:
         return ""
-    return hashlib.sha256(features.encode()).hexdigest()[:8]
+
+    _cpu_toolchain_version_cache = runtime.get_llvm_version()
+    return _cpu_toolchain_version_cache
+
+
+def _get_cpu_target_hash(resolved_flags: str) -> str:
+    """Return a short hash identifying the CPU compilation target.
+
+    Args:
+        resolved_flags: Resolved CPU compiler flags for the module.
+
+    Returns:
+        An eight-character hash of the LLVM version and, for
+        ``-march=native``, host ISA features. Returns an empty string when
+        the LLVM native library is unavailable.
+    """
+    llvm_version = _get_cpu_toolchain_version()
+    if not llvm_version:
+        return ""
+
+    identity = ["warp-cpu-target-v1", f"llvm:{llvm_version}"]
+    if _uses_march_native(resolved_flags):
+        features = ",".join(sorted(_get_cpu_feature_set()))
+        identity.append(f"isa:{features}")
+
+    return hashlib.sha256("\n".join(identity).encode()).hexdigest()[:8]
 
 
 def _get_host_cpu_name() -> str:
@@ -3787,11 +3823,11 @@ class Module:
         ``wp___main___0340cd1.sm90a.cubin`` when an arch suffix is active.
         It should be used to form a path.
 
-        For CPU targets compiled with ``-march=native``, a short hash of
-        the host CPU's ISA features is included in the filename (e.g.
-        ``wp___main___0340cd1.cpu1a2b3c4d.o``), ensuring different CPUs
-        produce distinct ``.o`` filenames without affecting the shared
-        module directory (and thus CUDA caches).
+        For CPU targets, a short hash of the LLVM version is included in the
+        filename. When compiling with ``-march=native``, the hash also includes
+        the host CPU's ISA features (e.g. ``wp___main___0340cd1.cpu1a2b3c4d.o``).
+        This distinguishes incompatible CPU objects without affecting the shared
+        module directory and its CUDA caches.
         """
         module_name_short = self.get_module_identifier(block_dim=block_dim)
 
@@ -3799,10 +3835,9 @@ class Module:
             resolved_flags = _resolve_cpu_compiler_flags(
                 self.options["cpu_compiler_flags"], warp.config.cpu_compiler_flags
             )
-            if _uses_march_native(resolved_flags):
-                cpu_isa_hash = _get_cpu_isa_hash()
-                if cpu_isa_hash:
-                    return f"{module_name_short}.cpu{cpu_isa_hash}.o"
+            cpu_target_hash = _get_cpu_target_hash(resolved_flags)
+            if cpu_target_hash:
+                return f"{module_name_short}.cpu{cpu_target_hash}.o"
             return f"{module_name_short}.o"
 
         # For CUDA compilation, we must have an architecture.

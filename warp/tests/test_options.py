@@ -12,7 +12,7 @@ import unittest
 from unittest.mock import patch
 
 import warp as wp
-from warp._src.context import _get_caller_module_name, _get_cpu_isa_hash
+from warp._src.context import _get_caller_module_name
 from warp.tests.unittest_utils import *
 
 
@@ -228,25 +228,37 @@ class TestOptions(unittest.TestCase):
         main_module = wp.get_module("__main__")
         self.assertFalse(main_module.options["enable_backward"])
 
-    def test_cpu_isa_output_name_differentiation(self):
-        """CPU output filename must include ISA hash when using -march=native."""
+    def test_cpu_target_output_name_differentiation(self):
+        """CPU output filenames must distinguish LLVM and native ISA targets."""
         module = wp.get_module(__name__)
         device = wp.get_device("cpu")
 
         old_flags = module.options["cpu_compiler_flags"]
         try:
-            module.options["cpu_compiler_flags"] = "-march=native"
-            name_native = module._get_compile_output_name(device)
+            with (
+                patch("warp._src.context._get_cpu_feature_set", return_value=frozenset({"sse2"})),
+                patch("warp._src.context._get_cpu_toolchain_version", return_value="22.1.8"),
+            ):
+                module.options["cpu_compiler_flags"] = ""
+                name_llvm_22_1_8_portable = module._get_compile_output_name(device)
 
-            module.options["cpu_compiler_flags"] = ""
-            name_generic = module._get_compile_output_name(device)
+                module.options["cpu_compiler_flags"] = "-march=native"
+                name_llvm_22_1_8_native = module._get_compile_output_name(device)
 
-            if _get_cpu_isa_hash():
-                # On platforms where features are detected, filenames must differ
-                self.assertNotEqual(name_native, name_generic)
-                self.assertIn(".cpu", name_native)
-            # Generic build never has the ISA suffix
-            self.assertNotIn(".cpu", name_generic)
+            with patch("warp._src.context._get_cpu_toolchain_version", return_value="22.1.9"):
+                module.options["cpu_compiler_flags"] = ""
+                name_llvm_22_1_9_portable = module._get_compile_output_name(device)
+
+            self.assertNotEqual(name_llvm_22_1_8_portable, name_llvm_22_1_8_native)
+            self.assertNotEqual(name_llvm_22_1_8_portable, name_llvm_22_1_9_portable)
+
+            for output_name in (
+                name_llvm_22_1_8_portable,
+                name_llvm_22_1_8_native,
+                name_llvm_22_1_9_portable,
+            ):
+                self.assertEqual(output_name.count(".cpu"), 1)
+                self.assertRegex(output_name, r"\.cpu[0-9a-f]{8}\.o$")
         finally:
             module.options["cpu_compiler_flags"] = old_flags
 
