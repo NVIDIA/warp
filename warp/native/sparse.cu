@@ -1131,7 +1131,7 @@ __global__ void bsr_compress_inplace_rows_indexed_kernel(
 }
 
 __global__ void bsr_compress_inplace_compact_counts_kernel(
-    const int row_count, const int* bsr_offsets, int* row_counts, int* bsr_columns
+    const int row_count, const int nnz_upper_bound, const int* bsr_offsets, int* row_counts, int* bsr_columns
 )
 {
     const int row = blockIdx.x;
@@ -1149,6 +1149,13 @@ __global__ void bsr_compress_inplace_compact_counts_kernel(
     const int row_capacity_end = bsr_offsets[row + 1];
 
     for (int block = row_end + tid; block < row_capacity_end; block += blockDim.x) {
+        bsr_columns[block] = -1;
+    }
+
+    const int64_t tail_beg = bsr_offsets[row_count];
+    const int64_t global_tid = int64_t(row) * blockDim.x + tid;
+    const int64_t global_stride = int64_t(gridDim.x) * blockDim.x;
+    for (int64_t block = tail_beg + global_tid; block < nnz_upper_bound; block += global_stride) {
         bsr_columns[block] = -1;
     }
 }
@@ -1573,7 +1580,7 @@ void wp_bsr_compress_inplace_device_impl(
     constexpr int threads = 128;
     begin_cuda_range(WP_TIMING_KERNEL_BUILTIN, stream, context, "bsr_compress_inplace_compact_counts_kernel");
     bsr_compress_inplace_compact_counts_kernel<<<row_count, threads, 0, stream>>>(
-        row_count, bsr_offsets, row_counts, bsr_columns
+        row_count, nnz_upper_bound, bsr_offsets, row_counts, bsr_columns
     );
 #if _DEBUG
     check_cuda(wp_cuda_context_check(WP_CURRENT_CONTEXT));
