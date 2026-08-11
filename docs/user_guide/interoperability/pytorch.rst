@@ -221,11 +221,65 @@ may be launched in the usual way. In the backward pass, the same kernel's adjoin
 setting ``adjoint = True`` in :func:`wp.launch() <warp.launch>`. Alternatively, the user may choose to rely on Warp's tape.
 In the following example, we demonstrate how Warp may be used to evaluate the Rosenbrock function in an optimization context.
 
+.. caution::
+
+   When writing the backward function, remember that :func:`wp.from_torch() <warp.from_torch>` and
+   :func:`wp.to_torch() <warp.to_torch>` are zero-copy conversions. Treat incoming PyTorch ``grad_output`` tensors as
+   externally owned buffers, because PyTorch may reuse the same tensor across backward calls. Do not assign a
+   ``wp.from_torch(grad_output)`` array directly to an output array's ``.grad`` attribute.
+
+The table below summarizes the ownership rules for common gradient-buffer patterns:
+
+.. list-table:: Gradient Buffer Ownership
+   :header-rows: 1
+   :widths: 31 27 17 25
+
+   * - Pattern
+     - Buffer used by Warp
+     - Safe to reuse or retain?
+     - Guidance
+   * - ``output.grad = wp.from_torch(grad_output)``
+     - The external PyTorch buffer
+     - No
+     - Avoid. Warp may consume or zero storage that PyTorch expects to reuse.
+   * - ``tape.backward(grads={output: external_grad})`` when ``output.grad is None``
+     - ``external_grad`` itself; Tape adopts it as ``output.grad``
+     - No
+     - Allocate an independent gradient buffer for ``output`` first.
+   * - ``tape.backward(grads={output: external_grad})`` when ``output`` already owns ``.grad``
+     - The owned Warp buffer; ``external_grad`` is copied into it
+     - Yes
+     - Recommended for external PyTorch gradients.
+   * - ``wp.to_torch(input.grad)``
+     - A zero-copy view of the Warp gradient buffer
+     - Only until that buffer is modified
+     - Call ``.clone()`` before ``tape.zero()`` if PyTorch must retain the gradient.
+
+For a manual adjoint launch, pass the incoming gradient as an explicit ``adj_outputs`` buffer, as shown below. When using
+:class:`warp.Tape`, pass it through :meth:`Tape.backward() <warp.Tape.backward>` using ``grads={...}`` and ensure that
+the output Warp array already owns an independent gradient buffer. If the backward pass depends on a PyTorch input's
+forward value, save the original tensor with ``ctx.save_for_backward()`` even if Warp wraps a detached view. Accessing
+``ctx.saved_tensors`` in ``backward()`` lets PyTorch detect in-place mutations before Warp reads the shared storage. On
+CUDA, run Warp work on the active PyTorch stream using :func:`wp.stream_from_torch() <warp.stream_from_torch>` and
+:class:`wp.ScopedStream <warp.ScopedStream>` so operations on shared zero-copy buffers remain ordered.
+
+Because these conversions are zero-copy, pass PyTorch tensors directly when their layout is compatible with the
+Warp kernel. Scalar Warp arrays preserve PyTorch strides, so a non-contiguous tensor can often be wrapped without
+copying. Use ``tensor.contiguous()`` deliberately only when a Warp dtype or kernel requires that layout, such as
+when wrapping vector or matrix dtypes whose trailing component dimensions must be contiguous, or when choosing a
+contiguous copy for performance.
+
 .. code:: python
 
     import warp as wp
     import numpy as np
     import torch
+
+    def active_torch_stream(tensor):
+        if tensor.is_cuda:
+            return wp.ScopedStream(wp.stream_from_torch(tensor.device))
+
+        return wp.ScopedStream(None)
 
     # Define the Rosenbrock function
     @wp.func
@@ -246,38 +300,53 @@ In the following example, we demonstrate how Warp may be used to evaluate the Ro
     class Rosenbrock(torch.autograd.Function):
         @staticmethod
         def forward(ctx, xy, num_points):
-            ctx.xy = wp.from_torch(xy, dtype=wp.vec2, requires_grad=True)
+            # Save the PyTorch input so autograd can detect in-place mutations before
+            # backward. Warp wraps a detached view because gradients are returned manually.
+            ctx.save_for_backward(xy)
             ctx.num_points = num_points
 
-            # allocate output
-            ctx.z = wp.zeros(num_points, requires_grad=True)
+            with active_torch_stream(xy):
+                ctx.xy = wp.from_torch(xy.detach(), dtype=wp.vec2, requires_grad=False)
 
-            wp.launch(
-                kernel=eval_rosenbrock,
-                dim=ctx.num_points,
-                inputs=[ctx.xy],
-                outputs=[ctx.z]
-            )
+                # allocate output
+                ctx.z = wp.zeros(num_points, dtype=wp.float32, device=ctx.xy.device, requires_grad=False)
+
+                wp.launch(
+                    kernel=eval_rosenbrock,
+                    dim=ctx.num_points,
+                    inputs=[ctx.xy],
+                    outputs=[ctx.z],
+                    device=ctx.xy.device
+                )
 
             return wp.to_torch(ctx.z)
 
         @staticmethod
         def backward(ctx, adj_z):
-            # map incoming Torch grads to our output variables
-            ctx.z.grad = wp.from_torch(adj_z)
+            # Accessing saved_tensors performs PyTorch's version check for the input.
+            (xy,) = ctx.saved_tensors
 
-            wp.launch(
-                kernel=eval_rosenbrock,
-                dim=ctx.num_points,
-                inputs=[ctx.xy],
-                outputs=[ctx.z],
-                adj_inputs=[ctx.xy.grad],
-                adj_outputs=[ctx.z.grad],
-                adjoint=True
-            )
+            # Allocate the input adjoint that this backward call will return
+            # to PyTorch. Keep adj_z as an external adjoint buffer.
+            adj_xy = torch.zeros_like(xy)
+
+            with active_torch_stream(adj_z):
+                wp_adj_xy = wp.from_torch(adj_xy, dtype=wp.vec2, requires_grad=False)
+                wp_adj_z = wp.from_torch(adj_z, requires_grad=False)
+
+                wp.launch(
+                    kernel=eval_rosenbrock,
+                    dim=ctx.num_points,
+                    inputs=[ctx.xy],
+                    outputs=[ctx.z],
+                    adj_inputs=[wp_adj_xy],
+                    adj_outputs=[wp_adj_z],
+                    device=ctx.xy.device,
+                    adjoint=True
+                )
 
             # return adjoint w.r.t. inputs
-            return (wp.to_torch(ctx.xy.grad), None)
+            return (adj_xy, None)
 
 
     num_points = 1500
@@ -300,6 +369,10 @@ In the following example, we demonstrate how Warp may be used to evaluate the Ro
     # minimum at (1, 1)
     xy_np = xy.numpy(force=True)
     print(np.mean(xy_np, axis=0))
+
+If replacing the manual adjoint launch with :class:`warp.Tape`, keep the same ownership model: treat the PyTorch
+``grad_output`` tensor as external storage and pre-allocate independent Warp adjoint buffers for arrays whose gradients
+must survive after ``Tape.backward()``.
 
 Note that if Warp code is wrapped in a :class:`torch.autograd.Function` that gets called in :func:`torch.compile()`, it will automatically
 exclude that function from compiler optimizations. If your script uses :func:`torch.compile()`,
@@ -341,10 +414,10 @@ PyTorch autograd functions. These treat arbitrary Python functions (including Wa
 
     @torch.library.custom_op("wp::warp_rosenbrock", mutates_args=())
     def warp_rosenbrock(xy: torch.Tensor, num_points: int) -> torch.Tensor:
-        wp_xy = wp.from_torch(xy, dtype=wp.vec2)
-        wp_z = wp.zeros(num_points, dtype=wp.float32)
+        wp_xy = wp.from_torch(xy, dtype=wp.vec2, requires_grad=False)
+        wp_z = wp.zeros(num_points, dtype=wp.float32, device=wp_xy.device, requires_grad=False)
 
-        wp.launch(kernel=eval_rosenbrock, dim=num_points, inputs=[wp_xy], outputs=[wp_z])
+        wp.launch(kernel=eval_rosenbrock, dim=num_points, inputs=[wp_xy], outputs=[wp_z], device=wp_xy.device)
 
         return wp.to_torch(wp_z)
 
@@ -358,8 +431,11 @@ PyTorch autograd functions. These treat arbitrary Python functions (including Wa
     def warp_rosenbrock_backward(
         xy: torch.Tensor, num_points: int, z: torch.Tensor, adj_z: torch.Tensor
     ) -> torch.Tensor:
-        wp_xy = wp.from_torch(xy, dtype=wp.vec2)
+        wp_xy = wp.from_torch(xy, dtype=wp.vec2, requires_grad=False)
         wp_z = wp.from_torch(z, requires_grad=False)
+        adj_xy = torch.zeros_like(xy)
+
+        wp_adj_xy = wp.from_torch(adj_xy, dtype=wp.vec2, requires_grad=False)
         wp_adj_z = wp.from_torch(adj_z, requires_grad=False)
 
         wp.launch(
@@ -367,12 +443,13 @@ PyTorch autograd functions. These treat arbitrary Python functions (including Wa
             dim=num_points,
             inputs=[wp_xy],
             outputs=[wp_z],
-            adj_inputs=[wp_xy.grad],
+            adj_inputs=[wp_adj_xy],
             adj_outputs=[wp_adj_z],
+            device=wp_xy.device,
             adjoint=True,
         )
 
-        return wp.to_torch(wp_xy.grad)
+        return adj_xy
 
 
     @warp_rosenbrock_backward.register_fake
@@ -381,8 +458,7 @@ PyTorch autograd functions. These treat arbitrary Python functions (including Wa
 
 
     def backward(ctx, adj_z):
-        ctx.xy.grad = warp_rosenbrock_backward(ctx.xy, ctx.num_points, ctx.z, adj_z)
-        return ctx.xy.grad, None
+        return warp_rosenbrock_backward(ctx.xy, ctx.num_points, ctx.z, adj_z), None
 
 
     def setup_context(ctx, inputs, output):
@@ -603,7 +679,7 @@ Here's an example that demonstrates the problem:
                 dim=(N),
                 device=device,
                 inputs=[
-                    wp.from_torch(grad_output.contiguous()),
+                    wp.from_torch(grad_output, requires_grad=False),
                     wp.from_torch(a),
                     wp.from_torch(b),
                     wp.from_torch(grad_a),
@@ -688,7 +764,7 @@ auto-allocating gradients:
             dim=(N),
             device=device,
             inputs=[
-                wp.from_torch(grad_output.contiguous(), requires_grad=False),
+                wp.from_torch(grad_output, requires_grad=False),
                 wp.from_torch(a, requires_grad=False),
                 wp.from_torch(b, requires_grad=False),
                 wp.from_torch(grad_a, requires_grad=False),
@@ -702,7 +778,7 @@ Warp to track gradients automatically.
 
 **Solution B: Detach Tensors from the PyTorch Graph**
 
-When managing gradients outside PyTorch's autograd graph, detaching tensors is a clean approach:
+When managing gradients outside PyTorch's autograd graph, detaching tensors before wrapping them is a clean approach:
 
 .. code:: python
 
@@ -720,9 +796,9 @@ When managing gradients outside PyTorch's autograd graph, detaching tensors is a
             dim=(N),
             device=device,
             inputs=[
-                ctx.a,  # ✓ Detached, no requires_grad
-                ctx.b,  # ✓ Detached, no requires_grad
-                output,
+                wp.from_torch(ctx.a),      # ✓ Detached, no requires_grad
+                wp.from_torch(ctx.b),      # ✓ Detached, no requires_grad
+                wp.from_torch(output, requires_grad=False),
             ],
         )
         return output
@@ -738,11 +814,11 @@ When managing gradients outside PyTorch's autograd graph, detaching tensors is a
             dim=(N),
             device=device,
             inputs=[
-                grad_output.detach(),
-                ctx.a,  # ✓ Already detached
-                ctx.b,  # ✓ Already detached
-                grad_a,
-                grad_b,
+                wp.from_torch(grad_output.detach(), requires_grad=False),
+                wp.from_torch(ctx.a),      # ✓ Already detached
+                wp.from_torch(ctx.b),      # ✓ Already detached
+                wp.from_torch(grad_a, requires_grad=False),
+                wp.from_torch(grad_b, requires_grad=False),
             ],
         )
         return grad_a, grad_b
@@ -795,7 +871,7 @@ This approach works for both analytic gradient kernels and when using the Warp t
             dim=(N),
             device=device,
             inputs=[
-                wp.from_torch(grad_output.contiguous()),
+                wp.from_torch(grad_output, requires_grad=False),
                 wp.from_torch(a),
                 wp.from_torch(b),
                 wp.from_torch(a.grad),  # ✓ Allocated by PyTorch
@@ -810,65 +886,86 @@ This approach works for both analytic gradient kernels and when using the Warp t
 
     @staticmethod
     def forward(ctx, a, b):
+        ctx.save_for_backward(a, b)
+
         device = wp.device_from_torch(a.device)
         output = torch.zeros(N, device=a.device)
 
-        # Pre-allocate gradients using PyTorch's allocator
-        if a.grad is None:
-            a.grad = torch.empty_like(a)
-        if b.grad is None:
-            b.grad = torch.empty_like(b)
+        # Pre-allocate zero-filled gradient buffers using PyTorch's allocator
+        ctx.grad_a = torch.zeros_like(a)
+        ctx.grad_b = torch.zeros_like(b)
+        ctx.grad_output = torch.zeros_like(output)
 
-        wp_output = wp.from_torch(output)
+        warp_stream = wp.stream_from_torch(a.device) if a.is_cuda else None
+        with wp.ScopedStream(warp_stream):
+            wp_a = wp.from_torch(a, grad=ctx.grad_a)
+            wp_b = wp.from_torch(b, grad=ctx.grad_b)
+            wp_output = wp.from_torch(output, requires_grad=True, grad=ctx.grad_output)
 
-        with wp.Tape() as tape:
-            wp.launch(
-                kernel=forward_kernel,
-                dim=(N),
-                device=device,
-                inputs=[
-                    wp.from_torch(a),
-                    wp.from_torch(b),
-                    wp_output,
-                ],
-            )
+            with wp.Tape() as tape:
+                wp.launch(
+                    kernel=forward_kernel,
+                    dim=(N),
+                    device=device,
+                    inputs=[
+                        wp_a,
+                        wp_b,
+                        wp_output,
+                    ],
+                )
 
         ctx.tape = tape
         ctx.wp_output = wp_output
-        ctx.a = a
-        ctx.b = b
 
         return output
 
     @staticmethod
     def backward(ctx, grad_output):
-        ctx.tape.backward(grads={ctx.wp_output: wp.from_torch(grad_output.contiguous())})
+        # Access saved_tensors so PyTorch checks that the inputs were not
+        # modified in-place between forward and backward.
+        _ = ctx.saved_tensors
 
-        # Grab gradients before clearing references
-        grad_a = ctx.a.grad
-        grad_b = ctx.b.grad
+        ctx.grad_a.zero_()
+        ctx.grad_b.zero_()
+        ctx.grad_output.zero_()
 
-        # Clear context to break reference cycles and free memory
-        ctx.tape = None
-        ctx.wp_output = None
+        warp_stream = wp.stream_from_torch(grad_output.device) if grad_output.is_cuda else None
+        with wp.ScopedStream(warp_stream):
+            ctx.tape.backward(
+                grads={
+                    ctx.wp_output: wp.from_torch(grad_output, requires_grad=False),
+                }
+            )
+
+            # Clone gradients before zeroing the tape, since these tensors are
+            # zero-copy views of Warp/PyTorch gradient buffers.
+            grad_a = ctx.grad_a.clone()
+            grad_b = ctx.grad_b.clone()
+            ctx.tape.zero()
 
         return grad_a, grad_b
 
-This approach ensures gradients are allocated using PyTorch's caching allocator, which properly tracks
-memory and stream dependencies. Pre-allocation can also be done earlier in the pipeline:
+This approach ensures adjoint buffers are allocated using PyTorch's caching allocator, which properly tracks memory
+and stream dependencies. The input adjoints use dedicated zero-filled PyTorch tensors, separate from the input tensors'
+``.grad`` fields. The output Warp array also receives its own gradient buffer through ``grad=ctx.grad_output`` so the
+output adjoint passed through ``grads={...}`` is copied into owned storage instead of becoming the output array's
+``.grad`` storage. A larger wrapper can cache and reuse these dedicated adjoint buffers, but it should still zero them
+before each backward pass and pass them explicitly to ``wp.from_torch(..., grad=...)``:
 
 .. code:: python
 
-    # At tensor creation time
-    a_torch = a.clone().detach().requires_grad_(True)
-    b_torch = b.clone().detach().requires_grad_(True)
+    # Allocate once, then reuse from the wrapper that calls wp.from_torch()
+    grad_a_buffer = torch.zeros_like(a_torch)
+    grad_b_buffer = torch.zeros_like(b_torch)
+    grad_output_buffer = torch.zeros_like(output_torch)
 
-    # Pre-allocate gradients immediately
-    a_torch.grad = torch.empty_like(a_torch)
-    b_torch.grad = torch.empty_like(b_torch)
-
-    # Now safe to use in WarpFunction
-    output = WarpFunction.apply(a_torch, b_torch)
+    # Before each backward pass
+    grad_a_buffer.zero_()
+    grad_b_buffer.zero_()
+    grad_output_buffer.zero_()
+    wp_a = wp.from_torch(a_torch, grad=grad_a_buffer)
+    wp_b = wp.from_torch(b_torch, grad=grad_b_buffer)
+    wp_output = wp.from_torch(output_torch, requires_grad=True, grad=grad_output_buffer)
 
 
 Performance Comparison

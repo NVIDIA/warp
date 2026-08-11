@@ -73,6 +73,13 @@ class Tape:
         A single-element array ``loss`` or a dictionary of arrays ``grads``
         can be provided to assign the incoming gradients for the reverse-mode
         automatic differentiation pass.
+        If a ``grads`` entry targets an array with no ``.grad`` buffer, the
+        incoming gradient array is assigned directly as that array's ``.grad``.
+        If the target array already has a ``.grad`` buffer, the incoming
+        gradient is copied into that existing buffer. When passing externally
+        owned buffers, such as PyTorch ``grad_output`` tensors, allocate or
+        attach an independent output gradient buffer first if Warp should not
+        retain the external buffer.
 
         Args:
             loss: A single-element array that holds the loss function value whose gradient is to be computed
