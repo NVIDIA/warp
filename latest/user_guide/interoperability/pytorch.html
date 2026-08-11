@@ -710,9 +710,74 @@ requires forward and backward functions to be defined. After mapping incoming Py
 may be launched in the usual way. In the backward pass, the same kernel’s adjoint may be launched by
 setting <code class="docutils literal notranslate"><span class="pre">adjoint</span> <span class="pre">=</span> <span class="pre">True</span></code> in <a class="reference internal" href="../../api_reference/_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch()</span></code></a>. Alternatively, the user may choose to rely on Warp’s tape.
 In the following example, we demonstrate how Warp may be used to evaluate the Rosenbrock function in an optimization context.</p>
+<div class="admonition caution">
+<p class="admonition-title">Caution</p>
+<p>When writing the backward function, remember that <a class="reference internal" href="../../api_reference/_generated/warp.from_torch.html#warp.from_torch" title="warp.from_torch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.from_torch()</span></code></a> and
+<a class="reference internal" href="../../api_reference/_generated/warp.to_torch.html#warp.to_torch" title="warp.to_torch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.to_torch()</span></code></a> are zero-copy conversions. Treat incoming PyTorch <code class="docutils literal notranslate"><span class="pre">grad_output</span></code> tensors as
+externally owned buffers, because PyTorch may reuse the same tensor across backward calls. Do not assign a
+<code class="docutils literal notranslate"><span class="pre">wp.from_torch(grad_output)</span></code> array directly to an output array’s <code class="docutils literal notranslate"><span class="pre">.grad</span></code> attribute.</p>
+</div>
+<p>The table below summarizes the ownership rules for common gradient-buffer patterns:</p>
+<div class="pst-scrollable-table-container"><table class="table" id="id1">
+<caption><span class="caption-text">Gradient Buffer Ownership</span><a class="headerlink" href="#id1" title="Link to this table">#</a></caption>
+<colgroup>
+<col style="width: 31.0%" />
+<col style="width: 27.0%" />
+<col style="width: 17.0%" />
+<col style="width: 25.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Pattern</p></th>
+<th class="head"><p>Buffer used by Warp</p></th>
+<th class="head"><p>Safe to reuse or retain?</p></th>
+<th class="head"><p>Guidance</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">output.grad</span> <span class="pre">=</span> <span class="pre">wp.from_torch(grad_output)</span></code></p></td>
+<td><p>The external PyTorch buffer</p></td>
+<td><p>No</p></td>
+<td><p>Avoid. Warp may consume or zero storage that PyTorch expects to reuse.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">tape.backward(grads={output:</span> <span class="pre">external_grad})</span></code> when <code class="docutils literal notranslate"><span class="pre">output.grad</span> <span class="pre">is</span> <span class="pre">None</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">external_grad</span></code> itself; Tape adopts it as <code class="docutils literal notranslate"><span class="pre">output.grad</span></code></p></td>
+<td><p>No</p></td>
+<td><p>Allocate an independent gradient buffer for <code class="docutils literal notranslate"><span class="pre">output</span></code> first.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">tape.backward(grads={output:</span> <span class="pre">external_grad})</span></code> when <code class="docutils literal notranslate"><span class="pre">output</span></code> already owns <code class="docutils literal notranslate"><span class="pre">.grad</span></code></p></td>
+<td><p>The owned Warp buffer; <code class="docutils literal notranslate"><span class="pre">external_grad</span></code> is copied into it</p></td>
+<td><p>Yes</p></td>
+<td><p>Recommended for external PyTorch gradients.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">wp.to_torch(input.grad)</span></code></p></td>
+<td><p>A zero-copy view of the Warp gradient buffer</p></td>
+<td><p>Only until that buffer is modified</p></td>
+<td><p>Call <code class="docutils literal notranslate"><span class="pre">.clone()</span></code> before <code class="docutils literal notranslate"><span class="pre">tape.zero()</span></code> if PyTorch must retain the gradient.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>For a manual adjoint launch, pass the incoming gradient as an explicit <code class="docutils literal notranslate"><span class="pre">adj_outputs</span></code> buffer, as shown below. When using
+<a class="reference internal" href="../../api_reference/_generated/warp.Tape.html#warp.Tape" title="warp.Tape"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Tape</span></code></a>, pass it through <a class="reference internal" href="../../api_reference/_generated/warp.Tape.html#warp.Tape.backward" title="warp.Tape.backward"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Tape.backward()</span></code></a> using <code class="docutils literal notranslate"><span class="pre">grads={...}</span></code> and ensure that
+the output Warp array already owns an independent gradient buffer. If the backward pass depends on a PyTorch input’s
+forward value, save the original tensor with <code class="docutils literal notranslate"><span class="pre">ctx.save_for_backward()</span></code> even if Warp wraps a detached view. Accessing
+<code class="docutils literal notranslate"><span class="pre">ctx.saved_tensors</span></code> in <code class="docutils literal notranslate"><span class="pre">backward()</span></code> lets PyTorch detect in-place mutations before Warp reads the shared storage. On
+CUDA, run Warp work on the active PyTorch stream using <a class="reference internal" href="../../api_reference/_generated/warp.stream_from_torch.html#warp.stream_from_torch" title="warp.stream_from_torch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.stream_from_torch()</span></code></a> and
+<a class="reference internal" href="../../api_reference/_generated/warp.ScopedStream.html#warp.ScopedStream" title="warp.ScopedStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></a> so operations on shared zero-copy buffers remain ordered.</p>
+<p>Because these conversions are zero-copy, pass PyTorch tensors directly when their layout is compatible with the
+Warp kernel. Scalar Warp arrays preserve PyTorch strides, so a non-contiguous tensor can often be wrapped without
+copying. Use <code class="docutils literal notranslate"><span class="pre">tensor.contiguous()</span></code> deliberately only when a Warp dtype or kernel requires that layout, such as
+when wrapping vector or matrix dtypes whose trailing component dimensions must be contiguous, or when choosing a
+contiguous copy for performance.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">active_torch_stream</span><span class="p">(</span><span class="n">tensor</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">tensor</span><span class="o">.</span><span class="n">is_cuda</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedStream</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">stream_from_torch</span><span class="p">(</span><span class="n">tensor</span><span class="o">.</span><span class="n">device</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedStream</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
 
 <span class="c1"># Define the Rosenbrock function</span>
 <span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
@@ -733,38 +798,53 @@ In the following example, we demonstrate how Warp may be used to evaluate the Ro
 <span class="k">class</span><span class="w"> </span><span class="nc">Rosenbrock</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">autograd</span><span class="o">.</span><span class="n">Function</span><span class="p">):</span>
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">xy</span><span class="p">,</span> <span class="n">num_points</span><span class="p">):</span>
-        <span class="n">ctx</span><span class="o">.</span><span class="n">xy</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">xy</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec2</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="c1"># Save the PyTorch input so autograd can detect in-place mutations before</span>
+        <span class="c1"># backward. Warp wraps a detached view because gradients are returned manually.</span>
+        <span class="n">ctx</span><span class="o">.</span><span class="n">save_for_backward</span><span class="p">(</span><span class="n">xy</span><span class="p">)</span>
         <span class="n">ctx</span><span class="o">.</span><span class="n">num_points</span> <span class="o">=</span> <span class="n">num_points</span>
 
-        <span class="c1"># allocate output</span>
-        <span class="n">ctx</span><span class="o">.</span><span class="n">z</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">num_points</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">active_torch_stream</span><span class="p">(</span><span class="n">xy</span><span class="p">):</span>
+            <span class="n">ctx</span><span class="o">.</span><span class="n">xy</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">xy</span><span class="o">.</span><span class="n">detach</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec2</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
-        <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span>
-            <span class="n">kernel</span><span class="o">=</span><span class="n">eval_rosenbrock</span><span class="p">,</span>
-            <span class="n">dim</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">num_points</span><span class="p">,</span>
-            <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">xy</span><span class="p">],</span>
-            <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">z</span><span class="p">]</span>
-        <span class="p">)</span>
+            <span class="c1"># allocate output</span>
+            <span class="n">ctx</span><span class="o">.</span><span class="n">z</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">num_points</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">xy</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+            <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span>
+                <span class="n">kernel</span><span class="o">=</span><span class="n">eval_rosenbrock</span><span class="p">,</span>
+                <span class="n">dim</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">num_points</span><span class="p">,</span>
+                <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">xy</span><span class="p">],</span>
+                <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">z</span><span class="p">],</span>
+                <span class="n">device</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">xy</span><span class="o">.</span><span class="n">device</span>
+            <span class="p">)</span>
 
         <span class="k">return</span> <span class="n">wp</span><span class="o">.</span><span class="n">to_torch</span><span class="p">(</span><span class="n">ctx</span><span class="o">.</span><span class="n">z</span><span class="p">)</span>
 
     <span class="nd">@staticmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">backward</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">adj_z</span><span class="p">):</span>
-        <span class="c1"># map incoming Torch grads to our output variables</span>
-        <span class="n">ctx</span><span class="o">.</span><span class="n">z</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">adj_z</span><span class="p">)</span>
+        <span class="c1"># Accessing saved_tensors performs PyTorch&#39;s version check for the input.</span>
+        <span class="p">(</span><span class="n">xy</span><span class="p">,)</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">saved_tensors</span>
 
-        <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span>
-            <span class="n">kernel</span><span class="o">=</span><span class="n">eval_rosenbrock</span><span class="p">,</span>
-            <span class="n">dim</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">num_points</span><span class="p">,</span>
-            <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">xy</span><span class="p">],</span>
-            <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">z</span><span class="p">],</span>
-            <span class="n">adj_inputs</span><span class="o">=</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">xy</span><span class="o">.</span><span class="n">grad</span><span class="p">],</span>
-            <span class="n">adj_outputs</span><span class="o">=</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">z</span><span class="o">.</span><span class="n">grad</span><span class="p">],</span>
-            <span class="n">adjoint</span><span class="o">=</span><span class="kc">True</span>
-        <span class="p">)</span>
+        <span class="c1"># Allocate the input adjoint that this backward call will return</span>
+        <span class="c1"># to PyTorch. Keep adj_z as an external adjoint buffer.</span>
+        <span class="n">adj_xy</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">xy</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="n">active_torch_stream</span><span class="p">(</span><span class="n">adj_z</span><span class="p">):</span>
+            <span class="n">wp_adj_xy</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">adj_xy</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec2</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="n">wp_adj_z</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">adj_z</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+            <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span>
+                <span class="n">kernel</span><span class="o">=</span><span class="n">eval_rosenbrock</span><span class="p">,</span>
+                <span class="n">dim</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">num_points</span><span class="p">,</span>
+                <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">xy</span><span class="p">],</span>
+                <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">ctx</span><span class="o">.</span><span class="n">z</span><span class="p">],</span>
+                <span class="n">adj_inputs</span><span class="o">=</span><span class="p">[</span><span class="n">wp_adj_xy</span><span class="p">],</span>
+                <span class="n">adj_outputs</span><span class="o">=</span><span class="p">[</span><span class="n">wp_adj_z</span><span class="p">],</span>
+                <span class="n">device</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">xy</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
+                <span class="n">adjoint</span><span class="o">=</span><span class="kc">True</span>
+            <span class="p">)</span>
 
         <span class="c1"># return adjoint w.r.t. inputs</span>
-        <span class="k">return</span> <span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">to_torch</span><span class="p">(</span><span class="n">ctx</span><span class="o">.</span><span class="n">xy</span><span class="o">.</span><span class="n">grad</span><span class="p">),</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">adj_xy</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
 
 
 <span class="n">num_points</span> <span class="o">=</span> <span class="mi">1500</span>
@@ -789,6 +869,9 @@ In the following example, we demonstrate how Warp may be used to evaluate the Ro
 <span class="nb">print</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">xy_np</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
 </pre></div>
 </div>
+<p>If replacing the manual adjoint launch with <a class="reference internal" href="../../api_reference/_generated/warp.Tape.html#warp.Tape" title="warp.Tape"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Tape</span></code></a>, keep the same ownership model: treat the PyTorch
+<code class="docutils literal notranslate"><span class="pre">grad_output</span></code> tensor as external storage and pre-allocate independent Warp adjoint buffers for arrays whose gradients
+must survive after <code class="docutils literal notranslate"><span class="pre">Tape.backward()</span></code>.</p>
 <p>Note that if Warp code is wrapped in a <a class="reference external" href="https://docs.pytorch.org/docs/stable/autograd.html#torch.autograd.Function" title="(in PyTorch v2.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">torch.autograd.Function</span></code></a> that gets called in <a class="reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.compile.html#torch.compile" title="(in PyTorch v2.13)"><code class="xref py py-func docutils literal notranslate"><span class="pre">torch.compile()</span></code></a>, it will automatically
 exclude that function from compiler optimizations. If your script uses <a class="reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.compile.html#torch.compile" title="(in PyTorch v2.13)"><code class="xref py py-func docutils literal notranslate"><span class="pre">torch.compile()</span></code></a>,
 we recommend using PyTorch version 2.3.0+, which has improvements that address this scenario.</p>
@@ -822,10 +905,10 @@ PyTorch autograd functions. These treat arbitrary Python functions (including Wa
 
 <span class="nd">@torch</span><span class="o">.</span><span class="n">library</span><span class="o">.</span><span class="n">custom_op</span><span class="p">(</span><span class="s2">&quot;wp::warp_rosenbrock&quot;</span><span class="p">,</span> <span class="n">mutates_args</span><span class="o">=</span><span class="p">())</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">warp_rosenbrock</span><span class="p">(</span><span class="n">xy</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">num_points</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-    <span class="n">wp_xy</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">xy</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec2</span><span class="p">)</span>
-    <span class="n">wp_z</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">num_points</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+    <span class="n">wp_xy</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">xy</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec2</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">wp_z</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">num_points</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">wp_xy</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
-    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="n">eval_rosenbrock</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">num_points</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">wp_xy</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">wp_z</span><span class="p">])</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="o">=</span><span class="n">eval_rosenbrock</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">num_points</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">wp_xy</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">wp_z</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">wp_xy</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">wp</span><span class="o">.</span><span class="n">to_torch</span><span class="p">(</span><span class="n">wp_z</span><span class="p">)</span>
 
@@ -839,8 +922,11 @@ PyTorch autograd functions. These treat arbitrary Python functions (including Wa
 <span class="k">def</span><span class="w"> </span><span class="nf">warp_rosenbrock_backward</span><span class="p">(</span>
     <span class="n">xy</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">num_points</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">z</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">adj_z</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
-    <span class="n">wp_xy</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">xy</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec2</span><span class="p">)</span>
+    <span class="n">wp_xy</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">xy</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec2</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
     <span class="n">wp_z</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">adj_xy</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">xy</span><span class="p">)</span>
+
+    <span class="n">wp_adj_xy</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">adj_xy</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec2</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
     <span class="n">wp_adj_z</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">adj_z</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
     <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span>
@@ -848,12 +934,13 @@ PyTorch autograd functions. These treat arbitrary Python functions (including Wa
         <span class="n">dim</span><span class="o">=</span><span class="n">num_points</span><span class="p">,</span>
         <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">wp_xy</span><span class="p">],</span>
         <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">wp_z</span><span class="p">],</span>
-        <span class="n">adj_inputs</span><span class="o">=</span><span class="p">[</span><span class="n">wp_xy</span><span class="o">.</span><span class="n">grad</span><span class="p">],</span>
+        <span class="n">adj_inputs</span><span class="o">=</span><span class="p">[</span><span class="n">wp_adj_xy</span><span class="p">],</span>
         <span class="n">adj_outputs</span><span class="o">=</span><span class="p">[</span><span class="n">wp_adj_z</span><span class="p">],</span>
+        <span class="n">device</span><span class="o">=</span><span class="n">wp_xy</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
         <span class="n">adjoint</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
     <span class="p">)</span>
 
-    <span class="k">return</span> <span class="n">wp</span><span class="o">.</span><span class="n">to_torch</span><span class="p">(</span><span class="n">wp_xy</span><span class="o">.</span><span class="n">grad</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">adj_xy</span>
 
 
 <span class="nd">@warp_rosenbrock_backward</span><span class="o">.</span><span class="n">register_fake</span>
@@ -862,8 +949,7 @@ PyTorch autograd functions. These treat arbitrary Python functions (including Wa
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">backward</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">adj_z</span><span class="p">):</span>
-    <span class="n">ctx</span><span class="o">.</span><span class="n">xy</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="n">warp_rosenbrock_backward</span><span class="p">(</span><span class="n">ctx</span><span class="o">.</span><span class="n">xy</span><span class="p">,</span> <span class="n">ctx</span><span class="o">.</span><span class="n">num_points</span><span class="p">,</span> <span class="n">ctx</span><span class="o">.</span><span class="n">z</span><span class="p">,</span> <span class="n">adj_z</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">ctx</span><span class="o">.</span><span class="n">xy</span><span class="o">.</span><span class="n">grad</span><span class="p">,</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="n">warp_rosenbrock_backward</span><span class="p">(</span><span class="n">ctx</span><span class="o">.</span><span class="n">xy</span><span class="p">,</span> <span class="n">ctx</span><span class="o">.</span><span class="n">num_points</span><span class="p">,</span> <span class="n">ctx</span><span class="o">.</span><span class="n">z</span><span class="p">,</span> <span class="n">adj_z</span><span class="p">),</span> <span class="kc">None</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">setup_context</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">output</span><span class="p">):</span>
@@ -1061,7 +1147,7 @@ correctness. This synchronization overhead can significantly impact performance.
             <span class="n">dim</span><span class="o">=</span><span class="p">(</span><span class="n">N</span><span class="p">),</span>
             <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
             <span class="n">inputs</span><span class="o">=</span><span class="p">[</span>
-                <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">grad_output</span><span class="o">.</span><span class="n">contiguous</span><span class="p">()),</span>
+                <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">grad_output</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
                 <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">a</span><span class="p">),</span>
                 <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">b</span><span class="p">),</span>
                 <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">grad_a</span><span class="p">),</span>
@@ -1092,11 +1178,11 @@ correctness. This synchronization overhead can significantly impact performance.
 </div>
 <p>When profiling this code with NVIDIA Nsight Systems, significant gaps appear in the GPU timeline, indicating
 device-wide synchronization events:</p>
-<figure class="align-default" id="id1">
+<figure class="align-default" id="id2">
 <a class="reference internal image-reference" href="../../_images/torch_sync_overhead.png"><img alt="Nsight Systems capture showing synchronization gaps between kernel launches" src="../../_images/torch_sync_overhead.png" style="width: 100%;" />
 </a>
 <figcaption>
-<p><span class="caption-text">NVIDIA Nsight Systems timeline showing synchronization gaps between Warp kernel launches and PyTorch operations.</span><a class="headerlink" href="#id1" title="Link to this image">#</a></p>
+<p><span class="caption-text">NVIDIA Nsight Systems timeline showing synchronization gaps between Warp kernel launches and PyTorch operations.</span><a class="headerlink" href="#id2" title="Link to this image">#</a></p>
 </figcaption>
 </figure>
 <p>The gaps represent device-wide synchronizations triggered when PyTorch discovers externally allocated gradients.</p>
@@ -1140,7 +1226,7 @@ auto-allocating gradients:</p>
         <span class="n">dim</span><span class="o">=</span><span class="p">(</span><span class="n">N</span><span class="p">),</span>
         <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
         <span class="n">inputs</span><span class="o">=</span><span class="p">[</span>
-            <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">grad_output</span><span class="o">.</span><span class="n">contiguous</span><span class="p">(),</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+            <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">grad_output</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
             <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
             <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
             <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">grad_a</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
@@ -1153,7 +1239,7 @@ auto-allocating gradients:</p>
 <p>This approach works well when you’re managing forward and gradient tensors separately and don’t need
 Warp to track gradients automatically.</p>
 <p><strong>Solution B: Detach Tensors from the PyTorch Graph</strong></p>
-<p>When managing gradients outside PyTorch’s autograd graph, detaching tensors is a clean approach:</p>
+<p>When managing gradients outside PyTorch’s autograd graph, detaching tensors before wrapping them is a clean approach:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@staticmethod</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
     <span class="c1"># Store detached tensors - we&#39;ll manage gradients manually</span>
@@ -1168,9 +1254,9 @@ Warp to track gradients automatically.</p>
         <span class="n">dim</span><span class="o">=</span><span class="p">(</span><span class="n">N</span><span class="p">),</span>
         <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
         <span class="n">inputs</span><span class="o">=</span><span class="p">[</span>
-            <span class="n">ctx</span><span class="o">.</span><span class="n">a</span><span class="p">,</span>  <span class="c1"># ✓ Detached, no requires_grad</span>
-            <span class="n">ctx</span><span class="o">.</span><span class="n">b</span><span class="p">,</span>  <span class="c1"># ✓ Detached, no requires_grad</span>
-            <span class="n">output</span><span class="p">,</span>
+            <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">ctx</span><span class="o">.</span><span class="n">a</span><span class="p">),</span>      <span class="c1"># ✓ Detached, no requires_grad</span>
+            <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">ctx</span><span class="o">.</span><span class="n">b</span><span class="p">),</span>      <span class="c1"># ✓ Detached, no requires_grad</span>
+            <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
         <span class="p">],</span>
     <span class="p">)</span>
     <span class="k">return</span> <span class="n">output</span>
@@ -1186,11 +1272,11 @@ Warp to track gradients automatically.</p>
         <span class="n">dim</span><span class="o">=</span><span class="p">(</span><span class="n">N</span><span class="p">),</span>
         <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
         <span class="n">inputs</span><span class="o">=</span><span class="p">[</span>
-            <span class="n">grad_output</span><span class="o">.</span><span class="n">detach</span><span class="p">(),</span>
-            <span class="n">ctx</span><span class="o">.</span><span class="n">a</span><span class="p">,</span>  <span class="c1"># ✓ Already detached</span>
-            <span class="n">ctx</span><span class="o">.</span><span class="n">b</span><span class="p">,</span>  <span class="c1"># ✓ Already detached</span>
-            <span class="n">grad_a</span><span class="p">,</span>
-            <span class="n">grad_b</span><span class="p">,</span>
+            <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">grad_output</span><span class="o">.</span><span class="n">detach</span><span class="p">(),</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+            <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">ctx</span><span class="o">.</span><span class="n">a</span><span class="p">),</span>      <span class="c1"># ✓ Already detached</span>
+            <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">ctx</span><span class="o">.</span><span class="n">b</span><span class="p">),</span>      <span class="c1"># ✓ Already detached</span>
+            <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">grad_a</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+            <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">grad_b</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
         <span class="p">],</span>
     <span class="p">)</span>
     <span class="k">return</span> <span class="n">grad_a</span><span class="p">,</span> <span class="n">grad_b</span>
@@ -1238,7 +1324,7 @@ This approach works for both analytic gradient kernels and when using the Warp t
         <span class="n">dim</span><span class="o">=</span><span class="p">(</span><span class="n">N</span><span class="p">),</span>
         <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
         <span class="n">inputs</span><span class="o">=</span><span class="p">[</span>
-            <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">grad_output</span><span class="o">.</span><span class="n">contiguous</span><span class="p">()),</span>
+            <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">grad_output</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
             <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">a</span><span class="p">),</span>
             <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">b</span><span class="p">),</span>
             <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">grad</span><span class="p">),</span>  <span class="c1"># ✓ Allocated by PyTorch</span>
@@ -1251,63 +1337,84 @@ This approach works for both analytic gradient kernels and when using the Warp t
 <p><em>Variant 2: With Warp’s Tape (Automatic Differentiation)</em></p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@staticmethod</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+    <span class="n">ctx</span><span class="o">.</span><span class="n">save_for_backward</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
+
     <span class="n">device</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">device_from_torch</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
     <span class="n">output</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">a</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
 
-    <span class="c1"># Pre-allocate gradients using PyTorch&#39;s allocator</span>
-    <span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">grad</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">a</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty_like</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">b</span><span class="o">.</span><span class="n">grad</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">b</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty_like</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+    <span class="c1"># Pre-allocate zero-filled gradient buffers using PyTorch&#39;s allocator</span>
+    <span class="n">ctx</span><span class="o">.</span><span class="n">grad_a</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">a</span><span class="p">)</span>
+    <span class="n">ctx</span><span class="o">.</span><span class="n">grad_b</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+    <span class="n">ctx</span><span class="o">.</span><span class="n">grad_output</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
 
-    <span class="n">wp_output</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+    <span class="n">warp_stream</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">stream_from_torch</span><span class="p">(</span><span class="n">a</span><span class="o">.</span><span class="n">device</span><span class="p">)</span> <span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">is_cuda</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedStream</span><span class="p">(</span><span class="n">warp_stream</span><span class="p">):</span>
+        <span class="n">wp_a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">grad</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">grad_a</span><span class="p">)</span>
+        <span class="n">wp_b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">grad</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">grad_b</span><span class="p">)</span>
+        <span class="n">wp_output</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">output</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">grad</span><span class="o">=</span><span class="n">ctx</span><span class="o">.</span><span class="n">grad_output</span><span class="p">)</span>
 
-    <span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">Tape</span><span class="p">()</span> <span class="k">as</span> <span class="n">tape</span><span class="p">:</span>
-        <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span>
-            <span class="n">kernel</span><span class="o">=</span><span class="n">forward_kernel</span><span class="p">,</span>
-            <span class="n">dim</span><span class="o">=</span><span class="p">(</span><span class="n">N</span><span class="p">),</span>
-            <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
-            <span class="n">inputs</span><span class="o">=</span><span class="p">[</span>
-                <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">a</span><span class="p">),</span>
-                <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">b</span><span class="p">),</span>
-                <span class="n">wp_output</span><span class="p">,</span>
-            <span class="p">],</span>
-        <span class="p">)</span>
+        <span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">Tape</span><span class="p">()</span> <span class="k">as</span> <span class="n">tape</span><span class="p">:</span>
+            <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span>
+                <span class="n">kernel</span><span class="o">=</span><span class="n">forward_kernel</span><span class="p">,</span>
+                <span class="n">dim</span><span class="o">=</span><span class="p">(</span><span class="n">N</span><span class="p">),</span>
+                <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span>
+                <span class="n">inputs</span><span class="o">=</span><span class="p">[</span>
+                    <span class="n">wp_a</span><span class="p">,</span>
+                    <span class="n">wp_b</span><span class="p">,</span>
+                    <span class="n">wp_output</span><span class="p">,</span>
+                <span class="p">],</span>
+            <span class="p">)</span>
 
     <span class="n">ctx</span><span class="o">.</span><span class="n">tape</span> <span class="o">=</span> <span class="n">tape</span>
     <span class="n">ctx</span><span class="o">.</span><span class="n">wp_output</span> <span class="o">=</span> <span class="n">wp_output</span>
-    <span class="n">ctx</span><span class="o">.</span><span class="n">a</span> <span class="o">=</span> <span class="n">a</span>
-    <span class="n">ctx</span><span class="o">.</span><span class="n">b</span> <span class="o">=</span> <span class="n">b</span>
 
     <span class="k">return</span> <span class="n">output</span>
 
 <span class="nd">@staticmethod</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">backward</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">grad_output</span><span class="p">):</span>
-    <span class="n">ctx</span><span class="o">.</span><span class="n">tape</span><span class="o">.</span><span class="n">backward</span><span class="p">(</span><span class="n">grads</span><span class="o">=</span><span class="p">{</span><span class="n">ctx</span><span class="o">.</span><span class="n">wp_output</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">grad_output</span><span class="o">.</span><span class="n">contiguous</span><span class="p">())})</span>
+    <span class="c1"># Access saved_tensors so PyTorch checks that the inputs were not</span>
+    <span class="c1"># modified in-place between forward and backward.</span>
+    <span class="n">_</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">saved_tensors</span>
 
-    <span class="c1"># Grab gradients before clearing references</span>
-    <span class="n">grad_a</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">a</span><span class="o">.</span><span class="n">grad</span>
-    <span class="n">grad_b</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">b</span><span class="o">.</span><span class="n">grad</span>
+    <span class="n">ctx</span><span class="o">.</span><span class="n">grad_a</span><span class="o">.</span><span class="n">zero_</span><span class="p">()</span>
+    <span class="n">ctx</span><span class="o">.</span><span class="n">grad_b</span><span class="o">.</span><span class="n">zero_</span><span class="p">()</span>
+    <span class="n">ctx</span><span class="o">.</span><span class="n">grad_output</span><span class="o">.</span><span class="n">zero_</span><span class="p">()</span>
 
-    <span class="c1"># Clear context to break reference cycles and free memory</span>
-    <span class="n">ctx</span><span class="o">.</span><span class="n">tape</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">ctx</span><span class="o">.</span><span class="n">wp_output</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">warp_stream</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">stream_from_torch</span><span class="p">(</span><span class="n">grad_output</span><span class="o">.</span><span class="n">device</span><span class="p">)</span> <span class="k">if</span> <span class="n">grad_output</span><span class="o">.</span><span class="n">is_cuda</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedStream</span><span class="p">(</span><span class="n">warp_stream</span><span class="p">):</span>
+        <span class="n">ctx</span><span class="o">.</span><span class="n">tape</span><span class="o">.</span><span class="n">backward</span><span class="p">(</span>
+            <span class="n">grads</span><span class="o">=</span><span class="p">{</span>
+                <span class="n">ctx</span><span class="o">.</span><span class="n">wp_output</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">grad_output</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Clone gradients before zeroing the tape, since these tensors are</span>
+        <span class="c1"># zero-copy views of Warp/PyTorch gradient buffers.</span>
+        <span class="n">grad_a</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">grad_a</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+        <span class="n">grad_b</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">grad_b</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+        <span class="n">ctx</span><span class="o">.</span><span class="n">tape</span><span class="o">.</span><span class="n">zero</span><span class="p">()</span>
 
     <span class="k">return</span> <span class="n">grad_a</span><span class="p">,</span> <span class="n">grad_b</span>
 </pre></div>
 </div>
-<p>This approach ensures gradients are allocated using PyTorch’s caching allocator, which properly tracks
-memory and stream dependencies. Pre-allocation can also be done earlier in the pipeline:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># At tensor creation time</span>
-<span class="n">a_torch</span> <span class="o">=</span> <span class="n">a</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">requires_grad_</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
-<span class="n">b_torch</span> <span class="o">=</span> <span class="n">b</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">requires_grad_</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+<p>This approach ensures adjoint buffers are allocated using PyTorch’s caching allocator, which properly tracks memory
+and stream dependencies. The input adjoints use dedicated zero-filled PyTorch tensors, separate from the input tensors’
+<code class="docutils literal notranslate"><span class="pre">.grad</span></code> fields. The output Warp array also receives its own gradient buffer through <code class="docutils literal notranslate"><span class="pre">grad=ctx.grad_output</span></code> so the
+output adjoint passed through <code class="docutils literal notranslate"><span class="pre">grads={...}</span></code> is copied into owned storage instead of becoming the output array’s
+<code class="docutils literal notranslate"><span class="pre">.grad</span></code> storage. A larger wrapper can cache and reuse these dedicated adjoint buffers, but it should still zero them
+before each backward pass and pass them explicitly to <code class="docutils literal notranslate"><span class="pre">wp.from_torch(...,</span> <span class="pre">grad=...)</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Allocate once, then reuse from the wrapper that calls wp.from_torch()</span>
+<span class="n">grad_a_buffer</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">a_torch</span><span class="p">)</span>
+<span class="n">grad_b_buffer</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">b_torch</span><span class="p">)</span>
+<span class="n">grad_output_buffer</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">output_torch</span><span class="p">)</span>
 
-<span class="c1"># Pre-allocate gradients immediately</span>
-<span class="n">a_torch</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty_like</span><span class="p">(</span><span class="n">a_torch</span><span class="p">)</span>
-<span class="n">b_torch</span><span class="o">.</span><span class="n">grad</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty_like</span><span class="p">(</span><span class="n">b_torch</span><span class="p">)</span>
-
-<span class="c1"># Now safe to use in WarpFunction</span>
-<span class="n">output</span> <span class="o">=</span> <span class="n">WarpFunction</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">a_torch</span><span class="p">,</span> <span class="n">b_torch</span><span class="p">)</span>
+<span class="c1"># Before each backward pass</span>
+<span class="n">grad_a_buffer</span><span class="o">.</span><span class="n">zero_</span><span class="p">()</span>
+<span class="n">grad_b_buffer</span><span class="o">.</span><span class="n">zero_</span><span class="p">()</span>
+<span class="n">grad_output_buffer</span><span class="o">.</span><span class="n">zero_</span><span class="p">()</span>
+<span class="n">wp_a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">a_torch</span><span class="p">,</span> <span class="n">grad</span><span class="o">=</span><span class="n">grad_a_buffer</span><span class="p">)</span>
+<span class="n">wp_b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">b_torch</span><span class="p">,</span> <span class="n">grad</span><span class="o">=</span><span class="n">grad_b_buffer</span><span class="p">)</span>
+<span class="n">wp_output</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">from_torch</span><span class="p">(</span><span class="n">output_torch</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">grad</span><span class="o">=</span><span class="n">grad_output_buffer</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>

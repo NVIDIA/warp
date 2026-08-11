@@ -529,16 +529,22 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">retain_grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/torch.py#L189-L315"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.from_torch" title="Link to this definition">#</a></dt>
-<dd><p>Convert a Torch tensor to a Warp array without copying the data.</p>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/torch.py#L189-L324"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.from_torch" title="Link to this definition">#</a></dt>
+<dd><p>Convert a PyTorch tensor to a Warp array without copying the data.</p>
+<p>The resulting Warp array aliases the PyTorch tensor’s storage, so mutations
+through either view are visible from the other.
+Scalar Warp dtypes preserve the PyTorch tensor’s shape and strides. Vector
+and matrix Warp dtypes consume trailing component dimensions, and those
+trailing dimensions must be contiguous.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>t</strong> (<a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.13)"><em>torch.Tensor</em></a>) – The torch tensor to wrap.</p></li>
-<li><p><strong>dtype</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><em>type</em></a><em> | </em><em>None</em>) – The target data type of the resulting Warp array. Defaults to the tensor value type mapped to a Warp array value type.</p></li>
+<li><p><strong>t</strong> (<a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.13)"><em>torch.Tensor</em></a>) – The PyTorch tensor to wrap.</p></li>
+<li><p><strong>dtype</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#type" title="(in Python v3.14)"><em>type</em></a><em> | </em><em>None</em>) – The target data type of the resulting Warp array. Defaults to the
+tensor value type mapped to a Warp array value type.</p></li>
 <li><p><strong>requires_grad</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a><em> | </em><em>None</em>) – Whether the resulting array should wrap the tensor’s gradient,
 if it exists (the grad tensor will be allocated otherwise). Defaults to the tensor’s <code class="docutils literal notranslate"><span class="pre">requires_grad</span></code> value.</p></li>
-<li><p><strong>grad</strong> – Optional gradient array to attach to the result. Can be a Warp array or Torch tensor.
+<li><p><strong>grad</strong> – Optional gradient array to attach to the result. Can be a Warp array or PyTorch tensor.
 If not provided and <code class="docutils literal notranslate"><span class="pre">requires_grad</span></code> is True, the tensor’s gradient will be wrapped or allocated.</p></li>
 <li><p><strong>return_ctype</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether to return a low-level array descriptor instead of a <code class="docutils literal notranslate"><span class="pre">warp.array</span></code> object (faster).
 The descriptor can be passed to Warp kernels.</p></li>

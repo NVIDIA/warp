@@ -518,8 +518,11 @@
 <h1>warp.to_torch<a class="headerlink" href="#warp-to-torch" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.to_torch">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">to_torch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">requires_grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/torch.py#L317-L375"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.to_torch" title="Link to this definition">#</a></dt>
-<dd><p>Convert a Warp array to a Torch tensor without copying the data.</p>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">to_torch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">requires_grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/torch.py#L326-L388"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.to_torch" title="Link to this definition">#</a></dt>
+<dd><p>Convert a Warp array to a PyTorch tensor without copying the data.</p>
+<p>The returned PyTorch tensor aliases the Warp array’s storage. Clone the
+tensor if PyTorch must retain those values after Warp may modify or zero the
+underlying array.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -530,7 +533,7 @@ gradient, if it exists, to a grad tensor. Defaults to the array’s
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>The converted tensor.</p>
+<dd class="field-even"><p>The converted PyTorch tensor.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.pytorch.org/docs/stable/tensors.html#torch.Tensor" title="(in PyTorch v2.13)">torch.Tensor</a></p>
