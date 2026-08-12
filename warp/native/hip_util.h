@@ -453,7 +453,7 @@ using CUfunction_attribute = hipFuncAttribute;
 // equivalents take a fixed `size_t` shared-memory size). Provide a stub typedef
 // so call sites that reference the type compile under HIP; HIP code paths must
 // ignore the callback (see cuOccupancyMaxPotentialBlockSize_f).
-typedef size_t (CUDAAPI* CUoccupancyB2DSize)(int blockSize);
+typedef size_t(CUDAAPI* CUoccupancyB2DSize)(int blockSize);
 #if HIP_VERSION >= 70100000
 using CUmemcpyAttributes = hipMemcpyAttributes;
 #else

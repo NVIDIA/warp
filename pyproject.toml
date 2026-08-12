@@ -280,6 +280,7 @@ transformd = "transformd"
 
 [tool.typos.default.extend-identifiers]
 CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_BLOCK_OPTIN = "CU_DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_BLOCK_OPTIN"
+hipDeviceAttributeSharedMemPerBlockOptin = "hipDeviceAttributeSharedMemPerBlockOptin"
 ba = "ba"
 
 [tool.pyright]

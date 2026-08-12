@@ -524,9 +524,7 @@ def main(argv: list[str] | None = None) -> int:
 
         # Enable HIP when a ROCm installation is available on a supported platform and
         # either the user explicitly requested it or no CUDA Toolkit was found.
-        args.enable_hip = (
-            bool(args.rocm_path) and hip_platform_supported and (rocm_requested or args.cuda_path is None)
-        )
+        args.enable_hip = bool(args.rocm_path) and hip_platform_supported and (rocm_requested or args.cuda_path is None)
 
     # Validate libmathdx path (from any source: CLI, environment, or Packman)
     if args.libmathdx_path:

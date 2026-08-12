@@ -10,8 +10,8 @@
 #include "crt.h"
 
 #if defined(__HIP_DEVICE_COMPILE__)
-#include <hip/hip_runtime.h>
 #include <hip/hip_fp16.h>
+#include <hip/hip_runtime.h>
 #endif
 
 #ifdef _WIN32
@@ -391,10 +391,7 @@ CUDA_CALLABLE inline half float_to_half(float x)
     return h;
 }
 
-CUDA_CALLABLE inline float half_to_float(half h)
-{
-    return __half2float(__ushort_as_half(h.u));
-}
+CUDA_CALLABLE inline float half_to_float(half h) { return __half2float(__ushort_as_half(h.u)); }
 
 #ifndef WP_NO_BFLOAT16
 // HIP: software fallback for bfloat16 conversions. A future change can route
@@ -2149,8 +2146,8 @@ template <> inline CUDA_CALLABLE float16 atomic_add(float16* buf, float16 value)
     // valid for coarse-grained (device-local) allocations and can silently drop
     // updates on fine-grained/managed memory, and it does not depend on a
     // particular ROCm version or on 16-bit atomics.
-    unsigned int* base =
-        reinterpret_cast<unsigned int*>(reinterpret_cast<uintptr_t>(buf) & ~static_cast<uintptr_t>(0x3));
+    unsigned int* base
+        = reinterpret_cast<unsigned int*>(reinterpret_cast<uintptr_t>(buf) & ~static_cast<uintptr_t>(0x3));
     const unsigned int shift = ((reinterpret_cast<uintptr_t>(buf) & 0x2u) != 0u) ? 16u : 0u;
     const __half hip_value = __ushort_as_half(value.u);
     unsigned int old_word = *base;

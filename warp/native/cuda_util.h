@@ -28,8 +28,8 @@
 #define check_cuda(code) (check_cuda_result(code, __FUNCTION__, __FILE__, __LINE__))
 #define check_cu(code) (check_cu_result(code, __FUNCTION__, __FILE__, __LINE__))
 
-inline void ignore_cuda_error(cudaError_t) {}
-inline void ignore_cu_result(CUresult) {}
+inline void ignore_cuda_error(cudaError_t) { }
+inline void ignore_cu_result(CUresult) { }
 
 #if defined(__CUDACC__) || defined(__HIPCC__)
 #if _DEBUG

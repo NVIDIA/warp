@@ -1017,7 +1017,9 @@ def build_dll_for_arch(
                         # applied to every HIP device source (matches the --hipcc-options CLI help).
                         hip_extra_flags = getattr(args, "hipcc_options", None) or ""
                         # Match nvcc/NVRTC default: strict IEEE 754 FP semantics
-                        hip_fp_flags = "-fno-finite-math-only -fno-associative-math -fno-reciprocal-math -fno-strict-aliasing"
+                        hip_fp_flags = (
+                            "-fno-finite-math-only -fno-associative-math -fno-reciprocal-math -fno-strict-aliasing"
+                        )
                         # Match the host C++ ABI (`-D_GLIBCXX_USE_CXX11_ABI=0` is used for
                         # the .cpp objects above); without this the libstdc++ ABI tag
                         # leaks into the mangled names of std::string-taking helpers,
@@ -1025,13 +1027,13 @@ def build_dll_for_arch(
                         hip_abi_flags = "-fvisibility-inlines-hidden -D_GLIBCXX_USE_CXX11_ABI=0"
                         if mode == "debug":
                             cuda_cmd = (
-                                f'{hipcc_cmd} -x hip -std=c++17 -g -O0 -fPIC -fvisibility=hidden {hip_abi_flags} '
-                                f'-D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 {hip_fp_flags} {hip_arch_flags} {hip_extra_flags} -DWP_ENABLE_CUDA=1 '
+                                f"{hipcc_cmd} -x hip -std=c++17 -g -O0 -fPIC -fvisibility=hidden {hip_abi_flags} "
+                                f"-D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 {hip_fp_flags} {hip_arch_flags} {hip_extra_flags} -DWP_ENABLE_CUDA=1 "
                                 f'-I"{native_dir}" -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
                             )
                         elif mode == "release":
                             cuda_cmd = (
-                                f'{hipcc_cmd} -x hip -std=c++17 -O3 -fPIC -fvisibility=hidden {hip_abi_flags} -DNDEBUG '
+                                f"{hipcc_cmd} -x hip -std=c++17 -O3 -fPIC -fvisibility=hidden {hip_abi_flags} -DNDEBUG "
                                 f'{hip_fp_flags} {hip_arch_flags} {hip_extra_flags} -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{mathdx_enabled} '
                                 f'{libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
                             )

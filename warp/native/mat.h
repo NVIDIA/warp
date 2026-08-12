@@ -3455,8 +3455,8 @@ inline CUDA_CALLABLE Type ddot(const mat_t<Rows, Cols, Type>& a, const mat_t<Row
 // TODO(ROCm): track the upstream HIPRTC optimizer fix and reference its issue id here.
 #if defined(__HIP_DEVICE_COMPILE__) && HIP_VERSION < 80000000
 template <>
-inline CUDA_CALLABLE __attribute__((optnone)) int8
-ddot<4, 4, int8>(const mat_t<4, 4, int8>& a, const mat_t<4, 4, int8>& b)
+inline CUDA_CALLABLE
+    __attribute__((optnone)) int8 ddot<4, 4, int8>(const mat_t<4, 4, int8>& a, const mat_t<4, 4, int8>& b)
 {
     int8 r(0);
     for (unsigned i = 0; i < 4; ++i) {
