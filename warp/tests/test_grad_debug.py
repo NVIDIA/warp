@@ -120,6 +120,50 @@ def jacobian_plot_scale_kernel(a: wp.array[float], out: wp.array[float]):
     out[tid] = 2.0 * a[tid]
 
 
+_MODULE_BACKWARD_DISABLED = "test_grad_debug_module_backward_disabled"
+_KERNEL_BACKWARD_DISABLED = "test_grad_debug_kernel_backward_disabled"
+
+# Group fixtures by configuration while keeping them isolated from the test module.
+wp.get_module(_MODULE_BACKWARD_DISABLED).options["enable_backward"] = False
+
+
+@wp.kernel(module=_MODULE_BACKWARD_DISABLED)
+def module_backward_disabled_scale_kernel(a: wp.array[float], out: wp.array[float]):
+    tid = wp.tid()
+    out[tid] = 2.0 * a[tid]
+
+
+@wp.kernel(module=_KERNEL_BACKWARD_DISABLED, enable_backward=False)
+def kernel_backward_disabled_scale_kernel(a: wp.array[float], out: wp.array[float]):
+    tid = wp.tid()
+    out[tid] = 2.0 * a[tid]
+
+
+@wp.kernel(module=_KERNEL_BACKWARD_DISABLED, enable_backward=False)
+def kernel_backward_disabled_wrong_grad_kernel(a: wp.array[float], out: wp.array[float]):
+    tid = wp.tid()
+    out[tid] = wrong_grad_func(a[tid])
+
+
+@wp.kernel(module=_MODULE_BACKWARD_DISABLED)
+def module_backward_disabled_wrong_grad_kernel(a: wp.array[float], out: wp.array[float]):
+    tid = wp.tid()
+    out[tid] = wrong_grad_func(a[tid])
+
+
+@wp.kernel(module=_MODULE_BACKWARD_DISABLED, enable_backward=True)
+def kernel_backward_enabled_scale_kernel(a: wp.array[float], out: wp.array[float]):
+    tid = wp.tid()
+    out[tid] = 2.0 * a[tid]
+
+
+def _make_scale_args(device):
+    """Create differentiable inputs and outputs for the scale kernels."""
+    a = wp.array([1.0, 2.0], dtype=wp.float32, requires_grad=True, device=device)
+    out = wp.zeros(2, dtype=wp.float32, requires_grad=True, device=device)
+    return a, out
+
+
 def function_pipeline(a):
     out = wp.zeros_like(a, requires_grad=True)
     wp.launch(
@@ -147,6 +191,82 @@ def test_jacobian_function_pipeline(test, device):
             rtol=1.0e-3,
             err_msg=f"{jacobian_function.__name__} returned an incorrect Jacobian for function_pipeline",
         )
+
+
+def test_jacobian_respects_effective_enable_backward(test, device):
+    """Honor module and kernel backward settings when computing Jacobians.
+
+    Reject both forms of effective disablement, then verify that an explicit
+    kernel-level ``True`` overrides a module-level ``False``.
+    """
+    disabled_kernels = (
+        module_backward_disabled_scale_kernel,
+        kernel_backward_disabled_scale_kernel,
+    )
+    for kernel in disabled_kernels:
+        with test.subTest(kernel=kernel.key):
+            a, out = _make_scale_args(device)
+            with test.assertRaisesRegex(
+                ValueError,
+                "Kernel must have backward pass enabled to compute Jacobians",
+            ):
+                jacobian(kernel, dim=len(a), inputs=[a], outputs=[out])
+
+    # The explicit kernel setting is more specific than the disabled module.
+    a, out = _make_scale_args(device)
+    jacobians = jacobian(
+        kernel_backward_enabled_scale_kernel,
+        dim=len(a),
+        inputs=[a],
+        outputs=[out],
+    )
+    np.testing.assert_allclose(
+        jacobians[(0, 0)].numpy(),
+        np.eye(2, dtype=np.float32) * 2.0,
+        atol=1.0e-3,
+        rtol=1.0e-3,
+    )
+
+
+def test_gradcheck_tape_skips_effectively_disabled_kernels(test, device):
+    """Skip tape launches disabled at either module or kernel scope.
+
+    Record disabled kernels with known incorrect adjoints. A successful result
+    proves neither launch was checked and accepted by coincidence.
+    """
+    with wp.Tape() as tape:
+        for kernel in (
+            module_backward_disabled_wrong_grad_kernel,
+            kernel_backward_disabled_wrong_grad_kernel,
+        ):
+            a, out = _make_scale_args(device)
+            wp.launch(kernel, dim=len(a), inputs=[a], outputs=[out], device=device)
+
+    # Either known-wrong gradient would make this False if its launch were checked.
+    test.assertTrue(gradcheck_tape(tape, raise_exception=False, show_summary=False))
+
+
+def test_jacobian_fd_allows_backward_disabled_kernels(test, device):
+    """Compute finite-difference Jacobians for backward-disabled kernels.
+
+    Exercise module-level and kernel-level disablement. Finite differences use
+    only forward launches, so neither setting should prevent the calculation.
+    """
+    for kernel in (
+        module_backward_disabled_scale_kernel,
+        kernel_backward_disabled_scale_kernel,
+    ):
+        with test.subTest(kernel=kernel.key):
+            a, out = _make_scale_args(device)
+
+            # This path perturbs inputs and launches forward kernels; it needs no adjoint.
+            jacobians = jacobian_fd(kernel, dim=len(a), inputs=[a], outputs=[out])
+            np.testing.assert_allclose(
+                jacobians[(0, 0)].numpy(),
+                np.eye(2, dtype=np.float32) * 2.0,
+                atol=1.0e-3,
+                rtol=1.0e-3,
+            )
 
 
 def test_gradcheck_3d(test, device, dtype):
@@ -558,6 +678,24 @@ add_function_test(TestGradDebug, "test_gradcheck_mixed", test_gradcheck_mixed, d
 add_function_test(TestGradDebug, "test_gradcheck_nan", test_gradcheck_nan, devices=devices)
 add_function_test(TestGradDebug, "test_gradcheck_incorrect", test_gradcheck_incorrect, devices=devices)
 add_function_test(TestGradDebug, "test_gradcheck_tape_mixed", test_gradcheck_tape_mixed, devices=devices)
+add_function_test(
+    TestGradDebug,
+    "test_jacobian_respects_effective_enable_backward",
+    test_jacobian_respects_effective_enable_backward,
+    devices=devices,
+)
+add_function_test(
+    TestGradDebug,
+    "test_gradcheck_tape_skips_effectively_disabled_kernels",
+    test_gradcheck_tape_skips_effectively_disabled_kernels,
+    devices=devices,
+)
+add_function_test(
+    TestGradDebug,
+    "test_jacobian_fd_allows_backward_disabled_kernels",
+    test_jacobian_fd_allows_backward_disabled_kernels,
+    devices=devices,
+)
 
 
 if __name__ == "__main__":
