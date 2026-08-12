@@ -11429,22 +11429,28 @@ def force_load(
         loaded = [dim for (ctx, dim) in loaded_variants[m] if ctx == d.context]
         return loaded or [None]
 
-    if max_workers <= 1 or (len(devices) * len(modules)) == 1:
-        # serial loading; avoid the overhead of using a thread pool
-        for d in devices:
-            for m in modules:
-                for dim in _load_block_dims(m, d):
-                    m.load(d, block_dim=dim)
-    else:
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+    # Always restore the caller's CUDA context, even if module loading fails.
+    try:
+        if max_workers <= 1 or (len(devices) * len(modules)) == 1:
+            # serial loading; avoid the overhead of using a thread pool
             for d in devices:
                 for m in modules:
                     for dim in _load_block_dims(m, d):
-                        executor.submit(m.load, d, block_dim=dim)
+                        m.load(d, block_dim=dim)
+        else:
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                futures = []
+                for d in devices:
+                    for m in modules:
+                        for dim in _load_block_dims(m, d):
+                            futures.append(executor.submit(m.load, d, block_dim=dim))
 
-    if is_cuda_available():
-        # restore original context to avoid side effects
-        runtime.core.wp_cuda_context_set_current(saved_context)
+                for future in futures:
+                    future.result()
+    finally:
+        if is_cuda_available():
+            # restore original context to avoid side effects
+            runtime.core.wp_cuda_context_set_current(saved_context)
 
 
 def _get_caller_module_name(stack_level: int = 1) -> str:

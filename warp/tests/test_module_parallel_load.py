@@ -5,6 +5,7 @@
 wp.force_load() and wp.load_module().
 """
 
+import importlib
 import os
 import subprocess
 import sys
@@ -188,6 +189,47 @@ class TestModuleParallelLoad(unittest.TestCase):
         modules = _generate_modules(4)
         wp.force_load(device="cpu", modules=modules, max_workers=2)
         _assert_modules_loaded_on_cpu(self, modules)
+
+    def test_force_load_parallel_propagates_load_failure(self):
+        """Verify that parallel loading propagates a module-load failure."""
+        module_name = "warp.tests.aux_test_unresolved_func"
+        # Importing registers the invalid kernel without compiling it; force_load() triggers the real codegen error.
+        unresolved_func_module = importlib.import_module(module_name)
+        failed_module = wp.get_module(unresolved_func_module.__name__)
+
+        # The valid companion selects the parallel path and must finish loading before the error reaches the caller.
+        valid_module = _generate_modules(1)[0]
+
+        try:
+            with self.assertRaisesRegex(AttributeError, "Could not find function wp.missing_func"):
+                wp.force_load(device="cpu", modules=[failed_module, valid_module], max_workers=2)
+
+            _assert_modules_loaded_on_cpu(self, [valid_module])
+        finally:
+            # Keep the invalid fixture out of later force_load() calls.
+            context.user_modules.pop(module_name, None)
+            sys.modules.pop(module_name, None)
+
+    @unittest.skipUnless(wp.is_cuda_available(), "Requires CUDA")
+    def test_force_load_restores_cuda_context_on_failure(self):
+        """Verify that a module-load failure restores the calling thread's CUDA context."""
+        module_name = "warp.tests.aux_test_unresolved_func"
+        unresolved_func_module = importlib.import_module(module_name)
+        failed_module = wp.get_module(unresolved_func_module.__name__)
+        valid_module = _generate_modules(1)[0]
+        device = wp.get_device("cuda:0")
+
+        original_context = context.runtime.core.wp_cuda_context_get_current()
+        context.runtime.core.wp_cuda_context_set_current(None)
+        try:
+            with self.assertRaisesRegex(AttributeError, "Could not find function wp.missing_func"):
+                wp.force_load(device=device, modules=[valid_module, failed_module], max_workers=0)
+
+            self.assertIsNone(context.runtime.core.wp_cuda_context_get_current())
+        finally:
+            context.runtime.core.wp_cuda_context_set_current(original_context)
+            context.user_modules.pop(module_name, None)
+            sys.modules.pop(module_name, None)
 
     def test_force_load_config_default(self):
         """Verify that wp.config.load_module_max_workers is respected when max_workers is not passed."""
