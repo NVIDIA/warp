@@ -3448,9 +3448,12 @@ inline CUDA_CALLABLE Type ddot(const mat_t<Rows, Cols, Type>& a, const mat_t<Row
     return r;
 }
 
-#if defined(__HIP_DEVICE_COMPILE__)
-// TODO: Remove this once HIPRTC is fixed.
-// HIPRTC segfaults while optimizing mat44 int8/uint8 ddot.
+// HIPRTC segfaults while optimizing the mat44 int8/uint8 ddot specialization, so we
+// force optnone as a workaround (CUDA_CALLABLE expands to __host__ __device__ on HIP,
+// which does not conflict with optnone). Bounded to the affected ROCm releases via the
+// upper HIP_VERSION guard; narrow or remove it once the HIPRTC fix lands.
+// TODO(ROCm): track the upstream HIPRTC optimizer fix and reference its issue id here.
+#if defined(__HIP_DEVICE_COMPILE__) && HIP_VERSION < 80000000
 template <>
 inline CUDA_CALLABLE __attribute__((optnone)) int8
 ddot<4, 4, int8>(const mat_t<4, 4, int8>& a, const mat_t<4, 4, int8>& b)

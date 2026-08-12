@@ -2061,6 +2061,10 @@ CUDA_CALLABLE inline void slice_assert_step_nonzero(const slice_t& slice)
 #if defined(__CUDA_ARCH__)
     printf("slice step cannot be zero\n");
     __trap();
+#elif defined(__HIP_DEVICE_COMPILE__)
+    // _wp_assert is a host-only symbol (see crt.h); trap directly on HIP device.
+    printf("slice step cannot be zero\n");
+    __builtin_trap();
 #else
     _wp_assert("slice step cannot be zero", __FILE__, unsigned(__LINE__));
 #endif
@@ -2140,11 +2144,28 @@ template <> inline CUDA_CALLABLE float16 atomic_add(float16* buf, float16 value)
     buf[0] += value;
     return old;
 #elif defined(__HIP_DEVICE_COMPILE__)
-    // ROCm 7.0+: use unsafeAtomicAdd for half precision
-    __half hip_value = __ushort_as_half(value.u);
-    __half r = unsafeAtomicAdd(reinterpret_cast<__half*>(buf), hip_value);
+    // Emulate __half atomic add with a 32-bit atomicCAS loop on the aligned word
+    // containing the target half. This avoids unsafeAtomicAdd(), which is only
+    // valid for coarse-grained (device-local) allocations and can silently drop
+    // updates on fine-grained/managed memory, and it does not depend on a
+    // particular ROCm version or on 16-bit atomics.
+    unsigned int* base =
+        reinterpret_cast<unsigned int*>(reinterpret_cast<uintptr_t>(buf) & ~static_cast<uintptr_t>(0x3));
+    const unsigned int shift = ((reinterpret_cast<uintptr_t>(buf) & 0x2u) != 0u) ? 16u : 0u;
+    const __half hip_value = __ushort_as_half(value.u);
+    unsigned int old_word = *base;
+    unsigned int assumed;
+    unsigned short int old_half_bits;
+    do {
+        assumed = old_word;
+        old_half_bits = static_cast<unsigned short int>((assumed >> shift) & 0xffffu);
+        const __half sum = __float2half_rn(__half2float(__ushort_as_half(old_half_bits)) + __half2float(hip_value));
+        const unsigned int new_half_bits = static_cast<unsigned int>(__half_as_ushort(sum));
+        const unsigned int new_word = (assumed & ~(0xffffu << shift)) | (new_half_bits << shift);
+        old_word = atomicCAS(base, assumed, new_word);
+    } while (assumed != old_word);
     float16 result;
-    result.u = __half_as_ushort(r);
+    result.u = old_half_bits;
     return result;
 #else  // CUDA compiled by NVRTC
 #if __CUDA_ARCH__ >= 700
@@ -2621,6 +2642,22 @@ template <typename T> inline CUDA_CALLABLE T atomic_and(T* buf, T value)
 #endif
 }
 
+// Neither CUDA nor HIP provides a signed 64-bit atomicAnd/Or/Xor overload, so route
+// int64 through the supported unsigned 64-bit overload (matches the int64 atomic_add
+// specialization). Without this a HIP kernel using warp.int64 fails to compile.
+template <> inline CUDA_CALLABLE int64 atomic_and(int64* buf, int64 value)
+{
+#if !defined(__CUDA_ARCH__) && !defined(__HIP_DEVICE_COMPILE__)
+    int64 old = buf[0];
+    buf[0] &= value;
+    return old;
+#else
+    unsigned long long int* buf_as_ull = (unsigned long long int*)buf;
+    unsigned long long int result = atomicAnd(buf_as_ull, static_cast<unsigned long long int>(value));
+    return static_cast<int64>(result);
+#endif
+}
+
 template <typename T> inline CUDA_CALLABLE T atomic_or(T* buf, T value)
 {
 #if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
@@ -2632,6 +2669,19 @@ template <typename T> inline CUDA_CALLABLE T atomic_or(T* buf, T value)
 #endif
 }
 
+template <> inline CUDA_CALLABLE int64 atomic_or(int64* buf, int64 value)
+{
+#if !defined(__CUDA_ARCH__) && !defined(__HIP_DEVICE_COMPILE__)
+    int64 old = buf[0];
+    buf[0] |= value;
+    return old;
+#else
+    unsigned long long int* buf_as_ull = (unsigned long long int*)buf;
+    unsigned long long int result = atomicOr(buf_as_ull, static_cast<unsigned long long int>(value));
+    return static_cast<int64>(result);
+#endif
+}
+
 template <typename T> inline CUDA_CALLABLE T atomic_xor(T* buf, T value)
 {
 #if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
@@ -2640,6 +2690,19 @@ template <typename T> inline CUDA_CALLABLE T atomic_xor(T* buf, T value)
     T old = buf[0];
     buf[0] ^= value;
     return old;
+#endif
+}
+
+template <> inline CUDA_CALLABLE int64 atomic_xor(int64* buf, int64 value)
+{
+#if !defined(__CUDA_ARCH__) && !defined(__HIP_DEVICE_COMPILE__)
+    int64 old = buf[0];
+    buf[0] ^= value;
+    return old;
+#else
+    unsigned long long int* buf_as_ull = (unsigned long long int*)buf;
+    unsigned long long int result = atomicXor(buf_as_ull, static_cast<unsigned long long int>(value));
+    return static_cast<int64>(result);
 #endif
 }
 

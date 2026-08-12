@@ -18,12 +18,11 @@
 #include <cuda_runtime_api.h>
 #endif  // __HIP_PLATFORM_AMD__
 
+// On HIP this is already defined in hip_util.h (included above). This fallback is
+// therefore only reached on the CUDA build, where hip_util.h is not included; keep
+// the HIP threshold solely in hip_util.h to avoid two copies diverging.
 #ifndef WP_HAS_MEMCPY_BATCH
-#if defined(__HIP_PLATFORM_AMD__)
-#define WP_HAS_MEMCPY_BATCH (HIP_VERSION >= 70100000)
-#else
 #define WP_HAS_MEMCPY_BATCH (CUDA_VERSION >= 12080)
-#endif  // defined(__HIP_PLATFORM_AMD__)
 #endif  // WP_HAS_MEMCPY_BATCH
 
 #define check_cuda(code) (check_cuda_result(code, __FUNCTION__, __FILE__, __LINE__))

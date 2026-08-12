@@ -278,7 +278,11 @@ template <typename T> struct array_t {
     CUDA_CALLABLE inline bool empty() const { return !data; }
 
     T* WP_RESTRICT data;
-    T* WP_RESTRICT grad;
+    // NOTE: grad is intentionally not WP_RESTRICT. Warp permits the gradient buffer
+    // to alias the primary buffer (e.g. passing an array as its own grad, or slice/
+    // indexed views over one allocation), so promising non-overlap would be unsound
+    // on HIP (where WP_RESTRICT expands to __restrict__).
+    T* grad;
     shape_t shape;
     int strides[ARRAY_MAX_DIMS];
     uint16_t ndim;

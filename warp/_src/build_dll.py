@@ -22,6 +22,15 @@ MIN_CTK_VERSION = (12, 0)
 
 
 def find_rocm_sdk() -> str | None:
+    """Locate a ROCm installation directory.
+
+    Searches, in order: the ``ROCM_PATH`` and ``ROCM_HOME`` environment variables,
+    the parent-of-``bin`` directory of ``hipcc`` on ``PATH``, and finally the
+    default ``/opt/rocm`` install location.
+
+    Returns:
+        The ROCm root directory if one is found, otherwise ``None``.
+    """
     rocm_path = os.environ.get("ROCM_PATH") or os.environ.get("ROCM_HOME")
     if rocm_path and os.path.isdir(rocm_path):
         return rocm_path
@@ -40,6 +49,17 @@ def find_rocm_sdk() -> str | None:
 
 
 def find_hipcc_executable(rocm_path: str | None) -> str:
+    """Return the command used to invoke ``hipcc``.
+
+    Args:
+        rocm_path: ROCm root directory to look under first, or ``None`` to rely on
+            ``PATH``.
+
+    Returns:
+        A quoted absolute path to ``hipcc`` under ``rocm_path`` if it exists, else
+        the ``hipcc`` found on ``PATH``, else the bare ``hipcc`` executable name as
+        a last-resort fallback.
+    """
     hipcc_name = "hipcc.exe" if os.name == "nt" else "hipcc"
     if rocm_path:
         hipcc_path = os.path.join(rocm_path, "bin", hipcc_name)
@@ -51,7 +71,50 @@ def find_hipcc_executable(rocm_path: str | None) -> str:
     return hipcc_name
 
 
+def _detect_hip_arches() -> list[str]:
+    """Best-effort detection of the AMD GPU architectures on the build host.
+
+    Runs ``rocm_agent_enumerator`` (shipped with ROCm) and returns the unique
+    ``gfx`` targets it reports, excluding the ``gfx000`` host placeholder.
+
+    Returns:
+        A list of detected ``gfx`` targets, or an empty list if the tool is
+        unavailable or reports no GPU.
+    """
+    enumerator = shutil.which("rocm_agent_enumerator")
+    if not enumerator:
+        return []
+    try:
+        output = subprocess.check_output([enumerator], text=True)
+    except (OSError, subprocess.SubprocessError):
+        return []
+
+    arches: list[str] = []
+    for token in output.split():
+        arch = token.strip()
+        if arch.startswith("gfx") and arch != "gfx000" and arch not in arches:
+            arches.append(arch)
+    return arches
+
+
 def _parse_hip_arches(args) -> list[str]:
+    """Resolve the AMD GPU target architecture(s) for a HIP build.
+
+    Resolution order: the ``--hip-arch`` argument, then the ``ROCM_TARGETS`` /
+    ``HIP_ARCH`` environment variables, then auto-detection via
+    :func:`_detect_hip_arches`. Each source accepts a comma-, semicolon-, or
+    space-separated list of ``gfx`` targets.
+
+    Args:
+        args: Parsed build arguments; only the optional ``hip_arch`` attribute is
+            read.
+
+    Returns:
+        A non-empty list of ``gfx`` target strings.
+
+    Raises:
+        RuntimeError: If no architecture is specified and none can be detected.
+    """
     if getattr(args, "hip_arch", None):
         raw = args.hip_arch.replace(";", ",").replace(" ", ",")
         return [arch for arch in raw.split(",") if arch]
@@ -61,8 +124,18 @@ def _parse_hip_arches(args) -> list[str]:
         raw = env_arch.replace(";", ",").replace(" ", ",")
         return [arch for arch in raw.split(",") if arch]
 
-    # Default to gfx942 for HIP builds when not specified.
-    return ["gfx942"]
+    # Fall back to detecting the build host's GPU(s) rather than silently targeting a
+    # single hard-coded architecture, which would leave other AMD GPUs without
+    # compatible device code.
+    detected = _detect_hip_arches()
+    if detected:
+        return detected
+
+    raise RuntimeError(
+        "No HIP GPU architecture specified and none could be auto-detected. "
+        "Pass --hip-arch (e.g. --hip-arch gfx942) or set the ROCM_TARGETS or HIP_ARCH "
+        "environment variable."
+    )
 
 
 # Echoed by our wrapper command before dumping the environment; the MSVC
@@ -941,11 +1014,8 @@ def build_dll_for_arch(
                         hip_arches = _parse_hip_arches(args)
                         hip_arch_flags = " ".join([f"--offload-arch={a}" for a in hip_arches])
                         # User-supplied extra hipcc options (e.g., "-Xarch_device -fno-inline"),
-                        # applied only to reduce.cu.
-                        if os.path.basename(cu_path) == "reduce.cu":
-                            hip_extra_flags = getattr(args, "hipcc_options", None) or ""
-                        else:
-                            hip_extra_flags = ""
+                        # applied to every HIP device source (matches the --hipcc-options CLI help).
+                        hip_extra_flags = getattr(args, "hipcc_options", None) or ""
                         # Match nvcc/NVRTC default: strict IEEE 754 FP semantics
                         hip_fp_flags = "-fno-finite-math-only -fno-associative-math -fno-reciprocal-math -fno-strict-aliasing"
                         # Match the host C++ ABI (`-D_GLIBCXX_USE_CXX11_ABI=0` is used for

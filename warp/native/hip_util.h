@@ -1,5 +1,5 @@
-# SPDX-FileCopyrightText: 2026 Advanced Micro Devices, Inc.
-# SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Advanced Micro Devices, Inc.
+// SPDX-License-Identifier: Apache-2.0
 
 #pragma once
 
@@ -203,9 +203,10 @@ static inline hiprtcResult nvrtcGetSupportedArchs(int* archs)
 #ifndef cudaStreamEndCapture
 #define cudaStreamEndCapture hipStreamEndCapture
 #endif  // cudaStreamEndCapture
-#ifndef cudaStreamSetCaptureDependencies
-#define cudaStreamSetCaptureDependencies 0
-#endif  // cudaStreamSetCaptureDependencies
+// NOTE: cudaStreamSetCaptureDependencies is mapped to hipStreamSetCaptureDependencies
+// further below. Do not add a literal fallback (e.g. `0`) here: because this header
+// is included first, a literal definition would win over the function mapping and
+// turn call sites into `0(...)`, which fails to compile.
 #ifndef cudaEventCreate
 #define cudaEventCreate hipEventCreate
 #endif  // cudaEventCreate
@@ -539,11 +540,12 @@ using CUmemorytype = hipMemoryType;
 #define CUDA_ARRAY3D_SURFACE_LDST hipArraySurfaceLoadStore
 #endif  // CUDA_ARRAY3D_SURFACE_LDST
 #else
-using CUDA_MEMCPY2D = HIP_MEMCPY2D;
-using CUDA_MEMCPY3D = HIP_MEMCPY3D;
-using CUDA_RESOURCE_DESC = hipResourceDesc;
-using CUDA_TEXTURE_DESC = hipTextureDesc;
-using CUDA_RESOURCE_VIEW_DESC = hipResourceViewDesc;
+// Warp's texture path (texture.cpp) uses the driver-style HIP_RESOURCE_DESC layout
+// (res.array.hArray / res.mipmap.hMipmappedArray / flags). The runtime hipResourceDesc
+// available before ROCm 7.0 exposes different member names (res.array.array /
+// res.mipmap.mipmap and has no flags member), so those descriptors do not compile
+// there. Require ROCm 7.0+ for the HIP resource/texture descriptor path.
+#error "Warp's HIP build requires ROCm 7.0 or newer (driver-style resource descriptors)."
 #endif  // HIP_VERSION >= 70000000
 
 #ifndef CU_DEVICE_ATTRIBUTE_PCI_DOMAIN_ID
@@ -576,6 +578,10 @@ using CUDA_RESOURCE_VIEW_DESC = hipResourceViewDesc;
 #ifndef CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR
 #define CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR hipDeviceAttributeComputeCapabilityMinor
 #endif  // CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR
+// HIP has no equivalent of CU_DEVICE_ATTRIBUTE_IPC_EVENT_SUPPORTED. Map it to an
+// invalid sentinel (-1): a cuDeviceGetAttribute query with this value fails at
+// runtime rather than reporting a value, so callers must treat the query error as
+// "capability not supported" (mirrors the CUoccupancyB2DSize contract above).
 #ifndef CU_DEVICE_ATTRIBUTE_IPC_EVENT_SUPPORTED
 #define CU_DEVICE_ATTRIBUTE_IPC_EVENT_SUPPORTED ((CUdevice_attribute)-1)
 #endif  // CU_DEVICE_ATTRIBUTE_IPC_EVENT_SUPPORTED
