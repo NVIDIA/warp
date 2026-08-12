@@ -1011,6 +1011,68 @@ def test_capturability(test, device):
     assert_array_equal(bsr_get_diag(C), wp.full(N, value=wp.mat33(9.0), dtype=wp.mat33, device=device))
 
 
+def _make_bsr_with_trailing_capacity(device):
+    matrix = bsr_zeros(3, 3, float, device=device)
+    matrix.nnz = 6
+    matrix.offsets = wp.array([0, 1, 2, 3], dtype=int, device=device)
+    matrix.columns = wp.array([0, 1, 2, 0, 0, 0], dtype=int, device=device)
+    matrix.values = wp.array([3.0, 7.0, 11.0, 42.0, 42.0, 42.0], dtype=float, device=device)
+    return matrix
+
+
+def _assert_bsr_ignores_trailing_capacity(test, matrix):
+    test.assertIsNone(matrix.row_counts)
+    test.assertEqual(matrix.nnz_sync(), 3)
+    np.testing.assert_array_equal(matrix.offsets.numpy(), np.array([0, 1, 2, 3]))
+    np.testing.assert_array_equal(matrix.columns.numpy()[:3], np.array([0, 1, 2]))
+    np.testing.assert_allclose(matrix.values.numpy()[:3], np.array([3.0, 7.0, 11.0]))
+    np.testing.assert_allclose(_bsr_to_dense(matrix), np.diag([3.0, 7.0, 11.0]))
+
+
+def test_bsr_compress_trailing_capacity(test, device):
+    """Test that compact BSR compression ignores trailing storage capacity."""
+
+    for inplace in (False, True):
+        with test.subTest(inplace=inplace):
+            matrix = _make_bsr_with_trailing_capacity(device)
+            bsr_compress(
+                matrix,
+                prune_numerical_zeros=False,
+                inplace=inplace,
+                topology="compact",
+            )
+            _assert_bsr_ignores_trailing_capacity(test, matrix)
+
+
+def test_bsr_compress_trailing_capacity_capturability(test, device):
+    """Test that captured compact BSR compression ignores trailing storage capacity."""
+
+    for inplace in (False, True):
+        with test.subTest(inplace=inplace):
+            # Warm the generated value-accumulation kernel needed by the
+            # out-of-place path before module loading is disabled for capture.
+            warmup = _make_bsr_with_trailing_capacity(device)
+            bsr_compress(
+                warmup,
+                prune_numerical_zeros=False,
+                inplace=inplace,
+                topology="compact",
+            )
+
+            matrix = _make_bsr_with_trailing_capacity(device)
+            with wp.ScopedDevice(device):
+                with wp.ScopedCapture(force_module_load=False) as capture:
+                    bsr_compress(
+                        matrix,
+                        prune_numerical_zeros=False,
+                        inplace=inplace,
+                        topology="compact",
+                    )
+
+            wp.capture_launch(capture.graph)
+            _assert_bsr_ignores_trailing_capacity(test, matrix)
+
+
 def test_bsr_compress_compact_capturability(test, device):
     """Test that native compact BSR compression is graph-capturable."""
 
@@ -1365,6 +1427,18 @@ add_function_test(TestSparse, "test_bsr_mv_1_3", make_test_bsr_mv((1, 3), wp.flo
 add_function_test(TestSparse, "test_bsr_mv_3_3", make_test_bsr_mv((3, 3), wp.float64), devices=devices)
 
 add_function_test(TestSparse, "test_capturability", test_capturability, devices=cuda_test_devices_with_mempool)
+add_function_test(
+    TestSparse,
+    "test_bsr_compress_trailing_capacity",
+    test_bsr_compress_trailing_capacity,
+    devices=devices,
+)
+add_function_test(
+    TestSparse,
+    "test_bsr_compress_trailing_capacity_capturability",
+    test_bsr_compress_trailing_capacity_capturability,
+    devices=cuda_test_devices_with_mempool,
+)
 add_function_test(
     TestSparse,
     "test_bsr_compress_compact_capturability",
