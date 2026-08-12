@@ -84,12 +84,29 @@ class texture1d_t(ctypes.Structure):
         ("tex", ctypes.c_uint64),
         ("width", ctypes.c_int32),
         ("num_channels", ctypes.c_int32),
+        ("filter_mode", ctypes.c_int32),
+        ("mip_filter_mode", ctypes.c_int32),
+        ("num_mip_levels", ctypes.c_int32),
+        ("use_normalized_coords", ctypes.c_int32),
     )
 
-    def __init__(self, tex=0, width=0, num_channels=0):
+    def __init__(
+        self,
+        tex=0,
+        width=0,
+        num_channels=0,
+        filter_mode=0,
+        mip_filter_mode=0,
+        num_mip_levels=1,
+        use_normalized_coords=1,
+    ):
         self.tex = tex
         self.width = width
         self.num_channels = num_channels
+        self.filter_mode = filter_mode
+        self.mip_filter_mode = mip_filter_mode
+        self.num_mip_levels = num_mip_levels
+        self.use_normalized_coords = use_normalized_coords
 
 
 class texture2d_t(ctypes.Structure):
@@ -103,13 +120,31 @@ class texture2d_t(ctypes.Structure):
         ("width", ctypes.c_int32),
         ("height", ctypes.c_int32),
         ("num_channels", ctypes.c_int32),
+        ("filter_mode", ctypes.c_int32),
+        ("mip_filter_mode", ctypes.c_int32),
+        ("num_mip_levels", ctypes.c_int32),
+        ("use_normalized_coords", ctypes.c_int32),
     )
 
-    def __init__(self, tex=0, width=0, height=0, num_channels=0):
+    def __init__(
+        self,
+        tex=0,
+        width=0,
+        height=0,
+        num_channels=0,
+        filter_mode=0,
+        mip_filter_mode=0,
+        num_mip_levels=1,
+        use_normalized_coords=1,
+    ):
         self.tex = tex
         self.width = width
         self.height = height
         self.num_channels = num_channels
+        self.filter_mode = filter_mode
+        self.mip_filter_mode = mip_filter_mode
+        self.num_mip_levels = num_mip_levels
+        self.use_normalized_coords = use_normalized_coords
 
 
 class texture3d_t(ctypes.Structure):
@@ -124,14 +159,33 @@ class texture3d_t(ctypes.Structure):
         ("height", ctypes.c_int32),
         ("depth", ctypes.c_int32),
         ("num_channels", ctypes.c_int32),
+        ("filter_mode", ctypes.c_int32),
+        ("mip_filter_mode", ctypes.c_int32),
+        ("num_mip_levels", ctypes.c_int32),
+        ("use_normalized_coords", ctypes.c_int32),
     )
 
-    def __init__(self, tex=0, width=0, height=0, depth=0, num_channels=0):
+    def __init__(
+        self,
+        tex=0,
+        width=0,
+        height=0,
+        depth=0,
+        num_channels=0,
+        filter_mode=0,
+        mip_filter_mode=0,
+        num_mip_levels=1,
+        use_normalized_coords=1,
+    ):
         self.tex = tex
         self.width = width
         self.height = height
         self.depth = depth
         self.num_channels = num_channels
+        self.filter_mode = filter_mode
+        self.mip_filter_mode = mip_filter_mode
+        self.num_mip_levels = num_mip_levels
+        self.use_normalized_coords = use_normalized_coords
 
 
 class cuda_array_desc_t(ctypes.Structure):
@@ -1190,7 +1244,15 @@ class Texture1D(Texture):
         """Return the ctypes structure for passing to kernels."""
         if self._tex_handle == 0:
             raise RuntimeError("Texture was created with data=None but never initialized.")
-        return texture1d_t(self._tex_handle, self._width, self._num_channels)
+        return texture1d_t(
+            self._tex_handle,
+            self._width,
+            self._num_channels,
+            int(self._filter_mode),
+            int(self._mip_filter_mode),
+            self._num_mip_levels,
+            int(self._normalized_coords),
+        )
 
 
 class Texture2D(Texture):
@@ -1271,7 +1333,16 @@ class Texture2D(Texture):
         """Return the ctypes structure for passing to kernels."""
         if self._tex_handle == 0:
             raise RuntimeError("Texture was created with data=None but never initialized.")
-        return texture2d_t(self._tex_handle, self._width, self._height, self._num_channels)
+        return texture2d_t(
+            self._tex_handle,
+            self._width,
+            self._height,
+            self._num_channels,
+            int(self._filter_mode),
+            int(self._mip_filter_mode),
+            self._num_mip_levels,
+            int(self._normalized_coords),
+        )
 
 
 class Texture3D(Texture):
@@ -1356,7 +1427,17 @@ class Texture3D(Texture):
         """Return the ctypes structure for passing to kernels."""
         if self._tex_handle == 0:
             raise RuntimeError("Texture was created with data=None but never initialized.")
-        return texture3d_t(self._tex_handle, self._width, self._height, self._depth, self._num_channels)
+        return texture3d_t(
+            self._tex_handle,
+            self._width,
+            self._height,
+            self._depth,
+            self._num_channels,
+            int(self._filter_mode),
+            int(self._mip_filter_mode),
+            self._num_mip_levels,
+            int(self._normalized_coords),
+        )
 
 
 class TextureResourceFlags(enum.IntEnum):

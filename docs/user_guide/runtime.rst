@@ -2759,6 +2759,12 @@ Supported data types include ``wp.uint8``, ``wp.uint16``, ``wp.uint32``, ``wp.in
 normalized to the [0, 1] range when sampled; signed integer textures are normalized to [-1, 1];
 float types are returned as-is.
 
+Texture sampling is differentiable with respect to the sampling coordinates and the ``lod``
+argument under every address mode, so sampling positions can be optimized with
+:class:`wp.Tape <warp.Tape>`. With :attr:`warp.TextureFilterMode.CLOSEST` filtering the sampled
+value is piecewise constant in the coordinates, so their gradients are zero. Gradients are not
+propagated to the texture data itself.
+
 .. seealso:: `Reference <../language_reference/builtins.html#textures>`__ for the texture sampling functions available in kernels.
 
 

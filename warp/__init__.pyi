@@ -6814,6 +6814,11 @@ def texture_sample(tex: Texture1D, u: float32, dtype: Any, lod: float32) -> Any:
     :class:`warp.Texture`. On CUDA, ``WRAP`` and ``MIRROR`` are treated as ``CLAMP`` when
     ``normalized_coords=False`` (the CPU sampler honors them).
 
+    The backward pass propagates gradients to the sampling coordinates and ``lod`` under
+    every address mode. With :attr:`warp.TextureFilterMode.CLOSEST` filtering the sampled
+    value is piecewise constant in the coordinates, so their gradients are zero. Gradients
+    are not propagated to the texture data itself.
+
     Example:
 
         .. testcode::
@@ -6882,7 +6887,12 @@ def texture_sample(tex: Texture2D, uv: vec2f, dtype: Any, lod: float32) -> Any:
     The filtering mode (:class:`warp.TextureFilterMode`) and the addressing of out-of-range
     coordinates (:class:`warp.TextureAddressMode`) are those set when the texture was created; see
     :class:`warp.Texture`. On CUDA, ``WRAP`` and ``MIRROR`` are treated as ``CLAMP`` when
-    ``normalized_coords=False`` (the CPU sampler honors them)."""
+    ``normalized_coords=False`` (the CPU sampler honors them).
+
+    The backward pass propagates gradients to the sampling coordinates and ``lod`` under
+    every address mode. With :attr:`warp.TextureFilterMode.CLOSEST` filtering the sampled
+    value is piecewise constant in the coordinates, so their gradients are zero. Gradients
+    are not propagated to the texture data itself."""
     ...
 
 @over
@@ -6927,7 +6937,12 @@ def texture_sample(tex: Texture2D, u: float32, v: float32, dtype: Any, lod: floa
     The filtering mode (:class:`warp.TextureFilterMode`) and the addressing of out-of-range
     coordinates (:class:`warp.TextureAddressMode`) are those set when the texture was created; see
     :class:`warp.Texture`. On CUDA, ``WRAP`` and ``MIRROR`` are treated as ``CLAMP`` when
-    ``normalized_coords=False`` (the CPU sampler honors them)."""
+    ``normalized_coords=False`` (the CPU sampler honors them).
+
+    The backward pass propagates gradients to the sampling coordinates and ``lod`` under
+    every address mode. With :attr:`warp.TextureFilterMode.CLOSEST` filtering the sampled
+    value is piecewise constant in the coordinates, so their gradients are zero. Gradients
+    are not propagated to the texture data itself."""
     ...
 
 @over
@@ -6970,7 +6985,12 @@ def texture_sample(tex: Texture3D, uvw: vec3f, dtype: Any, lod: float32) -> Any:
     The filtering mode (:class:`warp.TextureFilterMode`) and the addressing of out-of-range
     coordinates (:class:`warp.TextureAddressMode`) are those set when the texture was created; see
     :class:`warp.Texture`. On CUDA, ``WRAP`` and ``MIRROR`` are treated as ``CLAMP`` when
-    ``normalized_coords=False`` (the CPU sampler honors them)."""
+    ``normalized_coords=False`` (the CPU sampler honors them).
+
+    The backward pass propagates gradients to the sampling coordinates and ``lod`` under
+    every address mode. With :attr:`warp.TextureFilterMode.CLOSEST` filtering the sampled
+    value is piecewise constant in the coordinates, so their gradients are zero. Gradients
+    are not propagated to the texture data itself."""
     ...
 
 @over
@@ -7020,7 +7040,12 @@ def texture_sample(tex: Texture3D, u: float32, v: float32, w: float32, dtype: An
     The filtering mode (:class:`warp.TextureFilterMode`) and the addressing of out-of-range
     coordinates (:class:`warp.TextureAddressMode`) are those set when the texture was created; see
     :class:`warp.Texture`. On CUDA, ``WRAP`` and ``MIRROR`` are treated as ``CLAMP`` when
-    ``normalized_coords=False`` (the CPU sampler honors them)."""
+    ``normalized_coords=False`` (the CPU sampler honors them).
+
+    The backward pass propagates gradients to the sampling coordinates and ``lod`` under
+    every address mode. With :attr:`warp.TextureFilterMode.CLOSEST` filtering the sampled
+    value is piecewise constant in the coordinates, so their gradients are zero. Gradients
+    are not propagated to the texture data itself."""
     ...
 
 @over
