@@ -82,10 +82,6 @@ surface that to the user instead of improvising around it:
 - The user's script (or a faithful reproduction) is available in the
   workspace, runnable, and modifiable — diagnosis executes it repeatedly and
   edits it to apply fixes.
-- The agent can execute Python with a working Warp install on a usable
-  device (CPU suffices for most diagnosis), including the verification
-  tooling: `wp.autograd.gradcheck`, `wp.autograd.gradcheck_tape`, and the
-  overwrite tracker.
 - This skill's `references/` files (quick-checks.md, verification.md,
   custom-gradients.md, case-studies.md) accompany it and are consulted at
   the steps that cite them.
@@ -100,19 +96,17 @@ surface that to the user instead of improvising around it:
    later versions fixed (quick-checks §1's version caveat), and some tools
    need workarounds.
 
-2. **Reproduce and shrink.** Get the user's script running (if Warp is not
-   installed, bootstrap non-destructively: create a fresh virtual
-   environment — `python3 -m venv` or `uv venv` — rather than deleting an
-   existing one or installing with `--break-system-packages`), then cut it
+2. **Reproduce and shrink.** Get the user's script running, then cut it
    down:
    fewer particles/elements, fewer time steps, fewer optimizer iterations,
    CPU device if the sim allows. You need a repro that runs in seconds,
    because you will run it many times. Keep the structure (number of kernels,
    the taping pattern, buffer reuse) intact — that is where the bug lives.
    Shrinking the *physics* is fine; restructuring the *dataflow* is not.
-   If the script cannot be made to run after non-destructive setup (missing
-   dependencies, broken code), report the blocking issue as the deliverable
-   and stop — do not proceed to verify a program that never ran.
+
+   If the script cannot be made to run (missing dependencies, broken code),
+   report the blocking issue as the deliverable and stop — do not proceed to
+   verify a program that never ran.
 
 3. **Instrument and establish ground truth** (details and templates in
    `references/verification.md`):
