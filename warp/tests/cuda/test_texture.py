@@ -2847,8 +2847,16 @@ _GRAD_ADDRESS_MODES = (
 # Tolerance for adjoint vs. finite differences of the forward pass. The
 # adjoint reconstructs the exact lerp slope, but the CUDA forward interpolates
 # with 9-bit fixed-point fractions, so the finite difference itself carries
-# O(1/256 / h) noise.
+# O(1/256 / h) noise. In the 2D/3D tests the sample points are quarter-aligned
+# (texel fractions that are multiples of 0.25) so that every interpolation
+# weight, including the off-axis ones, is exact in the hardware fixed-point
+# format; a misaligned off-axis weight couples through the cell's mixed
+# derivative and the half-texel stencil amplifies it to percent-level noise.
 _GRAD_FD_TOL = 2e-2
+
+# Mipmapped sampling stacks two levels of interpolation, so the finite
+# difference carries more quantization noise than the single-level case.
+_GRAD_MIP_FD_TOL = 3e-2
 
 
 @wp.kernel
@@ -3075,25 +3083,37 @@ def test_texture_sample_grad_2d(test, device):
     rng = np.random.default_rng(2)
     data = rng.standard_normal((height, width)).astype(np.float32)
 
-    points = ((3.25, 2.8), (0.2, 0.25), (7.75, 5.8), (-0.25, 4.2))
+    points = ((3.25, 2.75), (0.25, 0.25), (7.75, 5.75), (-0.25, 4.25))
 
-    for address_mode in (wp.TextureAddressMode.CLAMP, wp.TextureAddressMode.BORDER):
+    for address_mode in _GRAD_ADDRESS_MODES:
+        # WRAP and MIRROR run with normalized coordinates because CUDA treats
+        # them as CLAMP otherwise.
+        normalized = address_mode in (wp.TextureAddressMode.WRAP, wp.TextureAddressMode.MIRROR)
+        su = 1.0 / width if normalized else 1.0
+        sv = 1.0 / height if normalized else 1.0
         tex = wp.Texture2D(
             data,
-            normalized_coords=False,
+            normalized_coords=normalized,
             filter_mode=wp.TextureFilterMode.LINEAR,
             address_mode=address_mode,
             device=device,
         )
-        for u, v in points:
-            h = 0.25
-            fu = _forward_values(sample_grad_2d_scalar_f, tex, [[u - h, u + h], [v, v]], float, device)
-            fv = _forward_values(sample_grad_2d_scalar_f, tex, [[u, u], [v - h, v + h]], float, device)
-            fd = ((fu[1] - fu[0]) / (2.0 * h), (fv[1] - fv[0]) / (2.0 * h))
+        for u_texel, v_texel in points:
+            u, v = u_texel * su, v_texel * sv
+            hu, hv = 0.25 * su, 0.25 * sv
+            fu = _forward_values(sample_grad_2d_scalar_f, tex, [[u - hu, u + hu], [v, v]], float, device)
+            fv = _forward_values(sample_grad_2d_scalar_f, tex, [[u, u], [v - hv, v + hv]], float, device)
+            fd = ((fu[1] - fu[0]) / (2.0 * hu), (fv[1] - fv[0]) / (2.0 * hv))
 
             # scalar-coordinate overload
             gu, gv = _tape_gradients(sample_grad_2d_scalar_f, tex, [[u], [v]], float, device)
-            np.testing.assert_allclose((gu[0], gv[0]), fd, rtol=_GRAD_FD_TOL, atol=_GRAD_FD_TOL)
+            np.testing.assert_allclose(
+                (gu[0], gv[0]),
+                fd,
+                rtol=_GRAD_FD_TOL,
+                atol=_GRAD_FD_TOL,
+                err_msg=f"mode={address_mode.name} u_texel={u_texel} v_texel={v_texel}",
+            )
 
             # vec2 overload
             pos = wp.array([wp.vec2f(u, v)], dtype=wp.vec2f, requires_grad=True, device=device)
@@ -3112,21 +3132,26 @@ def test_texture_sample_grad_3d(test, device):
     rng = np.random.default_rng(3)
     data = rng.standard_normal((depth, height, width)).astype(np.float32)
 
-    points = ((3.25, 2.8, 1.2), (0.2, 0.25, 3.75), (7.75, 5.8, 0.75))
+    points = ((3.25, 2.75, 1.25), (0.25, 0.25, 3.75), (7.75, 5.75, 0.75))
 
-    for address_mode in (wp.TextureAddressMode.CLAMP, wp.TextureAddressMode.BORDER):
+    for address_mode in _GRAD_ADDRESS_MODES:
+        # WRAP and MIRROR run with normalized coordinates because CUDA treats
+        # them as CLAMP otherwise.
+        normalized = address_mode in (wp.TextureAddressMode.WRAP, wp.TextureAddressMode.MIRROR)
+        scales = (1.0 / width, 1.0 / height, 1.0 / depth) if normalized else (1.0, 1.0, 1.0)
         tex = wp.Texture3D(
             data,
-            normalized_coords=False,
+            normalized_coords=normalized,
             filter_mode=wp.TextureFilterMode.LINEAR,
             address_mode=address_mode,
             device=device,
         )
-        for u, v, w in points:
-            h = 0.25
-            coords = (u, v, w)
+        for point_texel in points:
+            coords = tuple(c * s for c, s in zip(point_texel, scales))
+            u, v, w = coords
             fd = []
             for axis in range(3):
+                h = 0.25 * scales[axis]
                 lo = list(coords)
                 hi = list(coords)
                 lo[axis] -= h
@@ -3141,7 +3166,13 @@ def test_texture_sample_grad_3d(test, device):
                 fd.append((f[1] - f[0]) / (2.0 * h))
 
             gu, gv, gw = _tape_gradients(sample_grad_3d_scalar_f, tex, [[u], [v], [w]], float, device)
-            np.testing.assert_allclose((gu[0], gv[0], gw[0]), fd, rtol=_GRAD_FD_TOL, atol=_GRAD_FD_TOL)
+            np.testing.assert_allclose(
+                (gu[0], gv[0], gw[0]),
+                fd,
+                rtol=_GRAD_FD_TOL,
+                atol=_GRAD_FD_TOL,
+                err_msg=f"mode={address_mode.name} point_texel={point_texel}",
+            )
 
             pos = wp.array([wp.vec3f(u, v, w)], dtype=wp.vec3f, requires_grad=True, device=device)
             out = wp.zeros(1, dtype=float, requires_grad=True, device=device)
@@ -3187,12 +3218,15 @@ def test_texture_sample_grad_lod(test, device):
                 np.testing.assert_allclose(
                     gu[0],
                     fd_u,
-                    rtol=3e-2,
-                    atol=3e-2,
+                    rtol=_GRAD_MIP_FD_TOL,
+                    atol=_GRAD_MIP_FD_TOL,
                     err_msg=f"mip={mip_filter_mode.name} lod={lod} u_texel={u_texel}",
                 )
 
                 if mip_filter_mode == wp.TextureFilterMode.LINEAR:
+                    # At an integer LOD the mip blend has a kink, so the adjoint
+                    # returns the right-hand derivative; a central difference
+                    # there is not a valid reference.
                     if lod % 1.0 != 0.0:
                         hl = 0.125
                         f = _forward_values(sample_grad_1d_lod_f, tex, [[u, u], [lod - hl, lod + hl]], float, device)
@@ -3200,8 +3234,8 @@ def test_texture_sample_grad_lod(test, device):
                         np.testing.assert_allclose(
                             glod[0],
                             fd_lod,
-                            rtol=3e-2,
-                            atol=3e-2,
+                            rtol=_GRAD_MIP_FD_TOL,
+                            atol=_GRAD_MIP_FD_TOL,
                             err_msg=f"lod gradient at lod={lod} u_texel={u_texel}",
                         )
                 else:
