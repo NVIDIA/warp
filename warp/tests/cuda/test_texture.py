@@ -3147,7 +3147,7 @@ def test_texture_sample_grad_3d(test, device):
             device=device,
         )
         for point_texel in points:
-            coords = tuple(c * s for c, s in zip(point_texel, scales))
+            coords = tuple(c * s for c, s in zip(point_texel, scales, strict=True))
             u, v, w = coords
             fd = []
             for axis in range(3):
