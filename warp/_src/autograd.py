@@ -41,6 +41,7 @@ def gradcheck(
     plot_relative_error: bool = False,
     plot_absolute_error: bool = False,
     show_summary: bool = True,
+    restore_inputs: bool = True,
 ) -> bool:
     """Check whether the autodiff gradient of a Warp kernel matches finite differences.
 
@@ -78,6 +79,9 @@ def gradcheck(
         plot_relative_error: If True, visualizes the relative error of the Jacobians in a plot (requires ``matplotlib``).
         plot_absolute_error: If True, visualizes the absolute error of the Jacobians in a plot (requires ``matplotlib``).
         show_summary: If True, prints a summary table of the gradient check results.
+        restore_inputs: For Python functions, restore top-level Warp array inputs to their
+          original values between evaluations and before returning, so both Jacobians are
+          evaluated from the original input values. Arrays inside structs are not restored.
 
     Returns:
         ``True`` if the gradient check passes, ``False`` otherwise.
@@ -98,6 +102,7 @@ def gradcheck(
         max_blocks=max_blocks,
         block_dim=block_dim,
         max_outputs_per_var=max_outputs_per_var,
+        restore_inputs=restore_inputs,
         plot_jacobians=False,
         metadata=metadata,
     )
@@ -112,6 +117,7 @@ def gradcheck(
         block_dim=block_dim,
         max_inputs_per_var=max_inputs_per_var,
         eps=eps,
+        restore_inputs=restore_inputs,
         plot_jacobians=False,
         metadata=metadata,
     )
@@ -343,6 +349,36 @@ def infer_device(xs: list):
                 if wp._src.types.is_array(var):
                     return var.device
     return wp.get_preferred_device()
+
+
+def _restore_array_inputs(inputs: Sequence, snapshot: Sequence[tuple[wp.array, bool] | None]) -> None:
+    """Write back snapshotted contents and read-tracking state of Warp array inputs."""
+    for x, s in zip(inputs, snapshot, strict=True):
+        if s is not None:
+            data, was_read = s
+            x.assign(data)
+            # the check's own tape marks reads; restoring the entry state clears
+            # those without erasing flags owned by a caller's pending tape
+            x._is_read = was_read
+
+
+def _snapshot_array_inputs(inputs: Sequence) -> list[tuple[wp.array, bool] | None]:
+    """Snapshot the contents and read-tracking state of top-level Warp array inputs.
+
+    Data only (gradients are unused by ``jacobian_fd()`` and zeroed by ``jacobian()``);
+    arrays inside struct inputs and inputs of Warp kernels are not covered.
+    """
+    return [(wp.clone(x, requires_grad=False), x._is_read) if isinstance(x, wp.array) else None for x in inputs]
+
+
+def _eval_function(function, inputs: Sequence, input_snapshot: Sequence[tuple[wp.array, bool] | None] | None):
+    """Evaluate a Python function, restoring the caller's inputs if it raises."""
+    try:
+        return function(*inputs)
+    except BaseException:
+        if input_snapshot is not None:
+            _restore_array_inputs(inputs, input_snapshot)
+        raise
 
 
 class FunctionMetadata:
@@ -673,6 +709,7 @@ def jacobian(
     max_outputs_per_var=-1,
     plot_jacobians=False,
     metadata: FunctionMetadata | None = None,
+    restore_inputs: bool = True,
 ) -> dict[tuple[int, int], wp.array]:
     """Compute the Jacobians of a function or Warp kernel for the provided selection of differentiable inputs to differentiable outputs.
 
@@ -700,6 +737,8 @@ def jacobian(
         max_outputs_per_var: Maximum number of output dimensions over which to evaluate the Jacobians for the input-output pairs. Evaluates all output dimensions if value <= 0.
         plot_jacobians: If True, visualizes the computed Jacobians in a plot (requires ``matplotlib``).
         metadata: The metadata of the kernel function, containing the input and output labels, strides, and dtypes. If None or empty, the metadata is inferred from the kernel or function.
+        restore_inputs: For Python functions, restore top-level Warp array inputs to their
+          original values before returning. Arrays inside structs are not restored.
 
     Returns:
         A dictionary of Jacobians, where the keys are tuples of input and output indices, and the values are the Jacobian matrices.
@@ -731,58 +770,66 @@ def jacobian(
             block_dim=block_dim,
         )
     else:
+        input_snapshot = _snapshot_array_inputs(inputs) if restore_inputs else None
         tape = wp.Tape()
         with tape:
-            outputs = function(*inputs)
+            outputs = _eval_function(function, inputs, input_snapshot)
         if isinstance(outputs, wp.array):
             outputs = [outputs]
-        if metadata.is_empty:
+
+    try:
+        # metadata inference can raise, and can re-evaluate the function
+        if metadata.is_empty and not isinstance(function, wp.Kernel):
             metadata.update_from_function(function, inputs, outputs)
 
-    arg_names = metadata.input_labels + metadata.output_labels
+        arg_names = metadata.input_labels + metadata.output_labels
 
-    def resolve_arg(name, offset: int = 0):
-        if isinstance(name, int):
-            return name
-        return arg_names.index(name) + offset
+        def resolve_arg(name, offset: int = 0):
+            if isinstance(name, int):
+                return name
+            return arg_names.index(name) + offset
 
-    input_output_mask = [
-        (resolve_arg(input_name), resolve_arg(output_name, -len(inputs)))
-        for input_name, output_name in input_output_mask
-    ]
-    input_output_mask = set(input_output_mask)
+        input_output_mask = [
+            (resolve_arg(input_name), resolve_arg(output_name, -len(inputs)))
+            for input_name, output_name in input_output_mask
+        ]
+        input_output_mask = set(input_output_mask)
 
-    zero_grads(inputs)
-    zero_grads(outputs)
+        zero_grads(inputs)
+        zero_grads(outputs)
 
-    jacobians = {}
+        jacobians = {}
 
-    for input_i, output_i in itertools.product(range(len(inputs)), range(len(outputs))):
-        if len(input_output_mask) > 0 and (input_i, output_i) not in input_output_mask:
-            continue
-        input = inputs[input_i]
-        output = outputs[output_i]
-        if not isinstance(input, wp.array) or not input.requires_grad:
-            continue
-        if not isinstance(output, wp.array) or not output.requires_grad:
-            continue
-        out_grad = scalarize_array_1d(output.grad)
-        output_num = out_grad.shape[0]
-        jacobian = wp.empty((output_num, input.size), dtype=input.dtype, device=input.device)
-        jacobian.fill_(wp.nan)
-        if max_outputs_per_var > 0:
-            output_num = min(output_num, max_outputs_per_var)
-        for i in range(output_num):
-            output.grad.zero_()
-            if i > 0:
-                set_element(out_grad, i - 1, 0.0)
-            set_element(out_grad, i, 1.0)
-            tape.backward()
-            jacobian[i].assign(input.grad)
+        for input_i, output_i in itertools.product(range(len(inputs)), range(len(outputs))):
+            if len(input_output_mask) > 0 and (input_i, output_i) not in input_output_mask:
+                continue
+            input = inputs[input_i]
+            output = outputs[output_i]
+            if not isinstance(input, wp.array) or not input.requires_grad:
+                continue
+            if not isinstance(output, wp.array) or not output.requires_grad:
+                continue
+            out_grad = scalarize_array_1d(output.grad)
+            output_num = out_grad.shape[0]
+            jacobian = wp.empty((output_num, input.size), dtype=input.dtype, device=input.device)
+            jacobian.fill_(wp.nan)
+            if max_outputs_per_var > 0:
+                output_num = min(output_num, max_outputs_per_var)
+            for i in range(output_num):
+                output.grad.zero_()
+                if i > 0:
+                    set_element(out_grad, i - 1, 0.0)
+                set_element(out_grad, i, 1.0)
+                tape.backward()
+                jacobian[i].assign(input.grad)
 
-            zero_grads(inputs)
-            zero_grads(outputs)
-        jacobians[input_i, output_i] = jacobian
+                zero_grads(inputs)
+                zero_grads(outputs)
+            jacobians[input_i, output_i] = jacobian
+    finally:
+        # restores the snapshot even when a backward pass raises
+        if restore_inputs and not isinstance(function, wp.Kernel):
+            _restore_array_inputs(inputs, input_snapshot)
 
     if plot_jacobians:
         jacobian_plot(jacobians, metadata)
@@ -803,6 +850,7 @@ def jacobian_fd(
     eps: float = 1e-4,
     plot_jacobians=False,
     metadata: FunctionMetadata | None = None,
+    restore_inputs: bool = True,
 ) -> dict[tuple[int, int], wp.array]:
     """Compute the finite-difference Jacobian of a function or Warp kernel for the provided selection of differentiable inputs to differentiable outputs.
 
@@ -833,6 +881,9 @@ def jacobian_fd(
         eps: The finite-difference step size.
         plot_jacobians: If True, visualizes the computed Jacobians in a plot (requires ``matplotlib``).
         metadata: The metadata of the kernel function, containing the input and output labels, strides, and dtypes. If None or empty, the metadata is inferred from the kernel or function.
+        restore_inputs: For Python functions, restore top-level Warp array inputs to their
+          original values between evaluations and before returning, so each evaluation starts
+          from the original input values. Arrays inside structs are not restored.
 
     Returns:
         A dictionary of Jacobians, where the keys are tuples of input and output indices, and the values are the Jacobian matrices.
@@ -864,13 +915,22 @@ def jacobian_fd(
             block_dim=block_dim,
         )
     else:
+        input_snapshot = _snapshot_array_inputs(inputs) if restore_inputs else None
         tape = wp.Tape()
         with tape:
-            outputs = function(*inputs)
+            outputs = _eval_function(function, inputs, input_snapshot)
         if isinstance(outputs, wp.array):
             outputs = [outputs]
-        if metadata.is_empty:
-            metadata.update_from_function(function, inputs, outputs)
+        try:
+            # metadata inference can raise, and can re-evaluate the function
+            if metadata.is_empty:
+                metadata.update_from_function(function, inputs, outputs)
+        finally:
+            if restore_inputs:
+                # restore before anything below can raise (e.g. a bad
+                # input_output_mask label); the FD tape is never backpropagated,
+                # so nothing downstream needs the post-evaluation state
+                _restore_array_inputs(inputs, input_snapshot)
 
     arg_names = metadata.input_labels + metadata.output_labels
 
@@ -894,94 +954,109 @@ def jacobian_fd(
 
     outputs_copy = [conditional_clone(output) for output in outputs]
 
-    for input_i, output_i in itertools.product(range(len(inputs)), range(len(outputs))):
-        if len(input_output_mask) > 0 and (input_i, output_i) not in input_output_mask:
-            continue
-        input = inputs[input_i]
-        output = outputs[output_i]
-        if not isinstance(input, wp.array) or not input.requires_grad:
-            continue
-        if not isinstance(output, wp.array) or not output.requires_grad:
-            continue
+    try:
+        for input_i, output_i in itertools.product(range(len(inputs)), range(len(outputs))):
+            if len(input_output_mask) > 0 and (input_i, output_i) not in input_output_mask:
+                continue
+            input = inputs[input_i]
+            output = outputs[output_i]
+            if not isinstance(input, wp.array) or not input.requires_grad:
+                continue
+            if not isinstance(output, wp.array) or not output.requires_grad:
+                continue
 
-        flat_input = scalarize_array_1d(input)
+            flat_input = scalarize_array_1d(input)
 
-        left = wp.clone(output)
-        right = wp.clone(output)
-        left_copy = wp.clone(output)
-        right_copy = wp.clone(output)
-        flat_left = scalarize_array_1d(left)
-        flat_right = scalarize_array_1d(right)
+            left = wp.clone(output)
+            right = wp.clone(output)
+            left_copy = wp.clone(output)
+            right_copy = wp.clone(output)
+            flat_left = scalarize_array_1d(left)
+            flat_right = scalarize_array_1d(right)
 
-        outputs_until_left = [conditional_clone(output) for output in outputs_copy[:output_i]]
-        outputs_until_right = [conditional_clone(output) for output in outputs_copy[:output_i]]
-        outputs_after_left = [conditional_clone(output) for output in outputs_copy[output_i + 1 :]]
-        outputs_after_right = [conditional_clone(output) for output in outputs_copy[output_i + 1 :]]
-        left_outputs = [*outputs_until_left, left, *outputs_after_left]
-        right_outputs = [*outputs_until_right, right, *outputs_after_right]
+            outputs_until_left = [conditional_clone(output) for output in outputs_copy[:output_i]]
+            outputs_until_right = [conditional_clone(output) for output in outputs_copy[:output_i]]
+            outputs_after_left = [conditional_clone(output) for output in outputs_copy[output_i + 1 :]]
+            outputs_after_right = [conditional_clone(output) for output in outputs_copy[output_i + 1 :]]
+            left_outputs = [*outputs_until_left, left, *outputs_after_left]
+            right_outputs = [*outputs_until_right, right, *outputs_after_right]
 
-        input_num = flat_input.shape[0]
-        flat_input_copy = wp.clone(flat_input)
-        jacobian = wp.empty((flat_left.size, input.size), dtype=input.dtype, device=input.device)
-        jacobian.fill_(wp.nan)
+            use_restore = restore_inputs and not isinstance(function, wp.Kernel)
+            input_num = flat_input.shape[0]
+            # the restore path resets the full inputs from the snapshot instead
+            flat_input_copy = None if use_restore else wp.clone(flat_input)
+            jacobian = wp.empty((flat_left.size, input.size), dtype=input.dtype, device=input.device)
+            jacobian.fill_(wp.nan)
 
-        jacobian_scalar = scalarize_array_2d(jacobian)
-        jacobian_t = jacobian_scalar.transpose()
-        if max_inputs_per_var > 0:
-            input_num = min(input_num, max_inputs_per_var)
-        for i in range(input_num):
-            set_element(flat_input, i, -eps, relative=True)
-            if isinstance(function, wp.Kernel):
-                wp.launch(
-                    function,
-                    dim=dim,
-                    max_blocks=max_blocks,
-                    block_dim=block_dim,
-                    inputs=inputs,
-                    outputs=left_outputs,
-                    device=device,
+            jacobian_scalar = scalarize_array_2d(jacobian)
+            jacobian_t = jacobian_scalar.transpose()
+            if max_inputs_per_var > 0:
+                input_num = min(input_num, max_inputs_per_var)
+            for i in range(input_num):
+                set_element(flat_input, i, -eps, relative=True)
+                if isinstance(function, wp.Kernel):
+                    wp.launch(
+                        function,
+                        dim=dim,
+                        max_blocks=max_blocks,
+                        block_dim=block_dim,
+                        inputs=inputs,
+                        outputs=left_outputs,
+                        device=device,
+                    )
+                else:
+                    outputs = _eval_function(function, inputs, input_snapshot)
+                    if isinstance(outputs, wp.array):
+                        outputs = [outputs]
+                    left.assign(outputs[output_i])
+
+                if use_restore:
+                    # the left evaluation may have mutated the inputs; restart from the snapshot
+                    _restore_array_inputs(inputs, input_snapshot)
+                    set_element(flat_input, i, eps, relative=True)
+                else:
+                    set_element(flat_input, i, 2 * eps, relative=True)
+                if isinstance(function, wp.Kernel):
+                    wp.launch(
+                        function,
+                        dim=dim,
+                        max_blocks=max_blocks,
+                        block_dim=block_dim,
+                        inputs=inputs,
+                        outputs=right_outputs,
+                        device=device,
+                    )
+                else:
+                    outputs = _eval_function(function, inputs, input_snapshot)
+                    if isinstance(outputs, wp.array):
+                        outputs = [outputs]
+                    right.assign(outputs[output_i])
+
+                # restore input
+                if use_restore:
+                    _restore_array_inputs(inputs, input_snapshot)
+                else:
+                    flat_input.assign(flat_input_copy)
+
+                compute_fd(
+                    flat_left,
+                    flat_right,
+                    eps,
+                    jacobian_t[i],
                 )
-            else:
-                outputs = function(*inputs)
-                if isinstance(outputs, wp.array):
-                    outputs = [outputs]
-                left.assign(outputs[output_i])
 
-            set_element(flat_input, i, 2 * eps, relative=True)
-            if isinstance(function, wp.Kernel):
-                wp.launch(
-                    function,
-                    dim=dim,
-                    max_blocks=max_blocks,
-                    block_dim=block_dim,
-                    inputs=inputs,
-                    outputs=right_outputs,
-                    device=device,
-                )
-            else:
-                outputs = function(*inputs)
-                if isinstance(outputs, wp.array):
-                    outputs = [outputs]
-                right.assign(outputs[output_i])
+                if i < input_num - 1:
+                    # reset output buffers
+                    left.assign(left_copy)
+                    right.assign(right_copy)
+                    flat_left = scalarize_array_1d(left)
+                    flat_right = scalarize_array_1d(right)
 
-            # restore input
-            flat_input.assign(flat_input_copy)
-
-            compute_fd(
-                flat_left,
-                flat_right,
-                eps,
-                jacobian_t[i],
-            )
-
-            if i < input_num - 1:
-                # reset output buffers
-                left.assign(left_copy)
-                right.assign(right_copy)
-                flat_left = scalarize_array_1d(left)
-                flat_right = scalarize_array_1d(right)
-
-        jacobians[input_i, output_i] = jacobian
+            jacobians[input_i, output_i] = jacobian
+    finally:
+        # restores the snapshot even when a probe raises mid-loop
+        if restore_inputs and not isinstance(function, wp.Kernel):
+            _restore_array_inputs(inputs, input_snapshot)
 
     if plot_jacobians:
         jacobian_plot(jacobians, metadata)
@@ -990,37 +1065,39 @@ def jacobian_fd(
 
 
 @wp.kernel(enable_backward=False)
-def set_element_kernel(a: wp.array(dtype=Any), i: int, val: Any, relative: bool):
+def set_element_kernel(a: wp.array[Any], i: int, val: Any, relative: bool):
     if relative:
         a[i] += val
     else:
         a[i] = val
 
 
-wp.overload(set_element_kernel, {"a": wp.array(dtype=wp.float32), "val": wp.float32})
-wp.overload(set_element_kernel, {"a": wp.array(dtype=wp.float64), "val": wp.float64})
+wp.overload(set_element_kernel, {"a": wp.array[wp.float32], "val": wp.float32})
+wp.overload(set_element_kernel, {"a": wp.array[wp.float64], "val": wp.float64})
 
 
-def set_element(a: wp.array(dtype=Any), i: int, val: Any, relative: bool = False):
+def set_element(a: wp.array[Any], i: int, val: Any, relative: bool = False):
     wp.launch(set_element_kernel, dim=1, inputs=[a, i, a.dtype(val), relative], device=a.device)
 
 
 @wp.kernel(enable_backward=False)
-def compute_fd_kernel(left: wp.array(dtype=Any), right: wp.array(dtype=Any), eps: Any, fd: wp.array(dtype=Any)):
+def compute_fd_kernel(left: wp.array[Any], right: wp.array[Any], eps: Any, fd: wp.array[Any]):
     tid = wp.tid()
-    fd[tid] = (right[tid] - left[tid]) / (fd.dtype(2.0) * eps)
+    # compute the difference quotient in the output precision, then cast to the
+    # Jacobian dtype, which follows the input array and may differ from the
+    # output dtype (e.g. float32 inputs with a float64 output)
+    fd[tid] = fd.dtype((right[tid] - left[tid]) / (left.dtype(2.0) * eps))
 
 
-wp.overload(
-    compute_fd_kernel, [wp.array(dtype=wp.float32), wp.array(dtype=wp.float32), wp.float32, wp.array(dtype=wp.float32)]
-)
-wp.overload(
-    compute_fd_kernel, [wp.array(dtype=wp.float64), wp.array(dtype=wp.float64), wp.float64, wp.array(dtype=wp.float64)]
-)
+wp.overload(compute_fd_kernel, [wp.array[wp.float32], wp.array[wp.float32], wp.float32, wp.array[wp.float32]])
+wp.overload(compute_fd_kernel, [wp.array[wp.float64], wp.array[wp.float64], wp.float64, wp.array[wp.float64]])
+# mixed input/output precision: the outputs (left/right/eps) and the Jacobian (fd) may differ
+wp.overload(compute_fd_kernel, [wp.array[wp.float32], wp.array[wp.float32], wp.float32, wp.array[wp.float64]])
+wp.overload(compute_fd_kernel, [wp.array[wp.float64], wp.array[wp.float64], wp.float64, wp.array[wp.float32]])
 
 
-def compute_fd(left: wp.array(dtype=Any), right: wp.array(dtype=Any), eps: Any, fd: wp.array(dtype=Any)):
-    wp.launch(compute_fd_kernel, dim=len(left), inputs=[left, right, fd.dtype(eps)], outputs=[fd], device=left.device)
+def compute_fd(left: wp.array[Any], right: wp.array[Any], eps: Any, fd: wp.array[Any]):
+    wp.launch(compute_fd_kernel, dim=len(left), inputs=[left, right, left.dtype(eps)], outputs=[fd], device=left.device)
 
 
 @wp.kernel(enable_backward=False)
