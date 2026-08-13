@@ -1,0 +1,27 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+# Harbor execution policy for the warp-compile-time-optimizer dataset.
+#
+# These tasks measure cold-start compilation, so a single attempt legitimately
+# runs several isolated samples of the user's command, each paying full module
+# build cost. Harbor's default agent budget is 300 s, and on the 2026-08-02
+# NV-CARPS run every one of Claude Code's eighteen baseline attempts hit
+# agent_execution_timeout. That excluded the agent from the verdict entirely
+# (coverage valid_degraded, reason_code agent_execution_timeout) rather than
+# recording the result, even though its with-skill arm completed all eighteen
+# cases cleanly.
+#
+# The dominant cause is being addressed separately: fourteen cases declared no
+# `files`, so the legacy fallback staged the whole fixture corpus into every
+# task and an unguided agent spent its budget reading it. This multiplier is
+# the remaining headroom for the four cases that genuinely stage a project and
+# have to build it repeatedly.
+#
+# Kept deliberately small. That run's Tier 3 job took 33.7 minutes against a
+# one-hour cap, and a larger multiplier risks trading an excluded agent for an
+# overrun pipeline.
+schema_version: 1
+
+harbor:
+  timeout_multiplier: 2

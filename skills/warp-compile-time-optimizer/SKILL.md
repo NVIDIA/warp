@@ -111,8 +111,11 @@ python scripts/warp_compile_probe.py measure --samples 3 \
 ```
 
 The probe gives each sample private `WARP_CACHE_PATH`, `WARP_CACHE_ROOT`, and
-`CUDA_CACHE_PATH` directories, enables module timers, and records launches.
-Never clear a live cache with `wp.clear_kernel_cache()` or
+`CUDA_CACHE_PATH` directories, enables module timers, and records launches. It
+creates those directories under the system temporary directory and removes
+them itself, so isolating a sample never requires writing a cache into the
+project or deleting anything to re-measure. Isolate a hand-rolled sample the
+same way. Never clear a live cache with `wp.clear_kernel_cache()` or
 `wp.clear_lto_cache()`; clearing is not isolated and can disrupt other
 processes.
 

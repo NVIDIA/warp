@@ -1,5 +1,5 @@
 ## Description: <br>
-Diagnoses and reduces Warp JIT compilation time and cold-start latency for applications that use NVIDIA Warp kernels. <br>
+Use when compile time or startup time is the problem in code that uses Warp: diagnoses and reduces JIT compilation overhead, module identity churn, and cold-start latency for Warp kernels. <br>
 
 This skill is ready for commercial/non-commercial use. <br>
 
@@ -9,7 +9,7 @@ NVIDIA <br>
 ### License/Terms of Use: <br>
 Apache 2.0 <br>
 ## Use Case: <br>
-Developers and engineers using NVIDIA Warp who experience slow startup or repeated recompilation and need to identify and fix compile-time bottlenecks in their GPU-accelerated Python applications. <br>
+Developers and engineers using NVIDIA Warp who need to diagnose and reduce JIT compilation time, cold-start latency, or module rebuild overhead in their GPU-accelerated Python applications. <br>
 
 ### Deployment Geography for Use: <br>
 Global <br>
@@ -34,7 +34,7 @@ Mitigation: Review and scan skill before deployment. <br>
 **Output Type(s):** [Analysis, Code, Shell commands] <br>
 **Output Format:** [Markdown with inline code blocks and measurement tables] <br>
 **Output Parameters:** [1D] <br>
-**Other Properties Related to Output:** [Outputs include before/after benchmark comparisons, mechanism diagnoses, and code patches] <br>
+**Other Properties Related to Output:** [None] <br>
 
 ## Evaluation Agents Used: <br>
 - Claude Code (`aws/anthropic/bedrock-claude-opus-4-8`) <br>
@@ -43,18 +43,18 @@ Mitigation: Review and scan skill before deployment. <br>
 
 
 ## Evaluation Tasks: <br>
-Evaluated against 18 tasks (18 positive) in isolated k8s-sandbox pods. <br>
+18 evaluation tasks (18 positive) executed in isolated sandbox pods, covering safety, correctness, discoverability, effectiveness, and efficiency. <br>
 
 ## Evaluation Metrics Used: <br>
 Reported benchmark dimensions: <br>
 - Security: Checks for unsafe operations, secret leakage, and unauthorized access. <br>
-- Correctness: Verifies final-answer correctness against the reference answer. <br>
+- Correctness: Verifies final-answer correctness against reference answers. <br>
 - Discoverability: Whether the expected skill was found and executed when needed. <br>
-- Effectiveness: Whether the skill helped complete the user's goal and followed expected workflow. <br>
-- Efficiency: Routing quality, workspace-aware skill reads, and productive tool use. <br>
+- Effectiveness: Whether the skill helped complete the user's goal and expected workflow (equal-weight mean of goal completion and behavior adherence). <br>
+- Efficiency: Routing quality, workspace-aware skill reads, and productive tool use without waste. <br>
 
 Underlying evaluation signals used in this run: <br>
-- `security`: Checks for unsafe operations, secret leakage, and unauthorized access. <br>
+- `security`: Unsafe operations, secret leakage, and unauthorized access. <br>
 - `skill_execution`: Whether the expected skill was found and executed. <br>
 - `skill_efficiency`: Routing quality, workspace-aware skill reads, and productive tool use. <br>
 - `accuracy`: Final-answer correctness against the reference answer. <br>
@@ -64,14 +64,14 @@ Underlying evaluation signals used in this run: <br>
 
 
 ## Evaluation Results: <br>
-| Measure | Codex (Baseline → Skill Uplift) |
-|---|---:|
-| Overall | 92% → 93% (+1 points) |
-| Security | 94% → 83% (-11 points) |
-| Correctness | 99% → 99% (±0 points) |
-| Discoverability | 85% → 90% (+5 points) |
-| Effectiveness | 94% → 97% (+2 points) |
-| Efficiency | 88% → 96% (+9 points) |
+| Measure | Claude Code (Baseline → Skill Uplift) | Codex (Baseline → Skill Uplift) |
+|---|---:|---:|
+| Overall | Not available | 88% → 95% (+7 points) |
+| Security | Not available | 83% → 94% (+11 points) |
+| Correctness | Not available | 94% → 100% (+6 points) |
+| Discoverability | Not available | 84% → 89% (+5 points) |
+| Effectiveness | Not available | 90% → 95% (+5 points) |
+| Efficiency | Not available | 89% → 96% (+8 points) |
 
 ## Skill Version(s): <br>
 0.1.0 (source: frontmatter) <br>

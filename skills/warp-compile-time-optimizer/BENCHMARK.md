@@ -1,17 +1,19 @@
 # Skill Benchmark: warp-compile-time-optimizer
 
-> **Overall verdict: NEUTRAL — One or more dimensions remain below PASS**
+> ✅ **Overall verdict: PASS — Recommended for publication**
 
-Live evaluation did not show a material gain or regression. Collect more evidence or improve the skill before making a publication decision.
+## Publication Recommendation
+
+Recommended for publication based on the completed evaluation evidence in this report.
 
 ## Evaluation Metadata
 
 - Skill: `warp-compile-time-optimizer`
-- Evaluation date: 2026-08-02
-- Evaluator version: `0.9.2`
+- Evaluation date: 2026-08-13
+- Evaluator version: `1.2.4`
 - Agents: Claude Code (`aws/anthropic/bedrock-claude-opus-4-8`), Codex (`openai/openai/gpt-5.5`)
 - Tasks: 18 evaluation tasks (18 positive)
-- Dataset digest: `sha256:cc2e0dfaa3e0a776a88c313893d0587f38d298ebb450745b4e8323ee03e238f9` (skill-evaluator-dataset-snapshot/1)
+- Dataset digest: `sha256:7f1d9e790399798ffbe028ff0ae8cdcf78cc28e4b304a09125ad6da274002c60` (skill-evaluator-dataset-snapshot/1)
 - Attempts per task: 1
 - Environment: `k8s-sandbox`
 - Tier 3 evidence: required for publication
@@ -32,12 +34,12 @@ The three-tier evaluation checks whether the skill:
 
 | Measure | Claude Code (Baseline → Skill Uplift) | Codex (Baseline → Skill Uplift) |
 |---|---:|---:|
-| Overall | Not available | 92% → 93% (+1 points) |
-| Security | Not available | 94% → 83% (-11 points) |
-| Correctness | Not available | 99% → 99% (±0 points) |
-| Discoverability | Not available | 85% → 90% (+5 points) |
-| Effectiveness | Not available | 94% → 97% (+2 points) |
-| Efficiency | Not available | 88% → 96% (+9 points) |
+| Overall | Not available | 88% → 95% (+7 points) |
+| Security | Not available | 83% → 94% (+11 points) |
+| Correctness | Not available | 94% → 100% (+6 points) |
+| Discoverability | Not available | 84% → 89% (+5 points) |
+| Effectiveness | Not available | 90% → 95% (+5 points) |
+| Efficiency | Not available | 89% → 96% (+8 points) |
 
 **How to read this table:** baseline is the same task attempted without the target skill. Uplift is `skill score - baseline score`, shown in percentage points.
 
@@ -49,7 +51,7 @@ Example: `47% → 92% (+45 points)` means the skill-assisted run scored 92%, 45 
 |---|---|---|---|
 | Tier 1 | Static validation | **PASSED WITH OBSERVATIONS** | 1 validator(s); 1 finding(s) |
 | Tier 2 | Semantic deduplication | **NOT RUN** | No result was recorded |
-| Tier 3 | Live agent evaluation | **NEUTRAL** | 2 agent(s); 18 task(s) |
+| Tier 3 | Live agent evaluation | **PASS** | 2 agent(s); 18 task(s) |
 
 ## Findings and Observations
 
