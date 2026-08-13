@@ -682,6 +682,42 @@ def in_out_func(
     wp.launch(accum_kernel, dim=a.size, inputs=[a, b])  # modifies `b`
 
 
+def cache_key_output_first_func(
+    inp: wp.array[float],
+    output: wp.array[float],
+):
+    """Write three times ``inp`` to ``output`` for cache-key tests."""
+    wp.launch(triple_kernel, dim=inp.shape, inputs=[inp], outputs=[output])
+
+
+def cache_key_in_out_first_func(
+    a: wp.array1d[wp.float32],
+    b: wp.array1d[wp.float32],
+):
+    """Copy ``a`` to ``b`` for input-output-first cache-key tests."""
+    wp.launch(noop_kernel, dim=a.shape, inputs=[a], outputs=[b])
+
+
+def cache_key_staging_func(
+    a: wp.array[float],
+    b: wp.array[float],
+    c: wp.array[float],
+    d: wp.array[float],
+):
+    """Copy two inputs into separate outputs for staging cache-key tests."""
+    wp.copy(c, a)
+    wp.copy(d, b)
+
+
+def cache_key_two_in_out_func(
+    a: wp.array[float],
+    b: wp.array[float],
+    c: wp.array[float],
+):
+    """Copy ``a`` to ``c`` while exposing ``a`` and ``b`` as cache-key candidates."""
+    wp.copy(c, a)
+
+
 def double_func(
     # inputs
     a: wp.array[float],
@@ -801,6 +837,69 @@ def test_ffi_jax_kernel_in_out(test, device):
 
     assert_np_equal(b, np.arange(1, ARRAY_SIZE + 1, dtype=np.float32))
     assert_np_equal(c, np.full(ARRAY_SIZE, 2, dtype=np.float32))
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
+def test_ffi_jax_kernel_cache_argnames(test, device):
+    """Verify kernel cache identity includes input-output argument names."""
+    jax = _import_jax()
+    jp = _import_jax_numpy()
+    size = 8
+
+    # Use distinct existing kernels to isolate both registry construction orders
+    # without adding kernels to the shared module's cold compilation.
+    cases = (
+        (triple_kernel, "output", 3.0, False),
+        (noop_kernel, "b", 1.0, True),
+    )
+
+    with jax.default_device(wp.device_to_jax(device)):
+        for kernel, in_out_argname, expected_scale, in_out_first in cases:
+            with test.subTest(kernel=kernel.key, in_out_first=in_out_first):
+                if in_out_first:
+                    in_out = wp.jax_kernel(kernel, num_outputs=1, in_out_argnames=[in_out_argname])
+                    output_only = wp.jax_kernel(kernel, num_outputs=1)
+                else:
+                    output_only = wp.jax_kernel(kernel, num_outputs=1)
+                    in_out = wp.jax_kernel(kernel, num_outputs=1, in_out_argnames=[in_out_argname])
+
+                # Different ABI selections need distinct wrappers, while repeated
+                # and empty/default configurations must reuse existing wrappers.
+                test.assertIsNot(output_only, in_out)
+                test.assertIs(output_only, wp.jax_kernel(kernel, num_outputs=1))
+                test.assertIs(output_only, wp.jax_kernel(kernel, num_outputs=1, in_out_argnames=[]))
+                test.assertIs(
+                    in_out,
+                    wp.jax_kernel(kernel, num_outputs=1, in_out_argnames=[in_out_argname]),
+                )
+
+                # Execute both ABIs because object identity alone cannot expose a
+                # stale input count retained from the first cached wrapper.
+                a = jp.arange(size, dtype=jp.float32)
+                output_buffer = jp.full(size, -1.0, dtype=jp.float32)
+                (output_result,) = jax.jit(output_only)(a)
+                (in_out_result,) = jax.jit(in_out)(a, output_buffer)
+                jax.block_until_ready((output_result, in_out_result))
+
+                expected = np.arange(size, dtype=np.float32) * expected_scale
+                np.testing.assert_allclose(np.asarray(output_result), expected)
+                np.testing.assert_allclose(np.asarray(in_out_result), expected)
+
+        # A valid cached wrapper must not hide validation errors in later
+        # configurations.
+        with test.assertRaisesRegex(AssertionError, "must not contain duplicate names"):
+            wp.jax_kernel(
+                triple_kernel,
+                num_outputs=1,
+                in_out_argnames=["output", "output"],
+            )
+
+        with test.assertRaisesRegex(ValueError, "did not match any function argument names"):
+            wp.jax_kernel(
+                triple_kernel,
+                num_outputs=1,
+                in_out_argnames=["missing"],
+            )
 
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
@@ -1044,6 +1143,137 @@ def test_ffi_jax_callable_in_out(test, device):
 
     assert_np_equal(b, np.arange(1, ARRAY_SIZE + 1, dtype=np.float32))
     assert_np_equal(c, np.full(ARRAY_SIZE, 2, dtype=np.float32))
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
+def test_ffi_jax_callable_cache_argnames(test, device):
+    """Verify callable cache identity includes input-output argument names."""
+    jax = _import_jax()
+    jp = _import_jax_numpy()
+    size = 8
+
+    # Use distinct callables to isolate both registry construction orders. Each
+    # launches an existing kernel to avoid extra shared-module cold compilation.
+    cases = (
+        (cache_key_output_first_func, "output", 3.0, False),
+        (cache_key_in_out_first_func, "b", 1.0, True),
+    )
+
+    with jax.default_device(wp.device_to_jax(device)):
+        for func, in_out_argname, expected_scale, in_out_first in cases:
+            with test.subTest(func=func.__name__, in_out_first=in_out_first):
+                if in_out_first:
+                    in_out = wp.jax_callable(func, num_outputs=1, in_out_argnames=[in_out_argname])
+                    output_only = wp.jax_callable(func, num_outputs=1)
+                else:
+                    output_only = wp.jax_callable(func, num_outputs=1)
+                    in_out = wp.jax_callable(func, num_outputs=1, in_out_argnames=[in_out_argname])
+
+                # Different ABI selections need distinct wrappers, while repeated
+                # and empty/default configurations must reuse existing wrappers.
+                test.assertIsNot(output_only, in_out)
+                test.assertIs(output_only, wp.jax_callable(func, num_outputs=1))
+                test.assertIs(output_only, wp.jax_callable(func, num_outputs=1, in_out_argnames=[]))
+                test.assertIs(
+                    in_out,
+                    wp.jax_callable(func, num_outputs=1, in_out_argnames=[in_out_argname]),
+                )
+
+                # Execute both ABIs because object identity alone cannot expose a
+                # stale input count retained from the first cached wrapper.
+                a = jp.arange(size, dtype=jp.float32)
+                output_buffer = jp.full(size, -1.0, dtype=jp.float32)
+                (output_result,) = jax.jit(output_only)(a)
+                (in_out_result,) = jax.jit(in_out)(a, output_buffer)
+                jax.block_until_ready((output_result, in_out_result))
+
+                expected = np.arange(size, dtype=np.float32) * expected_scale
+                np.testing.assert_allclose(np.asarray(output_result), expected)
+                np.testing.assert_allclose(np.asarray(in_out_result), expected)
+
+        # A valid cached wrapper must not hide validation errors in later
+        # configurations.
+        with test.assertRaisesRegex(AssertionError, "must not contain duplicate names"):
+            wp.jax_callable(
+                cache_key_output_first_func,
+                num_outputs=1,
+                in_out_argnames=["output", "output"],
+            )
+
+        with test.assertRaisesRegex(ValueError, "did not match any function argument names"):
+            wp.jax_callable(
+                cache_key_output_first_func,
+                num_outputs=1,
+                in_out_argnames=["missing"],
+            )
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
+def test_ffi_jax_callable_cache_stage_argnames(test, device):
+    """Verify callable cache identity includes staging and ordered input-output names."""
+    jax = _import_jax()
+
+    with jax.default_device(wp.device_to_jax(device)):
+        # Staging selections are wrapper state, so only identical selections may
+        # reuse a cache entry.
+        first = wp.jax_callable(
+            cache_key_staging_func,
+            num_outputs=2,
+            graph_mode=wp.JaxCallableGraphMode.WARP_STAGED,
+            stage_in_argnames=["a"],
+            stage_out_argnames=["c"],
+        )
+        repeated = wp.jax_callable(
+            cache_key_staging_func,
+            num_outputs=2,
+            graph_mode=wp.JaxCallableGraphMode.WARP_STAGED,
+            stage_in_argnames=["a"],
+            stage_out_argnames=["c"],
+        )
+        second = wp.jax_callable(
+            cache_key_staging_func,
+            num_outputs=2,
+            graph_mode=wp.JaxCallableGraphMode.WARP_STAGED,
+            stage_in_argnames=["b"],
+            stage_out_argnames=["d"],
+        )
+
+        test.assertIs(first, repeated)
+        test.assertIsNot(first, second)
+        test.assertEqual(first.stage_in_argnames, {"a"})
+        test.assertEqual(first.stage_out_argnames, {"c"})
+        test.assertEqual(second.stage_in_argnames, {"b"})
+        test.assertEqual(second.stage_out_argnames, {"d"})
+
+        # Empty staging selections intentionally normalize to the absent/default
+        # selection.
+        absent = wp.jax_callable(
+            cache_key_staging_func,
+            num_outputs=2,
+            graph_mode=wp.JaxCallableGraphMode.WARP_STAGED,
+        )
+        empty = wp.jax_callable(
+            cache_key_staging_func,
+            num_outputs=2,
+            graph_mode=wp.JaxCallableGraphMode.WARP_STAGED,
+            stage_in_argnames=[],
+            stage_out_argnames=[],
+        )
+        test.assertIs(absent, empty)
+
+        # Preserve caller order in the cache key even though current wrapper
+        # behavior uses set membership for these names.
+        ordered = wp.jax_callable(
+            cache_key_two_in_out_func,
+            num_outputs=3,
+            in_out_argnames=["a", "b"],
+        )
+        permuted = wp.jax_callable(
+            cache_key_two_in_out_func,
+            num_outputs=3,
+            in_out_argnames=["b", "a"],
+        )
+        test.assertIsNot(ordered, permuted)
 
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
@@ -2811,6 +3041,7 @@ else:
                 test_ffi_jax_kernel_sincos,
                 test_ffi_jax_kernel_diagonal,
                 test_ffi_jax_kernel_in_out,
+                test_ffi_jax_kernel_cache_argnames,
                 test_ffi_jax_kernel_scale_vec_constant,
                 test_ffi_jax_kernel_scale_vec_static,
                 test_ffi_jax_kernel_launch_dims_default,
@@ -2819,6 +3050,8 @@ else:
                 test_ffi_jax_callable_scale_constant,
                 test_ffi_jax_callable_scale_static,
                 test_ffi_jax_callable_in_out,
+                test_ffi_jax_callable_cache_argnames,
+                test_ffi_jax_callable_cache_stage_argnames,
                 # autodiff and subscript annotations
                 test_ffi_jax_kernel_autodiff_simple,
                 test_ffi_jax_kernel_block_dim_autodiff,
