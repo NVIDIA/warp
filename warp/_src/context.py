@@ -7204,6 +7204,7 @@ class Runtime:
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.POINTER(ctypes.c_void_p),
+                ctypes.c_bool,
             ]
             self.core.wp_cuda_graph_end_capture.restype = ctypes.c_bool
 
@@ -12097,12 +12098,16 @@ def capture_begin(
     _register_capture(device, stream, graph, capture_id)
 
 
-def capture_end(device: DeviceLike = None, stream: Stream | None = None) -> Graph:
+def capture_end(device: DeviceLike = None, stream: Stream | None = None, *, skip_leaf_join: bool = False) -> Graph:
     """End the capture of a graph.
 
     Args:
         device: The device where capture began
         stream: The CUDA stream where capture began (CUDA only)
+        skip_leaf_join: If ``True``, skip Warp's broad leaf-join pass that
+            adds all unjoined graph leaves to the capture stream's dependency
+            list. This is intended for integrations that own the capture
+            frontier discipline themselves.
 
     Returns:
         A :class:`Graph` object that can be launched with :func:`~warp.capture_launch()`
@@ -12137,7 +12142,7 @@ def capture_end(device: DeviceLike = None, stream: Stream | None = None) -> Grap
 
     # get the graph executable
     g = ctypes.c_void_p()
-    result = runtime.core.wp_cuda_graph_end_capture(device.context, stream.cuda_stream, ctypes.byref(g))
+    result = runtime.core.wp_cuda_graph_end_capture(device.context, stream.cuda_stream, ctypes.byref(g), skip_leaf_join)
 
     # End APIC recording regardless of capture success
     if graph._apic_capture is not None:

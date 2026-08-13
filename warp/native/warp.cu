@@ -3494,7 +3494,7 @@ bool wp_cuda_graph_begin_capture(void* context, void* stream, int external, int 
     return true;
 }
 
-bool wp_cuda_graph_end_capture(void* context, void* stream, void** graph_ret)
+bool wp_cuda_graph_end_capture(void* context, void* stream, void** graph_ret, bool skip_leaf_join)
 {
     ContextGuard guard(context);
 
@@ -3560,28 +3560,30 @@ bool wp_cuda_graph_end_capture(void* context, void* stream, void** graph_ret)
         return false;
     }
 
-    // ensure that all forked streams are joined to the main capture stream by manually
-    // adding outstanding capture dependencies gathered from the graph leaf nodes
-    std::vector<cudaGraphNode_t> stream_dependencies;
-    std::vector<cudaGraphNode_t> leaf_nodes;
-    if (get_capture_dependencies(cuda_stream, stream_dependencies) && get_graph_leaf_nodes(graph, leaf_nodes)) {
-        // compute set difference to get unjoined dependencies
-        std::vector<cudaGraphNode_t> unjoined_dependencies;
-        std::sort(stream_dependencies.begin(), stream_dependencies.end());
-        std::sort(leaf_nodes.begin(), leaf_nodes.end());
-        std::set_difference(
-            leaf_nodes.begin(), leaf_nodes.end(), stream_dependencies.begin(), stream_dependencies.end(),
-            std::back_inserter(unjoined_dependencies)
-        );
-        if (!unjoined_dependencies.empty()) {
-            check_cu(cuStreamUpdateCaptureDependencies_f(
-                cuda_stream, unjoined_dependencies.data(), unjoined_dependencies.size(),
-                CU_STREAM_ADD_CAPTURE_DEPENDENCIES
-            ));
-            // ensure graph is still valid
-            if (get_capture_graph(cuda_stream) != graph) {
-                clean_up();
-                return false;
+    if (!skip_leaf_join) {
+        // ensure that all forked streams are joined to the main capture stream by manually
+        // adding outstanding capture dependencies gathered from the graph leaf nodes
+        std::vector<cudaGraphNode_t> stream_dependencies;
+        std::vector<cudaGraphNode_t> leaf_nodes;
+        if (get_capture_dependencies(cuda_stream, stream_dependencies) && get_graph_leaf_nodes(graph, leaf_nodes)) {
+            // compute set difference to get unjoined dependencies
+            std::vector<cudaGraphNode_t> unjoined_dependencies;
+            std::sort(stream_dependencies.begin(), stream_dependencies.end());
+            std::sort(leaf_nodes.begin(), leaf_nodes.end());
+            std::set_difference(
+                leaf_nodes.begin(), leaf_nodes.end(), stream_dependencies.begin(), stream_dependencies.end(),
+                std::back_inserter(unjoined_dependencies)
+            );
+            if (!unjoined_dependencies.empty()) {
+                check_cu(cuStreamUpdateCaptureDependencies_f(
+                    cuda_stream, unjoined_dependencies.data(), unjoined_dependencies.size(),
+                    CU_STREAM_ADD_CAPTURE_DEPENDENCIES
+                ));
+                // ensure graph is still valid
+                if (get_capture_graph(cuda_stream) != graph) {
+                    clean_up();
+                    return false;
+                }
             }
         }
     }

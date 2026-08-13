@@ -101,6 +101,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.cuda.test_clang_cuda import TestClangCUDA
     from warp.tests.cuda.test_cluster_dim import TestClusterDim
     from warp.tests.cuda.test_cuda_arch_suffix import TestCudaArchSuffix
+    from warp.tests.cuda.test_graph_skip_leaf_join import TestGraphSkipLeafJoin
     from warp.tests.cuda.test_mempool import TestMempool
     from warp.tests.cuda.test_multigpu import TestMultiGPU
     from warp.tests.cuda.test_occupancy import TestOccupancy
@@ -358,6 +359,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestGradCustoms,
         TestGradDebug,
         TestGraph,
+        TestGraphSkipLeafJoin,
         TestHashGrid,
         TestImport,
         TestIndexedArray,
