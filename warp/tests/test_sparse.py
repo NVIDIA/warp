@@ -972,6 +972,55 @@ def test_bsr_mm_max_new_nnz(test, device):
     test.assertRegex(output, r"exceeded")
 
 
+@wp.kernel
+def _spin_then_bump_offsets(offsets: wp.array[int], mult: wp.array[float], nrow: int, nnz: int, iters: int):
+    """Burn time, then write the block count. Keeps the replayed graph busy
+    long enough that an improperly ordered host readback loses the race.
+    The multiplier comes from memory and the arms differ, so the spin loop
+    cannot be folded away."""
+    acc = mult[0]
+    for i in range(iters):
+        acc = acc * mult[0] + 1.0e-7
+    offsets[nrow] = wp.where(acc >= 0.0, nnz, nnz - 1)
+
+
+def test_nnz_sync_after_graph_replay(test, device):
+    """Check nnz_sync() ordering against a replayed graph containing its readback.
+
+    The transfer buffer/event pair is cached by a pre-capture nnz_sync(); the
+    captured copy_nnz_async() turns its copy and event record into graph
+    nodes. An nnz_sync() issued right after the asynchronous capture_launch()
+    must be ordered behind the replayed copy. Waiting on the cached event
+    relies on the record node arming the event at graph launch -- a
+    toolkit-sensitive contract (sound on CUDA 13.4, where this test passes
+    either way); re-issuing the readback on the current stream orders the
+    wait by construction. This test guards that ordering contract across
+    toolkits.
+    """
+    nrow = 4
+    nnz_target = 3
+
+    A = bsr_zeros(nrow, nrow, wp.float32, device=device)
+    spin_mult = wp.array([1.0000001], dtype=float, device=device)
+    # Cache the transfer pair with a completed live record.
+    test.assertEqual(A.nnz_sync(), 0)
+
+    with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+        wp.launch(
+            _spin_then_bump_offsets,
+            dim=1,
+            inputs=[A.offsets, spin_mult, nrow, nnz_target, 50_000_000],
+            device=device,
+        )
+        A.copy_nnz_async()
+
+    wp.capture_launch(capture.graph)
+    # With the stale-event bug this reads the buffer before the replayed
+    # copy lands and returns 0.
+    test.assertEqual(A.nnz_sync(), nnz_target)
+    wp.synchronize_device(device)
+
+
 def test_capturability(test, device):
     """Test that BSR operations are graph-capturable"""
 
@@ -1427,6 +1476,12 @@ add_function_test(TestSparse, "test_bsr_mv_1_3", make_test_bsr_mv((1, 3), wp.flo
 add_function_test(TestSparse, "test_bsr_mv_3_3", make_test_bsr_mv((3, 3), wp.float64), devices=devices)
 
 add_function_test(TestSparse, "test_capturability", test_capturability, devices=cuda_test_devices_with_mempool)
+add_function_test(
+    TestSparse,
+    "test_nnz_sync_after_graph_replay",
+    test_nnz_sync_after_graph_replay,
+    devices=cuda_test_devices_with_mempool,
+)
 add_function_test(
     TestSparse,
     "test_bsr_compress_trailing_capacity",
