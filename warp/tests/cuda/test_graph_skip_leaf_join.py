@@ -17,6 +17,8 @@ OTHER branches of the outer graph and inject false serialization edges.
 behaviors without requiring ``cuda.stf``.
 """
 
+import ctypes
+import ctypes.util
 import unittest
 
 import numpy as np
@@ -97,6 +99,114 @@ def test_skip_leaf_join_explicit_join_succeeds(test, device):
     assert_np_equal(b.numpy(), np.full(N, 2, dtype=np.int32))
 
 
+def _load_cudart():
+    """Load the CUDA runtime library for direct graph inspection."""
+    candidates = []
+    found = ctypes.util.find_library("cudart")
+    if found:
+        candidates.append(found)
+    candidates += ["libcudart.so.13", "libcudart.so.12", "libcudart.so"]
+    for name in candidates:
+        try:
+            return ctypes.CDLL(name)
+        except OSError:
+            continue
+    return None
+
+
+def _capture_with_guest_windows(test, device, skip_leaf_join):
+    """Externally-owned capture with two guest ScopedCapture windows.
+
+    The test owns the capture like an outer integration would: it begins the
+    capture directly through the CUDA runtime (not through Warp), forks two
+    streams into it, and adopts the ongoing capture from each fork with
+    ``ScopedCapture(external=True)`` guest windows. Branch ``fork1`` is
+    deliberately left dangling while the second window closes, then the owner
+    extends ``fork2`` with one more kernel, joins its branches back, and ends
+    the capture itself.
+
+    With ``skip_leaf_join=True`` the second window's close leaves ``fork1``'s
+    dangling leaf alone, so the owner's follow-up kernel depends only on its
+    own branch. With the default broad join, the dangling leaf is swept into
+    ``fork2``'s dependency set and the follow-up kernel gains a false
+    serialization edge: exactly one extra edge in the captured graph.
+
+    Returns the total edge count of the captured graph.
+    """
+    cudart = _load_cudart()
+    if cudart is None:
+        test.skipTest("libcudart is not available for graph inspection")
+
+    main = wp.Stream(device)
+    fork1 = wp.Stream(device)
+    fork2 = wp.Stream(device)
+    a = wp.zeros(N, dtype=int, device=device)
+    b = wp.zeros(N, dtype=int, device=device)
+    c = wp.zeros(N, dtype=int, device=device)
+    wp.load_module(device=device)
+
+    with wp.ScopedDevice(device):
+        # the owner begins the capture through the CUDA runtime (thread-local mode)
+        err = cudart.cudaStreamBeginCapture(ctypes.c_void_p(main.cuda_stream), 1)
+        test.assertEqual(err, 0, "cudaStreamBeginCapture failed")
+
+        graph = ctypes.c_void_p()
+        try:
+            ev = main.record_event()
+            fork1.wait_event(ev)
+            fork2.wait_event(ev)
+
+            # guest window on fork1; the owner intends to extend this branch later
+            with wp.ScopedCapture(stream=fork1, external=True, skip_leaf_join=skip_leaf_join):
+                wp.launch(_write_val, dim=N, inputs=[a, 1], stream=fork1)
+
+            # guest window on fork2, closed while fork1's leaf is still dangling
+            with wp.ScopedCapture(stream=fork2, external=True, skip_leaf_join=skip_leaf_join):
+                wp.launch(_write_val, dim=N, inputs=[b, 2], stream=fork2)
+
+            # the owner extends fork2 after the guest windows closed
+            wp.launch(_write_val, dim=N, inputs=[c, 3], stream=fork2)
+
+            # the owner joins its branches and ends its capture
+            main.wait_event(fork1.record_event())
+            main.wait_event(fork2.record_event())
+        finally:
+            err = cudart.cudaStreamEndCapture(ctypes.c_void_p(main.cuda_stream), ctypes.byref(graph))
+
+        test.assertEqual(err, 0, "cudaStreamEndCapture failed")
+        test.assertTrue(graph.value, "capture produced no graph")
+
+        try:
+            num_edges = ctypes.c_size_t()
+            # CUDA 13 promoted the edge-data variant of cudaGraphGetEdges:
+            # (graph, from, to, edgeData, numEdges). Try it first, then fall
+            # back to the classic CUDA 12 signature (graph, from, to, numEdges).
+            err = cudart.cudaGraphGetEdges(graph, None, None, None, ctypes.byref(num_edges))
+            if err != 0:
+                num_edges = ctypes.c_size_t()
+                err = cudart.cudaGraphGetEdges(graph, None, None, ctypes.byref(num_edges))
+            test.assertEqual(err, 0, "cudaGraphGetEdges failed")
+            return num_edges.value
+        finally:
+            cudart.cudaGraphDestroy(graph)
+
+
+def test_scoped_capture_windows_preserve_owner_frontier(test, device):
+    """ScopedCapture(external=True, skip_leaf_join=True) guest windows must
+    not adopt dangling leaves of the owner's other branches: the same capture
+    runs with and without the opt-out, and the default's broad join shows up
+    as exactly one extra (false) serialization edge."""
+    edges_skip = _capture_with_guest_windows(test, device, skip_leaf_join=True)
+    edges_join = _capture_with_guest_windows(test, device, skip_leaf_join=False)
+
+    test.assertEqual(
+        edges_join,
+        edges_skip + 1,
+        "the default broad leaf-join should inject exactly one false serialization "
+        f"edge relative to skip_leaf_join=True (got {edges_join} vs {edges_skip})",
+    )
+
+
 class TestGraphSkipLeafJoin(unittest.TestCase):
     pass
 
@@ -119,6 +229,12 @@ add_function_test(
     TestGraphSkipLeafJoin,
     "test_skip_leaf_join_explicit_join_succeeds",
     test_skip_leaf_join_explicit_join_succeeds,
+    devices=devices,
+)
+add_function_test(
+    TestGraphSkipLeafJoin,
+    "test_scoped_capture_windows_preserve_owner_frontier",
+    test_scoped_capture_windows_preserve_owner_frontier,
     devices=devices,
 )
 
