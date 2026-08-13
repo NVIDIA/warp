@@ -252,7 +252,7 @@ Jacobians
 #########
 
 To compute the Jacobian matrix :math:`J\in\mathbb{R}^{m\times n}` of a multi-valued function :math:`f: \mathbb{R}^n \to \mathbb{R}^m`,
-we can evaluate an entire row of the Jacobian in parallel by finding the Jacobian-vector product :math:`J^\top \mathbf{e}`.
+we can evaluate an entire row of the Jacobian in parallel by finding the vector-Jacobian product :math:`\mathbf{e}^\top J`.
 The vector :math:`\mathbf{e}\in\mathbb{R}^m` selects the indices in the output buffer to differentiate with respect to.
 In Warp, instead of passing a scalar loss buffer to :meth:`warp.Tape.backward`,
 we pass a dictionary ``grads`` mapping from the function output array to the selection vector :math:`\mathbf{e}`

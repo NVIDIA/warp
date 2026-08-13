@@ -740,7 +740,7 @@ PyTorch equivalents (for comparison):</p>
 <section id="jacobians">
 <h2>Jacobians<a class="headerlink" href="#jacobians" title="Link to this heading">#</a></h2>
 <p>To compute the Jacobian matrix <span class="math notranslate nohighlight">\(J\in\mathbb{R}^{m\times n}\)</span> of a multi-valued function <span class="math notranslate nohighlight">\(f: \mathbb{R}^n \to \mathbb{R}^m\)</span>,
-we can evaluate an entire row of the Jacobian in parallel by finding the Jacobian-vector product <span class="math notranslate nohighlight">\(J^\top \mathbf{e}\)</span>.
+we can evaluate an entire row of the Jacobian in parallel by finding the vector-Jacobian product <span class="math notranslate nohighlight">\(\mathbf{e}^\top J\)</span>.
 The vector <span class="math notranslate nohighlight">\(\mathbf{e}\in\mathbb{R}^m\)</span> selects the indices in the output buffer to differentiate with respect to.
 In Warp, instead of passing a scalar loss buffer to <a class="reference internal" href="../api_reference/_generated/warp.Tape.html#warp.Tape.backward" title="warp.Tape.backward"><code class="xref py py-meth docutils literal notranslate"><span class="pre">warp.Tape.backward()</span></code></a>,
 we pass a dictionary <code class="docutils literal notranslate"><span class="pre">grads</span></code> mapping from the function output array to the selection vector <span class="math notranslate nohighlight">\(\mathbf{e}\)</span>
