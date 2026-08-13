@@ -177,13 +177,22 @@ def _capture_with_guest_windows(test, device, skip_leaf_join):
         test.assertTrue(graph.value, "capture produced no graph")
 
         try:
+            # cudaGraphGetEdges changed signature in CUDA 13 (an edge-data
+            # array parameter was inserted before numEdges), so dispatch on
+            # the runtime version rather than on the returned error code.
+            version = ctypes.c_int(0)
+            err = cudart.cudaRuntimeGetVersion(ctypes.byref(version))
+            test.assertEqual(err, 0, "cudaRuntimeGetVersion failed")
+
             num_edges = ctypes.c_size_t()
-            # CUDA 13 promoted the edge-data variant of cudaGraphGetEdges:
-            # (graph, from, to, edgeData, numEdges). Try it first, then fall
-            # back to the classic CUDA 12 signature (graph, from, to, numEdges).
-            err = cudart.cudaGraphGetEdges(graph, None, None, None, ctypes.byref(num_edges))
-            if err != 0:
-                num_edges = ctypes.c_size_t()
+            if version.value >= 13000:
+                # CUDA 13+: (graph, from, to, edgeData, numEdges). A NULL
+                # edgeData count query is lossless here: the graph's edges
+                # come from kernel launches and event order, which carry
+                # default edge data.
+                err = cudart.cudaGraphGetEdges(graph, None, None, None, ctypes.byref(num_edges))
+            else:
+                # CUDA 12: (graph, from, to, numEdges)
                 err = cudart.cudaGraphGetEdges(graph, None, None, ctypes.byref(num_edges))
             test.assertEqual(err, 0, "cudaGraphGetEdges failed")
             return num_edges.value
