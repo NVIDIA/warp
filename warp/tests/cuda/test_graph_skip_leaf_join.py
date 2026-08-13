@@ -30,7 +30,7 @@ N = 1024
 
 
 @wp.kernel
-def _write_val(arr: wp.array(dtype=int), value: int):
+def _write_val(arr: wp.array[int], value: int):
     arr[wp.tid()] = value
 
 
@@ -46,8 +46,11 @@ def _begin_forked_capture(device, main, forked, a, b):
 
 
 def test_leaf_join_rescues_unjoined_fork(test, device):
-    """Default capture_end: the leaf-join pass adopts the dangling forked
-    branch, the capture succeeds, and the branch's work is in the graph."""
+    """Check that the default leaf-join pass rescues an unjoined forked stream.
+
+    The pass adopts the dangling forked branch, the capture succeeds, and the
+    branch's work is part of the replayed graph.
+    """
     main = wp.Stream(device)
     forked = wp.Stream(device)
     a = wp.zeros(N, dtype=int, device=device)
@@ -64,8 +67,11 @@ def test_leaf_join_rescues_unjoined_fork(test, device):
 
 
 def test_skip_leaf_join_rejects_unjoined_fork(test, device):
-    """skip_leaf_join=True: Warp does not adopt the dangling leaf, so CUDA
-    rejects the capture (unjoined work) and capture_end raises."""
+    """Check that ``skip_leaf_join=True`` refuses to adopt a dangling leaf.
+
+    Warp does not join the forked branch, so CUDA rejects the capture as
+    unjoined work and ``capture_end`` raises.
+    """
     main = wp.Stream(device)
     forked = wp.Stream(device)
     a = wp.zeros(N, dtype=int, device=device)
@@ -76,12 +82,13 @@ def test_skip_leaf_join_rejects_unjoined_fork(test, device):
     with test.assertRaises(RuntimeError):
         wp.capture_end(device=device, stream=main, skip_leaf_join=True)
 
-    wp.synchronize_device(device)
-
 
 def test_skip_leaf_join_explicit_join_succeeds(test, device):
-    """skip_leaf_join=True with the frontier handled by the caller: joining
-    the fork explicitly ends the capture cleanly and the graph replays."""
+    """Check that ``skip_leaf_join=True`` with a caller-managed join succeeds.
+
+    With the capture frontier handled by the caller, joining the fork
+    explicitly ends the capture cleanly and the graph replays correctly.
+    """
     main = wp.Stream(device)
     forked = wp.Stream(device)
     a = wp.zeros(N, dtype=int, device=device)
@@ -201,10 +208,13 @@ def _capture_with_guest_windows(test, device, skip_leaf_join):
 
 
 def test_scoped_capture_windows_preserve_owner_frontier(test, device):
-    """ScopedCapture(external=True, skip_leaf_join=True) guest windows must
+    """Check that guest ScopedCapture windows preserve the owner's frontier.
+
+    ``ScopedCapture(external=True, skip_leaf_join=True)`` guest windows must
     not adopt dangling leaves of the owner's other branches: the same capture
     runs with and without the opt-out, and the default's broad join shows up
-    as exactly one extra (false) serialization edge."""
+    as exactly one extra (false) serialization edge.
+    """
     edges_skip = _capture_with_guest_windows(test, device, skip_leaf_join=True)
     edges_join = _capture_with_guest_windows(test, device, skip_leaf_join=False)
 
