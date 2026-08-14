@@ -36,6 +36,8 @@ from warp._src.types import *
 # of current compile options (block_dim) etc
 options = {}
 
+_SCALAR_TID_MAX_EXTENT = 2**31
+
 # Extraction products shared across Adjoints of one code object, populated
 # lazily by Adjoint.__init__ (see _SharedFunctionSource).
 # id(code object) -> (weakref to the code object, _SharedFunctionSource).
@@ -2006,6 +2008,9 @@ class Adjoint:
         # recorded at call sites for ModuleBuilder's post-build propagation passes
         adj.called_user_functions = {}
 
+        # Exact launch metadata derived from calls reached by this build.
+        adj.uses_scalar_tid = False
+
         # wp.ref[T] callees lacking a manual adjoint; rejected post-build, once used_by_backward_kernel is final
         adj.unvalidated_ref_calls = []
 
@@ -3869,16 +3874,15 @@ class Adjoint:
             return adj.emit_Call(node.value, return_value_used=False)
         return adj.eval(node.value)
 
-    def check_tid_in_func_error(adj, node):
-        if adj.is_user_function:
-            if hasattr(node.func, "attr") and node.func.attr == "tid":
-                lineno = adj.lineno + adj.fun_lineno
-                line = adj.source_lines[adj.lineno]
-                raise WarpCodegenError(
-                    "tid() may only be called from a Warp kernel, not a Warp function. "
-                    "Instead, obtain the indices from a @wp.kernel and pass them as "
-                    f"arguments to the function {adj.fun_name}, {adj.filename}:{lineno}:\n{line}\n"
-                )
+    def check_tid_in_func_error(adj, func):
+        if adj.is_user_function and func is warp._src.context.builtin_functions["tid"]:
+            lineno = adj.lineno + adj.fun_lineno
+            line = adj.source_lines[adj.lineno]
+            raise WarpCodegenError(
+                "tid() may only be called from a Warp kernel, not a Warp function. "
+                "Instead, obtain the indices from a @wp.kernel and pass them as "
+                f"arguments to the function {adj.fun_name}, {adj.filename}:{lineno}:\n{line}\n"
+            )
 
     def resolve_arg(adj, arg):
         # Always try to start with evaluating the argument since it can help
@@ -4065,8 +4069,6 @@ class Adjoint:
         return result
 
     def emit_Call(adj, node, return_value_used=True):
-        adj.check_tid_in_func_error(node)
-
         # try and lookup function in globals by
         # resolving path (e.g.: module.submodule.attr)
         if hasattr(node.func, "warp_func"):
@@ -4173,10 +4175,15 @@ class Adjoint:
                     f"Could not find function {'.'.join(path)} as a built-in or user-defined function. Note that user functions must be annotated with a @wp.func decorator to be called from a kernel."
                 )
 
+        adj.check_tid_in_func_error(func)
+
         # get expected return count, e.g.: for multi-assignment
         min_outputs = None
         if hasattr(node, "expects"):
             min_outputs = node.expects
+
+        if func is warp._src.context.builtin_functions["tid"] and (min_outputs is None or min_outputs <= 1):
+            adj.uses_scalar_tid = True
 
         # Evaluate positional arguments.
         args = []
@@ -6290,9 +6297,10 @@ class Adjoint:
         """Traverse ``adj.tree`` for referenced constants, types, and user-defined functions.
 
         As a side effect, also sets ``adj.kernel_dim`` (the thread-grid dimension inferred from
-        ``wp.tid()``). It is folded into this traversal rather than walked separately because
-        ``get_references`` already visits every ``Assign`` and runs for every adjoint during
-        module hashing -- which precedes any code generation or launch that reads ``kernel_dim``.
+        ``wp.tid()``) and ``adj.scalar_tid_extent_limit_candidate``. They are folded into this
+        traversal rather than walked separately because ``get_references`` already visits every
+        ``Assign`` and runs for every adjoint during module hashing. The candidate is conservative;
+        code generation records exact reachability before an oversized launch is rejected.
         """
 
         local_variables = set()  # Track local variables appearing on the LHS so we know when variables are shadowed
@@ -6302,8 +6310,7 @@ class Adjoint:
         functions: dict[warp._src.context.Function, Any] = {}
         max_dim = 0  # thread-grid dimension, inferred from wp.tid() unpack arity
         callable_arg_values = getattr(adj, "callable_arg_values", None) or {}
-
-        # Shared single traversal (see reference_nodes); resolved here at hash time.
+        # Shared single traversal (see reference_nodes()); resolved here at hash time.
         for node in adj.reference_nodes():
             if isinstance(node, ast.Name) and node.id not in local_variables:
                 # look up in closure/global variables
@@ -6362,6 +6369,11 @@ class Adjoint:
                     local_variables.add(lhs.id)
 
         adj.kernel_dim = max_dim if max_dim > 0 else 1
+        # Treat every kernel as a potential scalar-`wp.tid()` user until exact
+        # code generation proves otherwise. This conservative gate cannot miss
+        # aliases or transformer-generated calls, and only oversized leading
+        # extents pay for metadata-only code generation.
+        adj.scalar_tid_extent_limit_candidate = _SCALAR_TID_MAX_EXTENT
         return constants, types, functions
 
 
