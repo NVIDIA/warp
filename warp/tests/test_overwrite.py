@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import contextlib
+import inspect
 import io
 import unittest
 from typing import Any
@@ -318,6 +319,7 @@ def test_views(test, device):
 
 
 def test_reset(test, device):
+    """Verify Tape.reset() clears recorded read flags whether or not backward() ran."""
     saved_verify_autograd_array_access_setting = wp.config.verify_autograd_array_access
     try:
         wp.config.verify_autograd_array_access = True
@@ -329,12 +331,23 @@ def test_reset(test, device):
         with tape:
             wp.launch(kernel=write_kernel, dim=3, inputs=[b, a], device=device)
 
-        tape.backward(grads={b: wp.ones(3, dtype=float, device=device)})
-
         test.assertEqual(a._is_read, True)
         test.assertEqual(b._is_read, False)
 
-        tape.reset()
+        # backward() consumes the recorded reads and clears the flags
+        tape.backward(grads={b: wp.ones(3, dtype=float, device=device)})
+
+        test.assertEqual(a._is_read, False)
+        test.assertEqual(b._is_read, False)
+
+        # reset() clears the flags even when backward() never ran
+        tape2 = wp.Tape()
+        with tape2:
+            wp.launch(kernel=write_kernel, dim=3, inputs=[b, a], device=device)
+
+        test.assertEqual(a._is_read, True)
+
+        tape2.reset()
 
         test.assertEqual(a._is_read, False)
         test.assertEqual(b._is_read, False)
@@ -359,6 +372,163 @@ def test_copy(test, device):
 
         test.assertEqual(a._is_read, True)
         test.assertEqual(b._is_read, False)
+
+    finally:
+        wp.config.verify_autograd_array_access = saved_verify_autograd_array_access_setting
+
+
+def test_copy_write_after_read_warning(test, device):
+    """Verify wp.copy() and array.assign() overwrite warnings name the user's call site."""
+    saved_verify_autograd_array_access_setting = wp.config.verify_autograd_array_access
+    try:
+        wp.config.verify_autograd_array_access = True
+
+        a = wp.array(np.array([1.0, 2.0, 3.0]), dtype=float, requires_grad=True, device=device)
+        b = wp.zeros_like(a)
+
+        tape = wp.Tape()
+
+        with contextlib.redirect_stderr(io.StringIO()) as f:
+            with tape:
+                wp.launch(square_kernel, a.shape, inputs=[a], outputs=[b], device=device)
+                copy_lineno = inspect.currentframe().f_lineno + 1
+                wp.copy(a, b)
+
+        expected = f"is being written to by an array copy at {__file__}:{copy_lineno}"
+        test.assertIn(expected, f.getvalue())
+        test.assertIn("but has already been read from in a previous launch", f.getvalue())
+
+        # array.assign() delegates to wp.copy() through an extra internal frame;
+        # the walk must still land on the user's line
+        a = wp.array(np.array([1.0, 2.0, 3.0]), dtype=float, requires_grad=True, device=device)
+        b = wp.zeros_like(a)
+        tape = wp.Tape()
+
+        with contextlib.redirect_stderr(io.StringIO()) as f:
+            with tape:
+                wp.launch(square_kernel, a.shape, inputs=[a], outputs=[b], device=device)
+                assign_lineno = inspect.currentframe().f_lineno + 1
+                a.assign(b)
+
+        test.assertIn(f"is being written to by an array copy at {__file__}:{assign_lineno}", f.getvalue())
+
+    finally:
+        wp.config.verify_autograd_array_access = saved_verify_autograd_array_access_setting
+
+
+def test_no_false_positives_after_backward(test, device):
+    """Verify fresh-tape training loops emit no false overwrite warnings after backward() consumes the reads."""
+    saved_verify_autograd_array_access_setting = wp.config.verify_autograd_array_access
+    try:
+        wp.config.verify_autograd_array_access = True
+
+        x = wp.array(np.array([1.0, 2.0, 3.0]), dtype=float, requires_grad=True, device=device)
+        y = wp.zeros_like(x)
+        z = wp.zeros_like(x)
+
+        with contextlib.redirect_stderr(io.StringIO()) as f:
+            for _iteration in range(2):
+                tape = wp.Tape()
+                with tape:
+                    # without the flag reset in backward(), iteration 2's write to y warns;
+                    # tuple inputs and the recorded copy exercise both reset walks
+                    wp.launch(square_kernel, x.shape, inputs=(x,), outputs=[y], device=device)
+                    wp.launch(square_kernel, y.shape, inputs=[y], outputs=[z], device=device)
+                    wp.copy(z, y)
+                tape.backward(grads={z: wp.ones_like(z)})
+                tape.zero()
+
+        test.assertNotIn("has already been read from", f.getvalue())
+
+    finally:
+        wp.config.verify_autograd_array_access = saved_verify_autograd_array_access_setting
+
+
+def test_no_false_positives_after_backward_views(test, device):
+    """Verify reads through views do not leave the parent array flagged after backward()."""
+    saved_verify_autograd_array_access_setting = wp.config.verify_autograd_array_access
+    try:
+        wp.config.verify_autograd_array_access = True
+
+        x = wp.array(np.array([1.0, 2.0, 3.0]), dtype=float, requires_grad=True, device=device)
+        y = wp.zeros_like(x)
+        c = wp.zeros_like(x)
+
+        # reading through a view marks the parent array as read
+        tape = wp.Tape()
+        with tape:
+            wp.launch(square_kernel, (2,), inputs=[x[:2]], outputs=[y[:2]], device=device)
+        tape.backward()
+
+        # the write to the full parent array must not be flagged against the
+        # view read consumed by the backward pass
+        with contextlib.redirect_stderr(io.StringIO()) as f:
+            tape2 = wp.Tape()
+            with tape2:
+                wp.launch(overwrite_kernel_a, x.shape, inputs=[c], outputs=[x], device=device)
+
+        test.assertNotIn("has already been read from", f.getvalue())
+
+    finally:
+        wp.config.verify_autograd_array_access = saved_verify_autograd_array_access_setting
+
+
+def test_cross_tape_write_after_backward_limitation(test, device):
+    """Verify the documented limitation that consuming one tape's reads unflags arrays shared with other tapes."""
+    saved_verify_autograd_array_access_setting = wp.config.verify_autograd_array_access
+    try:
+        wp.config.verify_autograd_array_access = True
+
+        a = wp.array(np.array([1.0, 2.0, 3.0]), dtype=float, requires_grad=True, device=device)
+        b = wp.zeros_like(a)
+        c = wp.zeros_like(a)
+
+        tape1 = wp.Tape()
+        with tape1:
+            wp.launch(square_kernel, a.shape, inputs=[a], outputs=[b], device=device)
+        tape2 = wp.Tape()
+        with tape2:
+            wp.launch(square_kernel, a.shape, inputs=[a], outputs=[c], device=device)
+
+        tape1.backward(grads={b: wp.ones_like(b)})
+
+        # this write corrupts tape2's pending backward pass, but tape1's
+        # backward() has already consumed the shared read flag; this pins the
+        # documented behavior rather than the ideal one
+        d = wp.zeros_like(a)
+        with contextlib.redirect_stderr(io.StringIO()) as f:
+            tape3 = wp.Tape()
+            with tape3:
+                wp.launch(overwrite_kernel_a, a.shape, inputs=[d], outputs=[a], device=device)
+
+        test.assertNotIn("has already been read from", f.getvalue())
+
+    finally:
+        wp.config.verify_autograd_array_access = saved_verify_autograd_array_access_setting
+
+
+def test_deferred_backward_still_warns(test, device):
+    """Verify writes recorded before a pending backward pass still emit overwrite warnings."""
+    saved_verify_autograd_array_access_setting = wp.config.verify_autograd_array_access
+    try:
+        wp.config.verify_autograd_array_access = True
+
+        a = wp.array(np.array([1.0, 2.0, 3.0]), dtype=float, requires_grad=True, device=device)
+        b = wp.zeros_like(a)
+        c = wp.array(np.array([-1.0, -2.0, -3.0]), dtype=float, requires_grad=True, device=device)
+
+        tape1 = wp.Tape()
+        with tape1:
+            wp.launch(square_kernel, a.shape, inputs=[a], outputs=[b], device=device)
+
+        # tape1.backward() has NOT run; overwriting a here corrupts its pending
+        # backward pass and must be flagged
+        with contextlib.redirect_stderr(io.StringIO()) as f:
+            tape2 = wp.Tape()
+            with tape2:
+                wp.launch(overwrite_kernel_a, c.shape, inputs=[c], outputs=[a], device=device)
+
+        test.assertIn("has already been read from", f.getvalue())
 
     finally:
         wp.config.verify_autograd_array_access = saved_verify_autograd_array_access_setting
@@ -521,6 +691,27 @@ add_function_test(TestOverwrite, "test_views", test_views, devices=devices)
 add_function_test(TestOverwrite, "test_reset", test_reset, devices=devices)
 
 add_function_test(TestOverwrite, "test_copy", test_copy, devices=devices)
+add_function_test(
+    TestOverwrite, "test_copy_write_after_read_warning", test_copy_write_after_read_warning, devices=devices
+)
+add_function_test(
+    TestOverwrite, "test_no_false_positives_after_backward", test_no_false_positives_after_backward, devices=devices
+)
+add_function_test(
+    TestOverwrite,
+    "test_no_false_positives_after_backward_views",
+    test_no_false_positives_after_backward_views,
+    devices=devices,
+)
+add_function_test(
+    TestOverwrite,
+    "test_cross_tape_write_after_backward_limitation",
+    test_cross_tape_write_after_backward_limitation,
+    devices=devices,
+)
+add_function_test(
+    TestOverwrite, "test_deferred_backward_still_warns", test_deferred_backward_still_warns, devices=devices
+)
 add_function_test(TestOverwrite, "test_atomic_operations", test_atomic_operations, devices=devices)
 
 # Some warning are only issued during codegen, and codegen only runs on cuda_0 in the MGPU case.

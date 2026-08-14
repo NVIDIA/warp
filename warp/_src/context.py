@@ -13187,6 +13187,21 @@ def _apic_load_cpu_modules(native_graph, wrp_path: str) -> list[str]:
     return list(loaded_handles.values())
 
 
+def _copy_caller_location() -> tuple[str, int] | tuple[None, None]:
+    """Return the filename and line of the first stack frame outside ``warp._src``.
+
+    Used to attribute ``verify_autograd_array_access`` warnings to the user's
+    call site; returns ``(None, None)`` if no such frame exists.
+    """
+    src_dir = os.path.dirname(__file__) + os.sep
+    frame = sys._getframe(1)
+    while frame is not None and frame.f_code.co_filename.startswith(src_dir):
+        frame = frame.f_back
+    if frame is None:
+        return None, None
+    return frame.f_code.co_filename, frame.f_lineno
+
+
 def copy(
     dest: warp.array,
     src: warp.array,
@@ -13513,7 +13528,13 @@ def copy(
                 arrays=[dest, src],
             )
             if warp.config.verify_autograd_array_access:
-                dest.mark_write()
+                if dest._is_read:
+                    # only pay for the stack walk when a warning will fire
+                    filename, lineno = _copy_caller_location()
+                    if filename is not None:
+                        dest.mark_write(operation="an array copy", filename=filename, lineno=lineno)
+                    else:
+                        dest.mark_write()
                 src.mark_read()
 
 
