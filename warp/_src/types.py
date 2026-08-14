@@ -371,6 +371,17 @@ class handle(uint64):
     _wp_native_name_ = "uint64"
 
 
+class graph_cond_handle(uint64):
+    """Type for CUDA graph conditional handles in kernel parameters.
+
+    Behaves identically to ``uint64``; use it to annotate handles passed to
+    :func:`warp.graph_set_conditional`. Mirrors the ``cudaGraphConditionalHandle``
+    typedef on the native side.
+    """
+
+    _wp_native_name_ = "uint64"
+
+
 # Scalar type tuples - defined here as canonical source, used by TypeVars below
 int_types = (int8, uint8, int16, uint16, int32, uint32, int64, uint64)
 float_types = (float16, bfloat16, float32, float64)
@@ -2546,6 +2557,8 @@ def type_typestr(dtype: type) -> str:
         return "<u8"
     elif dtype is handle:
         return "<u8"
+    elif dtype is graph_cond_handle:
+        return "<u8"
     elif isinstance(dtype, warp._src.codegen.Struct):
         return f"|V{ctypes.sizeof(dtype.ctype)}"
     elif hasattr(dtype, "_wp_ctype_"):
@@ -2834,8 +2847,11 @@ def scalars_equal_generic(a, b, match_generic=True):
         if a is Float and b is Float:
             return True
 
-    # handle and uint64 are interchangeable (handle is a semantic alias for uint64)
-    if (a is handle and b is uint64) or (a is uint64 and b is handle):
+    # handle, graph_cond_handle and uint64 are interchangeable (both handle
+    # types are semantic aliases for uint64)
+    a_is_u64_like = a is handle or a is graph_cond_handle or a is uint64
+    b_is_u64_like = b is handle or b is graph_cond_handle or b is uint64
+    if a_is_u64_like and b_is_u64_like:
         return True
 
     return a is b
@@ -8023,6 +8039,7 @@ simple_type_codes = {
     uint32: "u4",
     uint64: "u8",
     handle: "u8",
+    graph_cond_handle: "u8",
     float16: "f2",
     bfloat16: "bf2",
     float32: "f4",
