@@ -267,6 +267,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.tile.test_tile_load_indexed import TestTileLoadIndexed
     from warp.tests.tile.test_tile_load_vectorized import TestTileLoadVectorized
     from warp.tests.tile.test_tile_mathdx import TestTileMathDx
+    from warp.tests.tile.test_tile_mathdx_lto import TestTileMathDxLTO
     from warp.tests.tile.test_tile_matmul import TestTileMatmul
     from warp.tests.tile.test_tile_matmul_no_mathdx import TestTileMatmulNoMathDx
     from warp.tests.tile.test_tile_matmul_strides import TestTileMatmulStrides
@@ -437,6 +438,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestTileLoadIndexed,
         TestTileLoadVectorized,
         TestTileMathDx,
+        TestTileMathDxLTO,
         TestTileMatmul,
         TestTileMatmulNoMathDx,
         TestTileMatmulStrides,

@@ -1292,6 +1292,94 @@ def test_tile_custom_grad_shared_forward(test, device):
     test.assertLess(hooks.backward_smem_bytes, 2 * hooks.forward_smem_bytes + scratch_bytes)
 
 
+WP_GRAD_TILE_M = 8
+WP_GRAD_SHARED_DIM = 16
+WP_GRAD_BLOCK_DIM = 32
+
+
+@wp.func
+def shared_matmul_objective(x: float):
+    a = wp.tile_ones(shape=(WP_GRAD_TILE_M, WP_GRAD_TILE_M), dtype=float, storage="register") * x
+    c = wp.tile_zeros(shape=(WP_GRAD_TILE_M, WP_GRAD_TILE_M), dtype=float)
+    wp.tile_matmul(a, a, c)
+    scratch = wp.tile_ones(shape=(WP_GRAD_SHARED_DIM, WP_GRAD_SHARED_DIM), dtype=float, storage="shared")
+    return wp.tile_sum(c)[0] + wp.tile_sum(scratch)[0] * 0.0
+
+
+@wp.func
+def shared_scratch_objective(x: float):
+    return x * x
+
+
+@wp.func_grad(shared_scratch_objective)
+def adj_shared_scratch_objective(x: float, adj_ret: float):
+    scratch = wp.tile_ones(shape=(WP_GRAD_TILE_M, WP_GRAD_TILE_M), dtype=float, storage="shared")
+    scratch_sum = wp.tile_sum(scratch)[0]
+    wp.adjoint[x] += (wp.grad(shared_matmul_objective)(x) + scratch_sum * 0.0) * adj_ret
+
+
+@wp.func
+def nested_custom_grad_objective(x: float):
+    return x * x
+
+
+@wp.func_grad(nested_custom_grad_objective)
+def adj_nested_custom_grad_objective(x: float, adj_ret: float):
+    wp.adjoint[x] += wp.grad(shared_scratch_objective)(x) * adj_ret
+
+
+@wp.kernel(enable_backward=False)
+def eval_nested_custom_grad_forward_only(x: wp.array[float], out: wp.array[float]):
+    out[0] = wp.grad(nested_custom_grad_objective)(x[0])
+
+
+# Isolate this kernel because its intentional wp.grad() call with backward enabled emits a warning while building
+# its module. Keeping it out of the shared file module prevents unrelated tests from emitting it, while defining it
+# at module scope avoids recreating and hashing the kernel for every device-parameterized test invocation.
+@wp.kernel(module="unique")
+def eval_nested_custom_grad_with_backward(x: wp.array[float], out: wp.array[float]):
+    out[0] = wp.grad(nested_custom_grad_objective)(x[0])
+
+
+def test_tile_wp_grad_custom_grad_shared(test, device):
+    """Size nested custom-gradient frames in forward- and backward-enabled kernels."""
+    forward_module = eval_nested_custom_grad_forward_only.module
+    forward_options = forward_module.resolve_options(wp.config, block_dim=WP_GRAD_BLOCK_DIM) | {
+        "output_arch": forward_module._get_compile_arch(device)
+    }
+    forward_builder = warp_context.ModuleBuilder(forward_module, forward_options)
+    forward_meta = forward_builder.build_meta()
+
+    forward_name = eval_nested_custom_grad_forward_only.get_mangled_name() + "_cuda_kernel_forward_smem_bytes"
+    nested_backward_bytes = 2 * WP_GRAD_SHARED_DIM * WP_GRAD_SHARED_DIM * 4
+    custom_grad_bytes = WP_GRAD_TILE_M * WP_GRAD_TILE_M * 4
+    test.assertGreaterEqual(forward_meta[forward_name], nested_backward_bytes + custom_grad_bytes)
+
+    backward_module = eval_nested_custom_grad_with_backward.module
+    backward_options = backward_module.resolve_options(wp.config, block_dim=WP_GRAD_BLOCK_DIM) | {
+        "output_arch": backward_module._get_compile_arch(device)
+    }
+    backward_builder = warp_context.ModuleBuilder(backward_module, backward_options)
+    backward_meta = backward_builder.build_meta()
+    backward_forward_name = eval_nested_custom_grad_with_backward.get_mangled_name() + "_cuda_kernel_forward_smem_bytes"
+    backward_name = eval_nested_custom_grad_with_backward.get_mangled_name() + "_cuda_kernel_backward_smem_bytes"
+    expected_grad_bytes = nested_backward_bytes + custom_grad_bytes
+    test.assertGreaterEqual(backward_meta[backward_name], expected_grad_bytes)
+    test.assertEqual(backward_meta[backward_name], backward_meta[backward_forward_name])
+
+    x = wp.array([3.0], dtype=float, device=device)
+    out = wp.zeros_like(x)
+    wp.launch_tiled(
+        eval_nested_custom_grad_forward_only,
+        dim=1,
+        inputs=[x],
+        outputs=[out],
+        block_dim=WP_GRAD_BLOCK_DIM,
+        device=device,
+    )
+    np.testing.assert_allclose(out.numpy(), [2.0 * WP_GRAD_TILE_M * WP_GRAD_TILE_M * WP_GRAD_TILE_M * 3.0])
+
+
 class TestTileSharedMemoryMessages(unittest.TestCase):
     """Message formatting for over-budget shared memory requests, independent of any device."""
 
@@ -1305,6 +1393,7 @@ class TestTileSharedMemoryMessages(unittest.TestCase):
 
 
 devices = get_cuda_test_devices()
+unique_cuda_devices = get_cuda_test_devices(mode="unique")
 
 
 class TestTileSharedMemory(unittest.TestCase):
@@ -1436,6 +1525,12 @@ add_function_test(
     "test_tile_custom_grad_shared_forward",
     test_tile_custom_grad_shared_forward,
     devices=devices,
+)
+add_function_test(
+    TestTileSharedMemory,
+    "test_tile_wp_grad_custom_grad_shared",
+    test_tile_wp_grad_custom_grad_shared,
+    devices=unique_cuda_devices,
 )
 add_function_test(
     TestTileSharedMemory,
