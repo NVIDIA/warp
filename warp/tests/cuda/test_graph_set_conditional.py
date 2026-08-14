@@ -11,12 +11,12 @@ their condition array instead -- Warp records its own evaluation kernel after
 the loop body, overwriting any value set from the body, and their handles
 are deliberately not exposed.
 
-The test below plays the role of the foreign framework: using cuda.bindings
+The test below plays the role of the foreign framework: using ``cuda.bindings``
 (the cuda-python package), it builds a graph with a conditional while-node
-(cudaGraphCreate / cudaGraphConditionalHandleCreate / cudaGraphAddNode),
-populates the body with a Warp kernel via cudaStreamBeginCaptureToGraph, and
-launches it. The kernel's wp.graph_set_conditional() call is the only thing
-driving loop-back.
+(``cudaGraphCreate`` / ``cudaGraphConditionalHandleCreate`` /
+``cudaGraphAddNode``), populates the body with a Warp kernel via
+``cudaStreamBeginCaptureToGraph``, and launches it. The kernel's
+``wp.graph_set_conditional()`` call is the only thing driving loop-back.
 """
 
 import unittest
@@ -55,8 +55,8 @@ def _noop_set(handle: wp.graph_cond_handle):
 
 def test_user_owned_while_scope(test, device):
     """Drive a while-node built through the CUDA runtime API solely from a Warp kernel."""
-    if cudart is None:
-        test.skipTest("cuda-python (cuda.bindings) is not installed")
+    if cudart is None or not hasattr(cudart, "cudaGraphConditionalHandleCreate"):
+        test.skipTest("cuda-python (cuda.bindings) with conditional graph support is not installed")
 
     n_iters = 7
 
@@ -81,7 +81,10 @@ def test_user_owned_while_scope(test, device):
         params.conditional.handle = handle
         params.conditional.type = cudart.cudaGraphConditionalNodeType.cudaGraphCondTypeWhile
         params.conditional.size = 1
-        _check_cuda(cudart.cudaGraphAddNode(graph, None, None, 0, params))
+        # cuda-python 12 takes dependencyData only in cudaGraphAddNode_v2;
+        # cuda-python 13 folds it into the unversioned cudaGraphAddNode.
+        add_node = getattr(cudart, "cudaGraphAddNode_v2", None) or cudart.cudaGraphAddNode
+        _check_cuda(add_node(graph, None, None, 0, params))
         body_graph = params.conditional.phGraph_out[0]
 
         # Populate the body with a Warp kernel; its wp.graph_set_conditional()
@@ -141,5 +144,4 @@ add_function_test(TestGraphSetConditional, "test_cpu_noop", test_cpu_noop, devic
 
 
 if __name__ == "__main__":
-    wp.clear_kernel_cache()
     unittest.main(verbosity=2)
