@@ -12051,7 +12051,15 @@ add_builtin(
     after the loop body (or before the if-node), overwriting any value set
     from the body -- so use the condition array there instead.
 
-    On CPU devices this is a no-op.""",
+    On CPU devices this is a no-op: conditional handles only exist inside
+    CUDA graphs. CPU control flow, including under APIC capture, is expressed
+    through the :func:`warp.capture_while` / :func:`warp.capture_if` condition
+    array, which remains fully functional on every device.
+
+    Args:
+        handle: The conditional graph handle to update.
+        value: The condition value. Non-zero executes the conditional body;
+          zero stops a while-loop or skips an if-body.""",
     export=False,
     group="Utility",
     is_differentiable=False,
