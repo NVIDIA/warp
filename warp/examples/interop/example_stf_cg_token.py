@@ -129,20 +129,9 @@ def copy_scalar(dst: wp.array[float], src: wp.array[float]):
     dst[0] = src[0]
 
 
-# Native helper: drive a ``cudaGraphConditionalHandle`` directly from
-# within a Warp kernel (Warp does not yet expose this as a builtin).
-_set_cond_snippet = """
-cudaGraphSetConditional((cudaGraphConditionalHandle)handle, (unsigned int)value);
-"""
-
-
-@wp.func_native(_set_cond_snippet)
-def stf_set_cond(handle: wp.uint64, value: wp.int32): ...
-
-
 @wp.kernel
 def update_cond(
-    cond_handle: wp.uint64,
+    cond_handle: wp.graph_cond_handle,
     iter_count: wp.array[int],
     rs_new: wp.array[float],
     tol2: float,
@@ -157,7 +146,7 @@ def update_cond(
     keep = wp.int32(0)
     if rs_new[0] > tol2 and iter_count[0] < max_iters:
         keep = wp.int32(1)
-    stf_set_cond(cond_handle, keep)
+    wp.graph_set_conditional(cond_handle, keep)
 
 
 # ---------------------------------------------------------------------------
