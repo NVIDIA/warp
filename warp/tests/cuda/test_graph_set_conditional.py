@@ -30,6 +30,16 @@ except ImportError:
     cudart = None
 
 
+def _check_cuda(result):
+    """Unpack a cuda.bindings result tuple, raising on any CUDA error."""
+    err, *values = result
+    if int(err) != 0:
+        raise RuntimeError(f"CUDA runtime call failed: {err}")
+    if len(values) == 1:
+        return values[0]
+    return values
+
+
 @wp.kernel
 def _count_and_continue(counter: wp.array(dtype=int), handle: wp.graph_cond_handle, n_iters: int):
     count = counter[0] + 1
@@ -48,11 +58,6 @@ def test_user_owned_while_scope(test, device):
     if cudart is None:
         test.skipTest("cuda-python (cuda.bindings) is not installed")
 
-    def check(result):
-        err = result[0]
-        test.assertEqual(int(err), 0, f"CUDA runtime call failed: {err}")
-        return result[1] if len(result) == 2 else result[1:]
-
     n_iters = 7
 
     with wp.ScopedDevice(device):
@@ -64,8 +69,8 @@ def test_user_owned_while_scope(test, device):
         # Build the foreign scope: a graph containing one conditional
         # while-node whose handle defaults to 1 (enter the loop) at every
         # graph launch.
-        graph = check(cudart.cudaGraphCreate(0))
-        handle = check(
+        graph = _check_cuda(cudart.cudaGraphCreate(0))
+        handle = _check_cuda(
             cudart.cudaGraphConditionalHandleCreate(
                 graph, 1, cudart.cudaGraphConditionalHandleFlags.cudaGraphCondAssignDefault
             )
@@ -76,12 +81,12 @@ def test_user_owned_while_scope(test, device):
         params.conditional.handle = handle
         params.conditional.type = cudart.cudaGraphConditionalNodeType.cudaGraphCondTypeWhile
         params.conditional.size = 1
-        check(cudart.cudaGraphAddNode(graph, None, None, 0, params))
+        _check_cuda(cudart.cudaGraphAddNode(graph, None, None, 0, params))
         body_graph = params.conditional.phGraph_out[0]
 
         # Populate the body with a Warp kernel; its wp.graph_set_conditional()
         # call alone decides whether the loop runs another iteration.
-        check(
+        _check_cuda(
             cudart.cudaStreamBeginCaptureToGraph(
                 stream.cuda_stream,
                 body_graph,
@@ -92,18 +97,18 @@ def test_user_owned_while_scope(test, device):
             )
         )
         wp.launch(_count_and_continue, dim=1, inputs=[counter, int(handle), n_iters], stream=stream)
-        check(cudart.cudaStreamEndCapture(stream.cuda_stream))
+        _check_cuda(cudart.cudaStreamEndCapture(stream.cuda_stream))
 
-        graph_exec = check(cudart.cudaGraphInstantiate(graph, 0))
+        graph_exec = _check_cuda(cudart.cudaGraphInstantiate(graph, 0))
         try:
-            check(cudart.cudaGraphLaunch(graph_exec, stream.cuda_stream))
+            _check_cuda(cudart.cudaGraphLaunch(graph_exec, stream.cuda_stream))
             wp.synchronize_stream(stream)
             test.assertEqual(counter.numpy()[0], n_iters)
 
             # cudaGraphCondAssignDefault re-arms the handle to 1 at every
             # launch, so replays are self-driving.
             counter.zero_()
-            check(cudart.cudaGraphLaunch(graph_exec, stream.cuda_stream))
+            _check_cuda(cudart.cudaGraphLaunch(graph_exec, stream.cuda_stream))
             wp.synchronize_stream(stream)
             test.assertEqual(counter.numpy()[0], n_iters)
         finally:
