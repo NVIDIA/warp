@@ -191,6 +191,13 @@ def main():
     parser.add_argument("--iters", type=int, default=7, help="Timed iterations per configuration (median reported).")
     args = parser.parse_known_args()[0]
 
+    if args.iters < 1:
+        parser.error("--iters must be at least 1")
+    if min(args.min_depth, args.max_depth) < 0:
+        parser.error("depth arguments must be non-negative")
+    if args.min_depth > args.max_depth:
+        parser.error("--min-depth must not exceed --max-depth")
+
     device = wp.get_device(args.device)
     if not device.is_cuda:
         print("Warning: this benchmark is intended for a CUDA device; timings on CPU are not representative.")
@@ -215,6 +222,9 @@ def main():
         sv, si, stats = sparse_extract(sdf, origin, root_width, depth, device, return_stats=True)
         wp.synchronize_device(device)
         sparse_tris = len(si) // 3
+        # Release the untimed mesh before timing, so it does not inflate peak
+        # memory (and push the dense path into OOM ahead of its real limit).
+        del sv, si
         sparse_ms = (
             time_call(lambda depth=depth: sparse_extract(sdf, origin, root_width, depth, device), device, args.iters)
             * 1e3
@@ -226,11 +236,11 @@ def main():
             dv, di = dense_extract(dense_field, origin, root_width, depth)
             wp.synchronize_device(device)
             dense_tris = len(di) // 3
+            del dv, di
             dense_ms = (
                 time_call(lambda depth=depth: dense_extract(dense_field, origin, root_width, depth), device, args.iters)
                 * 1e3
             )
-            del dv, di
         except Exception as exc:
             print(f"{depth:>5} {resolution:>6}  dense grid unavailable ({type(exc).__name__}); sparse only")
 
@@ -253,8 +263,6 @@ def main():
                 f"{dense_evals:>13,} {stats['sdf_evaluations']:>13,} {eval_ratio:>6.1f}x "
                 f"{stats['leaf_cells']:>11,} {sparse_tris:>9,}"
             )
-
-        del sv, si
 
     print(
         "\nNotes:\n"

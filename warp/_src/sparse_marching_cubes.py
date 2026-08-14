@@ -157,8 +157,18 @@ def _make_evaluator(sdf, device) -> Callable[[wp.array], wp.array]:
                 raise ValueError(
                     f"The implicit function returned {values.shape[0]} values for {points.shape[0]} query points."
                 )
+            # Reject rather than silently copy: the evaluator is called once per
+            # octree level and once for the corners, so a hidden transfer here
+            # would quietly dominate the runtime of an otherwise GPU-only pipeline.
+            if values.device != points.device:
+                raise ValueError(
+                    f"The implicit function returned values on device '{values.device}', but the query points are "
+                    f"on device '{points.device}'. Evaluate the field on the device of the points it is given."
+                )
             if values.dtype != wp.float32:
-                values = wp.array(values, dtype=wp.float32, device=points.device)
+                raise TypeError(
+                    f"The implicit function must return a warp.array of float32 distance values, got {values.dtype}."
+                )
             return values
 
         return evaluate
@@ -220,6 +230,20 @@ def _mark_active_cells_kernel(
     """
     tid = wp.tid()
     keep[tid] = wp.where(wp.abs(values[tid] - isovalue) <= band, 1, 0)
+
+
+@wp.kernel(enable_backward=False)
+def _cell_subscript_bounds_kernel(
+    cells: wp.array(dtype=wp.vec3i),
+    lo: wp.array(dtype=wp.int32),
+    hi: wp.array(dtype=wp.int32),
+):
+    """Reduce the per-axis minimum and maximum of the cell subscripts."""
+    tid = wp.tid()
+    c = cells[tid]
+    for a in range(3):
+        wp.atomic_min(lo, a, c[a])
+        wp.atomic_max(hi, a, c[a])
 
 
 @wp.kernel(enable_backward=False)
@@ -502,6 +526,46 @@ def _scan_total(keep: wp.array, scan: wp.array) -> int:
     return int(scan[-1:].numpy()[0])
 
 
+def _as_cell_subscripts(cells, device) -> wp.array:
+    """Return ``cells`` as a contiguous ``wp.array(dtype=wp.vec3i)`` on ``device``.
+
+    A ``wp.array`` of ``vec3i`` or ``int32`` already on ``device`` is
+    reinterpreted in place, so cells produced on the GPU are never round-tripped
+    through the host. Anything else goes through NumPy.
+    """
+    if isinstance(cells, wp.array):
+        if cells.device != device:
+            cells = cells.to(device)
+        if not cells.is_contiguous:
+            cells = cells.contiguous()
+        if cells.dtype == wp.vec3i:
+            return cells.flatten() if cells.ndim > 1 else cells
+        if cells.dtype == wp.int32:
+            return cells.reshape((-1, 3)).view(wp.vec3i)
+        cells = cells.numpy()
+
+    cells_np = np.ascontiguousarray(cells, dtype=np.int32).reshape(-1, 3)
+    return wp.array(cells_np, dtype=wp.vec3i, device=device)
+
+
+def _cell_subscript_bounds(cells: wp.array, device) -> tuple[np.ndarray, np.ndarray]:
+    """Per-axis ``(min, max)`` of the cell subscripts, reduced on ``device``.
+
+    Only the six resulting integers cross the bus, rather than the whole cell
+    array, which matters when the caller already holds the cells on the GPU.
+    """
+    lo = wp.full(3, value=np.iinfo(np.int32).max, dtype=wp.int32, device=device)
+    hi = wp.full(3, value=np.iinfo(np.int32).min, dtype=wp.int32, device=device)
+    wp.launch(
+        _cell_subscript_bounds_kernel,
+        dim=cells.shape[0],
+        inputs=[cells],
+        outputs=[lo, hi],
+        device=device,
+    )
+    return lo.numpy(), hi.numpy()
+
+
 def _build_lipschitz_octree(evaluate, origin, root_width, max_depth, isovalue, lipschitz_bound, device):
     """Build the sparse set of leaf cells that may contain the level set.
 
@@ -556,7 +620,9 @@ def _build_lipschitz_octree(evaluate, origin, root_width, max_depth, isovalue, l
         cells = children
         n_cells = 8 * n_keep
 
-    return None
+    # Unreachable: the ``depth == max_depth`` branch always returns on the final
+    # iteration, and ``max_depth >= 0`` guarantees at least one iteration.
+    raise AssertionError("Lipschitz octree loop exited without reaching max_depth.")
 
 
 def _dedupe_corners(cells, n_cells, offset, axis_stride, origin, cell_width, device):
@@ -772,6 +838,8 @@ def lipschitz_octree(
         raise ValueError(f"max_depth must be non-negative, got {max_depth}.")
     if root_width <= 0.0:
         raise ValueError(f"root_width must be positive, got {root_width}.")
+    if lipschitz_bound < 0.0:
+        raise ValueError(f"lipschitz_bound must be non-negative, got {lipschitz_bound}.")
 
     device = wp.get_device(device)
     origin = wp.vec3(origin)
@@ -820,7 +888,8 @@ def sparse_marching_cubes_from_cells(
             ``(N, 3)``, or any array-like convertible to one. A cell at subscript
             ``(i, j, k)`` occupies the box with minimum corner
             ``origin + cell_width * (i, j, k)``. Subscripts may be negative and
-            need not be contiguous.
+            need not be contiguous. A ``wp.array`` already on ``device`` is
+            consumed in place, without a host round trip.
         corner_values: An ``(N, 8)`` array of the field value at each cell's 8
             corners, ordered by :attr:`warp.MarchingCubes.CUBE_CORNER_OFFSETS`
             (corner ``c`` is at subscript ``(i, j, k) + CUBE_CORNER_OFFSETS[c]``).
@@ -834,15 +903,17 @@ def sparse_marching_cubes_from_cells(
         A tuple ``(vertices, indices)`` as in :func:`sparse_marching_cubes`.
 
     Raises:
-        ValueError: If the shapes of ``cells`` and ``corner_values`` are
-            inconsistent, or the subscript range is too large to pack into 64-bit
-            corner codes.
+        ValueError: If ``cell_width`` is not positive, the shapes of ``cells`` and
+            ``corner_values`` are inconsistent, or the subscript range is too
+            large to pack into 64-bit corner codes.
     """
     device = wp.get_device(device)
 
-    cells_np = cells.numpy() if isinstance(cells, wp.array) else np.asarray(cells)
-    cells_np = np.ascontiguousarray(cells_np, dtype=np.int32).reshape(-1, 3)
-    n_cells = cells_np.shape[0]
+    if cell_width <= 0.0:
+        raise ValueError(f"cell_width must be positive, got {cell_width}.")
+
+    cells_wp = _as_cell_subscripts(cells, device)
+    n_cells = cells_wp.shape[0]
 
     if n_cells == 0:
         return _empty_mesh(device)
@@ -860,14 +931,11 @@ def sparse_marching_cubes_from_cells(
         raise ValueError(f"corner_values must have {8 * n_cells} entries for {n_cells} cells, got {values_wp.size}.")
     per_cell_values = values_wp.reshape((n_cells, 8))
 
-    cells_wp = wp.array(cells_np, dtype=wp.vec3i, device=device)
-
     # Pack corner subscripts relative to their minimum, using a per-axis stride
     # wide enough to cover the whole subscript range (plus the +1 corner).
-    lo = cells_np.min(axis=0)
-    hi = cells_np.max(axis=0)
+    lo, hi = _cell_subscript_bounds(cells_wp, device)
     offset = (int(lo[0]), int(lo[1]), int(lo[2]))
-    axis_stride = int((hi - lo).max()) + 2
+    axis_stride = int((hi.astype(np.int64) - lo.astype(np.int64)).max()) + 2
 
     cell_corners, corner_positions, n_unique = _dedupe_corners(
         cells_wp, n_cells, offset, axis_stride, wp.vec3(origin), float(cell_width), device
@@ -914,7 +982,8 @@ def sparse_marching_cubes(
             Python callable implementing the batched contract
             ``evaluate(points: wp.array(dtype=wp.vec3)) -> wp.array(dtype=wp.float32)``.
             The batched form is convenient for meshes (``wp.mesh_query_point*``),
-            neural implicits, or any field that is easier to evaluate in bulk.
+            neural implicits, or any field that is easier to evaluate in bulk. It
+            must return its values on the same device as the points it is given.
         origin: The minimum corner of the cubic root cell.
         root_width: The side length of the cubic root cell. The domain covered is
             ``[origin, origin + root_width]`` on every axis.
@@ -938,13 +1007,16 @@ def sparse_marching_cubes(
         If ``return_stats`` is ``True``, returns ``(vertices, indices, stats)``.
 
     Raises:
-        ValueError: If ``max_depth`` is negative or ``root_width`` is not positive.
+        ValueError: If ``max_depth`` or ``lipschitz_bound`` is negative, or
+            ``root_width`` is not positive.
         TypeError: If ``sdf`` is neither a ``warp.Function`` nor a callable.
     """
     if max_depth < 0:
         raise ValueError(f"max_depth must be non-negative, got {max_depth}.")
     if root_width <= 0.0:
         raise ValueError(f"root_width must be positive, got {root_width}.")
+    if lipschitz_bound < 0.0:
+        raise ValueError(f"lipschitz_bound must be non-negative, got {lipschitz_bound}.")
 
     device = wp.get_device(device)
     origin = wp.vec3(origin)

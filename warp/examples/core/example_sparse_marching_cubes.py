@@ -224,5 +224,6 @@ if __name__ == "__main__":
         if example.usd_renderer is not None:
             example.usd_renderer.save()
 
+        n_verts = len(example.verts) if example.verts is not None else 0
         n_tris = len(example.indices) // 3 if example.indices is not None else 0
-        print(f"[{args.mode}] Extracted {len(example.verts)} vertices and {n_tris} triangles.")
+        print(f"[{args.mode}] Extracted {n_verts} vertices and {n_tris} triangles.")

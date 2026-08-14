@@ -122,6 +122,11 @@ def main():
     parser.add_argument("--gif-max-depth", type=int, default=9, help="Last depth in the refinement GIF.")
     args = parser.parse_known_args()[0]
 
+    if min(args.surface_depth, args.grid_depth, args.gif_min_depth, args.gif_max_depth) < 0:
+        parser.error("depth arguments must be non-negative")
+    if args.gif_min_depth > args.gif_max_depth:
+        parser.error("--gif-min-depth must not exceed --gif-max-depth")
+
     import polyscope as ps  # noqa: PLC0415 -- optional third-party dependency
     from PIL import Image  # noqa: PLC0415 -- optional third-party dependency
 

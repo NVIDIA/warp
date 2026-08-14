@@ -3000,9 +3000,10 @@ neural implicits, or any field that is cheaper to evaluate in bulk.
     True
     True
 
-At a given depth the output matches :class:`wp.MarchingCubes <warp.MarchingCubes>`
-run on the equivalent dense grid, but only the near-surface cells are
-instantiated. The two stages are also exposed separately: the pruning stage is
+At a given depth the output is equivalent to :class:`wp.MarchingCubes
+<warp.MarchingCubes>` run on the equivalent dense grid -- the same triangulation
+and the same vertex and triangle counts, with vertex positions agreeing to
+floating-point tolerance -- but only the near-surface cells are instantiated. The two stages are also exposed separately: the pruning stage is
 :func:`wp.lipschitz_octree <warp.lipschitz_octree>`, which returns the leaf
 cells, and the extraction stage is :func:`wp.sparse_marching_cubes_from_cells
 <warp.sparse_marching_cubes_from_cells>`, which runs marching cubes on an

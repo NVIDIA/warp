@@ -345,6 +345,19 @@ def test_sparse_mc_from_cells(test, device):
     test.assertEqual(n_boundary, 0)
     _assert_surfaces_equivalent(test, v, f, v_ref, f_ref)
 
+    # Cells already resident on the device are consumed in place (no host round
+    # trip), in either the vec3i or the (N, 3) int32 layout.
+    corner_vals_wp = wp.array(corner_vals.reshape(-1), dtype=wp.float32, device=device)
+    for cells_wp in (
+        wp.array(cells, dtype=wp.vec3i, device=device),
+        wp.array(cells, dtype=wp.int32, device=device),
+    ):
+        verts_d, indices_d = wp.sparse_marching_cubes_from_cells(
+            cells_wp, corner_vals_wp, origin=origin, cell_width=float(cell_width), device=device
+        )
+        np.testing.assert_allclose(verts_d.numpy(), v, atol=0.0)
+        np.testing.assert_array_equal(indices_d.numpy(), indices.numpy())
+
     # Arbitrary (large, negative) subscripts with a compensating origin must give
     # the same world-space surface, confirming the offset-relative corner packing.
     shift = np.array([1000, -500, 7], dtype=np.int32)
@@ -413,8 +426,20 @@ def test_sparse_mc_invalid_arguments(test, device):
         wp.sparse_marching_cubes(sphere_sdf, (0.0, 0.0, 0.0), 2.0, max_depth=-1, device=device)
     with test.assertRaises(ValueError):
         wp.sparse_marching_cubes(sphere_sdf, (0.0, 0.0, 0.0), 0.0, max_depth=4, device=device)
+    with test.assertRaises(ValueError):
+        wp.sparse_marching_cubes(sphere_sdf, (0.0, 0.0, 0.0), 2.0, max_depth=4, lipschitz_bound=-1.0, device=device)
+    with test.assertRaises(ValueError):
+        wp.lipschitz_octree(sphere_sdf, (0.0, 0.0, 0.0), 2.0, max_depth=4, lipschitz_bound=-1.0, device=device)
     with test.assertRaises(TypeError):
         wp.sparse_marching_cubes(42, (0.0, 0.0, 0.0), 2.0, max_depth=4, device=device)
+
+    # A non-positive cell width collapses every corner onto the origin (or
+    # mirrors the cell), so the explicit-cells entry point rejects it.
+    cells = np.zeros((1, 3), dtype=np.int32)
+    corner_values = np.zeros((1, 8), dtype=np.float32)
+    for bad_width in (0.0, -1.0):
+        with test.assertRaises(ValueError):
+            wp.sparse_marching_cubes_from_cells(cells, corner_values, cell_width=bad_width, device=device)
 
 
 devices = get_test_devices()

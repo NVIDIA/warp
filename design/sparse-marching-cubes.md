@@ -132,8 +132,10 @@ supplies per-cell corner values directly.
 
 **Sparse marching cubes core** (`_extract_from_dedup`). Reuses the *exact*
 lookup tables of the dense `warp.MarchingCubes` (`MC_CASE_TO_TRI_RANGE`,
-`MC_TRI_LOCAL_INDICES`, `MC_CUBE_CORNER_OFFSETS`) so the output is bit-compatible
-with the dense extractor. Vertices are de-duplicated by giving every crossed
+`MC_TRI_LOCAL_INDICES`, `MC_CUBE_CORNER_OFFSETS`) so the output matches the dense
+extractor case for case: identical triangulation and vertex/triangle counts, with
+vertex positions agreeing to floating-point tolerance (see the equivalence test
+below). Vertices are de-duplicated by giving every crossed
 edge a **canonical slot** `owner_corner_unique_id * 3 + axis`, where the owner is
 the edge endpoint with the lower coordinate on that axis. Because both endpoints
 of a cell edge are shared unique corners, all cells incident to an edge compute
