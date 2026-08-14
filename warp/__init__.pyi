@@ -6805,6 +6805,9 @@ def texture_sample(tex: Texture1D, u: float32, dtype: Any, lod: float32) -> Any:
             values blend between neighbouring mip levels when ``mip_filter_mode`` is
             :attr:`warp.TextureFilterMode.LINEAR`; the coordinate is evaluated independently at
             each level used in the blend. Ignored for textures created with a single mip level.
+            The ``lod`` adjoint is nonzero only for mipmapped textures with
+            ``mip_filter_mode=TextureFilterMode.LINEAR`` and an unclamped, nonnegative LOD;
+            integer LODs are mip-blend kinks where Warp uses the forward branch convention.
 
     Returns:
         The sampled value of the specified ``dtype``.
@@ -6814,10 +6817,12 @@ def texture_sample(tex: Texture1D, u: float32, dtype: Any, lod: float32) -> Any:
     :class:`warp.Texture`. On CUDA, ``WRAP`` and ``MIRROR`` are treated as ``CLAMP`` when
     ``normalized_coords=False`` (the CPU sampler honors them).
 
-    The backward pass propagates gradients to the sampling coordinates and ``lod`` under
-    every address mode. With :attr:`warp.TextureFilterMode.CLOSEST` filtering the sampled
-    value is piecewise constant in the coordinates, so their gradients are zero. Gradients
-    are not propagated to the texture data itself.
+    The backward pass propagates gradients to the sampling coordinates wherever the sample
+    is locally linear. At interpolation-cell and address-mode boundaries the mathematical
+    derivative is not unique, so Warp follows the branch selected by the forward sampler.
+    With :attr:`warp.TextureFilterMode.CLOSEST` filtering the sampled value is piecewise
+    constant in the coordinates, so coordinate gradients are zero. Gradients are not
+    propagated to the texture data itself.
 
     Example:
 
@@ -6889,10 +6894,12 @@ def texture_sample(tex: Texture2D, uv: vec2f, dtype: Any, lod: float32) -> Any:
     :class:`warp.Texture`. On CUDA, ``WRAP`` and ``MIRROR`` are treated as ``CLAMP`` when
     ``normalized_coords=False`` (the CPU sampler honors them).
 
-    The backward pass propagates gradients to the sampling coordinates and ``lod`` under
-    every address mode. With :attr:`warp.TextureFilterMode.CLOSEST` filtering the sampled
-    value is piecewise constant in the coordinates, so their gradients are zero. Gradients
-    are not propagated to the texture data itself."""
+    The backward pass propagates gradients to the sampling coordinates wherever the sample
+    is locally linear. At interpolation-cell and address-mode boundaries the mathematical
+    derivative is not unique, so Warp follows the branch selected by the forward sampler.
+    With :attr:`warp.TextureFilterMode.CLOSEST` filtering the sampled value is piecewise
+    constant in the coordinates, so coordinate gradients are zero. Gradients are not
+    propagated to the texture data itself."""
     ...
 
 @over
@@ -6939,10 +6946,12 @@ def texture_sample(tex: Texture2D, u: float32, v: float32, dtype: Any, lod: floa
     :class:`warp.Texture`. On CUDA, ``WRAP`` and ``MIRROR`` are treated as ``CLAMP`` when
     ``normalized_coords=False`` (the CPU sampler honors them).
 
-    The backward pass propagates gradients to the sampling coordinates and ``lod`` under
-    every address mode. With :attr:`warp.TextureFilterMode.CLOSEST` filtering the sampled
-    value is piecewise constant in the coordinates, so their gradients are zero. Gradients
-    are not propagated to the texture data itself."""
+    The backward pass propagates gradients to the sampling coordinates wherever the sample
+    is locally linear. At interpolation-cell and address-mode boundaries the mathematical
+    derivative is not unique, so Warp follows the branch selected by the forward sampler.
+    With :attr:`warp.TextureFilterMode.CLOSEST` filtering the sampled value is piecewise
+    constant in the coordinates, so coordinate gradients are zero. Gradients are not
+    propagated to the texture data itself."""
     ...
 
 @over
@@ -6987,10 +6996,12 @@ def texture_sample(tex: Texture3D, uvw: vec3f, dtype: Any, lod: float32) -> Any:
     :class:`warp.Texture`. On CUDA, ``WRAP`` and ``MIRROR`` are treated as ``CLAMP`` when
     ``normalized_coords=False`` (the CPU sampler honors them).
 
-    The backward pass propagates gradients to the sampling coordinates and ``lod`` under
-    every address mode. With :attr:`warp.TextureFilterMode.CLOSEST` filtering the sampled
-    value is piecewise constant in the coordinates, so their gradients are zero. Gradients
-    are not propagated to the texture data itself."""
+    The backward pass propagates gradients to the sampling coordinates wherever the sample
+    is locally linear. At interpolation-cell and address-mode boundaries the mathematical
+    derivative is not unique, so Warp follows the branch selected by the forward sampler.
+    With :attr:`warp.TextureFilterMode.CLOSEST` filtering the sampled value is piecewise
+    constant in the coordinates, so coordinate gradients are zero. Gradients are not
+    propagated to the texture data itself."""
     ...
 
 @over
@@ -7042,10 +7053,12 @@ def texture_sample(tex: Texture3D, u: float32, v: float32, w: float32, dtype: An
     :class:`warp.Texture`. On CUDA, ``WRAP`` and ``MIRROR`` are treated as ``CLAMP`` when
     ``normalized_coords=False`` (the CPU sampler honors them).
 
-    The backward pass propagates gradients to the sampling coordinates and ``lod`` under
-    every address mode. With :attr:`warp.TextureFilterMode.CLOSEST` filtering the sampled
-    value is piecewise constant in the coordinates, so their gradients are zero. Gradients
-    are not propagated to the texture data itself."""
+    The backward pass propagates gradients to the sampling coordinates wherever the sample
+    is locally linear. At interpolation-cell and address-mode boundaries the mathematical
+    derivative is not unique, so Warp follows the branch selected by the forward sampler.
+    With :attr:`warp.TextureFilterMode.CLOSEST` filtering the sampled value is piecewise
+    constant in the coordinates, so coordinate gradients are zero. Gradients are not
+    propagated to the texture data itself."""
     ...
 
 @over
