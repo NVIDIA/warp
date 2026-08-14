@@ -175,8 +175,15 @@ out by CUDASTF as a :class:`warp.Stream`, pushes it as Warp's active stream, and
 tracks external capture bookkeeping when the task is already inside a CUDA graph
 capture.
 
-Advanced users can still use CUDASTF's stackable-frame API through
-``graph.context.raw`` inside the single ``with graph:`` block. Each inner
+The stackable-frame API is not hidden by these helpers. Calling
+:func:`warp.stf_experimental.context` without a stream returns a stackable
+context whose full CUDASTF surface (``push()``, ``pop()``, ``graph_scope()``,
+``while_loop()``, ...) remains available directly on the wrapper for fully
+manual frame management; :func:`task_graph` only adds a guard-railed
+record-once/launch-many lifecycle on top. Advanced users can also open
+nested frames inside the single ``with graph:`` block -- spelled
+``graph.context.raw`` below to make the departure from the managed lifecycle
+explicit, although the wrapper forwards these calls as well. Each inner
 ``push()`` opens a new frame on the same context, the work recorded inside it
 is folded into the surrounding frame on ``pop()``, and only the outer
 ``with graph:`` produces a launchable CUDA graph for the whole tree. This can
