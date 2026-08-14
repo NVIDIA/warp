@@ -390,6 +390,26 @@ is handled when ``cuProfilerStop`` is called.  The CUDA API does not guarantee t
 Consult the profiler's documentation to determine whether explicit synchronization is needed to include work that is
 still in flight.
 
+Checking CUDA kernel resource use
+---------------------------------
+
+When tuning a CUDA kernel, use :func:`warp.get_cuda_kernel_properties` to inspect properties of a compiled CUDA
+function without starting with a profiler. Pass ``block_dim`` explicitly to inspect the same module variant that a
+launch uses:
+
+.. code-block:: python
+
+   properties = wp.get_cuda_kernel_properties(kernel, device=device, block_dim=128)
+   print(properties["register_count"])
+   print(properties["local_memory_size"])
+
+``register_count`` is the number of registers CUDA allocates to each thread. ``local_memory_size`` is the local-memory
+size in bytes used by each thread, including thread-local storage and register spills. Future Warp releases may add
+keys to the returned dictionary.
+
+These values may change with the GPU, CUDA toolchain, Warp version, compiler options, or block dimension. For an
+occupancy-based recommendation, use :func:`warp.get_suggested_block_size`.
+
 Nsight Compute Profiling
 ------------------------
 

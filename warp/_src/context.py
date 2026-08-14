@@ -3223,6 +3223,24 @@ class ModuleExec:
                 pass
 
     # lookup and cache kernel entry points
+    def _get_forward_cuda_kernel(self, kernel):
+        """Return the forward CUDA function without initializing launch hooks.
+
+        CUDA function-property queries use this path instead of ``get_kernel_hooks()`` so that inspection does not
+        configure dynamic shared-memory or thread-block cluster attributes. The caller must retain this ``ModuleExec``
+        while using the returned raw CUDA function handle.
+        """
+        name = kernel._mangled_name
+        if name is None:
+            name = kernel.get_mangled_name()
+
+        hooks = self.kernel_hooks.get(name)
+        if hooks is not None:
+            return hooks.forward
+
+        forward_name = name + "_cuda_kernel_forward"
+        return runtime.core.wp_cuda_get_kernel(self.device.context, self.handle, forward_name.encode("utf-8"))
+
     def get_kernel_hooks(self, kernel) -> KernelHooks:
         # Key by the mangled name (compiled-symbol identity), not kernel.adj, which pinned one
         # Adjoint per closure-recreated kernel -- a leak the live-kernel WeakSet can't reclaim.
@@ -7479,6 +7497,14 @@ class Runtime:
             ]
             self.core.wp_cuda_get_kernel_static_shared_memory.restype = ctypes.c_int
 
+            self.core.wp_cuda_get_kernel_properties.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.POINTER(ctypes.c_int),
+                ctypes.c_int,
+            ]
+            self.core.wp_cuda_get_kernel_properties.restype = ctypes.c_bool
+
             self.core.wp_cuda_set_kernel_cluster_attrs.argtypes = [
                 ctypes.c_void_p,  # kernel (CUfunction)
                 ctypes.c_int,  # cx
@@ -11163,6 +11189,112 @@ def launch_tiled(*args, **kwargs):
     return launch(*args, **kwargs)
 
 
+def _resolve_cuda_kernel_forward_entry_point(kernel, device, block_dim, api_name):
+    """Resolve the forward CUDA kernel entry point used by property queries.
+
+    Public CUDA kernel-property APIs use this helper to validate their shared
+    arguments and load the requested block-dimension module variant. It
+    returns the ``ModuleExec`` with the raw ``CUfunction`` handle so the
+    caller can keep the owning module loaded until the CUDA property query
+    completes.
+    """
+    init()
+
+    if not isinstance(kernel, Kernel):
+        raise TypeError(f"{api_name}() expected a wp.Kernel, got {type(kernel)}")
+
+    if kernel.is_generic:
+        raise RuntimeError(
+            f"{api_name}() requires a concrete overload of generic kernel '{kernel.key}'; "
+            "create one with wp.overload() and pass the returned kernel"
+        )
+
+    device = runtime.get_device(device)
+    if not device.is_cuda:
+        raise RuntimeError(f"{api_name}() requires a CUDA device, got '{device}'")
+
+    if block_dim is None:
+        resolved_block_dim = kernel.module.options["block_dim"]
+    else:
+        if isinstance(block_dim, bool):
+            raise ValueError(f"block_dim must be a positive integer, got {block_dim!r}")
+        try:
+            resolved_block_dim = operator.index(block_dim)
+        except TypeError:
+            raise ValueError(f"block_dim must be a positive integer, got {block_dim!r}") from None
+        if resolved_block_dim <= 0:
+            raise ValueError(f"block_dim must be a positive integer, got {block_dim!r}")
+
+    try:
+        module_exec = kernel.module.load(device, resolved_block_dim)
+    except Exception as error:
+        raise RuntimeError(
+            f"Failed to load CUDA kernel '{kernel.key}' on device '{device}' with block_dim={resolved_block_dim}"
+        ) from error
+
+    if module_exec is None:
+        raise RuntimeError(
+            f"Failed to load CUDA kernel '{kernel.key}' on device '{device}' with block_dim={resolved_block_dim}"
+        )
+
+    forward_handle = module_exec._get_forward_cuda_kernel(kernel)
+    if forward_handle is None:
+        raise RuntimeError(
+            f"Failed to load forward CUDA kernel '{kernel.key}' on device '{device}' "
+            f"with block_dim={resolved_block_dim}"
+        )
+
+    return device, module_exec, forward_handle, resolved_block_dim
+
+
+_CUDA_KERNEL_PROPERTY_KEYS = ("register_count", "local_memory_size")
+
+
+def get_cuda_kernel_properties(
+    kernel,
+    device: DeviceLike = None,
+    block_dim: int | None = None,
+) -> dict[str, int]:
+    """Return properties of a compiled CUDA kernel.
+
+    The result contains ``"register_count"`` in registers per thread and
+    ``"local_memory_size"`` in bytes per thread. Values may vary with the
+    device, CUDA toolchain, Warp version, compilation options, and
+    ``block_dim``. Future Warp releases may add keys.
+
+    Args:
+        kernel: A concrete ``@wp.kernel``-decorated kernel or explicitly
+            constructed :class:`warp.Kernel`. For a generic kernel, pass an
+            overload returned by :func:`warp.overload`.
+        device: The target CUDA device. If ``None``, use the default device,
+            which must be CUDA.
+        block_dim: Threads per block for the compiled variant. If ``None``,
+            use the kernel module default.
+
+    Returns:
+        The complete dictionary of exposed CUDA kernel properties.
+
+    Raises:
+        TypeError: If kernel is not a Warp kernel.
+        ValueError: If block_dim is not a positive integer.
+        RuntimeError: If validation, loading, or the native batch fails.
+    """
+    device, _module_exec, forward_handle, resolved_block_dim = _resolve_cuda_kernel_forward_entry_point(
+        kernel, device, block_dim, "get_cuda_kernel_properties"
+    )
+    property_count = len(_CUDA_KERNEL_PROPERTY_KEYS)
+    property_values = (ctypes.c_int * property_count)()
+
+    if not runtime.core.wp_cuda_get_kernel_properties(device.context, forward_handle, property_values, property_count):
+        err = runtime.get_error_string()
+        raise RuntimeError(
+            f"Failed to query CUDA kernel properties for kernel '{kernel.key}' "
+            f"on device '{device}' with block_dim={resolved_block_dim}: {err}"
+        )
+
+    return dict(zip(_CUDA_KERNEL_PROPERTY_KEYS, property_values, strict=True))
+
+
 def get_suggested_block_size(kernel, device: DeviceLike = None) -> tuple[int, int]:
     """Suggest a CUDA block size that maximizes occupancy for a kernel.
 
@@ -11199,9 +11331,10 @@ def get_suggested_block_size(kernel, device: DeviceLike = None) -> tuple[int, in
             wp.launch(saxpy, dim=n, inputs=[2.0, x, y], block_dim=block_size)
 
     Args:
-        kernel: A :class:`warp.Kernel` object, created with ``@wp.kernel`` or
-            the :class:`warp.Kernel` constructor.
-        device: The target device. If ``None``, uses the current CUDA device.
+        kernel: A concrete :class:`warp.Kernel` object, created with
+            ``@wp.kernel`` or the :class:`warp.Kernel` constructor. For a
+            generic kernel, pass an overload returned by :func:`warp.overload`.
+        device: The target device. If ``None``, uses the default device.
             For CPU devices, returns ``(1, 1)``.
 
     Returns:
@@ -11212,7 +11345,8 @@ def get_suggested_block_size(kernel, device: DeviceLike = None) -> tuple[int, in
 
     Raises:
         TypeError: If ``kernel`` is not a Warp kernel.
-        RuntimeError: If the CUDA occupancy query fails.
+        RuntimeError: If ``kernel`` is a generic kernel parent on a CUDA
+            device or the CUDA occupancy query fails.
     """
     init()
 
@@ -11223,6 +11357,12 @@ def get_suggested_block_size(kernel, device: DeviceLike = None) -> tuple[int, in
 
     if not device.is_cuda:
         return (1, 1)
+
+    if kernel.is_generic:
+        raise RuntimeError(
+            f"get_suggested_block_size() requires a concrete overload of generic kernel '{kernel.key}'; "
+            "create one with wp.overload() and pass the returned kernel"
+        )
 
     module = kernel.module
     module_exec = module.load(device)
