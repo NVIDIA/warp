@@ -8,8 +8,7 @@ from collections.abc import Sequence
 from typing import Any
 
 import warp as wp
-
-from ._capture_detect import _stream_capture_id, _stream_is_capturing, _warp_already_tracks_capture
+import warp._src.context as _wp_ctx
 
 __all__ = [
     "context",
@@ -404,6 +403,26 @@ def _device_from_exec_place(exec_place: Any | None, device_hint: wp.Device | Non
     return wp.get_device(f"cuda:{device_ordinal}")
 
 
+def _in_foreign_capture(raw_ptr: int) -> bool:
+    """Return ``True`` if ``raw_ptr`` is inside a capture Warp does not track.
+
+    Warp's own capture bookkeeping only covers captures Warp itself started.
+    The stream an STF task hands us may already be inside a capture Warp has
+    never seen -- STF's ``graph_ctx`` backend capturing its task graph, or an
+    outer ``torch.cuda.graph`` region. Launching Warp kernels into such a
+    stream without adopting the capture would trip Warp's stream tracking, so
+    the capture status is queried truthfully through Warp's native
+    ``wp_cuda_stream_is_capturing`` export (unlike the bookkeeping, it also
+    reports captures Warp has never seen). Only a foreign capture must be
+    adopted via ``wp.capture_begin(external=True)``; re-adopting one Warp
+    already tracks (matched by capture id) would double-register it.
+    """
+    if not _wp_ctx.runtime.core.wp_cuda_stream_is_capturing(int(raw_ptr)):
+        return False
+    capture_id = int(_wp_ctx.runtime.core.wp_cuda_stream_get_capture_id(int(raw_ptr)))
+    return capture_id not in _wp_ctx.runtime.captures
+
+
 @contextlib.contextmanager
 def task(
     ctx: Any,
@@ -454,11 +473,7 @@ def task(
     captured = False
     try:
         if capture is None:
-            if _stream_is_capturing(raw_ptr):
-                capture_id = _stream_capture_id(raw_ptr)
-                capture = not _warp_already_tracks_capture(capture_id)
-            else:
-                capture = False
+            capture = _in_foreign_capture(raw_ptr)
 
         if capture:
             wp.capture_begin(stream=stream, external=True)
