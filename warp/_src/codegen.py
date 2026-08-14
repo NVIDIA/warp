@@ -6438,9 +6438,11 @@ cuda_module_header = """
 // declared rather than pulled from cuda_runtime.h (unavailable under NVRTC);
 // no symbol is referenced unless a kernel actually calls
 // wp.graph_set_conditional(), so this header compiles on any CUDA toolkit and
-// the symbol only resolves at link time on CUDA 12.4+.
-typedef __device_builtin__ unsigned long long cudaGraphConditionalHandle;
-extern "C" __device__ __cudart_builtin__ void cudaGraphSetConditional(cudaGraphConditionalHandle handle, unsigned int value);
+// the symbol only resolves at link time on CUDA 12.4+. The declaration is
+// kept free of NVCC-specific decorations (__device_builtin__,
+// __cudart_builtin__) so it also compiles under Clang CUDA.
+typedef unsigned long long cudaGraphConditionalHandle;
+extern "C" __device__ void cudaGraphSetConditional(cudaGraphConditionalHandle handle, unsigned int value);
 
 namespace wp {{
 static __device__ inline void graph_set_conditional(uint64 handle, int32 value)
