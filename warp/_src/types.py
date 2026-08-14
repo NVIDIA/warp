@@ -4158,11 +4158,19 @@ class array(Array[DType, NDim]):
             parent = parent._ref
 
     def mark_write(self, **kwargs):
-        """Detect if we are writing to an array that has already been read from."""
+        """Warn if this array is written to after it has been read from in a recorded launch.
+
+        Attribute the warning by passing ``arg_name``/``kernel_name``/``filename``/``lineno``
+        (kernel launch) or ``operation``/``filename``/``lineno`` (other writes).
+        """
         if self._is_read:
             if "arg_name" in kwargs and "kernel_name" in kwargs and "filename" in kwargs and "lineno" in kwargs:
                 log_warning(
                     f"Array {self} passed to argument {kwargs['arg_name']} in kernel {kwargs['kernel_name']} at {kwargs['filename']}:{kwargs['lineno']} is being written to but has already been read from in a previous launch. This may corrupt gradient computation in the backward pass."
+                )
+            elif "operation" in kwargs and "filename" in kwargs and "lineno" in kwargs:
+                log_warning(
+                    f"Array {self} is being written to by {kwargs['operation']} at {kwargs['filename']}:{kwargs['lineno']} but has already been read from in a previous launch. This may corrupt gradient computation in the backward pass."
                 )
             else:
                 log_warning(

@@ -84,6 +84,14 @@ class Tape:
         Args:
             loss: A single-element array that holds the loss function value whose gradient is to be computed
             grads: A dictionary of arrays that map from Warp arrays to their incoming gradients
+
+        Note:
+            When ``wp.config.verify_autograd_array_access`` is enabled, the read flags of the
+            arrays recorded on this tape are cleared at the end of the backward pass, since
+            subsequent writes can no longer corrupt this tape's gradients. The flags are shared
+            per array, so writes are then also no longer flagged against another tape that read
+            the same arrays and has not yet run its own backward pass, or against a second
+            ``backward()`` call on this tape.
         """
         # if scalar loss is specified then initialize
         # a 'seed' array for it, with gradient of one
@@ -159,6 +167,10 @@ class Tape:
                         max_blocks=max_blocks,
                         block_dim=block_dim,
                     )
+
+        # reads are consumed; see the Note in the docstring
+        if wp.config.verify_autograd_array_access:
+            self._reset_array_read_flags()
 
     # record a kernel launch on the tape
     def record_launch(self, kernel, dim, max_blocks, inputs, outputs, device, block_dim=0, metadata=None):
@@ -286,11 +298,12 @@ class Tape:
         """
         Clear all operations recorded on the tape and zero out all gradients.
         """
+        # must run before the launches are cleared: the flag reset walks self.launches
+        if wp.config.verify_autograd_array_access:
+            self._reset_array_read_flags()
         self.launches = []
         self.scopes = []
         self.zero()
-        if wp.config.verify_autograd_array_access:
-            self._reset_array_read_flags()
 
     def zero(self):
         """
@@ -308,12 +321,27 @@ class Tape:
                 g.zero_()
 
     def _reset_array_read_flags(self):
-        """
-        Reset all recorded array read flags to False
-        """
+        """Reset the read flags of all arrays recorded on the tape, including view parents."""
+
+        def clear_read_flags(a):
+            """Clear the read flag of ``a`` and, since reads through views mark every parent, of its parent chain."""
+            a.mark_init()
+            parent = a._ref
+            while parent is not None:
+                parent._is_read = False
+                parent = parent._ref
+
+        # self.gradients only covers kernel launches once backward() has run
+        for launch in self.launches:
+            if not callable(launch):
+                for arrays in (launch[3], launch[4]):  # inputs and outputs
+                    for a in arrays:
+                        if isinstance(a, wp.array):
+                            clear_read_flags(a)
+        # arrays used by copies and functions recorded with record_func()
         for a in self.gradients:
             if isinstance(a, wp.array):
-                a.mark_init()
+                clear_read_flags(a)
 
     def visualize(
         self,
