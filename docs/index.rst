@@ -79,11 +79,12 @@ warp/examples/core
            :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_fft_poisson_navier_stokes_2d.py
       - .. image:: ./img/examples/core_fdtd_3d.png
            :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_fdtd_3d.py
-      -
+      - .. image:: ./img/examples/core_sparse_marching_cubes.png
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_sparse_marching_cubes.py
       -
     * - 2-D incompressible turbulence in a periodic box
       - 3-D FDTD Luneburg lens
-      -
+      - sparse marching cubes
       -
 
 warp/examples/fem

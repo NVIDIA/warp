@@ -2950,6 +2950,90 @@ The resulting mesh is stored in ``mc.verts`` as a :class:`wp.array <warp.array>`
 
 See :github:`warp/examples/core/example_marching_cubes.py` for a complete usage example.
 
+Sparse Marching Cubes
+#####################
+
+When the field comes from an implicit function -- a signed distance function, a
+mesh distance query, or a neural implicit -- :func:`wp.sparse_marching_cubes
+<warp.sparse_marching_cubes>` extracts the isosurface without ever building a
+dense grid. It constructs a *Lipschitz octree* that provably brackets the level
+set of a 1-Lipschitz field, then runs marching cubes only on the near-surface
+cells. The cost scales with the surface area rather than the volume, and the
+whole pipeline (octree construction, field evaluation, and extraction) runs on
+the GPU.
+
+The implicit function may be a ``@wp.func`` with signature ``(p: wp.vec3) -> float``
+or a batched Python callable
+``evaluate(points: wp.array(dtype=wp.vec3)) -> wp.array(dtype=wp.float32)``. The
+latter is convenient for mesh distance queries (``wp.mesh_query_point_sign_winding_number``),
+neural implicits, or any field that is cheaper to evaluate in bulk.
+
+.. figure:: ../img/examples/core_sparse_marching_cubes.gif
+    :align: center
+    :width: 60%
+
+    A signed distance field to the Stanford bunny, re-meshed as the octree depth
+    increases. Only the sparse cells near the surface (blue) are instantiated.
+
+.. testcode::
+    :skipif: wp.get_cuda_device_count() == 0
+
+    @wp.func
+    def sphere_sdf(p: wp.vec3):
+        return wp.length(p) - 0.5
+
+    # A depth-8 octree matches a dense 256^3 grid, but only touches cells near the surface.
+    verts, indices = wp.sparse_marching_cubes(
+        sphere_sdf,
+        origin=wp.vec3(-1.0, -1.0, -1.0),
+        root_width=2.0,
+        max_depth=8,
+        threshold=0.0,
+        device="cuda:0",
+    )
+    print(verts.shape[0] > 0)
+    print(indices.shape[0] % 3 == 0)
+
+.. testoutput::
+    :skipif: wp.get_cuda_device_count() == 0
+
+    True
+    True
+
+At a given depth the output matches :class:`wp.MarchingCubes <warp.MarchingCubes>`
+run on the equivalent dense grid, but only the near-surface cells are
+instantiated. The two stages are also exposed separately: the pruning stage is
+:func:`wp.lipschitz_octree <warp.lipschitz_octree>`, which returns the leaf
+cells, and the extraction stage is :func:`wp.sparse_marching_cubes_from_cells
+<warp.sparse_marching_cubes_from_cells>`, which runs marching cubes on an
+explicit list of occupied cells and their sampled corner values.
+:func:`wp.sparse_marching_cubes <warp.sparse_marching_cubes>` simply chains the
+two. Calling the extraction stage directly is convenient when the occupied cells
+are already known -- for example a marked band of voxels around an object from a
+vision or generative model.
+
+.. list-table::
+    :header-rows: 1
+
+    * - Extracted surface
+      - Dense grid (all cells)
+      - Sparse octree (near-surface cells)
+    * - .. image:: ../img/examples/core_sparse_marching_cubes_surface.png
+      - .. image:: ../img/examples/core_sparse_marching_cubes_dense_grid.png
+      - .. image:: ../img/examples/core_sparse_marching_cubes_sparse_octree.png
+
+At this coarse resolution the dense grid holds 32,768 cells while the octree
+keeps only about 2,500 -- the thin shell hugging the surface. The gap widens with
+depth: on the bunny SDF above, sparse extraction is roughly 8x faster than the
+dense grid at depth 8 and 27x faster at depth 9, and beyond that the dense grid
+no longer fits in memory.
+
+See :github:`warp/examples/core/example_sparse_marching_cubes.py` for a complete
+usage example (with an interactive rendering mode), and
+:github:`warp/examples/benchmarks/benchmark_sparse_marching_cubes.py` for a fair
+sparse-versus-dense comparison. The figures above were produced by
+:github:`warp/examples/core/example_sparse_marching_cubes_polyscope.py`.
+
 Custom Marching Cubes Implementations
 #####################################
 
