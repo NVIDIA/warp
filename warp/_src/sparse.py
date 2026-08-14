@@ -185,8 +185,11 @@ class BsrMatrix(Generic[_BlockType]):
     def nnz_sync(self) -> int:
         """Synchronize the stored block upper bound from the device ``offsets`` array to the host.
 
-        Ensures that any ongoing transfer of ``offsets[nrow]`` from the device offsets array to the host has completed,
-        or, if none has been scheduled yet, starts a new transfer and waits for it to complete.
+        Schedules a fresh scalar device-to-host readback of ``offsets[nrow]`` on the current
+        stream and waits for it to complete. The readback is re-issued unconditionally (rather
+        than waiting on a previously scheduled transfer) so that the wait is stream-ordered
+        behind any prior work on the current stream -- including a replayed CUDA graph that
+        contains a captured readback.
 
         Then updates the host-side nnz upper bound to match ``offsets[nrow]``, and returns it. For compact matrices,
         this is the active non-zero block count. For padded matrices, this is the total row-capacity storage size,

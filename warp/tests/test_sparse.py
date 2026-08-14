@@ -974,18 +974,28 @@ def test_bsr_mm_max_new_nnz(test, device):
 
 @wp.kernel
 def _spin_then_bump_offsets(offsets: wp.array[int], mult: wp.array[float], nrow: int, nnz: int, iters: int):
-    """Burn time, then write the block count. Keeps the replayed graph busy
-    long enough that an improperly ordered host readback loses the race.
-    The multiplier comes from memory and the arms differ, so the spin loop
-    cannot be folded away."""
+    """Burn time, then write the block count.
+
+    Keeps the replayed graph busy long enough that an improperly ordered host
+    readback loses the race. The multiplier comes from memory and the select
+    arms differ, so the spin loop cannot be folded away.
+
+    Args:
+        offsets: BSR row offsets array; ``offsets[nrow]`` receives the count.
+        mult: Single-element array holding the spin multiplier (from memory,
+          so the loop result is not a compile-time constant).
+        nrow: Row index whose offsets entry receives the block count.
+        nnz: Block count written to ``offsets[nrow]``.
+        iters: Spin iterations; sized to keep the kernel busy ~100 ms.
+    """
     acc = mult[0]
-    for i in range(iters):
+    for _i in range(iters):
         acc = acc * mult[0] + 1.0e-7
     offsets[nrow] = wp.where(acc >= 0.0, nnz, nnz - 1)
 
 
 def test_nnz_sync_after_graph_replay(test, device):
-    """Check nnz_sync() ordering against a replayed graph containing its readback.
+    """Check ``nnz_sync()`` ordering against a replayed graph containing its readback.
 
     The transfer buffer/event pair is cached by a pre-capture nnz_sync(); the
     captured copy_nnz_async() turns its copy and event record into graph
@@ -996,6 +1006,10 @@ def test_nnz_sync_after_graph_replay(test, device):
     either way); re-issuing the readback on the current stream orders the
     wait by construction. This test guards that ordering contract across
     toolkits.
+
+    Args:
+        test: The unittest test case instance.
+        device: Device to run on (CUDA devices with mempool support).
     """
     nrow = 4
     nnz_target = 3
