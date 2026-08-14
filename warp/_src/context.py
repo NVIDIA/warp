@@ -13501,7 +13501,14 @@ def copy(
         if runtime.tape:
             runtime.tape.record_func(
                 backward=lambda: adj_copy(
-                    dest.grad, src.grad, dest_offset=dest_offset, src_offset=src_offset, count=count, stream=stream
+                    dest.grad,
+                    src.grad,
+                    dest_offset=dest_offset,
+                    src_offset=src_offset,
+                    count=count,
+                    stream=stream,
+                    # resolved at backward time so later changes to the flag are honored
+                    dest_retain_grad=dest.retain_grad,
                 ),
                 arrays=[dest, src],
             )
@@ -13510,20 +13517,122 @@ def copy(
                 src.mark_read()
 
 
+def _address_ranges_overlap(a: warp.array, b: warp.array) -> bool:
+    """Return whether the byte extents of two array views may overlap.
+
+    Conservative: views that interleave without actually colliding, and views
+    with non-positive strides (broadcast or reversed), are reported as
+    overlapping so they route to the byte-copy adjoint.
+    """
+    for arr in (a, b):
+        if any(st <= 0 for st in arr.strides):
+            return True
+
+    def byte_range(arr):
+        """Return the half-open byte interval spanned by the view."""
+        last = sum((s - 1) * st for s, st in zip(arr.shape, arr.strides, strict=True))
+        return arr.ptr, arr.ptr + last + warp._src.types.type_size_in_bytes(arr.dtype)
+
+    a_lo, a_hi = byte_range(a)
+    b_lo, b_hi = byte_range(b)
+    return a_lo < b_hi and b_lo < a_hi
+
+
+def _launch_adj_copy_add(a: warp.array, b: warp.array):
+    """Add ``b`` elementwise into ``a`` using ``wp.map()``'s generated-kernel cache.
+
+    Launched explicitly so the launch is never recorded onto an active tape
+    (a nested backward pass must not append operations to an outer tape).
+    """
+    from warp._src.utils import map as _map  # noqa: PLC0415 (utils imports context at module level)
+
+    add_kernel = _map(warp.add, a, b, out=a, return_kernel=True)
+    launch(add_kernel, dim=a.shape, inputs=[a, b], outputs=[a], device=a.device, record_tape=False)
+
+
+def _resolve_adj_copy_windows(adj_src: warp.array, adj_dest: warp.array, dest_offset: int, src_offset: int, count: int):
+    """Resolve the copied window on each adjoint as a pair of views, or ``None``.
+
+    The adjoint kernel indexes logically, so strided views work directly; ``copy()``
+    constrains the possible windows to what the views can express: flat element
+    offsets on contiguous arrays, logical element offsets on 1D arrays, and
+    full-array copies only when a multi-dimensional array is non-contiguous.
+    """
+    if adj_src.is_contiguous and adj_dest.is_contiguous:
+        return (
+            adj_src.flatten()[src_offset : src_offset + count],
+            adj_dest.flatten()[dest_offset : dest_offset + count],
+        )
+    if adj_src.ndim == 1 and adj_dest.ndim == 1:
+        return adj_src[src_offset : src_offset + count], adj_dest[dest_offset : dest_offset + count]
+    if adj_src.shape == adj_dest.shape:
+        return adj_src, adj_dest
+    return None
+
+
 def adj_copy(
-    adj_dest: warp.array, adj_src: warp.array, dest_offset: int, src_offset: int, count: int, stream: Stream = None
+    adj_dest: warp.array,
+    adj_src: warp.array,
+    dest_offset: int,
+    src_offset: int,
+    count: int,
+    stream: Stream = None,
+    dest_retain_grad: bool = False,
 ):
     """Copy adjoint operation for wp.copy() calls on the tape.
+
+    For same-device, non-overlapping copies of addable numeric dtypes whose recorded
+    stream (if any) belongs to that device, the adjoint accumulates the destination
+    region's adjoint into the source region's adjoint (the source may have other
+    consumers whose contributions land first in the reverse pass and must not be
+    overwritten) and then consumes (zeroes) the destination region, matching
+    kernel-adjoint final-write-wins semantics; destinations with ``retain_grad=True``
+    keep their gradient.
+
+    All other copies — cross-device, struct/boolean or reinterpreting dtypes,
+    overlapping regions, or streams from another device — keep the previous
+    byte-copy adjoint (overwrite the source region's adjoint, no consumption).
+    Extending accumulation and consumption to those cases is deferred to
+    follow-up work.
 
     Args:
         adj_dest: Destination array adjoint
         adj_src: Source array adjoint
+        dest_offset: Element offset of the copied region in the destination array
+        src_offset: Element offset of the copied region in the source array
+        count: Number of elements the forward copy transferred; a zero count is a
+          no-op (the recording call site resolves copy()'s full-copy default before
+          recording)
         stream: The stream on which the copy was performed in the forward pass
+        dest_retain_grad: Whether the destination array retains its gradient
+          (``retain_grad=True``), which skips zeroing the destination gradient after
+          propagation on the accumulation path
     """
-    # The forward copy writes dest[dest_offset:...] = src[src_offset:...], so the
-    # adjoint propagates adj_src[src_offset:...] = adj_dest[dest_offset:...].  The
-    # offsets must therefore be swapped relative to the forward call: reading from
-    # adj_dest uses dest_offset and writing to adj_src uses src_offset.
+    if adj_src.size == 0 or count == 0:
+        return
+
+    if (
+        adj_src.device == adj_dest.device
+        and (stream is None or stream.device == adj_src.device)
+        # addable value dtypes only; wp.add has no overloads for bool scalars/composites
+        and warp._src.types.type_is_value(adj_src.dtype)
+        and warp._src.types.type_scalar_type(adj_src.dtype) not in (bool, warp._src.types.bool)
+        # types_equal, not identity: vector dtypes are not interned across spellings
+        and warp._src.types.types_equal(adj_src.dtype, adj_dest.dtype)
+    ):
+        regions = _resolve_adj_copy_windows(adj_src, adj_dest, dest_offset, src_offset, count)
+        if regions is not None and not _address_ranges_overlap(*regions):
+            src_region, dest_region = regions
+            # ScopedStream events order the add and the zeroing against the rest of
+            # the backward pass when the copy was recorded on a non-current stream
+            scope_stream = stream if stream is not None and stream is not adj_src.device.stream else None
+            with warp.ScopedStream(scope_stream, sync_enter=True, sync_exit=True):
+                _launch_adj_copy_add(src_region, dest_region)
+                if not dest_retain_grad:
+                    dest_region.zero_()
+            return
+
+    # offsets swapped relative to the forward call
     copy(adj_src, adj_dest, dest_offset=src_offset, src_offset=dest_offset, count=count, stream=stream)
 
 
