@@ -518,7 +518,7 @@
 <h1>warp.fem.Temporary<a class="headerlink" href="#warp-fem-temporary" title="Link to this heading">#</a></h1>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.Temporary">
-<span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">Temporary</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L3147-L4731"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Temporary" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">Temporary</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L3147-L4739"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Temporary" title="Link to this definition">#</a></dt>
 <dd><p class="rubric">Methods</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
@@ -550,7 +550,7 @@
 <td><p>Mark this array as having been read from in a kernel or recorded function on the tape.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">mark_write</span></code>(**kwargs)</p></td>
-<td><p>Detect if we are writing to an array that has already been read from.</p></td>
+<td><p>Warn if this array is written to after it has been read from in a recorded launch.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span></code>(*[, _suppress_bfloat16_warning])</p></td>
 <td><p>Convert the array to a <a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></a> (aliasing memory through the array interface protocol) If the array is on the GPU, a synchronous device-to-host copy (on the CUDA default stream) will be automatically performed to ensure that any outstanding work is completed.</p></td>

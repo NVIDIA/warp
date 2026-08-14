@@ -518,7 +518,7 @@
 <h1>warp.fixedarray<a class="headerlink" href="#warp-fixedarray" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.fixedarray">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">fixedarray</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4884-L4929"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fixedarray" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">fixedarray</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4892-L4937"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fixedarray" title="Link to this definition">#</a></dt>
 <dd><p>A fixed-size, stack allocated, array containing values of the same type.</p>
 <p>Only used during codegen, and for type hints, but otherwise not intended to be used
 at the Python scope.</p>
@@ -553,7 +553,7 @@ at the Python scope.</p>
 <td><p>Mark this array as having been read from in a kernel or recorded function on the tape.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">mark_write</span></code>(**kwargs)</p></td>
-<td><p>Detect if we are writing to an array that has already been read from.</p></td>
+<td><p>Warn if this array is written to after it has been read from in a recorded launch.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">numpy</span></code>(*[, _suppress_bfloat16_warning])</p></td>
 <td><p>Convert the array to a <a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.ndarray.html#numpy.ndarray" title="(in NumPy v2.5)"><code class="xref py py-class docutils literal notranslate"><span class="pre">numpy.ndarray</span></code></a> (aliasing memory through the array interface protocol) If the array is on the GPU, a synchronous device-to-host copy (on the CUDA default stream) will be automatically performed to ensure that any outstanding work is completed.</p></td>
@@ -607,7 +607,7 @@ at the Python scope.</p>
 </dl>
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fixedarray.vars">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">vars</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4922-L4929"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fixedarray.vars" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">vars</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L4930-L4937"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fixedarray.vars" title="Link to this definition">#</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
