@@ -83,6 +83,43 @@ def test_skip_leaf_join_rejects_unjoined_fork(test, device):
         wp.capture_end(device=device, stream=main, skip_leaf_join=True)
 
 
+def test_skip_leaf_join_unjoined_fork_cleans_up_allocs(test, device):
+    """Check allocation bookkeeping survives a rejected unjoined capture.
+
+    The capture allocates an array (a graph allocation) before failing with
+    unjoined forked work. The failed capture_end must clean up the graph
+    allocation bookkeeping: freeing the array afterwards and running a
+    subsequent capture must both work normally.
+    """
+    if not device.is_mempool_enabled:
+        test.skipTest("Requires a mempool-enabled device")
+
+    main = wp.Stream(device)
+    forked = wp.Stream(device)
+    a = wp.zeros(N, dtype=int, device=device)
+    b = wp.zeros(N, dtype=int, device=device)
+    wp.load_module(device=device)
+
+    _begin_forked_capture(device, main, forked, a, b)
+    # allocate inside the capture so the capture owns graph-alloc bookkeeping
+    with wp.ScopedStream(main, sync_enter=False):
+        c = wp.zeros(N, dtype=int, device=device)
+        wp.launch(_write_val, dim=N, inputs=[c, 3], stream=main)
+    with test.assertRaises(RuntimeError):
+        wp.capture_end(device=device, stream=main, skip_leaf_join=True)
+
+    # the failed capture must not wedge allocation tracking: dropping the
+    # graph-allocated array and capturing again must work
+    del c
+    _begin_forked_capture(device, main, forked, a, b)
+    main.wait_event(forked.record_event())
+    graph = wp.capture_end(device=device, stream=main, skip_leaf_join=True)
+    wp.capture_launch(graph, stream=main)
+    wp.synchronize_stream(main)
+    assert_np_equal(a.numpy(), np.full(N, 1, dtype=np.int32))
+    assert_np_equal(b.numpy(), np.full(N, 2, dtype=np.int32))
+
+
 def test_skip_leaf_join_explicit_join_succeeds(test, device):
     """Check that ``skip_leaf_join=True`` with a caller-managed join succeeds.
 
@@ -242,6 +279,12 @@ add_function_test(
     TestGraphSkipLeafJoin,
     "test_skip_leaf_join_rejects_unjoined_fork",
     test_skip_leaf_join_rejects_unjoined_fork,
+    devices=devices,
+)
+add_function_test(
+    TestGraphSkipLeafJoin,
+    "test_skip_leaf_join_unjoined_fork_cleans_up_allocs",
+    test_skip_leaf_join_unjoined_fork_cleans_up_allocs,
     devices=devices,
 )
 add_function_test(

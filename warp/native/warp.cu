@@ -3526,8 +3526,8 @@ bool wp_cuda_graph_end_capture(void* context, void* stream, void** graph_ret, bo
     g_captures.erase(capture_id);
     delete capture;
 
-    // a lambda to clean up on exit in case of error
-    auto clean_up = [cuda_stream, capture_id, external]() {
+    // clean up graph allocation bookkeeping on exit in case of error
+    auto clean_up_allocs = [capture_id]() {
         // unreference outstanding graph allocs so that they will be released with the user reference
         for (auto it = g_graph_allocs.begin(); it != g_graph_allocs.end(); /*noop*/) {
             GraphAllocInfo& alloc_info = it->second;
@@ -3544,6 +3544,11 @@ bool wp_cuda_graph_end_capture(void* context, void* stream, void** graph_ret, bo
             }
             ++it;
         }
+    };
+
+    // a lambda to clean up on exit in case of error while the capture is still active
+    auto clean_up = [cuda_stream, external, clean_up_allocs]() {
+        clean_up_allocs();
 
         // make sure we terminate the capture
         if (!external) {
@@ -3622,8 +3627,14 @@ bool wp_cuda_graph_end_capture(void* context, void* stream, void** graph_ret, bo
         return true;
 
     // end the capture
-    if (!check_cuda(cudaStreamEndCapture(cuda_stream, &graph)))
+    if (!check_cuda(cudaStreamEndCapture(cuda_stream, &graph))) {
+        // The failed call already terminated the capture (e.g.,
+        // cudaErrorStreamCaptureUnjoined when skip_leaf_join left dangling
+        // forked work), so only the allocation bookkeeping needs cleanup;
+        // do not call cudaStreamEndCapture() again.
+        clean_up_allocs();
         return false;
+    }
 
     // process deferred free list if no more captures are ongoing
     if (g_captures.empty()) {
