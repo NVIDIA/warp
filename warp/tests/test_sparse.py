@@ -1003,9 +1003,12 @@ def test_nnz_sync_after_graph_replay(test, device):
     must be ordered behind the replayed copy. Waiting on the cached event
     relies on the record node arming the event at graph launch -- a
     toolkit-sensitive contract (sound on CUDA 13.4, where this test passes
-    either way); re-issuing the readback on the current stream orders the
-    wait by construction. This test guards that ordering contract across
-    toolkits.
+    either way). Capturing the readback therefore permanently poisons the
+    cached transfer: nnz_sync() re-issues the readback on the current
+    stream, ordering the wait by construction, on every call from then on
+    (each replay rewrites the cached buffer). Matrices whose readback was
+    never captured keep the pending-transfer fast path. This test guards
+    that ordering contract across toolkits.
 
     Args:
         test: The unittest test case instance.
@@ -1028,9 +1031,18 @@ def test_nnz_sync_after_graph_replay(test, device):
         )
         A.copy_nnz_async()
 
+    # The capture must have poisoned the cached transfer pair.
+    test.assertTrue(getattr(A, "_nnz_transfer_captured", False))
+
     wp.capture_launch(capture.graph)
     # With the stale-event bug this reads the buffer before the replayed
     # copy lands and returns 0.
+    test.assertEqual(A.nnz_sync(), nnz_target)
+
+    # Poisoning is sticky: a second replay rewrites the cached buffer again,
+    # and nnz_sync() must keep re-issuing the readback rather than reverting
+    # to the fast path after one safe read.
+    wp.capture_launch(capture.graph)
     test.assertEqual(A.nnz_sync(), nnz_target)
     wp.synchronize_device(device)
 
