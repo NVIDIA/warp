@@ -6408,9 +6408,6 @@ static inline void graph_set_conditional(uint64 handle, int32 value)
     (void)handle;
     (void)value;
 }}
-static inline void adj_graph_set_conditional(uint64 handle, int32 value, uint64& adj_handle, int32& adj_value)
-{{
-}}
 }} // namespace wp
 
 """
@@ -6461,9 +6458,6 @@ namespace wp {{
 static __device__ inline void graph_set_conditional(uint64 handle, int32 value)
 {{
     cudaGraphSetConditional((cudaGraphConditionalHandle)handle, (unsigned int)value);
-}}
-static __device__ inline void adj_graph_set_conditional(uint64 handle, int32 value, uint64& adj_handle, int32& adj_value)
-{{
 }}
 }} // namespace wp
 
