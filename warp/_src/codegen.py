@@ -2015,7 +2015,7 @@ class Adjoint:
         adj.max_required_extra_shared_memory_backward = 0
 
         # recorded at call sites for ModuleBuilder's post-build propagation passes
-        adj.called_user_functions = set()
+        adj.called_user_functions = {}
 
         # wp.ref[T] callees lacking a manual adjoint; rejected post-build, once used_by_backward_kernel is final
         adj.unvalidated_ref_calls = []
@@ -2612,7 +2612,7 @@ class Adjoint:
         # if it is a user-function then build it recursively
         if not func.is_builtin():
             # record the call-graph edge for the post-build propagation passes
-            adj.called_user_functions.add(func)
+            adj.called_user_functions.setdefault(func, None)
             # If the function called is a user function,
             # we need to ensure its adjoint is also being generated.
             if adj.used_by_backward_kernel:
@@ -2745,7 +2745,7 @@ class Adjoint:
             # if the argument is a function (and not a builtin), then build it recursively
             if isinstance(func_arg_var, warp._src.context.Function) and not func_arg_var.is_builtin():
                 # a function-valued argument is a call-graph edge too
-                adj.called_user_functions.add(func_arg_var)
+                adj.called_user_functions.setdefault(func_arg_var, None)
                 if adj.used_by_backward_kernel:
                     func_arg_var.adj.used_by_backward_kernel = True
                 if adj.force_adjoint_codegen:
