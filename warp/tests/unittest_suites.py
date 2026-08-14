@@ -135,6 +135,17 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.geometry.test_volume_write import TestVolumeWrite
     from warp.tests.interop.test_dlpack import TestDLPack
     from warp.tests.interop.test_jax import TestJax
+    from warp.tests.interop.test_stf_experimental import TestSTFExperimental
+    from warp.tests.interop.test_stf_experimental_both import TestSTFExperimentalBoth
+    from warp.tests.interop.test_stf_experimental_capture_while import TestSTFExperimentalCaptureWhile
+    from warp.tests.interop.test_stf_experimental_exec_place import (
+        TestSTFExperimentalExecPlace,
+        TestSTFExperimentalExecPlaceMultiGpu,
+    )
+    from warp.tests.interop.test_stf_experimental_inner_local import TestSTFExperimentalInnerLocal
+    from warp.tests.interop.test_stf_experimental_logical_data import TestSTFExperimentalLogicalData
+    from warp.tests.interop.test_stf_experimental_outer_dag import TestSTFExperimentalOuterDag
+    from warp.tests.interop.test_stf_experimental_task_graph import TestSTFExperimentalTaskGraph
     from warp.tests.interop.test_torch import TestTorch
     from warp.tests.matrix.test_mat import TestMat
     from warp.tests.matrix.test_mat_assign_copy import TestMatAssignCopy
@@ -183,6 +194,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_enum import TestEnum
     from warp.tests.test_examples import (
         TestCoreExamples,
+        TestInteropExamples,
         TestOptimExamples,
     )
     from warp.tests.test_fabricarray import TestFabricArray
@@ -335,6 +347,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestDLPack,
         TestEnum,
         TestCoreExamples,
+        TestInteropExamples,
         TestOptimExamples,
         TestFactoryStyleArrayAnnotations,
         TestFabricArray,
@@ -418,6 +431,15 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestSpecialValues,
         TestStatic,
         TestStreams,
+        TestSTFExperimental,
+        TestSTFExperimentalBoth,
+        TestSTFExperimentalCaptureWhile,
+        TestSTFExperimentalExecPlace,
+        TestSTFExperimentalExecPlaceMultiGpu,
+        TestSTFExperimentalInnerLocal,
+        TestSTFExperimentalLogicalData,
+        TestSTFExperimentalOuterDag,
+        TestSTFExperimentalTaskGraph,
         TestStruct,
         TestSubscriptTypes,
         TestTape,

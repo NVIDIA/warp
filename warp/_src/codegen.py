@@ -6408,6 +6408,12 @@ cuda_module_header = """
 #include "builtin.h"
 #include "deterministic.h"
 
+// Forward declaration of the device-side conditional graph builtin. Always
+// declared (no symbol reference unless a user kernel actually calls it), so
+// it compiles on any CUDA toolkit; only resolves at link time on CUDA 12.4+.
+typedef __device_builtin__ unsigned long long cudaGraphConditionalHandle;
+extern "C" __device__ __cudart_builtin__ void cudaGraphSetConditional(cudaGraphConditionalHandle handle, unsigned int value);
+
 // Map wp.breakpoint() to a device brkpt at the call site so cuda-gdb attributes the stop to the generated .cu line
 #if defined(__CUDACC__) && !defined(_MSC_VER)
 #define __debugbreak() __brkpt()

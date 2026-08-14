@@ -25,6 +25,7 @@ These modules must be explicitly imported (e.g., ``import warp.autograd``).
 - :mod:`warp.optim`
 - :mod:`warp.render`
 - :mod:`warp.sparse`
+- :mod:`warp.stf_experimental`
 
 Type Annotations
 ----------------

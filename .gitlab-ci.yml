@@ -855,6 +855,65 @@ linux-x86_64 test newton:
   script:
     - python -m newton.tests --junit-report-xml rspec.xml
 
+# Optional job to test warp.stf_experimental (CUDASTF integration).
+#
+# Builds and installs the standalone cuda-stf package from the CCCL git tree:
+# the package now lives on NVIDIA/cccl main but is not yet published on PyPI.
+# Override CCCL_STF_GIT_URL / CCCL_STF_GIT_REF (e.g. via a pipeline variable
+# or the GitLab UI) to pin a fork or branch; switch to a plain pip dependency
+# once the cuda-stf wheel is published.
+# The remaining STF tests in the default suite already auto-skip when cuda.stf
+# is not importable, so this job is the only place those tests are actually
+# executed.
+linux-x86_64 test stf experimental:
+  stage: test
+  needs: [linux-x86_64 build]
+  image: $WARP_BUILDER_IMAGE_CU12 # provides CUDA toolkit + nvcc + gcc
+  timeout: 24h
+  extends:
+    - .ipp_lnx_x86_64_gpu
+    - .save_test_report_artifact
+  variables:
+    IPP_RUNNER_EXECUTION_DURATION: "3600"
+    UV_PYTHON: "3.12"
+    CUDA_HOME: "/usr/local/cuda"
+    CCCL_STF_GIT_URL: "https://github.com/NVIDIA/cccl.git"
+    CCCL_STF_GIT_REF: "main"
+    # cuda-stf's pyproject.toml derives its version via setuptools_scm from
+    # the CCCL repository. CI clones may not have tags, so pin a synthetic
+    # version to bypass the lookup.
+    SETUPTOOLS_SCM_PRETEND_VERSION_FOR_CUDA_STF: "0.0.0+ci"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+      changes:
+        - warp/stf_experimental/**/*
+        - warp/_src/stf_experimental/**/*
+        - warp/tests/interop/test_stf_experimental*.py
+      allow_failure: true
+    - when: manual # Manual trigger in all other scenarios
+      allow_failure: true
+  before_script:
+    - !reference [.snippets, section-start-install-deps]
+    - df -h
+    - !reference [.snippets, move-linux-x86_64-binaries]
+    - uv venv
+    - uv pip install -e .
+    # Build cuda-stf directly from the CCCL monorepo subtree.
+    # scikit-build-core fetches its own cmake / ninja, so the toolchain
+    # provided by $WARP_BUILDER_IMAGE_CU12 (nvcc + gcc) is sufficient.
+    - >-
+      uv pip install
+      "cuda-stf[cu12] @ git+${CCCL_STF_GIT_URL}@${CCCL_STF_GIT_REF}#subdirectory=python/cuda_stf"
+    - source .venv/bin/activate
+    - !reference [.snippets, section-end-install-deps]
+  script:
+    # Sanity check: the install must make cuda.stf importable and wp_stf must
+    # report itself available. Otherwise the job would silently skip every
+    # test, defeating its purpose.
+    - python -c "import cuda.stf; import warp.stf_experimental as s; assert s.is_available(), 'wp_stf.is_available() unexpectedly False'"
+    - uv run -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast -p 'test_stf_experimental*.py'
+
 # Ensure minimum and maximum Python versions are supported
 linux-x86_64 python matrix test:
   stage: test

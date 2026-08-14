@@ -38,6 +38,37 @@
   enabling it in backward passes ([GH-1378](https://github.com/NVIDIA/warp/issues/1378)).
 - Add `wp.Stream.is_blocking` to report whether a CUDA stream is blocking
   ([GH-1618](https://github.com/NVIDIA/warp/issues/1618)).
+- Add adjoint for the out-of-place `wp.tile_lower_solve()` for vector and matrix right-hand sides
+  ([GH-1378](https://github.com/NVIDIA/warp/issues/1378))
+- **Experimental:** Record `wp.utils.array_sum()` and `wp.utils.array_inner()` in APIC capture so saved and replayed
+  graphs recompute them from current inputs on CPU and CUDA ([GH-1663](https://github.com/NVIDIA/warp/issues/1663)).
+- Add CPU support for `wp.jax_kernel()` and `wp.jax_callable()` FFI calls, with automatic dispatch between CPU and
+  CUDA based on the device selected by JAX ([GH-1661](https://github.com/NVIDIA/warp/issues/1661)).
+- **Experimental:** Extend APIC graph capture and replay on CPU so that `wp.Bvh.refit()` and `wp.Bvh.rebuild()`
+  called during a capture are recorded and replayed against the current bounds, instead of running once at capture
+  time and leaving replay to query a stale BVH. Such captures are replay-only; `capture_save()` rejects them because
+  the BVH handle cannot be serialized ([GH-1665](https://github.com/NVIDIA/warp/issues/1665)).
+- Add an optional `block_dim` argument to `wp.jax_kernel()` for selecting the CUDA thread-block size, including for
+  tile kernels and their generated adjoint launches ([GH-1436](https://github.com/NVIDIA/warp/issues/1436)).
+- Add NumPy-style slicing for tiles, including strided and reversed slices (`t[2:6, :]`, `t[:, ::2]`, `t[::-1, :]`),
+  dimension-collapsing integer indices with negative-index support (`t[5, :]`, `t[-1, :]`), and slice assignment
+  (`t[0:4, :] = src`). Also add `wp.tile_slice_indexed()`, which gathers elements along a single axis using a
+  1D integer index tile (`t[indices, :]`) ([GH-1176](https://github.com/NVIDIA/warp/issues/1176)).
+- Add optional `restart` support to `warp.optim.linear.cg()` and `warp.optim.linear.cr()` for
+  recomputing the true residual and resetting the search direction during finite-precision solves
+  ([GH-1708](https://github.com/NVIDIA/warp/issues/1708)).
+- **Experimental**: Add `warp.stf_experimental`, providing CUDASTF integration helpers
+  (`context`, `task`, `task_graph`, `warmup`, `dump_dot`). Tasks inherit the active
+  Warp device; use `ScopedDevice` to build tasks for a non-default device, or
+  `exec_place=` to dispatch a task to a specific CUDASTF execution place. `task()`
+  also accepts `symbol=` for STF debug labels. `task_graph()` provides a single-record,
+  many-launch graph recorder that replaces direct `ctx.push()` / `ctx.pop_prologue_shared()`
+  use in examples. `ctx.dep(array)` memoizes ordering tokens for Warp array dependencies
+  declared with `ctx.dep(array).read()` / `.write()` / `.rw()`.
+  Requires `cuda-stf[cu12]` or
+  `cuda-stf[cu13]` installed separately, same as the torch interop module.
+
+### Removed
 
 ### Deprecated
 
