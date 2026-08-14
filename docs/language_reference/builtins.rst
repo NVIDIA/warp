@@ -374,6 +374,7 @@ Utility
    breakpoint
    cast
    expect_near
+   graph_set_conditional
    len
    lerp
    print
