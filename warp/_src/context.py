@@ -2834,6 +2834,23 @@ class ModuleHasher:
         return self.unique_kernels.values()
 
 
+def _iter_user_grad_functions(adj: warp._src.codegen.Adjoint) -> Iterable[Function]:
+    """Iterate user-function targets of explicit gradient calls in ``adj``.
+
+    Keeping this helper at module scope prevents recursive shared-memory folds
+    from capturing and retaining a ``ModuleBuilder`` instance.
+    """
+    return (func for func in adj.called_grad_functions if not func.is_builtin())
+
+
+# ``ModuleBuilder`` is an internal compiler helper. Its code-generation pipeline is:
+# 1. Lower each unique kernel and every ordinary function it reaches, recording
+#    ordinary calls separately from explicit ``wp.grad()`` calls.
+# 2. Complete deferred custom-gradient, replay, and explicit-gradient dependencies
+#    so later passes see the full call graph.
+# 3. Validate the graph and determine which user functions need adjoint bodies.
+# 4. Fold forward and backward shared-memory requirements through both kinds of calls.
+# 5. Emit LTO declarations and structs, then function declarations, definitions, and kernels.
 class ModuleBuilder:
     def __init__(self, module, options, hasher=None):
         self.functions = {}
@@ -2854,15 +2871,13 @@ class ModuleBuilder:
         for kernel in self.kernels:
             self.build_kernel(kernel)
 
-        # build deferred functions
-        for func in self.deferred_functions:
-            self.build_function(func)
+        # complete all dependencies before running graph-wide propagation
+        self._complete_function_dependencies()
 
-        # propagate used_by_backward_kernel now that the full call graph is known
-        self._propagate_used_by_backward_kernel()
+        self._required_adjoint_functions = self._analyze_function_dependencies()
 
-        # propagate callee replay/reverse shared-memory needs into backward-kernel sizing
-        self._propagate_backward_shared_memory()
+        # finalize forward and backward shared-memory requirements over the complete graph
+        self._propagate_shared_memory()
 
     def build_struct_recursive(self, struct: warp._src.codegen.Struct):
         structs = []
@@ -2948,9 +2963,6 @@ class ModuleBuilder:
         return struct_hashes
 
     def build_kernel(self, kernel):
-        if kernel.options.get("enable_backward", True):
-            kernel.adj.used_by_backward_kernel = True
-
         if self._kernel_has_invalid_return_annotation(kernel) or self._kernel_has_value_return(kernel):
             raise WarpCodegenTypeError(f"'{kernel.key}': {_KERNEL_RETURN_ERROR}")
 
@@ -2968,22 +2980,115 @@ class ModuleBuilder:
             # use dict to preserve import order
             self.functions[func] = None
 
-    def _propagate_used_by_backward_kernel(self):
-        # build_function() memoizes, so a helper built from a forward-only path before a backward
-        # kernel reaches it keeps its callees stubbed; re-propagate across the graph to a fixpoint.
-        worklist = [obj.adj for obj in (*self.kernels, *self.functions) if obj.adj.used_by_backward_kernel]
-        # worklist algorithm: an adj is enqueued only on a False->True flip, so the loop exits even on cycles
-        while worklist:
-            adj = worklist.pop()
-            for callee in adj.called_user_functions:
-                if not callee.adj.used_by_backward_kernel:
-                    callee.adj.used_by_backward_kernel = True
-                    worklist.append(callee.adj)
-        # backward use is final only now, so this is where wp.ref[T] calls recorded by
-        # add_call are rejected (a manual adjoint may also have been registered since)
-        for obj in (*self.kernels, *self.functions):
-            adj = obj.adj
-            if not adj.used_by_backward_kernel:
+    def _get_effective_kernel_options(self, kernel) -> dict[str, Any]:
+        """Return module options with explicit kernel overrides applied."""
+        return self.options | kernel.options
+
+    def _build_deferred_functions(self):
+        """Build custom gradient and replay bodies found through ordinary calls."""
+        for func in self.deferred_functions:
+            self.build_function(func)
+
+    def _complete_function_dependencies(self):
+        """Complete ordinary and explicit-gradient dependencies to a fixed point."""
+        processed = set()
+        while True:
+            self._build_deferred_functions()
+            pending = [obj.adj for obj in (*self.functions, *self.kernels) if obj.adj not in processed]
+            if not pending:
+                break
+
+            for adj in pending:
+                processed.add(adj)
+                for callee in adj.called_user_functions:
+                    for extra_func in (callee.custom_grad_func, callee.custom_replay_func):
+                        if extra_func is not None:
+                            self.build_function(extra_func)
+                for grad_func in _iter_user_grad_functions(adj):
+                    if grad_func.custom_grad_func is not None:
+                        self.build_function(grad_func.custom_grad_func)
+
+    @staticmethod
+    def _find_unsupported_grad_function(func: Function) -> Function | None:
+        """Find a function that makes generating ``func``'s adjoint unsupported.
+
+        The traversal includes ``func`` and functions reached transitively through
+        ordinary call edges. Functions with custom gradients end traversal because
+        their adjoints do not differentiate through their primal call graphs.
+
+        Returns:
+            A reachable function that calls ``wp.grad()`` without a custom gradient,
+            or ``None`` if no such function exists.
+        """
+        pending = [func]
+        visited = set()
+        while pending:
+            current = pending.pop()
+            if current in visited:
+                continue
+            visited.add(current)
+
+            if current.custom_grad_func is not None:
+                continue
+            if current.adj.uses_grad_call:
+                return current
+
+            pending.extend(current.adj.called_user_functions)
+
+        return None
+
+    def _analyze_function_dependencies(self) -> set[Function]:
+        """Analyze the completed call graph and return functions requiring adjoints."""
+        adjs = [obj.adj for obj in (*self.kernels, *self.functions)]
+        backward_kernels = [
+            kernel for kernel in self.kernels if self._get_effective_kernel_options(kernel)["enable_backward"]
+        ]
+        backward_reachable = set()
+        pending_adjs = [kernel.adj for kernel in backward_kernels]
+        while pending_adjs:
+            adj = pending_adjs.pop()
+            if adj in backward_reachable:
+                continue
+            backward_reachable.add(adj)
+            pending_adjs.extend(func.adj for func in adj.called_user_functions)
+
+        required_adjoint_functions = set()
+        pending_functions = []
+
+        def require(func: Function) -> None:
+            if func.custom_grad_func is not None or func.adj.uses_grad_call:
+                return
+            if func not in required_adjoint_functions:
+                required_adjoint_functions.add(func)
+                pending_functions.append(func)
+
+        for kernel in backward_kernels:
+            for func in kernel.adj.called_user_functions:
+                require(func)
+
+        for adj in adjs:
+            for grad_func in _iter_user_grad_functions(adj):
+                require(grad_func)
+
+        while pending_functions:
+            func = pending_functions.pop()
+            for callee in func.adj.called_user_functions:
+                require(callee)
+
+        for adj in adjs:
+            for grad_func in _iter_user_grad_functions(adj):
+                unsupported = self._find_unsupported_grad_function(grad_func)
+                if unsupported is not None:
+                    raise WarpCodegenError(
+                        f"Cannot compute gradient of function '{grad_func.key}' because generating its adjoint would "
+                        f"differentiate through wp.grad() in function '{unsupported.key}'; "
+                        "higher-order gradients are not supported"
+                    )
+
+        # Backward use is final only now, so this is where wp.ref[T] calls recorded by
+        # add_call are rejected (a manual adjoint may also have been registered since).
+        for adj in adjs:
+            if adj not in backward_reachable:
                 continue
             for callee in adj.unvalidated_ref_calls:
                 if adj.has_manual_ref_adjoint(callee):
@@ -2996,52 +3101,111 @@ class ModuleBuilder:
                     "with adj_snippet for a manually written adjoint."
                 )
 
-    def _propagate_backward_shared_memory(self):
-        # a backward call site replays the callee's forward, then calls its reverse; the two frames
-        # pop between the calls, so the larger one bounds the contribution. Custom grad/replay
-        # bodies are forward-emitted with no gradient buffers, hence counted once
+            for grad_func in adj.called_grad_functions:
+                log_warning(
+                    f'grad() call for function "{grad_func.key}" is used in a kernel with '
+                    "enable_backward=True. The gradient call does NOT participate in "
+                    "automatic differentiation - gradients will not flow through this "
+                    "call in the backward pass."
+                )
+
+        return required_adjoint_functions
+
+    def _propagate_shared_memory(self) -> None:
+        """Finalize forward and backward shared memory over the complete call graph."""
         adjs = [obj.adj for obj in (*self.functions, *self.kernels)]
+        forward_folded = set()
+        forward_folding = set()
+        backward_folded = set()
+        backward_folding = set()
 
-        # make sure custom grads/replays are built before reading their rooflines
-        # (callees reached through function-valued arguments are not in deferred_functions)
-        for adj in adjs:
+        def fold_grad_requirement(grad_func: Function) -> int:
+            """Return the shared memory required by an explicit gradient call."""
+            if grad_func.custom_grad_func is not None:
+                grad_adj = grad_func.custom_grad_func.adj
+                fold_forward(grad_adj)
+                return grad_adj.get_total_required_shared()
+
+            grad_adj = grad_func.adj
+            fold_backward(grad_adj)
+            return grad_adj.get_total_required_shared_backward()
+
+        def fold_forward(adj: warp._src.codegen.Adjoint) -> None:
+            """Fold transitive forward shared-memory requirements into an adjoint."""
+            if adj in forward_folded:
+                return
+            if adj in forward_folding:
+                raise RuntimeError(
+                    f"Cannot size forward shared memory for '{adj.fun_name}': the call graph contains a cycle"
+                )
+            forward_folding.add(adj)
             for callee in adj.called_user_functions:
-                for extra_fn in (callee.custom_grad_func, callee.custom_replay_func):
-                    if extra_fn is not None:
-                        self.build_function(extra_fn)
+                fold_forward(callee.adj)
 
-        # one pass in callees-before-callers order reaches the fixpoint: build_function()
-        # registers a function only after its callees finished building, so self.functions
-        # insertion order is topological, and kernels are roots
-        folded = set()
-        for adj in adjs:
+            required = adj.max_required_extra_shared_memory
+            for callee in adj.called_user_functions:
+                required = max(required, callee.adj.get_total_required_shared())
+            for grad_func in _iter_user_grad_functions(adj):
+                required = max(required, fold_grad_requirement(grad_func))
+
+            adj.max_required_extra_shared_memory = required
+            forward_folding.remove(adj)
+            forward_folded.add(adj)
+
+        def fold_backward(adj: warp._src.codegen.Adjoint) -> None:
+            """Fold transitive replay and reverse shared-memory requirements into an adjoint."""
+            if adj in backward_folded:
+                return
+            if adj in backward_folding:
+                raise RuntimeError(
+                    f"Cannot size backward shared memory for '{adj.fun_name}': the call graph contains a cycle"
+                )
+
+            fold_forward(adj)
+            backward_folding.add(adj)
+            for callee in adj.called_user_functions:
+                replay_adj = callee.custom_replay_func.adj if callee.custom_replay_func is not None else callee.adj
+                fold_forward(replay_adj)
+                if callee.custom_grad_func is not None:
+                    fold_forward(callee.custom_grad_func.adj)
+                else:
+                    fold_backward(callee.adj)
+
             required = adj.max_required_extra_shared_memory_backward
             for callee in adj.called_user_functions:
                 if callee.custom_replay_func is not None:
                     replay = callee.custom_replay_func.adj.get_total_required_shared()
                 else:
                     replay = callee.adj.get_total_required_shared()
+
                 if callee.custom_grad_func is not None:
                     reverse = callee.custom_grad_func.adj.get_total_required_shared()
-                elif callee.adj not in folded:
-                    # fail loudly instead of silently under-reserving
-                    raise RuntimeError(
-                        f"Cannot size backward shared memory for '{adj.fun_name}': callee '{callee.key}' was not "
-                        "sized first; the call graph should be acyclic and functions registered callees-first"
-                    )
                 else:
                     reverse = callee.adj.get_total_required_shared_backward()
-                # max: the replay frame pops before the reverse frame pushes, so the two never coexist
+
                 required = max(required, replay, reverse)
+
+            for grad_func in _iter_user_grad_functions(adj):
+                required = max(required, fold_grad_requirement(grad_func))
+
             adj.max_required_extra_shared_memory_backward = required
-            folded.add(adj)
+            backward_folding.remove(adj)
+            backward_folded.add(adj)
+
+        for adj in adjs:
+            fold_forward(adj)
+
+        for adj in adjs:
+            suppresses_user_adjoint = adj.is_user_function and adj.uses_grad_call
+            if not adj.custom_reverse_mode and not adj.skip_reverse_codegen and not suppresses_user_adjoint:
+                fold_backward(adj)
 
     def build_meta(self):
         meta = {}
 
         for kernel in self.kernels:
             name = kernel.get_mangled_name()
-            options = self.options | kernel.options
+            options = self._get_effective_kernel_options(kernel)
 
             meta[name + "_cuda_kernel_forward_smem_bytes"] = kernel.adj.get_total_required_shared()
             if options["enable_backward"]:
@@ -3060,17 +3224,21 @@ class ModuleBuilder:
             [self.fatbins[key] for key in sorted(self.fatbins)],
         )
 
-    def _codegen_functions(self, functions, device, forward_only=False, reverse_only=False):
+    def _codegen_functions(
+        self,
+        functions,
+        device,
+        declaration_only: bool = False,
+    ) -> str:
         """Helper to generate code for a list of functions.
 
         Args:
-            functions: Iterable of functions to generate code for
-            device: Target device ('cpu' or 'cuda')
-            forward_only: If True, generate only forward code
-            reverse_only: If True, generate only reverse/adjoint code
+            functions: Iterable of functions to generate code for.
+            device: Target device (``cpu`` or ``cuda``).
+            declaration_only: Whether to generate declarations without definitions.
 
         Returns:
-            Generated C++ source code as a string
+            Generated C++ source code.
         """
         source = ""
         for func in functions:
@@ -3079,9 +3247,8 @@ class ModuleBuilder:
                     func.adj,
                     c_func_name=func.native_func,
                     device=device,
-                    options=self.options,
-                    forward_only=forward_only,
-                    reverse_only=reverse_only,
+                    declaration_only=declaration_only,
+                    generate_adjoint=func in self._required_adjoint_functions,
                 )
             else:
                 source += warp._src.codegen.codegen_snippet(
@@ -3090,8 +3257,7 @@ class ModuleBuilder:
                     snippet=func.native_snippet,
                     adj_snippet=func.adj_native_snippet,
                     replay_snippet=func.replay_snippet,
-                    forward_only=forward_only,
-                    reverse_only=reverse_only,
+                    declaration_only=declaration_only,
                 )
         return source
 
@@ -3118,38 +3284,11 @@ class ModuleBuilder:
                 )
                 visited_structs.add(struct.hash)
 
-        # Three-pass code generation:
-        # Pass 1: Forward functions that don't use wp.grad()
-        # Pass 2: All adjoint functions (custom grads before auto-adjoints)
-        # Pass 3: Forward functions that use wp.grad() (these call adjoints, so must come after pass 2)
-        #         Note: Functions using wp.grad() don't have adjoints generated.
-
-        # Separate functions into those that use grad() and those that don't
-        grad_functions = [f for f in self.functions.keys() if f.adj.uses_grad_call]
-        non_grad_functions = [f for f in self.functions.keys() if not f.adj.uses_grad_call]
-
-        # Pass 1: Forward functions that don't use grad()
-        source += self._codegen_functions(non_grad_functions, device, forward_only=True)
-
-        # Pass 2: Reverse/adjoint functions with custom grads sorted before auto-adjoints
-        # Build set of functions that ARE custom gradients (decorated with @wp.func_grad)
-        # Note: f.custom_grad_func tells us if f HAS a custom gradient, but we need to know
-        # which functions ARE custom gradients themselves (i.e., appear as someone's custom_grad_func)
-        # Note: Functions that use wp.grad() don't have adjoints generated (their reverse calls
-        # are skipped in add_call since the gradient of a gradient call is not supported)
-        custom_grad_set = {f.custom_grad_func for f in non_grad_functions if f.custom_grad_func is not None}
-
-        # Separate functions that ARE custom grads from all others, preserving original order
-        custom_grad_functions = [f for f in non_grad_functions if f in custom_grad_set]
-        other_functions = [f for f in non_grad_functions if f not in custom_grad_set]
-
-        # Generate adjoints: custom grads first, then other functions
-        # This ensures custom grads are defined before any auto-adjoints that call them
-        source += self._codegen_functions(custom_grad_functions + other_functions, device, reverse_only=True)
-
-        # Pass 3: Forward functions that use wp.grad()
-        # These must come after pass 2 because they call adjoint functions
-        source += self._codegen_functions(grad_functions, device, forward_only=True)
+        # Declare every generated function before emitting definitions. Forward and reverse calls
+        # can alternate through ordinary helpers, custom gradients, and explicit wp.grad() calls,
+        # so no definition order alone can satisfy every legal dependency chain.
+        source += self._codegen_functions(self.functions, device, declaration_only=True)
+        source += self._codegen_functions(self.functions, device)
 
         for kernel in self.kernels:
             source += warp._src.codegen.codegen_kernel(kernel, device=device, options=self.options)

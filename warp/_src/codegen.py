@@ -1473,8 +1473,6 @@ def specialize_callable_func(func, callable_arg_values):
         source=func.adj.source,
     )
     specialized_func.adj.callable_arg_values = dict(callable_arg_values)
-    specialized_func.adj.used_by_backward_kernel = func.adj.used_by_backward_kernel
-    specialized_func.adj.force_adjoint_codegen = func.adj.force_adjoint_codegen
 
     specializations[specialization_key] = specialized_func
     return specialized_func
@@ -1660,13 +1658,8 @@ class Adjoint:
         adj.skip_forward_codegen = skip_forward_codegen
         # whether the generation of the adjoint code is skipped for this function
         adj.skip_reverse_codegen = skip_reverse_codegen
-        # Whether this function is used by a kernel that has has the backward pass enabled.
-        adj.used_by_backward_kernel = False
-        # Whether to force adjoint code generation regardless of enable_backward setting.
-        # This is used by warp.grad() to ensure the adjoint exists even in forward-only modules.
-        adj.force_adjoint_codegen = False
-        # Whether this function uses warp.grad() calls. Such functions are generated in a
-        # separate pass after adjoints, and don't have their own adjoints generated.
+        # Whether this function uses warp.grad() calls. Such functions don't have their own
+        # adjoints generated because higher-order gradients are unsupported.
         adj.uses_grad_call = False
 
         # extract name of source file
@@ -1817,7 +1810,7 @@ class Adjoint:
         return adj.get_own_required_shared() + adj.max_required_extra_shared_memory
 
     # backward counterpart of get_total_required_shared();
-    # callee frames come from ModuleBuilder._propagate_backward_shared_memory
+    # callee frames come from ModuleBuilder._propagate_shared_memory
     def get_total_required_shared_backward(adj):
         # x2: the reverse pass declares own tiles requires_grad, pairing each with an equal-sized gradient buffer
         return adj.get_own_required_shared() * 2 + adj.max_required_extra_shared_memory_backward
@@ -2003,10 +1996,13 @@ class Adjoint:
         # backward-pass counterpart, resolved by ModuleBuilder._propagate_backward_shared_memory
         adj.max_required_extra_shared_memory_backward = 0
 
-        # recorded at call sites for ModuleBuilder's post-build propagation passes
+        # Ordinary calls target forward functions, while wp.grad() calls target adjoints;
+        # ModuleBuilder's completed-graph analyses traverse these edges differently.
         adj.called_user_functions = {}
+        adj.called_grad_functions = {}
 
-        # wp.ref[T] callees lacking a manual adjoint; rejected post-build, once used_by_backward_kernel is final
+        # wp.ref[T] callees lacking a manual adjoint; rejected by ModuleBuilder once
+        # backward reachability is final.
         adj.unvalidated_ref_calls = []
 
         # Function-specialized functions replace selected argument Vars with
@@ -2599,14 +2595,8 @@ class Adjoint:
 
         # if it is a user-function then build it recursively
         if not func.is_builtin():
-            # record the call-graph edge for the post-build propagation passes
+            # record the call-graph edge for the completed-graph analyses
             adj.called_user_functions.setdefault(func, None)
-            # If the function called is a user function,
-            # we need to ensure its adjoint is also being generated.
-            if adj.used_by_backward_kernel:
-                func.adj.used_by_backward_kernel = True
-            if adj.force_adjoint_codegen:
-                func.adj.force_adjoint_codegen = True
 
             if adj.builder is None:
                 func.build(None, adj.builder_options)
@@ -2734,10 +2724,6 @@ class Adjoint:
             if isinstance(func_arg_var, warp._src.context.Function) and not func_arg_var.is_builtin():
                 # a function-valued argument is a call-graph edge too
                 adj.called_user_functions.setdefault(func_arg_var, None)
-                if adj.used_by_backward_kernel:
-                    func_arg_var.adj.used_by_backward_kernel = True
-                if adj.force_adjoint_codegen:
-                    func_arg_var.adj.force_adjoint_codegen = True
 
                 if adj.builder is None:
                     func_arg_var.build(None, adj.builder_options)
@@ -2781,9 +2767,9 @@ class Adjoint:
         else:
             adj.add_forward(forward_call, replay=replay_call)
 
-        # Skip reverse call generation for functions that use warp.grad() - they don't have
-        # meaningful adjoints (the gradient of a gradient call is not supported).
-        skip_reverse = not func.is_builtin() and func.adj.uses_grad_call
+        # Functions that use warp.grad() need a custom gradient to supply a meaningful adjoint;
+        # otherwise generating their reverse call would require unsupported higher-order gradients.
+        skip_reverse = not func.is_builtin() and func.custom_grad_func is None and func.adj.uses_grad_call
         # Higher-order built-ins pass callable args to native adjoint helpers.
         # Only generate the reverse call when those callables have adjoints.
         has_nondifferentiable_callable_arg = any(
@@ -2792,8 +2778,8 @@ class Adjoint:
 
         if func.is_differentiable and func_args and not skip_reverse and not has_nondifferentiable_callable_arg:
             # Ref-param functions are not automatically differentiable and a silent skip would
-            # produce wrong gradients, but used_by_backward_kernel is not known yet (callers may
-            # still be built); ModuleBuilder rejects the recorded calls once it is final
+            # produce wrong gradients, but backward reachability is not known yet (callers may
+            # still be built); ModuleBuilder rejects the recorded calls once it is final.
             if func_has_ref_params and not adj.has_manual_ref_adjoint(func):
                 adj.unvalidated_ref_calls.append(func)
             adj_args = tuple(reverse_adj_args)
@@ -2828,7 +2814,7 @@ class Adjoint:
             adj.alloc_shared_extra(func.adj.get_total_required_shared() + extra_shared_memory)
         else:
             adj.alloc_shared_extra(extra_shared_memory)
-        # user-function callee frames are folded in post-build by ModuleBuilder._propagate_backward_shared_memory
+        # user-function callee frames are folded in post-build by ModuleBuilder._propagate_shared_memory
         # x2: the builtin's adjoint needs LTO workspace too; matches the previous blanket backward sizing
         adj.alloc_shared_extra_backward(extra_shared_memory * 2)
 
@@ -2844,7 +2830,7 @@ class Adjoint:
         This generates inline code in the forward pass that:
         1. Creates local variables for adjoint inputs (initialized to 0)
         2. Creates local variable(s) for adjoint output (initialized to 1.0)
-        3. Calls the function's auto-generated adjoint
+        3. Calls the function's adjoint
         4. Returns the adjoint inputs as a tuple (or single value if 1 input)
 
         Note:
@@ -2856,26 +2842,8 @@ class Adjoint:
         if not func.is_differentiable:
             raise WarpCodegenError(f"Cannot compute gradient of non-differentiable function '{func.key}'")
 
-        # Mark this function as using grad() - it will be generated in a later pass
-        # and won't have its own adjoint generated.
-        # Exception: Custom gradient functions (custom_reverse_mode=True) ARE adjoints,
-        # so they don't need their own adjoints and should be generated in the adjoint pass.
-        if not adj.custom_reverse_mode:
-            adj.uses_grad_call = True
-
-        # Warn if this kernel has backward enabled, since the gradient call
-        # is forward-only and won't participate in automatic differentiation.
-        if adj.used_by_backward_kernel:
-            log_warning(
-                f'grad() call for function "{func.key}" is used in a kernel with enable_backward=True. The gradient call does NOT participate in automatic differentiation - gradients will not flow through this call in the backward pass.'
-            )
-
-        # Ensure the function is built so its adjoint code exists.
+        # Build user functions before checking that their adjoint code can be generated.
         if not func.is_builtin():
-            # Force adjoint code generation for the function.
-            func.adj.force_adjoint_codegen = True
-
-            # Build the function if not already built
             if adj.builder is None:
                 func.build(None, adj.builder_options)
             elif func not in adj.builder.functions:
@@ -2891,6 +2859,14 @@ class Adjoint:
 
         if return_type is None:
             raise WarpCodegenError(f"Cannot compute gradient of void function '{func.key}'")
+
+        # Mark this function as using grad() so its own adjoint is not generated.
+        # Exception: Custom gradient functions (custom_reverse_mode=True) ARE adjoints,
+        # so they don't need their own adjoints.
+        if not adj.custom_reverse_mode:
+            adj.uses_grad_call = True
+
+        adj.called_grad_functions.setdefault(func, None)
 
         # Function parameters are specialization inputs, not native function
         # arguments, and their adjoints are not representable.
@@ -4613,8 +4589,6 @@ class Adjoint:
                     transformers=func.adj.transformers,
                     source=func.adj.source,
                 )
-                probe_adj.used_by_backward_kernel = func.adj.used_by_backward_kernel
-                probe_adj.force_adjoint_codegen = func.adj.force_adjoint_codegen
                 probe_adj.build(None, adj.builder_options)
             except Exception:
                 return None
@@ -6553,6 +6527,18 @@ static void adj_{name}(
 
 """
 
+cpu_forward_function_declaration_template = """
+static {return_type} {name}(
+    {forward_args});
+
+"""
+
+cpu_reverse_function_declaration_template = """
+static void adj_{name}(
+    {reverse_args});
+
+"""
+
 cuda_forward_function_template = """
 // {filename}:{lineno}
 {line_directive}static CUDA_CALLABLE {return_type} {name}(
@@ -6568,6 +6554,18 @@ cuda_reverse_function_template = """
     {reverse_args})
 {{
 {reverse_body}{line_directive}}}
+
+"""
+
+cuda_forward_function_declaration_template = """
+static CUDA_CALLABLE {return_type} {name}(
+    {forward_args});
+
+"""
+
+cuda_reverse_function_declaration_template = """
+static CUDA_CALLABLE void adj_{name}(
+    {reverse_args});
 
 """
 
@@ -7102,10 +7100,13 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu", grid_stride=Fals
     return "".join(l.lstrip() if l.lstrip().startswith("#line") else indent_block + l for l in lines)
 
 
-def codegen_func(adj, c_func_name: str, device="cpu", options=None, forward_only=False, reverse_only=False):
-    if options is None:
-        options = {}
-
+def codegen_func(
+    adj,
+    c_func_name: str,
+    device="cpu",
+    declaration_only: bool = False,
+    generate_adjoint: bool = False,
+) -> str:
     # Build line directive for function definition (subtract 1 to account for 1-indexing of AST line numbers)
     # This is used as a catch-all C-to-Python source line mapping for any code that does not have
     # a direct mapping to a Python source line.
@@ -7210,20 +7211,30 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None, forward_only
     if template_params:
         template_prefix = "template<" + ", ".join(f"typename {t}" for t in template_params) + ">\n"
 
+    # Declaration mode selects prototypes with the same target-specific signatures
+    # as the definitions emitted in the following pass.
     if device == "cpu":
-        forward_template = cpu_forward_function_template
-        reverse_template = cpu_reverse_function_template
+        if declaration_only:
+            forward_template = cpu_forward_function_declaration_template
+            reverse_template = cpu_reverse_function_declaration_template
+        else:
+            forward_template = cpu_forward_function_template
+            reverse_template = cpu_reverse_function_template
     elif device == "cuda":
-        forward_template = cuda_forward_function_template
-        reverse_template = cuda_reverse_function_template
+        if declaration_only:
+            forward_template = cuda_forward_function_declaration_template
+            reverse_template = cuda_reverse_function_declaration_template
+        else:
+            forward_template = cuda_forward_function_template
+            reverse_template = cuda_reverse_function_template
     else:
         raise ValueError(f"Device {device} is not supported")
 
     # codegen body
-    forward_body = codegen_func_forward(adj, func_type="function", device=device)
+    forward_body = "" if declaration_only else codegen_func_forward(adj, func_type="function", device=device)
 
     s = ""
-    if not adj.skip_forward_codegen and not reverse_only:
+    if not adj.skip_forward_codegen:
         s += template_prefix + forward_template.format(
             name=c_func_name,
             return_type=return_type,
@@ -7234,23 +7245,15 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None, forward_only
             line_directive=func_line_directive,
         )
 
-    if not adj.skip_reverse_codegen and not forward_only:
-        if adj.custom_reverse_mode:
+    if not adj.skip_reverse_codegen and not adj.uses_grad_call:
+        if declaration_only:
+            reverse_body = ""
+        elif adj.custom_reverse_mode:
             reverse_body = "\t// user-defined adjoint code\n" + forward_body
+        elif generate_adjoint:
+            reverse_body = codegen_func_reverse(adj, func_type="function", device=device)
         else:
-            # Generate adjoint code if:
-            # - enable_backward is True and the function is used by a backward kernel, OR
-            # - force_adjoint_codegen is True (set by warp.grad() to ensure adjoint exists)
-            # Note: Functions using warp.grad() won't have their adjoints called anyway
-            # (the reverse call is skipped in add_call), so we can skip generating them.
-            should_generate_adjoint = (
-                options.get("enable_backward", True) and adj.used_by_backward_kernel
-            ) or adj.force_adjoint_codegen
-            should_generate_adjoint = should_generate_adjoint and not adj.uses_grad_call
-            if should_generate_adjoint:
-                reverse_body = codegen_func_reverse(adj, func_type="function", device=device)
-            else:
-                reverse_body = '\t// reverse mode disabled (module option "enable_backward" is False or no dependent kernel found with "enable_backward")\n'
+            reverse_body = '\t// reverse mode disabled (module option "enable_backward" is False or no dependent kernel found with "enable_backward")\n'
         s += template_prefix + reverse_template.format(
             name=c_func_name,
             return_type=return_type,
@@ -7265,7 +7268,14 @@ def codegen_func(adj, c_func_name: str, device="cpu", options=None, forward_only
     return s
 
 
-def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet, forward_only=False, reverse_only=False):
+def codegen_snippet(
+    adj,
+    name,
+    snippet,
+    adj_snippet,
+    replay_snippet,
+    declaration_only: bool = False,
+) -> str:
     if adj.return_var is not None and len(adj.return_var) == 1:
         return_type = adj.return_var[0].ctype()
     else:
@@ -7326,52 +7336,56 @@ def codegen_snippet(adj, name, snippet, adj_snippet, replay_snippet, forward_onl
     forward_ref_aliases_str = "".join(forward_ref_aliases)
     reverse_ref_aliases_str = "".join(reverse_ref_aliases)
 
-    forward_template = cuda_forward_function_template
-    replay_template = cuda_forward_function_template
-    reverse_template = cuda_reverse_function_template
+    # Native snippets use CUDA-callable signatures on both targets; declaration
+    # mode changes only the wrapper so prototypes and definitions stay identical.
+    if declaration_only:
+        forward_template = cuda_forward_function_declaration_template
+        replay_template = cuda_forward_function_declaration_template
+        reverse_template = cuda_reverse_function_declaration_template
+    else:
+        forward_template = cuda_forward_function_template
+        replay_template = cuda_forward_function_template
+        reverse_template = cuda_reverse_function_template
 
     s = ""
 
-    # Pass 1: Forward and replay (both are "forward-like" functions)
-    if not reverse_only:
-        s += template_prefix + forward_template.format(
-            name=name,
+    # Forward and replay functions share a signature but may use different bodies.
+    s += template_prefix + forward_template.format(
+        name=name,
+        return_type=return_type,
+        forward_args=indent(forward_args),
+        forward_body=forward_ref_aliases_str + snippet,
+        filename=adj.filename,
+        lineno=adj.fun_lineno,
+        line_directive="",
+    )
+
+    if replay_snippet is not None:
+        s += template_prefix + replay_template.format(
+            name="replay_" + name,
             return_type=return_type,
             forward_args=indent(forward_args),
-            forward_body=forward_ref_aliases_str + snippet,
+            forward_body=forward_ref_aliases_str + replay_snippet,
             filename=adj.filename,
             lineno=adj.fun_lineno,
             line_directive="",
         )
 
-        if replay_snippet is not None:
-            s += template_prefix + replay_template.format(
-                name="replay_" + name,
-                return_type=return_type,
-                forward_args=indent(forward_args),
-                forward_body=forward_ref_aliases_str + replay_snippet,
-                filename=adj.filename,
-                lineno=adj.fun_lineno,
-                line_directive="",
-            )
+    if adj_snippet:
+        reverse_body = reverse_ref_aliases_str + adj_snippet
+    else:
+        reverse_body = reverse_ref_aliases_str
 
-    # Pass 2: Reverse/adjoint only
-    if not forward_only:
-        if adj_snippet:
-            reverse_body = reverse_ref_aliases_str + adj_snippet
-        else:
-            reverse_body = reverse_ref_aliases_str
-
-        s += template_prefix + reverse_template.format(
-            name=name,
-            return_type=return_type,
-            reverse_args=indent(reverse_args),
-            forward_body=snippet,
-            reverse_body=reverse_body,
-            filename=adj.filename,
-            lineno=adj.fun_lineno,
-            line_directive="",
-        )
+    s += template_prefix + reverse_template.format(
+        name=name,
+        return_type=return_type,
+        reverse_args=indent(reverse_args),
+        forward_body=snippet,
+        reverse_body=reverse_body,
+        filename=adj.filename,
+        lineno=adj.fun_lineno,
+        line_directive="",
+    )
 
     return s
 

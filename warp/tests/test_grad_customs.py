@@ -682,6 +682,152 @@ def test_native_snippet_in_custom_grad(test, device):
     assert_np_equal(inputs.grad.numpy(), expected_grad, tol=1e-4)
 
 
+WP_GRAD_CUSTOM_PROVIDER_MODULE = wp.Module("grad_custom_wp_grad_provider")
+WP_GRAD_CUSTOM_CALLER_MODULE = wp.Module("grad_custom_wp_grad_caller")
+
+
+@wp.func(module=WP_GRAD_CUSTOM_PROVIDER_MODULE)
+def wp_grad_custom_square(x: float):
+    return x * x
+
+
+@wp.func_grad(wp_grad_custom_square)
+def adj_wp_grad_custom_square(x: float, adj_ret: float):
+    wp.adjoint[x] += 2.0 * x * adj_ret
+
+
+@wp.kernel(module=WP_GRAD_CUSTOM_CALLER_MODULE, enable_backward=False)
+def wp_grad_custom_square_kernel(x: wp.array[float], out: wp.array[float]):
+    out[0] = wp.grad(wp_grad_custom_square)(x[0])
+
+
+def test_wp_grad_builds_unreferenced_custom_grad(test, device):
+    """Build a custom gradient reached only through ``wp.grad()``."""
+    x = wp.array([3.0], dtype=float, device=device)
+    out = wp.zeros_like(x)
+
+    wp.launch(wp_grad_custom_square_kernel, dim=1, inputs=[x], outputs=[out], device=device)
+
+    assert_np_equal(out.numpy(), np.array([6.0], dtype=np.float32))
+
+
+WP_GRAD_NESTED_PROVIDER_MODULE = wp.Module("grad_custom_wp_grad_nested_provider")
+WP_GRAD_NESTED_CALLER_MODULE = wp.Module("grad_custom_wp_grad_nested_caller")
+
+
+@wp.func(module=WP_GRAD_NESTED_PROVIDER_MODULE)
+def wp_grad_nested_auto(x: float):
+    return x * x
+
+
+@wp.func(module=WP_GRAD_NESTED_PROVIDER_MODULE)
+def wp_grad_nested_custom(x: float):
+    return x * x * x
+
+
+@wp.func_grad(wp_grad_nested_custom)
+def adj_wp_grad_nested_custom(x: float, adj_ret: float):
+    wp.adjoint[x] += 3.0 * x * x * adj_ret
+
+
+@wp.func(module=WP_GRAD_NESTED_PROVIDER_MODULE)
+def wp_grad_nested_outer(x: float):
+    return x
+
+
+@wp.func_grad(wp_grad_nested_outer)
+def adj_wp_grad_nested_outer(x: float, adj_ret: float):
+    auto_grad = wp.grad(wp_grad_nested_auto)(x)
+    custom_grad = wp.grad(wp_grad_nested_custom)(x)
+    wp.adjoint[x] += (auto_grad + custom_grad) * adj_ret
+
+
+@wp.kernel(module=WP_GRAD_NESTED_CALLER_MODULE, enable_backward=False)
+def wp_grad_nested_kernel(x: wp.array[float], out: wp.array[float]):
+    out[0] = wp.grad(wp_grad_nested_outer)(x[0])
+
+
+def test_wp_grad_orders_nested_user_gradients(test, device):
+    """Emit adjoints used by nested ``wp.grad()`` calls before their custom caller."""
+    x = wp.array([3.0], dtype=float, device=device)
+    out = wp.zeros_like(x)
+
+    wp.launch(wp_grad_nested_kernel, dim=1, inputs=[x], outputs=[out], device=device)
+
+    assert_np_equal(out.numpy(), np.array([33.0], dtype=np.float32))
+
+
+_WP_GRAD_CUSTOM_HELPER_PROVIDER = wp.Module("grad_custom_wp_grad_custom_helper_provider")
+
+
+@wp.func(module=_WP_GRAD_CUSTOM_HELPER_PROVIDER)
+def wp_grad_custom_helper_inner(x: float):
+    return x * x
+
+
+@wp.func(module=_WP_GRAD_CUSTOM_HELPER_PROVIDER)
+def wp_grad_custom_helper(x: float):
+    return wp.grad(wp_grad_custom_helper_inner)(x)
+
+
+@wp.func(module=_WP_GRAD_CUSTOM_HELPER_PROVIDER)
+def wp_grad_custom_helper_outer(x: float):
+    return x
+
+
+@wp.func_grad(wp_grad_custom_helper_outer)
+def adj_wp_grad_custom_helper_outer(x: float, adj_ret: float):
+    wp.adjoint[x] += wp_grad_custom_helper(x) * adj_ret
+
+
+@wp.kernel(module="unique", enable_backward=False)
+def wp_grad_custom_helper_kernel(x: wp.array[float], out: wp.array[float]):
+    out[0] = wp.grad(wp_grad_custom_helper_outer)(x[0])
+
+
+def test_wp_grad_declares_helper_called_by_custom_grad(test, device):
+    """Declare an ordinary helper before a custom gradient calls it."""
+    x = wp.array([3.0], dtype=float, device=device)
+    out = wp.zeros_like(x)
+
+    wp.launch(wp_grad_custom_helper_kernel, dim=1, inputs=[x], outputs=[out], device=device)
+
+    assert_np_equal(out.numpy(), np.array([6.0], dtype=np.float32))
+
+
+_WP_GRAD_ORDINARY_HELPER_PROVIDER = wp.Module("grad_custom_wp_grad_ordinary_helper_provider")
+
+
+@wp.func(module=_WP_GRAD_ORDINARY_HELPER_PROVIDER)
+def wp_grad_ordinary_helper_inner(x: float):
+    return x * x
+
+
+@wp.func(module=_WP_GRAD_ORDINARY_HELPER_PROVIDER)
+def wp_grad_ordinary_helper(x: float):
+    return wp.grad(wp_grad_ordinary_helper_inner)(x)
+
+
+@wp.func(module=_WP_GRAD_ORDINARY_HELPER_PROVIDER)
+def wp_grad_ordinary_helper_outer(x: float):
+    return wp_grad_ordinary_helper(x)
+
+
+@wp.kernel(module="unique", enable_backward=False)
+def wp_grad_ordinary_helper_kernel(x: wp.array[float], out: wp.array[float]):
+    out[0] = wp_grad_ordinary_helper_outer(x[0])
+
+
+def test_wp_grad_declares_helper_called_by_forward(test, device):
+    """Declare a gradient-using helper before an ordinary caller calls it."""
+    x = wp.array([3.0], dtype=float, device=device)
+    out = wp.zeros_like(x)
+
+    wp.launch(wp_grad_ordinary_helper_kernel, dim=1, inputs=[x], outputs=[out], device=device)
+
+    assert_np_equal(out.numpy(), np.array([6.0], dtype=np.float32))
+
+
 def test_custom_grad_tile_matmul(test, device):
     """A custom func_grad on a function that uses tile_matmul."""
     M = 4
@@ -770,6 +916,30 @@ add_function_test(
 )
 add_function_test(
     TestGradCustoms, "test_native_snippet_in_custom_grad", test_native_snippet_in_custom_grad, devices=devices
+)
+add_function_test(
+    TestGradCustoms,
+    "test_wp_grad_builds_unreferenced_custom_grad",
+    test_wp_grad_builds_unreferenced_custom_grad,
+    devices=devices,
+)
+add_function_test(
+    TestGradCustoms,
+    "test_wp_grad_orders_nested_user_gradients",
+    test_wp_grad_orders_nested_user_gradients,
+    devices=devices,
+)
+add_function_test(
+    TestGradCustoms,
+    "test_wp_grad_declares_helper_called_by_custom_grad",
+    test_wp_grad_declares_helper_called_by_custom_grad,
+    devices=devices,
+)
+add_function_test(
+    TestGradCustoms,
+    "test_wp_grad_declares_helper_called_by_forward",
+    test_wp_grad_declares_helper_called_by_forward,
+    devices=devices,
 )
 add_function_test(TestGradCustoms, "test_custom_grad_tile_matmul", test_custom_grad_tile_matmul, devices=devices)
 
