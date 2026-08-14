@@ -1779,14 +1779,6 @@ class Adjoint:
         # key "values[i]" but a different value per iteration.
         adj.deferred_static_expressions: list[tuple[str, Any]] = []
 
-        # There are cases where a same module might be rebuilt multiple times,
-        # for example when kernels are nested inside of functions, or when
-        # a kernel's launch raises an exception. Ideally we'd always want to
-        # avoid rebuilding kernels but some corner cases seem to depend on it,
-        # so we only avoid rebuilding kernels that errored out to give a chance
-        # for unit testing errors being spit out from kernels.
-        adj.skip_build = False
-
         # Feature-specific deterministic lowering state.  Keep its policy and
         # helper metadata behind a small integration object so the core codegen
         # paths do not need to coordinate deterministic internals directly.
@@ -1962,13 +1954,10 @@ class Adjoint:
     # generate function ssa form and adjoint
     @synchronized(_codegen_lock)
     def build(adj, builder, default_builder_options=None, callable_arg_values=None):
-        # arg Var read/write flags are held during module rebuilds, so we reset here even when skipping a build
+        # arg Var read/write flags are held during module rebuilds, so we reset here before rebuilding
         for arg in adj.args:
             arg.is_read = False
             arg.is_write = False
-
-        if adj.skip_build:
-            return
 
         if callable_arg_values is None:
             callable_arg_values = getattr(adj, "callable_arg_values", None)
@@ -2015,7 +2004,7 @@ class Adjoint:
         adj.max_required_extra_shared_memory_backward = 0
 
         # recorded at call sites for ModuleBuilder's post-build propagation passes
-        adj.called_user_functions = set()
+        adj.called_user_functions = {}
 
         # wp.ref[T] callees lacking a manual adjoint; rejected post-build, once used_by_backward_kernel is final
         adj.unvalidated_ref_calls = []
@@ -2051,7 +2040,6 @@ class Adjoint:
                 # 'from None' is used to suppress Python's chained exceptions for a cleaner error output.
                 raise type(original_exc)(*new_args).with_traceback(original_exc.__traceback__) from None
             finally:
-                adj.skip_build = True
                 adj.builder = None
 
         if builder is not None:
@@ -2069,9 +2057,9 @@ class Adjoint:
     def _validate_return_type(adj):
         """Validate function return type annotation against actual return values.
 
-        This validation happens during build() (before C++ code generation) to catch
-        errors early and prevent module contamination. If validation fails here,
-        the function is marked as skip_build and won't emit any C++ code.
+        This validation happens during build() (before C++ code generation) so the
+        error names the annotation that is wrong, rather than surfacing later as a
+        C++ reference to a function the module never emitted.
         """
         if adj.return_var is not None and "return" in adj.arg_types:
             if get_origin(adj.arg_types["return"]) is tuple:
@@ -2612,7 +2600,7 @@ class Adjoint:
         # if it is a user-function then build it recursively
         if not func.is_builtin():
             # record the call-graph edge for the post-build propagation passes
-            adj.called_user_functions.add(func)
+            adj.called_user_functions.setdefault(func, None)
             # If the function called is a user function,
             # we need to ensure its adjoint is also being generated.
             if adj.used_by_backward_kernel:
@@ -2745,7 +2733,7 @@ class Adjoint:
             # if the argument is a function (and not a builtin), then build it recursively
             if isinstance(func_arg_var, warp._src.context.Function) and not func_arg_var.is_builtin():
                 # a function-valued argument is a call-graph edge too
-                adj.called_user_functions.add(func_arg_var)
+                adj.called_user_functions.setdefault(func_arg_var, None)
                 if adj.used_by_backward_kernel:
                     func_arg_var.adj.used_by_backward_kernel = True
                 if adj.force_adjoint_codegen:
@@ -6400,6 +6388,16 @@ cpu_module_header = """
 
 #define builtin_block_dim() wp::block_dim()
 
+// Conditional graph nodes are CUDA-only; on CPU wp.graph_set_conditional()
+// is a no-op so shared kernels compile for both targets.
+namespace wp {{
+static inline void graph_set_conditional(uint64 handle, int32 value)
+{{
+    (void)handle;
+    (void)value;
+}}
+}} // namespace wp
+
 """
 
 cuda_module_header = """
@@ -6407,12 +6405,6 @@ cuda_module_header = """
 #define WP_NO_CRT
 #include "builtin.h"
 #include "deterministic.h"
-
-// Forward declaration of the device-side conditional graph builtin. Always
-// declared (no symbol reference unless a user kernel actually calls it), so
-// it compiles on any CUDA toolkit; only resolves at link time on CUDA 12.4+.
-typedef __device_builtin__ unsigned long long cudaGraphConditionalHandle;
-extern "C" __device__ __cudart_builtin__ void cudaGraphSetConditional(cudaGraphConditionalHandle handle, unsigned int value);
 
 // Map wp.breakpoint() to a device brkpt at the call site so cuda-gdb attributes the stop to the generated .cu line
 #if defined(__CUDACC__) && !defined(_MSC_VER)
@@ -6441,6 +6433,23 @@ extern "C" __device__ __cudart_builtin__ void cudaGraphSetConditional(cudaGraphC
 #else
 #define WP_CLUSTER_DIMS(x, y, z)
 #endif
+
+// Device-side conditional graph support. cudaGraphSetConditional is forward
+// declared rather than pulled from cuda_runtime.h (unavailable under NVRTC);
+// no symbol is referenced unless a kernel actually calls
+// wp.graph_set_conditional(), so this header compiles on any CUDA toolkit and
+// the symbol only resolves at link time on CUDA 12.4+. The declaration is
+// kept free of NVCC-specific decorations (__device_builtin__,
+// __cudart_builtin__) so it also compiles under Clang CUDA.
+typedef unsigned long long cudaGraphConditionalHandle;
+extern "C" __device__ void cudaGraphSetConditional(cudaGraphConditionalHandle handle, unsigned int value);
+
+namespace wp {{
+static __device__ inline void graph_set_conditional(uint64 handle, int32 value)
+{{
+    cudaGraphSetConditional((cudaGraphConditionalHandle)handle, (unsigned int)value);
+}}
+}} // namespace wp
 
 """
 
