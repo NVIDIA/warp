@@ -47,6 +47,8 @@ non-default device.
 
 .. code-block:: python
 
+    import numpy as np
+
     import warp as wp
     from warp import stf_experimental as wp_stf
 
