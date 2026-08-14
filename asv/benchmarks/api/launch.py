@@ -104,6 +104,11 @@ def k0():
     tid = wp.tid()  # noqa: F841
 
 
+@wp.kernel
+def k0_no_tid():
+    pass
+
+
 class KernelLaunchParameters:
     number = 1000
 
@@ -152,6 +157,13 @@ class KernelLaunchParameters:
 
     def time_direct_empty(self):
         wp.launch(k0, dim=1, inputs=[], device="cuda:0")
+
+    def time_direct_empty_no_tid(self):
+        """Measure an empty direct launch that does not consume ``wp.tid()``."""
+        wp.launch(k0_no_tid, dim=1, inputs=[], device="cuda:0")
+
+    time_direct_empty_no_tid.number = 2000
+    time_direct_empty_no_tid.repeat = 20
 
     def time_struct_empty(self):
         wp.launch(ks0, dim=1, inputs=[self.s0], device="cuda:0")
