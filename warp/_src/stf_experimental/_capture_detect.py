@@ -8,11 +8,12 @@ stream an STF task hands us may already be inside a capture Warp has never
 seen -- STF's ``graph_ctx`` backend capturing its task graph, or an outer
 ``torch.cuda.graph`` region. Launching Warp kernels into such a stream
 without adopting the capture would trip Warp's stream tracking, so the task
-wrapper asks two questions only the CUDA runtime can answer truthfully:
+wrapper asks two questions:
 
 1. ``_stream_is_capturing``: is this stream inside an active capture? This
-   queries ``cudaStreamIsCapturing`` directly (ctypes) because Warp only
-   knows about its own captures.
+   goes through Warp's native ``wp_cuda_stream_is_capturing`` export, which
+   queries ``cudaStreamIsCapturing`` truthfully -- unlike Warp's *bookkeeping*,
+   it also reports captures Warp has never seen.
 2. ``_warp_already_tracks_capture``: is that capture OURS or foreign? Only a
    foreign capture must be adopted via ``wp.capture_begin(external=True)``;
    re-adopting one Warp already tracks would double-register it.
@@ -20,46 +21,12 @@ wrapper asks two questions only the CUDA runtime can answer truthfully:
 
 from __future__ import annotations
 
-import ctypes
-
 import warp._src.context as _wp_ctx
-
-_CUDART: ctypes.CDLL | None = None
-
-# cudaStreamCaptureStatus values.
-_CUDA_STREAM_CAPTURE_STATUS_NONE = 0
-_CUDA_STREAM_CAPTURE_STATUS_ACTIVE = 1
-
-
-def _get_cudart() -> ctypes.CDLL:
-    global _CUDART
-
-    if _CUDART is None:
-        try:
-            cudart = ctypes.CDLL("libcudart.so")
-        except OSError as exc:
-            raise RuntimeError(
-                "Could not dlopen libcudart.so; CUDASTF capture detection requires the CUDA Runtime "
-                "to be installed and on the loader path."
-            ) from exc
-
-        cudart.cudaStreamIsCapturing.argtypes = (
-            ctypes.c_void_p,  # cudaStream_t
-            ctypes.POINTER(ctypes.c_int),  # cudaStreamCaptureStatus*
-        )
-        cudart.cudaStreamIsCapturing.restype = ctypes.c_int
-        _CUDART = cudart
-
-    return _CUDART
 
 
 def _stream_is_capturing(raw_ptr: int) -> bool:
     """Return ``True`` if ``raw_ptr`` is participating in an active CUDA graph capture."""
-    status = ctypes.c_int(_CUDA_STREAM_CAPTURE_STATUS_NONE)
-    rc = _get_cudart().cudaStreamIsCapturing(ctypes.c_void_p(int(raw_ptr)), ctypes.byref(status))
-    if rc != 0:
-        raise RuntimeError(f"cudaStreamIsCapturing failed: rc={rc}")
-    return status.value == _CUDA_STREAM_CAPTURE_STATUS_ACTIVE
+    return bool(_wp_ctx.runtime.core.wp_cuda_stream_is_capturing(int(raw_ptr)))
 
 
 def _stream_capture_id(raw_ptr: int) -> int:
