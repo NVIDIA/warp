@@ -1,67 +1,141 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-"""Test that validation failures don't contaminate shared modules with invalid code."""
+"""Test that a kernel that fails to build fails its module, and says why."""
 
+import os
+import tempfile
 import unittest
+import uuid
+from importlib import util
 
 import warp as wp
 from warp.tests.unittest_utils import *
 
 
-def test_function_validation_failure_contamination(test, device):
-    """Test that function validation failures don't contaminate modules.
+def _import_module(code: str):
+    """Import a throwaway Warp module from source.
 
-    This test creates two scenarios in the same test module:
-    1. A kernel that calls a function with invalid return type annotation
-    2. A valid kernel that should work
-
-    Without the fix, both kernels end up in the same module hash, and when
-    the first kernel's function fails validation, it leaves undefined
-    references that break C++ compilation of the entire module, causing
-    the second kernel to fail too.
+    The kernels under test have to live in a module of their own. Defining them
+    in this file would fail the test file's own module, and the point of these
+    tests is what a build failure does to the module that contains it.
     """
-
-    # First kernel: calls a function that will fail validation
-    @wp.func
-    def bad_return_type(x: int) -> tuple[int, int, int]:
-        # Returns 2 values but annotation says 3 - validation will fail
-        return (x + x, x * x)
-
-    def bad_kernel_fn():
-        _x, _y, _z = bad_return_type(123)
-
-    # Second kernel: completely valid, should always work
-    @wp.kernel
-    def good_kernel():
-        x = 1.0
-        y = 2.0
-        wp.expect_eq(x + y, 3.0)
-
-    # The bad kernel should fail with WarpCodegenError
-    bad_kernel = wp.Kernel(func=bad_kernel_fn)
-    with test.assertRaisesRegex(
-        wp.WarpCodegenError,
-        r"has its return type annotated as a tuple of 3 elements but the code returns 2 values",
-    ):
-        wp.launch(bad_kernel, dim=1, device=device)
-
-    # After the codegen failure, bad_kernel.adj.skip_build=True is set, which changes the
-    # module hash (the failed kernel is excluded from the hash). Calling mark_modified()
-    # clears the cached hash so the next load recomputes it and uses a different cache path.
-    # Without this, on multi-GPU systems the second device would find the binary written
-    # by the first device's successful good_kernel compilation and skip codegen entirely,
-    # so the WarpCodegenError would never be raised for the subsequent devices.
-    bad_kernel.module.mark_modified()
-
-    # The good kernel should still work despite the bad kernel failure
-    # This is the key test - without the fix, this will fail with
-    # "use of undeclared identifier 'bad_return_type_1'" because both
-    # kernels ended up in the same module and bad_return_type was never defined
+    name = f"_test_module_contamination_{uuid.uuid4().hex[:12]}"
+    file, file_path = tempfile.mkstemp(suffix=".py")
     try:
-        wp.launch(good_kernel, dim=1, device=device)
-    except Exception as e:
-        test.fail(f"good_kernel should not fail due to bad_kernel contamination, but got: {type(e).__name__}: {e}")
+        with os.fdopen(file, "w") as f:
+            f.write(code)
+
+        spec = util.spec_from_file_location(name, file_path)
+        module = util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+    finally:
+        os.remove(file_path)
+
+    return module
+
+
+_VALIDATION_FAILURE_SOURCE = """\
+import warp as wp
+
+@wp.func
+def bad_return_type(x: int) -> tuple[int, int, int]:
+    # annotated as 3 elements, returns 2
+    return (x + x, x * x)
+
+@wp.kernel
+def bad_kernel():
+    _x, _y, _z = bad_return_type(123)
+
+@wp.kernel
+def sibling_kernel(a: wp.array[float]):
+    i = wp.tid()
+    a[i] = 7.0
+"""
+
+_NATIVE_FAILURE_SOURCE = '''\
+import warp as wp
+
+snippet = """
+    not valid C++ #### ;;; @@@
+"""
+
+@wp.func_native(snippet)
+def broken_native(a: wp.array[float], tid: int):
+    ...
+
+@wp.kernel
+def bad_kernel(a: wp.array[float]):
+    tid = wp.tid()
+    broken_native(a, tid)
+
+@wp.kernel
+def sibling_kernel(a: wp.array[float]):
+    i = wp.tid()
+    a[i] = 7.0
+'''
+
+_ANNOTATION_ERROR = r"has its return type annotated as a tuple of 3 elements but the code returns 2 values"
+
+
+def test_validation_failure_names_the_annotation(test, device):
+    """Verify a failed return-type validation reports the annotation, not C++ fallout.
+
+    Validation runs during build(), before any C++ referencing the function is
+    emitted, so the error names the bad annotation. Emitting the call first would
+    surface this as an undeclared identifier from the native compiler instead.
+    """
+    module = _import_module(_VALIDATION_FAILURE_SOURCE)
+
+    with test.assertRaisesRegex(wp.WarpCodegenError, _ANNOTATION_ERROR):
+        wp.launch(module.bad_kernel, dim=1, device=device)
+
+
+def test_validation_failure_fails_the_module(test, device):
+    """Verify a sibling of a kernel that failed validation reports that failure.
+
+    A module is the compilation unit, so a kernel that cannot build fails the
+    module rather than being dropped from it. Launching any other kernel in that
+    module has to report the failure instead of returning as though it had run.
+    """
+    module = _import_module(_VALIDATION_FAILURE_SOURCE)
+    a = wp.zeros(4, dtype=float, device=device)
+
+    with test.assertRaisesRegex(wp.WarpCodegenError, _ANNOTATION_ERROR):
+        wp.launch(module.bad_kernel, dim=1, device=device)
+
+    with test.assertRaisesRegex(wp.WarpCodegenError, _ANNOTATION_ERROR):
+        wp.launch(module.sibling_kernel, dim=4, inputs=[a], device=device)
+
+
+def test_validation_failure_repeats_on_relaunch(test, device):
+    """Verify a build failure keeps failing rather than reporting only once.
+
+    The failure is reported from the recorded error on every later launch, so a
+    kernel relaunched in a loop cannot quietly start running partial state.
+    """
+    module = _import_module(_VALIDATION_FAILURE_SOURCE)
+
+    for _ in range(2):
+        with test.assertRaisesRegex(wp.WarpCodegenError, _ANNOTATION_ERROR):
+            wp.launch(module.bad_kernel, dim=1, device=device)
+
+
+def test_native_failure_fails_the_module(test, device):
+    """Verify a native compile failure behaves the same way as a codegen failure.
+
+    The snippet is not valid C++, so Warp's own codegen succeeds and the native
+    compiler fails instead. Both classes fail the module, so a sibling reports
+    the failure rather than skipping.
+    """
+    module = _import_module(_NATIVE_FAILURE_SOURCE)
+    a = wp.zeros(4, dtype=float, device=device)
+
+    with test.assertRaises(Exception) as caught:
+        wp.launch(module.bad_kernel, dim=4, inputs=[a], device=device)
+
+    with test.assertRaises(type(caught.exception)):
+        wp.launch(module.sibling_kernel, dim=4, inputs=[a], device=device)
 
 
 class TestModuleContamination(unittest.TestCase):
@@ -69,12 +143,14 @@ class TestModuleContamination(unittest.TestCase):
 
 
 devices = get_test_devices()
-add_function_test(
-    TestModuleContamination,
-    func=test_function_validation_failure_contamination,
-    name="test_function_validation_failure_contamination",
-    devices=devices,
-)
+
+for _func in (
+    test_validation_failure_names_the_annotation,
+    test_validation_failure_fails_the_module,
+    test_validation_failure_repeats_on_relaunch,
+    test_native_failure_fails_the_module,
+):
+    add_function_test(TestModuleContamination, func=_func, name=_func.__name__, devices=devices)
 
 
 if __name__ == "__main__":

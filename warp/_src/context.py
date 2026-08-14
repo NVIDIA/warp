@@ -35,6 +35,7 @@ from typing import (
     Any,
     Literal,
     NamedTuple,
+    NoReturn,
     Protocol,
     TypeVar,
     get_args,
@@ -1125,9 +1126,6 @@ class Kernel:
         # effective grid_stride, resolved with the hash when the module is built and read at launch
         self.grid_stride: bool | None = None
 
-        # flag indicating if this kernel belongs to a unique module (set by @wp.kernel decorator)
-        self.is_unique_module = False
-
         # cache for invoke() struct types (avoids dynamic type() calls)
         self._invoke_cache = {}
 
@@ -1825,9 +1823,6 @@ def kernel(
         # the hash, then check if a matching module already exists. If reuse occurs,
         # the temporary objects are discarded and the existing kernel is returned.
         if module == "unique":
-            # Mark this kernel as belonging to a unique module
-            k.is_unique_module = True
-
             # Compute the module hash and create a unique name.
             # Use get_module_hash() to ensure deferred static expressions are
             # resolved before hashing, and to cache the hasher (reused below
@@ -1892,12 +1887,6 @@ def kernel(
                         )
                     log_debug(f"[wp.kernel]   Reusing existing kernel object for {k.key}{overload_info}")
                 k = existing_kernel_same_key
-
-                # Reset skip_build flag for all kernels when reusing a module.
-                # A previous failed compilation may have set skip_build=True, which
-                # would prevent building for a different device.
-                for existing_kernel in existing_module._get_live_kernels():
-                    existing_kernel.adj.skip_build = False
             else:
                 # This is the first time we've seen this kernel; the module is kept,
                 # so run the dependency scan that registration deferred.
@@ -2599,31 +2588,29 @@ class ModuleHasher:
         for kernel in kernels:
             if kernel.is_generic:
                 for ovl in kernel.overloads.values():
-                    if not ovl.adj.skip_build:
-                        old_hash = ovl.hash
-                        ovl.hash = self.hash_kernel(ovl, default_grid_stride)
-                        # Only log hash changes when old hash was not None (unexpected changes)
-                        if (
-                            (warp.config.verbose or warp.config.log_level <= warp.LOG_DEBUG)
-                            and old_hash is not None
-                            and old_hash != ovl.hash
-                        ):
-                            old_str = old_hash.hex()[:8]
-                            new_str = ovl.hash.hex()[:8] if ovl.hash else "None"
-                            log_debug(f"[ModuleHasher] Generic kernel hash changed: {ovl.key} ({old_str} -> {new_str})")
-            else:
-                if not kernel.adj.skip_build:
-                    old_hash = kernel.hash
-                    kernel.hash = self.hash_kernel(kernel, default_grid_stride)
+                    old_hash = ovl.hash
+                    ovl.hash = self.hash_kernel(ovl, default_grid_stride)
                     # Only log hash changes when old hash was not None (unexpected changes)
                     if (
                         (warp.config.verbose or warp.config.log_level <= warp.LOG_DEBUG)
                         and old_hash is not None
-                        and old_hash != kernel.hash
+                        and old_hash != ovl.hash
                     ):
                         old_str = old_hash.hex()[:8]
-                        new_str = kernel.hash.hex()[:8] if kernel.hash else "None"
-                        log_debug(f"[ModuleHasher] Kernel hash changed: {kernel.key} ({old_str} -> {new_str})")
+                        new_str = ovl.hash.hex()[:8] if ovl.hash else "None"
+                        log_debug(f"[ModuleHasher] Generic kernel hash changed: {ovl.key} ({old_str} -> {new_str})")
+            else:
+                old_hash = kernel.hash
+                kernel.hash = self.hash_kernel(kernel, default_grid_stride)
+                # Only log hash changes when old hash was not None (unexpected changes)
+                if (
+                    (warp.config.verbose or warp.config.log_level <= warp.LOG_DEBUG)
+                    and old_hash is not None
+                    and old_hash != kernel.hash
+                ):
+                    old_str = old_hash.hex()[:8]
+                    new_str = kernel.hash.hex()[:8] if kernel.hash else "None"
+                    log_debug(f"[ModuleHasher] Kernel hash changed: {kernel.key} ({old_str} -> {new_str})")
 
         # Canonicalize the unique codegen roots using the same full content digest
         # that defines module identity. ModuleBuilder consumes this ordered view.
@@ -2993,11 +2980,10 @@ class ModuleBuilder:
                     callee.adj.used_by_backward_kernel = True
                     worklist.append(callee.adj)
         # backward use is final only now, so this is where wp.ref[T] calls recorded by
-        # add_call are rejected (a manual adjoint may also have been registered since);
-        # skip_build adjs hold stale records from a failed parse and cannot launch
+        # add_call are rejected (a manual adjoint may also have been registered since)
         for obj in (*self.kernels, *self.functions):
             adj = obj.adj
-            if adj.skip_build or not adj.used_by_backward_kernel:
+            if not adj.used_by_backward_kernel:
                 continue
             for callee in adj.unvalidated_ref_calls:
                 if adj.has_manual_ref_adjoint(callee):
@@ -3019,9 +3005,6 @@ class ModuleBuilder:
         # make sure custom grads/replays are built before reading their rooflines
         # (callees reached through function-valued arguments are not in deferred_functions)
         for adj in adjs:
-            # errored adjs (skip_build) hold stale call-graph edges
-            if adj.skip_build:
-                continue
             for callee in adj.called_user_functions:
                 for extra_fn in (callee.custom_grad_func, callee.custom_replay_func):
                     if extra_fn is not None:
@@ -3032,11 +3015,6 @@ class ModuleBuilder:
         # insertion order is topological, and kernels are roots
         folded = set()
         for adj in adjs:
-            # an errored adj (skip_build) has stale edges and can never launch; keep its value
-            # as-is, marked folded so live callers of such a function don't trip the guard below
-            if adj.skip_build:
-                folded.add(adj)
-                continue
             required = adj.max_required_extra_shared_memory_backward
             for callee in adj.called_user_functions:
                 if callee.custom_replay_func is not None:
@@ -3396,6 +3374,23 @@ def _check_and_raise_long_path_error(e: FileNotFoundError):
     ) from e
 
 
+def _raise_recorded_build_error(build_error: Exception) -> NoReturn:
+    """Re-raise a build error recorded by an earlier failed build.
+
+    Raising the recorded exception itself appends the current frames to its
+    ``__traceback__`` every time, so a kernel relaunched in a loop accumulates
+    one traceback per attempt. Building a fresh instance avoids that. If the
+    type cannot be rebuilt from its ``args``, re-raise the original and accept
+    the growing traceback, since reporting the real error matters more.
+    """
+    try:
+        replay = type(build_error)(*build_error.args)
+    except Exception:
+        raise build_error from None
+
+    raise replay from None
+
+
 # -----------------------------------------------------
 # stores all functions and kernels for a Python module
 # creates a hash of the function to use for checking
@@ -3425,8 +3420,8 @@ class Module:
         # executable modules currently loaded
         self.execs = {}  # ((device.context, blockdim): ModuleExec)
 
-        # set of (device context, block_dim) variants where the build has failed
-        self.failed_builds = set()
+        # (device context, block_dim) variants whose build failed, mapped to the error that failed it
+        self.failed_builds = {}
 
         # hash data, including the module hash. Module may store multiple hashes (one per block_dim used)
         self.hashers = {}
@@ -3898,6 +3893,13 @@ class Module:
         with open(output_meta_path, "w") as meta_file:
             json.dump(meta, meta_file, sort_keys=True)
 
+    def _record_build_failure(self, device, is_cpu: bool, active_block_dim: int, error: Exception) -> None:
+        """Record the error that failed this module's build for a device variant."""
+        if is_cpu:
+            self.failed_builds[(None, active_block_dim)] = error
+        elif device:
+            self.failed_builds[(device.context, active_block_dim)] = error
+
     @synchronized(_codegen_lock)
     def _run_codegen(self, options: dict, is_cpu: bool) -> tuple[str, str, dict, list, list]:
         """Run the Python-side codegen window.
@@ -4036,14 +4038,16 @@ class Module:
         # the native compile below, so the native step (the dominant cost)
         # runs unlocked and parallelises across N modules.
         #
-        # NOTE: ``_run_codegen`` is intentionally outside the
-        # ``failed_builds`` try/except below. ``ModuleBuilder`` can
-        # legitimately raise from ``adj.build`` (e.g. user kernels with
-        # type mismatches in the error tests); if we recorded those in
-        # ``failed_builds`` the next ``Module.load`` on the same device
-        # short-circuits with ``return None`` and subsequent unrelated
-        # kernels in the same module silently fail to launch.
-        source_str, source_code_ext, meta, ltoir_values, fatbin_values = self._run_codegen(options, is_cpu)
+        # A kernel that fails here fails the module, exactly as a native
+        # compile error does. The module is the compilation unit, so a
+        # successful build has to mean every kernel in it built; dropping the
+        # failing kernel and continuing would leave the module claiming
+        # kernels its binary does not contain.
+        try:
+            source_str, source_code_ext, meta, ltoir_values, fatbin_values = self._run_codegen(options, is_cpu)
+        except Exception as e:
+            self._record_build_failure(device, is_cpu, active_block_dim, e)
+            raise
 
         meta_path = os.path.join(output_dir, self._get_meta_name(block_dim=active_block_dim))
 
@@ -4066,7 +4070,13 @@ class Module:
             with open(source_code_path, "w") as source_file:
                 source_file.write(source_str)
         except FileNotFoundError as e:
-            _check_and_raise_long_path_error(e)
+            # Same reasoning as the native build below: record whichever error the caller
+            # sees, so a module that could not write its source replays that on later launches.
+            try:
+                _check_and_raise_long_path_error(e)
+            except Exception as reported:
+                self._record_build_failure(device, is_cpu, active_block_dim, reported)
+                raise
 
         output_path = os.path.join(build_dir, output_name)
 
@@ -4117,13 +4127,18 @@ class Module:
                     )
 
         except Exception as e:
+            # ``_check_and_raise_long_path_error`` always raises, either ``e`` itself or a
+            # clearer error naming the Windows path limit. Catch whichever it raises so the
+            # module records the error the caller actually sees; letting it escape from here
+            # would leave the failure unrecorded and rebuild the module on every later launch.
             if isinstance(e, FileNotFoundError):
-                _check_and_raise_long_path_error(e)
+                try:
+                    _check_and_raise_long_path_error(e)
+                except Exception as reported:
+                    self._record_build_failure(device, is_cpu, active_block_dim, reported)
+                    raise
 
-            if is_cpu:
-                self.failed_builds.add((None, active_block_dim))
-            elif device:
-                self.failed_builds.add((device.context, active_block_dim))
+            self._record_build_failure(device, is_cpu, active_block_dim, e)
 
             raise (e)
 
@@ -4209,9 +4224,11 @@ class Module:
                 new_str = current_hash.hex()[:8] if current_hash else "None"
                 log_debug(f"[Module.load] Module hash changed, recompiling: {self.name} ({old_str} -> {new_str})")
 
-        # quietly avoid repeated build attempts to reduce error spew
-        if (device.context, active_block_dim) in self.failed_builds:
-            return None
+        # A module that failed to build reports that failure for every kernel in it,
+        # until mark_modified() clears the record and lets the module build again.
+        build_error = self.failed_builds.get((device.context, active_block_dim))
+        if build_error is not None:
+            _raise_recorded_build_error(build_error)
 
         module_hash = self.get_module_hash(active_block_dim)
         options = self.resolved_options[active_block_dim]
@@ -4337,7 +4354,7 @@ class Module:
         self.resolved_options = {}
 
         # clear build failures
-        self.failed_builds = set()
+        self.failed_builds = {}
 
     # lookup kernel entry points based on name, called after compilation / module load
     def get_kernel_hooks(self, kernel, device: Device) -> KernelHooks:
@@ -10771,19 +10788,8 @@ def launch(
             fwd_types = kernel.infer_argument_types(fwd_args)
             kernel = kernel.add_overload(fwd_types)
 
-        # For unique module kernels, reset skip_build to allow compilation attempts on different devices.
-        # Even though a Module compiles separately for each device (stored in Module.execs),
-        # the skip_build flag is on the Adjoint which is shared across devices.
-        # A failure on one device shouldn't prevent compilation attempts on other devices.
-        if kernel.is_unique_module:
-            kernel.adj.skip_build = False
-
         # delay load modules, including new overload if needed
-        try:
-            module_exec = kernel.module.load(device, block_dim)
-        except Exception:
-            kernel.adj.skip_build = True
-            raise
+        module_exec = kernel.module.load(device, block_dim)
 
         if not module_exec:
             return

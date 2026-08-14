@@ -117,7 +117,7 @@ def test_error_invalid_func_return_annotation(test, device):
 
         return arr
 
-    @wp.kernel
+    @wp.kernel(module="unique")
     def kernel():
         arr = func()
 

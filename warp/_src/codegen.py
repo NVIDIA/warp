@@ -1779,14 +1779,6 @@ class Adjoint:
         # key "values[i]" but a different value per iteration.
         adj.deferred_static_expressions: list[tuple[str, Any]] = []
 
-        # There are cases where a same module might be rebuilt multiple times,
-        # for example when kernels are nested inside of functions, or when
-        # a kernel's launch raises an exception. Ideally we'd always want to
-        # avoid rebuilding kernels but some corner cases seem to depend on it,
-        # so we only avoid rebuilding kernels that errored out to give a chance
-        # for unit testing errors being spit out from kernels.
-        adj.skip_build = False
-
         # Feature-specific deterministic lowering state.  Keep its policy and
         # helper metadata behind a small integration object so the core codegen
         # paths do not need to coordinate deterministic internals directly.
@@ -1962,13 +1954,10 @@ class Adjoint:
     # generate function ssa form and adjoint
     @synchronized(_codegen_lock)
     def build(adj, builder, default_builder_options=None, callable_arg_values=None):
-        # arg Var read/write flags are held during module rebuilds, so we reset here even when skipping a build
+        # arg Var read/write flags are held during module rebuilds, so we reset here before rebuilding
         for arg in adj.args:
             arg.is_read = False
             arg.is_write = False
-
-        if adj.skip_build:
-            return
 
         if callable_arg_values is None:
             callable_arg_values = getattr(adj, "callable_arg_values", None)
@@ -2051,7 +2040,6 @@ class Adjoint:
                 # 'from None' is used to suppress Python's chained exceptions for a cleaner error output.
                 raise type(original_exc)(*new_args).with_traceback(original_exc.__traceback__) from None
             finally:
-                adj.skip_build = True
                 adj.builder = None
 
         if builder is not None:
@@ -2069,9 +2057,9 @@ class Adjoint:
     def _validate_return_type(adj):
         """Validate function return type annotation against actual return values.
 
-        This validation happens during build() (before C++ code generation) to catch
-        errors early and prevent module contamination. If validation fails here,
-        the function is marked as skip_build and won't emit any C++ code.
+        This validation happens during build() (before C++ code generation) so the
+        error names the annotation that is wrong, rather than surfacing later as a
+        C++ reference to a function the module never emitted.
         """
         if adj.return_var is not None and "return" in adj.arg_types:
             if get_origin(adj.arg_types["return"]) is tuple:
