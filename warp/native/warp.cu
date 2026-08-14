@@ -3570,7 +3570,7 @@ bool wp_cuda_graph_end_capture(void* context, void* stream, void** graph_ret, bo
                 cudaGetLastError();
             }
         }
-    } failure_guard{cuda_stream, capture_id, external};
+    } failure_guard { cuda_stream, capture_id, external };
 
     // get captured graph without ending the capture in case it is external
     cudaGraph_t graph = get_capture_graph(cuda_stream);
