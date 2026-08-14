@@ -11,94 +11,23 @@ their condition array instead -- Warp records its own evaluation kernel after
 the loop body, overwriting any value set from the body, and their handles
 are deliberately not exposed.
 
-The test below plays the role of the foreign framework: it builds a graph
-with a conditional while-node directly through the CUDA runtime API
+The test below plays the role of the foreign framework: using cuda.bindings
+(the cuda-python package), it builds a graph with a conditional while-node
 (cudaGraphCreate / cudaGraphConditionalHandleCreate / cudaGraphAddNode),
 populates the body with a Warp kernel via cudaStreamBeginCaptureToGraph, and
 launches it. The kernel's wp.graph_set_conditional() call is the only thing
 driving loop-back.
 """
 
-import ctypes
 import unittest
 
 import warp as wp
 from warp.tests.unittest_utils import *
 
-# driver_types.h constants
-_CUDA_GRAPH_COND_ASSIGN_DEFAULT = 1  # re-apply the default handle value at every graph launch
-_CUDA_GRAPH_COND_TYPE_WHILE = 1
-_CUDA_GRAPH_NODE_TYPE_CONDITIONAL = 0x0D
-_CUDA_STREAM_CAPTURE_MODE_THREAD_LOCAL = 1
-
-
-class _CondParams(ctypes.Structure):
-    # struct cudaConditionalNodeParams. The trailing ctx field exists on
-    # CUDA 13; on CUDA 12 those 8 zero bytes fall into the zero-initialized
-    # padding of the enclosing union, so one layout serves both.
-    _fields_ = [
-        ("handle", ctypes.c_uint64),
-        ("type", ctypes.c_int),
-        ("size", ctypes.c_uint),
-        ("phGraph_out", ctypes.POINTER(ctypes.c_void_p)),
-        ("ctx", ctypes.c_void_p),
-    ]
-
-
-class _GraphNodeParams(ctypes.Structure):
-    # struct cudaGraphNodeParams: node type + reserved ints + a 232-byte
-    # union (long long reserved1[29]) + reserved2. Unused bytes must be zero,
-    # which ctypes.Structure() guarantees.
-    _fields_ = [
-        ("type", ctypes.c_int),
-        ("reserved0", ctypes.c_int * 3),
-        ("conditional", _CondParams),
-        ("reserved_pad", ctypes.c_byte * (232 - ctypes.sizeof(_CondParams))),
-        ("reserved2", ctypes.c_longlong),
-    ]
-
-
-def _load_cudart():
-    """dlopen the CUDA runtime, trying versioned sonames first (pip wheels ship no bare .so)."""
-    for name in ("libcudart.so.13", "libcudart.so.12", "libcudart.so", "cudart64_13.dll", "cudart64_12.dll"):
-        try:
-            cudart = ctypes.CDLL(name)
-        except OSError:
-            continue
-        cudart.cudaGraphCreate.argtypes = (ctypes.POINTER(ctypes.c_void_p), ctypes.c_uint)
-        cudart.cudaGraphConditionalHandleCreate.argtypes = (
-            ctypes.POINTER(ctypes.c_uint64),
-            ctypes.c_void_p,
-            ctypes.c_uint,
-            ctypes.c_uint,
-        )
-        cudart.cudaGraphAddNode.argtypes = (
-            ctypes.POINTER(ctypes.c_void_p),
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.c_size_t,
-            ctypes.POINTER(_GraphNodeParams),
-        )
-        cudart.cudaStreamBeginCaptureToGraph.argtypes = (
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.c_size_t,
-            ctypes.c_int,
-        )
-        cudart.cudaStreamEndCapture.argtypes = (ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p))
-        cudart.cudaGraphInstantiate.argtypes = (
-            ctypes.POINTER(ctypes.c_void_p),
-            ctypes.c_void_p,
-            ctypes.c_ulonglong,
-        )
-        cudart.cudaGraphLaunch.argtypes = (ctypes.c_void_p, ctypes.c_void_p)
-        cudart.cudaGraphExecDestroy.argtypes = (ctypes.c_void_p,)
-        cudart.cudaGraphDestroy.argtypes = (ctypes.c_void_p,)
-        return cudart
-    return None
+try:
+    from cuda.bindings import runtime as cudart
+except ImportError:
+    cudart = None
 
 
 @wp.kernel
@@ -116,12 +45,13 @@ def _noop_set(handle: wp.graph_cond_handle):
 
 def test_user_owned_while_scope(test, device):
     """Drive a while-node built through the CUDA runtime API solely from a Warp kernel."""
-    cudart = _load_cudart()
     if cudart is None:
-        test.skipTest("CUDA runtime library not found on the loader path")
+        test.skipTest("cuda-python (cuda.bindings) is not installed")
 
-    def check(err):
-        test.assertEqual(err, 0, f"CUDA runtime call failed with error {err}")
+    def check(result):
+        err = result[0]
+        test.assertEqual(int(err), 0, f"CUDA runtime call failed: {err}")
+        return result[1] if len(result) == 2 else result[1:]
 
     n_iters = 7
 
@@ -134,34 +64,37 @@ def test_user_owned_while_scope(test, device):
         # Build the foreign scope: a graph containing one conditional
         # while-node whose handle defaults to 1 (enter the loop) at every
         # graph launch.
-        graph = ctypes.c_void_p()
-        check(cudart.cudaGraphCreate(ctypes.byref(graph), 0))
+        graph = check(cudart.cudaGraphCreate(0))
+        handle = check(
+            cudart.cudaGraphConditionalHandleCreate(
+                graph, 1, cudart.cudaGraphConditionalHandleFlags.cudaGraphCondAssignDefault
+            )
+        )
 
-        handle = ctypes.c_uint64()
-        check(cudart.cudaGraphConditionalHandleCreate(ctypes.byref(handle), graph, 1, _CUDA_GRAPH_COND_ASSIGN_DEFAULT))
-
-        params = _GraphNodeParams()
-        params.type = _CUDA_GRAPH_NODE_TYPE_CONDITIONAL
-        params.conditional.handle = handle.value
-        params.conditional.type = _CUDA_GRAPH_COND_TYPE_WHILE
+        params = cudart.cudaGraphNodeParams()
+        params.type = cudart.cudaGraphNodeType.cudaGraphNodeTypeConditional
+        params.conditional.handle = handle
+        params.conditional.type = cudart.cudaGraphConditionalNodeType.cudaGraphCondTypeWhile
         params.conditional.size = 1
-        node = ctypes.c_void_p()
-        check(cudart.cudaGraphAddNode(ctypes.byref(node), graph, None, None, 0, ctypes.byref(params)))
+        check(cudart.cudaGraphAddNode(graph, None, None, 0, params))
         body_graph = params.conditional.phGraph_out[0]
 
         # Populate the body with a Warp kernel; its wp.graph_set_conditional()
         # call alone decides whether the loop runs another iteration.
         check(
             cudart.cudaStreamBeginCaptureToGraph(
-                stream.cuda_stream, body_graph, None, None, 0, _CUDA_STREAM_CAPTURE_MODE_THREAD_LOCAL
+                stream.cuda_stream,
+                body_graph,
+                None,
+                None,
+                0,
+                cudart.cudaStreamCaptureMode.cudaStreamCaptureModeThreadLocal,
             )
         )
-        wp.launch(_count_and_continue, dim=1, inputs=[counter, handle.value, n_iters], stream=stream)
-        out_graph = ctypes.c_void_p()
-        check(cudart.cudaStreamEndCapture(stream.cuda_stream, ctypes.byref(out_graph)))
+        wp.launch(_count_and_continue, dim=1, inputs=[counter, int(handle), n_iters], stream=stream)
+        check(cudart.cudaStreamEndCapture(stream.cuda_stream))
 
-        graph_exec = ctypes.c_void_p()
-        check(cudart.cudaGraphInstantiate(ctypes.byref(graph_exec), graph, 0))
+        graph_exec = check(cudart.cudaGraphInstantiate(graph, 0))
         try:
             check(cudart.cudaGraphLaunch(graph_exec, stream.cuda_stream))
             wp.synchronize_stream(stream)
