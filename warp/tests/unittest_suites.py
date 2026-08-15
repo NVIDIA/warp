@@ -488,12 +488,20 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         - tile.test_tile_struct: test_tile_map_custom_struct_cuda_0 triggers
           CUDA error 719 and poisons the CUDA context
 
-    The suite runs up to eight worker processes that share a single GPU, so
-    memory-hungry classes are excluded even when they pass in isolation. The
-    example runners (test_examples, fem.test_fem_examples) are the main case:
-    each of their tests spawns a subprocess with its own CUDA context on top
-    of the eight workers, which exhausts device memory. cuda.test_async and
-    fem.test_fem_fp64 are excluded for the same reason.
+    The suite runs up to eight worker processes that share one GPU. The runner
+    model is not pinned here and most GitLab GPUs have 48 GB or more, so the
+    budget is set by the smallest device the suite should still fit on:
+    24 GiB, which covers a quarter-slice MIG partition of an RTX PRO 6000 as
+    well as a developer machine with an RTX 3090. A class is excluded when its
+    own peak device memory exceeds the resulting per-worker share of roughly
+    3 GiB, even if it passes in isolation. Measure a candidate by running its
+    class alone in debug mode before adding it here.
+
+    Excluded on that basis:
+        - test_examples, fem.test_fem_examples, cuda.test_async, and
+          fem.test_fem_fp64 spawn subprocesses that each add a CUDA context
+        - fem.test_fem_integrate, fem.test_fem_multi_env, test_sparse, and
+          test_copy, whose test_copy_large_stride allocates 6 GB on its own
     """
     # Keep imports lazy so importing this helper does not register unrelated
     # test kernels before a focused debug suite is selected.
@@ -517,9 +525,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.deterministic.test_deterministic_graph_capture import TestDeterministicGraph
     from warp.tests.deterministic.test_deterministic_options import TestDeterministicOptions
     from warp.tests.deterministic.test_deterministic_scatter import TestDeterministicScatter
-    from warp.tests.fem.test_fem_integrate import TestFemIntegrate
     from warp.tests.fem.test_fem_linalg import TestFemLinalg
-    from warp.tests.fem.test_fem_multi_env import TestFemMultiEnv
     from warp.tests.geometry.test_bvh import TestBvh
     from warp.tests.geometry.test_grouped_bvh import TestGroupedBvh
     from warp.tests.geometry.test_hash_grid import TestHashGrid
@@ -569,7 +575,6 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.test_conditional import TestConditional
     from warp.tests.test_constant_precision import TestConstantPrecision
     from warp.tests.test_context import TestContext
-    from warp.tests.test_copy import TestCopy
     from warp.tests.test_cpu_precompiled_headers import TestCpuPrecompiledHeaders
     from warp.tests.test_ctypes import TestCTypes
     from warp.tests.test_cuda_profiler import TestCudaProfiler
@@ -648,7 +653,6 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.test_sgd import TestSGD
     from warp.tests.test_smoothstep import TestSmoothstep
     from warp.tests.test_snippet import TestSnippets
-    from warp.tests.test_sparse import TestSparse
     from warp.tests.test_spatial import TestSpatial
     from warp.tests.test_spatial_assign_copy import TestSpatialAssignCopy
     from warp.tests.test_special_values import TestSpecialValues
@@ -765,7 +769,6 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestApicSegmentedSort,
         TestApicUtilityAlgorithms,
         TestLaunch,
-        TestSparse,
         TestSpatial,
         # Additional classes verified to pass under debug mode within the job's time budget.
         TestModuleAOT,
@@ -897,13 +900,10 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestTileSolve,
         TestTileSolveNoMathDx,
         TestTileStack,
-        TestFemIntegrate,
-        TestFemMultiEnv,
         TestGroupedBvh,
         TestMeshQueryPoint,
         TestMeshQueryRay,
         TestMat,
-        TestCopy,
         TestFabricArray,
         TestGraph,
         TestModuleHasherKernelOptions,
