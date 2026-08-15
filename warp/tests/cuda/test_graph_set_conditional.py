@@ -70,40 +70,42 @@ def test_user_owned_while_scope(test, device):
         # while-node whose handle defaults to 1 (enter the loop) at every
         # graph launch.
         graph = _check_cuda(cudart.cudaGraphCreate(0))
-        handle = _check_cuda(
-            cudart.cudaGraphConditionalHandleCreate(
-                graph, 1, cudart.cudaGraphConditionalHandleFlags.cudaGraphCondAssignDefault
-            )
-        )
-
-        params = cudart.cudaGraphNodeParams()
-        params.type = cudart.cudaGraphNodeType.cudaGraphNodeTypeConditional
-        params.conditional.handle = handle
-        params.conditional.type = cudart.cudaGraphConditionalNodeType.cudaGraphCondTypeWhile
-        params.conditional.size = 1
-        # cuda-python 12 takes dependencyData only in cudaGraphAddNode_v2;
-        # cuda-python 13 folds it into the unversioned cudaGraphAddNode.
-        add_node = getattr(cudart, "cudaGraphAddNode_v2", None) or cudart.cudaGraphAddNode
-        _check_cuda(add_node(graph, None, None, 0, params))
-        body_graph = params.conditional.phGraph_out[0]
-
-        # Populate the body with a Warp kernel; its wp.graph_set_conditional()
-        # call alone decides whether the loop runs another iteration.
-        _check_cuda(
-            cudart.cudaStreamBeginCaptureToGraph(
-                stream.cuda_stream,
-                body_graph,
-                None,
-                None,
-                0,
-                cudart.cudaStreamCaptureMode.cudaStreamCaptureModeThreadLocal,
-            )
-        )
-        wp.launch(_count_and_continue, dim=1, inputs=[counter, int(handle), n_iters], stream=stream)
-        _check_cuda(cudart.cudaStreamEndCapture(stream.cuda_stream))
-
-        graph_exec = _check_cuda(cudart.cudaGraphInstantiate(graph, 0))
+        graph_exec = None
         try:
+            handle = _check_cuda(
+                cudart.cudaGraphConditionalHandleCreate(
+                    graph, 1, cudart.cudaGraphConditionalHandleFlags.cudaGraphCondAssignDefault
+                )
+            )
+
+            params = cudart.cudaGraphNodeParams()
+            params.type = cudart.cudaGraphNodeType.cudaGraphNodeTypeConditional
+            params.conditional.handle = handle
+            params.conditional.type = cudart.cudaGraphConditionalNodeType.cudaGraphCondTypeWhile
+            params.conditional.size = 1
+            # cuda-python 12 takes dependencyData only in cudaGraphAddNode_v2;
+            # cuda-python 13 folds it into the unversioned cudaGraphAddNode.
+            add_node = getattr(cudart, "cudaGraphAddNode_v2", None) or cudart.cudaGraphAddNode
+            _check_cuda(add_node(graph, None, None, 0, params))
+            body_graph = params.conditional.phGraph_out[0]
+
+            # Populate the body with a Warp kernel; its wp.graph_set_conditional()
+            # call alone decides whether the loop runs another iteration.
+            _check_cuda(
+                cudart.cudaStreamBeginCaptureToGraph(
+                    stream.cuda_stream,
+                    body_graph,
+                    None,
+                    None,
+                    0,
+                    cudart.cudaStreamCaptureMode.cudaStreamCaptureModeThreadLocal,
+                )
+            )
+            wp.launch(_count_and_continue, dim=1, inputs=[counter, int(handle), n_iters], stream=stream)
+            _check_cuda(cudart.cudaStreamEndCapture(stream.cuda_stream))
+
+            graph_exec = _check_cuda(cudart.cudaGraphInstantiate(graph, 0))
+
             _check_cuda(cudart.cudaGraphLaunch(graph_exec, stream.cuda_stream))
             wp.synchronize_stream(stream)
             test.assertEqual(counter.numpy()[0], n_iters)
@@ -115,7 +117,8 @@ def test_user_owned_while_scope(test, device):
             wp.synchronize_stream(stream)
             test.assertEqual(counter.numpy()[0], n_iters)
         finally:
-            cudart.cudaGraphExecDestroy(graph_exec)
+            if graph_exec is not None:
+                cudart.cudaGraphExecDestroy(graph_exec)
             cudart.cudaGraphDestroy(graph)
 
 
