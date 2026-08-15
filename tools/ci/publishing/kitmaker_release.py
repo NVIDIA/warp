@@ -47,7 +47,16 @@ class KitmakerClient:
         adapter = HTTPAdapter(max_retries=retry)
         self.session.mount("https://", adapter)
 
-    def create_release(self, project_id, project_name, pic_email, wheels, upload=True, devzone_subdir=None):
+    def create_release(
+        self,
+        project_id,
+        project_name,
+        pic_email,
+        wheels,
+        upload=True,
+        devzone_subdir=None,
+        mirroring_strategy=None,
+    ):
         """Create a release and return the release UUID."""
         url = f"{self.base_url}/projects/{project_id}/releases"
         payload = {
@@ -58,6 +67,7 @@ class KitmakerClient:
                     "job_type": "wheel-release-job",
                     "url": wheel_url,
                     "upload": upload,
+                    **({"mirroring_strategy": mirroring_strategy} if mirroring_strategy else {}),
                     **({"devzone_subdir": devzone_subdir} if devzone_subdir else {}),
                 }
                 for wheel_url in wheels
@@ -154,6 +164,12 @@ Environment Variables:
                         help="HTTPS URL(s) to .whl file(s) (1-4 URLs)")
     parser.add_argument("--devzone-subdir", default=None,
                         help="Optional Devzone subdirectory prefix for uploads")
+    parser.add_argument(
+        "--mirroring-strategy",
+        choices=("upload-both", "wheel-stub", "claim-project"),
+        default=None,
+        help="Optional Kitmaker publication strategy",
+    )
     parser.add_argument("--poll-interval", type=int, default=30,
                         help="Seconds between status checks (default: 30)")
     parser.add_argument("--timeout", type=int, default=3600,
@@ -208,6 +224,8 @@ Environment Variables:
         print(f"\nProject: {config['project_name']} (ID: {config['project_id']})")
         print(f"PIC: {config['pic_email']}")
         print(f"Upload: {'No (dry-run)' if args.dry_run else 'Yes'}")
+        if args.mirroring_strategy:
+            print(f"Mirroring strategy: {args.mirroring_strategy}")
         if args.devzone_subdir:
             print(f"Devzone subdir: {args.devzone_subdir}")
         print(f"Timeout: {args.timeout}s | Poll interval: {args.poll_interval}s")
@@ -221,6 +239,7 @@ Environment Variables:
             wheels=wheels,
             upload=not args.dry_run,
             devzone_subdir=args.devzone_subdir,
+            mirroring_strategy=args.mirroring_strategy,
         )
 
         success = client.monitor_release(
