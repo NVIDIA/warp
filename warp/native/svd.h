@@ -520,12 +520,27 @@ inline CUDA_CALLABLE void _svd_2( // input A
 
     // Step 3: Singular values
     if (discriminant == Type(0)) {
-        // Duplicate eigenvalue, A ~ s Id
+        // Duplicate eigenvalue, ATA = lambda Id, so A = s Q with Q orthogonal
+        // (any scaled rotation or reflection, not just a scaled identity)
         s1 = s2 = sqrt(Type(0.5) * trace);
-        u11 = v11 = Type(1);
-        u12 = v12 = Type(0);
-        u21 = v21 = Type(0);
-        u22 = v22 = Type(1);
+        v11 = Type(1);
+        v12 = Type(0);
+        v21 = Type(0);
+        v22 = Type(1);
+        if (s1 == Type(0)) {
+            // A = 0
+            u11 = Type(1);
+            u12 = Type(0);
+            u21 = Type(0);
+            u22 = Type(1);
+        } else {
+            // A / s is exactly orthogonal, so U = A / s, V = Id reconstructs A
+            Type inv_sigma = Type(1) / s1;
+            u11 = a11 * inv_sigma;
+            u12 = a12 * inv_sigma;
+            u21 = a21 * inv_sigma;
+            u22 = a22 * inv_sigma;
+        }
         return;
     }
 

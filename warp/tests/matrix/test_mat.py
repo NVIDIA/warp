@@ -933,6 +933,12 @@ def test_svd_2D(test, device, dtype, register_kernels=False):
                 np.array([[1.0, 1.0], [-1.0, -1.0]]),
                 np.array([[3.0, 0.0], [4.0, 5.0]]),
                 np.eye(2) + tol * np.array([[1.0, 1.0], [-1.0, -1.0]]),
+                # scaled orthogonal inputs hit the repeated-singular-value path (GH-1734)
+                np.array([[0.0, -1.0], [1.0, 0.0]]),  # rotation by 90 degrees
+                np.array([[np.cos(0.5), -np.sin(0.5)], [np.sin(0.5), np.cos(0.5)]]),  # rotation by 0.5 rad
+                2.0 * np.array([[np.cos(0.5), -np.sin(0.5)], [np.sin(0.5), np.cos(0.5)]]),  # scaled rotation
+                -np.eye(2),  # negative scaled identity
+                np.array([[1.0, 0.0], [0.0, -1.0]]),  # reflection
             ],
         ),
         axis=0,
