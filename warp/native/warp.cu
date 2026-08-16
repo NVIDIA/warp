@@ -3494,7 +3494,7 @@ bool wp_cuda_graph_begin_capture(void* context, void* stream, int external, int 
     return true;
 }
 
-bool wp_cuda_graph_end_capture(void* context, void* stream, void** graph_ret)
+bool wp_cuda_graph_end_capture(void* context, void* stream, void** graph_ret, bool skip_leaf_join)
 {
     ContextGuard guard(context);
 
@@ -3526,62 +3526,79 @@ bool wp_cuda_graph_end_capture(void* context, void* stream, void** graph_ret)
     g_captures.erase(capture_id);
     delete capture;
 
-    // a lambda to clean up on exit in case of error
-    auto clean_up = [cuda_stream, capture_id, external]() {
-        // unreference outstanding graph allocs so that they will be released with the user reference
-        for (auto it = g_graph_allocs.begin(); it != g_graph_allocs.end(); /*noop*/) {
-            GraphAllocInfo& alloc_info = it->second;
-            if (alloc_info.capture_id == capture_id) {
-                if (!alloc_info.ref_exists) {
-                    // The user reference was already dropped (e.g., freed during conditional
-                    // body capture). No graph instance will exist to own the allocation, so
-                    // free it once graph captures complete.
-                    deferred_free(it->first, alloc_info.context, true);
-                    it = g_graph_allocs.erase(it);
-                    continue;
-                }
-                alloc_info.graph_destroyed = true;
-            }
-            ++it;
-        }
+    // RAII guard: on any failure exit, restore graph allocation bookkeeping
+    // and terminate the capture if it is still active (or invalidated);
+    // disarmed on success. Deriving the termination decision from the live
+    // capture status means failure paths can simply return, whether they
+    // fail before or after cudaStreamEndCapture() ran.
+    struct CaptureFailureGuard {
+        CUstream stream;
+        uint64_t capture_id;
+        bool external;
+        bool armed = true;
 
-        // make sure we terminate the capture
-        if (!external) {
-            cudaGraph_t graph = NULL;
-            cudaStreamEndCapture(cuda_stream, &graph);
-            cudaGetLastError();
+        ~CaptureFailureGuard()
+        {
+            if (!armed)
+                return;
+
+            // unreference outstanding graph allocs so that they will be released with the user reference
+            for (auto it = g_graph_allocs.begin(); it != g_graph_allocs.end(); /*noop*/) {
+                GraphAllocInfo& alloc_info = it->second;
+                if (alloc_info.capture_id == capture_id) {
+                    if (!alloc_info.ref_exists) {
+                        // The user reference was already dropped (e.g., freed during conditional
+                        // body capture). No graph instance will exist to own the allocation, so
+                        // free it once graph captures complete.
+                        deferred_free(it->first, alloc_info.context, true);
+                        it = g_graph_allocs.erase(it);
+                        continue;
+                    }
+                    alloc_info.graph_destroyed = true;
+                }
+                ++it;
+            }
+
+            // terminate the capture unless it already ended (e.g., a failed
+            // cudaStreamEndCapture() terminates the capture as it fails)
+            if (!external) {
+                cudaStreamCaptureStatus status = cudaStreamCaptureStatusNone;
+                if (cudaStreamIsCapturing(stream, &status) == cudaSuccess && status != cudaStreamCaptureStatusNone) {
+                    cudaGraph_t graph = NULL;
+                    cudaStreamEndCapture(stream, &graph);
+                }
+                cudaGetLastError();
+            }
         }
-    };
+    } failure_guard { cuda_stream, capture_id, external };
 
     // get captured graph without ending the capture in case it is external
     cudaGraph_t graph = get_capture_graph(cuda_stream);
-    if (!graph) {
-        clean_up();
+    if (!graph)
         return false;
-    }
 
-    // ensure that all forked streams are joined to the main capture stream by manually
-    // adding outstanding capture dependencies gathered from the graph leaf nodes
-    std::vector<cudaGraphNode_t> stream_dependencies;
-    std::vector<cudaGraphNode_t> leaf_nodes;
-    if (get_capture_dependencies(cuda_stream, stream_dependencies) && get_graph_leaf_nodes(graph, leaf_nodes)) {
-        // compute set difference to get unjoined dependencies
-        std::vector<cudaGraphNode_t> unjoined_dependencies;
-        std::sort(stream_dependencies.begin(), stream_dependencies.end());
-        std::sort(leaf_nodes.begin(), leaf_nodes.end());
-        std::set_difference(
-            leaf_nodes.begin(), leaf_nodes.end(), stream_dependencies.begin(), stream_dependencies.end(),
-            std::back_inserter(unjoined_dependencies)
-        );
-        if (!unjoined_dependencies.empty()) {
-            check_cu(cuStreamUpdateCaptureDependencies_f(
-                cuda_stream, unjoined_dependencies.data(), unjoined_dependencies.size(),
-                CU_STREAM_ADD_CAPTURE_DEPENDENCIES
-            ));
-            // ensure graph is still valid
-            if (get_capture_graph(cuda_stream) != graph) {
-                clean_up();
-                return false;
+    if (!skip_leaf_join) {
+        // ensure that all forked streams are joined to the main capture stream by manually
+        // adding outstanding capture dependencies gathered from the graph leaf nodes
+        std::vector<cudaGraphNode_t> stream_dependencies;
+        std::vector<cudaGraphNode_t> leaf_nodes;
+        if (get_capture_dependencies(cuda_stream, stream_dependencies) && get_graph_leaf_nodes(graph, leaf_nodes)) {
+            // compute set difference to get unjoined dependencies
+            std::vector<cudaGraphNode_t> unjoined_dependencies;
+            std::sort(stream_dependencies.begin(), stream_dependencies.end());
+            std::sort(leaf_nodes.begin(), leaf_nodes.end());
+            std::set_difference(
+                leaf_nodes.begin(), leaf_nodes.end(), stream_dependencies.begin(), stream_dependencies.end(),
+                std::back_inserter(unjoined_dependencies)
+            );
+            if (!unjoined_dependencies.empty()) {
+                check_cu(cuStreamUpdateCaptureDependencies_f(
+                    cuda_stream, unjoined_dependencies.data(), unjoined_dependencies.size(),
+                    CU_STREAM_ADD_CAPTURE_DEPENDENCIES
+                ));
+                // ensure graph is still valid
+                if (get_capture_graph(cuda_stream) != graph)
+                    return false;
             }
         }
     }
@@ -3609,17 +3626,18 @@ bool wp_cuda_graph_end_capture(void* context, void* stream, void** graph_ret)
         check_cuda(cudaGraphRetainUserObject(graph, user_object, 1, cudaGraphUserObjectMove));
 
         // ensure graph is still valid
-        if (get_capture_graph(cuda_stream) != graph) {
-            clean_up();
+        if (get_capture_graph(cuda_stream) != graph)
             return false;
-        }
     }
 
     // for external captures, we don't instantiate the graph ourselves, so we're done
-    if (external)
+    if (external) {
+        failure_guard.armed = false;
         return true;
+    }
 
-    // end the capture
+    // end the capture; on failure (e.g., cudaErrorStreamCaptureUnjoined when
+    // skip_leaf_join left dangling forked work) the guard cleans up
     if (!check_cuda(cudaStreamEndCapture(cuda_stream, &graph)))
         return false;
 
@@ -3631,6 +3649,7 @@ bool wp_cuda_graph_end_capture(void* context, void* stream, void** graph_ret)
     if (graph_ret)
         *graph_ret = graph;
 
+    failure_guard.armed = false;
     return true;
 }
 

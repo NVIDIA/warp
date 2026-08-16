@@ -1963,6 +1963,11 @@ class ScopedCapture:
         capture_mode: The :class:`~warp.CaptureMode` to use when opening
             the capture. Defaults to :attr:`CaptureMode.THREAD_LOCAL`.
             See :func:`capture_begin` for details.
+        skip_leaf_join: If ``True``, ending the capture skips Warp's broad
+            leaf-join pass that adds all unjoined graph leaves to the capture
+            stream's dependency list. Intended for integrations that embed the
+            capture window inside an externally-owned capture and manage the
+            capture frontier themselves. See :func:`capture_end` for details.
 
     Attributes:
         graph: The captured graph, available after context exit.
@@ -1989,6 +1994,7 @@ class ScopedCapture:
         external=False,
         apic: bool = False,
         capture_mode: CaptureMode = CaptureMode.THREAD_LOCAL,
+        skip_leaf_join: bool = False,
     ):
         self.device = device
         self.stream = stream
@@ -1996,6 +2002,7 @@ class ScopedCapture:
         self.external = external
         self.apic = apic
         self.capture_mode = capture_mode
+        self.skip_leaf_join = skip_leaf_join
         self.active = False
         self.graph = None
 
@@ -2017,7 +2024,7 @@ class ScopedCapture:
     def __exit__(self, exc_type, exc_value, traceback):
         if self.active:
             try:
-                self.graph = wp.capture_end(device=self.device, stream=self.stream)
+                self.graph = wp.capture_end(device=self.device, stream=self.stream, skip_leaf_join=self.skip_leaf_join)
             except Exception:
                 # Only report this exception if __exit__() was reached without an exception,
                 # otherwise re-raise the original exception.
