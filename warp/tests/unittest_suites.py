@@ -488,14 +488,16 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         - tile.test_tile_struct: test_tile_map_custom_struct_cuda_0 triggers
           CUDA error 719 and poisons the CUDA context
 
-    The suite runs up to eight worker processes that share one GPU. The runner
-    model is not pinned here and most GitLab GPUs have 48 GB or more, so the
-    budget is set by the smallest device the suite should still fit on:
-    24 GiB, which covers a quarter-slice MIG partition of an RTX PRO 6000 as
-    well as a developer machine with an RTX 3090. A class is excluded when its
-    own peak device memory exceeds the resulting per-worker share of roughly
-    3 GiB, even if it passes in isolation. Measure a candidate by running its
-    class alone in debug mode before adding it here.
+    The GitLab GPU job runs up to eight worker processes that share one GPU.
+    It uses ``--isolate-test-processes`` so each process runs one class-level
+    suite and exits, releasing its CUDA context before the worker slot is
+    reused. The runner model is not pinned here and most GitLab GPUs have
+    48 GB or more, so the budget is set by the smallest device the suite should
+    still fit on: 24 GiB, which covers a quarter-slice MIG partition of an RTX
+    PRO 6000 as well as a developer machine with an RTX 3090. A class is
+    excluded when its isolated peak device memory exceeds the per-worker share
+    of roughly 3 GiB. Measure a candidate by running its class alone in debug
+    mode before adding it here.
 
     Excluded on that basis:
         - test_examples, fem.test_fem_examples, cuda.test_async, and

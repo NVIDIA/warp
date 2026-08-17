@@ -641,7 +641,7 @@ linux-x86_64 test debug mode:
     - df -h
     - !reference [.snippets, move-linux-x86_64-binaries]
   script:
-    - uv run --extra dev -m warp.tests --junit-report-xml rspec.xml --suite debug --warp-debug --failfast
+    - uv run --extra dev -m warp.tests --junit-report-xml rspec.xml --suite debug --warp-debug --isolate-test-processes --failfast
 
 # Note that for throughput reasons this runs on a single-GPU runner
 windows-x86_64 test:
