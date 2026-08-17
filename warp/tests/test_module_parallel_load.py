@@ -141,20 +141,33 @@ def _run_parallel_cpu_cold_start():
     modules = [kernel.module for kernel in kernels]
 
     # This is a fresh process, so none of the calls below should find an
-    # existing CPU JIT instance. Hold each worker at the native loading
-    # boundary until all four are ready, maximizing concurrent first entry
-    # into wp_load_obj() without changing production code.
+    # initialized LLVM target registry or an existing CPU JIT instance. Hold
+    # each worker at both native boundaries until all four are ready,
+    # maximizing concurrent first entry without changing production code.
+    compile_barrier = threading.Barrier(len(modules))
     load_barrier = threading.Barrier(len(modules))
+    original_compile_cpp = context.runtime.llvm.wp_compile_cpp
     original_load_obj = context.runtime.llvm.wp_load_obj
+
+    def synchronized_compile_cpp(*args):
+        compile_barrier.wait(timeout=120)
+        return original_compile_cpp(*args)
 
     def synchronized_load_obj(*args):
         load_barrier.wait(timeout=120)
         return original_load_obj(*args)
 
-    with mock.patch.object(
-        context.runtime.llvm,
-        "wp_load_obj",
-        side_effect=synchronized_load_obj,
+    with (
+        mock.patch.object(
+            context.runtime.llvm,
+            "wp_compile_cpp",
+            side_effect=synchronized_compile_cpp,
+        ),
+        mock.patch.object(
+            context.runtime.llvm,
+            "wp_load_obj",
+            side_effect=synchronized_load_obj,
+        ),
     ):
         wp.force_load(device="cpu", modules=modules, block_dim=1, max_workers=len(modules))
 
@@ -224,10 +237,11 @@ class TestModuleParallelLoad(unittest.TestCase):
     def test_force_load_parallel_cpu_cold_start_kernel_lookup(self):
         """Verify that modules loaded in parallel remain launchable on the CPU.
 
-        Run in a subprocess because the CPU JIT is process-global and the
-        initialization race can only occur on the first native module loads.
-        Give the subprocess a fresh filesystem cache without clearing Warp's
-        shared test cache, which is unsafe under the parallel test runner.
+        Run in a subprocess because the LLVM target registry and CPU JIT are
+        process-global, and their initialization races only occur on the first
+        native compilation and module loads. Give the subprocess a fresh
+        filesystem cache without clearing Warp's shared test cache, which is
+        unsafe under the parallel test runner.
         """
         with tempfile.TemporaryDirectory() as cache_path:
             env = os.environ.copy()

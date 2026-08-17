@@ -110,10 +110,15 @@ static const char* cuda_target_arch = "sm_75";
 
 static void initialize_llvm()
 {
-    llvm::InitializeAllTargetInfos();
-    llvm::InitializeAllTargets();
-    llvm::InitializeAllTargetMCs();
-    llvm::InitializeAllAsmPrinters();
+    // LLVM target registration mutates a process-global registry and must not
+    // run concurrently when parallel module compilation enters native code.
+    static std::once_flag init_flag;
+    std::call_once(init_flag, []() {
+        llvm::InitializeAllTargetInfos();
+        llvm::InitializeAllTargets();
+        llvm::InitializeAllTargetMCs();
+        llvm::InitializeAllAsmPrinters();
+    });
 }
 
 struct HostCpuInfo {
