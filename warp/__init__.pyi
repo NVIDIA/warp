@@ -2500,28 +2500,6 @@ def spatial_bottom(svec: Vector[Float, Literal[6]]) -> Vector[Float, Literal[3]]
     """Extract the bottom (second) part of a 6D screw vector."""
     ...
 
-def spatial_jacobian(
-    S: Array[Vector[Float, Literal[6]]],
-    joint_parents: Array[int32],
-    joint_qd_start: Array[int32],
-    joint_start: int32,
-    joint_count: int32,
-    J_start: int32,
-    J_out: Array[Float],
-) -> None:
-    """Compute the spatial Jacobian matrix for a kinematic chain."""
-    ...
-
-def spatial_mass(
-    I_s: Array[Matrix[Float, Literal[6], Literal[6]]],
-    joint_start: int32,
-    joint_count: int32,
-    M_start: int32,
-    M: Array[Float],
-) -> None:
-    """Compute the composite rigid-body mass matrix for a kinematic chain."""
-    ...
-
 @over
 def tile_zeros(shape: tuple[int, ...], dtype: Any, storage: str) -> Tile[Any, tuple[int, ...]]:
     """Allocate a tile of zero-initialized items.

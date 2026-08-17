@@ -2297,36 +2297,6 @@ add_builtin(
     doc="Extract the bottom (second) part of a 6D screw vector.",
 )
 
-add_builtin(
-    "spatial_jacobian",
-    input_types={
-        "S": array(dtype=vector(length=6, dtype=Float)),
-        "joint_parents": array(dtype=int),
-        "joint_qd_start": array(dtype=int),
-        "joint_start": int,
-        "joint_count": int,
-        "J_start": int,
-        "J_out": array(dtype=Float),
-    },
-    value_type=None,
-    doc="Compute the spatial Jacobian matrix for a kinematic chain.",
-    group="Spatial Math",
-)
-
-add_builtin(
-    "spatial_mass",
-    input_types={
-        "I_s": array(dtype=matrix(shape=(6, 6), dtype=Float)),
-        "joint_start": int,
-        "joint_count": int,
-        "M_start": int,
-        "M": array(dtype=Float),
-    },
-    value_type=None,
-    doc="Compute the composite rigid-body mass matrix for a kinematic chain.",
-    group="Spatial Math",
-)
-
 # ------------------
 # Tile-based primitives
 

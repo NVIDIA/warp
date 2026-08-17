@@ -160,8 +160,6 @@ Spatial Math
    spatial_cross
    spatial_cross_dual
    spatial_dot
-   spatial_jacobian
-   spatial_mass
    spatial_top
    spatial_vector
    transform_twist
