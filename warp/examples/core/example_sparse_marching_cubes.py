@@ -19,7 +19,7 @@
 #   * By default the surface is written to a USD stage (headless).
 #   * Pass --opengl to open an interactive window (non-headless).
 #   * Pass --mode dense to extract the identical surface with the dense
-#     wp.MarchingCubes instead, for a comparison.
+#     wp.geometry.IsoSurfaceMarchingCubes instead, for a comparison.
 #
 # Note: requires a CUDA-capable device for interactive resolutions, and
 # usd-core to load the bunny asset.
@@ -30,6 +30,7 @@ from pxr import Usd, UsdGeom
 
 import warp as wp
 import warp.examples
+import warp.geometry
 import warp.render
 
 
@@ -125,7 +126,7 @@ class Example:
         return evaluate
 
     def _extract_sparse(self, angle):
-        return wp.sparse_marching_cubes(
+        return wp.geometry.sparse_marching_cubes(
             self._make_evaluator(angle), self.origin, self.root_width, self.max_depth, threshold=0.0, return_stats=True
         )
 
@@ -140,7 +141,7 @@ class Example:
         upper = wp.vec3(
             self.origin[0] + self.root_width, self.origin[1] + self.root_width, self.origin[2] + self.root_width
         )
-        verts, indices = wp.MarchingCubes.extract_surface_marching_cubes(
+        verts, indices = wp.geometry.IsoSurfaceMarchingCubes.extract(
             field, threshold=0.0, domain_bounds_lower_corner=self.origin, domain_bounds_upper_corner=upper
         )
         stats = {"resolution": resolution, "leaf_cells": resolution**3, "sdf_evaluations": n_nodes**3}

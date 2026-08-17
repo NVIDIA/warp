@@ -15,7 +15,7 @@ construction, corner de-duplication, field evaluation, and triangle extraction)
 runs on the GPU in pure Warp.
 
 For a dense field already resident in memory, use
-:class:`warp.MarchingCubes` instead.
+:class:`warp.geometry.IsoSurfaceMarchingCubes` instead.
 """
 
 from __future__ import annotations
@@ -891,7 +891,7 @@ def sparse_marching_cubes_from_cells(
             need not be contiguous. A ``wp.array`` already on ``device`` is
             consumed in place, without a host round trip.
         corner_values: An ``(N, 8)`` array of the field value at each cell's 8
-            corners, ordered by :attr:`warp.MarchingCubes.CUBE_CORNER_OFFSETS`
+            corners, ordered by :attr:`warp.geometry.IsoSurfaceMarchingCubes.CUBE_CORNER_OFFSETS`
             (corner ``c`` is at subscript ``(i, j, k) + CUBE_CORNER_OFFSETS[c]``).
             Values at corners shared between cells are expected to agree.
         origin: The world-space position of cell subscript ``(0, 0, 0)``.

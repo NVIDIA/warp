@@ -6,7 +6,7 @@
 
 ## Motivation
 
-:class:`warp.MarchingCubes` extracts an isosurface from a **dense** 3D scalar
+:class:`warp.geometry.IsoSurfaceMarchingCubes` extracts an isosurface from a **dense** 3D scalar
 field: the caller must materialize an `nx x ny x nz` array and pay `O(R^3)` in
 both memory and field evaluations, where `R` is the per-axis resolution. For
 high resolutions this is wasteful, because a surface is a 2D object: only
@@ -57,13 +57,13 @@ is implemented entirely in the pure-Python Warp layer.
 
 Two stages, each exposed as a public function, composed by a third:
 
-1. **`wp.lipschitz_octree(sdf, origin, root_width, max_depth, ...)`** -- build a
+1. **`wp.geometry.lipschitz_octree(sdf, origin, root_width, max_depth, ...)`** -- build a
    sparse set of leaf cells that provably bracket the level set of a 1-Lipschitz
    field, top-down, level by level.
-2. **`wp.sparse_marching_cubes_from_cells(cells, corner_values, ...)`** -- run
+2. **`wp.geometry.sparse_marching_cubes_from_cells(cells, corner_values, ...)`** -- run
    marching cubes on an explicit list of occupied cells and their sampled corner
    values, sharing vertices between neighbors so the result is watertight.
-3. **`wp.sparse_marching_cubes(sdf, ...)`** -- chain the two: run the octree,
+3. **`wp.geometry.sparse_marching_cubes(sdf, ...)`** -- chain the two: run the octree,
    sample the field at the surviving cells' corners, and extract.
 
 This mirrors libigl's decomposition and, as suggested in review discussion, is
@@ -107,7 +107,7 @@ is exactly the bound used by `igl::lipschitz_octree_prune`.
 ### Key Implementation Details
 
 Module: `warp/_src/sparse_marching_cubes.py` (public re-exports in
-`warp/__init__.py`).
+`warp/geometry.py`).
 
 **GPU octree construction** (`_build_lipschitz_octree`). Cells are stored as a
 flat `wp.array(dtype=wp.vec3i)` of integer subscripts. Each level: evaluate the
@@ -131,7 +131,7 @@ path this is a single batched call; for the explicit-cells path the caller
 supplies per-cell corner values directly.
 
 **Sparse marching cubes core** (`_extract_from_dedup`). Reuses the *exact*
-lookup tables of the dense `warp.MarchingCubes` (`MC_CASE_TO_TRI_RANGE`,
+lookup tables of the dense `warp.geometry.IsoSurfaceMarchingCubes` (`MC_CASE_TO_TRI_RANGE`,
 `MC_TRI_LOCAL_INDICES`, `MC_CUBE_CORNER_OFFSETS`) so the output matches the dense
 extractor case for case: identical triangulation and vertex/triangle counts, with
 vertex positions agreeing to floating-point tolerance (see the equivalence test
@@ -152,19 +152,19 @@ is deterministic. Confirmed on both CPU (multithreaded) and CUDA.
 
 ```python
 # Full pipeline: implicit function -> mesh.
-verts, indices = wp.sparse_marching_cubes(
+verts, indices = wp.geometry.sparse_marching_cubes(
     sdf,                 # @wp.func (p: wp.vec3) -> float, or callable(points)->values
     origin, root_width, max_depth,
     threshold=0.0, lipschitz_bound=1.0, device=None, return_stats=False,
 )
 
 # Stage 1: choose occupied cells.
-cell_origins, cell_width = wp.lipschitz_octree(sdf, origin, root_width, max_depth, ...)
+cell_origins, cell_width = wp.geometry.lipschitz_octree(sdf, origin, root_width, max_depth, ...)
 
 # Stage 2: extract on an explicit cell set (e.g. marked voxels from a model).
-verts, indices = wp.sparse_marching_cubes_from_cells(
+verts, indices = wp.geometry.sparse_marching_cubes_from_cells(
     cells,               # (N, 3) int subscripts
-    corner_values,       # (N, 8) field values, in MarchingCubes.CUBE_CORNER_OFFSETS order
+    corner_values,       # (N, 8) field values, in IsoSurfaceMarchingCubes.CUBE_CORNER_OFFSETS order
     origin, cell_width, threshold=0.0, device=None,
 )
 ```
@@ -181,7 +181,7 @@ Tests live in `warp/tests/geometry/test_sparse_marching_cubes.py` and run across
 - **Correctness vs. ground truth** -- vertices of a sphere SDF lie on the sphere;
   surface area matches the analytic value.
 - **Equivalence to dense** -- for sphere and torus SDFs at several depths, the
-  sparse mesh matches `wp.MarchingCubes` on the equivalent dense grid: identical
+  sparse mesh matches `wp.geometry.IsoSurfaceMarchingCubes` on the equivalent dense grid: identical
   vertex/triangle counts and a tolerance-based two-sided Hausdorff match. (Exact
   position equality is intentionally *not* asserted, because the `@wp.func` and
   the dense field kernel compile the same arithmetic with slightly different

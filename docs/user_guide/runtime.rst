@@ -2918,12 +2918,15 @@ normalized views and their backing allocations.
 Marching Cubes
 --------------
 
-The :class:`wp.MarchingCubes <warp.MarchingCubes>` class can be used to extract a 2-D mesh approximating an
-isosurface of a 3-D scalar field. The resulting triangle mesh can be saved to a USD
-file using the :class:`warp.render.UsdRenderer`.
+The :class:`wp.geometry.IsoSurfaceMarchingCubes
+<warp.geometry.IsoSurfaceMarchingCubes>` class can be used to extract a 2-D mesh
+approximating an isosurface of a 3-D scalar field. The resulting triangle mesh
+can be saved to a USD file using the :class:`warp.render.UsdRenderer`.
 
 .. testcode::
     :skipif: wp.get_cuda_device_count() == 0
+
+    import warp.geometry
 
     @wp.kernel
     def make_sphere_sdf(field: wp.array3d[float], center: wp.vec3, radius: float):
@@ -2934,7 +2937,7 @@ file using the :class:`warp.render.UsdRenderer`.
     dim = 16
     field = wp.zeros((dim, dim, dim), dtype=float, device="cuda:0")
     wp.launch(make_sphere_sdf, dim=field.shape, inputs=[field, wp.vec3(8.0, 8.0, 8.0), 4.0], device="cuda:0")
-    mc = wp.MarchingCubes(nx=dim, ny=dim, nz=dim)
+    mc = wp.geometry.IsoSurfaceMarchingCubes(nx=dim, ny=dim, nz=dim)
     mc.surface(field, threshold=0.0)
     print(mc.verts.shape[0] > 0)
     print(mc.indices.shape[0] % 3 == 0)
@@ -2954,8 +2957,9 @@ Sparse Marching Cubes
 #####################
 
 When the field comes from an implicit function -- a signed distance function, a
-mesh distance query, or a neural implicit -- :func:`wp.sparse_marching_cubes
-<warp.sparse_marching_cubes>` extracts the isosurface without ever building a
+mesh distance query, or a neural implicit --
+:func:`wp.geometry.sparse_marching_cubes <warp.geometry.sparse_marching_cubes>`
+extracts the isosurface without ever building a
 dense grid. It constructs a *Lipschitz octree* that provably brackets the level
 set of a 1-Lipschitz field, then runs marching cubes only on the near-surface
 cells. The cost scales with the surface area rather than the volume, and the
@@ -2978,12 +2982,14 @@ neural implicits, or any field that is cheaper to evaluate in bulk.
 .. testcode::
     :skipif: wp.get_cuda_device_count() == 0
 
+    import warp.geometry
+
     @wp.func
     def sphere_sdf(p: wp.vec3):
         return wp.length(p) - 0.5
 
     # A depth-8 octree matches a dense 256^3 grid, but only touches cells near the surface.
-    verts, indices = wp.sparse_marching_cubes(
+    verts, indices = wp.geometry.sparse_marching_cubes(
         sphere_sdf,
         origin=wp.vec3(-1.0, -1.0, -1.0),
         root_width=2.0,
@@ -3000,15 +3006,19 @@ neural implicits, or any field that is cheaper to evaluate in bulk.
     True
     True
 
-At a given depth the output is equivalent to :class:`wp.MarchingCubes
-<warp.MarchingCubes>` run on the equivalent dense grid -- the same triangulation
-and the same vertex and triangle counts, with vertex positions agreeing to
-floating-point tolerance -- but only the near-surface cells are instantiated. The two stages are also exposed separately: the pruning stage is
-:func:`wp.lipschitz_octree <warp.lipschitz_octree>`, which returns the leaf
-cells, and the extraction stage is :func:`wp.sparse_marching_cubes_from_cells
-<warp.sparse_marching_cubes_from_cells>`, which runs marching cubes on an
-explicit list of occupied cells and their sampled corner values.
-:func:`wp.sparse_marching_cubes <warp.sparse_marching_cubes>` simply chains the
+At a given depth the output is equivalent to
+:class:`wp.geometry.IsoSurfaceMarchingCubes
+<warp.geometry.IsoSurfaceMarchingCubes>` run on the equivalent dense grid -- the
+same triangulation and the same vertex and triangle counts, with vertex
+positions agreeing to floating-point tolerance -- but only the near-surface
+cells are instantiated. The two stages are also exposed separately: the pruning
+stage is :func:`wp.geometry.lipschitz_octree <warp.geometry.lipschitz_octree>`,
+which returns the leaf cells, and the extraction stage is
+:func:`wp.geometry.sparse_marching_cubes_from_cells
+<warp.geometry.sparse_marching_cubes_from_cells>`, which runs marching cubes on
+an explicit list of occupied cells and their sampled corner values.
+:func:`wp.geometry.sparse_marching_cubes <warp.geometry.sparse_marching_cubes>`
+simply chains the
 two. Calling the extraction stage directly is convenient when the occupied cells
 are already known -- for example a marked band of voxels around an object from a
 vision or generative model.
@@ -3040,12 +3050,12 @@ Custom Marching Cubes Implementations
 
 For advanced use cases requiring custom extraction logic (e.g., working with
 sparse volumes, computing additional per-triangle data), the
-:class:`warp.MarchingCubes` class exposes the fundamental lookup tables
-that define the marching cubes algorithm as class attributes:
-:attr:`~warp.MarchingCubes.CUBE_CORNER_OFFSETS`,
-:attr:`~warp.MarchingCubes.EDGE_TO_CORNERS`,
-:attr:`~warp.MarchingCubes.CASE_TO_TRI_RANGE`, and
-:attr:`~warp.MarchingCubes.TRI_LOCAL_INDICES`.
+:class:`warp.geometry.IsoSurfaceMarchingCubes` class exposes the fundamental
+lookup tables that define the marching cubes algorithm as class attributes:
+:attr:`~warp.geometry.IsoSurfaceMarchingCubes.CUBE_CORNER_OFFSETS`,
+:attr:`~warp.geometry.IsoSurfaceMarchingCubes.EDGE_TO_CORNERS`,
+:attr:`~warp.geometry.IsoSurfaceMarchingCubes.CASE_TO_TRI_RANGE`, and
+:attr:`~warp.geometry.IsoSurfaceMarchingCubes.TRI_LOCAL_INDICES`.
 
 The marching cubes algorithm partitions space into cubic cells and classifies
 each cell based on which of its 8 corners are inside/outside the isosurface.
@@ -3088,23 +3098,29 @@ bit *i* is set if corner *i* is inside the surface:
 Surface Nets
 ------------
 
-The :class:`wp.SurfaceNets <warp.SurfaceNets>` class extracts a triangle or quad mesh from a 3-D
+The :class:`wp.geometry.IsoSurfaceNets <warp.geometry.IsoSurfaceNets>` class
+extracts a triangle or quad mesh from a 3-D
 scalar field. It is a port of the uniform (non-adaptive) meshing path of OpenVDB's
 volume-to-mesh tool: cells crossed by several surface sheets produce one vertex per sheet,
 topological ambiguities are resolved consistently across neighboring cells, and one quad is
 built around each interior grid edge crossing the isosurface. Fully interior isosurfaces
 therefore come out closed and 2-manifold, while the mesh is left open where the isosurface
-exits the grid domain (:class:`wp.MarchingCubes <warp.MarchingCubes>` instead meshes up to
+exits the grid domain (:class:`wp.geometry.IsoSurfaceMarchingCubes
+<warp.geometry.IsoSurfaceMarchingCubes>` instead meshes up to
 the domain boundary).
 
-Both :class:`wp.MarchingCubes <warp.MarchingCubes>` and
-:class:`wp.SurfaceNets <warp.SurfaceNets>` implement the
-:class:`wp.IsoSurfaceBase <warp.IsoSurfaceBase>` interface with the same domain-bounds
+Both :class:`wp.geometry.IsoSurfaceMarchingCubes
+<warp.geometry.IsoSurfaceMarchingCubes>` and
+:class:`wp.geometry.IsoSurfaceNets <warp.geometry.IsoSurfaceNets>` implement the
+:class:`wp.geometry.IsoSurfaceBase <warp.geometry.IsoSurfaceBase>` interface
+with the same domain-bounds
 semantics, triangle winding, and flat :class:`wp.int32 <warp.int32>` triangle index arrays,
 so extraction backends can be swapped without changing the surrounding code:
 
 .. testcode::
     :skipif: wp.get_cuda_device_count() == 0
+
+    import warp.geometry
 
     @wp.kernel
     def make_sdf_field(field: wp.array3d[float], center: wp.vec3, radius: float):
@@ -3116,7 +3132,7 @@ so extraction backends can be swapped without changing the surrounding code:
     field = wp.zeros((dim, dim, dim), dtype=float, device="cuda:0")
     wp.launch(make_sdf_field, dim=field.shape, inputs=[field, wp.vec3(8.0, 8.0, 8.0), 4.0], device="cuda:0")
 
-    for extractor_class in (wp.MarchingCubes, wp.SurfaceNets):
+    for extractor_class in (wp.geometry.IsoSurfaceMarchingCubes, wp.geometry.IsoSurfaceNets):
         iso = extractor_class(nx=dim, ny=dim, nz=dim)
         iso.surface(field, threshold=0.0)
         print(iso.verts.shape[0] > 0, iso.indices.shape[0] % 3 == 0)

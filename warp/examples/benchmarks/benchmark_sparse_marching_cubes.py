@@ -7,8 +7,8 @@
 # Compares isosurface extraction from an implicit function two ways:
 #
 #   dense  : evaluate the field on a full (2^d + 1)^3 grid, then run
-#            wp.MarchingCubes (cost ~ O(R^3), the surface *volume*).
-#   sparse : build a Lipschitz octree and run wp.sparse_marching_cubes
+#            wp.geometry.IsoSurfaceMarchingCubes (cost ~ O(R^3), the surface *volume*).
+#   sparse : build a Lipschitz octree and run wp.geometry.sparse_marching_cubes
 #            (cost ~ O(R^2), the surface *area*).
 #
 # Both paths evaluate the SAME implicit function on the GPU and, at a given
@@ -36,6 +36,7 @@ import numpy as np
 
 import warp as wp
 import warp.examples
+import warp.geometry
 
 # =============================================================================
 # Backend 1: analytic SDF (box smoothly unioned with a torus)
@@ -85,7 +86,7 @@ def analytic_backend(device):
         wp.launch(_analytic_field_kernel, dim=field.shape, inputs=[field, origin, float(h)], device=device)
         return field
 
-    # Passing the @wp.func lets wp.sparse_marching_cubes build its own evaluation
+    # Passing the @wp.func lets wp.geometry.sparse_marching_cubes build its own evaluation
     # kernel; it computes the same values as the dense field kernel.
     return _scene_sdf, dense_field, origin, root_width
 
@@ -157,14 +158,14 @@ def bunny_backend(device):
 def dense_extract(dense_field, origin, root_width, depth):
     field = dense_field(depth)
     upper = wp.vec3(origin[0] + root_width, origin[1] + root_width, origin[2] + root_width)
-    verts, indices = wp.MarchingCubes.extract_surface_marching_cubes(
+    verts, indices = wp.geometry.IsoSurfaceMarchingCubes.extract(
         field, threshold=0.0, domain_bounds_lower_corner=origin, domain_bounds_upper_corner=upper
     )
     return verts, indices
 
 
 def sparse_extract(sdf, origin, root_width, depth, device, return_stats=False):
-    return wp.sparse_marching_cubes(
+    return wp.geometry.sparse_marching_cubes(
         sdf, origin, root_width, depth, threshold=0.0, device=device, return_stats=return_stats
     )
 

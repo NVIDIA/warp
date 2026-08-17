@@ -202,6 +202,7 @@ warp/examples/tile
     api_reference/warp_autograd
     api_reference/warp_config
     api_reference/warp_fem
+    api_reference/warp_geometry
     api_reference/warp_optim
     api_reference/warp_render
     api_reference/warp_sparse

@@ -18,7 +18,7 @@ from warp._src.iso_surface import IsoSurfaceBase, resolve_domain_bounds, validat
 # Lookup tables ported from OpenVDB (VolumeToMesh.h)
 #
 # These tables use OpenVDB's cell-corner numbering, which differs from
-# MarchingCubes.CUBE_CORNER_OFFSETS (OpenVDB cycles the bottom and top faces
+# IsoSurfaceMarchingCubes.CUBE_CORNER_OFFSETS (OpenVDB cycles the bottom and top faces
 # around the y-axis, Warp's marching cubes around the z-axis), so they are
 # kept private to this module.
 # =============================================================================
@@ -331,7 +331,7 @@ _SN_XEDGE: Final[int] = 0x200
 _SN_YEDGE: Final[int] = 0x400
 _SN_ZEDGE: Final[int] = 0x800
 
-# Valid values for the ``topology`` parameter of SurfaceNets.
+# Valid values for the ``topology`` parameter of IsoSurfaceNets.
 _SN_TOPOLOGIES: Final[tuple[str, ...]] = ("triangle", "quad")
 
 
@@ -709,7 +709,7 @@ def _sn_build_faces_kernel(
     of the four cells incident to the edge, and is written out either as-is or
     triangulated, as selected by ``quad_topology``. The winding deliberately
     deviates from OpenVDB's level-set output, which is wound the opposite way
-    from wp.MarchingCubes; the reversal sense of each axis is flipped so that
+    from IsoSurfaceMarchingCubes; the reversal sense of each axis is flipped so that
     every IsoSurfaceBase backend produces counter-clockwise faces viewed from
     outside for a signed distance field (negative inside).
     """
@@ -852,7 +852,7 @@ def surface_nets_extract(
     return verts_pos_out, indices_out
 
 
-class SurfaceNets(IsoSurfaceBase):
+class IsoSurfaceNets(IsoSurfaceBase):
     """A reusable context for surface nets isosurface extraction.
 
     This backend is a port of the uniform (non-adaptive) meshing path of
@@ -863,10 +863,10 @@ class SurfaceNets(IsoSurfaceBase):
     topological-ambiguity correction of adjacent cells applied. For fully
     interior isosurfaces the output mesh is closed and 2-manifold; the mesh is
     left open where the isosurface exits the grid domain (unlike
-    :class:`warp.MarchingCubes`, which meshes up to the domain boundary).
+    :class:`warp.geometry.IsoSurfaceMarchingCubes`, which meshes up to the domain boundary).
 
     This class provides a stateful interface following
-    :class:`warp.IsoSurfaceBase`: initialize it with a specific grid
+    :class:`warp.geometry.IsoSurfaceBase`: initialize it with a specific grid
     configuration and then call the :meth:`~.surface` method multiple times,
     which is efficient for processing fields of the same size. For a simpler,
     stateless operation, use the :meth:`~.extract` class method.
@@ -880,7 +880,7 @@ class SurfaceNets(IsoSurfaceBase):
     each quad along its first diagonal, into the ``(0, 1, 2)`` and
     ``(0, 2, 3)`` corners. Faces are wound counter-clockwise viewed from
     outside for a signed distance field (negative inside), matching
-    :class:`warp.MarchingCubes` (this deliberately differs from raw OpenVDB
+    :class:`warp.geometry.IsoSurfaceMarchingCubes` (this deliberately differs from raw OpenVDB
     level-set output, which uses the opposite winding).
 
     Args:

@@ -513,13 +513,13 @@ def _warn_deprecated_argument(call: str, argument: str, guidance: str) -> None:
 
 def _warn_deprecated_attribute(attribute: str, guidance: str) -> None:
     log_warning(
-        f"MarchingCubes.{attribute} is deprecated and will be removed in Warp 1.19. {guidance}",
+        f"IsoSurfaceMarchingCubes.{attribute} is deprecated and will be removed in Warp 1.19. {guidance}",
         category=DeprecationWarning,
         stacklevel=3,
     )
 
 
-class MarchingCubes(IsoSurfaceBase):
+class IsoSurfaceMarchingCubes(IsoSurfaceBase):
     """A reusable context for marching cubes surface extraction.
 
     This class provides a stateful interface for isosurface extraction. You
@@ -611,7 +611,7 @@ class MarchingCubes(IsoSurfaceBase):
             max_verts = 0
         else:
             _warn_deprecated_argument(
-                "MarchingCubes()",
+                "IsoSurfaceMarchingCubes()",
                 "max_verts",
                 "Output arrays are sized dynamically; remove this argument from calls.",
             )
@@ -620,7 +620,7 @@ class MarchingCubes(IsoSurfaceBase):
             max_tris = 0
         else:
             _warn_deprecated_argument(
-                "MarchingCubes()",
+                "IsoSurfaceMarchingCubes()",
                 "max_tris",
                 "Output arrays are sized dynamically; remove this argument from calls.",
             )
@@ -629,7 +629,7 @@ class MarchingCubes(IsoSurfaceBase):
             device = None
         else:
             _warn_deprecated_argument(
-                "MarchingCubes()",
+                "IsoSurfaceMarchingCubes()",
                 "device",
                 "The input field determines where extraction runs; remove this argument from calls.",
             )
@@ -755,14 +755,14 @@ class MarchingCubes(IsoSurfaceBase):
         """
         if max_verts is not _DEFAULT_ZERO:
             _warn_deprecated_argument(
-                "MarchingCubes.resize()",
+                "IsoSurfaceMarchingCubes.resize()",
                 "max_verts",
                 "Output arrays are sized dynamically; remove this argument from calls.",
             )
             self._max_verts = max_verts
         if max_tris is not _DEFAULT_ZERO:
             _warn_deprecated_argument(
-                "MarchingCubes.resize()",
+                "IsoSurfaceMarchingCubes.resize()",
                 "max_tris",
                 "Output arrays are sized dynamically; remove this argument from calls.",
             )
@@ -876,14 +876,36 @@ class MarchingCubes(IsoSurfaceBase):
             Use :meth:`~.extract` instead. This alias will be removed in a future version of Warp.
         """
         log_warning(
-            "MarchingCubes.extract_surface_marching_cubes() is deprecated and will be removed in "
-            "a future version of Warp. Use MarchingCubes.extract() instead.",
+            "IsoSurfaceMarchingCubes.extract_surface_marching_cubes() is deprecated and will be removed in "
+            "a future version of Warp. Use IsoSurfaceMarchingCubes.extract() instead.",
             category=DeprecationWarning,
             stacklevel=2,
         )
-        return MarchingCubes.extract(
+        return IsoSurfaceMarchingCubes.extract(
             field,
             threshold,
             domain_bounds_lower_corner=domain_bounds_lower_corner,
             domain_bounds_upper_corner=domain_bounds_upper_corner,
         )
+
+
+class MarchingCubes(IsoSurfaceMarchingCubes):
+    """Deprecated alias of :class:`warp.geometry.IsoSurfaceMarchingCubes`.
+
+    .. deprecated:: 1.17
+        Use :class:`warp.geometry.IsoSurfaceMarchingCubes` instead. This alias
+        will be removed in a future version of Warp.
+
+    The alias remains a subclass rather than a plain assignment so that
+    existing type annotations and ``isinstance`` checks against
+    ``wp.MarchingCubes`` keep working during the deprecation period.
+    """
+
+    def __init__(self, *args, **kwargs):
+        log_warning(
+            "wp.MarchingCubes is deprecated and will be removed in a future version of Warp. "
+            "Use wp.geometry.IsoSurfaceMarchingCubes instead.",
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
+        super().__init__(*args, **kwargs)

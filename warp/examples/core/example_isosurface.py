@@ -6,7 +6,7 @@
 #
 # Shows how to use the built-in isosurface extraction functionality to
 # extract a mesh from a density field. The --method option switches
-# between the available wp.IsoSurfaceBase backends so their outputs can
+# between the available wp.geometry.IsoSurfaceBase backends so their outputs can
 # be compared on the same scene, and --topology selects the type of the
 # extracted faces for the backends offering more than one.
 #
@@ -17,11 +17,12 @@
 import numpy as np
 
 import warp as wp
+import warp.geometry
 import warp.render
 
 METHODS = {
-    "marching_cubes": wp.MarchingCubes,
-    "surface_nets": wp.SurfaceNets,
+    "marching_cubes": wp.geometry.IsoSurfaceMarchingCubes,
+    "surface_nets": wp.geometry.IsoSurfaceNets,
 }
 
 
@@ -126,11 +127,11 @@ class Example:
 
         self.field = wp.zeros((self.dim, self.dim, self.dim), dtype=float)
 
-        # The rest of the example only relies on the wp.IsoSurfaceBase
+        # The rest of the example only relies on the wp.geometry.IsoSurfaceBase
         # interface, so extraction methods can be swapped freely.
         extractor_class = METHODS[method]
         options = {}
-        if extractor_class is wp.SurfaceNets:
+        if extractor_class is wp.geometry.IsoSurfaceNets:
             options["topology"] = topology
         elif topology != "triangle":
             raise ValueError(f"The '{method}' method only supports the 'triangle' topology.")

@@ -7,6 +7,7 @@ from collections import Counter
 import numpy as np
 
 import warp as wp
+import warp.geometry
 from warp._src import surface_nets as _surface_nets_module
 from warp.tests.unittest_utils import *
 
@@ -124,20 +125,20 @@ def extract_quads(test, field, threshold=0.0, **kwargs):
     The quads are reshaped from the flat index array into one row of four
     vertex indices per quad, which the connectivity checks below work on.
     """
-    verts, indices = wp.SurfaceNets.extract(field, threshold=threshold, topology="quad", **kwargs)
+    verts, indices = wp.geometry.IsoSurfaceNets.extract(field, threshold=threshold, topology="quad", **kwargs)
     verts_np, indices_np = verts.numpy(), indices.numpy()
     validate_surface_nets_output(test, verts_np, indices_np, topology="quad")
     return verts_np, indices_np.reshape(-1, 4)
 
 
 def test_surface_nets(test, device):
-    """Basic test of typical usage."""
+    """Test typical usage of the stateful interface."""
     node_dim = 64
     cell_dim = node_dim - 1
     bounds_low = (0.0, 0.0, 0.0)
     bounds_high = (float(cell_dim), float(cell_dim), float(cell_dim))
 
-    iso = wp.SurfaceNets(
+    iso = wp.geometry.IsoSurfaceNets(
         nx=node_dim,
         ny=node_dim,
         nz=node_dim,
@@ -173,35 +174,35 @@ def test_surface_nets_functional(test, device):
     node_dim = 32
     field, _center, _radius = make_sphere_field(device, node_dim)
 
-    verts, indices = wp.SurfaceNets.extract(field, threshold=0.0)
+    verts, indices = wp.geometry.IsoSurfaceNets.extract(field, threshold=0.0)
     validate_surface_nets_output(test, verts.numpy(), indices.numpy())
 
     # the functional and stateful interfaces must agree exactly
-    iso = wp.SurfaceNets(nx=node_dim, ny=node_dim, nz=node_dim)
+    iso = wp.geometry.IsoSurfaceNets(nx=node_dim, ny=node_dim, nz=node_dim)
     iso.surface(field=field, threshold=0.0)
     np.testing.assert_array_equal(verts.numpy(), iso.verts.numpy())
     np.testing.assert_array_equal(indices.numpy(), iso.indices.numpy())
 
     # error contract
     with test.assertRaises(ValueError):
-        wp.SurfaceNets.extract(wp.zeros(shape=8, dtype=wp.float32, device=device))
+        wp.geometry.IsoSurfaceNets.extract(wp.zeros(shape=8, dtype=wp.float32, device=device))
     with test.assertRaises(TypeError):
-        wp.SurfaceNets.extract(wp.zeros(shape=(8, 8, 8), dtype=wp.float64, device=device))
+        wp.geometry.IsoSurfaceNets.extract(wp.zeros(shape=(8, 8, 8), dtype=wp.float64, device=device))
     with test.assertRaises(ValueError):
         iso.surface(field=wp.zeros(shape=(8, 8, 8), dtype=wp.float32, device=device), threshold=0.0)
     with test.assertRaises(ValueError):
-        wp.SurfaceNets.extract(field, threshold=0.0, topology="triangles")
+        wp.geometry.IsoSurfaceNets.extract(field, threshold=0.0, topology="triangles")
     with test.assertRaises(ValueError):
-        wp.SurfaceNets(nx=node_dim, ny=node_dim, nz=node_dim, topology="quads")
+        wp.geometry.IsoSurfaceNets(nx=node_dim, ny=node_dim, nz=node_dim, topology="quads")
 
 
 def test_surface_nets_topology(test, device):
-    """The topology parameter selects the face type written to the same indices array."""
+    """Check that the topology parameter selects the face type written to the same indices array."""
     node_dim = 32
     field, _center, _radius = make_sphere_field(device, node_dim)
 
-    tri_verts, tri_indices = wp.SurfaceNets.extract(field, threshold=0.0, topology="triangle")
-    quad_verts, quad_indices = wp.SurfaceNets.extract(field, threshold=0.0, topology="quad")
+    tri_verts, tri_indices = wp.geometry.IsoSurfaceNets.extract(field, threshold=0.0, topology="triangle")
+    quad_verts, quad_indices = wp.geometry.IsoSurfaceNets.extract(field, threshold=0.0, topology="quad")
 
     # both topologies expose the same flat wp.int32 index array
     test.assertEqual(tri_indices.dtype, wp.int32)
@@ -221,17 +222,17 @@ def test_surface_nets_topology(test, device):
     np.testing.assert_array_equal(tris_np[:, [3, 4, 5]], quads_np[:, [0, 2, 3]])
 
     # the stateful interface honors the constructor's topology selection
-    iso = wp.SurfaceNets(nx=node_dim, ny=node_dim, nz=node_dim, topology="quad")
+    iso = wp.geometry.IsoSurfaceNets(nx=node_dim, ny=node_dim, nz=node_dim, topology="quad")
     iso.surface(field=field, threshold=0.0)
     np.testing.assert_array_equal(iso.indices.numpy(), quad_indices.numpy())
 
-    iso = wp.SurfaceNets(nx=node_dim, ny=node_dim, nz=node_dim)
+    iso = wp.geometry.IsoSurfaceNets(nx=node_dim, ny=node_dim, nz=node_dim)
     iso.surface(field=field, threshold=0.0)
     np.testing.assert_array_equal(iso.indices.numpy(), tri_indices.numpy())
 
 
 def test_surface_nets_closed_manifold(test, device):
-    """A fully interior isosurface must be a closed 2-manifold mesh."""
+    """Check that a fully interior isosurface is a closed 2-manifold mesh."""
     node_dim = 48
     field, _, _ = make_sphere_field(device, node_dim, radius=14.0)
 
@@ -247,15 +248,15 @@ def test_surface_nets_closed_manifold(test, device):
 
 
 def test_surface_nets_orientation_matches_marching_cubes(test, device):
-    """Both backends produce outward-oriented (CCW from outside) triangles for an SDF."""
+    """Check that both backends produce outward-oriented (CCW from outside) triangles for an SDF."""
     node_dim = 48
     radius = 14.0
     field, _, _ = make_sphere_field(device, node_dim, radius=radius)
 
-    sn_verts, sn_indices = wp.SurfaceNets.extract(field, threshold=0.0)
+    sn_verts, sn_indices = wp.geometry.IsoSurfaceNets.extract(field, threshold=0.0)
     sn_volume = signed_volume(sn_verts.numpy(), sn_indices.numpy())
 
-    mc_verts, mc_indices = wp.MarchingCubes.extract(field, threshold=0.0)
+    mc_verts, mc_indices = wp.geometry.IsoSurfaceMarchingCubes.extract(field, threshold=0.0)
     mc_volume = signed_volume(mc_verts.numpy(), mc_indices.numpy())
 
     test.assertGreater(sn_volume, 0.0)
@@ -267,7 +268,7 @@ def test_surface_nets_orientation_matches_marching_cubes(test, device):
 
 
 def test_surface_nets_multi_vertex_cells(test, device):
-    """Cells crossed by two surface sheets produce one vertex per edge group.
+    """Check that cells crossed by two surface sheets produce one vertex per edge group.
 
     Two diagonally opposite inside nodes give the cell between them sign
     configuration 65 (corners 0 and 6 inside), an unambiguous two-sheet cell
@@ -323,7 +324,7 @@ def test_surface_nets_multi_vertex_cells(test, device):
 
 
 def test_surface_nets_ambiguous_configs(test, device):
-    """Random quantized fields exercise the ambiguous-face sign correction."""
+    """Exercise the ambiguous-face sign correction with random quantized fields."""
     ambiguous_face = _surface_nets_module._SN_AMBIGUOUS_FACE
     corners = _surface_nets_module._SN_CORNER_OFFSETS
     rng = np.random.default_rng(7)
@@ -455,7 +456,7 @@ def _reference_replica(field_np, threshold):
 
 
 def test_surface_nets_matches_reference_replica(test, device):
-    """The full pipeline agrees with an independent replica of the OpenVDB semantics."""
+    """Check that the full pipeline agrees with an independent replica of the OpenVDB semantics."""
     ambiguous_face = _surface_nets_module._SN_AMBIGUOUS_FACE
     corners = _surface_nets_module._SN_CORNER_OFFSETS
     rng = np.random.default_rng(7)
@@ -505,7 +506,7 @@ def test_surface_nets_nonuniform(test, device):
     center = wp.vec3(dim_x / 2, dim_y / 2, dim_z / 2)
     wp.launch(make_field_sphere_sdf, dim=field.shape, inputs=[field, center, radius], device=device)
 
-    iso = wp.SurfaceNets(
+    iso = wp.geometry.IsoSurfaceNets(
         nx=dim_x,
         ny=dim_y,
         nz=dim_z,
@@ -530,7 +531,7 @@ def test_surface_nets_empty_output(test, device):
     dim = 64
     field, _, _ = make_sphere_field(device, dim)
 
-    iso = wp.SurfaceNets(nx=dim, ny=dim, nz=dim)
+    iso = wp.geometry.IsoSurfaceNets(nx=dim, ny=dim, nz=dim)
 
     iso.surface(field=field, threshold=1000.0)  # set threshold to a large value so that no quads are generated
     test.assertEqual(iso.verts.shape, (0,))
@@ -538,13 +539,13 @@ def test_surface_nets_empty_output(test, device):
     validate_surface_nets_output(test, iso.verts.numpy(), iso.indices.numpy(), check_nonempty=False)
 
     # empty outputs keep their expected shapes in the other topology too
-    verts, indices = wp.SurfaceNets.extract(field, threshold=1000.0, topology="quad")
+    verts, indices = wp.geometry.IsoSurfaceNets.extract(field, threshold=1000.0, topology="quad")
     test.assertEqual(verts.shape, (0,))
     test.assertEqual(indices.shape, (0,))
 
 
 def test_surface_nets_open_boundary(test, device):
-    """The mesh is left open where the isosurface exits the grid domain."""
+    """Check that the mesh is left open where the isosurface exits the grid domain."""
     node_dim = 32
     field = wp.zeros(shape=(node_dim, node_dim, node_dim), dtype=float, device=device)
 
@@ -587,7 +588,7 @@ def test_surface_nets_differentiable(test, device):
             device=device,
         )
 
-        verts, indices = wp.SurfaceNets.extract(
+        verts, indices = wp.geometry.IsoSurfaceNets.extract(
             field, threshold=0.0, domain_bounds_lower_corner=bounds_low, domain_bounds_upper_corner=bounds_high
         )
         test.assertTrue(verts.requires_grad)
@@ -611,15 +612,15 @@ def test_surface_nets_differentiable(test, device):
 
 
 def test_iso_surface_base_contract(test, device, extractor_class):
-    """Backends are interchangeable behind the wp.IsoSurfaceBase interface."""
+    """Check that backends are interchangeable behind the wp.geometry.IsoSurfaceBase interface."""
     node_dim = 32
     field, _, _ = make_sphere_field(device, node_dim)
 
-    test.assertTrue(issubclass(extractor_class, wp.IsoSurfaceBase))
+    test.assertTrue(issubclass(extractor_class, wp.geometry.IsoSurfaceBase))
 
     # stateful interface
     iso = extractor_class(node_dim, node_dim, node_dim)
-    test.assertIsInstance(iso, wp.IsoSurfaceBase)
+    test.assertIsInstance(iso, wp.geometry.IsoSurfaceBase)
     test.assertIsNone(iso.verts)
     test.assertIsNone(iso.indices)
     iso.surface(field, 0.0)
@@ -708,7 +709,7 @@ add_function_test(TestSurfaceNets, "test_surface_nets_open_boundary", test_surfa
 add_function_test(
     TestSurfaceNets, "test_surface_nets_differentiable", test_surface_nets_differentiable, devices=devices
 )
-for _extractor_class in (wp.MarchingCubes, wp.SurfaceNets):
+for _extractor_class in (wp.geometry.IsoSurfaceMarchingCubes, wp.geometry.IsoSurfaceNets):
     add_function_test(
         TestSurfaceNets,
         f"test_iso_surface_base_contract_{_extractor_class.__name__}",

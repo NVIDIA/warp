@@ -72,8 +72,8 @@ def resolve_domain_bounds(
 class IsoSurfaceBase(ABC):
     """Abstract base class for isosurface extraction from dense 3D scalar fields.
 
-    Concrete backends such as :class:`warp.MarchingCubes` and
-    :class:`warp.SurfaceNets` implement this interface so that extraction
+    Concrete backends such as :class:`warp.geometry.IsoSurfaceMarchingCubes` and
+    :class:`warp.geometry.IsoSurfaceNets` implement this interface so that extraction
     algorithms can be swapped behind a single API: construct an instance with
     the grid dimensions, then call :meth:`~.surface` repeatedly to extract
     meshes from fields of that size, reading the results from the
@@ -87,7 +87,7 @@ class IsoSurfaceBase(ABC):
     listing the vertices of each face in order. Backends produce triangles,
     where each group of three consecutive entries forms one face, unless they
     support another face type and were configured to use it (see the
-    ``topology`` parameter of :class:`warp.SurfaceNets`, which can produce
+    ``topology`` parameter of :class:`warp.geometry.IsoSurfaceNets`, which can produce
     quads instead).
 
     Args:
@@ -215,7 +215,7 @@ class IsoSurfaceBase(ABC):
             ``vertices`` array. Backends that support another face type accept
             a keyword argument to select it, and then write that type of face
             to ``indices`` instead (see the ``topology`` parameter of
-            :class:`warp.SurfaceNets`).
+            :class:`warp.geometry.IsoSurfaceNets`).
 
         Raises:
             ValueError: If ``field`` is not a 3D array or is empty.

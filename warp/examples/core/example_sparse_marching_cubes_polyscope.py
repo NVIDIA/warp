@@ -25,7 +25,7 @@
 #   uv run --with polyscope --with pillow --with usd-core \
 #       -m warp.examples.core.example_sparse_marching_cubes_polyscope
 #
-# Uses wp.sparse_marching_cubes and the public wp.lipschitz_octree.
+# Uses wp.geometry.sparse_marching_cubes and the public wp.geometry.lipschitz_octree.
 ###########################################################################
 
 import argparse
@@ -35,6 +35,7 @@ import numpy as np
 
 import warp as wp
 import warp.examples
+import warp.geometry
 
 # Cubic domain covering the normalized mesh (fits in [-0.5, 0.5] plus padding).
 ORIGIN = (-0.65, -0.65, -0.65)
@@ -152,7 +153,9 @@ def main():
     # every frame as the resolution refines (the coarsest cells enclose all
     # finer ones, so nothing is ever clipped).
     ps.set_automatically_compute_scene_extents(False)
-    coarse_origins, coarse_width = wp.lipschitz_octree(evaluate, ORIGIN, ROOT_WIDTH, args.gif_min_depth, device=device)
+    coarse_origins, coarse_width = wp.geometry.lipschitz_octree(
+        evaluate, ORIGIN, ROOT_WIDTH, args.gif_min_depth, device=device
+    )
     coarse = coarse_origins.numpy()
     box_lo = coarse.min(0).astype(np.float32)
     box_hi = (coarse.max(0) + coarse_width).astype(np.float32)
@@ -169,7 +172,7 @@ def main():
         return Image.fromarray(arr[:, :, :3], "RGB")
 
     def extract(depth):
-        verts, indices = wp.sparse_marching_cubes(evaluate, ORIGIN, ROOT_WIDTH, depth, device=device)
+        verts, indices = wp.geometry.sparse_marching_cubes(evaluate, ORIGIN, ROOT_WIDTH, depth, device=device)
         return verts.numpy().astype(np.float64), indices.numpy().reshape(-1, 3)
 
     # -- Refinement GIF: surface + sparse voxel shell as depth increases ---
@@ -177,7 +180,7 @@ def main():
     frames = []
     for depth in range(args.gif_min_depth, args.gif_max_depth + 1):
         surf_v, surf_f = extract(depth)
-        cell_origins, cell_width = wp.lipschitz_octree(evaluate, ORIGIN, ROOT_WIDTH, depth, device=device)
+        cell_origins, cell_width = wp.geometry.lipschitz_octree(evaluate, ORIGIN, ROOT_WIDTH, depth, device=device)
         vox_v, vox_f = voxel_mesh(cell_origins.numpy().astype(np.float64), cell_width)
 
         ps.remove_all_structures()
@@ -219,7 +222,9 @@ def main():
     ps.screenshot(path("surface.png"), transparent_bg=False)
 
     res = 1 << args.grid_depth
-    cell_origins, cell_width = wp.lipschitz_octree(evaluate, ORIGIN, ROOT_WIDTH, args.grid_depth, device=device)
+    cell_origins, cell_width = wp.geometry.lipschitz_octree(
+        evaluate, ORIGIN, ROOT_WIDTH, args.grid_depth, device=device
+    )
     sparse_v, sparse_f = voxel_mesh(cell_origins.numpy().astype(np.float64), cell_width)
 
     axis = np.arange(res)
