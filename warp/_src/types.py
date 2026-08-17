@@ -1692,27 +1692,63 @@ def transformation(dtype=Any):
 
         def __init__(self, *args, **kwargs):
             arg_len = len(args)
-            if arg_len == 1:
-                if len(kwargs) == 0:
-                    if is_float(args[0]) or is_int(args[0]):
-                        # Initialize from a single scalar.
-                        super().__init__(args[0])
-                        return
-                    if getattr(args[0], "_wp_generic_type_str_", None) == self._wp_generic_type_str_:
-                        # Copy constructor.
-                        super().__init__(*args[0])
-                        return
+            if kwargs:
+                # Only the keyword forms need the original "from components"
+                # signature to be resolved, which is also what reports
+                # unexpected keyword arguments.
+                if arg_len > 2:
+                    # Binding everything at once would report the positional
+                    # count first and hide an unexpected keyword behind it, so
+                    # the keywords are checked on their own.
+                    self._wp_init_from_components_sig_.bind_partial(**kwargs)
+                bound_args = self._wp_init_from_components_sig_.bind(*args, **kwargs)
+                bound_args.apply_defaults()
+                p, q = bound_args.args
             elif arg_len > 2:
                 # Fallback to the vector's constructor.
                 super().__init__(*args)
                 return
+            elif arg_len == 0:
+                # Initialize to the identity.
+                super().__init__()
+                self[6] = 1.0
+                return
+            elif arg_len == 1:
+                value = args[0]
+                if is_float(value) or is_int(value):
+                    # Initialize from a single scalar.
+                    super().__init__(value)
+                    return
+                if getattr(value, "_wp_generic_type_str_", None) == self._wp_generic_type_str_:
+                    # Copy constructor.
+                    if type(value) is type(self):
+                        # Identical types on both sides, so the storage can be
+                        # copied as-is.
+                        ctypes.memmove(self, value, ctypes.sizeof(self))
+                    else:
+                        # Anything else, such as another dtype, goes through the
+                        # vector's constructor to convert each component.
+                        super().__init__(*value)
+                    return
+                if not hasattr(value, "__len__"):
+                    # Fallback to the vector's constructor to fill all the
+                    # components with a single value, like the other vector
+                    # types do.
+                    try:
+                        super().__init__(value)
+                    except (TypeError, ctypes.ArgumentError):
+                        raise TypeError(
+                            "Invalid argument in transformation constructor: "
+                            f"expected a scalar value, got {type(value).__name__}"
+                        ) from None
+                    return
 
-            # For backward compatibility, try to check if the arguments
-            # match the original signature that'd allow initializing
-            # the `p` and `q` components separately.
-            bound_args = self._wp_init_from_components_sig_.bind(*args, **kwargs)
-            bound_args.apply_defaults()
-            p, q = bound_args.args
+                # A lone sequence initializes `p`, leaving `q` to its default.
+                p, q = value, self._wp_init_from_components_sig_.parameters["q"].default
+            else:
+                # For backward compatibility, the two positional arguments
+                # initialize the `p` and `q` components separately.
+                p, q = args
 
             # Even if the arguments match the original "from components"
             # signature, we still need to make sure that they represent
@@ -1723,6 +1759,14 @@ def transformation(dtype=Any):
                 self[0:3] = p
                 self[3:7] = q
                 return
+
+            # The `p`/`q` components were explicitly given but at least one of
+            # them isn't a sequence that can be unpacked.
+            name, value = ("p", p) if not hasattr(p, "__len__") else ("q", q)
+            raise TypeError(
+                f"Invalid argument '{name}' in transformation constructor: "
+                f"expected a sequence, got {type(value).__name__}"
+            )
 
         def __getattr__(self, name):
             if name == "p":
