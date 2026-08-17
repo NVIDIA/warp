@@ -122,6 +122,8 @@ nitpick_ignore_regex = [
     (r"py:class", r"<(property|functools\.cached_property) object at .*>"),
     # Autosummary-generated member stubs for Warp classes (Texture*, fem.*, etc.)
     (r"py:obj", r"warp\.(Texture\w+|fixedarray|indexedarray|indexedfabricarray|fabricarray|fem\.).*"),
+    # Members inherited from IsoSurfaceBase, listed in member tables but documented on the base class
+    (r"py:obj", r"warp\.(MarchingCubes|SurfaceNets)\.(resize|surface|extract)"),
     # Internal C++/Python interop methods on geometric types
     (
         r"py:obj",

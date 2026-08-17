@@ -2948,7 +2948,7 @@ file using the :class:`warp.render.UsdRenderer`.
 The resulting mesh is stored in ``mc.verts`` as a :class:`wp.array <warp.array>` of
 :class:`wp.vec3 <warp.vec3>` vertices and in ``mc.indices`` as a flat :class:`wp.int32 <warp.int32>` index array.
 
-See :github:`warp/examples/core/example_marching_cubes.py` for a complete usage example.
+See :github:`warp/examples/core/example_isosurface.py` for a complete usage example.
 
 Sparse Marching Cubes
 #####################
@@ -3083,6 +3083,59 @@ bit *i* is set if corner *i* is inside the surface:
 - Edges 0-3: Bottom face (z=0), cycling 0→1→2→3→0
 - Edges 4-7: Top face (z=1), cycling 4→5→6→7→4
 - Edges 8-11: Vertical edges connecting corner *i* to corner *i+4*
+
+
+Surface Nets
+------------
+
+The :class:`wp.SurfaceNets <warp.SurfaceNets>` class extracts a triangle or quad mesh from a 3-D
+scalar field. It is a port of the uniform (non-adaptive) meshing path of OpenVDB's
+volume-to-mesh tool: cells crossed by several surface sheets produce one vertex per sheet,
+topological ambiguities are resolved consistently across neighboring cells, and one quad is
+built around each interior grid edge crossing the isosurface. Fully interior isosurfaces
+therefore come out closed and 2-manifold, while the mesh is left open where the isosurface
+exits the grid domain (:class:`wp.MarchingCubes <warp.MarchingCubes>` instead meshes up to
+the domain boundary).
+
+Both :class:`wp.MarchingCubes <warp.MarchingCubes>` and
+:class:`wp.SurfaceNets <warp.SurfaceNets>` implement the
+:class:`wp.IsoSurfaceBase <warp.IsoSurfaceBase>` interface with the same domain-bounds
+semantics, triangle winding, and flat :class:`wp.int32 <warp.int32>` triangle index arrays,
+so extraction backends can be swapped without changing the surrounding code:
+
+.. testcode::
+    :skipif: wp.get_cuda_device_count() == 0
+
+    @wp.kernel
+    def make_sdf_field(field: wp.array3d[float], center: wp.vec3, radius: float):
+        i, j, k = wp.tid()
+        p = wp.vec3(float(i), float(j), float(k))
+        field[i, j, k] = wp.length(p - center) - radius
+
+    dim = 16
+    field = wp.zeros((dim, dim, dim), dtype=float, device="cuda:0")
+    wp.launch(make_sdf_field, dim=field.shape, inputs=[field, wp.vec3(8.0, 8.0, 8.0), 4.0], device="cuda:0")
+
+    for extractor_class in (wp.MarchingCubes, wp.SurfaceNets):
+        iso = extractor_class(nx=dim, ny=dim, nz=dim)
+        iso.surface(field, threshold=0.0)
+        print(iso.verts.shape[0] > 0, iso.indices.shape[0] % 3 == 0)
+
+.. testoutput::
+    :skipif: wp.get_cuda_device_count() == 0
+
+    True True
+    True True
+
+The ``topology`` parameter selects the type of the faces written to ``indices``, which are
+generated directly in that form, without any conversion pass: ``"triangle"`` (the default)
+writes three consecutive vertex indices per triangle, and ``"quad"`` writes four consecutive
+vertex indices per quad, matching the algorithm's native output in OpenVDB. The triangles are
+the ``(0, 1, 2)``/``(0, 2, 3)`` split of those quads, in order.
+
+Run ``python -m warp.examples.core.example_isosurface --method surface_nets`` to compare the
+extraction methods on the same scene, adding ``--topology quad`` to extract quads instead of
+triangles (see :github:`warp/examples/core/example_isosurface.py`).
 
 
 Profiling

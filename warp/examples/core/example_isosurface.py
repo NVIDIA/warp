@@ -2,17 +2,27 @@
 # SPDX-License-Identifier: Apache-2.0
 
 ###########################################################################
-# Example Marching Cubes
+# Example Isosurface
 #
-# Shows how use the built-in marching cubes functionality to extract
-# the iso-surface from a density field.
+# Shows how to use the built-in isosurface extraction functionality to
+# extract a mesh from a density field. The --method option switches
+# between the available wp.IsoSurfaceBase backends so their outputs can
+# be compared on the same scene, and --topology selects the type of the
+# extracted faces for the backends offering more than one.
 #
 # Note: requires a CUDA-capable device
 ###########################################################################
 
 
+import numpy as np
+
 import warp as wp
 import warp.render
+
+METHODS = {
+    "marching_cubes": wp.MarchingCubes,
+    "surface_nets": wp.SurfaceNets,
+}
 
 
 @wp.func
@@ -98,8 +108,11 @@ def make_field(
 
 
 class Example:
-    def __init__(self, stage_path="example_marching_cubes.usd", verbose=False):
+    def __init__(
+        self, stage_path="example_isosurface.usd", verbose=False, method="marching_cubes", topology="triangle"
+    ):
         self.verbose = verbose
+        self.topology = topology
 
         self.dim = 64
 
@@ -112,7 +125,17 @@ class Example:
         self.frame = 0
 
         self.field = wp.zeros((self.dim, self.dim, self.dim), dtype=float)
-        self.mc = wp.MarchingCubes(self.dim, self.dim, self.dim)
+
+        # The rest of the example only relies on the wp.IsoSurfaceBase
+        # interface, so extraction methods can be swapped freely.
+        extractor_class = METHODS[method]
+        options = {}
+        if extractor_class is wp.SurfaceNets:
+            options["topology"] = topology
+        elif topology != "triangle":
+            raise ValueError(f"The '{method}' method only supports the 'triangle' topology.")
+
+        self.iso = extractor_class(self.dim, self.dim, self.dim, **options)
 
         self.renderer = None
         if stage_path:
@@ -136,18 +159,25 @@ class Example:
                 )
 
             with wp.ScopedTimer("Surface Extraction", active=self.verbose):
-                self.mc.surface(self.field, 0.0)
+                self.iso.surface(self.field, 0.0)
 
     def render(self):
         if self.renderer is None:
             return
 
         with wp.ScopedTimer("Render"):
+            indices = self.iso.indices.numpy()
+            if self.topology == "quad":
+                # The renderer only draws triangle meshes, so split each
+                # extracted quad along its first diagonal.
+                quads = indices.reshape(-1, 4)
+                indices = np.hstack((quads[:, (0, 1, 2)], quads[:, (0, 2, 3)])).reshape(-1)
+
             self.renderer.begin_frame(self.frame / self.fps)
             self.renderer.render_mesh(
                 "surface",
-                self.mc.verts.numpy(),
-                self.mc.indices.numpy(),
+                self.iso.verts.numpy(),
+                indices,
                 colors=(0.35, 0.55, 0.9),
                 update_topology=True,
             )
@@ -162,16 +192,30 @@ if __name__ == "__main__":
     parser.add_argument(
         "--stage-path",
         type=lambda x: None if x == "None" else str(x),
-        default="example_marching_cubes.usd",
+        default="example_isosurface.usd",
         help="Path to the output USD file.",
     )
     parser.add_argument("--num-frames", type=int, default=240, help="Total number of frames.")
+    parser.add_argument(
+        "--method",
+        type=str,
+        choices=tuple(METHODS.keys()),
+        default="marching_cubes",
+        help="Isosurface extraction method to use.",
+    )
+    parser.add_argument(
+        "--topology",
+        type=str,
+        choices=("triangle", "quad"),
+        default="triangle",
+        help="Type of the extracted faces, where anything but triangles requires the 'surface_nets' method.",
+    )
     parser.add_argument("--verbose", action="store_true", help="Print out additional status messages during execution.")
 
     args = parser.parse_known_args()[0]
 
     with wp.ScopedDevice(args.device):
-        example = Example(stage_path=args.stage_path, verbose=args.verbose)
+        example = Example(stage_path=args.stage_path, verbose=args.verbose, method=args.method, topology=args.topology)
         for _ in range(args.num_frames):
             example.step()
             example.render()

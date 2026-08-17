@@ -1,11 +1,15 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import io
+import sys
 import unittest
+import warnings
 
 import numpy as np
 
 import warp as wp
+from warp._src import logger as _logger_module
 from warp.tests.unittest_utils import *
 
 
@@ -344,11 +348,57 @@ def test_mc_lookup_tables_to_warp_array(test, device):
     test.assertEqual(tuple(edge_to_corners_np[0]), (0, 1))  # edge 0 connects corners 0 and 1
 
 
+def test_marching_cubes_extract_deprecated_alias(test, device):
+    """The deprecated extract_surface_marching_cubes() alias warns and matches extract()."""
+    node_dim = 32
+    field = wp.zeros(shape=(node_dim, node_dim, node_dim), dtype=float, device=device)
+
+    radius = node_dim / 4.0
+    wp.launch(
+        make_field_sphere_sdf,
+        dim=field.shape,
+        inputs=[field, wp.vec3(node_dim / 2, node_dim / 2, node_dim / 2), radius],
+        device=device,
+    )
+
+    verts, faces = wp.MarchingCubes.extract(field, threshold=0.0)
+
+    # The logger deduplicates DeprecationWarnings globally, so reset its cache
+    # around the call to reliably observe the warning on stderr.
+    saved_warnings_seen = _logger_module._warnings_seen.copy()
+    _logger_module._warnings_seen.clear()
+    old_stderr = sys.stderr
+    sys.stderr = io.StringIO()
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("always", DeprecationWarning)
+            alias_verts, alias_faces = wp.MarchingCubes.extract_surface_marching_cubes(field, threshold=0.0)
+        stderr_output = sys.stderr.getvalue()
+    finally:
+        sys.stderr = old_stderr
+        _logger_module._warnings_seen.clear()
+        _logger_module._warnings_seen.update(saved_warnings_seen)
+
+    test.assertIn("MarchingCubes.extract_surface_marching_cubes() is deprecated", stderr_output)
+
+    np.testing.assert_array_equal(verts.numpy(), alias_verts.numpy())
+    np.testing.assert_array_equal(faces.numpy(), alias_faces.numpy())
+
+
 devices = get_test_devices()
 
 
 class TestMarchingCubes(unittest.TestCase):
-    pass
+    def test_marching_cubes_iso_surface_base(self):
+        """MarchingCubes implements the wp.IsoSurfaceBase interface."""
+        self.assertTrue(issubclass(wp.MarchingCubes, wp.IsoSurfaceBase))
+
+        iso = wp.MarchingCubes(8, 8, 8)
+        self.assertIsInstance(iso, wp.IsoSurfaceBase)
+
+        # The base class is abstract and cannot be instantiated directly.
+        with self.assertRaises(TypeError):
+            wp.IsoSurfaceBase(8, 8, 8)
 
 
 add_function_test(TestMarchingCubes, "test_marching_cubes", test_marching_cubes, devices=devices)
@@ -366,6 +416,12 @@ add_function_test(
 add_function_test(TestMarchingCubes, "test_mc_lookup_tables_values", test_mc_lookup_tables_values, devices=devices)
 add_function_test(
     TestMarchingCubes, "test_mc_lookup_tables_to_warp_array", test_mc_lookup_tables_to_warp_array, devices=devices
+)
+add_function_test(
+    TestMarchingCubes,
+    "test_marching_cubes_extract_deprecated_alias",
+    test_marching_cubes_extract_deprecated_alias,
+    devices=devices,
 )
 
 

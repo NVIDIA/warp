@@ -45,12 +45,12 @@ warp/examples/core
            :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_fluid.py
       - .. image:: ./img/examples/core_graph_capture.png
            :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_graph_capture.py
-      - .. image:: ./img/examples/core_marching_cubes.png
-           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_marching_cubes.py
+      - .. image:: ./img/examples/core_isosurface.png
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_isosurface.py
     * - dem
       - fluid
       - graph capture
-      - marching cubes
+      - isosurface
     * - .. image:: ./img/examples/core_mesh.png
            :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/core/example_mesh.py
       - .. image:: ./img/examples/core_nvdb.png

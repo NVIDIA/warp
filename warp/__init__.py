@@ -39,6 +39,7 @@ _register_module_source("warp.marching_cubes", "warp._src.marching_cubes")
 _register_module_source("warp.sparse_marching_cubes", "warp._src.sparse_marching_cubes")
 _register_module_source("warp.math", "warp._src.math")
 _register_module_source("warp.sparse", "warp._src.sparse")
+_register_module_source("warp.surface_nets", "warp._src.surface_nets")
 _register_module_source("warp.utils", "warp._src.utils")
 
 _register_module_source("warp.optim.adam", "warp._src.optim.adam")
@@ -591,10 +592,12 @@ from warp.config import DeterministicMode as DeterministicMode
 # category: Misc
 
 from warp._src.math import *
+from warp._src.iso_surface import IsoSurfaceBase as IsoSurfaceBase
 from warp._src.marching_cubes import MarchingCubes as MarchingCubes
 from warp._src.sparse_marching_cubes import lipschitz_octree as lipschitz_octree
 from warp._src.sparse_marching_cubes import sparse_marching_cubes as sparse_marching_cubes
 from warp._src.sparse_marching_cubes import sparse_marching_cubes_from_cells as sparse_marching_cubes_from_cells
+from warp._src.surface_nets import SurfaceNets as SurfaceNets
 from warp._src.context import RegisteredGLBuffer as RegisteredGLBuffer
 
 

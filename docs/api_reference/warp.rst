@@ -628,8 +628,10 @@ Misc
    :nosignatures:
    :toctree: _generated
 
+   IsoSurfaceBase
    MarchingCubes
    RegisteredGLBuffer
+   SurfaceNets
    lipschitz_octree
    sparse_marching_cubes
    sparse_marching_cubes_from_cells
