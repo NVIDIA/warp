@@ -4065,6 +4065,23 @@ class Module:
         if opt != 3 and not is_cpu and runtime.toolkit_version is not None and runtime.toolkit_version < (12, 9):
             log_warning("Optimization level other than 3 has no effect on CUDA versions prior to 12.9.", once=True)
 
+        if (
+            not is_cpu
+            and runtime.toolkit_version == (12, 9)
+            and output_arch == 120
+            and output_name.endswith(".cubin")
+            and opt != 0
+            and "wp::texture_sample<" in source_str
+            and ("wp::texture2d_t" in source_str or "wp::texture3d_t" in source_str)
+        ):
+            log_warning(
+                "CUDA 12.9 may generate incorrect optimized sm_120 CUBIN code for Texture2D or Texture3D sampling "
+                "when texture handles vary across lanes. Explicit mip-level sampling may also be affected. Upgrade to "
+                "an R580-or-newer driver and use automatic/PTX output, use a CUDA 13.x Warp build, or set the module "
+                "optimization level to 0.",
+                once=True,
+            )
+
         source_code_path = os.path.join(build_dir, f"{module_name_short}.{source_code_ext}")
         try:
             with open(source_code_path, "w") as source_file:

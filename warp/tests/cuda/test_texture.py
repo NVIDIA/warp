@@ -3,7 +3,10 @@
 
 """Unit tests for 1D, 2D, and 3D texture functionality on both CPU and CUDA devices."""
 
+import os
+import tempfile
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 
@@ -2831,7 +2834,28 @@ def test_texture_mipmap_invalid_levels(test, device):
 
 
 class TestTexture(unittest.TestCase):
-    pass
+    def test_cuda_12_9_texture_cubin_warning(self):
+        module = wp.get_module(__name__)
+        options = module.resolve_options(wp.config) | {"optimization_level": 3}
+
+        with (
+            tempfile.TemporaryDirectory() as tmpdir,
+            patch.object(wp.config, "cuda_arch_suffix", None),
+            patch.object(wp._src.context.runtime, "toolkit_version", (12, 9)),
+            patch.object(wp._src.context.runtime, "get_nvrtc_pch_dir", return_value=None),
+            patch("warp._src.build.build_cuda"),
+            patch("warp._src.context.log_warning") as mock_log_warning,
+        ):
+            module._compile(
+                device=None,
+                output_dir=os.path.join(tmpdir, "module"),
+                output_name="module.sm120.cubin",
+                output_arch=120,
+                options=options,
+            )
+
+        mock_log_warning.assert_called_once()
+        self.assertIn("CUDA 12.9", mock_log_warning.call_args.args[0])
 
 
 # Register tests - textures work on both CPU and CUDA devices
