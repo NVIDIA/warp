@@ -3197,7 +3197,7 @@ Both :class:`wp.geometry.IsoSurfaceMarchingCubes
 :class:`wp.geometry.IsoSurfaceNets <warp.geometry.IsoSurfaceNets>` implement the
 :class:`wp.geometry.IsoSurfaceBase <warp.geometry.IsoSurfaceBase>` interface
 with the same domain-bounds
-semantics, triangle winding, and flat :class:`wp.int32 <warp.int32>` triangle index arrays,
+semantics, face winding, and flat :class:`wp.int32 <warp.int32>` index arrays,
 so extraction backends can be swapped without changing the surrounding code:
 
 .. testcode::
@@ -3218,13 +3218,13 @@ so extraction backends can be swapped without changing the surrounding code:
     for extractor_class in (wp.geometry.IsoSurfaceMarchingCubes, wp.geometry.IsoSurfaceNets):
         iso = extractor_class(nx=dim, ny=dim, nz=dim)
         iso.surface(field, threshold=0.0)
-        print(iso.verts.shape[0] > 0, iso.indices.shape[0] % 3 == 0)
+        print(f"{extractor_class.__name__}: {iso.verts.shape[0]} vertices, {iso.indices.shape[0] // 3} triangles")
 
 .. testoutput::
     :skipif: wp.get_cuda_device_count() == 0
 
-    True True
-    True True
+    IsoSurfaceMarchingCubes: 270 vertices, 536 triangles
+    IsoSurfaceNets: 272 vertices, 540 triangles
 
 The ``topology`` parameter selects the type of the faces written to ``indices``, which are
 generated directly in that form, without any conversion pass: ``"triangle"`` (the default)
